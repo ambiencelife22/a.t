@@ -157,8 +157,8 @@ export default function App() {
                           Calm. Beautiful. Seamless.
                         </p>
                         <p className='mt-3 text-sm leading-6 text-[#5E655E]'>
-                          Experiences designed to feel personal, restorative,
-                          and quietly unforgettable.
+                          Experiences designed to feel personal, exceptional,
+                          and unforgettable
                         </p>
                       </div>
 
@@ -178,8 +178,7 @@ export default function App() {
                             Discreet and deeply tailored
                           </p>
                           <p className='mt-3 text-sm leading-6 text-white/72'>
-                            Every recommendation should feel aligned with the
-                            person behind the trip.
+                            Aligning with your preferences
                           </p>
                         </div>
 
