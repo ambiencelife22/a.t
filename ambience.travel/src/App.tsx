@@ -12,14 +12,14 @@ export default function App() {
       title: 'Private Concierge',
       text: 'Discreet, elevated assistance for those who value trust, detail, and a highly tailored level of care.',
     },
-  ]
+  ];
 
   const highlights = [
     'Personally guided, not mass-market',
     'Calm premium aesthetic with emotional warmth',
     'Built around connection, discretion, and care',
     'Designed for meaningful experiences, not just logistics',
-  ]
+  ];
 
   const experiences = [
     {
@@ -34,7 +34,7 @@ export default function App() {
       title: 'Trusted Support',
       text: 'A relationship-driven approach rooted in responsiveness, discretion, and the desire to genuinely serve.',
     },
-  ]
+  ];
 
   return (
     <main className='min-h-screen bg-[#FAF8F6] text-[#1A1D1A]'>
@@ -44,11 +44,24 @@ export default function App() {
           <div className='absolute right-[8%] top-24 h-48 w-48 rounded-full bg-[#5A6A5A]/15 blur-3xl' />
         </div>
 
-        <div className='relative mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-28'>
+        <div className='relative mx-auto grid max-w-7xl gap-14 px-6 py-16 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-24'>
           <div className='max-w-3xl'>
-            <p className='text-xs uppercase tracking-[0.28em] text-[#8A9A8A]'>
-              ambience.travel
-            </p>
+            <div className='mb-6 flex items-center gap-3'>
+              <div className='flex shrink-0 items-center gap-3 rounded-full px-3 py-2 backdrop-blur-sm'>
+                <img
+                  src='/emblem.png'
+                  alt='ambience emblem'
+                  className='h-8 w-8 shrink-0 rounded-full object-cover'
+                />
+                <div className='w-[170px] shrink-0 sm:w-[210px]'>
+                  <img
+                    src='/logo.png'
+                    alt='ambience.travel logo'
+                    className='block h-auto w-full object-contain'
+                  />
+                </div>
+              </div>
+            </div>
 
             <h1 className='mt-5 max-w-4xl text-5xl font-semibold tracking-[-0.045em] text-[#1A1D1A] sm:text-6xl lg:text-7xl'>
               Meaningful travel,
@@ -101,7 +114,14 @@ export default function App() {
 
                   <div className='relative flex h-full flex-col justify-between'>
                     <div className='flex items-center justify-between rounded-full border border-white/60 bg-white/60 px-4 py-3 text-xs uppercase tracking-[0.2em] text-[#667066] backdrop-blur'>
-                      <span>Private Travel Design</span>
+                      <div className='flex items-center gap-3'>
+                        <img
+                          src='/emblem.png'
+                          alt='ambience emblem'
+                          className='h-7 w-7 rounded-full object-cover'
+                        />
+                        <span>Private Travel Design</span>
+                      </div>
                       <span>By ambience</span>
                     </div>
 
@@ -114,22 +134,28 @@ export default function App() {
                           Calm. Beautiful. Seamless.
                         </p>
                         <p className='mt-3 text-sm leading-6 text-[#5E655E]'>
-                          Experiences designed to feel personal, restorative,
-                          and quietly unforgettable.
+                          Experiences designed to feel personal, exceptional,
+                          and unforgettable.
                         </p>
                       </div>
 
                       <div className='grid gap-4 sm:grid-cols-2'>
                         <div className='rounded-[28px] border border-white/70 bg-[#1A1D1A] p-5 text-[#FAF8F6] shadow-[0_16px_42px_rgba(0,0,0,0.18)]'>
-                          <p className='text-xs uppercase tracking-[0.22em] text-[#E8C547]'>
-                            Approach
-                          </p>
+                          <div className='flex items-center gap-3'>
+                            <img
+                              src='/emblem.png'
+                              alt='ambience emblem'
+                              className='h-8 w-8 rounded-full object-cover'
+                            />
+                            <p className='text-xs uppercase tracking-[0.22em] text-[#E8C547]'>
+                              Approach
+                            </p>
+                          </div>
                           <p className='mt-3 text-xl font-semibold tracking-[-0.03em]'>
                             Discreet and deeply tailored
                           </p>
                           <p className='mt-3 text-sm leading-6 text-white/72'>
-                            Every recommendation should feel aligned with the
-                            person behind the trip.
+                            Aligning with your preferences
                           </p>
                         </div>
 
@@ -239,9 +265,16 @@ export default function App() {
         <div className='rounded-[36px] border border-[#D8D2C8] bg-[#1A1D1A] px-8 py-10 text-[#FAF8F6] shadow-[0_20px_60px_rgba(0,0,0,0.22)] lg:px-12 lg:py-14'>
           <div className='grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end'>
             <div>
-              <p className='text-xs uppercase tracking-[0.28em] text-[#E8C547]'>
-                Begin with ambience.travel
-              </p>
+              <div className='mb-4 flex items-center gap-3'>
+                <img
+                  src='/emblem.png'
+                  alt='ambience emblem'
+                  className='h-9 w-9 rounded-full object-cover'
+                />
+                <p className='text-xs uppercase tracking-[0.28em] text-[#E8C547]'>
+                  Begin with ambience.travel
+                </p>
+              </div>
 
               <h2 className='mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#FAF8F6] sm:text-5xl'>
                 Travel designed with taste, depth, and genuine care.
@@ -304,5 +337,5 @@ export default function App() {
         </div>
       </section>
     </main>
-  )
+  );
 }
