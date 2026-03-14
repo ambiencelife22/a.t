@@ -12,14 +12,14 @@ export default function App() {
       title: 'Private Concierge',
       text: 'Discreet, elevated assistance for those who value trust, detail, and a highly tailored level of care.',
     },
-  ];
+  ]
 
   const highlights = [
     'Personally guided, not mass-market',
     'Calm premium aesthetic with emotional warmth',
     'Built around connection, discretion, and care',
     'Designed for meaningful experiences, not just logistics',
-  ];
+  ]
 
   const experiences = [
     {
@@ -34,10 +34,33 @@ export default function App() {
       title: 'Trusted Support',
       text: 'A relationship-driven approach rooted in responsiveness, discretion, and the desire to genuinely serve.',
     },
-  ];
+  ]
 
   return (
     <main className='min-h-screen bg-[#FAF8F6] text-[#1A1D1A]'>
+      <div style={{ minHeight: '100vh', background: '#FAF8F6', color: '#1A1D1A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+
+            {/* ── Top nav ───────────────────────────────────────────────────────── */}
+            <nav style={{
+              position: 'sticky', top: 0, zIndex: 50,
+              background: 'rgba(250,248,246,0.88)', backdropFilter: 'blur(14px)',
+              borderBottom: '1px solid #E8E2DA',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0 clamp(20px,5vw,48px)', height: 56,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <img src="/emblem.png" alt="ambience.SPORTS" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+                <img src="/logo.png" alt="ambience.SPORTS" style={{ height: 18, width: 'auto' }} />
+              </div>
+              <button
+                disabled
+                aria-disabled='true'
+                className='cursor-not-allowed rounded-full bg-[#A8AAA8] px-[18px] py-[7px] text-[13px] font-semibold tracking-[0.01em] text-[#FAF8F6] opacity-70'
+              >
+                Sign In
+              </button>
+            </nav>
+
       <section className='relative overflow-hidden border-b border-[#D8D2C8] bg-[radial-gradient(circle_at_top_left,rgba(232,197,71,0.22),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(90,106,90,0.12),transparent_24%),linear-gradient(to_bottom,#faf8f6,#f4efe8)]'>
         <div className='absolute inset-0 opacity-40'>
           <div className='absolute left-[8%] top-20 h-40 w-40 rounded-full bg-[#E8C547]/25 blur-3xl' />
@@ -134,8 +157,8 @@ export default function App() {
                           Calm. Beautiful. Seamless.
                         </p>
                         <p className='mt-3 text-sm leading-6 text-[#5E655E]'>
-                          Experiences designed to feel personal, exceptional,
-                          and unforgettable.
+                          Experiences designed to feel personal, restorative,
+                          and quietly unforgettable.
                         </p>
                       </div>
 
@@ -155,7 +178,8 @@ export default function App() {
                             Discreet and deeply tailored
                           </p>
                           <p className='mt-3 text-sm leading-6 text-white/72'>
-                            Aligning with your preferences
+                            Every recommendation should feel aligned with the
+                            person behind the trip.
                           </p>
                         </div>
 
@@ -336,6 +360,7 @@ export default function App() {
           </div>
         </div>
       </section>
+      </div>
     </main>
-  );
+  )
 }
