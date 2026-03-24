@@ -1,0 +1,29 @@
+/* app app.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Importing Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Prata&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap');
+
+
+.prata-black {
+    font-family: 'Prata', serif;
+    font-size: 17px;
+}
+  
+  .pjs {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 17px;
+  }
+  
+  .noto {
+    font-family: 'Noto Serif', serif;
+    color: #1A1D1A;
+  }
+
+  .bg_color {
+    color: #F1F1F1;
+  }
