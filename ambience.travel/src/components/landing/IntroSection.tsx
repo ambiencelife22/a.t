@@ -54,13 +54,13 @@ const ITEMS: TravelCard[] = [
     timing:   '4 nights · October',
   },
   {
-    src:      '/landing/chenot-weggis.webp',
-    caption:  'Chenot Palace',
-    location: 'Weggis, Switzerland',
+    src:      '/landing/blue-lagoon.webp',
+    caption:  'The Retreat at Blue Lagoon',
+    location: 'Grindavík, Iceland',
     type:     'Wellness Escape',
     status:   'Enquiry Received',
-    detail:   'Detox & Regeneration',
-    timing:   '7 nights',
+    detail:   'Geothermal wellness stay',
+    timing:   '4 nights',
   },
   {
     src:      '/landing/marsan.webp',
