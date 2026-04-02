@@ -189,7 +189,7 @@ export default function HeroSection() {
                   borderRadius: 100,
                   cursor: 'default',
                   letterSpacing: '0.02em',
-                  opacity: 0.85,
+                  opacity: 0.22,
                 }}
               >
                 Begin the Conversation
@@ -208,7 +208,7 @@ export default function HeroSection() {
                   borderRadius: 100,
                   cursor: 'default',
                   letterSpacing: '0.02em',
-                  opacity: 0.9,
+                  opacity: .44,
                 }}
               >
                 Explore the Experience

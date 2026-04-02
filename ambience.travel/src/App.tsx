@@ -8,6 +8,7 @@ import ExperienceTypesSection from './components/landing/ExperienceTypesSection'
 import HospitalitySection from './components/landing/HospitalitySection'
 import DarkCTASection from './components/landing/DarkCTASection'
 import { C } from './lib/landingTypes'
+import AmbienceLogo from './components/AmbienceLogo'
 
 export default function App() {
   const [heroVis, setHeroVis] = useState(false)
@@ -90,7 +91,7 @@ export default function App() {
               alt='ambience emblem'
               style={{ width: 28, height: 28, borderRadius: '50%' }}
             />
-            <img src='/logo.svg' alt='ambience.travel' style={{ height: 18, width: 'auto' }} />
+            <AmbienceLogo isDark={false} product='travel' height={44} />
           </div>
 
           <button
@@ -106,7 +107,7 @@ export default function App() {
               color: '#F7F4EE',
               cursor: 'default',
               letterSpacing: '0.04em',
-              opacity: 0.85,
+              opacity: 0.44,
             }}
           >
             Begin the Conversation

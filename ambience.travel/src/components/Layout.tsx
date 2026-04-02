@@ -143,7 +143,7 @@ export default function Layout({ children: _children }: LayoutProps) {
               alt='ambience.travel emblem'
               style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
             />
-            <AmbienceLogo isDark={false} product='travel' height={88} />
+            <AmbienceLogo isDark={false} product='travel' height={44} />
           </div>
 
           <button
@@ -159,7 +159,7 @@ export default function Layout({ children: _children }: LayoutProps) {
               color: '#F7F4EE',
               cursor: 'default',
               letterSpacing: '0.04em',
-              opacity: 0.85,
+              opacity: 0.22,
             }}
           >
             Begin the Conversation
