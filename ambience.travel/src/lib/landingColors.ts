@@ -20,4 +20,7 @@ export const TRAVEL_MOMENT_COLORS: Record<string, string> = {
   'Signature City Stay': '#E8C547',
   'Extended Journey': '#f97316',
   'Suites & Villas': '#C9B88E',
+  'Private Aviation': '#93c5fd',
+  'Yacht & Sea': '#38bdf8',
+  'Signature Dining': '#fb923c',
 }
