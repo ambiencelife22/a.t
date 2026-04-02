@@ -79,7 +79,6 @@ export default function Layout({ children: _children }: LayoutProps) {
       @keyframes warmBreath { 0%,100%{opacity:1} 50%{opacity:0.78} }
       @keyframes scribbleLine1 { from{stroke-dashoffset:220} to{stroke-dashoffset:0} }
       @keyframes scribbleLine2 { from{stroke-dashoffset:225} to{stroke-dashoffset:0} }
-      @keyframes scribbleLine3 { from{stroke-dashoffset:215} to{stroke-dashoffset:0} }
       @keyframes scribbleIn { 0%{opacity:0} 8%{opacity:1} 100%{opacity:1} }
       @keyframes scribbleOut { 0%{opacity:1} 100%{opacity:0} }
     `
@@ -196,16 +195,18 @@ export default function Layout({ children: _children }: LayoutProps) {
         </button>
       )}
 
+      <VideoIntroSection />
+
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
 
       <HeroSection />
       <EditorialSection />
-      <VideoIntroSection />
       <JourneyMomentsSection />
       <PillarsSection />
       <ExperienceTypesSection />
+      {/* <HospitalitySection /> */}
       <DarkCTASection />
     </div>
   )

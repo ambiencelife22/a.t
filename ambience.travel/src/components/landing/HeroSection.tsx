@@ -89,14 +89,14 @@ export default function HeroSection() {
                 <span style={{ position: 'relative', display: 'inline-block' }}>
                   designed.
                   <svg
-                    viewBox='0 0 202 22'
+                    viewBox='0 0 202 18'
                     style={{
-                      position: 'absolute',
-                      bottom: '-14px',
-                      left: '-2%',
-                      width: '104%',
-                      height: '22px',
-                      overflow: 'visible',
+                      position:      'absolute',
+                      bottom:        '-12px',
+                      left:          '-2%',
+                      width:         '104%',
+                      height:        '18px',
+                      overflow:      'visible',
                       pointerEvents: 'none',
                     }}
                   >
@@ -108,12 +108,12 @@ export default function HeroSection() {
                       strokeLinecap='round'
                       strokeLinejoin='round'
                       style={{
-                        strokeDasharray: 220,
+                        strokeDasharray:  220,
                         strokeDashoffset: scribble ? 0 : 220,
-                        animation: scribble
+                        animation:        scribble
                           ? 'scribbleLine1 1.1s ease both, scribbleIn 22s ease both, scribbleOut 22s ease both'
                           : 'none',
-                        opacity: 0,
+                        opacity: scribble ? undefined : 0,
                       }}
                     />
                     <path
@@ -124,28 +124,12 @@ export default function HeroSection() {
                       strokeLinecap='round'
                       strokeLinejoin='round'
                       style={{
-                        strokeDasharray: 225,
+                        strokeDasharray:  225,
                         strokeDashoffset: scribble ? 0 : 225,
-                        opacity: 0,
-                        animation: scribble
+                        animation:        scribble
                           ? 'scribbleLine2 1.1s ease 1.1s both, scribbleIn 21s ease 1.1s both, scribbleOut 22s ease 0s both'
                           : 'none',
-                      }}
-                    />
-                    <path
-                      d='M2,20 C28,17 56,22 82,19 C108,16 136,22 160,19 C178,17 192,21 200,19'
-                      fill='none'
-                      stroke='#C9B88E'
-                      strokeWidth='5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      style={{
-                        strokeDasharray: 215,
-                        strokeDashoffset: scribble ? 0 : 215,
-                        opacity: 0,
-                        animation: scribble
-                          ? 'scribbleLine3 1.1s ease 2.2s both, scribbleIn 19.8s ease 2.2s both, scribbleOut 22s ease 0s both'
-                          : 'none',
+                        opacity: scribble ? undefined : 0,
                       }}
                     />
                   </svg>

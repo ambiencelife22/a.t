@@ -1,11 +1,15 @@
 /* PillarsSection.tsx
  * Three-pillar explainer + full-bleed editorial image below.
- * Image treatment mirrors HeroSection: rounded container, gradient overlay,
- * pill label bottom-left, caption card bottom-right.
+ * Animations:
+ * - Scroll-triggered fadeUp on all elements (staggered)
+ * - Parallax on pillar grid as a group (scrolls at 60% speed)
+ * - Hover: lift + border gold + subtle 3D tilt toward cursor (max 4deg)
+ * - Parallax on editorial image (existing)
  */
 
+import { useEffect, useRef, useState } from 'react'
 import { C, OVERLAY } from '../../lib/landingTypes'
-import { fadeUp, useVisible } from './LandingComponents'
+import { fadeUp, useVisible, useScrollParallax } from './LandingComponents'
 
 const pillars = [
   {
@@ -22,8 +26,88 @@ const pillars = [
   },
 ]
 
+function PillarCard({ pillar, delay, visible }: { pillar: typeof pillars[0], delay: number, visible: boolean }) {
+  const cardRef                   = useRef<HTMLDivElement>(null)
+  const [hovered, setHovered]     = useState(false)
+  const [tilt,    setTilt]        = useState({ x: 0, y: 0 })
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el   = cardRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const cx   = rect.left + rect.width  / 2
+    const cy   = rect.top  + rect.height / 2
+    const dx   = (e.clientX - cx) / (rect.width  / 2)  // -1 → +1
+    const dy   = (e.clientY - cy) / (rect.height / 2)  // -1 → +1
+    setTilt({ x: dy * -4, y: dx * 4 })                 // max 4deg
+  }
+
+  const handleMouseLeave = () => {
+    setHovered(false)
+    setTilt({ x: 0, y: 0 })
+  }
+
+  const tiltTransform = hovered
+    ? `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(-4px)`
+    : 'perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0px)'
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        ...fadeUp(visible, delay),
+        borderRadius:    28,
+        border:          `1px solid ${hovered ? C.gold : C.border}`,
+        background:      '#fff',
+        padding:         28,
+        boxShadow:       hovered
+          ? '0 20px 48px rgba(0,0,0,0.10), 0 0 0 1px rgba(201,184,142,0.12)'
+          : '0 12px 32px rgba(0,0,0,0.05)',
+        transform:       tiltTransform,
+        transition:      hovered
+          ? 'border-color 0.25s ease, box-shadow 0.25s ease, transform 0.12s ease'
+          : 'border-color 0.35s ease, box-shadow 0.35s ease, transform 0.55s cubic-bezier(0.16,1,0.3,1)',
+        cursor:          'default',
+        willChange:      'transform',
+      }}
+    >
+      <p
+        style={{
+          fontSize:      11,
+          letterSpacing: '0.24em',
+          textTransform: 'uppercase',
+          color:         hovered ? C.gold : '#8A9487',
+          marginBottom:  14,
+          transition:    'color 0.3s ease',
+        }}
+      >
+        Core pillar
+      </p>
+      <h3
+        style={{
+          fontSize:      28,
+          fontWeight:    600,
+          letterSpacing: '-0.03em',
+          color:         C.text,
+          marginBottom:  14,
+        }}
+      >
+        {pillar.title}
+      </h3>
+      <p style={{ fontSize: 16, lineHeight: 1.75, color: '#5C625C' }}>
+        {pillar.text}
+      </p>
+    </div>
+  )
+}
+
 export default function PillarsSection() {
-  const { ref, visible } = useVisible(0.12)
+  const { ref, visible }              = useVisible(0.12)
+  const { ref: imgRef,   offset }     = useScrollParallax(0.06)
+  const { ref: gridRef,  offset: go } = useScrollParallax(0.035)
 
   return (
     <section
@@ -75,57 +159,25 @@ export default function PillarsSection() {
           </p>
         </div>
 
-        {/* Pillars grid */}
+        {/* Pillars grid — subtle parallax as a group */}
         <div
+          ref={gridRef}
           style={{
             display:             'grid',
             gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))',
             gap:                 24,
             marginBottom:        48,
+            transform:           `translateY(${go}px)`,
+            transition:          'transform 0.1s linear',
+            willChange:          'transform',
           }}
         >
           {pillars.map((pillar, i) => (
-            <div
-              key={pillar.title}
-              style={{
-                ...fadeUp(visible, 120 + i * 90),
-                borderRadius: 28,
-                border:       `1px solid ${C.border}`,
-                background:   '#fff',
-                padding:      28,
-                boxShadow:    '0 12px 32px rgba(0,0,0,0.05)',
-              }}
-            >
-              <p
-                style={{
-                  fontSize:      11,
-                  letterSpacing: '0.24em',
-                  textTransform: 'uppercase',
-                  color:         '#8A9487',
-                  marginBottom:  14,
-                }}
-              >
-                Core pillar
-              </p>
-              <h3
-                style={{
-                  fontSize:      28,
-                  fontWeight:    600,
-                  letterSpacing: '-0.03em',
-                  color:         C.text,
-                  marginBottom:  14,
-                }}
-              >
-                {pillar.title}
-              </h3>
-              <p style={{ fontSize: 16, lineHeight: 1.75, color: '#5C625C' }}>
-                {pillar.text}
-              </p>
-            </div>
+            <PillarCard key={pillar.title} pillar={pillar} delay={120 + i * 90} visible={visible} />
           ))}
         </div>
 
-        {/* Editorial image — mirrors HeroSection treatment */}
+        {/* Editorial image — parallax */}
         <div
           style={{
             ...fadeUp(visible, 420),
@@ -138,17 +190,25 @@ export default function PillarsSection() {
             background:   '#0D1A2A',
           }}
         >
-          <img
-            src='/landing/yacht-charter.webp'
-            alt='Private superyacht charter — Mediterranean'
+          <div
+            ref={imgRef}
             style={{
               position:   'absolute',
-              inset:      0,
-              width:      '100%',
-              height:     '100%',
-              objectFit:  'cover',
+              inset:      '-8% 0',
+              transform:  `translateY(${offset}px)`,
+              transition: 'transform 0.1s linear',
             }}
-          />
+          >
+            <img
+              src='/landing/yacht-charter.webp'
+              alt='Private superyacht charter — Mediterranean'
+              style={{
+                width:     '100%',
+                height:    '100%',
+                objectFit: 'cover',
+              }}
+            />
+          </div>
 
           {/* Gradient overlay */}
           <div
@@ -156,6 +216,7 @@ export default function PillarsSection() {
               position:   'absolute',
               inset:      0,
               background: 'linear-gradient(180deg, rgba(23,25,23,0.06) 0%, rgba(23,25,23,0.12) 38%, rgba(23,25,23,0.34) 100%)',
+              zIndex:     1,
             }}
           />
 
@@ -171,6 +232,7 @@ export default function PillarsSection() {
               alignItems:     'flex-end',
               gap:            16,
               flexWrap:       'wrap',
+              zIndex:         2,
             }}
           >
             <div
