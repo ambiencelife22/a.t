@@ -6,37 +6,37 @@ const items = [
     title: 'Private Family Travel',
     text: 'Well-considered journeys for families who value space, ease, privacy, and a smoother rhythm from start to finish.',
     image:
-      'https://www.hilton.com/im/en/LAXWAWA/8005581/wabh-beverly-hills-2-queen-q2dg-room.jpg?ch=3590&cw=5999&gravity=NorthWest&impolicy=crop&rh=900&rw=1400&xposition=0&yposition=204',
-  },
-  {
-    title: 'Couples & Celebrations',
-    text: 'Anniversaries, milestone escapes, and romantic journeys designed with taste, atmosphere, and discretion.',
-    image:
-      'https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-12/Aman%20New%20York%2C%20USA%20-%20Corner%20Suite%202_0.jpg?itok=9yk-OWvo',
-  },
-  {
-    title: 'Wellness-Led Escapes',
-    text: 'Travel shaped around restoration, privacy, clean living, and a deeper sense of balance.',
-    image:
-      'https://img.destination.one/remote/.webp?height=900&mode=crop&quality=90&scale=both&url=https%3A%2F%2Fdam.destination.one%2F2462791%2F8841094f585370451b64cd383cd087feae735518117fefddb06da2eb1aab5c87%2Fcsm_chenot_palace_weggis_restaurant_view_2fd70b472c-jpg.jpg&width=1400',
-  },
-  {
-    title: 'Signature City Stays',
-    text: 'Refined urban travel with standout hotels, well-managed access, and a sharper sense of place.',
-    image:
-      'https://www.hilton.com/im/en/LAXWAWA/1336939/beverly-hills-suite-seating.jpg?ch=4399&cw=7351&gravity=NorthWest&impolicy=crop&rh=900&rw=1400&xposition=0&yposition=167',
+      'https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-welcome-to-the-maldives-29354:Wide-Hor?wid=1100&fit=constrain',
   },
   {
     title: 'Extended Private Journeys',
     text: 'Multi-stop itineraries requiring careful coordination, strong judgement, and consistency across every stage.',
     image:
-      'https://www.hilton.com/im/en/LAXWAWA/5326855/villa-balcony-315-alt.jpg?ch=4318&cw=7215&gravity=NorthWest&impolicy=crop&rh=900&rw=1400&xposition=0&yposition=164',
+      'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-156,2500-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/SBT/SBT_407_original.jpg',
   },
   {
+    title: 'Wellness-Led Escapes',
+    text: 'Travel shaped around restoration, privacy, clean living, and a deeper sense of balance.',
+    image:
+      'https://burgenstockresort.com/uploads/media/2880x1800-cover-page/00/1430-Alpine%20Spa_Exterior_Infinity%20Edge%20Pool%203_web.jpg?v=2-5',
+  },
+    {
     title: 'Suites, Villas & Residential-Style Stays',
     text: 'Accommodations chosen for how they live and feel, not just how they appear on paper.',
     image:
-      'https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-08/Aman%20New%20York%2C%20USA%20-%20Accommodation%2C%20Corner%20Suite%2C%20Living%20room.jpg?itok=CJcssJWS',
+      'https://images.prismic.io/lvmh-chevalblanc/Z-vdqXdAxsiBwLEY_WebRGB-ChevalBlancParis_SuiteEiffel_VincentLeroux.jpg?auto=format%2Ccompress&fit=max&w=1100',
+  },
+  {
+    title: 'Signature City Stays',
+    text: 'Refined urban travel with standout hotels, well-managed access, and a sharper sense of place.',
+    image:
+      'https://symphony.cdn.tambourine.com/the-setai-miami-beach/media/the-setai-miami-beach-penthouse-bedroom-62ad0d35f1eac.jpg',
+  },
+  {
+    title: 'Couples & Celebrations',
+    text: 'Anniversaries, milestone escapes, and romantic journeys designed with taste, atmosphere, and discretion.',
+    image:
+      'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-312,5000-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/KOH/KOH_1422_original.jpg',
   },
 ]
 

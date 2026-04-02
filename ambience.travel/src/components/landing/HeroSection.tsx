@@ -256,7 +256,7 @@ export default function HeroSection() {
             }}
           >
             <img
-              src='https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-08/Aman%20New%20York%2C%20USA%20-%20Accommodation%2C%20Corner%20Suite%2C%20Living%20room.jpg?itok=CJcssJWS'
+              src='https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-12/Aman%20New%20York%2C%20USA%20-%20Corner%20Suite%202_0.jpg?itok=9yk-OWvo'
               alt='Refined private suite interior'
               style={{
                 position: 'absolute',

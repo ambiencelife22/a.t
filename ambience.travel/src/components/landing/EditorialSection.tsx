@@ -7,7 +7,7 @@ const cards = [
     subtitle:
       'Places chosen for privacy, comfort, character, and how well they support the overall rhythm of the stay.',
     image:
-      'https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-08/Aman%20New%20York%2C%20USA%20-%20Accommodation%2C%20Corner%20Suite%2C%20Living%20room.jpg?itok=CJcssJWS',
+      'https://assets.hyatt.com/content/dam/hyatt/hyattdam/images/2020/08/14/1631/Park-Hyatt-Niseko-Hanazono-P095-Three-Bedroom-Residence.jpg/Park-Hyatt-Niseko-Hanazono-P095-Three-Bedroom-Residence.16x9.jpg?imwidth=1100',
   },
   {
     title: 'Private Air & Seamless Arrivals',
@@ -28,7 +28,7 @@ const cards = [
     subtitle:
       'Time away designed to feel calm and balancing, with space for rest, privacy, and a more grounded pace.',
     image:
-      'https://img.destination.one/remote/.webp?height=900&mode=crop&quality=90&scale=both&url=https%3A%2F%2Fdam.destination.one%2F2462791%2F8841094f585370451b64cd383cd087feae735518117fefddb06da2eb1aab5c87%2Fcsm_chenot_palace_weggis_restaurant_view_2fd70b472c-jpg.jpg&width=1400',
+      'https://www.thedoldergrand.com/app/uploads/2020/08/HIBR_D_00198529_send_web.jpg',
   },
 ]
 
