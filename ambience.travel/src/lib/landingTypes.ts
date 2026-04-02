@@ -1,6 +1,6 @@
 export const C = {
   bg: '#F7F4EE',
-  bgCard: '#FFFFFF',
+  bgCard: '#F1F1F1',
   bgDark: '#171917',
   bgAlt: '#F3EEE6',
   border: '#DED7CC',
@@ -10,6 +10,7 @@ export const C = {
   purple: '#a78bfa',
   orange: '#f97316',
   text: '#171917',
+  lightText: '#F3F4F3',
   muted: '#4F564F',
   faint: '#7A8476',
 } as const

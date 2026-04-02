@@ -30,7 +30,7 @@ export default function DarkCTASection() {
                 Give your next journey a proper home.
               </h2>
 
-              <p style={{ fontSize: 18, lineHeight: 1.8, color: 'rgba(255,255,255,0.72)', maxWidth: 680, marginBottom: 28, ...fadeUp(visible, 220) }}>
+              <p style={{ fontSize: 18, lineHeight: 1.8, color: C.lightText, maxWidth: 680, marginBottom: 28, ...fadeUp(visible, 220) }}>
                 From private travel planning to discreet on-the-ground support, ambience.travel is built for those who value privacy, taste, ease, and a highly personalised level of care.
               </p>
 
@@ -72,7 +72,7 @@ export default function DarkCTASection() {
                   Brand tone
                 </p>
                 <p style={{ fontSize: 14, lineHeight: 1.8, color: 'rgba(255,255,255,0.78)', margin: 0 }}>
-                  Understated, assured, and highly personal — premium in feel, but never performative.
+                  Understated, assured, and highly personal; premium in feel, but never performative.
                 </p>
               </div>
             </div>

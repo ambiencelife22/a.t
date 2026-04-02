@@ -30,22 +30,22 @@ const ITEMS: TravelCard[] = [
     src:      '/landing/serengeti-explorer.webp',
     caption:  'Serengeti Explorer',
     location: 'Serengeti, Tanzania',
-    type:     'Experiential Immersiveness',
+    type:     'Extended Journey',
     status:   'Confirmed',
     detail:   'Elewana Collection',
     timing:   'July · 7 nights',
   },
   {
-    src:      '/landing/aman-kyoto.jpg',
+    src:      '/landing/aman-kyoto.webp',
     caption:  'Aman Kyoto',
     location: 'Kyoto, Japan',
-    type:     'Wellness Retreat',
-    status:   'Confirmed',
+    type:     'Wellness Escape',
+    status:   'Planning',
     detail:   'Spa & Onsen Retreat',
     timing:   'March · 5 nights',
   },
   {
-    src:      '/landing/peninsula-nyc.jpg',
+    src:      '/landing/peninsula-nyc.webp',
     caption:  'The Peninsula',
     location: 'New York City, USA',
     type:     'Signature City Stay',
@@ -57,8 +57,8 @@ const ITEMS: TravelCard[] = [
     src:      '/landing/chenot-weggis.webp',
     caption:  'Chenot Palace',
     location: 'Weggis, Switzerland',
-    type:     'Life Renewal',
-    status:   'Planning',
+    type:     'Wellness Escape',
+    status:   'Enquiry Received',
     detail:   'Detox & Regeneration',
     timing:   '7 nights',
   },
@@ -66,10 +66,37 @@ const ITEMS: TravelCard[] = [
     src:      '/landing/marsan.webp',
     caption:  'Marsan par Hélène Darroze',
     location: 'Paris, France',
-    type:     'Exceptional Dining',
+    type:     'Signature Dining',
     status:   'Confirmed',
     detail:   'Chef\'s tasting menu',
     timing:   'Friday evening',
+  },
+  {
+    src:      '/landing/waldorf-bh1.webp',
+    caption:  'Waldorf Astoria',
+    location: 'Beverly Hills, California',
+    type:     'Suites & Villas',
+    status:   'Planning',
+    detail:   'Terrace Villa',
+    timing:   '4 nights · May',
+  },
+  {
+    src:      '/landing/global7500.webp',
+    caption:  'Bombardier Global 7500',
+    location: 'London Luton → Malé',
+    type:     'Private Aviation',
+    status:   'Confirmed',
+    detail:   'Full cabin charter',
+    timing:   'June · 9h 40m',
+  },
+  {
+    src:      '/landing/yacht-aerial.webp',
+    caption:  'Private Charter',
+    location: 'Mediterranean',
+    type:     'Yacht & Sea',
+    status:   'Confirmed',
+    detail:   'Superyacht · 58m',
+    timing:   'August · 10 nights',
   },
 ]
 
@@ -82,6 +109,8 @@ const ALL_POSITIONS = [
   { top: '45%', left: 'calc(100% - clamp(16px, 3vw, 48px))',  tx: '-100%', ty: '-50%' }, // right mid
   { top: '72%', left: 'clamp(16px, 3vw, 48px)',               tx: '0',     ty: '-50%' }, // left  low
   { top: '68%', left: 'calc(100% - clamp(16px, 3vw, 48px))',  tx: '-100%', ty: '-50%' }, // right low
+  { top: '30%', left: 'clamp(16px, 3vw, 48px)',               tx: '0',     ty: '-50%' }, // left  upper-mid
+  { top: '28%', left: 'calc(100% - clamp(16px, 3vw, 48px))',  tx: '-100%', ty: '-50%' }, // right upper-mid
 ]
 
 // ── Timing — 4.4s total cycle ─────────────────────────────────────────────────

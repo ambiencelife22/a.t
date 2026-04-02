@@ -293,7 +293,7 @@ export default function HeroSection() {
                 style={{
                   padding: '12px 16px',
                   borderRadius: 999,
-                  background: 'rgba(255,255,255,0.72)',
+                  background: C.bgCard,
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255,255,255,0.45)',
                   fontSize: 12,

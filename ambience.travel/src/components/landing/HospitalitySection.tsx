@@ -4,7 +4,7 @@ import { fadeUp, useVisible } from './LandingComponents'
 const items = [
   {
     title: 'Hotels, Villas & Residences',
-    text: 'Selected for privacy, service, atmosphere, and the overall quality of the guest experience — never reputation alone.',
+    text: 'Selected for privacy, service, atmosphere, and the overall quality of the guest experience... never reputation alone.',
     image:
       'https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-08/Aman%20New%20York%2C%20USA%20-%20Accommodation%2C%20Corner%20Suite%2C%20Living%20room.jpg?itok=CJcssJWS',
   },
@@ -33,7 +33,7 @@ export default function HospitalitySection() {
             Chosen with discernment
           </p>
           <h2 style={{ fontSize: 'clamp(28px,4vw,52px)', fontWeight: 600, letterSpacing: '-0.04em', marginBottom: 18, color: C.text, ...fadeUp(visible, 100) }}>
-            A quieter kind of luxury — rooted in taste, fit, and how the experience lands.
+            A quieter kind of luxury; rooted in taste, fit, and how the experience lands.
           </h2>
           <p style={{ fontSize: 16, lineHeight: 1.8, color: C.muted, ...fadeUp(visible, 200) }}>
             Recommendations are made for more than reputation alone. Privacy, atmosphere, service, pace, and the way a guest prefers to live all matter.
@@ -42,7 +42,7 @@ export default function HospitalitySection() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 24 }}>
           {items.map((item, i) => (
-            <div key={item.title} style={{ ...fadeUp(visible, 120 + i * 90), overflow: 'hidden', borderRadius: 30, border: `1px solid ${C.border}`, background: '#fff', boxShadow: '0 12px 32px rgba(0,0,0,0.05)' }}>
+            <div key={item.title} style={{ ...fadeUp(visible, 120 + i * 90), overflow: 'hidden', borderRadius: 28, border: `1px solid ${C.border}`, background: '#fff', boxShadow: '0 12px 32px rgba(0,0,0,0.05)' }}>
               <div style={{ height: 288, overflow: 'hidden' }}>
                 <img src={item.image} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>

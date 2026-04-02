@@ -149,10 +149,10 @@ export default function App() {
 
       <HeroSection />
       <EditorialSection />
-      <PillarsSection />
       <JourneyMomentsSection />
+      <PillarsSection />
       <ExperienceTypesSection />
-      <HospitalitySection />
+      {/* <HospitalitySection /> */}
       <DarkCTASection />
     </div>
   )

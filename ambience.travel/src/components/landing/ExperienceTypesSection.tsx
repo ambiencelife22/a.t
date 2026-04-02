@@ -22,7 +22,7 @@ const items = [
   },
   {
     title: 'Signature City Stays',
-    text: 'Refined urban travel with exceptional hotels, thoughtful access, and a sharper sense of place.',
+    text: 'Refined urban travel with standout hotels, well-managed access, and a sharper sense of place.',
     image:
       'https://www.hilton.com/im/en/LAXWAWA/1336939/beverly-hills-suite-seating.jpg?ch=4399&cw=7351&gravity=NorthWest&impolicy=crop&rh=900&rw=1400&xposition=0&yposition=167',
   },
@@ -34,7 +34,7 @@ const items = [
   },
   {
     title: 'Suites, Villas & Residential-Style Stays',
-    text: 'Exceptional accommodations chosen for how they live — not just how they look on paper.',
+    text: 'Accommodations chosen for how they live and feel, not just how they appear on paper.',
     image:
       'https://www.aman.com/sites/default/files/styles/full_size_extra_large/public/2022-08/Aman%20New%20York%2C%20USA%20-%20Accommodation%2C%20Corner%20Suite%2C%20Living%20room.jpg?itok=CJcssJWS',
   },
@@ -44,7 +44,7 @@ export default function ExperienceTypesSection() {
   const { ref, visible } = useVisible(0.12)
 
   return (
-    <section ref={ref} style={{ padding: 'clamp(56px,8vw,104px) clamp(20px,5vw,48px)', background: '#F5F1EA', borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+    <section ref={ref} style={{ padding: 'clamp(56px,8vw,104px) clamp(20px,5vw,48px)', background: C.bgAlt, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ maxWidth: 760, marginBottom: 40 }}>
           <p style={{ fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: C.faint, marginBottom: 16, ...fadeUp(visible, 0) }}>
@@ -66,7 +66,7 @@ export default function ExperienceTypesSection() {
               </div>
               <div style={{ padding: 24 }}>
                 <h3 style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.03em', color: C.text, marginBottom: 12 }}>{item.title}</h3>
-                <p style={{ fontSize: 14, lineHeight: 1.7, color: '#606760' }}>{item.text}</p>
+                <p style={{ fontSize: 14, lineHeight: 1.7, color: C.muted }}>{item.text}</p>
               </div>
             </div>
           ))}
