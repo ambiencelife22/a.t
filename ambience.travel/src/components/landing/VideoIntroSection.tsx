@@ -1,65 +1,67 @@
 /* VideoIntroSection.tsx
- * Full-viewport pre-intro video section.
- * - Lazy loads via IntersectionObserver
- * - Poster image shown as skeleton until video can play
- * - Autoplay, muted, loop
- * - Pause/play toggle button (bottom-right)
- * - scroll-snap / user must scroll to continue
+ * Full-viewport video section — sits between EditorialSection and JourneyMomentsSection.
+ * - autoPlay + muted + playsInline as React props (iOS Safari triad)
+ * - Lazy loads via IntersectionObserver — video element only mounts when near viewport
+ * - Poster/skeleton shown until video is ready
+ * - Loop — plays continuously while in view
+ * - Pause/play toggle bottom-right
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { C } from '../../lib/landingTypes'
 
 const VIDEO_SRC  = '/landing/yacht-aerial.mp4'
 const POSTER_SRC = '/landing/yacht-aerial-bup.webp'
 
 export default function VideoIntroSection() {
-  const videoRef              = useRef<HTMLVideoElement>(null)
-  const sectionRef            = useRef<HTMLDivElement>(null)
-  const [loaded,  setLoaded]  = useState(false)   // video has enough data to play
+  const videoRef             = useRef<HTMLVideoElement>(null)
+  const sectionRef           = useRef<HTMLDivElement>(null)
+  const [loaded,  setLoaded] = useState(false)
   const [playing, setPlaying] = useState(true)
-  const [visible, setVisible] = useState(false)   // section in viewport → trigger load
+  const [visible, setVisible] = useState(false)
 
-  // Lazy load: start loading only when section enters viewport
+  // Lazy load — mount video element only when section is close to viewport
   useEffect(() => {
     const el = sectionRef.current
     if (!el) return
     const obs = new IntersectionObserver(
       ([e]) => { if (e.isIntersecting) setVisible(true) },
-      { threshold: 0.01 }
+      { threshold: 0.01, rootMargin: '200px 0px' }
     )
     obs.observe(el)
     return () => obs.disconnect()
   }, [])
 
-  // Attempt autoplay once video element is ready
+  // Track loaded state — autoPlay handles the actual play call on iOS
   useEffect(() => {
     const vid = videoRef.current
     if (!vid || !visible) return
 
-    const onCanPlay = () => {
-      setLoaded(true)
-      vid.play().catch(() => setPlaying(false))
-    }
+    const onCanPlay = () => setLoaded(true)
 
     vid.addEventListener('canplaythrough', onCanPlay)
-
-    // If already ready (cached)
-    if (vid.readyState >= 3) onCanPlay()
+    if (vid.readyState >= 3) setLoaded(true)
 
     return () => vid.removeEventListener('canplaythrough', onCanPlay)
+  }, [visible])
+
+  // Keep playing state in sync with actual video state
+  useEffect(() => {
+    const vid = videoRef.current
+    if (!vid) return
+    const onPlay  = () => setPlaying(true)
+    const onPause = () => setPlaying(false)
+    vid.addEventListener('play',  onPlay)
+    vid.addEventListener('pause', onPause)
+    return () => {
+      vid.removeEventListener('play',  onPlay)
+      vid.removeEventListener('pause', onPause)
+    }
   }, [visible])
 
   const togglePlay = () => {
     const vid = videoRef.current
     if (!vid) return
-    if (vid.paused) {
-      vid.play()
-      setPlaying(true)
-    } else {
-      vid.pause()
-      setPlaying(false)
-    }
+    vid.paused ? vid.play() : vid.pause()
   }
 
   return (
@@ -74,7 +76,21 @@ export default function VideoIntroSection() {
         flexShrink: 0,
       }}
     >
-      {/* Poster — shown until video loads */}
+      {/* Skeleton shimmer — behind poster while it loads */}
+      {!loaded && (
+        <div
+          style={{
+            position:       'absolute',
+            inset:          0,
+            zIndex:         0,
+            background:     'linear-gradient(110deg, #0f1310 30%, #1a2018 50%, #0f1310 70%)',
+            backgroundSize: '200% 100%',
+            animation:      'skeletonShimmer 1.8s ease infinite',
+          }}
+        />
+      )}
+
+      {/* Poster — crossfades out once video is ready */}
       <div
         style={{
           position:           'absolute',
@@ -88,26 +104,13 @@ export default function VideoIntroSection() {
         }}
       />
 
-      {/* Skeleton shimmer — shown while poster itself loads */}
-      {!loaded && (
-        <div
-          style={{
-            position:   'absolute',
-            inset:      0,
-            zIndex:     0,
-            background: 'linear-gradient(110deg, #0f1310 30%, #1a2018 50%, #0f1310 70%)',
-            backgroundSize: '200% 100%',
-            animation:  'skeletonShimmer 1.8s ease infinite',
-          }}
-        />
-      )}
-
-      {/* Video */}
+      {/* Video — autoPlay + muted + playsInline is the iOS Safari triad */}
       {visible && (
         <video
           ref={videoRef}
           src={VIDEO_SRC}
           poster={POSTER_SRC}
+          autoPlay
           muted
           loop
           playsInline
@@ -125,7 +128,7 @@ export default function VideoIntroSection() {
         />
       )}
 
-      {/* Pause / play button — bottom right */}
+      {/* Pause / play — bottom right */}
       <button
         onClick={togglePlay}
         title={playing ? 'Pause' : 'Play'}
@@ -147,58 +150,17 @@ export default function VideoIntroSection() {
           alignItems:     'center',
           justifyContent: 'center',
           backdropFilter: 'blur(8px)',
-          transition:     'opacity 0.2s ease',
           opacity:        loaded ? 0.85 : 0,
+          transition:     'opacity 0.3s ease',
         }}
       >
         {playing ? '⏸' : '▶'}
       </button>
 
-      {/* Scroll indicator — bottom centre */}
-      <div
-        style={{
-          position:       'absolute',
-          bottom:         'calc(36px + env(safe-area-inset-bottom))',
-          left:           '50%',
-          transform:      'translateX(-50%)',
-          zIndex:         10,
-          display:        'flex',
-          flexDirection:  'column',
-          alignItems:     'center',
-          gap:            8,
-          opacity:        loaded ? 0.6 : 0,
-          transition:     'opacity 1s ease 1.5s',
-          pointerEvents:  'none',
-        }}
-      >
-        <span
-          style={{
-            fontSize:      10,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            color:         'rgba(255,255,255,0.7)',
-          }}
-        >
-          scroll
-        </span>
-        <div
-          style={{
-            width:      1,
-            height:     36,
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.5), transparent)',
-            animation:  'scrollPulse 2s ease-in-out infinite',
-          }}
-        />
-      </div>
-
       <style>{`
         @keyframes skeletonShimmer {
           0%   { background-position: 200% 0 }
           100% { background-position: -200% 0 }
-        }
-        @keyframes scrollPulse {
-          0%, 100% { opacity: 0.5; transform: scaleY(1) }
-          50%       { opacity: 1;   transform: scaleY(1.12) }
         }
       `}</style>
     </section>

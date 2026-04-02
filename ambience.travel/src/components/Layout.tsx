@@ -19,7 +19,6 @@ import EditorialSection from './landing/EditorialSection'
 import PillarsSection from './landing/PillarsSection'
 import JourneyMomentsSection from './landing/JourneyMomentsSection'
 import ExperienceTypesSection from './landing/ExperienceTypesSection'
-import HospitalitySection from './landing/HospitalitySection'
 import DarkCTASection from './landing/DarkCTASection'
 
 import { C, OVERLAY } from '../lib/landingTypes'
@@ -197,17 +196,17 @@ export default function Layout({ children: _children }: LayoutProps) {
         </button>
       )}
 
+      <VideoIntroSection />
+
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
 
       <HeroSection />
       <EditorialSection />
-      <VideoIntroSection />
       <JourneyMomentsSection />
       <PillarsSection />
       <ExperienceTypesSection />
-      {/* <HospitalitySection /> */}
       <DarkCTASection />
     </div>
   )
