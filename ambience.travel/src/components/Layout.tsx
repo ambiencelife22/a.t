@@ -196,14 +196,13 @@ export default function Layout({ children: _children }: LayoutProps) {
         </button>
       )}
 
-      <VideoIntroSection />
-
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
 
       <HeroSection />
       <EditorialSection />
+      <VideoIntroSection />
       <JourneyMomentsSection />
       <PillarsSection />
       <ExperienceTypesSection />
