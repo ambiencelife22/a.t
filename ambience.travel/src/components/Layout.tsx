@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react'
 
 import AmbienceLogo from './AmbienceLogo'
 
+import VideoIntroSection from './landing/VideoIntroSection'
 import IntroSection from './landing/IntroSection'
 import HeroSection from './landing/HeroSection'
 import EditorialSection from './landing/EditorialSection'
@@ -202,6 +203,7 @@ export default function Layout({ children: _children }: LayoutProps) {
 
       <HeroSection />
       <EditorialSection />
+      <VideoIntroSection />
       <JourneyMomentsSection />
       <PillarsSection />
       <ExperienceTypesSection />
