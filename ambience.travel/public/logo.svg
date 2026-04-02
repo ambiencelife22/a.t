@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 55 800 230" width="800" height="300">
+  <defs>
+    <style>
+      @import url('https://fonts.cdnfonts.com/css/canela-text');
+    </style>
+  </defs>
+  <rect width="800" height="300" fill="transparent"/>
+  <text
+    x="400" y="132"
+    font-family="'Canela Text', 'Canela', 'Playfair Display', Georgia, serif"
+    font-size="128"
+    font-weight="300"
+    fill="#1a1a18"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    letter-spacing="-0.5"
+  >ambience</text>
+  <text
+    x="400" y="245"
+    font-family="'Canela Text', 'Canela', 'Playfair Display', Georgia, serif"
+    font-size="60"
+    font-weight="400"
+    fill="#b5a06e"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    letter-spacing="1"
+  >.sports</text>
+</svg>

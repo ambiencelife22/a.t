@@ -1,29 +1,77 @@
-import { useEffect, useState } from 'react'
-import IntroSection from './components/landing/IntroSection'
-import HeroSection from './components/landing/HeroSection'
-import EditorialSection from './components/landing/EditorialSection'
-import PillarsSection from './components/landing/PillarsSection'
-import JourneyMomentsSection from './components/landing/JourneyMomentsSection'
-import ExperienceTypesSection from './components/landing/ExperienceTypesSection'
-import HospitalitySection from './components/landing/HospitalitySection'
-import DarkCTASection from './components/landing/DarkCTASection'
-import { C } from './lib/landingTypes'
+import React, { useEffect, useState } from 'react'
 
-export default function App() {
+// SPORTS app layout imports — not used for travel landing right now
+// import type { AdminNotification as AppNotification } from '../lib/queries'
+// import { C } from '../lib/theme'
+// import { useContext } from 'react'
+// import { ThemeContext } from '../lib/ThemeContext'
+// import { APP_VERSION } from '../lib/version'
+// import { ANIM, useAnimatedNumber } from '../lib/animations'
+// import { BET_TYPE_COLORS, DANGER } from '../lib/colors'
+// import { useIsMobile } from '../lib/useIsMobile'
+
+import AmbienceLogo from './AmbienceLogo'
+
+import IntroSection from './landing/IntroSection'
+import HeroSection from './landing/HeroSection'
+import EditorialSection from './landing/EditorialSection'
+import PillarsSection from './landing/PillarsSection'
+import JourneyMomentsSection from './landing/JourneyMomentsSection'
+import ExperienceTypesSection from './landing/ExperienceTypesSection'
+import HospitalitySection from './landing/HospitalitySection'
+import DarkCTASection from './landing/DarkCTASection'
+
+import { C } from '../lib/landingTypes'
+
+// SPORTS dashboard/app page types — not used for travel landing right now
+// type Page =
+//   | 'dashboard'
+//   | 'entry'
+//   | 'books'
+//   | 'analytics'
+//   | 'pwins'
+//   | 'mysystem'
+//   | 'reports'
+//   | 'admin'
+//   | 'profile'
+//   | 'legal'
+//   | 'glossary'
+//   | 'plan-selection'
+//   | 'checkout'
+//   | 'checkout-success'
+
+// SPORTS notification types — not used for travel landing right now
+// interface Notification {
+//   id: string
+//   message: string
+//   at: Date
+//   read: boolean
+// }
+
+interface LayoutProps {
+  // Keeping this optional so the file can be dropped in without breaking callers
+  children?: React.ReactNode
+}
+
+export default function Layout({ children: _children }: LayoutProps) {
   const [heroVis, setHeroVis] = useState(false)
   const [navVisible, setNavVisible] = useState(false)
 
+  // Reveal nav once Intro scrolls out of view
   useEffect(() => {
     const el = document.getElementById('intro-section')
     if (!el) return
+
     const obs = new IntersectionObserver(
       ([e]) => setNavVisible(!e.isIntersecting),
       { threshold: 0, rootMargin: '-56px 0px 0px 0px' }
     )
+
     obs.observe(el)
     return () => obs.disconnect()
   }, [])
 
+  // Shared landing keyframes
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = `
@@ -32,25 +80,29 @@ export default function App() {
       @keyframes scribbleLine1 { from{stroke-dashoffset:220} to{stroke-dashoffset:0} }
       @keyframes scribbleLine2 { from{stroke-dashoffset:225} to{stroke-dashoffset:0} }
       @keyframes scribbleLine3 { from{stroke-dashoffset:215} to{stroke-dashoffset:0} }
-      @keyframes scribbleIn    { 0%{opacity:0} 8%{opacity:1} 100%{opacity:1} }
-      @keyframes scribbleOut   { 0%{opacity:1} 100%{opacity:0} }
+      @keyframes scribbleIn { 0%{opacity:0} 8%{opacity:1} 100%{opacity:1} }
+      @keyframes scribbleOut { 0%{opacity:1} 100%{opacity:0} }
     `
+
     document.head.appendChild(style)
     return () => {
       document.head.removeChild(style)
     }
   }, [])
 
+  // Prevent horizontal page scroll
   useEffect(() => {
     const prev = document.documentElement.style.overflowX
     document.documentElement.style.overflowX = 'hidden'
     document.body.style.overflowX = 'hidden'
+
     return () => {
       document.documentElement.style.overflowX = prev
       document.body.style.overflowX = ''
     }
   }, [])
 
+  // Intro stagger trigger
   useEffect(() => {
     const t = setTimeout(() => setHeroVis(true), 120)
     return () => clearTimeout(t)
@@ -66,6 +118,7 @@ export default function App() {
         overflowX: 'hidden',
       }}
     >
+      {/* Fixed nav — hidden during intro */}
       {navVisible && (
         <nav
           style={{
@@ -87,10 +140,10 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <img
               src='/emblem.png'
-              alt='ambience emblem'
-              style={{ width: 28, height: 28, borderRadius: '50%' }}
+              alt='ambience.travel emblem'
+              style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
             />
-            <img src='/logo.svg' alt='ambience.travel' style={{ height: 18, width: 'auto' }} />
+            <AmbienceLogo isDark={false} product='travel' height={88} />
           </div>
 
           <button
@@ -101,7 +154,7 @@ export default function App() {
               fontSize: 12,
               fontWeight: 700,
               borderRadius: 100,
-              border: `1px solid rgba(201,184,142,0.38)`,
+              border: '1px solid rgba(201,184,142,0.38)',
               background: '#171917',
               color: '#F7F4EE',
               cursor: 'default',
@@ -114,6 +167,7 @@ export default function App() {
         </nav>
       )}
 
+      {/* Back to top */}
       {navVisible && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
