@@ -1,10 +1,10 @@
 /* JourneyMomentsSection.tsx
  * Four journey moment cards — dark themed to match DarkCTASection pattern.
- * bg: C.bgDark (#171917), cards: rgba(255,255,255,0.05) / border rgba(255,255,255,0.12)
- * Text hierarchy mirrors DarkCTASection: #F7F4EE / 0.72 / 0.46
+ * bg: C.bgDark (#171917), cards: DARK.cardBg / DARK.cardBorder
+ * Text hierarchy: DARK.text / DARK.body / DARK.label
  */
 
-import { C } from '../../lib/landingTypes'
+import { C, DARK } from '../../lib/landingTypes'
 import { fadeUp, useVisible } from './LandingComponents'
 
 const items = [
@@ -53,7 +53,7 @@ export default function JourneyMomentsSection() {
               fontSize:      11,
               letterSpacing: '0.28em',
               textTransform: 'uppercase',
-              color:         'rgba(255,255,255,0.46)',
+              color:         DARK.label,
               marginBottom:  16,
               ...fadeUp(visible, 0),
             }}
@@ -66,7 +66,7 @@ export default function JourneyMomentsSection() {
               fontWeight:    600,
               letterSpacing: '-0.04em',
               marginBottom:  18,
-              color:         '#F7F4EE',
+              color:         DARK.text,
               ...fadeUp(visible, 100),
             }}
           >
@@ -76,7 +76,7 @@ export default function JourneyMomentsSection() {
             style={{
               fontSize:   16,
               lineHeight: 1.8,
-              color: C.lightText,
+              color:      DARK.body,
               ...fadeUp(visible, 200),
             }}
           >
@@ -98,8 +98,8 @@ export default function JourneyMomentsSection() {
               style={{
                 ...fadeUp(visible, 120 + i * 90),
                 borderRadius: 28,
-                border:       '1px solid rgba(255,255,255,0.12)',
-                background:   'rgba(255,255,255,0.05)',
+                border:       `1px solid ${DARK.cardBorder}`,
+                background:   DARK.cardBg,
                 padding:      24,
               }}
             >
@@ -108,7 +108,7 @@ export default function JourneyMomentsSection() {
                   fontSize:      11,
                   letterSpacing: '0.22em',
                   textTransform: 'uppercase',
-                  color:         'rgba(255,255,255,0.46)',
+                  color:         DARK.label,
                   marginBottom:  14,
                 }}
               >
@@ -119,13 +119,13 @@ export default function JourneyMomentsSection() {
                   fontSize:      22,
                   fontWeight:    600,
                   letterSpacing: '-0.03em',
-                  color:         '#F7F4EE',
+                  color:         DARK.text,
                   marginBottom:  12,
                 }}
               >
                 {item.title}
               </h3>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.lightText }}>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: DARK.body }}>
                 {item.text}
               </p>
             </div>

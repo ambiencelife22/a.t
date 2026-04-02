@@ -60,7 +60,7 @@ export default function ExperienceTypesSection() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
           {items.map((item, i) => (
-            <div key={item.title} style={{ ...fadeUp(visible, 120 + i * 80), overflow: 'hidden', borderRadius: 28, border: '1px solid rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.88)', boxShadow: '0 10px 28px rgba(0,0,0,0.05)' }}>
+            <div key={item.title} style={{ ...fadeUp(visible, 120 + i * 80), overflow: 'hidden', borderRadius: 28, border: `1px solid ${C.lightCardBorder}`, background: C.lightCardBg, boxShadow: '0 10px 28px rgba(0,0,0,0.05)' }}>
               <div style={{ position: 'relative', height: 224, overflow: 'hidden' }}>
                 <img src={item.image} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>

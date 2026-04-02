@@ -4,7 +4,7 @@
  * pill label bottom-left, caption card bottom-right.
  */
 
-import { C } from '../../lib/landingTypes'
+import { C, OVERLAY } from '../../lib/landingTypes'
 import { fadeUp, useVisible } from './LandingComponents'
 
 const pillars = [
@@ -179,7 +179,7 @@ export default function PillarsSection() {
                 borderRadius:   999,
                 background:     C.bgCard,
                 backdropFilter: 'blur(10px)',
-                border:         '1px solid rgba(255,255,255,0.45)',
+                border:         `1px solid ${OVERLAY.pillBorder}`,
                 fontSize:       12,
                 color:          '#4F564F',
                 letterSpacing:  '0.08em',
@@ -194,10 +194,10 @@ export default function PillarsSection() {
                 maxWidth:       340,
                 padding:        '16px 18px',
                 borderRadius:   24,
-                background:     'rgba(23,25,23,0.72)',
+                background:     OVERLAY.cardBg,
                 backdropFilter: 'blur(14px)',
-                border:         '1px solid rgba(255,255,255,0.10)',
-                color:          'rgba(247,244,238,0.92)',
+                border:         `1px solid ${OVERLAY.cardBorder}`,
+                color:          OVERLAY.cardText,
               }}
             >
               <div
@@ -205,7 +205,7 @@ export default function PillarsSection() {
                   fontSize:      10,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  color:         'rgba(201,184,142,0.92)',
+                  color:         OVERLAY.cardLabel,
                   marginBottom:  8,
                 }}
               >

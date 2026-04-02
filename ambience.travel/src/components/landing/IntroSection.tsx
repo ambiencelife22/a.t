@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
-import { C } from '../../lib/landingTypes'
+import { C, DARK } from '../../lib/landingTypes'
 import { TRAVEL_MOMENT_COLORS, WIDGET } from '../../lib/landingColors'
 
 // ── Type ──────────────────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ export default function IntroSection({ heroVis }: { heroVis: boolean }) {
 
         {/* Logo */}
         <div style={{ ...fade(100), marginBottom: 28 }}>
-          <AmbienceLogo isDark={true} height='clamp(88px,4vw,88px)' />
+          <AmbienceLogo isDark={true} product='travel' height='clamp(88px,4vw,88px)' />
         </div>
 
         {/* Dual tagline */}
@@ -387,7 +387,7 @@ export default function IntroSection({ heroVis }: { heroVis: boolean }) {
           <p
             style={{
               fontSize:      'clamp(28px,3.5vw,48px)',
-              color:         'rgba(255,255,255,0.95)',
+              color:         DARK.heading,
               letterSpacing: '-0.02em',
               marginBottom:  8,
               lineHeight:    1.15,
@@ -399,7 +399,7 @@ export default function IntroSection({ heroVis }: { heroVis: boolean }) {
           <p
             style={{
               fontSize:      'clamp(28px,3.5vw,48px)',
-              color:         'rgba(255,255,255,0.35)',
+              color:         DARK.subheading,
               letterSpacing: '-0.02em',
               lineHeight:    1.15,
               fontWeight:    700,
@@ -414,7 +414,7 @@ export default function IntroSection({ heroVis }: { heroVis: boolean }) {
           style={{
             ...fade(300),
             fontSize:   'clamp(14px,1.4vw,17px)',
-            color:      'rgba(255,255,255,0.5)',
+            color:      DARK.descriptor,
             lineHeight: 1.8,
             maxWidth:   520,
             margin:     '0 auto 48px',

@@ -68,7 +68,7 @@ export default function EditorialSection() {
               ...fadeUp(visible, 100),
             }}
           >
-            Exceptional stays, seamless movement, and experiences tailored to your preferences. 
+            Curated stays, seamless movement, and experiences tailored to your preferences. 
           </h2>
 
           <p

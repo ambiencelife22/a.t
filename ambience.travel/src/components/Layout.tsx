@@ -21,7 +21,7 @@ import ExperienceTypesSection from './landing/ExperienceTypesSection'
 import HospitalitySection from './landing/HospitalitySection'
 import DarkCTASection from './landing/DarkCTASection'
 
-import { C } from '../lib/landingTypes'
+import { C, OVERLAY } from '../lib/landingTypes'
 
 // SPORTS dashboard/app page types — not used for travel landing right now
 // type Page =
@@ -128,7 +128,7 @@ export default function Layout({ children: _children }: LayoutProps) {
             right: 0,
             zIndex: 50,
             height: 60,
-            background: 'rgba(247,244,238,0.92)',
+            background: C.navBg,
             backdropFilter: 'blur(16px)',
             borderBottom: `1px solid ${C.border}`,
             display: 'flex',
@@ -154,9 +154,9 @@ export default function Layout({ children: _children }: LayoutProps) {
               fontSize: 12,
               fontWeight: 700,
               borderRadius: 100,
-              border: '1px solid rgba(201,184,142,0.38)',
-              background: '#171917',
-              color: '#F7F4EE',
+              border: `1px solid ${OVERLAY.cardLabel}`,
+              background: C.bgDark,
+              color: C.lightText,
               cursor: 'default',
               letterSpacing: '0.04em',
               opacity: 0.22,
@@ -180,9 +180,9 @@ export default function Layout({ children: _children }: LayoutProps) {
             width: 44,
             height: 44,
             borderRadius: '50%',
-            background: '#171917',
-            border: '1px solid rgba(201,184,142,0.3)',
-            color: '#C9B88E',
+            background: C.bgDark,
+            border: `1px solid ${OVERLAY.cardLabel}`,
+            color: C.gold,
             fontSize: 16,
             cursor: 'pointer',
             display: 'flex',
@@ -202,10 +202,10 @@ export default function Layout({ children: _children }: LayoutProps) {
 
       <HeroSection />
       <EditorialSection />
-      <PillarsSection />
       <JourneyMomentsSection />
+      <PillarsSection />
       <ExperienceTypesSection />
-      <HospitalitySection />
+      {/* <HospitalitySection /> */}
       <DarkCTASection />
     </div>
   )
