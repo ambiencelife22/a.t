@@ -1,0 +1,291 @@
+// casa-romeu/listings.ts
+// All dining, activity, and shopping listings for Casa de Romeu.
+
+import type { Listing } from '../../../lib/tripsTypes'
+
+export const listings: Listing[] = [
+
+  // ── Lunch ─────────────────────────────────────────────────────────────────
+
+  {
+    id:       'el-trompo',
+    name:     'El Trompo Paella House',
+    category: 'lunch',
+    address:  'Paseo Maritimo de la Malvarrosa, module 10, 46011 Valencia',
+    website:  'https://www.restauranteeltrompo.com',
+    genre:    'Paella',
+  },
+  {
+    id:       'casa-cesar',
+    name:     'Restaurante Casa César El Delfín',
+    category: 'lunch',
+    address:  'C/Isabel de Villena, 71 - 46011 Valencia',
+    website:  'https://www.restaurantecasacesar.com',
+    genre:    'Spanish',
+  },
+  {
+    id:       'tko-tacos',
+    name:     'TKO Tacos Gran Vía',
+    category: 'lunch',
+    address:  'Gran Via del Marqués del Túria, 56, L\'Eixample, 46005 València',
+    website:  'https://www.tkorestaurante.com',
+    genre:    'Mexican',
+  },
+  {
+    id:       '100-montaditos',
+    name:     '100 Montaditos',
+    category: 'lunch',
+    address:  'Carrer del Consolat del Mar, 1, L\'Eixample, 46005 València',
+    website:  'https://spain.100montaditos.com',
+    genre:    'Spanish Tapas',
+  },
+
+  // ── Dinner ────────────────────────────────────────────────────────────────
+
+  {
+    id:       'little-pizza',
+    name:     'Little Pizza 22',
+    category: 'dinner',
+    address:  'Carrer de Cadis 86, 46004, Valencia',
+    website:  'https://www.littlepizza22.com',
+    genre:    'Pizzeria',
+    favorite: true,
+  },
+  {
+    id:       'san-telmo',
+    name:     'Asador San Telmo',
+    category: 'dinner',
+    address:  'Puerto Rico, 14, Ruzafa District, 46006 Valencia',
+    website:  'https://www.asadorsantelmo.com',
+    genre:    'Steakhouse, Latin',
+    favorite: true,
+  },
+  {
+    id:       'kathmandu',
+    name:     'Kathmandu Canovas Valencia',
+    category: 'dinner',
+    address:  'Salamanca Street, 18 - 46005 Valencia',
+    website:  'https://www.kathmanduweb.com',
+    genre:    'Nepalese',
+    favorite: true,
+  },
+  {
+    id:       'tongtong',
+    name:     'TongTong Korean BBQ Literato',
+    category: 'dinner',
+    address:  'Carrer del Literat Azorín, 7, L\'Eixample, 46006 València',
+    genre:    'Korean BBQ',
+  },
+  {
+    id:       'suvlakeria',
+    name:     'Suvlakeria Griega',
+    category: 'dinner',
+    address:  'Literato Azorín Street, 8, 46006, Valencia',
+    genre:    'Greek',
+  },
+  {
+    id:       'largent',
+    name:     'L\'Argent',
+    category: 'dinner',
+    address:  'Av. del Regne de València, 53, Ensanche, 46005, Spain',
+    genre:    'Argentinian',
+  },
+  {
+    id:       'dede',
+    name:     'DEDE Turkish Restaurant',
+    category: 'dinner',
+    address:  'Carrer de Sueca, 24, L\'Eixample, 46006 Valencia',
+    genre:    'Turkish, Mediterranean',
+  },
+  {
+    id:       'casa-ucraniana',
+    name:     'Casa Ucraniana',
+    category: 'dinner',
+    address:  'Carrer de Padilla, 5, Ciutat Vella, 46001 València',
+    genre:    'Gastropub, Ukrainian',
+  },
+
+  // ── Takeaway ──────────────────────────────────────────────────────────────
+
+  {
+    id:       'mercado-ruzafa',
+    name:     'Mercado de Ruzafa',
+    category: 'takeaway',
+    address:  'Pl. del Baró de Cortés, s/n, L\'Eixample, 46006 València',
+    genre:    'Market',
+  },
+  {
+    id:       'ruzafa-kebab',
+    name:     'Ruzafa Doner Kebab',
+    category: 'takeaway',
+    address:  'Carrer del Literat Azorín, 16, L\'Eixample, 46004 València',
+    genre:    'Turkish',
+  },
+  {
+    id:       'suleman-kebab',
+    name:     'Suleman Doner Kebab',
+    category: 'takeaway',
+    address:  'C. del Pintor Salvador April 55, València, VC 46005',
+    genre:    'Turkish',
+  },
+  {
+    id:       'little-thai',
+    name:     'Little Thai',
+    category: 'takeaway',
+    address:  'C/ de Pere III el Gran, 46, L\'Eixample, 46005 València',
+    genre:    'Thai',
+  },
+  {
+    id:       'casa-romeu-restaurant',
+    name:     'Casa De Romeu',
+    category: 'takeaway',
+    address:  'Ruzafa, Valencia',
+    genre:    'Spanish',
+    favorite: true,
+  },
+
+  // ── Activities ────────────────────────────────────────────────────────────
+
+  {
+    id:       'ciutat-arts',
+    name:     'City of Arts and Sciences',
+    category: 'activity',
+    address:  'Quatre Carreres, 46013 Valencia, Spain',
+    website:  'https://www.cac.es',
+    note:     'One of Valencia\'s most iconic landmarks — architecture alone is worth the visit.',
+  },
+  {
+    id:       'malvarrosa',
+    name:     'Malvarrosa Beach',
+    category: 'activity',
+    address:  'Malvarrosa Beach, Valencia, Spain',
+    note:     'Valencia\'s main urban beach. Excellent for morning walks and paella by the sea.',
+  },
+  {
+    id:       'bike-rental',
+    name:     'Bike & Tours',
+    category: 'activity',
+    address:  'C. de Puerto Rico, 23, Valencia',
+    note:     'Best way to explore the Turia Garden and the city at your own pace.',
+  },
+  {
+    id:       'oceanografic',
+    name:     'Oceanogràfic València',
+    category: 'activity',
+    address:  'Carrer d\'Eduardo Primo Yúfera, 1, 46013 Valencia',
+    website:  'https://www.oceanografic.org',
+    note:     'Europe\'s largest aquarium.',
+  },
+  {
+    id:       'palau-musica',
+    name:     'Palau de la Música',
+    category: 'activity',
+    address:  'Alameda Avenue, 30, 46023, Valencia, Spain',
+    website:  'https://www.palaudevalencia.com',
+  },
+  {
+    id:       'bioparc',
+    name:     'Bioparc Valencia',
+    category: 'activity',
+    address:  'Av. Pío Baroja, 3, Campanar, 46015 València',
+    website:  'https://www.bioparcvalencia.es',
+  },
+  {
+    id:       'turia-garden',
+    name:     'Turia Garden',
+    category: 'activity',
+    address:  'Quatre Carreres, 46013 Valencia, Spain',
+    note:     'Nine kilometres of parkland through the heart of the city — perfect for cycling or a long walk.',
+  },
+  {
+    id:       'plaza-toros',
+    name:     'Plaza de Toros',
+    category: 'activity',
+    address:  'C/ de Xàtiva, 28, L\'Eixample, 46004 València',
+    website:  'https://www.plazadetorosvalencia.com',
+  },
+  {
+    id:       'serranos',
+    name:     'Serranos Towers',
+    category: 'activity',
+    address:  'Plaza de los Fueros s/n, 46003 - Valencia',
+    note:     'Medieval gateway towers with panoramic city views.',
+  },
+  {
+    id:       'cathedral',
+    name:     'Cathedral de Valencia',
+    category: 'activity',
+    address:  'Plaza de la Almoina, s/n, 46003 Valencia, Spain',
+    note:     'Houses what is claimed to be the Holy Grail. Worth the tower climb for the views.',
+  },
+  {
+    id:       'central-market',
+    name:     'Central Market',
+    category: 'activity',
+    address:  'Plaza del Mercado, s/n, 46001 - Valencia',
+    note:     'One of Europe\'s largest and most beautiful fresh food markets. Go in the morning.',
+  },
+
+  // ── Shopping ──────────────────────────────────────────────────────────────
+
+  {
+    id:       'mercadona',
+    name:     'Mercadona',
+    category: 'shopping',
+    address:  'C/ Roger de Lauria, 19, 46002 València',
+    website:  'https://www.mercadona.es',
+    genre:    'Supermarket',
+    hours:    'Mon–Sat 9:00–21:30',
+  },
+  {
+    id:       'consum',
+    name:     'Supermercados Consum',
+    category: 'shopping',
+    address:  'Carrer de Sueca, 34, L\'Eixample, 46006 València',
+    website:  'https://www.consum.es',
+    genre:    'Supermarket',
+    hours:    'Mon–Sat 9:00–21:30',
+  },
+  {
+    id:       'farmacia',
+    name:     'Farmacia L\'Antiga de Russafa',
+    category: 'shopping',
+    address:  'C/ de Cadis, 62, L\'Eixample, 46006 València',
+    genre:    'Pharmacy',
+    hours:    'Mon–Sat 9:00–22:00 · Sun 9:30–14:00',
+  },
+  {
+    id:       'normal',
+    name:     'El Patrocinio de Normal',
+    category: 'shopping',
+    address:  'Av. de Pius XII, 2, 46009 Valencia',
+    genre:    'Toiletries',
+    hours:    'Mon–Sat 9:30–21:30',
+  },
+  {
+    id:       'valencia-iii',
+    name:     'Shopping Center Valencia III',
+    category: 'shopping',
+    address:  'C/ de l\'Almirall Cadarso, 25, L\'Eixample, 46005 València',
+    genre:    'Shopping Centre',
+    hours:    'Mon–Sat 9:30–21:30',
+  },
+  {
+    id:       'el-corte-ingles',
+    name:     'El Corte Inglés — Colón',
+    category: 'shopping',
+    address:  'C/ Pintor Sorolla, 26, 46002 Valencia',
+    website:  'https://www.elcorteingles.es',
+    genre:    'Department Store',
+    hours:    'Mon–Sat 10:00–22:00',
+  },
+  {
+    id:       'mediamarkt',
+    name:     'MediaMarkt',
+    category: 'shopping',
+    address:  'Carrer de Colón, 6, L\'Eixample, 46004 València',
+    website:  'https://www.mediamarkt.es',
+    genre:    'Electronics',
+    hours:    'Mon–Sat 10:00–22:00',
+  },
+]
