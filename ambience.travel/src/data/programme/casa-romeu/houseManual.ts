@@ -1,5 +1,5 @@
 // casa-romeu/houseManual.ts
-// Full house manual content for Casa de Romeu.
+// Full house manual content for Casa Romeu.
 
 import type { ManualSection } from '../../../lib/programmeTypes'
 

@@ -31,7 +31,7 @@ function getBookingId(): string | null {
     return pathname.replace(/^\//, '').split('/')[0] || null
   }
 
-  const match = pathname.match(/^\/trips\/([^/]+)/)
+  const match = pathname.match(/^\/programme\/[^/]+\/([^/]+)/)
   return match ? match[1] : null
 }
 

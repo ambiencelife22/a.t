@@ -1,5 +1,5 @@
 // casa-romeu/listings.ts
-// All dining, activity, and shopping listings for Casa de Romeu.
+// All dining, activity, and shopping listings for Casa Romeu.
 
 import type { Listing } from '../../../lib/programmeTypes'
 
@@ -137,7 +137,7 @@ export const listings: Listing[] = [
   },
   {
     id:       'casa-romeu-restaurant',
-    name:     'Casa De Romeu',
+    name:     'Casa Romeu',
     category: 'takeaway',
     address:  'Ruzafa, Valencia',
     genre:    'Spanish',
