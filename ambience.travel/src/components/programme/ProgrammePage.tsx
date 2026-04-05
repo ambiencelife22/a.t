@@ -253,7 +253,7 @@ function ListingCard({ listing }: { listing: Listing }) {
             flexShrink:    0,
             marginLeft:    12,
           }}>
-            Favourite
+            Favorite
           </span>
         )}
       </div>

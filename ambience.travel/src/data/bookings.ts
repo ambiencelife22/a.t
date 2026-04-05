@@ -13,7 +13,7 @@ export const bookings: Booking[] = [
     checkOut:   '2026-04-12',
     welcomeLetter: `Welcome home, Ragnar & Gunnar!
 
-It's a great honour to host you at Casa Romeu — one of my favourite places in the world, and I hope it becomes one of yours too.
+It's a great honour to host you at Casa Romeu — one of my favorite places in the world, and I hope it becomes one of yours too.
 
 Everything has been prepared for your arrival. Below you'll find directions for the house, along with my personal recommendations for dining and things to do in the neighbourhood.
 
