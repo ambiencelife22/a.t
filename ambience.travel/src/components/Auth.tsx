@@ -315,7 +315,7 @@ export default function Auth({ onAuth, initialMode = 'login' }: AuthProps) {
                 Preview access
               </span>
               <br />
-              Login: test@ambience.travel · Password: test
+              Login: test@ambience.travel · Password: test12345678
             </div>
           )}
 
