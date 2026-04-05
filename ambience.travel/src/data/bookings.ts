@@ -28,7 +28,7 @@ Deron`,
   {
     id:         'casa-romeu-preview',
     propertyId: 'casa-romeu',
-    guestNames: '',
+    guestNames: 'Welcome, Guest',
     checkIn:    '',
     checkOut:   '',
     welcomeLetter: `Casa Romeu is a warm, characterful apartment in the heart of Ruzafa — Valencia's most vibrant and creative neighbourhood.
