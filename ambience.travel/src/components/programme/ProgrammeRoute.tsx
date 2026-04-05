@@ -1,14 +1,18 @@
 /* ProgrammeRoute.tsx
  * Resolves url_id from pathname and loads programme data from Supabase.
- * Replaces static bookings.ts, property.ts, houseManual.ts, listings.ts imports.
+ * Branches on programme_type:
+ *   stay    → ProgrammePage (property sections, listings)
+ *   journey → JourneyPage  (programme days, events, contacts)
  * No React Router — reads window.location.pathname directly.
  */
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import ProgrammePage from './ProgrammePage'
+import JourneyPage from './JourneyPage'
 import ProgrammeLayout from '../layouts/ProgrammeLayout'
 import type { Booking, Property, ManualSection, Listing } from '../../lib/programmeTypes'
+import type { JourneyDay, JourneyEvent, EventContact, EventType, EventStatus } from '../../lib/journeyTypes'
 
 // ── URL resolution ─────────────────────────────────────────────────────────────
 
@@ -28,14 +32,15 @@ function getUrlId(): string | null {
 // ── DB row types ───────────────────────────────────────────────────────────────
 
 type ProgrammeRow = {
-  id:             string
-  url_id:         string
-  guest_names:    string
-  guest_count:    number
-  check_in:       string | null
-  check_out:      string | null
-  welcome_letter: string
-  status:         string
+  id:              string
+  url_id:          string
+  programme_type:  string
+  guest_names:     string
+  guest_count:     number
+  check_in:        string | null
+  check_out:       string | null
+  welcome_letter:  string
+  status:          string
   active_listing_ids: string[] | null
   properties: {
     id:                 string
@@ -46,10 +51,8 @@ type ProgrammeRow = {
     hero_image:         string | null
     photos:             { src: string; caption: string; subCaption: string }[]
     owner_name:         string
-    owner_role:         string
     owner_phone:        string
     manager_name:       string
-    manager_role:       string
     manager_phone:      string
     emergency_contacts: { label: string; phone: string }[]
   }
@@ -64,47 +67,92 @@ type SectionRow = {
 }
 
 type ListingRow = {
-  id:       string
-  name:     string
-  category: string
-  genre:    string | null
-  address:  string
-  website:  string | null
-  hours:    string | null
-  note:     string | null
+  id:        string
+  name:      string
+  category:  string
+  genre:     string | null
+  address:   string
+  website:   string | null
+  hours:     string | null
+  note:      string | null
   favourite: boolean
+}
+
+type DayRow = {
+  id:         string
+  date:       string | null
+  title:      string | null
+  sort_order: number
+}
+
+type EventRow = {
+  id:                  string
+  day_id:              string
+  event_type:          string
+  status:              string
+  title:               string
+  time_local:          string | null
+  duration:            string | null
+  description:         string | null
+  confirmation_number: string | null
+  location:            string | null
+  sort_order:          number
+  airline:             string | null
+  flight_number:       string | null
+  departure_airport:   string | null
+  arrival_airport:     string | null
+  arrival_time:        string | null
+  flight_class:        string | null
+  seats:               string | null
+  terminal:            string | null
+  gate:                string | null
+  driver_name:         string | null
+  driver_phone:        string | null
+  room_type:           string | null
+  check_in_date:       string | null
+  check_out_date:      string | null
+  inclusions:          string | null
+  supplier_name:       string | null
+}
+
+type ContactRow = {
+  id:       string
+  event_id: string
+  name:     string
+  role:     string
+  phone:    string | null
 }
 
 // ── Data mappers ───────────────────────────────────────────────────────────────
 
 function mapBooking(row: ProgrammeRow): Booking {
   return {
-    id:                 row.id,
-    propertyId:         row.properties.slug,
-    guestNames:         row.guest_names,
-    checkIn:            row.check_in ?? undefined,
-    checkOut:           row.check_out ?? undefined,
-    welcomeLetter:      row.welcome_letter,
-    activeListingIds:   row.active_listing_ids ?? undefined,
+    id:               row.id,
+    propertyId:       row.properties.slug,
+    guestNames:       row.guest_names,
+    checkIn:          row.check_in ?? undefined,
+    checkOut:         row.check_out ?? undefined,
+    welcomeLetter:    row.welcome_letter,
+    activeListingIds: row.active_listing_ids ?? undefined,
   }
 }
 
 function mapProperty(row: ProgrammeRow['properties']): Property {
   return {
-    id:       row.id,
-    name:     row.name,
-    tagline:  row.tagline,
-    location: row.location,
+    id:        row.id,
+    name:      row.name,
+    tagline:   row.tagline,
+    location:  row.location,
     heroImage: row.hero_image ?? '',
-    photos:   row.photos ?? [],
+    photos:    row.photos ?? [],
     owner: {
       name:  row.owner_name,
-      role:  row.owner_role,
+      role:  'Owner',
       phone: row.owner_phone,
     },
     manager: {
       name:  row.manager_name,
-      role:  row.manager_role,
+      role:  'Property Manager',
       phone: row.manager_phone,
     },
     emergencies: row.emergency_contacts ?? [],
@@ -134,7 +182,59 @@ function mapListings(rows: ListingRow[]): Listing[] {
   }))
 }
 
-// ── Loading state ──────────────────────────────────────────────────────────────
+function mapEvent(row: EventRow, contacts: ContactRow[]): JourneyEvent {
+  return {
+    id:                  row.id,
+    event_type:          row.event_type as EventType,
+    status:              row.status as EventStatus,
+    title:               row.title,
+    time_local:          row.time_local,
+    duration:            row.duration,
+    description:         row.description,
+    confirmation_number: row.confirmation_number,
+    location:            row.location,
+    supplier_name:       row.supplier_name,
+    sort_order:          row.sort_order,
+    airline:             row.airline,
+    flight_number:       row.flight_number,
+    departure_airport:   row.departure_airport,
+    arrival_airport:     row.arrival_airport,
+    arrival_time:        row.arrival_time,
+    flight_class:        row.flight_class,
+    seats:               row.seats,
+    terminal:            row.terminal,
+    gate:                row.gate,
+    driver_name:         row.driver_name,
+    driver_phone:        row.driver_phone,
+    room_type:           row.room_type,
+    check_in_date:       row.check_in_date,
+    check_out_date:      row.check_out_date,
+    inclusions:          row.inclusions,
+    contacts:            contacts
+      .filter(c => c.event_id === row.id)
+      .map(c => ({
+        id:    c.id,
+        name:  c.name,
+        role:  c.role,
+        phone: c.phone,
+      } as EventContact)),
+  }
+}
+
+function mapDays(dayRows: DayRow[], eventRows: EventRow[], contactRows: ContactRow[]): JourneyDay[] {
+  return dayRows.map(day => ({
+    id:         day.id,
+    date:       day.date,
+    title:      day.title,
+    sort_order: day.sort_order,
+    events:     eventRows
+      .filter(e => e.day_id === day.id)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(e => mapEvent(e, contactRows)),
+  }))
+}
+
+// ── Loading / error states ────────────────────────────────────────────────────
 
 function LoadingScreen() {
   return (
@@ -151,8 +251,6 @@ function LoadingScreen() {
   )
 }
 
-// ── Not found ──────────────────────────────────────────────────────────────────
-
 function NotFound({ message }: { message: string }) {
   return (
     <div style={{
@@ -164,24 +262,33 @@ function NotFound({ message }: { message: string }) {
       gap:            16,
     }}>
       <div style={{ fontSize: 20, fontWeight: 600, color: '#171917' }}>{message}</div>
-      <a
-        href='https://ambience.travel'
-        style={{ fontSize: 13, color: '#C9B88E', textDecoration: 'none' }}
-      >
+      <a href='https://ambience.travel' style={{ fontSize: 13, color: '#C9B88E', textDecoration: 'none' }}>
         Return to ambience.travel →
       </a>
     </div>
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
+// ── Loaded state types ────────────────────────────────────────────────────────
 
-type LoadedState = {
+type StayLoaded = {
+  type:     'stay'
   booking:  Booking
   property: Property
   manual:   ManualSection[]
   listings: Listing[]
 }
+
+type JourneyLoaded = {
+  type:     'journey'
+  booking:  Booking
+  property: Property
+  days:     JourneyDay[]
+}
+
+type LoadedState = StayLoaded | JourneyLoaded
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProgrammeRoute() {
   const [loaded, setLoaded]   = useState<LoadedState | null>(null)
@@ -198,12 +305,13 @@ export default function ProgrammeRoute() {
     }
 
     async function load() {
-      // 1 — Resolve programme + property in one query
+      // 1 — Resolve programme + property
       const { data: prog, error: progErr } = await supabase
         .from('programmes')
         .select(`
           id,
           url_id,
+          programme_type,
           guest_names,
           guest_count,
           check_in,
@@ -220,10 +328,8 @@ export default function ProgrammeRoute() {
             hero_image,
             photos,
             owner_name,
-            owner_role,
             owner_phone,
             manager_name,
-            manager_role,
             manager_phone,
             emergency_contacts
           )
@@ -237,44 +343,117 @@ export default function ProgrammeRoute() {
         return
       }
 
-      const row = prog as unknown as ProgrammeRow
-      const propertyId = row.properties.id
-
-      // 2 — House manual sections
-      const { data: sectionRows, error: sectErr } = await supabase
-        .from('property_sections')
-        .select('id, title, icon, sort_order, content')
-        .eq('property_id', propertyId)
-        .order('sort_order')
-
-      if (sectErr) {
-        setError('load-failed')
-        setLoading(false)
-        return
-      }
-
-      // 3 — Listings
-      const { data: listingRows, error: listErr } = await supabase
-        .from('property_listings')
-        .select('id, name, category, genre, address, website, hours, note, favourite')
-        .eq('property_id', propertyId)
-
-      if (listErr) {
-        setError('load-failed')
-        setLoading(false)
-        return
-      }
-
+      const row      = prog as unknown as ProgrammeRow
       const booking  = mapBooking(row)
       const property = mapProperty(row.properties)
-      const manual   = mapSections((sectionRows ?? []) as SectionRow[])
-      let   listings = mapListings((listingRows ?? []) as ListingRow[])
 
-      if (booking.activeListingIds) {
-        listings = listings.filter(l => booking.activeListingIds!.includes(l.id))
+      // ── Stay branch ──────────────────────────────────────────────────────────
+
+      if (row.programme_type === 'stay') {
+        const propertyId = row.properties.id
+
+        const [sectResult, listResult] = await Promise.all([
+          supabase
+            .from('property_sections')
+            .select('id, title, icon, sort_order, content')
+            .eq('property_id', propertyId)
+            .order('sort_order'),
+          supabase
+            .from('property_listings')
+            .select('id, name, category, genre, address, website, hours, note, favourite')
+            .eq('property_id', propertyId),
+        ])
+
+        if (sectResult.error || listResult.error) {
+          setError('load-failed')
+          setLoading(false)
+          return
+        }
+
+        const manual   = mapSections((sectResult.data ?? []) as SectionRow[])
+        let   listings = mapListings((listResult.data ?? []) as ListingRow[])
+
+        if (booking.activeListingIds) {
+          listings = listings.filter(l => booking.activeListingIds!.includes(l.id))
+        }
+
+        setLoaded({ type: 'stay', booking, property, manual, listings })
+        setLoading(false)
+        return
       }
 
-      setLoaded({ booking, property, manual, listings })
+      // ── Journey branch ───────────────────────────────────────────────────────
+
+      if (row.programme_type === 'journey') {
+        const programmeId = row.id
+
+        const { data: dayData, error: dayErr } = await supabase
+          .from('programme_days')
+          .select('id, date, title, sort_order')
+          .eq('programme_id', programmeId)
+          .order('sort_order')
+
+        if (dayErr) {
+          setError('load-failed')
+          setLoading(false)
+          return
+        }
+
+        const dayRows = (dayData ?? []) as DayRow[]
+        const dayIds  = dayRows.map(d => d.id)
+
+        if (dayIds.length === 0) {
+          setLoaded({ type: 'journey', booking, property, days: [] })
+          setLoading(false)
+          return
+        }
+
+        const { data: evData, error: evErr } = await supabase
+          .from('programme_events')
+          .select(`
+            id, day_id, event_type, status, title,
+            time_local, duration, description, confirmation_number,
+            location, sort_order,
+            airline, flight_number, departure_airport, arrival_airport,
+            arrival_time, flight_class, seats, terminal, gate,
+            driver_name, driver_phone,
+            room_type, check_in_date, check_out_date, inclusions,
+            supplier_name
+          `)
+          .in('day_id', dayIds)
+
+        if (evErr) {
+          setError('load-failed')
+          setLoading(false)
+          return
+        }
+
+        const eventRows = (evData ?? []) as EventRow[]
+        const eventIds  = eventRows.map(e => e.id)
+
+        const { data: ctData, error: ctErr } = eventIds.length > 0
+          ? await supabase
+              .from('programme_event_contacts')
+              .select('id, event_id, name, role, phone')
+              .in('event_id', eventIds)
+          : { data: [], error: null }
+
+        if (ctErr) {
+          setError('load-failed')
+          setLoading(false)
+          return
+        }
+
+        const contactRows = (ctData ?? []) as ContactRow[]
+        const days        = mapDays(dayRows, eventRows, contactRows)
+
+        setLoaded({ type: 'journey', booking, property, days })
+        setLoading(false)
+        return
+      }
+
+      // Unknown programme type
+      setError('not-found')
       setLoading(false)
     }
 
@@ -313,13 +492,25 @@ export default function ProgrammeRoute() {
     )
   }
 
+  if (loaded.type === 'stay') {
+    return (
+      <ProgrammeLayout guestNames={loaded.booking.guestNames}>
+        <ProgrammePage
+          booking={loaded.booking}
+          property={loaded.property}
+          manual={loaded.manual}
+          listings={loaded.listings}
+        />
+      </ProgrammeLayout>
+    )
+  }
+
   return (
     <ProgrammeLayout guestNames={loaded.booking.guestNames}>
-      <ProgrammePage
+      <JourneyPage
         booking={loaded.booking}
         property={loaded.property}
-        manual={loaded.manual}
-        listings={loaded.listings}
+        days={loaded.days}
       />
     </ProgrammeLayout>
   )
