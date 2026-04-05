@@ -3,19 +3,25 @@
  * Routes by hostname first, then pathname as fallback (for local dev).
  *
  * Production:
- *   ambience.travel/*               → LandingLayout (public, ungated)
- *   programme.ambience.travel/*     → Auth gate → ProgrammeLayout + ProgrammeRoute
- *   programme.ambience.travel/signup → Auth (signup mode, hidden — not linked in UI)
+ *   ambience.travel/*                        → LandingLayout (public, ungated)
+ *   programme.ambience.travel/admin          → ProgrammeAdmin (is_admin gate)
+ *   programme.ambience.travel/*              → Auth gate → ProgrammeLayout + ProgrammeRoute
+ *   programme.ambience.travel/?signup=1      → Auth (signup mode, hidden — not linked in UI)
  *
  * Local dev:
- *   localhost:5173/                 → Landing
- *   localhost:5173/programme/*      → Auth gate → Programme
- *   localhost:5173/?signup=1        → Auth (signup mode)
+ *   localhost:5173/                          → Landing
+ *   localhost:5173/programme/admin           → ProgrammeAdmin
+ *   localhost:5173/programme/*               → Auth gate → Programme
+ *   localhost:5173/?signup=1                 → Auth (signup mode)
  *
  * Auth gate:
  *   Checks Supabase session on mount. If no session, shows Auth (login mode).
  *   On successful auth, re-checks session and renders the programme.
  *   Landing page is always public — never gated.
+ *
+ * Admin gate:
+ *   ProgrammeAdmin checks session + profiles.is_admin internally.
+ *   No session or is_admin !== true → access denied screen.
  *
  * Sign-up access:
  *   Reachable via ?signup=1 query param only. Not linked anywhere in the UI.
@@ -25,11 +31,12 @@
 import { useEffect, useState } from 'react'
 import LandingLayout from './components/layouts/LandingLayout'
 import ProgrammeRoute from './components/programme/ProgrammeRoute'
+import ProgrammeAdmin from './components/admin/ProgrammeAdmin'
 import Auth from './components/Auth'
 import { getSession } from './lib/auth'
 import type { Session } from '@supabase/supabase-js'
 
-type Route = 'landing' | 'programme' | 'signup'
+type Route = 'landing' | 'admin' | 'programme' | 'signup'
 
 function resolveRoute(): Route {
   const hostname = window.location.hostname
@@ -39,8 +46,13 @@ function resolveRoute(): Route {
   // Hidden signup route — not linked in any public UI
   if (params.get('signup') === '1') return 'signup'
 
-  if (hostname === 'programme.ambience.travel') return 'programme'
-  if (pathname.startsWith('/programme/'))        return 'programme'
+  if (hostname === 'programme.ambience.travel') {
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin'
+    return 'programme'
+  }
+
+  if (pathname === '/programme/admin' || pathname.startsWith('/programme/admin/')) return 'admin'
+  if (pathname.startsWith('/programme/')) return 'programme'
 
   return 'landing'
 }
@@ -54,12 +66,15 @@ export default function App() {
   // Hidden signup page — no session check, just render the form
   if (route === 'signup') return <Auth onAuth={() => { window.location.search = '' }} initialMode='signup' />
 
+  // Admin route — ProgrammeAdmin handles its own is_admin gate internally
+  if (route === 'admin') return <ProgrammeAdmin />
+
   // Programme route — session-gated
   return <ProgrammeGate />
 }
 
 function ProgrammeGate() {
-  const [session, setSession]   = useState<Session | null | undefined>(undefined)
+  const [session, setSession] = useState<Session | null | undefined>(undefined)
 
   useEffect(() => {
     getSession().then(s => setSession(s ?? null))
