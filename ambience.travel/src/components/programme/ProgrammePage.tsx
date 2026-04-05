@@ -69,7 +69,7 @@ function WelcomeLetter({ booking }: { booking: Booking }) {
             {p}
           </p>
         ))}
-        <div style={{
+        {/* <div style={{
           marginTop:   36,
           paddingTop:  24,
           borderTop:   `1px solid ${T.border}`,
@@ -79,7 +79,7 @@ function WelcomeLetter({ booking }: { booking: Booking }) {
           letterSpacing: '0.02em',
         }}>
           {booking.guestNames}
-        </div>
+        </div> */}
       </div>
     </section>
   )
