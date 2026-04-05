@@ -64,7 +64,7 @@ export default function TripsLayout({ children, guestNames }: TripsLayoutProps) 
       </nav>
 
       {/* ── Page content ───────────────────────────────────────────────── */}
-      <div style={{ paddingTop: 60 }}>
+      <div>
         {children}
       </div>
 

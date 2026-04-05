@@ -9,6 +9,7 @@ export type Property = {
   tagline:     string
   location:    string
   heroImage:   string
+  photos:      string[]   // cycling property photos — N images, local paths
   owner:       Contact
   manager:     Contact
   emergencies: EmergencyContact[]

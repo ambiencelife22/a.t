@@ -10,6 +10,12 @@ export const casaRomeu: Property = {
   location: 'Ruzafa, Valencia, Spain',
   heroImage: '/trips/casa-romeu/hero.jpg',
 
+  photos: [
+    '/trips/casa-romeu/bedroom.webp',
+    '/trips/casa-romeu/livingroom1.webp',
+    '/trips/casa-romeu/livingroom2.webp',
+  ],
+
   owner: {
     name:  'Deron',
     phone: '+34 623 93 61 27',

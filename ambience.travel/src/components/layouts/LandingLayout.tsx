@@ -53,7 +53,7 @@ interface LayoutProps {
   children?: React.ReactNode
 }
 
-export default function LandingLayout({ children: _children }: LayoutProps) {
+export default function Layout({ children: _children }: LayoutProps) {
   const [heroVis, setHeroVis] = useState(false)
   const [navVisible, setNavVisible] = useState(false)
 
@@ -195,18 +195,16 @@ export default function LandingLayout({ children: _children }: LayoutProps) {
         </button>
       )}
 
-      <VideoIntroSection />
-
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
 
       <HeroSection />
       <EditorialSection />
+      <VideoIntroSection />
       <JourneyMomentsSection />
       <PillarsSection />
       <ExperienceTypesSection />
-      {/* <HospitalitySection /> */}
       <DarkCTASection />
     </div>
   )

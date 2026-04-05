@@ -4,8 +4,9 @@
  * Design: ambience.travel system — dark/gold, Plus Jakarta Sans.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../lib/tripsTypes'
+import PropertyIntroSection from './PropertyIntroSection'
 
 // ── Design tokens (inline — self-contained component) ────────────────────────
 
@@ -37,95 +38,6 @@ const CATEGORIES: { id: ListingCategory; label: string; icon: string }[] = [
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function Hero({ property, booking }: { property: Property; booking: Booking }) {
-  const checkIn  = new Date(booking.checkIn).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-  const checkOut = new Date(booking.checkOut).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-
-  return (
-    <section style={{
-      background:   T.bgDark,
-      minHeight:    '60vh',
-      display:      'flex',
-      flexDirection:'column',
-      alignItems:   'center',
-      justifyContent: 'center',
-      textAlign:    'center',
-      padding:      'clamp(100px,14vw,140px) clamp(20px,5vw,48px) clamp(56px,8vw,80px)',
-      position:     'relative',
-      overflow:     'hidden',
-    }}>
-      {/* Ambient gradient */}
-      <div style={{
-        position:           'absolute', inset: 0,
-        backgroundImage:    'radial-gradient(ellipse 70% 50% at 30% 40%, rgba(201,184,142,0.06) 0%, transparent 70%)',
-        pointerEvents:      'none',
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <p style={{
-          fontSize:      10,
-          letterSpacing: '0.28em',
-          textTransform: 'uppercase',
-          color:         T.darkLabel,
-          marginBottom:  20,
-        }}>
-          Your private guide
-        </p>
-
-        <h1 style={{
-          fontSize:      'clamp(32px,5vw,64px)',
-          fontWeight:    700,
-          letterSpacing: '-0.04em',
-          color:         T.darkText,
-          marginBottom:  16,
-          lineHeight:    1.08,
-        }}>
-          {property.name}
-        </h1>
-
-        <p style={{
-          fontSize:   'clamp(14px,1.4vw,17px)',
-          color:      T.darkBody,
-          marginBottom: 32,
-          lineHeight: 1.7,
-        }}>
-          {property.location}
-        </p>
-
-        <div style={{
-          display:        'flex',
-          gap:            12,
-          justifyContent: 'center',
-          flexWrap:       'wrap',
-        }}>
-          <div style={{
-            padding:      '8px 20px',
-            borderRadius: 100,
-            border:       `1px solid ${T.darkBorder}`,
-            background:   T.darkCard,
-            fontSize:     11,
-            color:        T.gold,
-            letterSpacing:'0.04em',
-          }}>
-            {checkIn}
-          </div>
-          <div style={{
-            padding:      '8px 20px',
-            borderRadius: 100,
-            border:       `1px solid ${T.darkBorder}`,
-            background:   T.darkCard,
-            fontSize:     11,
-            color:        T.darkBody,
-            letterSpacing:'0.04em',
-          }}>
-            → {checkOut}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 function WelcomeLetter({ booking }: { booking: Booking }) {
   const paragraphs = booking.welcomeLetter.split('\n\n').filter(Boolean)
@@ -500,9 +412,22 @@ export type TripPageProps = {
 }
 
 export default function TripPage({ booking, property, manual, listings }: TripPageProps) {
+  const [heroVis, setHeroVis] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setHeroVis(true), 120)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <>
-      <Hero property={property} booking={booking} />
+      <PropertyIntroSection
+        propertyName={property.name}
+        location={property.location}
+        tagline={property.tagline}
+        photos={property.photos}
+        heroVis={heroVis}
+      />
       <WelcomeLetter booking={booking} />
       <HouseManual sections={manual} />
       <ListingsSection listings={listings} />
