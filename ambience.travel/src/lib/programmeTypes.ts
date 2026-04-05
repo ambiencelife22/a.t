@@ -1,5 +1,6 @@
-// programmeTypes.ts
-// Shared TypeScript types for the ambience.travel programme product.
+/* programmeTypes.ts
+ * Shared TypeScript types for the ambience.travel programme product.
+ */
 
 // ── Property ──────────────────────────────────────────────────────────────────
 
@@ -69,12 +70,12 @@ export type Listing = {
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export type Booking = {
-  id:            string           // URL slug — random, unguessable
-  propertyId:    string
-  guestNames:    string           // e.g. "Ragnar & Gunnar"
-  checkIn:       string           // ISO date
-  checkOut:      string           // ISO date
-  welcomeLetter: string           // markdown-lite plain text
-  activeListingIds?: string[]     // if undefined, show all
-  passwordHash?: string           // optional — if set, require password
+  id:             string           // URL slug — random, unguessable
+  propertyId:     string
+  guestNames:     string           // e.g. "Ragnar & Gunnar"
+  checkIn?:       string           // ISO date — absent for preview/undated bookings
+  checkOut?:      string           // ISO date — absent for preview/undated bookings
+  welcomeLetter:  string           // markdown-lite plain text
+  activeListingIds?: string[]      // if undefined, show all
+  passwordHash?:  string           // optional — if set, require password
 }
