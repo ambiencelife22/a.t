@@ -1,4 +1,4 @@
-/* TripPage.tsx
+/* ProgrammePage.tsx
  * Guest-facing itinerary page for ambience.travel trips.
  * Receives a booking ID, resolves property + listings + welcome letter.
  * Design: ambience.travel system — dark/gold, Plus Jakarta Sans.
@@ -69,7 +69,7 @@ function WelcomeLetter({ booking }: { booking: Booking }) {
             {p}
           </p>
         ))}
-        {/* <div style={{
+        <div style={{
           marginTop:   36,
           paddingTop:  24,
           borderTop:   `1px solid ${T.border}`,
@@ -79,7 +79,7 @@ function WelcomeLetter({ booking }: { booking: Booking }) {
           letterSpacing: '0.02em',
         }}>
           {booking.guestNames}
-        </div> */}
+        </div>
       </div>
     </section>
   )
@@ -253,7 +253,7 @@ function ListingCard({ listing }: { listing: Listing }) {
             flexShrink:    0,
             marginLeft:    12,
           }}>
-            Favorite
+            Favourite
           </span>
         )}
       </div>
@@ -427,6 +427,8 @@ export default function TripPage({ booking, property, manual, listings }: TripPa
         tagline={property.tagline}
         photos={property.photos}
         heroVis={heroVis}
+        checkIn={booking.checkIn || undefined}
+        checkOut={booking.checkOut || undefined}
       />
       <WelcomeLetter booking={booking} />
       <HouseManual sections={manual} />

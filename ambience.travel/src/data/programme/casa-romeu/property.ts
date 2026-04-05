@@ -6,7 +6,7 @@ import type { Property } from '../../../lib/programmeTypes'
 export const casaRomeu: Property = {
   id:       'casa-romeu',
   name:     'Casa de Romeu',
-  tagline:  'A favourite piso in one of the world\'s most liveable cities.',
+  tagline:  'Stay in one of the world\'s most liveable cities.',
   location: 'Ruzafa, Valencia, Spain',
   heroImage: '/programme/stays/casa-romeu/hero.jpg',
 

@@ -143,6 +143,8 @@ type PropertyIntroSectionProps = {
   tagline:      string
   photos:       { src: string; caption: string; subCaption: string }[]
   heroVis:      boolean
+  checkIn?:     string
+  checkOut?:    string
 }
 
 export default function PropertyIntroSection({
@@ -151,6 +153,8 @@ export default function PropertyIntroSection({
   tagline,
   photos,
   heroVis,
+  checkIn,
+  checkOut,
 }: PropertyIntroSectionProps) {
   const [isMobile, setIsMobile] = useState(false)
 
@@ -271,6 +275,41 @@ export default function PropertyIntroSection({
         >
           {tagline}
         </p>
+
+        {/* Date pills — only shown when dates are present */}
+        {checkIn && checkOut && (
+          <div style={{
+            ...fade(350),
+            display:        'flex',
+            gap:            10,
+            justifyContent: 'center',
+            flexWrap:       'wrap',
+            marginBottom:   32,
+          }}>
+            <div style={{
+              padding:      '7px 18px',
+              borderRadius: 100,
+              border:       `1px solid ${WIDGET.borderMid}`,
+              background:   WIDGET.bgInset,
+              fontSize:     11,
+              color:        '#C9B88E',
+              letterSpacing:'0.04em',
+            }}>
+              {new Date(checkIn).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+            <div style={{
+              padding:      '7px 18px',
+              borderRadius: 100,
+              border:       `1px solid ${WIDGET.borderMid}`,
+              background:   WIDGET.bgInset,
+              fontSize:     11,
+              color:        WIDGET.textMid,
+              letterSpacing:'0.04em',
+            }}>
+              {`→ ${new Date(checkOut).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+            </div>
+          </div>
+        )}
 
         {/* Scroll indicator — identical to IntroSection */}
         <div style={{ ...fade(400), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
