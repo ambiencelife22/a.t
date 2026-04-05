@@ -1,7 +1,12 @@
-// tripsTypes.ts
-// Shared TypeScript types for the ambience.travel trips product.
+// programmeTypes.ts
+// Shared TypeScript types for the ambience.travel programme product.
 
 // ── Property ──────────────────────────────────────────────────────────────────
+
+export type PropertyPhoto = {
+  src:     string
+  caption: string
+}
 
 export type Property = {
   id:          string
@@ -9,7 +14,7 @@ export type Property = {
   tagline:     string
   location:    string
   heroImage:   string
-  photos:      string[]   // cycling property photos — N images, local paths
+  photos:      PropertyPhoto[]  // cycling property photos — N images with captions
   owner:       Contact
   manager:     Contact
   emergencies: EmergencyContact[]
@@ -56,19 +61,19 @@ export type Listing = {
   genre?:   string
   hours?:   string
   note?:    string
-  favorite?: boolean   // CdR Favorite
+  favorite?: boolean
   images?:  string[]
 }
 
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export type Booking = {
-  id:           string           // URL slug — random, unguessable
-  propertyId:   string
-  guestNames:   string           // e.g. "Ragnar & Gunnar"
-  checkIn:      string           // ISO date
-  checkOut:     string           // ISO date
-  welcomeLetter: string          // markdown-lite plain text
-  activeListingIds?: string[]    // if undefined, show all
-  passwordHash?: string          // optional — if set, require password
+  id:            string           // URL slug — random, unguessable
+  propertyId:    string
+  guestNames:    string           // e.g. "Ragnar & Gunnar"
+  checkIn:       string           // ISO date
+  checkOut:      string           // ISO date
+  welcomeLetter: string           // markdown-lite plain text
+  activeListingIds?: string[]     // if undefined, show all
+  passwordHash?: string           // optional — if set, require password
 }

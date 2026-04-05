@@ -33,7 +33,7 @@ const NEXT_MS     = 4400
 
 // ── Floating photo — one image at a time, alternates sides ───────────────────
 
-function FloatingPhoto({ photos, isMobile }: { photos: string[]; isMobile: boolean }) {
+function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: string }[]; isMobile: boolean }) {
   const [index,  setIndex]  = useState(0)
   const [phase,  setPhase]  = useState<'in' | 'hold' | 'out'>('in')
   const [posIdx, setPosIdx] = useState(0)
@@ -49,7 +49,7 @@ function FloatingPhoto({ photos, isMobile }: { photos: string[]; isMobile: boole
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [index, photos.length])
 
-  const src     = photos[index]
+  const photo   = photos[index]
   const opacity = phase === 'hold' ? 1 : 0
   const scale   = phase === 'hold' ? 1 : phase === 'in' ? 0.95 : 1.01
   const blur    = phase === 'out'  ? 2 : 0
@@ -70,7 +70,7 @@ function FloatingPhoto({ photos, isMobile }: { photos: string[]; isMobile: boole
           transition:      'opacity 0.5s ease, transform 0.5s ease',
         }}
       >
-        <Photo src={src} />
+        <Photo src={photo.src} caption={photo.caption} />
       </div>
     )
   }
@@ -97,27 +97,42 @@ function FloatingPhoto({ photos, isMobile }: { photos: string[]; isMobile: boole
           borderRadius: 16,
         }}
       >
-        <Photo src={src} />
+        <Photo src={photo.src} caption={photo.caption} />
       </div>
     </div>
   )
 }
 
-function Photo({ src }: { src: string }) {
+function Photo({ src, caption }: { src: string; caption: string }) {
   return (
-    <div
-      style={{
-        width:              320,
-        height:             220,
-        borderRadius:       16,
-        overflow:           'hidden',
-        backgroundColor:    WIDGET.bgDeep,
-        backgroundImage:    `url(${src})`,
-        backgroundSize:     'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat:   'no-repeat',
-      }}
-    />
+    <div style={{ position: 'relative', width: 320, borderRadius: 16, overflow: 'hidden' }}>
+      <div
+        style={{
+          width:              '100%',
+          height:             220,
+          backgroundColor:    WIDGET.bgDeep,
+          backgroundImage:    `url(${src})`,
+          backgroundSize:     'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat:   'no-repeat',
+        }}
+      />
+      {/* Caption overlay — mirrors landing TravelCard caption panel */}
+      <div
+        style={{
+          padding:      '10px 14px',
+          background:   WIDGET.bgInset,
+          borderTop:    `1px solid ${WIDGET.borderMid}`,
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 700, color: WIDGET.text, letterSpacing: '0.02em' }}>
+          {caption}
+        </div>
+        <div style={{ fontSize: 9, color: WIDGET.textMid, marginTop: 2, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          Casa de Romeu · Valencia
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -127,7 +142,7 @@ type PropertyIntroSectionProps = {
   propertyName: string
   location:     string
   tagline:      string
-  photos:       string[]
+  photos:       { src: string; caption: string }[]
   heroVis:      boolean
 }
 

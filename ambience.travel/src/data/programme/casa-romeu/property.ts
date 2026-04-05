@@ -5,15 +5,15 @@ import type { Property } from '../../../lib/programmeTypes'
 
 export const casaRomeu: Property = {
   id:       'casa-romeu',
-  name:     'Casa Romeu',
+  name:     'Casa de Romeu',
   tagline:  'A favourite piso in one of the world\'s most liveable cities.',
   location: 'Ruzafa, Valencia, Spain',
   heroImage: '/programme/stays/casa-romeu/hero.jpg',
 
   photos: [
-    '/programme/stays/casa-romeu/bedroom.webp',
-    '/programme/stays/casa-romeu/livingroom1.webp',
-    '/programme/stays/casa-romeu/livingroom2.webp',
+    { src: '/programme/stays/casa-romeu/bedroom.webp',    caption: 'Main Bedroom' },
+    { src: '/programme/stays/casa-romeu/livingroom1.webp', caption: 'Living Room' },
+    { src: '/programme/stays/casa-romeu/livingroom2.webp', caption: 'Living Room & Library' },
   ],
 
   owner: {
