@@ -11,9 +11,14 @@ export const casaRomeu: Property = {
   heroImage: '/programme/stays/casa-romeu/hero.jpg',
 
   photos: [
-    { src: '/programme/stays/casa-romeu/bedroom.webp',    caption: 'Main Bedroom' },
-    { src: '/programme/stays/casa-romeu/livingroom1.webp', caption: 'Living Room' },
-    { src: '/programme/stays/casa-romeu/livingroom2.webp', caption: 'Living Room & Library' },
+    { src: '/programme/stays/casa-romeu/bedroom.webp',       caption: 'Main Bedroom' },
+    { src: '/programme/stays/casa-romeu/bedroom2.webp',      caption: 'Second Bedroom' },
+    { src: '/programme/stays/casa-romeu/dining.webp',        caption: 'Dining Room' },
+    { src: '/programme/stays/casa-romeu/kitchen.webp',       caption: 'Kitchen' },
+    { src: '/programme/stays/casa-romeu/main-bathroom-b.webp', caption: 'Main Bathroom' },
+    { src: '/programme/stays/casa-romeu/half-bathroom.webp', caption: 'Half Bathroom' },
+    { src: '/programme/stays/casa-romeu/livingroom1.webp',   caption: 'Living Room' },
+    { src: '/programme/stays/casa-romeu/livingroom2.webp',   caption: 'Living Room & Library' },
   ],
 
   owner: {
