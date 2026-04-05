@@ -6,19 +6,19 @@ import type { Property } from '../../../lib/programmeTypes'
 export const casaRomeu: Property = {
   id:       'casa-romeu',
   name:     'Casa de Romeu',
-  tagline:  'Stay in in one of the world\'s most liveable cities.',
+  tagline:  'A favourite piso in one of the world\'s most liveable cities.',
   location: 'Ruzafa, Valencia, Spain',
   heroImage: '/programme/stays/casa-romeu/hero.jpg',
 
   photos: [
-    { src: '/programme/stays/casa-romeu/bedroom.webp',       caption: 'Main Bedroom' },
-    { src: '/programme/stays/casa-romeu/bedroom2.webp',      caption: 'Second Bedroom' },
-    { src: '/programme/stays/casa-romeu/dining.webp',        caption: 'Dining Room' },
-    { src: '/programme/stays/casa-romeu/kitchen.webp',       caption: 'Kitchen' },
-    { src: '/programme/stays/casa-romeu/main-bathroom-b.webp', caption: 'Main Bathroom' },
-    { src: '/programme/stays/casa-romeu/half-bathroom.webp', caption: 'Half Bathroom' },
-    { src: '/programme/stays/casa-romeu/livingroom1.webp',   caption: 'Living Room' },
-    { src: '/programme/stays/casa-romeu/livingroom2.webp',   caption: 'Living Room & Library' },
+    { src: '/programme/stays/casa-romeu/bedroom.webp',         caption: 'Main Bedroom',         subCaption: 'Bed, Desk, Dressers, Closet' },
+    { src: '/programme/stays/casa-romeu/bedroom2.webp',        caption: 'Second Bedroom',        subCaption: 'Twin Beds, Dresser, & Wardrobe' },
+    { src: '/programme/stays/casa-romeu/dining.webp',          caption: 'Dining Room',           subCaption: 'Seats Six, Air Conditioning' },
+    { src: '/programme/stays/casa-romeu/kitchen-a.webp',         caption: 'Kitchen',               subCaption: 'Fully Stocked & Many Appliances' },
+    { src: '/programme/stays/casa-romeu/main-bathroom-b.webp', caption: 'Main Bathroom',         subCaption: 'Shower, Toilet, Sink, & Washing Machine' },
+    { src: '/programme/stays/casa-romeu/half-bathroom.webp',   caption: 'Half Bathroom',         subCaption: 'Toilet, Sink, Hot Water Heater' },
+    { src: '/programme/stays/casa-romeu/livingroom1.webp',     caption: 'Living Room',           subCaption: 'Sofa, Armchairs & Smart TV' },
+    { src: '/programme/stays/casa-romeu/livingroom2.webp',     caption: 'Living Room & Library', subCaption: 'Books, DVDs & Reading Corner' },
   ],
 
   owner: {

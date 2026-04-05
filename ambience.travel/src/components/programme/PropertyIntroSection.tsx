@@ -33,7 +33,7 @@ const NEXT_MS     = 4400
 
 // ── Floating photo — one image at a time, alternates sides ───────────────────
 
-function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: string }[]; isMobile: boolean }) {
+function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: string; subCaption: string }[]; isMobile: boolean }) {
   const [index,  setIndex]  = useState(0)
   const [phase,  setPhase]  = useState<'in' | 'hold' | 'out'>('in')
   const [posIdx, setPosIdx] = useState(0)
@@ -70,7 +70,7 @@ function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: s
           transition:      'opacity 0.5s ease, transform 0.5s ease',
         }}
       >
-        <Photo src={photo.src} caption={photo.caption} />
+        <Photo src={photo.src} caption={photo.caption} subCaption={photo.subCaption} />
       </div>
     )
   }
@@ -97,13 +97,13 @@ function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: s
           borderRadius: 16,
         }}
       >
-        <Photo src={photo.src} caption={photo.caption} />
+        <Photo src={photo.src} caption={photo.caption} subCaption={photo.subCaption} />
       </div>
     </div>
   )
 }
 
-function Photo({ src, caption }: { src: string; caption: string }) {
+function Photo({ src, caption, subCaption }: { src: string; caption: string; subCaption: string }) {
   return (
     <div style={{ position: 'relative', width: 320, borderRadius: 16, overflow: 'hidden' }}>
       <div
@@ -117,19 +117,18 @@ function Photo({ src, caption }: { src: string; caption: string }) {
           backgroundRepeat:   'no-repeat',
         }}
       />
-      {/* Caption overlay — mirrors landing TravelCard caption panel */}
       <div
         style={{
-          padding:      '10px 14px',
-          background:   WIDGET.bgInset,
-          borderTop:    `1px solid ${WIDGET.borderMid}`,
+          padding:   '10px 14px',
+          background: WIDGET.bgInset,
+          borderTop: `1px solid ${WIDGET.borderMid}`,
         }}
       >
-        <div style={{ fontSize: 11, fontWeight: 700, color: WIDGET.text, letterSpacing: '0.02em' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: WIDGET.text, letterSpacing: '0.02em', marginBottom: 3 }}>
           {caption}
         </div>
-        <div style={{ fontSize: 9, color: WIDGET.textMid, marginTop: 2, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          Casa de Romeu · Valencia
+        <div style={{ fontSize: 9, color: WIDGET.textMid, letterSpacing: '0.04em' }}>
+          {subCaption}
         </div>
       </div>
     </div>
@@ -142,7 +141,7 @@ type PropertyIntroSectionProps = {
   propertyName: string
   location:     string
   tagline:      string
-  photos:       { src: string; caption: string }[]
+  photos:       { src: string; caption: string; subCaption: string }[]
   heroVis:      boolean
 }
 

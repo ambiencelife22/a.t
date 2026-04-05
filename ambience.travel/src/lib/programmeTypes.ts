@@ -4,8 +4,9 @@
 // ── Property ──────────────────────────────────────────────────────────────────
 
 export type PropertyPhoto = {
-  src:     string
-  caption: string
+  src:        string
+  caption:    string
+  subCaption: string
 }
 
 export type Property = {
