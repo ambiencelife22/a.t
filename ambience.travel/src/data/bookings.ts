@@ -2,7 +2,7 @@
 // All bookings. Each booking maps a unique URL ID to a property, guest, and welcome letter.
 // To create a new booking: add an entry here with a new random ID.
 
-import type { Booking } from '../lib/tripsTypes'
+import type { Booking } from '../lib/programmeTypes'
 
 export const bookings: Booking[] = [
   {

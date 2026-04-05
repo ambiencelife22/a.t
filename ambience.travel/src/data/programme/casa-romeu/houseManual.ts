@@ -1,7 +1,7 @@
 // casa-romeu/houseManual.ts
 // Full house manual content for Casa de Romeu.
 
-import type { ManualSection } from '../../../lib/tripsTypes'
+import type { ManualSection } from '../../../lib/programmeTypes'
 
 export const houseManual: ManualSection[] = [
   {

@@ -1,24 +1,24 @@
-/* TripsLayout.tsx
- * Global layout shell for all trips.ambience.travel pages.
+/* ProgrammeLayout.tsx
+ * Global layout shell for all programme.ambience.travel pages.
  * Provides: nav (emblem + logo + guest slot), footer, base typography.
  * Content is injected via children — no page-specific logic here.
  *
  * Usage:
- *   <TripsLayout guestNames="Ragnar & Gunnar">
- *     <TripPage ... />
- *   </TripsLayout>
+ *   <ProgrammeLayout guestNames="Ragnar & Gunnar">
+ *     <ProgrammePage ... />
+ *   </ProgrammeLayout>
  */
 
 import React from 'react'
 import AmbienceLogo from '../AmbienceLogo'
 import { C } from '../../lib/landingTypes'
 
-interface TripsLayoutProps {
+interface ProgrammeLayoutProps {
   children:    React.ReactNode
   guestNames?: string   // shown in nav — optional (admin pages won't have it)
 }
 
-export default function TripsLayout({ children, guestNames }: TripsLayoutProps) {
+export default function ProgrammeLayoutProps({ children, guestNames }: ProgrammeLayoutProps) {
   return (
     <div style={{
       minHeight:  '100vh',

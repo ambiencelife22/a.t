@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../lib/tripsTypes'
+import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../lib/programmeTypes'
 import PropertyIntroSection from './PropertyIntroSection'
 
 // ── Design tokens (inline — self-contained component) ────────────────────────

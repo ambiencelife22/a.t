@@ -1,15 +1,15 @@
 /* TripRoute.tsx
- * Resolves booking ID from pathname and renders TripPage inside TripsLayout.
+ * Resolves booking ID from pathname and renders TripPage inside ProgrammeLayout.
  * No React Router — reads window.location.pathname directly.
  */
 
-import TripPage from './TripPage'
-import TripsLayout from '../layouts/TripsLayout'
+import ProgrammePage from './ProgrammePage'
+import ProgrammeLayout from '../layouts/ProgrammeLayout'
 import { getBooking } from '../../data/bookings'
-import { casaRomeu } from '../../data/trips/casa-romeu/property'
-import { houseManual } from '../../data/trips/casa-romeu/houseManual'
-import { listings } from '../../data/trips/casa-romeu/listings'
-import type { Property, ManualSection, Listing } from '../../lib/tripsTypes'
+import { casaRomeu } from '../../data/programme/casa-romeu/property'
+import { houseManual } from '../../data/programme/casa-romeu/houseManual'
+import { listings } from '../../data/programme/casa-romeu/listings'
+import type { Property, ManualSection, Listing } from '../../lib/programmeTypes'
 
 const PROPERTIES: Record<string, {
   property: Property
@@ -40,9 +40,9 @@ export default function TripRoute() {
 
   if (!bookingId) {
     return (
-      <TripsLayout>
+      <ProgrammeLayout>
         <NotFound message='No booking ID provided.' />
-      </TripsLayout>
+      </ProgrammeLayout>
     )
   }
 
@@ -50,9 +50,9 @@ export default function TripRoute() {
 
   if (!booking) {
     return (
-      <TripsLayout>
+      <ProgrammeLayout>
         <NotFound message='This guide is not available.' />
-      </TripsLayout>
+      </ProgrammeLayout>
     )
   }
 
@@ -60,9 +60,9 @@ export default function TripRoute() {
 
   if (!data) {
     return (
-      <TripsLayout>
+      <ProgrammeLayout>
         <NotFound message='Property not found.' />
-      </TripsLayout>
+      </ProgrammeLayout>
     )
   }
 
@@ -71,14 +71,14 @@ export default function TripRoute() {
     : data.listings
 
   return (
-    <TripsLayout guestNames={booking.guestNames}>
-      <TripPage
+    <ProgrammeLayout guestNames={booking.guestNames}>
+      <ProgrammePage
         booking={booking}
         property={data.property}
         manual={data.manual}
         listings={activeListings}
       />
-    </TripsLayout>
+    </ProgrammeLayout>
   )
 }
 
