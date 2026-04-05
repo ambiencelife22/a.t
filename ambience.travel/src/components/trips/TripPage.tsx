@@ -38,46 +38,6 @@ const CATEGORIES: { id: ListingCategory; label: string; icon: string }[] = [
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function NavBar({ property, guestNames }: { property: Property; guestNames: string }) {
-  return (
-    <nav style={{
-      position:       'fixed',
-      top:            0,
-      left:           0,
-      right:          0,
-      zIndex:         50,
-      height:         60,
-      background:     'rgba(247,244,238,0.94)',
-      backdropFilter: 'blur(16px)',
-      borderBottom:   `1px solid ${T.border}`,
-      display:        'flex',
-      alignItems:     'center',
-      justifyContent: 'space-between',
-      padding:        '0 clamp(20px,5vw,48px)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: T.bgDark,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, color: T.gold, fontWeight: 700, letterSpacing: '0.02em',
-        }}>
-          a
-        </div>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.text, letterSpacing: '0.04em' }}>
-            ambience.travel
-          </div>
-          <div style={{ fontSize: 9, color: T.faint, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 1 }}>
-            {property.name}
-          </div>
-        </div>
-      </div>
-      <div style={{ fontSize: 11, color: T.muted }}>{guestNames}</div>
-    </nav>
-  )
-}
-
 function Hero({ property, booking }: { property: Property; booking: Booking }) {
   const checkIn  = new Date(booking.checkIn).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   const checkOut = new Date(booking.checkOut).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -530,26 +490,6 @@ function ContactsSection({ property }: { property: Property }) {
   )
 }
 
-function Footer() {
-  return (
-    <footer style={{
-      padding:    '24px clamp(20px,5vw,48px)',
-      background: T.bgDark,
-      borderTop:  `1px solid ${T.darkBorder}`,
-      display:    'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flexWrap:   'wrap',
-      gap:        12,
-    }}>
-      <div style={{ fontSize: 11, color: T.darkLabel }}>ambience.travel · Private guest guide</div>
-      <div style={{ fontSize: 11, color: T.darkLabel }}>
-        <a href='https://ambience.travel' style={{ color: T.gold, textDecoration: 'none' }}>ambience.travel</a>
-      </div>
-    </footer>
-  )
-}
-
 // ── Main TripPage ─────────────────────────────────────────────────────────────
 
 export type TripPageProps = {
@@ -561,23 +501,12 @@ export type TripPageProps = {
 
 export default function TripPage({ booking, property, manual, listings }: TripPageProps) {
   return (
-    <div style={{
-      minHeight:  '100vh',
-      background: T.bg,
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
-      color:      T.text,
-      overflowX:  'hidden',
-    }}>
-      <NavBar property={property} guestNames={booking.guestNames} />
-
-      <div style={{ paddingTop: 60 }}>
-        <Hero property={property} booking={booking} />
-        <WelcomeLetter booking={booking} />
-        <HouseManual sections={manual} />
-        <ListingsSection listings={listings} />
-        <ContactsSection property={property} />
-        <Footer />
-      </div>
-    </div>
+    <>
+      <Hero property={property} booking={booking} />
+      <WelcomeLetter booking={booking} />
+      <HouseManual sections={manual} />
+      <ListingsSection listings={listings} />
+      <ContactsSection property={property} />
+    </>
   )
 }
