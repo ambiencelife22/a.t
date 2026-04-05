@@ -53,7 +53,7 @@ interface LayoutProps {
   children?: React.ReactNode
 }
 
-export default function Layout({ children: _children }: LayoutProps) {
+export default function LandingLayout({ children: _children }: LayoutProps) {
   const [heroVis, setHeroVis] = useState(false)
   const [navVisible, setNavVisible] = useState(false)
 
@@ -136,14 +136,17 @@ export default function Layout({ children: _children }: LayoutProps) {
             padding: '0 clamp(20px,5vw,48px)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <a
+            href='https://ambience.travel'
+            style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}
+          >
             <img
               src='/emblem.png'
               alt='ambience.travel emblem'
               style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
             />
             <AmbienceLogo isDark={false} product='travel' height={44} />
-          </div>
+          </a>
 
           <button
             disabled
@@ -195,16 +198,18 @@ export default function Layout({ children: _children }: LayoutProps) {
         </button>
       )}
 
+      <VideoIntroSection />
+
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
 
       <HeroSection />
       <EditorialSection />
-      <VideoIntroSection />
       <JourneyMomentsSection />
       <PillarsSection />
       <ExperienceTypesSection />
+      {/* <HospitalitySection /> */}
       <DarkCTASection />
     </div>
   )

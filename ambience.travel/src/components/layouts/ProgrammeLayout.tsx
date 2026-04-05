@@ -18,7 +18,7 @@ interface ProgrammeLayoutProps {
   guestNames?: string   // shown in nav — optional (admin pages won't have it)
 }
 
-export default function ProgrammeLayoutProps({ children, guestNames }: ProgrammeLayoutProps) {
+export default function ProgrammeLayout({ children, guestNames }: ProgrammeLayoutProps) {
   return (
     <div style={{
       minHeight:  '100vh',
@@ -43,14 +43,17 @@ export default function ProgrammeLayoutProps({ children, guestNames }: Programme
         justifyContent: 'space-between',
         padding:        '0 clamp(20px,5vw,48px)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <a
+          href='https://ambience.travel'
+          style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}
+        >
           <img
             src='/emblem.png'
             alt='ambience.travel emblem'
             style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }}
           />
           <AmbienceLogo isDark={false} product='travel' height={44} />
-        </div>
+        </a>
 
         {guestNames && (
           <div style={{
