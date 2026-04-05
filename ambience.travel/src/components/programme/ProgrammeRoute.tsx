@@ -47,7 +47,8 @@ type ProgrammeRow = {
     slug:               string
     name:               string
     tagline:            string
-    location:           string
+    city:               string
+    country:            string
     hero_image:         string | null
     photos:             { src: string; caption: string; subCaption: string }[]
     owner_name:         string
@@ -142,7 +143,7 @@ function mapProperty(row: ProgrammeRow['properties']): Property {
     id:        row.id,
     name:      row.name,
     tagline:   row.tagline,
-    location:  row.location,
+    location:  [row.city, row.country].filter(Boolean).join(', '),
     heroImage: row.hero_image ?? '',
     photos:    row.photos ?? [],
     owner: {
@@ -305,6 +306,7 @@ export default function ProgrammeRoute() {
     }
 
     async function load() {
+  console.log('ProgrammeRoute load() firing, urlId:', urlId)
       // 1 — Resolve programme + property
       const { data: prog, error: progErr } = await supabase
         .from('programmes')
@@ -324,7 +326,8 @@ export default function ProgrammeRoute() {
             slug,
             name,
             tagline,
-            location,
+            city,
+            country,
             hero_image,
             photos,
             owner_name,
@@ -336,6 +339,7 @@ export default function ProgrammeRoute() {
         `)
         .eq('url_id', urlId)
         .single()
+        console.log('progErr:', progErr, 'prog:', prog)
 
       if (progErr || !prog) {
         setError('not-found')

@@ -20,7 +20,7 @@ export type EventStatus = 'confirmed' | 'recommended' | 'cancelled'
 export type EventContact = {
   id:    string
   name:  string
-  role:  string        // e.g. "Driver", "Photographer", "Guide"
+  role:  string
   phone: string | null
 }
 
@@ -31,36 +31,28 @@ export type JourneyEvent = {
   event_type:          EventType
   status:              EventStatus
   title:               string
-  time_local:          string | null   // e.g. "08:25", "TBA"
-  duration:            string | null   // e.g. "3.5hrs", "Flexible"
+  time_local:          string | null
+  duration:            string | null
   description:         string | null
   confirmation_number: string | null
   location:            string | null
-  supplier_name:       string | null   // denormalised from suppliers join
+  supplier_name:       string | null
   sort_order:          number
-
-  // Flight-specific
   airline:             string | null
   flight_number:       string | null
   departure_airport:   string | null
   arrival_airport:     string | null
   arrival_time:        string | null
   flight_class:        string | null
-  seats:               string | null   // free text e.g. "3A, 4A"
+  seats:               string | null
   terminal:            string | null
   gate:                string | null
-
-  // Transfer-specific
   driver_name:         string | null
   driver_phone:        string | null
-
-  // Accommodation-specific
   room_type:           string | null
   check_in_date:       string | null
   check_out_date:      string | null
-  inclusions:          string | null   // free text e.g. "All-Inclusive Meals"
-
-  // Contacts
+  inclusions:          string | null
   contacts:            EventContact[]
 }
 
@@ -68,8 +60,8 @@ export type JourneyEvent = {
 
 export type JourneyDay = {
   id:         string
-  date:       string | null   // ISO date e.g. "2025-06-08"
-  title:      string | null   // e.g. "Tanzania Arrival!"
+  date:       string | null
+  title:      string | null
   sort_order: number
   events:     JourneyEvent[]
 }
