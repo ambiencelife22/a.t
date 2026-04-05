@@ -1,21 +1,27 @@
 /* TripRoute.tsx
- * Route handler for /trips/:bookingId
- * Resolves booking → property → manual → listings and renders TripPage.
- * Drop this into your React Router config at path="/trips/:bookingId"
+ * Resolves booking ID from pathname and renders TripPage.
+ * No React Router — reads window.location.pathname directly.
  *
- * Usage in App.tsx / router:
- *   <Route path="/trips/:bookingId" element={<TripRoute />} />
+ * Pathname pattern: /trips/:bookingId
+ * e.g. /trips/k5SSks4AUedpBJLO
+ *
+ * On trips.ambience.travel, the path is just /:bookingId
+ * e.g. trips.ambience.travel/k5SSks4AUedpBJLO
  */
 
-import { useParams } from 'react-router-dom'
 import TripPage from './TripPage'
 import { getBooking } from '../../data/bookings'
 import { casaRomeu } from '../../data/trips/casa-romeu/property'
 import { houseManual } from '../../data/trips/casa-romeu/houseManual'
 import { listings } from '../../data/trips/casa-romeu/listings'
+import type { Property, ManualSection, Listing } from '../../lib/tripsTypes'
 
 // Property registry — add new properties here as they're onboarded
-const PROPERTIES = {
+const PROPERTIES: Record<string, {
+  property: Property
+  manual:   ManualSection[]
+  listings: Listing[]
+}> = {
   'casa-romeu': {
     property: casaRomeu,
     manual:   houseManual,
@@ -23,8 +29,22 @@ const PROPERTIES = {
   },
 }
 
+function getBookingId(): string | null {
+  const pathname = window.location.pathname
+  const hostname = window.location.hostname
+
+  // trips.ambience.travel/:bookingId
+  if (hostname === 'trips.ambience.travel') {
+    return pathname.replace(/^\//, '').split('/')[0] || null
+  }
+
+  // localhost/trips/:bookingId
+  const match = pathname.match(/^\/trips\/([^/]+)/)
+  return match ? match[1] : null
+}
+
 export default function TripRoute() {
-  const { bookingId } = useParams<{ bookingId: string }>()
+  const bookingId = getBookingId()
 
   if (!bookingId) {
     return <NotFound message='No booking ID provided.' />
@@ -36,13 +56,12 @@ export default function TripRoute() {
     return <NotFound message='This guide is not available.' />
   }
 
-  const data = PROPERTIES[booking.propertyId as keyof typeof PROPERTIES]
+  const data = PROPERTIES[booking.propertyId]
 
   if (!data) {
     return <NotFound message='Property not found.' />
   }
 
-  // Filter listings if booking specifies active subset
   const activeListings = booking.activeListingIds
     ? data.listings.filter(l => booking.activeListingIds!.includes(l.id))
     : data.listings
