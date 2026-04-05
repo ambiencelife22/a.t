@@ -13,6 +13,7 @@ export const C = {
   lightText: '#F3F4F3',
   muted: '#4F564F',
   faint: '#7A8476',
+  negative: '#ef4444',
   // Light frosted card (on C.bgAlt surface)
   lightCardBg:     'rgba(255,255,255,0.88)',
   lightCardBorder: 'rgba(255,255,255,0.70)',

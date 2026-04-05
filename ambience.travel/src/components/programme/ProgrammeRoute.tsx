@@ -27,7 +27,7 @@ function getBookingId(): string | null {
   const pathname = window.location.pathname
   const hostname = window.location.hostname
 
-  if (hostname === 'trips.ambience.travel') {
+  if (hostname === 'programme.ambience.travel') {
     return pathname.replace(/^\//, '').split('/')[0] || null
   }
 
