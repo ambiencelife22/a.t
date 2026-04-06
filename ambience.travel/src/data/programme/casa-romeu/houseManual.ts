@@ -29,7 +29,7 @@ export const houseManual: ManualSection[] = [
       },
       {
         type: 'warning',
-        text: 'Never leave a key in the inside lock. The door cannot be opened from outside in this circumstance, even in an emergency. Keys cost nearly €50 each to replace — any lost keys will be deducted from your deposit.',
+        text: 'Never leave a key in the inside lock. The door cannot be opened from outside in this circumstance, even in an emergency. This requires the door to be removed at great expense. Keys cost nearly €50 each to replace — any lost keys will be deducted from your deposit.',
       },
     ],
   },

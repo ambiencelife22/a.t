@@ -192,19 +192,20 @@ function useToast() {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Programme = {
-  id:                string
-  url_id:            string
-  programme_type:    string
-  sub_path:          string
-  status:            string
-  guest_names:       string
-  guest_count:       number
-  check_in:          string | null
-  check_out:         string | null
-  welcome_letter:    string
-  property_id:       string | null
-  active_listing_ids: string[] | null
-  properties:        { id: string; name: string; slug: string } | null
+  id:                   string
+  url_id:               string
+  programme_type:       string
+  sub_path:             string
+  status:               string
+  guest_names:          string
+  guest_count:          number
+  check_in:             string | null
+  check_out:            string | null
+  welcome_letter:       string
+  property_id:          string | null
+  active_listing_ids:   string[] | null
+  alarm_code_provided:  boolean
+  properties:           { id: string; name: string; slug: string } | null
 }
 
 type Property = {
@@ -246,16 +247,17 @@ function ProgrammesTab() {
   const { toast, showToast }        = useToast()
 
   const emptyForm = {
-    url_id:         '',
-    programme_type: 'stay',
-    sub_path:       'stays',
-    status:         'confirmed',
-    guest_names:    '',
-    guest_count:    1,
-    check_in:       '',
-    check_out:      '',
-    welcome_letter: '',
-    property_id:    '',
+    url_id:               '',
+    programme_type:       'stay',
+    sub_path:             'stays',
+    status:               'confirmed',
+    guest_names:          '',
+    guest_count:          1,
+    check_in:             '',
+    check_out:            '',
+    welcome_letter:       '',
+    property_id:          '',
+    alarm_code_provided:  false,
   }
 
   const [form, setForm] = useState(emptyForm)
@@ -271,7 +273,7 @@ function ProgrammesTab() {
     const [{ data: progs }, { data: props }] = await Promise.all([
       supabase
         .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, properties(id, name, slug)')
+        .select('id, url_id, programme_type, sub_path, status, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
         .from('properties')
@@ -292,16 +294,17 @@ function ProgrammesTab() {
 
   function openEdit(prog: Programme) {
     setForm({
-      url_id:         prog.url_id,
-      programme_type: prog.programme_type,
-      sub_path:       prog.sub_path,
-      status:         prog.status,
-      guest_names:    prog.guest_names,
-      guest_count:    prog.guest_count,
-      check_in:       prog.check_in ?? '',
-      check_out:      prog.check_out ?? '',
-      welcome_letter: prog.welcome_letter,
-      property_id:    prog.property_id ?? '',
+      url_id:               prog.url_id,
+      programme_type:       prog.programme_type,
+      sub_path:             prog.sub_path,
+      status:               prog.status,
+      guest_names:          prog.guest_names,
+      guest_count:          prog.guest_count,
+      check_in:             prog.check_in ?? '',
+      check_out:            prog.check_out ?? '',
+      welcome_letter:       prog.welcome_letter,
+      property_id:          prog.property_id ?? '',
+      alarm_code_provided:  prog.alarm_code_provided,
     })
     setEditing(prog)
     setShowForm(true)
@@ -322,16 +325,17 @@ function ProgrammesTab() {
     setSaving(true)
 
     const payload = {
-      url_id:         form.url_id.trim(),
-      programme_type: form.programme_type,
-      sub_path:       form.sub_path,
-      status:         form.status,
-      guest_names:    form.guest_names.trim(),
-      guest_count:    form.guest_count,
-      check_in:       form.check_in || null,
-      check_out:      form.check_out || null,
-      welcome_letter: form.welcome_letter.trim(),
-      property_id:    form.property_id || null,
+      url_id:               form.url_id.trim(),
+      programme_type:       form.programme_type,
+      sub_path:             form.sub_path,
+      status:               form.status,
+      guest_names:          form.guest_names.trim(),
+      guest_count:          form.guest_count,
+      check_in:             form.check_in || null,
+      check_out:            form.check_out || null,
+      welcome_letter:       form.welcome_letter.trim(),
+      property_id:          form.property_id || null,
+      alarm_code_provided:  form.alarm_code_provided,
     }
 
     if (editing) {
@@ -471,6 +475,27 @@ function ProgrammesTab() {
               </select>
             </Field>
           </div>
+
+          {/* Alarm code toggle — only relevant for stay programmes */}
+          {form.programme_type === 'stay' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '14px 16px', borderRadius: 12, border: `1px solid ${A.border}`, background: 'rgba(255,255,255,0.03)' }}>
+              <input
+                type='checkbox'
+                id='alarm_code'
+                checked={form.alarm_code_provided}
+                onChange={e => setForm(f => ({ ...f, alarm_code_provided: e.target.checked }))}
+                style={{ accentColor: A.gold, width: 16, height: 16, flexShrink: 0 }}
+              />
+              <div>
+                <label htmlFor='alarm_code' style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font, cursor: 'pointer', display: 'block', marginBottom: 2 }}>
+                  Alarm code provided to guests
+                </label>
+                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
+                  Unchecked shows alternate no-code alarm instructions in the house guide
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: 20 }}>
             <Field label='Welcome Letter'>

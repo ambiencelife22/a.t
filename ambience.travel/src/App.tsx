@@ -4,13 +4,13 @@
  *
  * Production:
  *   ambience.travel/*                        → LandingLayout (public, ungated)
- *   programme.ambience.travel/admin          → ProgrammeAdmin (is_admin gate)
+ *   programme.ambience.travel/#admin         → ProgrammeAdmin (is_admin gate)
  *   programme.ambience.travel/*              → Auth gate → ProgrammeLayout + ProgrammeRoute
  *   programme.ambience.travel/?signup=1      → Auth (signup mode, hidden — not linked in UI)
  *
  * Local dev:
  *   localhost:5173/                          → Landing
- *   localhost:5173/programme/admin           → ProgrammeAdmin
+ *   localhost:5173/programme/*#admin         → ProgrammeAdmin
  *   localhost:5173/programme/*               → Auth gate → Programme
  *   localhost:5173/?signup=1                 → Auth (signup mode)
  *
@@ -20,8 +20,8 @@
  *   Landing page is always public — never gated.
  *
  * Admin gate:
- *   ProgrammeAdmin checks session + profiles.is_admin internally.
- *   No session or is_admin !== true → access denied screen.
+ *   Hash-based — #admin on programme.ambience.travel or any /programme/* path.
+ *   Matches SPORTS pattern exactly. ProgrammeAdmin handles is_admin check internally.
  *
  * Sign-up access:
  *   Reachable via ?signup=1 query param only. Not linked anywhere in the UI.
@@ -41,24 +41,33 @@ type Route = 'landing' | 'admin' | 'programme' | 'signup'
 function resolveRoute(): Route {
   const hostname = window.location.hostname
   const pathname = window.location.pathname
+  const hash     = window.location.hash
   const params   = new URLSearchParams(window.location.search)
 
   // Hidden signup route — not linked in any public UI
   if (params.get('signup') === '1') return 'signup'
 
-  if (hostname === 'programme.ambience.travel') {
-    if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin'
-    return 'programme'
-  }
+  // Hash-based admin — works from root on both production and localhost
+  // Matches SPORTS pattern: sports.ambience.life/#admin
+  if (hash === '#admin') return 'admin'
 
-  if (pathname === '/programme/admin' || pathname.startsWith('/programme/admin/')) return 'admin'
+  if (hostname === 'programme.ambience.travel') return 'programme'
   if (pathname.startsWith('/programme/')) return 'programme'
 
   return 'landing'
 }
 
 export default function App() {
-  const route = resolveRoute()
+  const [route, setRoute] = useState<Route>(resolveRoute())
+
+  // Listen for hash changes — matches SPORTS hashchange pattern
+  useEffect(() => {
+    function handleHashChange() {
+      setRoute(resolveRoute())
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   // Landing is always public — no auth check needed
   if (route === 'landing') return <LandingLayout />

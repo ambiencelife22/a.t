@@ -41,7 +41,8 @@ type ProgrammeRow = {
   check_out:       string | null
   welcome_letter:  string
   status:          string
-  active_listing_ids: string[] | null
+  active_listing_ids:   string[] | null
+  alarm_code_provided:  boolean
   properties: {
     id:                 string
     slug:               string
@@ -128,13 +129,14 @@ type ContactRow = {
 
 function mapBooking(row: ProgrammeRow): Booking {
   return {
-    id:               row.id,
-    propertyId:       row.properties.slug,
-    guestNames:       row.guest_names,
-    checkIn:          row.check_in ?? undefined,
-    checkOut:         row.check_out ?? undefined,
-    welcomeLetter:    row.welcome_letter,
-    activeListingIds: row.active_listing_ids ?? undefined,
+    id:                  row.id,
+    propertyId:          row.properties.slug,
+    guestNames:          row.guest_names,
+    checkIn:             row.check_in ?? undefined,
+    checkOut:            row.check_out ?? undefined,
+    welcomeLetter:       row.welcome_letter,
+    activeListingIds:    row.active_listing_ids ?? undefined,
+    alarmCodeProvided:   row.alarm_code_provided,
   }
 }
 
@@ -306,7 +308,6 @@ export default function ProgrammeRoute() {
     }
 
     async function load() {
-  console.log('ProgrammeRoute load() firing, urlId:', urlId)
       // 1 — Resolve programme + property
       const { data: prog, error: progErr } = await supabase
         .from('programmes')
@@ -321,6 +322,7 @@ export default function ProgrammeRoute() {
           welcome_letter,
           status,
           active_listing_ids,
+          alarm_code_provided,
           properties (
             id,
             slug,
@@ -339,7 +341,6 @@ export default function ProgrammeRoute() {
         `)
         .eq('url_id', urlId)
         .single()
-        console.log('progErr:', progErr, 'prog:', prog)
 
       if (progErr || !prog) {
         setError('not-found')

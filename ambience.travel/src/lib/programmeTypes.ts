@@ -77,5 +77,6 @@ export type Booking = {
   checkOut?:      string           // ISO date — absent for preview/undated bookings
   welcomeLetter:  string           // markdown-lite plain text
   activeListingIds?: string[]      // if undefined, show all
+  alarmCodeProvided?: boolean      // if false, show no-code alternate alarm text
   passwordHash?:  string           // optional — if set, require password
 }
