@@ -1118,6 +1118,296 @@ function PropertySectionsTab() {
   )
 }
 
+// ── Tab: Properties ───────────────────────────────────────────────────────────
+
+type FullProperty = {
+  id:                 string
+  slug:               string
+  name:               string
+  tagline:            string
+  city:               string
+  country:            string
+  hero_image:         string | null
+  owner_name:         string
+  owner_phone:        string
+  manager_name:       string
+  manager_phone:      string
+  emergency_contacts: { label: string; phone: string }[]
+  active:             boolean
+}
+
+function PropertiesTab() {
+  const [properties, setProperties] = useState<FullProperty[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [editing, setEditing]       = useState<FullProperty | null>(null)
+  const [saving, setSaving]         = useState(false)
+  const { toast, showToast }        = useToast()
+
+  const emptyForm = {
+    name:               '',
+    tagline:            '',
+    city:               '',
+    country:            '',
+    hero_image:         '',
+    owner_name:         '',
+    owner_phone:        '',
+    manager_name:       '',
+    manager_phone:      '',
+    emergency_contacts: [] as { label: string; phone: string }[],
+  }
+  const [form, setForm] = useState(emptyForm)
+
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('properties')
+      .select('id, slug, name, tagline, city, country, hero_image, owner_name, owner_phone, manager_name, manager_phone, emergency_contacts, active')
+      .order('name')
+    setProperties((data ?? []) as FullProperty[])
+    setLoading(false)
+  }
+
+  function openEdit(prop: FullProperty) {
+    setForm({
+      name:               prop.name,
+      tagline:            prop.tagline ?? '',
+      city:               prop.city ?? '',
+      country:            prop.country ?? '',
+      hero_image:         prop.hero_image ?? '',
+      owner_name:         prop.owner_name ?? '',
+      owner_phone:        prop.owner_phone ?? '',
+      manager_name:       prop.manager_name ?? '',
+      manager_phone:      prop.manager_phone ?? '',
+      emergency_contacts: prop.emergency_contacts ?? [],
+    })
+    setEditing(prop)
+  }
+
+  function cancelEdit() {
+    setEditing(null)
+    setForm(emptyForm)
+  }
+
+  // Emergency contacts helpers
+  function addEmergency() {
+    setForm(f => ({ ...f, emergency_contacts: [...f.emergency_contacts, { label: '', phone: '' }] }))
+  }
+
+  function updateEmergency(idx: number, field: 'label' | 'phone', value: string) {
+    setForm(f => {
+      const updated = f.emergency_contacts.map((e, i) => i === idx ? { ...e, [field]: value } : e)
+      return { ...f, emergency_contacts: updated }
+    })
+  }
+
+  function removeEmergency(idx: number) {
+    setForm(f => ({ ...f, emergency_contacts: f.emergency_contacts.filter((_, i) => i !== idx) }))
+  }
+
+  async function handleSave() {
+    if (!editing) return
+    if (!form.name.trim()) { showToast('Name is required.', 'error'); return }
+
+    setSaving(true)
+
+    const payload = {
+      name:               form.name.trim(),
+      tagline:            form.tagline.trim() || null,
+      city:               form.city.trim() || null,
+      country:            form.country.trim() || null,
+      hero_image:         form.hero_image.trim() || null,
+      owner_name:         form.owner_name.trim() || null,
+      owner_phone:        form.owner_phone.trim() || null,
+      manager_name:       form.manager_name.trim() || null,
+      manager_phone:      form.manager_phone.trim() || null,
+      emergency_contacts: form.emergency_contacts.filter(e => e.label.trim() || e.phone.trim()),
+    }
+
+    const { error } = await supabase.from('properties').update(payload).eq('id', editing.id)
+
+    if (error) {
+      showToast('Failed to save property.', 'error')
+      setSaving(false)
+      return
+    }
+
+    showToast('Property saved.', 'success')
+    setSaving(false)
+    cancelEdit()
+    load()
+  }
+
+  async function handleToggleActive(prop: FullProperty) {
+    const { error } = await supabase
+      .from('properties')
+      .update({ active: !prop.active })
+      .eq('id', prop.id)
+    if (error) { showToast('Failed to update property.', 'error'); return }
+    showToast(prop.active ? 'Property deactivated.' : 'Property activated.', 'success')
+    load()
+  }
+
+  async function handleDelete(prop: FullProperty) {
+    if (!window.confirm(`Delete "${prop.name}"? This cannot be undone and will affect any linked programmes.`)) return
+    const { error } = await supabase.from('properties').delete().eq('id', prop.id)
+    if (error) { showToast('Failed to delete property.', 'error'); return }
+    showToast('Property deleted.', 'success')
+    load()
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {toast && <Toast message={toast.message} type={toast.type} />}
+      <SectionHeader title='Properties' />
+
+      {loading && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>}
+
+      {/* Edit form */}
+      {editing && (
+        <div style={{ background: A.bgCard, border: `1px solid ${A.borderGold}`, borderRadius: 16, padding: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 20 }}>
+            Editing: <span style={{ color: A.gold }}>{editing.name}</span>
+            <span style={{ fontSize: 11, color: A.faint, fontWeight: 400, marginLeft: 10 }}>/{editing.slug}</span>
+          </div>
+
+          {/* Core fields */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <Field label='Name'>
+              <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </Field>
+            <Field label='Tagline'>
+              <input style={inputStyle} value={form.tagline} onChange={e => setForm(f => ({ ...f, tagline: e.target.value }))} placeholder='A short descriptor…' />
+            </Field>
+            <Field label='City'>
+              <input style={inputStyle} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder='Valencia' />
+            </Field>
+            <Field label='Country'>
+              <input style={inputStyle} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} placeholder='Spain' />
+            </Field>
+            <Field label='Hero Image Path'>
+              <input style={inputStyle} value={form.hero_image} onChange={e => setForm(f => ({ ...f, hero_image: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' />
+            </Field>
+          </div>
+
+          {/* Owner / Manager */}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 12 }}>
+            Contacts
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <Field label='Owner Name'>
+              <input style={inputStyle} value={form.owner_name} onChange={e => setForm(f => ({ ...f, owner_name: e.target.value }))} />
+            </Field>
+            <Field label='Owner Phone'>
+              <input style={inputStyle} value={form.owner_phone} onChange={e => setForm(f => ({ ...f, owner_phone: e.target.value }))} placeholder='+34 600 000 000' />
+            </Field>
+            <Field label='Manager Name'>
+              <input style={inputStyle} value={form.manager_name} onChange={e => setForm(f => ({ ...f, manager_name: e.target.value }))} />
+            </Field>
+            <Field label='Manager Phone'>
+              <input style={inputStyle} value={form.manager_phone} onChange={e => setForm(f => ({ ...f, manager_phone: e.target.value }))} placeholder='+34 600 000 000' />
+            </Field>
+          </div>
+
+          {/* Emergency contacts */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
+                Emergency Contacts
+              </div>
+              <button onClick={addEmergency} style={{ ...btnGhost, padding: '5px 14px', fontSize: 11 }}>+ Add</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {form.emergency_contacts.map((e, idx) => (
+                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 36px', gap: 10, alignItems: 'center' }}>
+                  <input
+                    style={inputStyle}
+                    value={e.label}
+                    onChange={ev => updateEmergency(idx, 'label', ev.target.value)}
+                    placeholder='e.g. Police'
+                  />
+                  <input
+                    style={inputStyle}
+                    value={e.phone}
+                    onChange={ev => updateEmergency(idx, 'phone', ev.target.value)}
+                    placeholder='112'
+                  />
+                  <button
+                    onClick={() => removeEmergency(idx)}
+                    style={{ ...btnDanger, padding: '8px', fontSize: 13, lineHeight: 1, textAlign: 'center' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {form.emergency_contacts.length === 0 && (
+                <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>No emergency contacts added.</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={handleSave} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button onClick={cancelEdit} style={btnGhost}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Property list */}
+      {!loading && properties.map(prop => (
+        <div key={prop.id} style={{ background: A.bgCard, border: `1px solid ${editing?.id === prop.id ? A.borderGold : A.border}`, borderRadius: 14, padding: '18px 20px', opacity: prop.active ? 1 : 0.5 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: A.text, fontFamily: A.font }}>
+                  {prop.name}
+                </span>
+                {!prop.active && (
+                  <span style={{
+                    fontSize:      9,
+                    fontWeight:    700,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    padding:       '3px 10px',
+                    borderRadius:  100,
+                    border:        `1px solid ${A.danger}50`,
+                    color:         A.danger,
+                    background:    `${A.danger}12`,
+                    fontFamily:    A.font,
+                  }}>
+                    Inactive
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 2 }}>
+                {[prop.city, prop.country].filter(Boolean).join(', ')} · /{prop.slug}
+              </div>
+              {prop.tagline && (
+                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
+                  {prop.tagline}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => openEdit(prop)} style={btnGhost}>Edit</button>
+              <button
+                onClick={() => handleToggleActive(prop)}
+                style={{ ...btnGhost, color: prop.active ? A.danger : A.positive, borderColor: prop.active ? `${A.danger}50` : `${A.positive}50` }}
+              >
+                {prop.active ? 'Deactivate' : 'Activate'}
+              </button>
+              <button onClick={() => handleDelete(prop)} style={btnDanger}>Delete</button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Tab: Access Denied Page ───────────────────────────────────────────────────
 
 function AccessDeniedPageTab() {
@@ -1198,13 +1488,14 @@ function AccessDeniedPageTab() {
 
 // ── Admin shell ───────────────────────────────────────────────────────────────
 
-type AdminTab = 'programmes' | 'letters' | 'listings' | 'sections' | 'access-denied'
+type AdminTab = 'programmes' | 'letters' | 'listings' | 'sections' | 'properties' | 'access-denied'
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'programmes',    label: 'Programmes' },
   { id: 'letters',       label: 'Welcome Letters' },
   { id: 'listings',      label: 'Listings' },
   { id: 'sections',      label: 'Property Sections' },
+  { id: 'properties',    label: 'Properties' },
   { id: 'access-denied', label: 'Access Denied Page' },
 ]
 
@@ -1267,6 +1558,7 @@ function AdminShell() {
         {tab === 'letters'       && <WelcomeLettersTab />}
         {tab === 'listings'      && <ListingsTab />}
         {tab === 'sections'      && <PropertySectionsTab />}
+        {tab === 'properties'    && <PropertiesTab />}
         {tab === 'access-denied' && <AccessDeniedPageTab />}
       </div>
     </div>

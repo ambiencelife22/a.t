@@ -59,6 +59,7 @@ type ProgrammeRow = {
     manager_name:       string
     manager_phone:      string
     emergency_contacts: { label: string; phone: string }[]
+    active:             boolean
   }
 }
 
@@ -346,7 +347,8 @@ export default function ProgrammeRoute() {
             owner_phone,
             manager_name,
             manager_phone,
-            emergency_contacts
+            emergency_contacts,
+            active
           )
         `)
         .eq('url_id', urlId)
@@ -385,6 +387,12 @@ export default function ProgrammeRoute() {
 
       if (!row.properties) {
         setError('load-failed')
+        setLoading(false)
+        return
+      }
+
+      if (!row.properties.active) {
+        setError('not-found')
         setLoading(false)
         return
       }

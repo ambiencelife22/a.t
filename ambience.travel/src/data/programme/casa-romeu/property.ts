@@ -1,11 +1,11 @@
 // casa-romeu/property.ts
-// Static property data for Casa de Romeu, Valencia.
+// Static property data for Casa Romeu, Valencia.
 
 import type { Property } from '../../../lib/programmeTypes'
 
 export const casaRomeu: Property = {
   id:       'casa-romeu',
-  name:     'Casa de Romeu',
+  name:     'Casa Romeu',
   tagline:  'Stay in one of the world\'s most liveable cities.',
   location: 'Ruzafa, Valencia, Spain',
   heroImage: '/programme/stays/casa-romeu/hero.jpg',
