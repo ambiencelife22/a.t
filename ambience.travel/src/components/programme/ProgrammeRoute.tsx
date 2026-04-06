@@ -382,6 +382,13 @@ export default function ProgrammeRoute() {
 
       const row      = prog as unknown as ProgrammeRow
       const booking  = mapBooking(row)
+
+      if (!row.properties) {
+        setError('load-failed')
+        setLoading(false)
+        return
+      }
+
       const property = mapProperty(row.properties)
 
       // ── Stay branch ──────────────────────────────────────────────────────────

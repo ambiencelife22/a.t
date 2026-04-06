@@ -60,7 +60,7 @@ function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: s
       <div
         style={{
           position:        'absolute',
-          top:             16,
+          top:             76,   // 60px nav + 16px breathing room
           left:            '50%',
           transform:       `translateX(-50%) scale(${0.72 * scale})`,
           transformOrigin: 'top center',
@@ -198,7 +198,7 @@ export default function PropertyIntroSection({
       />
 
       {/* Floating photos */}
-      {photos.length > 0 && (
+      {photos && photos.length > 0 && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <FloatingPhoto photos={photos} isMobile={isMobile} />
         </div>
@@ -210,7 +210,9 @@ export default function PropertyIntroSection({
           position:       'relative',
           zIndex:         2,
           textAlign:      'center',
-          padding:        'clamp(160px,20vw,0px) clamp(20px,5vw,48px) 0',
+          padding:        isMobile
+            ? 'clamp(290px,72vw,360px) clamp(20px,5vw,48px) 0'
+            : '0 clamp(20px,5vw,48px) 0',
           display:        'flex',
           flexDirection:  'column',
           alignItems:     'center',
