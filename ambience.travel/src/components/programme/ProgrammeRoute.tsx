@@ -8,6 +8,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { getSession } from '../../lib/auth'
+import ProgrammeAccessDenied from './ProgrammeAccessDenied'
 import ProgrammePage from './ProgrammePage'
 import JourneyPage from './JourneyPage'
 import ProgrammeLayout from '../layouts/ProgrammeLayout'
@@ -294,9 +296,11 @@ type LoadedState = StayLoaded | JourneyLoaded
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProgrammeRoute() {
-  const [loaded, setLoaded]   = useState<LoadedState | null>(null)
-  const [error, setError]     = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded]               = useState<LoadedState | null>(null)
+  const [error, setError]                 = useState<string | null>(null)
+  const [loading, setLoading]             = useState(true)
+  const [userEmail, setUserEmail]         = useState('')
+  const [fallbackProgramme, setFallback]  = useState<{ url: string; guestNames: string } | undefined>(undefined)
 
   const urlId = getUrlId()
 
@@ -308,6 +312,12 @@ export default function ProgrammeRoute() {
     }
 
     async function load() {
+      // 0 — Capture user email for access denied screen
+      const session = await getSession()
+      if (session?.user?.email) {
+        setUserEmail(session.user.email)
+      }
+
       // 1 — Resolve programme + property
       const { data: prog, error: progErr } = await supabase
         .from('programmes')
@@ -343,7 +353,29 @@ export default function ProgrammeRoute() {
         .single()
 
       if (progErr || !prog) {
-        setError('not-found')
+        // Check if this user has any other accessible programmes
+        const { data: fallback } = await supabase
+          .from('programme_guests')
+          .select('programmes(url_id, sub_path, guest_names)')
+          .eq('profile_id', session?.user?.id ?? '')
+          .not('programmes', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (fallback?.programmes) {
+          const p = fallback.programmes as unknown as { url_id: string; sub_path: string; guest_names: string }
+          const hostname = window.location.hostname
+          const base = hostname === 'programme.ambience.travel'
+            ? 'https://programme.ambience.travel'
+            : `${window.location.protocol}//${window.location.host}`
+          setFallback({
+            url:        `${base}/${p.sub_path}/${p.url_id}`,
+            guestNames: p.guest_names,
+          })
+        }
+
+        setError('access-denied')
         setLoading(false)
         return
       }
@@ -479,6 +511,10 @@ export default function ProgrammeRoute() {
         <LoadingScreen />
       </ProgrammeLayout>
     )
+  }
+
+  if (error === 'access-denied') {
+    return <ProgrammeAccessDenied email={userEmail} fallbackProgramme={fallbackProgramme} />
   }
 
   if (error === 'not-found') {

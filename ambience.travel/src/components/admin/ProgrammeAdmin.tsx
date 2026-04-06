@@ -12,6 +12,7 @@ import { getSession } from '../../lib/auth'
 import { DARK } from '../../lib/landingTypes'
 import { WIDGET } from '../../lib/landingColors'
 import type { ListingCategory } from '../../lib/programmeTypes'
+import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -1117,15 +1118,94 @@ function PropertySectionsTab() {
   )
 }
 
+// ── Tab: Access Denied Page ───────────────────────────────────────────────────
+
+function AccessDeniedPageTab() {
+  const [showFallback, setShowFallback] = useState(false)
+
+  const mockEmail    = 'guest@ambience.travel'
+  const mockFallback = { url: '/stays/k5SSks4AUedpBJLO', guestNames: 'Ragnar & Gunnar' }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <SectionHeader title='Access Denied Page' />
+
+      <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, lineHeight: 1.7 }}>
+        Live render of <code style={{ color: A.gold, fontSize: 11 }}>ProgrammeAccessDenied.tsx</code> —
+        any copy changes in that file are reflected here automatically.
+      </div>
+
+      {/* State toggle */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {[
+          { label: 'No programmes',        value: false },
+          { label: 'Has other programmes', value: true  },
+        ].map(opt => (
+          <button
+            key={String(opt.value)}
+            onClick={() => setShowFallback(opt.value)}
+            style={{
+              padding:      '6px 16px',
+              borderRadius: 100,
+              border:       `1px solid ${showFallback === opt.value ? A.gold : A.border}`,
+              background:   showFallback === opt.value ? 'rgba(201,184,142,0.1)' : 'transparent',
+              color:        showFallback === opt.value ? A.gold : A.muted,
+              fontSize:     11,
+              fontWeight:   600,
+              fontFamily:   A.font,
+              cursor:       'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Preview — actual component, scaled to fit */}
+      <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid ${A.border}` }}>
+        <div style={{
+          padding:       '8px 16px',
+          background:    A.bgCard,
+          borderBottom:  `1px solid ${A.border}`,
+          fontSize:      10,
+          fontWeight:    700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color:         A.faint,
+          fontFamily:    A.font,
+        }}>
+          Preview · {showFallback ? 'Has other programmes' : 'No programmes'}
+        </div>
+
+        {/* Scale wrapper — shrinks the full-viewport component to fit the panel */}
+        <div style={{ overflow: 'hidden', height: 480 }}>
+          <div style={{
+            transform:       'scale(0.72)',
+            transformOrigin: 'top center',
+            height:          '138.9%', // 100 / 0.72 — compensates for scale
+            pointerEvents:   'none',   // preview only — clicks disabled
+          }}>
+            <ProgrammeAccessDenied
+              email={mockEmail}
+              fallbackProgramme={showFallback ? mockFallback : undefined}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Admin shell ───────────────────────────────────────────────────────────────
 
-type AdminTab = 'programmes' | 'letters' | 'listings' | 'sections'
+type AdminTab = 'programmes' | 'letters' | 'listings' | 'sections' | 'access-denied'
 
 const TABS: { id: AdminTab; label: string }[] = [
-  { id: 'programmes', label: 'Programmes' },
-  { id: 'letters',    label: 'Welcome Letters' },
-  { id: 'listings',   label: 'Listings' },
-  { id: 'sections',   label: 'Property Sections' },
+  { id: 'programmes',    label: 'Programmes' },
+  { id: 'letters',       label: 'Welcome Letters' },
+  { id: 'listings',      label: 'Listings' },
+  { id: 'sections',      label: 'Property Sections' },
+  { id: 'access-denied', label: 'Access Denied Page' },
 ]
 
 function AdminShell() {
@@ -1183,10 +1263,11 @@ function AdminShell() {
 
       {/* Content */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
-        {tab === 'programmes' && <ProgrammesTab />}
-        {tab === 'letters'    && <WelcomeLettersTab />}
-        {tab === 'listings'   && <ListingsTab />}
-        {tab === 'sections'   && <PropertySectionsTab />}
+        {tab === 'programmes'    && <ProgrammesTab />}
+        {tab === 'letters'       && <WelcomeLettersTab />}
+        {tab === 'listings'      && <ListingsTab />}
+        {tab === 'sections'      && <PropertySectionsTab />}
+        {tab === 'access-denied' && <AccessDeniedPageTab />}
       </div>
     </div>
   )
