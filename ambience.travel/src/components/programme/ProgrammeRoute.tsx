@@ -43,6 +43,7 @@ type ProgrammeRow = {
   check_out:       string | null
   welcome_letter:  string
   status:          string
+  active:          boolean
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   properties: {
@@ -332,6 +333,7 @@ export default function ProgrammeRoute() {
           check_out,
           welcome_letter,
           status,
+          active,
           active_listing_ids,
           alarm_code_provided,
           properties (
@@ -384,6 +386,12 @@ export default function ProgrammeRoute() {
 
       const row      = prog as unknown as ProgrammeRow
       const booking  = mapBooking(row)
+
+      if (!row.active) {
+        setError('not-found')
+        setLoading(false)
+        return
+      }
 
       if (!row.properties) {
         setError('load-failed')

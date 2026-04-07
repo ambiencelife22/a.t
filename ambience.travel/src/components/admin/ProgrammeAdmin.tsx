@@ -198,6 +198,7 @@ type Programme = {
   programme_type:       string
   sub_path:             string
   status:               string
+  active:               boolean
   guest_names:          string
   guest_count:          number
   check_in:             string | null
@@ -274,7 +275,7 @@ function ProgrammesTab() {
     const [{ data: progs }, { data: props }] = await Promise.all([
       supabase
         .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
+        .select('id, url_id, programme_type, sub_path, status, active, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
         .from('properties')
@@ -366,6 +367,16 @@ function ProgrammesTab() {
 
     setSaving(false)
     cancelForm()
+    load()
+  }
+
+  async function handleToggleActive(prog: Programme) {
+    const { error } = await supabase
+      .from('programmes')
+      .update({ active: !prog.active })
+      .eq('id', prog.id)
+    if (error) { showToast('Failed to update programme.', 'error'); return }
+    showToast(prog.active ? 'Programme deactivated.' : 'Programme activated.', 'success')
     load()
   }
 
@@ -528,12 +539,28 @@ function ProgrammesTab() {
       )}
 
       {!loading && programmes.map(prog => (
-        <div key={prog.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 14, padding: '18px 20px' }}>
+        <div key={prog.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 14, padding: '18px 20px', opacity: prog.active ? 1 : 0.5 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: A.text, fontFamily: A.font }}>{prog.guest_names}</span>
                 <StatusBadge status={prog.status} />
+                {!prog.active && (
+                  <span style={{
+                    fontSize:      9,
+                    fontWeight:    700,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    padding:       '3px 10px',
+                    borderRadius:  100,
+                    border:        `1px solid ${A.danger}50`,
+                    color:         A.danger,
+                    background:    `${A.danger}12`,
+                    fontFamily:    A.font,
+                  }}>
+                    Inactive
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 4 }}>
                 {prog.properties?.name ?? '—'} · /{prog.sub_path}/{prog.url_id}
@@ -544,6 +571,12 @@ function ProgrammesTab() {
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <button onClick={() => openEdit(prog)} style={btnGhost}>Edit</button>
+              <button
+                onClick={() => handleToggleActive(prog)}
+                style={{ ...btnGhost, color: prog.active ? A.danger : A.positive, borderColor: prog.active ? `${A.danger}50` : `${A.positive}50` }}
+              >
+                {prog.active ? 'Deactivate' : 'Activate'}
+              </button>
               <button onClick={() => handleDelete(prog.id)} style={btnDanger}>Delete</button>
             </div>
           </div>
