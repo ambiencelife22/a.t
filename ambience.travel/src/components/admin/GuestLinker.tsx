@@ -1,24 +1,24 @@
 /* GuestLinker.tsx
- * Admin-only component rendered inside each programme row in ProgrammesTab.
- * Shows existing programme_guests with their profile link status.
- * Allows admin to search a user by email and set profile_id on a guest row,
- * which grants that user RLS access to see the programme in their list.
+ * Admin-only component for linking guests to a programme.
  *
- * Usage in ProgrammesTab (inside the programme row, after the action buttons):
- *   <GuestLinker programmeId={prog.id} />
+ * Flow:
+ *   1. Type name / nickname / email → live results appear (debounced 250ms)
+ *   2. Click a result → confirmation bar appears showing full details
+ *   3. Confirm → guest row created + profile_id linked in one step
+ *   4. Cancel → back to results
  *
- * Standalone — no props drilling needed beyond programmeId.
- * Uses the same A token set as ProgrammeAdmin.tsx.
+ * Existing guests shown above search with unlink/remove options.
+ * Usage: <GuestLinker programmeId={prog.id} />
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 
-// ── Design tokens — matches ProgrammeAdmin.tsx A object ──────────────────────
 const A = {
   bg:         '#111210',
   bgCard:     '#1A1C1A',
   bgInput:    '#202220',
+  bgHover:    '#252725',
   border:     '#2E302E',
   borderGold: 'rgba(201,184,142,0.25)',
   text:       '#F3F4F3',
@@ -28,12 +28,7 @@ const A = {
   danger:     '#ef4444',
   positive:   '#4ade80',
   font:       "'Plus Jakarta Sans', sans-serif",
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: A.bgInput, border: `1px solid ${A.border}`,
-  borderRadius: 8, padding: '8px 12px', fontSize: 12, color: A.text,
-  fontFamily: A.font, outline: 'none', boxSizing: 'border-box',
+  mono:       "'DM Mono', monospace",
 }
 
 interface GuestRow {
@@ -44,279 +39,385 @@ interface GuestRow {
   sort_order:   number
 }
 
-interface GuestLinkerProps {
-  programmeId: string
+interface ClientResult {
+  profile_id: string
+  first_name: string
+  last_name:  string | null
+  nickname:   string | null
+  email:      string | null
+  phone:      string | null
 }
 
-export default function GuestLinker({ programmeId }: GuestLinkerProps) {
-  const [open,    setOpen]    = useState(false)
-  const [guests,  setGuests]  = useState<GuestRow[]>([])
-  const [loading, setLoading] = useState(false)
+function fullName(c: ClientResult): string {
+  return [c.first_name, c.last_name].filter(Boolean).join(' ')
+}
 
-  // Per-guest link state
-  const [linkEmail,  setLinkEmail]  = useState<Record<string, string>>({})
-  const [linkStatus, setLinkStatus] = useState<Record<string, 'idle' | 'searching' | 'found' | 'not_found' | 'saving' | 'saved' | 'error'>>({})
-  const [linkUserId, setLinkUserId] = useState<Record<string, string>>({})
-  const [linkMsg,    setLinkMsg]    = useState<Record<string, string>>({})
+function clientSummary(c: ClientResult): string {
+  const parts = [fullName(c)]
+  if (c.nickname) parts.push(`"${c.nickname}"`)
+  if (c.email)    parts.push(c.email)
+  if (c.phone)    parts.push(c.phone)
+  return parts.join(' · ')
+}
 
-  // New guest form
-  const [showAdd,       setShowAdd]       = useState(false)
-  const [newName,       setNewName]       = useState('')
-  const [addBusy,       setAddBusy]       = useState(false)
+export default function GuestLinker({ programmeId }: { programmeId: string }) {
+  const [open,      setOpen]      = useState(false)
+  const [guests,    setGuests]    = useState<GuestRow[]>([])
+  const [loading,   setLoading]   = useState(false)
+
+  // Search
+  const [query,     setQuery]     = useState('')
+  const [results,   setResults]   = useState<ClientResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Confirmation
+  const [pending,   setPending]   = useState<ClientResult | null>(null)
+  const [saving,    setSaving]    = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
-    if (!open) return
+    if (!open) { resetSearch(); return }
     loadGuests()
-  }, [open, programmeId])
+  }, [open])
 
   async function loadGuests() {
     setLoading(true)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('programme_guests')
       .select('id, display_name, profile_id, is_lead, sort_order')
       .eq('programme_id', programmeId)
       .order('sort_order')
-
-    if (!error) setGuests((data ?? []) as GuestRow[])
+    setGuests((data ?? []) as GuestRow[])
     setLoading(false)
   }
 
-  async function searchEmail(guestId: string) {
-    const email = linkEmail[guestId]?.trim()
-    if (!email) return
-
-    setLinkStatus(s => ({ ...s, [guestId]: 'searching' }))
-    setLinkMsg(s => ({ ...s, [guestId]: '' }))
-
-    // Search via auth.users — requires service role, so we use a profiles join on email
-    // profiles doesn't store email directly, so we search auth.users via edge function or
-    // use the admin API workaround: look up by email in auth.users through profiles
-    const { data, error } = await supabase
-      .rpc('get_user_id_by_email', { email_input: email })
-
-    if (error || !data) {
-      // Fallback: try profiles table via supabase.auth.admin (not available client-side)
-      // Instead search auth.users indirectly — no direct client access, so we try
-      // matching against a known pattern via support_tickets or programme_guests
-      setLinkStatus(s => ({ ...s, [guestId]: 'not_found' }))
-      setLinkMsg(s => ({ ...s, [guestId]: `No account found for ${email}` }))
-      return
-    }
-
-    setLinkUserId(s => ({ ...s, [guestId]: data }))
-    setLinkStatus(s => ({ ...s, [guestId]: 'found' }))
-    setLinkMsg(s => ({ ...s, [guestId]: `Found — ready to link` }))
+  function resetSearch() {
+    setQuery('')
+    setResults([])
+    setSearching(false)
+    setPending(null)
+    setSaveError('')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
   }
 
-  async function linkGuest(guestId: string) {
-    const userId = linkUserId[guestId]
-    if (!userId) return
-
-    setLinkStatus(s => ({ ...s, [guestId]: 'saving' }))
-
-    const { error } = await supabase
-      .from('programme_guests')
-      .update({ profile_id: userId })
-      .eq('id', guestId)
-
-    if (error) {
-      setLinkStatus(s => ({ ...s, [guestId]: 'error' }))
-      setLinkMsg(s => ({ ...s, [guestId]: 'Failed to link — try again.' }))
-      return
-    }
-
-    setLinkStatus(s => ({ ...s, [guestId]: 'saved' }))
-    setLinkMsg(s => ({ ...s, [guestId]: 'Linked successfully.' }))
-    setLinkEmail(s => ({ ...s, [guestId]: '' }))
-    loadGuests()
+  function handleQueryChange(value: string) {
+    setQuery(value)
+    setResults([])
+    setPending(null)
+    setSaveError('')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!value.trim() || value.trim().length < 2) return
+    debounceRef.current = setTimeout(() => doSearch(value.trim()), 250)
   }
 
-  async function unlinkGuest(guestId: string) {
-    if (!window.confirm('Remove this guest\'s profile link? They will no longer see this programme.')) return
-
-    const { error } = await supabase
-      .from('programme_guests')
-      .update({ profile_id: null })
-      .eq('id', guestId)
-
-    if (!error) loadGuests()
+  async function doSearch(q: string) {
+    setSearching(true)
+    const { data } = await supabase
+      .from('travel_clients')
+      .select('profile_id, first_name, last_name, nickname, email, phone')
+      .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,nickname.ilike.%${q}%,email.ilike.%${q}%`)
+      .not('profile_id', 'is', null)
+      .limit(10)
+    setSearching(false)
+    setResults((data ?? []) as ClientResult[])
   }
 
-  async function handleAddGuest() {
-    if (!newName.trim()) return
-    setAddBusy(true)
+  function selectResult(client: ClientResult) {
+    setPending(client)
+    setSaveError('')
+  }
+
+  async function handleConfirm() {
+    if (!pending) return
+    setSaving(true)
+    setSaveError('')
+
+    const displayName = fullName(pending)
+    const isFirst     = guests.length === 0
 
     const { error } = await supabase
       .from('programme_guests')
       .insert({
         programme_id: programmeId,
-        display_name: newName.trim(),
-        profile_id:   null,
-        is_lead:      guests.length === 0,
+        display_name: displayName,
+        profile_id:   pending.profile_id,
+        is_lead:      isFirst,
         sort_order:   guests.length,
       })
 
-    setAddBusy(false)
-    if (!error) { setNewName(''); setShowAdd(false); loadGuests() }
+    setSaving(false)
+
+    if (error) {
+      setSaveError('Failed to add guest. They may already be linked.')
+      return
+    }
+
+    resetSearch()
+    loadGuests()
   }
 
-  async function handleRemoveGuest(guestId: string, name: string) {
+  async function handleUnlink(guestId: string) {
+    await supabase
+      .from('programme_guests')
+      .update({ profile_id: null })
+      .eq('id', guestId)
+    loadGuests()
+  }
+
+  async function handleRemove(guestId: string, name: string) {
     if (!window.confirm(`Remove ${name} from this programme?`)) return
     await supabase.from('programme_guests').delete().eq('id', guestId)
     loadGuests()
   }
 
-  const statusColor = (s: typeof linkStatus[string]) => {
-    if (s === 'found' || s === 'saved') return A.positive
-    if (s === 'not_found' || s === 'error') return A.danger
-    return A.muted
-  }
+  const alreadyLinked = (profileId: string) =>
+    guests.some(g => g.profile_id === profileId)
 
   return (
     <div style={{ marginTop: 12 }}>
+
       {/* Toggle */}
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 11, fontWeight: 600, color: open ? A.gold : A.faint, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, letterSpacing: '0.04em', padding: 0, transition: 'color 0.15s' }}
+        style={{
+          fontSize: 11, fontWeight: 600,
+          color: open ? A.gold : A.faint,
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontFamily: A.font, letterSpacing: '0.04em', padding: 0,
+          transition: 'color 0.15s',
+        }}
       >
-        {open ? '▾ Guest Access' : '▸ Guest Access'}
+        {open ? '▾' : '▸'} Guest Access
+        {guests.length > 0 && (
+          <span style={{ marginLeft: 6, fontSize: 10, color: guests.every(g => g.profile_id) ? A.positive : A.gold }}>
+            {guests.filter(g => g.profile_id).length}/{guests.length} linked
+          </span>
+        )}
       </button>
 
       {open && (
-        <div style={{ marginTop: 12, padding: '16px', background: A.bg, borderRadius: 10, border: `1px solid ${A.border}` }}>
+        <div style={{
+          marginTop: 10, padding: 16,
+          background: A.bg, borderRadius: 10,
+          border: `1px solid ${A.border}`,
+        }}>
 
-          {loading && <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading guests…</div>}
-
-          {!loading && guests.length === 0 && (
-            <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginBottom: 12 }}>No guest rows — add one to enable access.</div>
+          {/* ── Existing guests ── */}
+          {loading && (
+            <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginBottom: 12 }}>Loading…</div>
           )}
 
-          {!loading && guests.map(guest => {
-            const status = linkStatus[guest.id] ?? 'idle'
-            const email  = linkEmail[guest.id] ?? ''
-            const msg    = linkMsg[guest.id] ?? ''
-
-            return (
-              <div key={guest.id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${A.border}` }}>
-
-                {/* Guest identity row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{guest.display_name}</span>
-                    {guest.is_lead && (
-                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.gold, background: `${A.gold}18`, border: `1px solid ${A.gold}40`, borderRadius: 100, padding: '2px 7px', fontFamily: A.font }}>Lead</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleRemoveGuest(guest.id, guest.display_name)}
-                    style={{ fontSize: 11, color: A.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, padding: 0 }}
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                {/* Profile link status */}
-                {guest.profile_id ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: A.positive, flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: A.positive, fontFamily: A.font }}>Profile linked</span>
-                      <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{guest.profile_id.slice(0, 8)}…</span>
-                    </div>
-                    <button
-                      onClick={() => unlinkGuest(guest.id)}
-                      style={{ fontSize: 11, color: A.faint, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-                    >
-                      Unlink
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: A.faint, flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>No profile linked — guest cannot see this programme</span>
-                    </div>
-
-                    {/* Email search */}
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <input
-                        type='email'
-                        value={email}
-                        onChange={e => {
-                          setLinkEmail(s => ({ ...s, [guest.id]: e.target.value }))
-                          setLinkStatus(s => ({ ...s, [guest.id]: 'idle' }))
-                          setLinkMsg(s => ({ ...s, [guest.id]: '' }))
-                        }}
-                        placeholder='Search by email address…'
-                        style={{ ...inputStyle, flex: 1 }}
-                        onKeyDown={e => { if (e.key === 'Enter') searchEmail(guest.id) }}
-                      />
-                      {status !== 'found' && (
-                        <button
-                          onClick={() => searchEmail(guest.id)}
-                          disabled={!email || status === 'searching'}
-                          style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600, background: 'transparent', border: `1px solid ${A.borderGold}`, borderRadius: 8, color: A.gold, cursor: !email || status === 'searching' ? 'not-allowed' : 'pointer', fontFamily: A.font, opacity: !email || status === 'searching' ? 0.5 : 1, whiteSpace: 'nowrap', transition: 'all 0.15s', flexShrink: 0 }}
-                        >
-                          {status === 'searching' ? 'Searching…' : 'Find User'}
-                        </button>
-                      )}
-                      {status === 'found' && (
-                        <button
-                          onClick={() => linkGuest(guest.id)}
-                          disabled={status === 'saving' as any}
-                          style={{ padding: '8px 14px', fontSize: 12, fontWeight: 700, background: A.positive, border: 'none', borderRadius: 8, color: '#111', cursor: 'pointer', fontFamily: A.font, whiteSpace: 'nowrap', flexShrink: 0 }}
-                        >
-                          Link
-                        </button>
-                      )}
-                    </div>
-
-                    {msg && (
-                      <div style={{ marginTop: 6, fontSize: 11, color: statusColor(status), fontFamily: A.font }}>
-                        {msg}
-                      </div>
-                    )}
-                  </div>
-                )}
+          {!loading && guests.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>
+                Linked Guests
               </div>
-            )
-          })}
-
-          {/* Add guest row */}
-          {!showAdd ? (
-            <button
-              onClick={() => setShowAdd(true)}
-              style={{ fontSize: 12, color: A.gold, background: 'none', border: `1px solid ${A.borderGold}`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: A.font, transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = `${A.gold}10`}
-              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
-            >
-              + Add Guest Row
-            </button>
-          ) : (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder='Guest display name…'
-                style={{ ...inputStyle, flex: 1 }}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddGuest() }}
-                autoFocus
-              />
-              <button
-                onClick={handleAddGuest}
-                disabled={addBusy || !newName.trim()}
-                style={{ padding: '8px 14px', fontSize: 12, fontWeight: 700, background: A.gold, border: 'none', borderRadius: 8, color: '#111', cursor: !newName.trim() ? 'not-allowed' : 'pointer', fontFamily: A.font, opacity: !newName.trim() ? 0.5 : 1, flexShrink: 0 }}
-              >
-                {addBusy ? 'Adding…' : 'Add'}
-              </button>
-              <button
-                onClick={() => { setShowAdd(false); setNewName('') }}
-                style={{ padding: '8px 12px', fontSize: 12, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 8, color: A.muted, cursor: 'pointer', fontFamily: A.font, flexShrink: 0 }}
-              >
-                Cancel
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {guests.map(guest => (
+                  <div key={guest.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', background: A.bgCard, borderRadius: 8,
+                    border: `1px solid ${A.border}`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                        background: guest.profile_id ? A.positive : A.faint,
+                      }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
+                        {guest.display_name}
+                      </span>
+                      {guest.is_lead && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, letterSpacing: '0.10em',
+                          textTransform: 'uppercase', color: A.gold,
+                          background: `${A.gold}18`, border: `1px solid ${A.gold}35`,
+                          borderRadius: 100, padding: '1px 6px', fontFamily: A.font,
+                        }}>Lead</span>
+                      )}
+                      {!guest.profile_id && (
+                        <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>not linked</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {guest.profile_id && (
+                        <button
+                          onClick={() => handleUnlink(guest.id)}
+                          style={{ fontSize: 11, color: A.faint, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, textDecoration: 'underline', textUnderlineOffset: 2, padding: 0 }}
+                        >
+                          Unlink
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRemove(guest.id, guest.display_name)}
+                        style={{ fontSize: 11, color: A.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, padding: 0 }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
+          {/* ── Search ── */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
+                Add Guest
+              </div>
+              <button
+                onClick={resetSearch}
+                style={{ fontSize: 11, color: A.faint, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, padding: 0, lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Input */}
+            <div style={{ position: 'relative', marginBottom: results.length > 0 ? 0 : 0 }}>
+              <input
+                type='text'
+                value={query}
+                onChange={e => handleQueryChange(e.target.value)}
+                placeholder='Search by name, nickname, or email…'
+                style={{
+                  width: '100%', background: A.bgInput,
+                  border: `1px solid ${pending ? A.borderGold : A.border}`,
+                  borderRadius: results.length > 0 ? '8px 8px 0 0' : 8,
+                  padding: '9px 12px', fontSize: 12, color: A.text,
+                  fontFamily: A.font, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+              {searching && (
+                <div style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 10, color: A.faint, fontFamily: A.font,
+                }}>
+                  Searching…
+                </div>
+              )}
+            </div>
+
+            {/* Results dropdown */}
+            {results.length > 0 && !pending && (
+              <div style={{
+                border: `1px solid ${A.border}`, borderTop: 'none',
+                borderRadius: '0 0 8px 8px', overflow: 'hidden',
+                marginBottom: 10,
+              }}>
+                {results.map((client, i) => {
+                  const linked = alreadyLinked(client.profile_id)
+                  return (
+                    <button
+                      key={client.profile_id}
+                      onClick={() => { if (!linked) selectResult(client) }}
+                      disabled={linked}
+                      style={{
+                        width: '100%', textAlign: 'left',
+                        padding: '10px 12px',
+                        background: linked ? `${A.faint}08` : A.bgInput,
+                        border: 'none',
+                        borderTop: i > 0 ? `1px solid ${A.border}` : 'none',
+                        cursor: linked ? 'default' : 'pointer',
+                        fontFamily: A.font,
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { if (!linked) (e.currentTarget as HTMLButtonElement).style.background = A.bgHover }}
+                      onMouseLeave={e => { if (!linked) (e.currentTarget as HTMLButtonElement).style.background = A.bgInput }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: linked ? A.faint : A.text }}>
+                          {fullName(client)}
+                        </span>
+                        {client.nickname && (
+                          <span style={{ fontSize: 12, color: A.muted }}>&quot;{client.nickname}&quot;</span>
+                        )}
+                        {linked && (
+                          <span style={{ fontSize: 10, color: A.positive, marginLeft: 4 }}>already linked</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        {client.email && (
+                          <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{client.email}</span>
+                        )}
+                        {client.phone && (
+                          <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{client.phone}</span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* No results */}
+            {!searching && query.trim().length >= 2 && results.length === 0 && !pending && (
+              <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, padding: '8px 0' }}>
+                No clients found matching &quot;{query}&quot;.
+              </div>
+            )}
+
+            {/* Confirmation bar */}
+            {pending && (
+              <div style={{
+                marginTop: 8, padding: '12px 14px',
+                background: `${A.gold}0E`,
+                border: `1px solid ${A.borderGold}`,
+                borderRadius: 8,
+              }}>
+                <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginBottom: 6 }}>
+                  Add this guest to the programme?
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 2 }}>
+                  {fullName(pending)}
+                  {pending.nickname && (
+                    <span style={{ fontWeight: 400, color: A.muted }}> &quot;{pending.nickname}&quot;</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {pending.email && (
+                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{pending.email}</span>
+                  )}
+                  {pending.phone && (
+                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{pending.phone}</span>
+                  )}
+                </div>
+                {saveError && (
+                  <div style={{ fontSize: 11, color: A.danger, fontFamily: A.font, marginBottom: 8 }}>
+                    {saveError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={saving}
+                    style={{
+                      padding: '7px 18px', fontSize: 12, fontWeight: 700,
+                      background: A.gold, border: 'none', borderRadius: 7,
+                      color: '#111', cursor: saving ? 'wait' : 'pointer',
+                      fontFamily: A.font, opacity: saving ? 0.6 : 1,
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    {saving ? 'Adding…' : 'Confirm'}
+                  </button>
+                  <button
+                    onClick={() => { setPending(null); setSaveError('') }}
+                    style={{
+                      padding: '7px 14px', fontSize: 12, background: 'transparent',
+                      border: `1px solid ${A.border}`, borderRadius: 7,
+                      color: A.muted, cursor: 'pointer', fontFamily: A.font,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

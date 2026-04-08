@@ -9,10 +9,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getSession } from '../../lib/auth'
-import { DARK } from '../../lib/landingTypes'
-import { WIDGET } from '../../lib/landingColors'
+// import { DARK } from '../../lib/landingTypes'
+// import { WIDGET } from '../../lib/landingColors'
+
 import type { ListingCategory } from '../../lib/programmeTypes'
 import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'
+import GuestLinker from './GuestLinker'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -580,6 +582,7 @@ function ProgrammesTab() {
               <button onClick={() => handleDelete(prog.id)} style={btnDanger}>Delete</button>
             </div>
           </div>
+          <GuestLinker programmeId={prog.id} />
         </div>
       ))}
     </div>
