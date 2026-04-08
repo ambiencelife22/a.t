@@ -1,7 +1,7 @@
 /* Auth.tsx
  * Authentication screen for ambience.travel programme product.
  * Mirrors ambience.SPORTS Auth.tsx in layout and behaviour.
- * Dark theme — matches ProgrammeLayout and the programme product aesthetic.
+ * Dark theme — matches Layout and the programme product aesthetic.
  * Uses C (landingTypes) and DARK tokens throughout. No light tokens.
  *
  * Modes:
@@ -159,7 +159,6 @@ export default function Auth({ onAuth, initialMode = 'login' }: AuthProps) {
           {/* Signup-only fields */}
           {mode === 'signup' && (
             <>
-              {/* First + Last name */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <div style={S.labelFaint}>First Name</div>
@@ -186,7 +185,6 @@ export default function Auth({ onAuth, initialMode = 'login' }: AuthProps) {
                 </div>
               </div>
 
-              {/* Nickname */}
               <div>
                 <div style={S.labelFaint}>
                   Nickname{' '}
@@ -301,23 +299,6 @@ export default function Auth({ onAuth, initialMode = 'login' }: AuthProps) {
           >
             {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Sign Up'}
           </button>
-
-          {/* Preview credentials — remove before public launch */}
-          {mode === 'login' && (
-            <div style={{
-              borderTop:  `1px solid ${DARK.cardBorder}`,
-              paddingTop: 14,
-              fontSize:   11,
-              color:      DARK.label,
-              lineHeight: 1.7,
-            }}>
-              <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-                Preview access
-              </span>
-              <br />
-              Login: test@ambience.travel · Password: test12345678
-            </div>
-          )}
 
         </div>
       </div>
