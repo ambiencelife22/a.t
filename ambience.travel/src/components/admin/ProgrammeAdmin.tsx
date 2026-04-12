@@ -6,13 +6,14 @@
  * No external dependencies beyond supabase client and landingTypes tokens.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getSession } from '../../lib/auth'
 // import { DARK } from '../../lib/landingTypes'
 // import { WIDGET } from '../../lib/landingColors'
 
 import type { ListingCategory } from '../../lib/programmeTypes'
+import ClientProfilePage from './ClientProfilePage'
 import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'
 import GuestLinker from './GuestLinker'
 
@@ -67,16 +68,16 @@ const labelStyle: React.CSSProperties = {
 }
 
 const btnPrimary: React.CSSProperties = {
-  padding:      '9px 20px',
-  background:   A.gold,
-  color:        A.bg,
-  border:       'none',
-  borderRadius: 10,
-  fontSize:     12,
-  fontWeight:   700,
-  fontFamily:   A.font,
-  cursor:       'pointer',
-  letterSpacing:'0.04em',
+  padding:       '8px 18px',
+  background:    `rgba(201,184,142,0.12)`,
+  color:         A.gold,
+  border:        `1px solid rgba(201,184,142,0.30)`,
+  borderRadius:  10,
+  fontSize:      12,
+  fontWeight:    700,
+  fontFamily:    A.font,
+  cursor:        'pointer',
+  letterSpacing: '0.04em',
 }
 
 const btnGhost: React.CSSProperties = {
@@ -118,12 +119,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
       <div>
         <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
           Admin
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>
           {title}
         </div>
       </div>
@@ -542,46 +543,56 @@ function ProgrammesTab() {
 
       {!loading && programmes.map(prog => (
         <div key={prog.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 14, padding: '18px 20px', opacity: prog.active ? 1 : 0.5 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: A.text, fontFamily: A.font }}>{prog.guest_names}</span>
-                <StatusBadge status={prog.status} />
-                {!prog.active && (
-                  <span style={{
-                    fontSize:      9,
-                    fontWeight:    700,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    padding:       '3px 10px',
-                    borderRadius:  100,
-                    border:        `1px solid ${A.danger}50`,
-                    color:         A.danger,
-                    background:    `${A.danger}12`,
-                    fontFamily:    A.font,
-                  }}>
-                    Inactive
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 4 }}>
-                {prog.properties?.name ?? '—'} · /{prog.sub_path}/{prog.url_id}
-              </div>
-              <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                {prog.check_in ? prog.check_in : 'TBA'} → {prog.check_out ? prog.check_out : 'TBA'}
-              </div>
+
+          {/* Info */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <StatusBadge status={prog.status} />
+              {!prog.active && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+                  textTransform: 'uppercase', padding: '3px 10px', borderRadius: 100,
+                  border: `1px solid ${A.danger}50`, color: A.danger,
+                  background: `${A.danger}12`, fontFamily: A.font,
+                }}>
+                  Inactive
+                </span>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button onClick={() => openEdit(prog)} style={btnGhost}>Edit</button>
-              <button
-                onClick={() => handleToggleActive(prog)}
-                style={{ ...btnGhost, color: prog.active ? A.danger : A.positive, borderColor: prog.active ? `${A.danger}50` : `${A.positive}50` }}
-              >
-                {prog.active ? 'Deactivate' : 'Activate'}
-              </button>
-              <button onClick={() => handleDelete(prog.id)} style={btnDanger}>Delete</button>
+            <div style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 6 }}>
+              {prog.guest_names}
+            </div>
+            <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>
+              {prog.properties?.name ?? '—'}
+            </div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", marginBottom: 3, wordBreak: 'break-all' }}>
+              /{prog.sub_path}/{prog.url_id}
+            </div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
+              {prog.check_in ?? 'TBA'} → {prog.check_out ?? 'TBA'}
             </div>
           </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <button onClick={() => openEdit(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px' }}>
+              Edit
+            </button>
+            <button
+              onClick={() => handleToggleActive(prog)}
+              style={{
+                ...btnGhost, fontSize: 12, padding: '7px 16px',
+                color: prog.active ? A.danger : A.positive,
+                borderColor: prog.active ? `${A.danger}50` : `${A.positive}50`,
+              }}
+            >
+              {prog.active ? 'Deactivate' : 'Activate'}
+            </button>
+            <button onClick={() => handleDelete(prog.id)} style={{ ...btnDanger, fontSize: 12, padding: '7px 14px' }}>
+              Delete
+            </button>
+          </div>
+
           <GuestLinker programmeId={prog.id} />
         </div>
       ))}
@@ -1524,78 +1535,171 @@ function AccessDeniedPageTab() {
 
 // ── Admin shell ───────────────────────────────────────────────────────────────
 
-type AdminTab = 'programmes' | 'letters' | 'listings' | 'sections' | 'properties' | 'access-denied'
+type AdminTab = 'programmes' | 'letters' | 'listings' | 'sections' | 'properties' | 'access-denied' | 'client-profile'
 
 const TABS: { id: AdminTab; label: string }[] = [
-  { id: 'programmes',    label: 'Programmes' },
-  { id: 'letters',       label: 'Welcome Letters' },
-  { id: 'listings',      label: 'Listings' },
-  { id: 'sections',      label: 'Property Sections' },
-  { id: 'properties',    label: 'Properties' },
-  { id: 'access-denied', label: 'Access Denied Page' },
+  { id: 'programmes',     label: 'Programmes' },
+  { id: 'letters',        label: 'Welcome Letters' },
+  { id: 'listings',       label: 'Listings' },
+  { id: 'sections',       label: 'Property Sections' },
+  { id: 'properties',     label: 'Properties' },
+  { id: 'access-denied',  label: 'Access Denied Page' },
+  { id: 'client-profile', label: 'Client Profile' },
 ]
 
+// Full-width tabs (no max-width cap on content)
+const FULL_WIDTH_TABS: AdminTab[] = ['client-profile']
+
 function AdminShell() {
-  const [tab, setTab] = useState<AdminTab>('programmes')
+  const [tab, setTab]         = useState<AdminTab>('programmes')
+  const [isMobile, setIsMobile] = useState(false)
+  const tabBarRef             = useRef<HTMLDivElement>(null)
+  const [underline, setUnderline] = useState({ left: 0, width: 0 })
+
+  // Detect mobile
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth < 768) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Sliding underline
+  useEffect(() => {
+    const bar = tabBarRef.current
+    if (!bar) return
+    const activeBtn = bar.querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)
+    if (!activeBtn) return
+    setUnderline({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth })
+  }, [tab, isMobile])
+
+  const isFullWidth = FULL_WIDTH_TABS.includes(tab)
 
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font }}>
-      {/* Top nav */}
+
+      {/* ── Sticky top nav ── */}
       <div style={{
         position:      'sticky',
         top:           0,
         zIndex:        100,
         background:    A.bgCard,
         borderBottom:  `1px solid ${A.border}`,
-        padding:       '0 32px',
-        display:       'flex',
-        alignItems:    'center',
-        gap:           32,
-        height:        56,
+        backdropFilter:'blur(12px)',
       }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: A.gold, letterSpacing: '0.06em' }}>
-          ambience.TRAVEL · Admin
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                padding:      '6px 16px',
-                borderRadius: 8,
-                border:       'none',
-                background:   tab === t.id ? 'rgba(201,184,142,0.12)' : 'transparent',
-                color:        tab === t.id ? A.gold : A.muted,
-                fontSize:     12,
-                fontWeight:   tab === t.id ? 700 : 500,
-                cursor:       'pointer',
-                fontFamily:   A.font,
-                transition:   'all 0.15s ease',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div style={{ marginLeft: 'auto' }}>
+        {/* Logo row */}
+        <div style={{
+          display:        'flex',
+          alignItems:     'center',
+          justifyContent: 'space-between',
+          padding:        '0 clamp(16px, 4vw, 32px)',
+          height:         52,
+          borderBottom:   isMobile ? `1px solid ${A.border}` : 'none',
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: A.gold, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+            ambience · Admin
+          </div>
           <a
             href='https://programme.ambience.travel'
-            style={{ fontSize: 11, color: A.faint, textDecoration: 'none', letterSpacing: '0.04em' }}
+            style={{ fontSize: 11, color: A.faint, textDecoration: 'none', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
           >
             ← Back to site
           </a>
         </div>
+
+        {/* Tab bar — dropdown on mobile, sliding tabs on desktop */}
+        {isMobile ? (
+          <div style={{ padding: '10px clamp(16px, 4vw, 32px)' }}>
+            <select
+              value={tab}
+              onChange={e => setTab(e.target.value as AdminTab)}
+              style={{
+                width:        '100%',
+                background:   A.bgInput,
+                border:       `1px solid ${A.borderGold}`,
+                borderRadius: 10,
+                color:        A.gold,
+                padding:      '10px 14px',
+                fontSize:     13,
+                fontWeight:   700,
+                fontFamily:   A.font,
+                cursor:       'pointer',
+                outline:      'none',
+                colorScheme:  'dark',
+              }}
+            >
+              {TABS.map(t => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div
+            ref={tabBarRef}
+            style={{
+              position:   'relative',
+              display:    'flex',
+              gap:        0,
+              padding:    '0 clamp(16px, 4vw, 32px)',
+              overflowX:  'auto',
+            }}
+          >
+            {TABS.map(t => {
+              const active = tab === t.id
+              return (
+                <button
+                  key={t.id}
+                  data-tab={t.id}
+                  onClick={() => setTab(t.id)}
+                  style={{
+                    padding:    '12px 18px',
+                    fontSize:   12,
+                    fontWeight: active ? 700 : 500,
+                    cursor:     'pointer',
+                    fontFamily: A.font,
+                    border:     'none',
+                    background: 'transparent',
+                    color:      active ? A.gold : A.muted,
+                    whiteSpace: 'nowrap',
+                    transition: 'color 0.15s ease',
+                    marginBottom: -1,
+                  }}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
+            {/* Sliding gold underline */}
+            <div style={{
+              position:     'absolute',
+              bottom:       0,
+              left:         underline.left,
+              width:        underline.width,
+              height:       2,
+              background:   A.gold,
+              borderRadius: 2,
+              transition:   'left 0.2s cubic-bezier(0.16,1,0.3,1), width 0.2s cubic-bezier(0.16,1,0.3,1)',
+              pointerEvents:'none',
+            }} />
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
-        {tab === 'programmes'    && <ProgrammesTab />}
-        {tab === 'letters'       && <WelcomeLettersTab />}
-        {tab === 'listings'      && <ListingsTab />}
-        {tab === 'sections'      && <PropertySectionsTab />}
-        {tab === 'properties'    && <PropertiesTab />}
-        {tab === 'access-denied' && <AccessDeniedPageTab />}
+      {/* ── Page content ── */}
+      <div style={{
+        maxWidth:  isFullWidth ? 1440 : 1100,
+        margin:    '0 auto',
+        padding:   `clamp(24px, 4vw, 40px) clamp(16px, 4vw, 32px)`,
+        width:     '100%',
+        boxSizing: 'border-box',
+      }}>
+        {tab === 'programmes'     && <ProgrammesTab />}
+        {tab === 'letters'        && <WelcomeLettersTab />}
+        {tab === 'listings'       && <ListingsTab />}
+        {tab === 'sections'       && <PropertySectionsTab />}
+        {tab === 'properties'     && <PropertiesTab />}
+        {tab === 'access-denied'  && <AccessDeniedPageTab />}
+        {tab === 'client-profile' && <ClientProfilePage />}
       </div>
     </div>
   )
