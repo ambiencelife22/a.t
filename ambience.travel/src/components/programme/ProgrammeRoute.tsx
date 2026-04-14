@@ -50,7 +50,7 @@ type ProgrammeRow = {
   public_owner_phone:   boolean
   public_manager_phone: boolean
   no_alarm:             boolean
-  public_arrival:       boolean
+  hide_sensitive_arrival: boolean
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   properties: {
@@ -180,34 +180,16 @@ function mapProperty(row: ProgrammeRow['properties']): Property {
   }
 }
 
-type GatingFlags = {
-  arrival: boolean
-}
-
 function mapSections(
   rows: SectionRow[],
   variant: string,
   overrides: ProgrammeSectionRow[],
-  isPublic: boolean = false,
-  gating: GatingFlags = { arrival: false },
 ): ManualSection[] {
   const defaultRows = rows.filter(r => r.variant === 'default')
   const variantByTitle = new Map(
     rows.filter(r => r.variant === variant).map(r => [r.title, r])
   )
-  const gatedByTitle = new Map(
-    rows.filter(r => r.variant === 'gated').map(r => [r.title, r])
-  )
-
   const resolved = defaultRows.map(row => {
-    // Public + gated flag off → use gated variant if available
-    if (isPublic) {
-      if (row.title === 'Arrival' && !gating.arrival) {
-        const g = gatedByTitle.get(row.title)
-        if (g) return g
-      }
-    }
-    // Use named variant (e.g. no_alarm) if available
     const v = variantByTitle.get(row.title)
     if (v) return v
     return row
@@ -341,7 +323,7 @@ type StayLoaded = {
   publicOwnerPhone:   boolean
   publicManagerPhone: boolean
   noAlarm:            boolean
-  publicArrival:      boolean
+  hideSensitiveArrival: boolean
 }
 
 type JourneyLoaded = {
@@ -399,7 +381,7 @@ export default function ProgrammeRoute() {
           public_owner_phone,
           public_manager_phone,
           no_alarm,
-          public_arrival,
+          hide_sensitive_arrival,
           properties (
             id,
             slug,
@@ -524,11 +506,8 @@ export default function ProgrammeRoute() {
         }
 
         const sectionVariant = row.no_alarm ? 'no_alarm' : 'default'
-        const gatedVariant   = 'gated'
         const overrides = (overrideResult.data ?? []) as ProgrammeSectionRow[]
-        const manual   = mapSections((sectResult.data ?? []) as SectionRow[], sectionVariant, overrides, isPublic, {
-          arrival: row.public_arrival,
-        })
+        const manual   = mapSections((sectResult.data ?? []) as SectionRow[], sectionVariant, overrides)
         let   listings = mapListings((listResult.data ?? []) as ListingRow[])
 
         if (booking.activeListingIds) {
@@ -541,7 +520,7 @@ export default function ProgrammeRoute() {
           publicOwnerPhone:   row.public_owner_phone,
           publicManagerPhone: row.public_manager_phone,
           noAlarm:            row.no_alarm,
-          publicArrival:      row.public_arrival,
+          hideSensitiveArrival: row.hide_sensitive_arrival,
         })
         setLoading(false)
         return
@@ -685,7 +664,7 @@ export default function ProgrammeRoute() {
           publicOwnerPhone={loaded.publicOwnerPhone}
           publicManagerPhone={loaded.publicManagerPhone}
           noAlarm={loaded.noAlarm}
-          publicArrival={loaded.publicArrival}
+          hideSensitiveArrival={loaded.hideSensitiveArrival}
         />
       </ProgrammeLayout>
     )

@@ -168,14 +168,25 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
   return null
 }
 
-function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival, publicOwnerPhone, publicManagerPhone }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean }) {
+function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, hideSensitiveArrival, publicOwnerPhone, publicManagerPhone }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; hideSensitiveArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
 
   // Section gating:
-  // - Arrival: if public and not revealed, replace content with gated note
+  // - Arrival: if public and not revealed, replace with redacted content + note
   // - Alarm: if public and not revealed, prepend gated note to content
   const resolvedSections = sections.map(section => {
-if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
+    if (section.title === 'Arrival' && hideSensitiveArrival) {
+      return {
+        ...section,
+        content: [
+          { type: 'paragraph' as const, text: 'This lovely condo is located at XXXX. On arrival, your host will greet you at street level, give you the keys, and escort you up.' },
+          { type: 'note'      as const, text: 'Should your host be in the condo or not at street level, touch the call button X on the right side of the building door.' },
+          { type: 'paragraph' as const, text: 'The condo is located on the Xth level via the stairs or by pressing X on the elevator.' },
+          { type: 'note'      as const, text: 'Please ask your host for arrival details.' },
+        ],
+      }
+    }
+    if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
       return {
         ...section,
         content: [
@@ -188,7 +199,7 @@ if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
   })
 
   // Privacy notice — shown when any gate is active
-  const anyGated = isPublic && (!publicArrival || !publicAlarm || !publicWifi || !publicOwnerPhone || !publicManagerPhone)
+  const anyGated = isPublic && (hideSensitiveArrival || !publicAlarm || !publicWifi || !publicOwnerPhone || !publicManagerPhone)
 
   return (
     <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: L.bgAlt }}>
@@ -441,10 +452,10 @@ export type TripPageProps = {
   publicOwnerPhone?:   boolean
   publicManagerPhone?: boolean
   noAlarm?:            boolean
-  publicArrival?:      boolean
+  hideSensitiveArrival?: boolean
 }
 
-export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false, publicArrival = false }: TripPageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false, hideSensitiveArrival = false }: TripPageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {
@@ -464,7 +475,7 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
+      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} hideSensitiveArrival={hideSensitiveArrival} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
       <ListingsSection listings={listings} />
       <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
     </>
