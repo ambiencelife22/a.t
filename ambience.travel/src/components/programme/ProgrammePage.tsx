@@ -168,13 +168,21 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
   return null
 }
 
-function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean }) {
+function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
 
-  // Alarm section logic:
-  // - isPublic && !publicAlarm → prepend gated note to default content
-  // - otherwise → show content as-is (no_alarm variant already selected in ProgrammeRoute)
+  // Section gating:
+  // - Arrival: if public and not revealed, replace content with gated note
+  // - Alarm: if public and not revealed, prepend gated note to content
   const resolvedSections = sections.map(section => {
+    if (section.title === 'Arrival' && isPublic && !publicArrival) {
+      return {
+        ...section,
+        content: [
+          { type: 'note' as const, text: 'Please ask your host for arrival details.' },
+        ],
+      }
+    }
     if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
       return {
         ...section,
@@ -187,6 +195,9 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm }: {
     return section
   })
 
+  // Privacy notice — shown when any gate is active
+  const anyGated = isPublic && (!publicArrival || !publicAlarm || !publicWifi)
+
   return (
     <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: L.bgAlt }}>
       <div style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -197,6 +208,19 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm }: {
           Everything you need to know.
         </h2>
 
+        {anyGated && (
+          <div style={{
+            padding:      '12px 16px',
+            borderRadius: 12,
+            background:   '#F9F7F2',
+            border:       `1px solid ${L.border}`,
+            marginBottom: 20,
+          }}>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: L.muted, margin: 0 }}>
+              🔒 Some information on this page is protected for privacy purposes.
+            </p>
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {resolvedSections.map(section => (
             <div key={section.id}>
@@ -425,9 +449,10 @@ export type TripPageProps = {
   publicOwnerPhone?:   boolean
   publicManagerPhone?: boolean
   noAlarm?:            boolean
+  publicArrival?:      boolean
 }
 
-export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false }: TripPageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false, publicArrival = false }: TripPageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {
@@ -447,7 +472,7 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} />
+      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} />
       <ListingsSection listings={listings} />
       <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
     </>
