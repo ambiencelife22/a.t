@@ -407,9 +407,10 @@ export type TripPageProps = {
   property: Property
   manual:   ManualSection[]
   listings: Listing[]
+  isPublic?: boolean
 }
 
-export default function TripPage({ booking, property, manual, listings }: TripPageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false }: TripPageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {

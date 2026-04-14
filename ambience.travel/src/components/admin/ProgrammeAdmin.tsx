@@ -210,6 +210,7 @@ type Programme = {
   property_id:          string | null
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
+  is_public:            boolean
   properties:           { id: string; name: string; slug: string } | null
 }
 
@@ -278,7 +279,7 @@ function ProgrammesTab() {
     const [{ data: progs }, { data: props }] = await Promise.all([
       supabase
         .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, active, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
+        .select('id, url_id, programme_type, sub_path, status, active, is_public, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
         .from('properties')
@@ -380,6 +381,16 @@ function ProgrammesTab() {
       .eq('id', prog.id)
     if (error) { showToast('Failed to update programme.', 'error'); return }
     showToast(prog.active ? 'Programme deactivated.' : 'Programme activated.', 'success')
+    load()
+  }
+
+  async function handleTogglePublic(prog: Programme) {
+    const { error } = await supabase
+      .from('programmes')
+      .update({ is_public: !prog.is_public })
+      .eq('id', prog.id)
+    if (error) { showToast('Failed to update programme.', 'error'); return }
+    showToast(prog.is_public ? 'Programme set to private.' : 'Programme is now public — no login required.', 'success')
     load()
   }
 
@@ -577,6 +588,16 @@ function ProgrammesTab() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
             <button onClick={() => openEdit(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px' }}>
               Edit
+            </button>
+            <button
+              onClick={() => handleTogglePublic(prog)}
+              style={{
+                ...btnGhost, fontSize: 12, padding: '7px 16px',
+                color: prog.is_public ? A.positive : A.muted,
+                borderColor: prog.is_public ? `${A.positive}50` : A.border,
+              }}
+            >
+              {prog.is_public ? 'Make Private' : 'Make Public'}
             </button>
             <button
               onClick={() => handleToggleActive(prog)}

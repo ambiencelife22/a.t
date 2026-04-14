@@ -523,9 +523,10 @@ export type JourneyPageProps = {
   booking:  Booking
   property: Property
   days:     JourneyDay[]
+  isPublic?: boolean
 }
 
-export default function JourneyPage({ booking, property, days }: JourneyPageProps) {
+export default function JourneyPage({ booking, property, days, isPublic = false }: JourneyPageProps) {
   const [heroVis, setHeroVis] = useState(false)
   const [tab, setTab]         = useState<JourneyTab>('itinerary')
 

@@ -44,6 +44,7 @@ type ProgrammeRow = {
   welcome_letter:  string
   status:          string
   active:          boolean
+  is_public:       boolean
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   properties: {
@@ -284,6 +285,7 @@ type StayLoaded = {
   property: Property
   manual:   ManualSection[]
   listings: Listing[]
+  isPublic: boolean
 }
 
 type JourneyLoaded = {
@@ -291,6 +293,7 @@ type JourneyLoaded = {
   booking:  Booking
   property: Property
   days:     JourneyDay[]
+  isPublic: boolean
 }
 
 type LoadedState = StayLoaded | JourneyLoaded
@@ -314,13 +317,7 @@ export default function ProgrammeRoute() {
     }
 
     async function load() {
-      // 0 — Capture user email for access denied screen
-      const session = await getSession()
-      if (session?.user?.email) {
-        setUserEmail(session.user.email)
-      }
-
-      // 1 — Resolve programme + property
+      // 0 — Resolve programme first (anon read — works for public programmes)
       const { data: prog, error: progErr } = await supabase
         .from('programmes')
         .select(`
@@ -336,6 +333,7 @@ export default function ProgrammeRoute() {
           active,
           active_listing_ids,
           alarm_code_provided,
+          is_public,
           properties (
             id,
             slug,
@@ -355,6 +353,27 @@ export default function ProgrammeRoute() {
         `)
         .eq('url_id', urlId)
         .single()
+
+      // 1a — If programme is public, skip all auth and render immediately
+      if (!progErr && prog) {
+        const publicRow = prog as unknown as ProgrammeRow
+        if (publicRow.is_public) {
+          await continueLoad(publicRow, true)
+          return
+        }
+      }
+
+      // 1b — Programme is not public — require a session
+      const session = await getSession()
+      if (session?.user?.email) {
+        setUserEmail(session.user.email)
+      }
+
+      if (!session) {
+        setError('access-denied')
+        setLoading(false)
+        return
+      }
 
       if (progErr || !prog) {
         // Check if this user has any other accessible programmes
@@ -384,7 +403,10 @@ export default function ProgrammeRoute() {
         return
       }
 
-      const row      = prog as unknown as ProgrammeRow
+      await continueLoad(prog as unknown as ProgrammeRow, false)
+    }
+
+    async function continueLoad(row: ProgrammeRow, isPublic: boolean) {
       const booking  = mapBooking(row)
 
       if (!row.active) {
@@ -437,7 +459,7 @@ export default function ProgrammeRoute() {
           listings = listings.filter(l => booking.activeListingIds!.includes(l.id))
         }
 
-        setLoaded({ type: 'stay', booking, property, manual, listings })
+        setLoaded({ type: 'stay', booking, property, manual, listings, isPublic })
         setLoading(false)
         return
       }
@@ -463,7 +485,7 @@ export default function ProgrammeRoute() {
         const dayIds  = dayRows.map(d => d.id)
 
         if (dayIds.length === 0) {
-          setLoaded({ type: 'journey', booking, property, days: [] })
+          setLoaded({ type: 'journey', booking, property, days: [], isPublic })
           setLoading(false)
           return
         }
@@ -507,7 +529,7 @@ export default function ProgrammeRoute() {
         const contactRows = (ctData ?? []) as ContactRow[]
         const days        = mapDays(dayRows, eventRows, contactRows)
 
-        setLoaded({ type: 'journey', booking, property, days })
+        setLoaded({ type: 'journey', booking, property, days, isPublic })
         setLoading(false)
         return
       }
@@ -564,6 +586,7 @@ export default function ProgrammeRoute() {
           property={loaded.property}
           manual={loaded.manual}
           listings={loaded.listings}
+          isPublic={loaded.isPublic}
         />
       </ProgrammeLayout>
     )
@@ -575,6 +598,7 @@ export default function ProgrammeRoute() {
         booking={loaded.booking}
         property={loaded.property}
         days={loaded.days}
+        isPublic={loaded.isPublic}
       />
     </ProgrammeLayout>
   )
