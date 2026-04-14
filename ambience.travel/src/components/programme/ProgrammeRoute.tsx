@@ -402,19 +402,24 @@ export default function ProgrammeRoute() {
         .eq('url_id', urlId)
         .single()
 
-      // 1a — If programme is public, skip all auth and render immediately
-      if (!progErr && prog) {
-        const publicRow = prog as unknown as ProgrammeRow
-        if (publicRow.is_public) {
-          await continueLoad(publicRow, true)
-          return
-        }
-      }
-
-      // 1b — Programme is not public — require a session
+      // 1a — Check for session first — admins/guests viewing public programmes see full content
       const session = await getSession()
       if (session?.user?.email) {
         setUserEmail(session.user.email)
+      }
+
+      // 1b — If programme is public and no session, render with gates active
+      if (!progErr && prog) {
+        const publicRow = prog as unknown as ProgrammeRow
+        if (publicRow.is_public && !session) {
+          await continueLoad(publicRow, true)
+          return
+        }
+        // Authenticated user viewing public programme — no gates
+        if (publicRow.is_public && session) {
+          await continueLoad(publicRow, false)
+          return
+        }
       }
 
       if (!session) {
