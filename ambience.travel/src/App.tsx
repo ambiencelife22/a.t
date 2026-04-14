@@ -30,13 +30,14 @@ import Dashboard from './components/Dashboard'
 import ProgrammeList from './components/ProgrammeList'
 import Profile from './components/Profile'
 import Auth from './components/Auth'
+import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
 import { ThemeContext } from './lib/ThemeContext'
 import type { Session } from '@supabase/supabase-js'
 
-type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup'
+type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience'
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -47,6 +48,10 @@ function hasUrlId(): boolean {
   }
 
   return /^\/programme\/(stays|journeys)\/.+/.test(pathname)
+}
+
+function isExperienceRoute(): boolean {
+  return window.location.pathname.startsWith('/experiences/')
 }
 
 function resolveRoute(): Route {
@@ -68,6 +73,8 @@ function resolveRoute(): Route {
     return 'app'
   }
 
+  if (isExperienceRoute()) return 'experience'
+
   return 'landing'
 }
 
@@ -81,6 +88,7 @@ export default function App() {
   }, [])
 
   if (route === 'landing')          return <LandingLayout />
+  if (route === 'experience')       return <SignatureExperiencePage />
   if (route === 'signup')           return <Auth onAuth={() => { window.location.search = '' }} initialMode='signup' />
   if (route === 'admin')            return <ProgrammeAdmin />
   if (route === 'programme-detail') return <ProgrammeGate full />
