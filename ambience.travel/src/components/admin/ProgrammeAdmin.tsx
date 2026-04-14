@@ -237,12 +237,20 @@ type Listing = {
   property_id: string
 }
 
+type ContentBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'heading';   text: string }
+  | { type: 'note';      text: string }
+  | { type: 'warning';   text: string }
+  | { type: 'list';      items: string[] }
+  | { type: 'wifi';      network: string; password: string }
+
 type Section = {
-  id:         string
-  title:      string
-  icon:       string
-  sort_order: number
-  content:    unknown
+  id:          string
+  title:       string
+  icon:        string
+  sort_order:  number
+  content:     ContentBlock[]
   property_id: string
 }
 
@@ -1077,6 +1085,8 @@ function PropertySectionsTab() {
   const [editing, setEditing]       = useState<Section | null>(null)
   const [editTitle, setEditTitle]   = useState('')
   const [editIcon, setEditIcon]     = useState('')
+  const [editContent, setEditContent] = useState<ContentBlock[]>([])
+  const [editingContent, setEditingContent] = useState<Section | null>(null)
   const [saving, setSaving]         = useState(false)
   const { toast, showToast }        = useToast()
 
@@ -1118,6 +1128,55 @@ function PropertySectionsTab() {
     setEditing(null)
     setEditTitle('')
     setEditIcon('')
+  }
+
+  function openContentEdit(section: Section) {
+    setEditingContent(section)
+    setEditContent(JSON.parse(JSON.stringify(section.content)))
+  }
+
+  function cancelContentEdit() {
+    setEditingContent(null)
+    setEditContent([])
+  }
+
+  async function handleSaveContent() {
+    if (!editingContent) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('property_sections')
+      .update({ content: editContent })
+      .eq('id', editingContent.id)
+    if (error) { showToast('Failed to save content.', 'error'); setSaving(false); return }
+    showToast('Section content saved.', 'success')
+    setSaving(false)
+    cancelContentEdit()
+    loadSections()
+  }
+
+  function updateBlock(idx: number, updated: ContentBlock) {
+    setEditContent(prev => prev.map((b, i) => i === idx ? updated : b))
+  }
+
+  function deleteBlock(idx: number) {
+    setEditContent(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function moveBlock(idx: number, dir: 'up' | 'down') {
+    setEditContent(prev => {
+      const next = [...prev]
+      const swap = dir === 'up' ? idx - 1 : idx + 1
+      ;[next[idx], next[swap]] = [next[swap], next[idx]]
+      return next
+    })
+  }
+
+  function addBlock(type: ContentBlock['type']) {
+    const blank: ContentBlock =
+      type === 'list' ? { type: 'list', items: [''] } :
+      type === 'wifi' ? { type: 'wifi', network: '', password: '' } :
+      { type, text: '' } as ContentBlock
+    setEditContent(prev => [...prev, blank])
   }
 
   async function handleSaveSection() {
@@ -1173,10 +1232,6 @@ function PropertySectionsTab() {
         </select>
       </div>
 
-      <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, padding: '4px 0' }}>
-        Reorder and rename sections. To edit block content, update the seed SQL or use the Supabase editor directly.
-      </div>
-
       {loading && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>}
 
       {!loading && sections.map((section, idx) => (
@@ -1218,10 +1273,140 @@ function PropertySectionsTab() {
                 <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Sort order: {section.sort_order}</div>
               </div>
               <button onClick={() => openEdit(section)} style={btnGhost}>Edit</button>
+              <button onClick={() => openContentEdit(section)} style={{ ...btnGhost, color: A.gold, borderColor: `${A.gold}40` }}>Edit Content</button>
             </div>
           )}
         </div>
       ))}
+
+      {/* ── Content block editor ── */}
+      {editingContent && (
+        <div style={{
+          position:   'fixed',
+          inset:      0,
+          background: 'rgba(0,0,0,0.75)',
+          zIndex:     1000,
+          display:    'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          padding:    '40px 20px',
+          overflowY:  'auto',
+        }}>
+          <div style={{
+            background:   A.bgCard,
+            border:       `1px solid ${A.borderGold}`,
+            borderRadius: 20,
+            padding:      28,
+            width:        '100%',
+            maxWidth:     680,
+            display:      'flex',
+            flexDirection: 'column',
+            gap:          20,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Editing Content</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>{editingContent.icon} {editingContent.title}</div>
+              </div>
+              <button onClick={cancelContentEdit} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', fontFamily: A.font, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Blocks */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {editContent.map((block, idx) => (
+                <div key={idx} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 12, padding: 14 }}>
+                  {/* Block header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, flex: 1 }}>
+                      {block.type}
+                    </span>
+                    <button onClick={() => moveBlock(idx, 'up')} disabled={idx === 0} style={{ background: 'none', border: 'none', color: idx === 0 ? A.faint : A.muted, cursor: idx === 0 ? 'default' : 'pointer', fontSize: 13, padding: '2px 6px', fontFamily: A.font }}>↑</button>
+                    <button onClick={() => moveBlock(idx, 'down')} disabled={idx === editContent.length - 1} style={{ background: 'none', border: 'none', color: idx === editContent.length - 1 ? A.faint : A.muted, cursor: idx === editContent.length - 1 ? 'default' : 'pointer', fontSize: 13, padding: '2px 6px', fontFamily: A.font }}>↓</button>
+                    <button onClick={() => deleteBlock(idx)} style={{ background: 'none', border: 'none', color: A.danger, cursor: 'pointer', fontSize: 13, padding: '2px 6px', fontFamily: A.font }}>✕</button>
+                  </div>
+
+                  {/* Block fields */}
+                  {(block.type === 'paragraph' || block.type === 'heading' || block.type === 'note' || block.type === 'warning') && (
+                    <textarea
+                      style={{ ...textareaStyle, minHeight: block.type === 'heading' ? 44 : 80, fontSize: 13 }}
+                      value={block.text}
+                      onChange={e => updateBlock(idx, { ...block, text: e.target.value })}
+                      placeholder={block.type === 'heading' ? 'Heading text…' : 'Block text…'}
+                    />
+                  )}
+
+                  {block.type === 'list' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {block.items.map((item, ii) => (
+                        <div key={ii} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input
+                            style={{ ...inputStyle, flex: 1, fontSize: 13 }}
+                            value={item}
+                            onChange={e => {
+                              const items = [...block.items]
+                              items[ii] = e.target.value
+                              updateBlock(idx, { ...block, items })
+                            }}
+                            placeholder={`Item ${ii + 1}`}
+                          />
+                          <button
+                            onClick={() => {
+                              const items = block.items.filter((_, i) => i !== ii)
+                              updateBlock(idx, { ...block, items })
+                            }}
+                            style={{ background: 'none', border: 'none', color: A.danger, cursor: 'pointer', fontSize: 16, padding: '4px 6px', fontFamily: A.font }}
+                          >✕</button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => updateBlock(idx, { ...block, items: [...block.items, ''] })}
+                        style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', alignSelf: 'flex-start', marginTop: 2 }}
+                      >+ Add item</button>
+                    </div>
+                  )}
+
+                  {block.type === 'wifi' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input
+                        style={{ ...inputStyle, fontSize: 13 }}
+                        value={block.network}
+                        onChange={e => updateBlock(idx, { ...block, network: e.target.value })}
+                        placeholder='Network name'
+                      />
+                      <input
+                        style={{ ...inputStyle, fontSize: 13 }}
+                        value={block.password}
+                        onChange={e => updateBlock(idx, { ...block, password: e.target.value })}
+                        placeholder='Password'
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add block */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Add block</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(['paragraph', 'heading', 'note', 'warning', 'list', 'wifi'] as ContentBlock['type'][]).map(type => (
+                  <button key={type} onClick={() => addBlock(type)} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px' }}>
+                    + {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Save */}
+            <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: `1px solid ${A.border}` }}>
+              <button onClick={handleSaveContent} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>
+                {saving ? 'Saving…' : 'Save Content'}
+              </button>
+              <button onClick={cancelContentEdit} style={btnGhost}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
