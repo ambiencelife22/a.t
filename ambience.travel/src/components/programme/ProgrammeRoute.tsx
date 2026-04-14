@@ -63,6 +63,7 @@ type ProgrammeRow = {
     hero_image:         string | null
     photos:             { src: string; caption: string; subCaption: string }[]
     maps_url:           string | null
+    maps_embed_url:     string | null
     owner_name:         string
     owner_phone:        string
     manager_name:       string
@@ -167,7 +168,8 @@ function mapProperty(row: ProgrammeRow['properties']): Property {
     location:  [row.city, row.country].filter(Boolean).join(', '),
     heroImage: row.hero_image ?? '',
     photos:    row.photos ?? [],
-    mapsUrl:   row.maps_url ?? null,
+    mapsUrl:      row.maps_url ?? null,
+    mapsEmbedUrl: row.maps_embed_url ?? null,
     owner: {
       name:  row.owner_name,
       role:  'Owner',
@@ -394,6 +396,7 @@ export default function ProgrammeRoute() {
             hero_image,
             photos,
             maps_url,
+            maps_embed_url,
             owner_name,
             owner_phone,
             manager_name,

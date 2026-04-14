@@ -168,7 +168,7 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
   return null
 }
 
-function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival, publicOwnerPhone, publicManagerPhone, mapsUrl }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean; mapsUrl: string | null }) {
+function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival, publicOwnerPhone, publicManagerPhone, mapsUrl, mapsEmbedUrl }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean; mapsUrl: string | null; mapsEmbedUrl: string | null }) {
   const [open, setOpen] = useState<string | null>(null)
 
   // Section gating:
@@ -269,23 +269,38 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
                   {section.content.map((block: ManualSection['content'][0], i: number) => (
                     <ManualBlock key={i} block={block} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} />
                   ))}
-                  {section.title === 'Arrival' && mapsUrl && (!isPublic || publicArrival) && (
-                    <a
-                      href={mapsUrl}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      style={{
-                        display:       'inline-block',
-                        marginTop:     8,
-                        fontSize:      12,
-                        fontWeight:    600,
-                        color:         L.gold,
-                        textDecoration:'none',
-                        letterSpacing: '0.03em',
-                      }}
-                    >
-                      Open in Maps →
-                    </a>
+                  {section.title === 'Arrival' && (!isPublic || publicArrival) && (
+                    <>
+                      {mapsEmbedUrl && (
+                        <iframe
+                          src={mapsEmbedUrl}
+                          width='100%'
+                          height='240'
+                          style={{ border: 'none', borderRadius: 12, marginTop: 16, display: 'block' }}
+                          allowFullScreen
+                          loading='lazy'
+                          referrerPolicy='no-referrer-when-downgrade'
+                        />
+                      )}
+                      {mapsUrl && (
+                        <a
+                          href={mapsUrl}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          style={{
+                            display:       'inline-block',
+                            marginTop:     8,
+                            fontSize:      12,
+                            fontWeight:    600,
+                            color:         L.gold,
+                            textDecoration:'none',
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          Open in Maps →
+                        </a>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -493,7 +508,7 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} mapsUrl={property.mapsUrl} />
+      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} mapsUrl={property.mapsUrl} mapsEmbedUrl={property.mapsEmbedUrl} />
       <ListingsSection listings={listings} />
       <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
     </>

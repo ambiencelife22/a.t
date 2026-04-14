@@ -18,6 +18,7 @@ export type Property = {
   heroImage:   string
   photos:      PropertyPhoto[]  // cycling property photos — N images with captions
   mapsUrl:     string | null
+  mapsEmbedUrl: string | null
   owner:       Contact
   manager:     Contact
   emergencies: EmergencyContact[]
