@@ -95,6 +95,10 @@ function ProgrammeGate({ full = false }: { full?: boolean }) {
     getSession().then(s => setSession(s ?? null))
   }, [])
 
+  // Always render ProgrammeRoute for detail pages — it handles
+  // public/private branching internally via supabaseAnon
+  if (full) return <ProgrammeRoute />
+
   if (session === undefined) return null
 
   if (session === null) {
@@ -106,7 +110,6 @@ function ProgrammeGate({ full = false }: { full?: boolean }) {
     )
   }
 
-  if (full) return <ProgrammeRoute />
   return <AuthenticatedApp />
 }
 

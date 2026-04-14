@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase, supabaseAnon } from '../../lib/supabase'
 import { getSession } from '../../lib/auth'
 import ProgrammeAccessDenied from './ProgrammeAccessDenied'
 import ProgrammePage from './ProgrammePage'
@@ -318,7 +318,7 @@ export default function ProgrammeRoute() {
 
     async function load() {
       // 0 — Resolve programme first (anon read — works for public programmes)
-      const { data: prog, error: progErr } = await supabase
+      const { data: prog, error: progErr } = await supabaseAnon
         .from('programmes')
         .select(`
           id,
