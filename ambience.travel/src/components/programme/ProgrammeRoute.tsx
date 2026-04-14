@@ -180,28 +180,39 @@ function mapProperty(row: ProgrammeRow['properties']): Property {
   }
 }
 
+type GatingFlags = {
+  arrival: boolean
+}
+
 function mapSections(
   rows: SectionRow[],
   variant: string,
   overrides: ProgrammeSectionRow[],
+  isPublic: boolean = false,
+  gating: GatingFlags = { arrival: false },
 ): ManualSection[] {
-  // Filter to the requested variant, fall back to default
-  const variantRows = rows.filter(r => r.variant === variant)
   const defaultRows = rows.filter(r => r.variant === 'default')
-
-  // Build a set of section ids that have a variant-specific row
-  const variantIds = new Set(variantRows.map(r => r.id))
-
-  // For each default row, use the variant row if one exists for same title
-  const variantByTitle = new Map(variantRows.map(r => [r.title, r]))
+  const variantByTitle = new Map(
+    rows.filter(r => r.variant === variant).map(r => [r.title, r])
+  )
+  const gatedByTitle = new Map(
+    rows.filter(r => r.variant === 'gated').map(r => [r.title, r])
+  )
 
   const resolved = defaultRows.map(row => {
+    // Public + gated flag off → use gated variant if available
+    if (isPublic) {
+      if (row.title === 'Arrival' && !gating.arrival) {
+        const g = gatedByTitle.get(row.title)
+        if (g) return g
+      }
+    }
+    // Use named variant (e.g. no_alarm) if available
     const v = variantByTitle.get(row.title)
     if (v) return v
     return row
   })
 
-  // Apply programme-level overrides
   const overrideBySection = new Map(overrides.map(o => [o.section_id, o]))
 
   return resolved.map(row => {
@@ -512,9 +523,12 @@ export default function ProgrammeRoute() {
           return
         }
 
-        const variant  = row.no_alarm ? 'no_alarm' : 'default'
+        const sectionVariant = row.no_alarm ? 'no_alarm' : 'default'
+        const gatedVariant   = 'gated'
         const overrides = (overrideResult.data ?? []) as ProgrammeSectionRow[]
-        const manual   = mapSections((sectResult.data ?? []) as SectionRow[], variant, overrides)
+        const manual   = mapSections((sectResult.data ?? []) as SectionRow[], sectionVariant, overrides, isPublic, {
+          arrival: row.public_arrival,
+        })
         let   listings = mapListings((listResult.data ?? []) as ListingRow[])
 
         if (booking.activeListingIds) {

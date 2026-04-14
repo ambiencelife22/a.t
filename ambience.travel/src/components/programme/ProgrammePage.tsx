@@ -168,22 +168,14 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
   return null
 }
 
-function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean }) {
+function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival, publicOwnerPhone, publicManagerPhone }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
 
   // Section gating:
   // - Arrival: if public and not revealed, replace content with gated note
   // - Alarm: if public and not revealed, prepend gated note to content
   const resolvedSections = sections.map(section => {
-    if (section.title === 'Arrival' && isPublic && !publicArrival) {
-      return {
-        ...section,
-        content: [
-          { type: 'note' as const, text: 'Please ask your host for arrival details.' },
-        ],
-      }
-    }
-    if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
+if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
       return {
         ...section,
         content: [
@@ -196,7 +188,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
   })
 
   // Privacy notice — shown when any gate is active
-  const anyGated = isPublic && (!publicArrival || !publicAlarm || !publicWifi)
+  const anyGated = isPublic && (!publicArrival || !publicAlarm || !publicWifi || !publicOwnerPhone || !publicManagerPhone)
 
   return (
     <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: L.bgAlt }}>
@@ -472,7 +464,7 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} />
+      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
       <ListingsSection listings={listings} />
       <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
     </>
