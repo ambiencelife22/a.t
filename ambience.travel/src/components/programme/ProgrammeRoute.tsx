@@ -44,7 +44,11 @@ type ProgrammeRow = {
   welcome_letter:  string
   status:          string
   active:          boolean
-  is_public:       boolean
+  is_public:            boolean
+  public_wifi:          boolean
+  public_alarm:         boolean
+  public_owner_phone:   boolean
+  public_manager_phone: boolean
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   properties: {
@@ -280,20 +284,28 @@ function NotFound({ message }: { message: string }) {
 // ── Loaded state types ────────────────────────────────────────────────────────
 
 type StayLoaded = {
-  type:     'stay'
-  booking:  Booking
-  property: Property
-  manual:   ManualSection[]
-  listings: Listing[]
-  isPublic: boolean
+  type:               'stay'
+  booking:            Booking
+  property:           Property
+  manual:             ManualSection[]
+  listings:           Listing[]
+  isPublic:           boolean
+  publicWifi:         boolean
+  publicAlarm:        boolean
+  publicOwnerPhone:   boolean
+  publicManagerPhone: boolean
 }
 
 type JourneyLoaded = {
-  type:     'journey'
-  booking:  Booking
-  property: Property
-  days:     JourneyDay[]
-  isPublic: boolean
+  type:               'journey'
+  booking:            Booking
+  property:           Property
+  days:               JourneyDay[]
+  isPublic:           boolean
+  publicWifi:         boolean
+  publicAlarm:        boolean
+  publicOwnerPhone:   boolean
+  publicManagerPhone: boolean
 }
 
 type LoadedState = StayLoaded | JourneyLoaded
@@ -334,6 +346,10 @@ export default function ProgrammeRoute() {
           active_listing_ids,
           alarm_code_provided,
           is_public,
+          public_wifi,
+          public_alarm,
+          public_owner_phone,
+          public_manager_phone,
           properties (
             id,
             slug,
@@ -459,7 +475,12 @@ export default function ProgrammeRoute() {
           listings = listings.filter(l => booking.activeListingIds!.includes(l.id))
         }
 
-        setLoaded({ type: 'stay', booking, property, manual, listings, isPublic })
+        setLoaded({ type: 'stay', booking, property, manual, listings, isPublic,
+          publicWifi:         row.public_wifi,
+          publicAlarm:        row.public_alarm,
+          publicOwnerPhone:   row.public_owner_phone,
+          publicManagerPhone: row.public_manager_phone,
+        })
         setLoading(false)
         return
       }
@@ -485,7 +506,12 @@ export default function ProgrammeRoute() {
         const dayIds  = dayRows.map(d => d.id)
 
         if (dayIds.length === 0) {
-          setLoaded({ type: 'journey', booking, property, days: [], isPublic })
+          setLoaded({ type: 'journey', booking, property, days: [], isPublic,
+            publicWifi:         row.public_wifi,
+            publicAlarm:        row.public_alarm,
+            publicOwnerPhone:   row.public_owner_phone,
+            publicManagerPhone: row.public_manager_phone,
+          })
           setLoading(false)
           return
         }
@@ -529,7 +555,12 @@ export default function ProgrammeRoute() {
         const contactRows = (ctData ?? []) as ContactRow[]
         const days        = mapDays(dayRows, eventRows, contactRows)
 
-        setLoaded({ type: 'journey', booking, property, days, isPublic })
+        setLoaded({ type: 'journey', booking, property, days, isPublic,
+          publicWifi:         row.public_wifi,
+          publicAlarm:        row.public_alarm,
+          publicOwnerPhone:   row.public_owner_phone,
+          publicManagerPhone: row.public_manager_phone,
+        })
         setLoading(false)
         return
       }
@@ -587,6 +618,10 @@ export default function ProgrammeRoute() {
           manual={loaded.manual}
           listings={loaded.listings}
           isPublic={loaded.isPublic}
+          publicWifi={loaded.publicWifi}
+          publicAlarm={loaded.publicAlarm}
+          publicOwnerPhone={loaded.publicOwnerPhone}
+          publicManagerPhone={loaded.publicManagerPhone}
         />
       </ProgrammeLayout>
     )

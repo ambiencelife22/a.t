@@ -211,6 +211,10 @@ type Programme = {
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   is_public:            boolean
+  public_wifi:          boolean
+  public_alarm:         boolean
+  public_owner_phone:   boolean
+  public_manager_phone: boolean
   properties:           { id: string; name: string; slug: string } | null
 }
 
@@ -279,7 +283,7 @@ function ProgrammesTab() {
     const [{ data: progs }, { data: props }] = await Promise.all([
       supabase
         .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, active, is_public, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
+        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
         .from('properties')
@@ -391,6 +395,15 @@ function ProgrammesTab() {
       .eq('id', prog.id)
     if (error) { showToast('Failed to update programme.', 'error'); return }
     showToast(prog.is_public ? 'Programme set to private.' : 'Programme is now public — no login required.', 'success')
+    load()
+  }
+
+  async function handleToggleField(prog: Programme, field: 'public_wifi' | 'public_alarm' | 'public_owner_phone' | 'public_manager_phone') {
+    const { error } = await supabase
+      .from('programmes')
+      .update({ [field]: !prog[field] })
+      .eq('id', prog.id)
+    if (error) { showToast('Failed to update visibility.', 'error'); return }
     load()
   }
 
@@ -614,6 +627,33 @@ function ProgrammesTab() {
             </button>
           </div>
 
+          {/* Visibility toggles */}
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>
+                Public visibility
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {([
+                  { field: 'public_wifi'          as const, label: 'WiFi' },
+                  { field: 'public_alarm'         as const, label: 'Alarm' },
+                  { field: 'public_owner_phone'   as const, label: 'Host phone' },
+                  { field: 'public_manager_phone' as const, label: 'Manager phone' },
+                ] as const).map(({ field, label }) => (
+                  <button
+                    key={field}
+                    onClick={() => handleToggleField(prog, field)}
+                    style={{
+                      ...btnGhost, fontSize: 11, padding: '5px 12px',
+                      color:       prog[field] ? A.positive : A.faint,
+                      borderColor: prog[field] ? `${A.positive}50` : A.border,
+                    }}
+                  >
+                    {prog[field] ? '✓' : '—'} {label}
+                  </button>
+                ))}
+              </div>
+          </div>
+
           <GuestLinker programmeId={prog.id} />
         </div>
       ))}
@@ -747,7 +787,7 @@ function WelcomeLettersTab() {
                   </div>
                 </div>
               </div>
-            </div>
+          </div>
           )}
 
           {!selected && (

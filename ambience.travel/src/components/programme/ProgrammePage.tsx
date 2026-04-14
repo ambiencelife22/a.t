@@ -24,6 +24,31 @@ const L = {
   gold:   '#C9B88E',
 }
 
+
+// ── Gated value — shown when a field is not visible on public programmes ───────
+
+function GatedValue() {
+  return (
+    <span style={{
+      fontSize:      12,
+      color:         L.faint,
+      fontStyle:     'italic',
+      letterSpacing: '0.02em',
+    }}>
+      Ask your host
+    </span>
+  )
+}
+
+// ── Alarm content — shown when alarm is public but code not yet in DB ──────────
+
+const ALARM_GATED: ManualSection['content'] = [
+  {
+    type: 'paragraph',
+    text: 'Alarm code details are available — please ask your host.',
+  },
+]
+
 // ── Alternate alarm content — shown when no alarm code is provided ─────────────
 
 const ALARM_NO_CODE: ManualSection['content'] = [
@@ -83,7 +108,7 @@ function WelcomeLetter({ booking }: { booking: Booking }) {
   )
 }
 
-function ManualBlock({ block }: { block: ManualSection['content'][0] }) {
+function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: ManualSection['content'][0]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean }) {
   if (block.type === 'paragraph') {
     return <p style={{ fontSize: 14, lineHeight: 1.85, color: L.muted, marginBottom: 12 }}>{block.text}</p>
   }
@@ -144,6 +169,7 @@ function ManualBlock({ block }: { block: ManualSection['content'][0] }) {
     )
   }
   if (block.type === 'wifi') {
+    const showWifi = !isPublic || publicWifi
     return (
       <div style={{
         padding:       '20px 24px',
@@ -156,11 +182,15 @@ function ManualBlock({ block }: { block: ManualSection['content'][0] }) {
       }}>
         <div>
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.faint, marginBottom: 4 }}>Network</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: 'monospace' }}>{block.network}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: 'monospace' }}>
+            {showWifi ? block.network : <GatedValue />}
+          </div>
         </div>
         <div>
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.faint, marginBottom: 4 }}>Password</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: C.gold, fontFamily: 'monospace' }}>{block.password}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: C.gold, fontFamily: 'monospace' }}>
+            {showWifi ? block.password : <GatedValue />}
+          </div>
         </div>
       </div>
     )
@@ -168,13 +198,16 @@ function ManualBlock({ block }: { block: ManualSection['content'][0] }) {
   return null
 }
 
-function HouseManual({ sections, alarmCodeProvided }: { sections: ManualSection[]; alarmCodeProvided: boolean }) {
+function HouseManual({ sections, alarmCodeProvided, isPublic, publicWifi, publicAlarm }: { sections: ManualSection[]; alarmCodeProvided: boolean; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
 
-  // Override alarm section content when no code provided — match by title (DB id is UUID)
+  // Override alarm section content:
+  // - If no code provided: show no-code message
+  // - If public and publicAlarm is false: show gated message
   const resolvedSections = sections.map(section => {
-    if (section.title === 'Alarm' && !alarmCodeProvided) {
-      return { ...section, content: ALARM_NO_CODE }
+    if (section.title === 'Alarm') {
+      if (!alarmCodeProvided) return { ...section, content: ALARM_NO_CODE }
+      if (isPublic && !publicAlarm) return { ...section, content: ALARM_GATED }
     }
     return section
   })
@@ -232,7 +265,7 @@ function HouseManual({ sections, alarmCodeProvided }: { sections: ManualSection[
                   borderRadius: '0 0 16px 16px',
                 }}>
                   {section.content.map((block: ManualSection['content'][0], i: number) => (
-                    <ManualBlock key={i} block={block} />
+                    <ManualBlock key={i} block={block} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} />
                   ))}
                 </div>
               )}
@@ -350,7 +383,7 @@ function ListingsSection({ listings }: { listings: Listing[] }) {
   )
 }
 
-function ContactsSection({ property }: { property: Property }) {
+function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPhone }: { property: Property; isPublic: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean }) {
   return (
     <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: C.bg }}>
       <div style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -362,7 +395,10 @@ function ContactsSection({ property }: { property: Property }) {
         </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12, marginBottom: 32 }}>
-          {[property.owner, property.manager].map(contact => (
+          {[
+            { contact: property.owner,   showPhone: !isPublic || publicOwnerPhone },
+            { contact: property.manager, showPhone: !isPublic || publicManagerPhone },
+          ].map(({ contact, showPhone }) => (
             <div key={contact.name} style={{
               padding:      '20px 24px',
               borderRadius: 16,
@@ -373,9 +409,10 @@ function ContactsSection({ property }: { property: Property }) {
                 {contact.role}
               </div>
               <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4 }}>{contact.name}</div>
-              <a href={`tel:${contact.phone}`} style={{ fontSize: 13, color: C.gold, textDecoration: 'none' }}>
-                {contact.phone}
-              </a>
+              {showPhone
+                ? <a href={`tel:${contact.phone}`} style={{ fontSize: 13, color: C.gold, textDecoration: 'none' }}>{contact.phone}</a>
+                : <GatedValue />
+              }
             </div>
           ))}
         </div>
@@ -403,14 +440,18 @@ function ContactsSection({ property }: { property: Property }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export type TripPageProps = {
-  booking:  Booking
-  property: Property
-  manual:   ManualSection[]
-  listings: Listing[]
-  isPublic?: boolean
+  booking:            Booking
+  property:           Property
+  manual:             ManualSection[]
+  listings:           Listing[]
+  isPublic?:          boolean
+  publicWifi?:        boolean
+  publicAlarm?:       boolean
+  publicOwnerPhone?:  boolean
+  publicManagerPhone?: boolean
 }
 
-export default function TripPage({ booking, property, manual, listings, isPublic = false }: TripPageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false }: TripPageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {
@@ -430,9 +471,9 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} alarmCodeProvided={booking.alarmCodeProvided ?? false} />
+      <HouseManual sections={manual} alarmCodeProvided={booking.alarmCodeProvided ?? false} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} />
       <ListingsSection listings={listings} />
-      <ContactsSection property={property} />
+      <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
     </>
   )
 }

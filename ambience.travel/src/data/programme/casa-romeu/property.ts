@@ -1,4 +1,4 @@
-// casa-romeu/property.ts
+// data/casa-romeu/property.ts
 // Static property data for Casa Romeu, Valencia.
 
 import type { Property } from '../../../lib/programmeTypes'
