@@ -271,6 +271,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
                   ))}
                   {section.title === 'Arrival' && (!isPublic || publicArrival) && (
                     <>
+                      {/* Maps embed — commented out pending Google Maps API key
                       {mapsEmbedUrl && (
                         <iframe
                           src={mapsEmbedUrl}
@@ -282,6 +283,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
                           referrerPolicy='no-referrer-when-downgrade'
                         />
                       )}
+                      */}
                       {mapsUrl && (
                         <a
                           href={mapsUrl}
