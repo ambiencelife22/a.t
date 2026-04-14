@@ -252,6 +252,7 @@ type Section = {
   title:       string
   icon:        string
   sort_order:  number
+  variant:     string
   content:     ContentBlock[]
   property_id: string
 }
@@ -1321,6 +1322,7 @@ function PropertySectionsTab() {
   const [editIcon, setEditIcon]     = useState('')
   const [editContent, setEditContent] = useState<ContentBlock[]>([])
   const [editingContent, setEditingContent] = useState<Section | null>(null)
+  const [editingVariant, setEditingVariant] = useState<string>('default')
   const [saving, setSaving]         = useState(false)
   const { toast, showToast }        = useToast()
 
@@ -1345,7 +1347,7 @@ function PropertySectionsTab() {
     setLoading(true)
     const { data } = await supabase
       .from('property_sections')
-      .select('id, title, icon, sort_order, content, property_id')
+      .select('id, title, icon, sort_order, variant, content, property_id')
       .eq('property_id', selectedProp)
       .order('sort_order')
     setSections((data ?? []) as Section[])
@@ -1365,13 +1367,26 @@ function PropertySectionsTab() {
   }
 
   function openContentEdit(section: Section) {
-    setEditingContent(section)
-    setEditContent(JSON.parse(JSON.stringify(section.content)))
+    const defaultRow = sections.find(s => s.title === section.title && s.variant === 'default')
+    const target = defaultRow ?? section
+    setEditingContent(target)
+    setEditingVariant(target.variant)
+    setEditContent(JSON.parse(JSON.stringify(target.content)))
   }
 
   function cancelContentEdit() {
     setEditingContent(null)
     setEditContent([])
+    setEditingVariant('default')
+  }
+
+  function switchVariant(variant: string) {
+    if (!editingContent) return
+    const target = sections.find(s => s.title === editingContent.title && s.variant === variant)
+    if (!target) return
+    setEditingContent(target)
+    setEditingVariant(variant)
+    setEditContent(JSON.parse(JSON.stringify(target.content)))
   }
 
   async function handleSaveContent() {
@@ -1448,6 +1463,12 @@ function PropertySectionsTab() {
     loadSections()
   }
 
+  const groupedSections = sections.reduce<Section[]>((acc, section) => {
+    const exists = acc.some(s => s.title === section.title && s.sort_order === section.sort_order)
+    if (!exists) acc.push(section)
+    return acc
+  }, [])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {toast && <Toast message={toast.message} type={toast.type} />}
@@ -1468,7 +1489,7 @@ function PropertySectionsTab() {
 
       {loading && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>}
 
-      {!loading && sections.map((section, idx) => (
+      {!loading && groupedSections.map((section, idx) => (
         <div key={section.id}>
           {editing?.id === section.id ? (
             <div style={{ background: A.bgCard, border: `1px solid ${A.borderGold}`, borderRadius: 14, padding: 20 }}>
@@ -1497,8 +1518,8 @@ function PropertySectionsTab() {
                 >↑</button>
                 <button
                   onClick={() => moveSection(section, 'down')}
-                  disabled={idx === sections.length - 1}
-                  style={{ background: 'none', border: 'none', color: idx === sections.length - 1 ? A.faint : A.muted, cursor: idx === sections.length - 1 ? 'default' : 'pointer', fontSize: 11, padding: '2px 4px', fontFamily: A.font }}
+                  disabled={idx === groupedSections.length - 1}
+                  style={{ background: 'none', border: 'none', color: idx === groupedSections.length - 1 ? A.faint : A.muted, cursor: idx === groupedSections.length - 1 ? 'default' : 'pointer', fontSize: 11, padding: '2px 4px', fontFamily: A.font }}
                 >↓</button>
               </div>
               <span style={{ fontSize: 18 }}>{section.icon}</span>
@@ -1545,7 +1566,30 @@ function PropertySectionsTab() {
               <button onClick={cancelContentEdit} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', fontFamily: A.font, lineHeight: 1 }}>✕</button>
             </div>
 
-            {/* Blocks */}
+            {/* Variant selector — only shown when multiple variants exist */}
+            {(() => {
+              const siblings = sections.filter(s => s.title === editingContent.title)
+              if (siblings.length <= 1) return null
+              return (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {siblings.map(s => (
+                    <button
+                      key={s.variant}
+                      onClick={() => switchVariant(s.variant)}
+                      style={{
+                        ...btnGhost,
+                        fontSize:    11,
+                        padding:     '5px 14px',
+                        color:       editingVariant === s.variant ? A.gold : A.muted,
+                        borderColor: editingVariant === s.variant ? `${A.gold}50` : A.border,
+                      }}
+                    >
+                      {s.variant}
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {editContent.map((block, idx) => (
                 <div key={idx} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 12, padding: 14 }}>
