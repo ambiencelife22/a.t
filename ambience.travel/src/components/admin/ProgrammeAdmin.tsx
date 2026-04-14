@@ -216,7 +216,7 @@ type Programme = {
   public_owner_phone:   boolean
   public_manager_phone: boolean
   no_alarm:             boolean
-  hide_sensitive_arrival: boolean
+  public_arrival: boolean
   properties:           { id: string; name: string; slug: string } | null
 }
 
@@ -293,7 +293,7 @@ function ProgrammesTab() {
     const [{ data: progs }, { data: props }] = await Promise.all([
       supabase
         .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, no_alarm, hide_sensitive_arrival, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
+        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, no_alarm, public_arrival, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
         .from('properties')
@@ -408,7 +408,7 @@ function ProgrammesTab() {
     load()
   }
 
-  async function handleToggleField(prog: Programme, field: 'public_wifi' | 'public_alarm' | 'public_owner_phone' | 'public_manager_phone' | 'no_alarm' | 'hide_sensitive_arrival') {
+  async function handleToggleField(prog: Programme, field: 'public_wifi' | 'public_alarm' | 'public_owner_phone' | 'public_manager_phone' | 'no_alarm' | 'public_arrival') {
     const { error } = await supabase
       .from('programmes')
       .update({ [field]: !prog[field] })
@@ -660,7 +660,7 @@ function ProgrammesTab() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {([
-                  { field: 'hide_sensitive_arrival' as const, label: 'Hide Arrival' },
+                  { field: 'public_arrival' as const, label: 'Arrival' },
                   { field: 'public_wifi'          as const, label: 'WiFi' },
                   { field: 'public_alarm'         as const, label: 'Alarm code' },
                   { field: 'public_owner_phone'   as const, label: 'Host phone' },

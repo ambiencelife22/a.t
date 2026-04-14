@@ -50,7 +50,7 @@ type ProgrammeRow = {
   public_owner_phone:   boolean
   public_manager_phone: boolean
   no_alarm:             boolean
-  hide_sensitive_arrival: boolean
+  public_arrival: boolean
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   properties: {
@@ -323,7 +323,7 @@ type StayLoaded = {
   publicOwnerPhone:   boolean
   publicManagerPhone: boolean
   noAlarm:            boolean
-  hideSensitiveArrival: boolean
+  publicArrival: boolean
 }
 
 type JourneyLoaded = {
@@ -381,7 +381,7 @@ export default function ProgrammeRoute() {
           public_owner_phone,
           public_manager_phone,
           no_alarm,
-          hide_sensitive_arrival,
+          public_arrival,
           properties (
             id,
             slug,
@@ -520,7 +520,7 @@ export default function ProgrammeRoute() {
           publicOwnerPhone:   row.public_owner_phone,
           publicManagerPhone: row.public_manager_phone,
           noAlarm:            row.no_alarm,
-          hideSensitiveArrival: row.hide_sensitive_arrival,
+          publicArrival: row.public_arrival,
         })
         setLoading(false)
         return
@@ -664,7 +664,7 @@ export default function ProgrammeRoute() {
           publicOwnerPhone={loaded.publicOwnerPhone}
           publicManagerPhone={loaded.publicManagerPhone}
           noAlarm={loaded.noAlarm}
-          hideSensitiveArrival={loaded.hideSensitiveArrival}
+          publicArrival={loaded.publicArrival}
         />
       </ProgrammeLayout>
     )
