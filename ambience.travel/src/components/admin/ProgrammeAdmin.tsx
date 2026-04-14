@@ -1699,6 +1699,7 @@ type FullProperty = {
   city:               string
   country:            string
   hero_image:         string | null
+  maps_url:           string | null
   owner_name:         string
   owner_phone:        string
   manager_name:       string
@@ -1720,6 +1721,7 @@ function PropertiesTab() {
     city:               '',
     country:            '',
     hero_image:         '',
+    maps_url:           '',
     owner_name:         '',
     owner_phone:        '',
     manager_name:       '',
@@ -1734,7 +1736,7 @@ function PropertiesTab() {
     setLoading(true)
     const { data } = await supabase
       .from('properties')
-      .select('id, slug, name, tagline, city, country, hero_image, owner_name, owner_phone, manager_name, manager_phone, emergency_contacts, active')
+      .select('id, slug, name, tagline, city, country, hero_image, maps_url, owner_name, owner_phone, manager_name, manager_phone, emergency_contacts, active')
       .order('name')
     setProperties((data ?? []) as FullProperty[])
     setLoading(false)
@@ -1747,6 +1749,7 @@ function PropertiesTab() {
       city:               prop.city ?? '',
       country:            prop.country ?? '',
       hero_image:         prop.hero_image ?? '',
+      maps_url:           prop.maps_url ?? '',
       owner_name:         prop.owner_name ?? '',
       owner_phone:        prop.owner_phone ?? '',
       manager_name:       prop.manager_name ?? '',
@@ -1789,6 +1792,7 @@ function PropertiesTab() {
       city:               form.city.trim() || null,
       country:            form.country.trim() || null,
       hero_image:         form.hero_image.trim() || null,
+      maps_url:           form.maps_url.trim() || null,
       owner_name:         form.owner_name.trim() || null,
       owner_phone:        form.owner_phone.trim() || null,
       manager_name:       form.manager_name.trim() || null,
@@ -1859,6 +1863,9 @@ function PropertiesTab() {
             </Field>
             <Field label='Hero Image Path'>
               <input style={inputStyle} value={form.hero_image} onChange={e => setForm(f => ({ ...f, hero_image: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' />
+            </Field>
+            <Field label='Google Maps URL'>
+              <input style={inputStyle} value={form.maps_url} onChange={e => setForm(f => ({ ...f, maps_url: e.target.value }))} placeholder='https://maps.google.com/?q=…' />
             </Field>
           </div>
 
