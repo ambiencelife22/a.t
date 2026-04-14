@@ -215,6 +215,7 @@ type Programme = {
   public_alarm:         boolean
   public_owner_phone:   boolean
   public_manager_phone: boolean
+  no_alarm:             boolean
   properties:           { id: string; name: string; slug: string } | null
 }
 
@@ -291,7 +292,7 @@ function ProgrammesTab() {
     const [{ data: progs }, { data: props }] = await Promise.all([
       supabase
         .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
+        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, no_alarm, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
         .from('properties')
@@ -406,7 +407,7 @@ function ProgrammesTab() {
     load()
   }
 
-  async function handleToggleField(prog: Programme, field: 'public_wifi' | 'public_alarm' | 'public_owner_phone' | 'public_manager_phone') {
+  async function handleToggleField(prog: Programme, field: 'public_wifi' | 'public_alarm' | 'public_owner_phone' | 'public_manager_phone' | 'no_alarm') {
     const { error } = await supabase
       .from('programmes')
       .update({ [field]: !prog[field] })
@@ -635,15 +636,31 @@ function ProgrammesTab() {
             </button>
           </div>
 
-          {/* Visibility toggles */}
+          {/* Programme flags */}
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              <button
+                onClick={() => handleToggleField(prog, 'no_alarm')}
+                style={{
+                  ...btnGhost, fontSize: 11, padding: '5px 12px',
+                  color:       prog.no_alarm ? A.positive : A.faint,
+                  borderColor: prog.no_alarm ? `${A.positive}50` : A.border,
+                }}
+              >
+                {prog.no_alarm ? '✓' : '—'} No alarm stay
+              </button>
+            </div>
+          </div>
+
+          {/* Visibility toggles */}
+          <div style={{ marginTop: 4, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>
                 Public visibility
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {([
                   { field: 'public_wifi'          as const, label: 'WiFi' },
-                  { field: 'public_alarm'         as const, label: 'Alarm' },
+                  { field: 'public_alarm'         as const, label: 'Alarm code' },
                   { field: 'public_owner_phone'   as const, label: 'Host phone' },
                   { field: 'public_manager_phone' as const, label: 'Manager phone' },
                 ] as const).map(({ field, label }) => (
@@ -663,8 +680,223 @@ function ProgrammesTab() {
           </div>
 
           <GuestLinker programmeId={prog.id} />
+          <ProgrammeSectionOverrides programmeId={prog.id} propertyId={prog.property_id ?? ''} />
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Programme Section Overrides ───────────────────────────────────────────────
+
+type SectionOption = { id: string; title: string; icon: string }
+type OverrideRow   = { id: string; section_id: string; content: ContentBlock[] }
+
+function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: string; propertyId: string }) {
+  const [open, setOpen]         = useState(false)
+  const [sections, setSections] = useState<SectionOption[]>([])
+  const [overrides, setOverrides] = useState<OverrideRow[]>([])
+  const [editing, setEditing]   = useState<OverrideRow | null>(null)
+  const [editContent, setEditContent] = useState<ContentBlock[]>([])
+  const [saving, setSaving]     = useState(false)
+  const { toast, showToast }    = useToast()
+
+  async function load() {
+    const [secRes, ovRes] = await Promise.all([
+      supabase.from('property_sections').select('id, title, icon').eq('property_id', propertyId).eq('variant', 'default').order('sort_order'),
+      supabase.from('programme_sections').select('id, section_id, content').eq('programme_id', programmeId),
+    ])
+    setSections((secRes.data ?? []) as SectionOption[])
+    setOverrides((ovRes.data ?? []) as OverrideRow[])
+  }
+
+  function handleOpen() {
+    if (!open) load()
+    setOpen(o => !o)
+  }
+
+  function startEdit(section: SectionOption) {
+    const existing = overrides.find(o => o.section_id === section.id)
+    if (existing) {
+      setEditing(existing)
+      setEditContent(JSON.parse(JSON.stringify(existing.content)))
+    } else {
+      setEditing({ id: '', section_id: section.id, content: [] })
+      setEditContent([])
+    }
+  }
+
+  function cancelEdit() {
+    setEditing(null)
+    setEditContent([])
+  }
+
+  async function handleSave() {
+    if (!editing) return
+    setSaving(true)
+    const existing = overrides.find(o => o.section_id === editing.section_id)
+    if (existing) {
+      const { error } = await supabase.from('programme_sections').update({ content: editContent }).eq('id', existing.id)
+      if (error) { showToast('Failed to save override.', 'error'); setSaving(false); return }
+    } else {
+      const { error } = await supabase.from('programme_sections').insert({ programme_id: programmeId, section_id: editing.section_id, content: editContent })
+      if (error) { showToast('Failed to save override.', 'error'); setSaving(false); return }
+    }
+    showToast('Section override saved.', 'success')
+    setSaving(false)
+    cancelEdit()
+    load()
+  }
+
+  async function handleDelete(sectionId: string) {
+    const existing = overrides.find(o => o.section_id === sectionId)
+    if (!existing) return
+    await supabase.from('programme_sections').delete().eq('id', existing.id)
+    showToast('Override removed — using property default.', 'success')
+    load()
+  }
+
+  function updateBlock(idx: number, updated: ContentBlock) {
+    setEditContent(prev => prev.map((b, i) => i === idx ? updated : b))
+  }
+
+  function deleteBlock(idx: number) {
+    setEditContent(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function moveBlock(idx: number, dir: 'up' | 'down') {
+    setEditContent(prev => {
+      const next = [...prev]
+      const swap = dir === 'up' ? idx - 1 : idx + 1
+      ;[next[idx], next[swap]] = [next[swap], next[idx]]
+      return next
+    })
+  }
+
+  function addBlock(type: ContentBlock['type']) {
+    const blank: ContentBlock =
+      type === 'list' ? { type: 'list', items: [''] } :
+      type === 'wifi' ? { type: 'wifi', network: '', password: '' } :
+      { type, text: '' } as ContentBlock
+    setEditContent(prev => [...prev, blank])
+  }
+
+  return (
+    <div style={{ marginTop: 12, borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
+      {toast && <Toast message={toast.message} type={toast.type} />}
+      <button
+        onClick={handleOpen}
+        style={{ ...btnGhost, fontSize: 11, padding: '5px 14px', color: A.muted }}
+      >
+        {open ? '▲' : '▼'} Guest-specific section overrides
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sections.map(section => {
+            const hasOverride = overrides.some(o => o.section_id === section.id)
+            return (
+              <div key={section.id} style={{
+                background: A.bg, border: `1px solid ${hasOverride ? A.borderGold : A.border}`,
+                borderRadius: 10, padding: '10px 14px',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ fontSize: 15 }}>{section.icon}</span>
+                <span style={{ flex: 1, fontSize: 13, color: A.text, fontFamily: A.font }}>{section.title}</span>
+                {hasOverride && (
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>
+                    Override active
+                  </span>
+                )}
+                <button onClick={() => startEdit(section)} style={{ ...btnGhost, fontSize: 11, padding: '4px 12px' }}>
+                  {hasOverride ? 'Edit' : '+ Override'}
+                </button>
+                {hasOverride && (
+                  <button onClick={() => handleDelete(section.id)} style={{ ...btnDanger, fontSize: 11, padding: '4px 10px' }}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            )
+          })}
+
+          {editing && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000,
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+              padding: '40px 20px', overflowY: 'auto',
+            }}>
+              <div style={{
+                background: A.bgCard, border: `1px solid ${A.borderGold}`, borderRadius: 20,
+                padding: 28, width: '100%', maxWidth: 680,
+                display: 'flex', flexDirection: 'column', gap: 20,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Guest Override</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>
+                      {sections.find(s => s.id === editing.section_id)?.icon} {sections.find(s => s.id === editing.section_id)?.title}
+                    </div>
+                    <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
+                      This content replaces the property default for this guest only.
+                    </div>
+                  </div>
+                  <button onClick={cancelEdit} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {editContent.map((block, idx) => (
+                    <div key={idx} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 12, padding: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, flex: 1 }}>{block.type}</span>
+                        <button onClick={() => moveBlock(idx, 'up')} disabled={idx === 0} style={{ background: 'none', border: 'none', color: idx === 0 ? A.faint : A.muted, cursor: idx === 0 ? 'default' : 'pointer', fontSize: 13, padding: '2px 6px' }}>↑</button>
+                        <button onClick={() => moveBlock(idx, 'down')} disabled={idx === editContent.length - 1} style={{ background: 'none', border: 'none', color: idx === editContent.length - 1 ? A.faint : A.muted, cursor: idx === editContent.length - 1 ? 'default' : 'pointer', fontSize: 13, padding: '2px 6px' }}>↓</button>
+                        <button onClick={() => deleteBlock(idx)} style={{ background: 'none', border: 'none', color: A.danger, cursor: 'pointer', fontSize: 13, padding: '2px 6px' }}>✕</button>
+                      </div>
+                      {(block.type === 'paragraph' || block.type === 'heading' || block.type === 'note' || block.type === 'warning') && (
+                        <textarea style={{ ...textareaStyle, minHeight: block.type === 'heading' ? 44 : 80, fontSize: 13 }} value={block.text} onChange={e => updateBlock(idx, { ...block, text: e.target.value })} />
+                      )}
+                      {block.type === 'list' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {block.items.map((item, ii) => (
+                            <div key={ii} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <input style={{ ...inputStyle, flex: 1, fontSize: 13 }} value={item} onChange={e => { const items = [...block.items]; items[ii] = e.target.value; updateBlock(idx, { ...block, items }) }} />
+                              <button onClick={() => { const items = block.items.filter((_, i) => i !== ii); updateBlock(idx, { ...block, items }) }} style={{ background: 'none', border: 'none', color: A.danger, cursor: 'pointer', fontSize: 16 }}>✕</button>
+                            </div>
+                          ))}
+                          <button onClick={() => updateBlock(idx, { ...block, items: [...block.items, ''] })} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', alignSelf: 'flex-start' }}>+ Add item</button>
+                        </div>
+                      )}
+                      {block.type === 'wifi' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <input style={{ ...inputStyle, fontSize: 13 }} value={block.network} onChange={e => updateBlock(idx, { ...block, network: e.target.value })} placeholder='Network name' />
+                          <input style={{ ...inputStyle, fontSize: 13 }} value={block.password} onChange={e => updateBlock(idx, { ...block, password: e.target.value })} placeholder='Password' />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Add block</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {(['paragraph', 'heading', 'note', 'warning', 'list', 'wifi'] as ContentBlock['type'][]).map(type => (
+                      <button key={type} onClick={() => addBlock(type)} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px' }}>+ {type}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: `1px solid ${A.border}` }}>
+                  <button onClick={handleSave} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>
+                    {saving ? 'Saving…' : 'Save Override'}
+                  </button>
+                  <button onClick={cancelEdit} style={btnGhost}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

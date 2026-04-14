@@ -40,36 +40,6 @@ function GatedValue() {
   )
 }
 
-// ── Alarm content — shown when alarm is public but code not yet in DB ──────────
-
-const ALARM_GATED: ManualSection['content'] = [
-  {
-    type: 'paragraph',
-    text: 'Alarm code details are available — please ask your host.',
-  },
-]
-
-// ── Alternate alarm content — shown when no alarm code is provided ─────────────
-
-const ALARM_NO_CODE: ManualSection['content'] = [
-  {
-    type: 'paragraph',
-    text: 'Alarm usage won\'t be necessary for this stay.',
-  },
-  {
-    type: 'warning',
-    text: 'Please do not touch the keypad or the alarm box in the living room as it may trigger a response from the local authorities or rescue services.',
-  },
-  {
-    type: 'note',
-    text: 'The camera is not currently activated for your privacy.',
-  },
-  {
-    type: 'note',
-    text: 'The alarm itself requires a 4-digit pin to activate and deactivate. However, with use of the deadbolts on the door coupled with the entry door down below, it\'s highly unlikely anyone would be able to force-entry.',
-  },
-]
-
 // ── Category config ───────────────────────────────────────────────────────────
 
 const CATEGORIES: { id: ListingCategory; label: string; icon: string }[] = [
@@ -198,16 +168,21 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
   return null
 }
 
-function HouseManual({ sections, alarmCodeProvided, isPublic, publicWifi, publicAlarm }: { sections: ManualSection[]; alarmCodeProvided: boolean; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean }) {
+function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean }) {
   const [open, setOpen] = useState<string | null>(null)
 
-  // Override alarm section content:
-  // - If no code provided: show no-code message
-  // - If public and publicAlarm is false: show gated message
+  // Alarm section logic:
+  // - isPublic && !publicAlarm → prepend gated note to default content
+  // - otherwise → show content as-is (no_alarm variant already selected in ProgrammeRoute)
   const resolvedSections = sections.map(section => {
-    if (section.title === 'Alarm') {
-      if (!alarmCodeProvided) return { ...section, content: ALARM_NO_CODE }
-      if (isPublic && !publicAlarm) return { ...section, content: ALARM_GATED }
+    if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
+      return {
+        ...section,
+        content: [
+          { type: 'note' as const, text: 'Alarm code details are available — please ask your host.' },
+          ...section.content,
+        ],
+      }
     }
     return section
   })
@@ -440,18 +415,19 @@ function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPh
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export type TripPageProps = {
-  booking:            Booking
-  property:           Property
-  manual:             ManualSection[]
-  listings:           Listing[]
-  isPublic?:          boolean
-  publicWifi?:        boolean
-  publicAlarm?:       boolean
-  publicOwnerPhone?:  boolean
+  booking:             Booking
+  property:            Property
+  manual:              ManualSection[]
+  listings:            Listing[]
+  isPublic?:           boolean
+  publicWifi?:         boolean
+  publicAlarm?:        boolean
+  publicOwnerPhone?:   boolean
   publicManagerPhone?: boolean
+  noAlarm?:            boolean
 }
 
-export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false }: TripPageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false }: TripPageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {
@@ -471,7 +447,7 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} alarmCodeProvided={booking.alarmCodeProvided ?? false} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} />
+      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} />
       <ListingsSection listings={listings} />
       <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
     </>

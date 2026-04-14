@@ -49,6 +49,7 @@ type ProgrammeRow = {
   public_alarm:         boolean
   public_owner_phone:   boolean
   public_manager_phone: boolean
+  no_alarm:             boolean
   active_listing_ids:   string[] | null
   alarm_code_provided:  boolean
   properties: {
@@ -74,7 +75,14 @@ type SectionRow = {
   title:      string
   icon:       string
   sort_order: number
+  variant:    string
   content:    ManualSection['content']
+}
+
+type ProgrammeSectionRow = {
+  id:           string
+  section_id:   string
+  content:      ManualSection['content']
 }
 
 type ListingRow = {
@@ -171,13 +179,39 @@ function mapProperty(row: ProgrammeRow['properties']): Property {
   }
 }
 
-function mapSections(rows: SectionRow[]): ManualSection[] {
-  return rows.map(row => ({
-    id:      row.id,
-    title:   row.title,
-    icon:    row.icon,
-    content: row.content,
-  }))
+function mapSections(
+  rows: SectionRow[],
+  variant: string,
+  overrides: ProgrammeSectionRow[],
+): ManualSection[] {
+  // Filter to the requested variant, fall back to default
+  const variantRows = rows.filter(r => r.variant === variant)
+  const defaultRows = rows.filter(r => r.variant === 'default')
+
+  // Build a set of section ids that have a variant-specific row
+  const variantIds = new Set(variantRows.map(r => r.id))
+
+  // For each default row, use the variant row if one exists for same title
+  const variantByTitle = new Map(variantRows.map(r => [r.title, r]))
+
+  const resolved = defaultRows.map(row => {
+    const v = variantByTitle.get(row.title)
+    if (v) return v
+    return row
+  })
+
+  // Apply programme-level overrides
+  const overrideBySection = new Map(overrides.map(o => [o.section_id, o]))
+
+  return resolved.map(row => {
+    const override = overrideBySection.get(row.id)
+    return {
+      id:      row.id,
+      title:   row.title,
+      icon:    row.icon,
+      content: override ? override.content : row.content,
+    }
+  })
 }
 
 function mapListings(rows: ListingRow[]): Listing[] {
@@ -294,6 +328,7 @@ type StayLoaded = {
   publicAlarm:        boolean
   publicOwnerPhone:   boolean
   publicManagerPhone: boolean
+  noAlarm:            boolean
 }
 
 type JourneyLoaded = {
@@ -350,6 +385,7 @@ export default function ProgrammeRoute() {
           public_alarm,
           public_owner_phone,
           public_manager_phone,
+          no_alarm,
           properties (
             id,
             slug,
@@ -450,16 +486,21 @@ export default function ProgrammeRoute() {
       if (row.programme_type === 'stay') {
         const propertyId = row.properties.id
 
-        const [sectResult, listResult] = await Promise.all([
-          supabase
+        const client = isPublic ? supabaseAnon : supabase
+        const [sectResult, listResult, overrideResult] = await Promise.all([
+          client
             .from('property_sections')
-            .select('id, title, icon, sort_order, content')
+            .select('id, title, icon, sort_order, variant, content')
             .eq('property_id', propertyId)
             .order('sort_order'),
-          supabase
+          client
             .from('property_listings')
             .select('id, name, category, genre, address, website, hours, note, favourite')
             .eq('property_id', propertyId),
+          client
+            .from('programme_sections')
+            .select('id, section_id, content')
+            .eq('programme_id', row.id),
         ])
 
         if (sectResult.error || listResult.error) {
@@ -468,7 +509,9 @@ export default function ProgrammeRoute() {
           return
         }
 
-        const manual   = mapSections((sectResult.data ?? []) as SectionRow[])
+        const variant  = row.no_alarm ? 'no_alarm' : 'default'
+        const overrides = (overrideResult.data ?? []) as ProgrammeSectionRow[]
+        const manual   = mapSections((sectResult.data ?? []) as SectionRow[], variant, overrides)
         let   listings = mapListings((listResult.data ?? []) as ListingRow[])
 
         if (booking.activeListingIds) {
@@ -480,6 +523,7 @@ export default function ProgrammeRoute() {
           publicAlarm:        row.public_alarm,
           publicOwnerPhone:   row.public_owner_phone,
           publicManagerPhone: row.public_manager_phone,
+          noAlarm:            row.no_alarm,
         })
         setLoading(false)
         return
@@ -622,6 +666,7 @@ export default function ProgrammeRoute() {
           publicAlarm={loaded.publicAlarm}
           publicOwnerPhone={loaded.publicOwnerPhone}
           publicManagerPhone={loaded.publicManagerPhone}
+          noAlarm={loaded.noAlarm}
         />
       </ProgrammeLayout>
     )
