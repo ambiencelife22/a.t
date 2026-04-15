@@ -209,7 +209,7 @@ export default function HeroSection() {
                 ...fadeUp(ready, 560),
               }}
             >
-              {chips.map(item => (
+              {/* {chips.map(item => (
                 <div
                   key={item}
                   style={{
@@ -223,7 +223,7 @@ export default function HeroSection() {
                 >
                   {item}
                 </div>
-              ))}
+              ))} */}
             </div>
           </div>
 
