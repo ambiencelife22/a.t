@@ -492,8 +492,8 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false }
         }}
       >
         <div>
-          <ImmerseEyebrow style={{ color: eyebrowColor }}>{eyebrow}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0, color: titleColor }}>{title}</ImmerseTitle>
+          <ImmerseEyebrow style={{ color: eyebrowColor }} shimmer={false}>{eyebrow}</ImmerseEyebrow>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0, color: titleColor }}>{title}</ImmerseTitle>
         </div>
         <ImmerseBody style={{ color: bodyColor }}>{body}</ImmerseBody>
       </div>
@@ -507,26 +507,33 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false }
         }}
       >
         {items.map((item, i) => (
-          <ContentCard key={item.id} item={item} index={i} />
+          <ContentCard key={item.id} item={item} index={i} inverted={dark} />
         ))}
       </div>
     </ImmerseSectionWrap>
   )
 }
 
-function ContentCard({ item, index = 0 }: { item: ImmerseContentCard; index?: number }) {
+function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseContentCard; index?: number; inverted?: boolean }) {
   const [hovered, setHovered] = useState(false)
+
+  const cardBg      = inverted ? C.bgAlt            : ID.panel2
+  const cardBorder  = inverted ? C.border            : ID.line
+  const nameColor   = inverted ? C.text              : ID.text
+  const mutedColor  = inverted ? C.muted             : ID.muted
+  const ruleColor   = inverted ? `${C.gold}88`       : `${ID.gold}55`
+  const dividerColor = inverted ? C.border            : ID.line
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        border:        `1px solid ${ID.line}`,
+        border:        `1px solid ${cardBorder}`,
         borderRadius:  24,
         overflow:      'hidden',
-        background:    ID.panel2,
-        boxShadow:     ID.shadow,
+        background:    cardBg,
+        boxShadow:     inverted ? '0 4px 24px rgba(0,0,0,0.10)' : ID.shadow,
         display:       'flex',
         animation:     `immerseFadeIn 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
         flexDirection: 'column',
@@ -549,14 +556,32 @@ function ContentCard({ item, index = 0 }: { item: ImmerseContentCard; index?: nu
         />
       </div>
       <div style={{ padding: 18 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: ID.gold, fontWeight: 700, marginBottom: 8 }}>
-          {item.kicker}
+        {/* Gold rule above kicker */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${ruleColor}, transparent)` }} />
+          <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: inverted ? C.gold : ID.gold, fontWeight: 700 }}>
+            {item.kicker}
+          </div>
+          <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, ${ruleColor}, transparent)` }} />
         </div>
-        <div style={{ fontSize: 28, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text, marginBottom: 8 }}>
+        <div style={{ fontSize: 26, lineHeight: 1.05, letterSpacing: '-0.01em', fontWeight: 400, fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif', color: nameColor, marginBottom: 8 }}>
           {item.name}
         </div>
-        <div style={{ color: ID.muted, fontSize: 13, marginBottom: 12 }}>{item.tagline}</div>
-        <div style={{ color: ID.muted, fontSize: 13, lineHeight: 1.7 }}>{item.body}</div>
+        <div style={{ color: mutedColor, fontSize: 13, fontStyle: 'italic', marginBottom: 12 }}>{item.tagline}</div>
+        <div style={{ color: mutedColor, fontSize: 13, lineHeight: 1.7, marginBottom: item.bullets?.length ? 12 : 0 }}>{item.body}</div>
+        {item.bullets && item.bullets.length > 0 && (
+          <>
+            <div style={{ height: 1, background: dividerColor, margin: '10px 0' }} />
+            <div style={{ display: 'grid', gap: 6 }}>
+              {item.bullets.map(b => (
+                <div key={b} style={{ color: mutedColor, fontSize: 12, lineHeight: 1.55, paddingLeft: 14, position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, top: 6, width: 4, height: 4, borderRadius: '50%', background: inverted ? C.gold : ID.gold, display: 'block' }} />
+                  {b}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

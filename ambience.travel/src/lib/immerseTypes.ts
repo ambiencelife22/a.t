@@ -35,6 +35,7 @@ export type ImmerseContentCard = {
   name:     string
   tagline:  string
   body:     string
+  bullets?: string[]
   imageSrc: string
   imageAlt: string
 }

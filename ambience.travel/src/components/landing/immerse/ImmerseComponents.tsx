@@ -118,14 +118,15 @@ export function ImmerseEyebrow({ children, style, shimmer = true }: { children: 
   )
 }
 
-export function ImmerseTitle({ children, style }: { children: string; style?: CSSProperties }) {
+export function ImmerseTitle({ children, style, serif = false }: { children: string; style?: CSSProperties; serif?: boolean }) {
   return (
     <h2
       style={{
         fontSize:      'clamp(32px,4vw,56px)',
-        lineHeight:    1.02,
-        letterSpacing: '-0.05em',
-        fontWeight:    800,
+        lineHeight:    serif ? 1.08 : 1.02,
+        letterSpacing: serif ? '-0.02em' : '-0.05em',
+        fontWeight:    serif ? 400 : 800,
+        fontFamily:    serif ? '"Cormorant Garamond", "Cormorant", "Times New Roman", serif' : undefined,
         margin:        '0 0 12px',
         color:         ID.text,
         ...style,

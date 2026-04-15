@@ -2,14 +2,14 @@
 // Route: /immerse/honeymoon/
 // Resolves to the yazeed-honeymoon data file. Composes all overview sections.
 // Does not own destination subpages.
-// Last updated: S10
+// Last updated: S11
 
-import ImmerseLayout             from '../../layouts/ImmerseLayout'
-import ImmerseHero               from '../immerse/ImmerseHero'
-import { ImmerseRouteStrip }     from '../immerse/ImmerseJourneyComponents'
+import ImmerseLayout              from '../../layouts/ImmerseLayout'
+import ImmerseHero                from '../immerse/ImmerseHero'
+import { ImmerseRouteStrip }      from '../immerse/ImmerseJourneyComponents'
 import { ImmerseDestinationRows } from '../immerse/ImmerseJourneyComponents'
-import { ImmerseJourneyPricing } from '../immerse/ImmerseJourneyComponents'
-import { yazeedHoneymoon }       from '../../../data/immerse/yazeed-honeymoon'
+import { ImmerseJourneyPricing }  from '../immerse/ImmerseJourneyComponents'
+import { yazeedHoneymoon }        from '../../../data/immerse/yazeed-honeymoon'
 
 export default function HoneymoonOverviewPage() {
   const data = yazeedHoneymoon
@@ -17,13 +17,14 @@ export default function HoneymoonOverviewPage() {
   return (
     <ImmerseLayout>
       <ImmerseHero
-        eyebrow={data.eyebrow}
-        title={data.title}
+        guestName='Yazeed'
+        titlePrefix='A Honeymoon'
+        title='Journey'
+        dateLabel='January 2027'
         subtitle={data.subtitle}
         pills={data.heroPills}
         heroImageSrc={data.heroImageSrc}
         heroImageAlt={data.heroImageAlt}
-
         primaryHref='#destinations'
         primaryLabel='View destinations'
         secondaryHref='#pricing'

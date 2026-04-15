@@ -17,15 +17,18 @@ export default function HoneymoonNewYorkPage() {
   return (
     <ImmerseLayout>
       <ImmerseHero
-        eyebrow={data.eyebrow}
+        guestName='Yazeed'
+        titlePrefix='Honeymoon in'
         title={data.title}
+        dateLabel='January 2027'
+        nightsLabel='5-6 Nights'
         subtitle={data.subtitle}
-        pills={data.heroPills}
         heroImageSrc={data.heroImageSrc}
         heroImageAlt={data.heroImageAlt}
-
         primaryHref='#hotel-options'
         primaryLabel='Hotel options'
+        diningHref='#dining'
+        diningLabel='Dining + activities'
         secondaryHref='#pricing'
         secondaryLabel='Pricing'
       />
