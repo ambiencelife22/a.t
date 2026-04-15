@@ -138,7 +138,7 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
     },
   ],
 
-  diningEyebrow: 'Sample dining',
+  diningEyebrow: 'Dining',
   diningTitle:   'A Curated Table.',
   diningBody:    'A few curated dining anchors help the destination page feel richer without becoming too dense.',
 
@@ -172,7 +172,7 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
     },
   ],
 
-  activitiesEyebrow: 'Sample activities',
+  activitiesEyebrow: 'Activities',
   activitiesTitle:   'A Selected Program.',
   activitiesBody:    'A few high-quality anchors that help the client picture the stay quickly without overloading the page.',
 
