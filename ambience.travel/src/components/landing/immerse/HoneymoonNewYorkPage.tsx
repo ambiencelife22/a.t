@@ -1,7 +1,7 @@
 // HoneymoonNewYorkPage.tsx — NYC destination subpage for Yazeed honeymoon proposal
 // Route: /immerse/honeymoon/new-york
 // Composes all NYC-specific sections. Does not own other destination subpages.
-// Last updated: S10
+// Last updated: S11
 
 import ImmerseLayout                  from '../../layouts/ImmerseLayout'
 import ImmerseHero                    from '../immerse/ImmerseHero'
@@ -38,6 +38,7 @@ export default function HoneymoonNewYorkPage() {
         items={data.dining}
       />
       <ImmerseContentGrid
+        dark
         eyebrow={data.activitiesEyebrow}
         title={data.activitiesTitle}
         body={data.activitiesBody}

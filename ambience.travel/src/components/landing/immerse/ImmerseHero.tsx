@@ -1,8 +1,9 @@
 // ImmerseHero.tsx — hero section for all /immerse/ proposal pages
 // Owns the full-bleed glass-card hero. Used by both journey overview and destination subpages.
 // Hero image is the first element — no brand strip above it.
-// Last updated: S10
+// Last updated: S11
 
+import { useEffect, useRef, useState } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmersePill } from './ImmerseComponents'
 
 type Props = {
@@ -31,29 +32,49 @@ export default function ImmerseHero({
 }: Props) {
   const { ref, visible } = useImmerseVisible(0.05)
   const isMobile         = useImmerseMobile()
+  const sectionRef       = useRef<HTMLElement>(null)
+  const [cardOpacity, setCardOpacity] = useState(1)
 
-  const shellBg = [
+  useEffect(() => {
+    function onScroll() {
+      const el = sectionRef.current
+      if (!el) return
+      const { top, height } = el.getBoundingClientRect()
+      // Start fading when card is 20% scrolled, fully faded at 70%
+      const progress = Math.max(0, Math.min(1, (-top) / (height * 0.7)))
+      setCardOpacity(1 - progress * 0.82)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const shellLayers = [
     `linear-gradient(90deg, rgba(6,6,6,0.80) 0%, rgba(6,6,6,0.66) 36%, rgba(6,6,6,0.34) 62%, rgba(6,6,6,0.18) 100%)`,
     `linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.44) 100%)`,
-    `url('${heroImageSrc}') center/cover no-repeat`,
-  ].join(', ')
+    `url('${heroImageSrc}')`,
+  ]
 
   return (
     <section
-      ref={ref as React.RefObject<HTMLElement>}
+      ref={sectionRef}
       style={{ borderTop: 'none', padding: 0, margin: 0 }}
     >
       <div
         style={{
-          position:     'relative',
-          minHeight:    isMobile ? 620 : 740,
-          background:   shellBg,
-          display:      'flex',
-          alignItems:   'center',
+          position:               'relative',
+          minHeight:              isMobile ? 620 : 740,
+          backgroundImage:        shellLayers.join(', '),
+          backgroundAttachment:   isMobile ? 'scroll' : 'fixed, fixed, fixed',
+          backgroundSize:         'auto, auto, cover',
+          backgroundPosition:     'center, center, center',
+          backgroundRepeat:       'no-repeat, no-repeat, no-repeat',
+          display:                'flex',
+          alignItems:             'center',
         }}
       >
         <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto', padding: '44px 0' }}>
           <div
+            ref={ref as React.RefObject<HTMLDivElement>}
             style={{
               width:          `min(760px, 100%)`,
               padding:        isMobile ? 22 : 38,
@@ -61,6 +82,8 @@ export default function ImmerseHero({
               borderRadius:   30,
               background:     'linear-gradient(180deg, rgba(12,12,12,0.38), rgba(12,12,12,0.18))',
               backdropFilter: 'blur(8px)',
+              opacity:        cardOpacity,
+              transition:     'opacity 0.05s linear',
             }}
           >
             <div
@@ -85,10 +108,23 @@ export default function ImmerseHero({
                 fontWeight:    800,
                 marginBottom:  16,
                 color:         ID.text,
-                ...immerseFadeUp(visible, 60),
               }}
             >
-              {title}
+              {title.split(' ').map((word, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display:        'inline-block',
+                    marginRight:    '0.22em',
+                    opacity:        visible ? 1 : 0,
+                    transform:      visible ? 'translateY(0)' : 'translateY(14px)',
+                    transition:     `opacity 0.7s ease ${80 + i * 55}ms, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${80 + i * 55}ms`,
+                    willChange:     'opacity, transform',
+                  }}
+                >
+                  {word}
+                </span>
+              ))}
             </div>
 
             <p

@@ -1,26 +1,11 @@
 // ImmerseComponents.tsx — shared primitives for all /immerse/ proposal components
 // Owns: ID palette, useImmerseMobile, immerseFadeUp, useImmerseVisible, shared UI atoms
 // Does not own page-level components or data.
-// Last updated: S10
+// Last updated: S11
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-
-// ID — Immerse Dark palette. Fixed. Matches HTML preview exactly.
-export const ID = {
-  bg:         '#060606',
-  panel:      '#101010',
-  panel2:     '#151515',
-  line:       '#272727',
-  lineSoft:   '#343434',
-  text:       '#f5f2ec',
-  muted:      '#c9c3b9',
-  dim:        '#938c81',
-  gold:       '#d8b56a',
-  shadow:     '0 24px 64px rgba(0,0,0,0.36)',
-  radiusXl:   30,
-  radiusLg:   22,
-  radiusMd:   16,
-} as const
+import { ID, IMMERSE } from '../../../lib/landingColors'
+export { ID } from '../../../lib/landingColors'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -79,7 +64,7 @@ export function ImmerseSectionWrap({ children, id, style, innerStyle, refProp }:
       ref={refProp}
       style={{
         padding:   '58px 0',
-        borderTop: `1px solid rgba(255,255,255,0.04)`,
+        borderTop: `1px solid ${IMMERSE.borderFaint}`,
         ...style,
       }}
     >
@@ -98,21 +83,38 @@ export function ImmerseSectionWrap({ children, id, style, innerStyle, refProp }:
 
 // ─── Typography atoms ─────────────────────────────────────────────────────────
 
-export function ImmerseEyebrow({ children, style }: { children: string; style?: CSSProperties }) {
+export function ImmerseEyebrow({ children, style, shimmer = true }: { children: string; style?: CSSProperties; shimmer?: boolean }) {
   return (
-    <div
-      style={{
-        color:         ID.gold,
-        fontSize:      11,
-        letterSpacing: '0.22em',
-        textTransform: 'uppercase',
-        fontWeight:    700,
-        marginBottom:  14,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
+    <>
+      {shimmer && (
+        <style>{`
+          @keyframes immerseShimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position:  200% center; }
+          }
+        `}</style>
+      )}
+      <div
+        style={{
+          color:              shimmer ? 'transparent' : ID.gold,
+          fontSize:           11,
+          letterSpacing:      '0.22em',
+          textTransform:      'uppercase',
+          fontWeight:         700,
+          marginBottom:       14,
+          backgroundImage:    shimmer
+            ? `linear-gradient(90deg, ${ID.gold} 0%, ${ID.gold} 35%, ${IMMERSE.shimmer} 50%, ${ID.gold} 65%, ${ID.gold} 100%)`
+            : undefined,
+          backgroundSize:     shimmer ? '200% auto' : undefined,
+          backgroundClip:     shimmer ? 'text' : undefined,
+          WebkitBackgroundClip: shimmer ? 'text' : undefined,
+          animation:          shimmer ? 'immerseShimmer 2.2s ease 0.3s 1 both' : undefined,
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+    </>
   )
 }
 
@@ -155,9 +157,9 @@ export function ImmerseBody({ children, style }: { children: string; style?: CSS
 type PillProps = { children: string; isGold?: boolean }
 
 export function ImmersePill({ children, isGold }: PillProps) {
-  const borderColor = isGold ? 'rgba(216,181,106,0.34)' : ID.lineSoft
-  const background  = isGold ? 'rgba(216,181,106,0.08)' : 'rgba(255,255,255,0.02)'
-  const color       = isGold ? ID.gold : ID.muted
+  const borderColor = isGold ? IMMERSE.goldBorder : ID.lineSoft
+  const background  = isGold ? IMMERSE.goldTint   : IMMERSE.pillBg
+  const color       = isGold ? ID.gold            : ID.muted
 
   return (
     <div
@@ -190,7 +192,7 @@ export function ImmersePanel({ children, style }: { children: ReactNode; style?:
       style={{
         border:       `1px solid ${ID.line}`,
         borderRadius: ID.radiusXl,
-        background:   'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01))',
+        background:   IMMERSE.panelGradient,
         boxShadow:    ID.shadow,
         ...style,
       }}
@@ -208,9 +210,9 @@ export function ImmerseStayBox({ label }: { label: string }) {
       style={{
         minWidth:     160,
         flexShrink:   0,
-        border:       '1px solid rgba(216,181,106,0.28)',
+        border:       `1px solid ${IMMERSE.goldBorderSoft}`,
         borderRadius: 18,
-        background:   'rgba(216,181,106,0.08)',
+        background:   IMMERSE.goldTint,
         padding:      '12px 14px',
         textAlign:    'center',
       }}

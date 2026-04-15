@@ -1,28 +1,32 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for journey overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S10
+// Last updated: S11
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
+export type ImmerseRoomOption = {
+  roomCategory: string
+  roomBasis:    string
+  roomBenefits: string[]
+  roomImageSrc: string
+  roomImageAlt: string
+}
+
 export type ImmerseHotelOption = {
-  id:             string
-  rank:           'primary' | 'secondary'
-  rankLabel:      string
-  name:           string
-  tagline:        string
-  description:    string
-  bullets:        string[]
-  nightlyRange:   string
-  nightlyNote:    string
-  imageSrc:       string
-  imageAlt:       string
-  roomCategory:   string
-  roomBasis:      string
-  roomBenefits:   string[]
-  roomImageSrc:   string
-  roomImageAlt:   string
-  stayLabel:      string
+  id:           string
+  rank:         'primary' | 'secondary'
+  rankLabel:    string
+  name:         string
+  tagline:      string
+  description:  string
+  bullets:      string[]
+  nightlyRange: string
+  nightlyNote:  string
+  imageSrc:     string
+  imageAlt:     string
+  stayLabel:    string
+  rooms:        ImmerseRoomOption[]
 }
 
 export type ImmerseContentCard = {
@@ -36,23 +40,23 @@ export type ImmerseContentCard = {
 }
 
 export type ImmersePricingRow = {
-  id:             string
-  item:           string
-  basis:          string
-  stay:           string
+  id:              string
+  item:            string
+  basis:           string
+  stay:            string
   indicativeRange: string
-  isTotal?:       boolean
+  isTotal?:        boolean
 }
 
 // ─── Journey overview (master page) ──────────────────────────────────────────
 
 export type ImmerseRouteStop = {
-  id:         string
-  title:      string
-  stayLabel:  string
-  note:       string
-  imageSrc:   string
-  imageAlt:   string
+  id:        string
+  title:     string
+  stayLabel: string
+  note:      string
+  imageSrc:  string
+  imageAlt:  string
 }
 
 export type ImmerseDestinationRow = {
@@ -68,18 +72,18 @@ export type ImmerseDestinationRow = {
 }
 
 export type ImmerseJourneyPricingRow = {
-  id:              string
-  destination:     string
+  id:               string
+  destination:      string
   recommendedBasis: string
-  stayLabel:       string
-  indicativeRange: string
+  stayLabel:        string
+  indicativeRange:  string
 }
 
 export type ImmerseJourneyData = {
   // meta
-  journeyId:    string
-  clientName:   string
-  statusLabel:  string
+  journeyId:   string
+  clientName:  string
+  statusLabel: string
   // hero
   eyebrow:      string
   title:        string
@@ -95,12 +99,12 @@ export type ImmerseJourneyData = {
   destinationHeading: string
   destinationRows:    ImmerseDestinationRow[]
   // pricing
-  pricingHeading:     string
-  pricingTitle:       string
-  pricingBody:        string
-  pricingRows:        ImmerseJourneyPricingRow[]
-  pricingTotalLabel:  string
-  pricingTotalValue:  string
+  pricingHeading:      string
+  pricingTitle:        string
+  pricingBody:         string
+  pricingRows:         ImmerseJourneyPricingRow[]
+  pricingTotalLabel:   string
+  pricingTotalValue:   string
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        string[]
@@ -113,16 +117,16 @@ export type ImmerseDestinationData = {
   destinationId: string
   journeyId:     string
   // hero
-  eyebrow:       string
-  title:         string
-  subtitle:      string
-  heroImageSrc:  string
-  heroImageAlt:  string
-  heroPills:     string[]
+  eyebrow:      string
+  title:        string
+  subtitle:     string
+  heroImageSrc: string
+  heroImageAlt: string
+  heroPills:    string[]
   // intro
-  introEyebrow:  string
-  introTitle:    string
-  introBody:     string
+  introEyebrow: string
+  introTitle:   string
+  introBody:    string
   // hotels
   hotelsEyebrow: string
   hotelsTitle:   string
@@ -139,10 +143,10 @@ export type ImmerseDestinationData = {
   activitiesBody:    string
   activities:        ImmerseContentCard[]
   // pricing
-  pricingEyebrow:    string
-  pricingTitle:      string
-  pricingBody:       string
-  pricingRows:       ImmersePricingRow[]
+  pricingEyebrow:      string
+  pricingTitle:        string
+  pricingBody:         string
+  pricingRows:         ImmersePricingRow[]
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        string[]

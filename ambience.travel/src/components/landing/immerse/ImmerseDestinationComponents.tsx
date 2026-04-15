@@ -1,12 +1,12 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S10
+// Last updated: S11
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel, ImmerseStayBox } from './ImmerseComponents'
 import { C } from '../../../lib/landingTypes'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseJourneyComponents'
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseContentCard, ImmersePricingRow } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRoomOption, ImmerseContentCard, ImmersePricingRow } from '../../../lib/immerseTypes'
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
@@ -39,71 +39,304 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
 // ─── Hotel options ────────────────────────────────────────────────────────────
 
 export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) {
-  const { ref, visible } = useImmerseVisible()
-  const isMobile         = useImmerseMobile()
+  const { ref, visible }                     = useImmerseVisible()
+  const { ref: ref2, visible: visible2 }     = useImmerseVisible()
+  const isMobile                             = useImmerseMobile()
+  const [activeHotel, setActiveHotel]        = useState(0)
+  const [activeRoom,  setActiveRoom]         = useState(0)
+  const [dragStart,   setDragStart]          = useState<number | null>(null)
+  const carouselRef                          = useRef<HTMLDivElement>(null)
+  const hotelCarouselRef                     = useRef<HTMLDivElement>(null)
+
+  const hotel      = data.hotels[activeHotel]
+  const rooms      = hotel.rooms
+  const totalRooms = rooms.length
+  const totalHotels = data.hotels.length
+
+  function goHotel(idx: number) {
+    const clamped = Math.max(0, Math.min(totalHotels - 1, idx))
+    setActiveHotel(clamped)
+    setActiveRoom(0)
+  }
+
+  function goRoom(idx: number) {
+    const clamped = Math.max(0, Math.min(totalRooms - 1, idx))
+    setActiveRoom(clamped)
+  }
+
+  // Room carousel — non-passive touch
+  useEffect(() => {
+    const el = carouselRef.current
+    if (!el) return
+    let startX = 0
+    function onTouchStart(e: TouchEvent) { startX = e.touches[0].clientX }
+    function onTouchMove(e: TouchEvent)  { if (Math.abs(startX - e.touches[0].clientX) > 10) e.preventDefault() }
+    function onTouchEnd(e: TouchEvent)   { const d = startX - e.changedTouches[0].clientX; if (d > 40) goRoom(activeRoom + 1); if (d < -40) goRoom(activeRoom - 1) }
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove',  onTouchMove,  { passive: false })
+    el.addEventListener('touchend',   onTouchEnd,   { passive: true })
+    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); el.removeEventListener('touchend', onTouchEnd) }
+  }, [activeRoom, totalRooms, isMobile])
+
+  // Hotel carousel (mobile) — non-passive touch
+  useEffect(() => {
+    const el = hotelCarouselRef.current
+    if (!el) return
+    let startX = 0
+    function onTouchStart(e: TouchEvent) { startX = e.touches[0].clientX }
+    function onTouchMove(e: TouchEvent)  { if (Math.abs(startX - e.touches[0].clientX) > 10) e.preventDefault() }
+    function onTouchEnd(e: TouchEvent)   { const d = startX - e.changedTouches[0].clientX; if (d > 40) goHotel(activeHotel + 1); if (d < -40) goHotel(activeHotel - 1) }
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove',  onTouchMove,  { passive: false })
+    el.addEventListener('touchend',   onTouchEnd,   { passive: true })
+    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); el.removeEventListener('touchend', onTouchEnd) }
+  }, [activeHotel, totalHotels, isMobile])
 
   return (
-    <ImmerseSectionWrap id='hotel-options' refProp={ref as React.RefObject<HTMLElement>}>
-      {/* Section heading */}
-      <div
-        style={{
-          display:             'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '0.8fr 1.2fr',
-          gap:                 18,
-          alignItems:          'end',
-          marginBottom:        18,
-          ...immerseFadeUp(visible, 0),
-        }}
-      >
-        <div>
-          <ImmerseEyebrow>{data.hotelsEyebrow}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0 }}>{data.hotelsTitle}</ImmerseTitle>
+    <>
+      <ImmerseSectionWrap id='hotel-options' refProp={ref as React.RefObject<HTMLElement>} style={{
+        borderRadius: '30px 30px 30px 30px',
+        background:   ID.bg,
+        position:     'relative',
+        zIndex:       2,
+        marginTop:    -24,
+        boxShadow:    '0 -12px 48px rgba(0,0,0,0.48), 0 12px 48px rgba(0,0,0,0.56), 0 2px 0 rgba(216,181,106,0.10)',
+      }}>
+        {/* Section heading */}
+        <div
+          style={{
+            display:             'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '0.8fr 1.2fr',
+            gap:                 18,
+            alignItems:          'end',
+            marginBottom:        18,
+            ...immerseFadeUp(visible, 0),
+          }}
+        >
+          <div>
+            <ImmerseEyebrow>{data.hotelsEyebrow}</ImmerseEyebrow>
+            <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0 }}>{data.hotelsTitle}</ImmerseTitle>
+          </div>
+          <ImmerseBody>{data.hotelsBody}</ImmerseBody>
         </div>
-        <ImmerseBody>{data.hotelsBody}</ImmerseBody>
-      </div>
 
-      {/* Option cards */}
-      <div
+        {/* Hotel option cards — desktop: 3-col grid. Mobile: swipe carousel */}
+        {isMobile ? (
+          <div style={{ ...immerseFadeUp(visible, 80) }}>
+            <div
+              ref={hotelCarouselRef}
+              style={{ position: 'relative', userSelect: 'none', touchAction: 'pan-y' }}
+              onMouseDown={e => setDragStart(e.clientX)}
+              onMouseUp={e => { if (dragStart !== null) { const d = dragStart - e.clientX; if (d > 40) goHotel(activeHotel + 1); if (d < -40) goHotel(activeHotel - 1); setDragStart(null) } }}
+              onMouseLeave={() => setDragStart(null)}
+            >
+              <HotelOptionCard
+                hotel={data.hotels[activeHotel]}
+                active={true}
+                onClick={() => {}}
+              />
+              {/* Touch capture overlay — intercepts horizontal swipe on mobile */}
+              <div ref={hotelCarouselRef} style={{ position: 'absolute', inset: 0, zIndex: 10 }} />
+            </div>
+            {/* Hotel dot indicators */}
+            {totalHotels > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
+                {data.hotels.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goHotel(i)}
+                    style={{
+                      width:        i === activeHotel ? 22 : 7,
+                      height:       7,
+                      borderRadius: 999,
+                      background:   i === activeHotel ? ID.gold : ID.lineSoft,
+                      border:       'none',
+                      cursor:       'pointer',
+                      padding:      0,
+                      transition:   'width 0.3s ease, background 0.3s ease',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            style={{
+              display:             'grid',
+              gridTemplateColumns: 'repeat(3,1fr)',
+              gap:                 14,
+              ...immerseFadeUp(visible, 80),
+            }}
+          >
+            {data.hotels.map((h, i) => (
+              <HotelOptionCard
+                key={h.id}
+                hotel={h}
+                active={i === activeHotel}
+                onClick={() => goHotel(i)}
+                index={i}
+              />
+            ))}
+          </div>
+        )}
+      </ImmerseSectionWrap>
+
+      {/* Room categories — full-width animated warm gradient band */}
+      <style>{`
+        @keyframes immerseRoomGlow {
+          0%   { background-position: 0% 0%,   100% 0%,   0% 100%; }
+          35%  { background-position: 55% 35%,  10% 90%,  90% 10%; }
+          50%  { background-position: 60% 40%,   0% 100%, 100%  0%; }
+          65%  { background-position: 58% 42%,   5% 95%,  95%  5%; }
+          100% { background-position: 100% 100%, 50% 50%,  0%  0%; }
+        }
+        @keyframes immerseFadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0);   }
+        }
+      `}</style>
+      <section
+        ref={ref2 as React.RefObject<HTMLElement>}
         style={{
-          display:             'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)',
-          gap:                 14,
-          marginBottom:        18,
-          ...immerseFadeUp(visible, 80),
+          padding:            '58px 0',
+          backgroundImage:    [
+            'linear-gradient(135deg, rgba(216,181,106,0.14) 0%, rgba(180,140,80,0.09) 40%, rgba(120,90,50,0.04) 70%, rgba(6,6,6,0) 100%)',
+            'linear-gradient(220deg, rgba(200,160,90,0.09) 0%, rgba(160,110,60,0.05) 40%, rgba(6,6,6,0) 65%)',
+            'linear-gradient(310deg, rgba(216,181,106,0.06) 0%, rgba(6,6,6,0) 50%)',
+          ].join(', '),
+          backgroundSize:     '200% 200%, 240% 240%, 180% 180%',
+          backgroundPosition: '0% 0%, 100% 0%, 0% 100%',
+          animation:          'immerseRoomGlow 24s ease-in-out infinite alternate',
+          borderTop:          '1px solid rgba(216,181,106,0.12)',
+          borderBottom:       '1px solid rgba(216,181,106,0.08)',
+          marginTop:          -36,
+          paddingTop:         94,
+          position:           'relative',
+          zIndex:             1,
         }}
       >
-        {data.hotels.map(hotel => (
-          <HotelOptionCard key={hotel.id} hotel={hotel} />
-        ))}
-      </div>
+        <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
+          <div style={{ ...immerseFadeUp(visible2, 0) }}>
 
-      {/* Room categories */}
-      <div style={{ display: 'grid', gap: 18, ...immerseFadeUp(visible, 160) }}>
-        {data.hotels.map(hotel => (
-          <RoomCategory key={hotel.id} hotel={hotel} />
-        ))}
-      </div>
-    </ImmerseSectionWrap>
+            {/* Room carousel */}
+            <div
+              ref={carouselRef}
+              style={{ position: 'relative', userSelect: 'none' }}
+              onMouseDown={e  => setDragStart(e.clientX)}
+              onMouseUp={e    => { if (dragStart !== null) { const d = dragStart - e.clientX; if (d > 40) goRoom(activeRoom + 1); if (d < -40) goRoom(activeRoom - 1); setDragStart(null) } }}
+              onMouseLeave={() => setDragStart(null)}
+            >
+              <RoomCategory
+                key={`${activeHotel}-${activeRoom}`}
+                room={rooms[activeRoom]}
+                hotel={hotel}
+                fadeIn
+              />
+
+              {/* Prev arrow */}
+              {activeRoom > 0 && (
+                <button
+                  onClick={() => goRoom(activeRoom - 1)}
+                  style={{
+                    position:       'absolute',
+                    left:           -20,
+                    top:            '50%',
+                    transform:      'translateY(-50%)',
+                    background:     'none',
+                    border:         'none',
+                    color:          ID.muted,
+                    fontSize:       22,
+                    cursor:         'pointer',
+                    opacity:        0.38,
+                    padding:        '8px 6px',
+                    lineHeight:     1,
+                    transition:     'opacity 0.2s ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.78')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.38')}
+                >
+                  ‹
+                </button>
+              )}
+
+              {/* Next arrow */}
+              {activeRoom < totalRooms - 1 && (
+                <button
+                  onClick={() => goRoom(activeRoom + 1)}
+                  style={{
+                    position:       'absolute',
+                    right:          -20,
+                    top:            '50%',
+                    transform:      'translateY(-50%)',
+                    background:     'none',
+                    border:         'none',
+                    color:          ID.muted,
+                    fontSize:       22,
+                    cursor:         'pointer',
+                    opacity:        0.38,
+                    padding:        '8px 6px',
+                    lineHeight:     1,
+                    transition:     'opacity 0.2s ease',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.78')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.38')}
+                >
+                  ›
+                </button>
+              )}
+            </div>
+
+            {/* Dot indicators */}
+            {totalRooms > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
+                {rooms.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goRoom(i)}
+                    style={{
+                      width:        i === activeRoom ? 22 : 7,
+                      height:       7,
+                      borderRadius: 999,
+                      background:   i === activeRoom ? ID.gold : ID.lineSoft,
+                      border:       'none',
+                      cursor:       'pointer',
+                      padding:      0,
+                      transition:   'width 0.3s ease, background 0.3s ease',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+          </div>
+        </div>
+      </section>
+    </>
   )
 }
 
-function HotelOptionCard({ hotel }: { hotel: ImmerseHotelOption }) {
+function HotelOptionCard({ hotel, active, onClick, index = 0 }: { hotel: ImmerseHotelOption; active: boolean; onClick: () => void; index?: number }) {
   const [hovered, setHovered] = useState(false)
 
   return (
     <div
+      onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        border:        `1px solid ${hovered ? 'rgba(216,181,106,0.40)' : ID.line}`,
+        border:        `1px solid ${active ? 'rgba(216,181,106,0.55)' : hovered ? 'rgba(216,181,106,0.28)' : ID.line}`,
         borderRadius:  24,
         overflow:      'hidden',
-        background:    ID.panel2,
-        boxShadow:     ID.shadow,
+        background:    active ? ID.panel : ID.panel2,
+        boxShadow:     active ? '0 8px 32px rgba(0,0,0,0.48)' : ID.shadow,
         display:       'flex',
         flexDirection: 'column',
-        transition:    'border-color 0.3s ease',
-        cursor:        'default',
+        transition:    'border-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease',
+        cursor:        active ? 'default' : 'pointer',
+        opacity:       active ? 1 : 0.58,
+        transform:     active ? 'scale(1)' : 'scale(0.97)',
+        animation:     `immerseFadeIn 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
       }}
     >
       <div style={{ height: 230, overflow: 'hidden' }}>
@@ -115,7 +348,7 @@ function HotelOptionCard({ hotel }: { hotel: ImmerseHotelOption }) {
             height:     '100%',
             objectFit:  'cover',
             display:    'block',
-            transform:  hovered ? 'scale(1.04)' : 'scale(1)',
+            transform:  hovered && !active ? 'scale(1.04)' : 'scale(1)',
             transition: 'transform 0.6s cubic-bezier(0.16,1,0.3,1)',
           }}
         />
@@ -153,7 +386,7 @@ function HotelOptionCard({ hotel }: { hotel: ImmerseHotelOption }) {
   )
 }
 
-function RoomCategory({ hotel }: { hotel: ImmerseHotelOption }) {
+function RoomCategory({ room, hotel, fadeIn = false }: { room: ImmerseRoomOption; hotel: ImmerseHotelOption; fadeIn?: boolean }) {
   const isMobile = useImmerseMobile()
 
   return (
@@ -163,6 +396,7 @@ function RoomCategory({ hotel }: { hotel: ImmerseHotelOption }) {
         gridTemplateColumns: isMobile ? '1fr' : '1.02fr 0.98fr',
         gap:                 18,
         alignItems:          'stretch',
+        animation:           fadeIn ? 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
       }}
     >
       <div
@@ -171,15 +405,19 @@ function RoomCategory({ hotel }: { hotel: ImmerseHotelOption }) {
           overflow:     'hidden',
           border:       `1px solid ${ID.line}`,
           borderRadius: ID.radiusXl,
-          boxShadow:    ID.shadow,
+          boxShadow:    '0 8px 32px rgba(0,0,0,0.48), 0 1px 0 rgba(216,181,106,0.08)',
         }}
       >
-        <img src={hotel.roomImageSrc} alt={hotel.roomImageAlt} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <img
+          src={room.roomImageSrc}
+          alt={room.roomImageAlt}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.4s ease' }}
+        />
       </div>
 
-      <ImmersePanel style={{ padding: isMobile ? 22 : 32, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 18 }}>
+      <ImmersePanel style={{ padding: isMobile ? 22 : 32, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 18, background: ID.panel, boxShadow: '0 8px 32px rgba(0,0,0,0.48), 0 1px 0 rgba(216,181,106,0.08)' }}>
         <div>
-          <ImmerseEyebrow>{hotel.roomCategory}</ImmerseEyebrow>
+          <ImmerseEyebrow>{room.roomCategory}</ImmerseEyebrow>
           <div
             style={{
               display:        'flex',
@@ -191,7 +429,7 @@ function RoomCategory({ hotel }: { hotel: ImmerseHotelOption }) {
           >
             <div>
               <div style={{ fontSize: isMobile ? 28 : 40, lineHeight: 0.98, letterSpacing: '-0.055em', fontWeight: 800, color: ID.text, marginBottom: 8 }}>
-                {hotel.roomBasis}
+                {room.roomBasis}
               </div>
               <ImmerseBody>{hotel.description}</ImmerseBody>
             </div>
@@ -200,7 +438,7 @@ function RoomCategory({ hotel }: { hotel: ImmerseHotelOption }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
-          {hotel.roomBenefits.map(b => (
+          {room.roomBenefits.map(b => (
             <div
               key={b}
               style={{
@@ -229,14 +467,20 @@ type ContentGridProps = {
   title:   string
   body:    string
   items:   ImmerseContentCard[]
+  dark?:   boolean
 }
 
-export function ImmerseContentGrid({ eyebrow, title, body, items }: ContentGridProps) {
+export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false }: ContentGridProps) {
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
+  const eyebrowColor = dark ? ID.gold   : C.faint
+  const titleColor   = dark ? ID.text   : C.text
+  const bodyColor    = dark ? ID.muted  : C.muted
+  const sectionBg    = dark ? {}        : { background: C.bgAlt }
+
   return (
-    <ImmerseSectionWrap refProp={ref as React.RefObject<HTMLElement>}>
+    <ImmerseSectionWrap refProp={ref as React.RefObject<HTMLElement>} style={sectionBg}>
       <div
         style={{
           display:             'grid',
@@ -248,10 +492,10 @@ export function ImmerseContentGrid({ eyebrow, title, body, items }: ContentGridP
         }}
       >
         <div>
-          <ImmerseEyebrow>{eyebrow}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0 }}>{title}</ImmerseTitle>
+          <ImmerseEyebrow style={{ color: eyebrowColor }}>{eyebrow}</ImmerseEyebrow>
+          <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0, color: titleColor }}>{title}</ImmerseTitle>
         </div>
-        <ImmerseBody>{body}</ImmerseBody>
+        <ImmerseBody style={{ color: bodyColor }}>{body}</ImmerseBody>
       </div>
 
       <div
@@ -262,15 +506,15 @@ export function ImmerseContentGrid({ eyebrow, title, body, items }: ContentGridP
           ...immerseFadeUp(visible, 80),
         }}
       >
-        {items.map(item => (
-          <ContentCard key={item.id} item={item} />
+        {items.map((item, i) => (
+          <ContentCard key={item.id} item={item} index={i} />
         ))}
       </div>
     </ImmerseSectionWrap>
   )
 }
 
-function ContentCard({ item }: { item: ImmerseContentCard }) {
+function ContentCard({ item, index = 0 }: { item: ImmerseContentCard; index?: number }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -284,6 +528,7 @@ function ContentCard({ item }: { item: ImmerseContentCard }) {
         background:    ID.panel2,
         boxShadow:     ID.shadow,
         display:       'flex',
+        animation:     `immerseFadeIn 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
         flexDirection: 'column',
         transition:    'border-color 0.3s ease',
         cursor:        'default',
@@ -324,47 +569,65 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
   const isMobile         = useImmerseMobile()
 
   return (
-    <ImmerseSectionWrap id='pricing' refProp={ref as React.RefObject<HTMLElement>}>
-      <div
-        style={{
-          display:             'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap:                 18,
-          ...immerseFadeUp(visible, 0),
-        }}
-      >
-        <ImmersePanel style={{ padding: 30 }}>
-          <ImmerseEyebrow>{data.pricingEyebrow}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingTitle}</ImmerseTitle>
-          <ImmerseBody style={{ marginBottom: 14 }}>{data.pricingBody}</ImmerseBody>
-          <PricingTable>
-            {data.pricingRows.map(row => (
-              row.isTotal
-                ? (
-                  <tr key={row.id}>
-                    <TotalTd col={1}>{row.item}</TotalTd>
-                    <TotalTd col={2} colSpan={2}>{row.basis}</TotalTd>
-                    <TotalTd col={4}>{row.indicativeRange}</TotalTd>
-                  </tr>
-                )
-                : (
-                  <tr key={row.id}>
-                    <Td col={1}>{row.item}</Td>
-                    <Td col={2}>{row.basis}</Td>
-                    <Td col={3}>{row.stay}</Td>
-                    <Td col={4}>{row.indicativeRange}</Td>
-                  </tr>
-                )
-            ))}
-          </PricingTable>
-        </ImmersePanel>
+    <section
+      id='pricing'
+      ref={ref as React.RefObject<HTMLElement>}
+      style={{
+        padding:            '58px 0',
+        backgroundImage:    [
+          'linear-gradient(135deg, rgba(216,181,106,0.14) 0%, rgba(180,140,80,0.09) 40%, rgba(120,90,50,0.04) 70%, rgba(6,6,6,0) 100%)',
+          'linear-gradient(220deg, rgba(200,160,90,0.09) 0%, rgba(160,110,60,0.05) 40%, rgba(6,6,6,0) 65%)',
+          'linear-gradient(310deg, rgba(216,181,106,0.06) 0%, rgba(6,6,6,0) 50%)',
+        ].join(', '),
+        backgroundSize:     '200% 200%, 240% 240%, 180% 180%',
+        backgroundPosition: '0% 0%, 100% 0%, 0% 100%',
+        animation:          'immerseRoomGlow 24s ease-in-out infinite alternate',
+        borderTop:          '1px solid rgba(216,181,106,0.12)',
+        borderBottom:       '1px solid rgba(216,181,106,0.08)',
+      }}
+    >
+      <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
+        <div
+          style={{
+            display:             'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+            gap:                 18,
+            ...immerseFadeUp(visible, 0),
+          }}
+        >
+          <ImmersePanel style={{ padding: 30, background: ID.panel }}>
+            <ImmerseEyebrow>{data.pricingEyebrow}</ImmerseEyebrow>
+            <ImmerseTitle style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingTitle}</ImmerseTitle>
+            <ImmerseBody style={{ marginBottom: 14 }}>{data.pricingBody}</ImmerseBody>
+            <PricingTable>
+              {data.pricingRows.map(row => (
+                row.isTotal
+                  ? (
+                    <tr key={row.id}>
+                      <TotalTd col={1}>{row.item}</TotalTd>
+                      <TotalTd col={2} colSpan={2}>{row.basis}</TotalTd>
+                      <TotalTd col={4}>{row.indicativeRange}</TotalTd>
+                    </tr>
+                  )
+                  : (
+                    <tr key={row.id}>
+                      <Td col={1}>{row.item}</Td>
+                      <Td col={2}>{row.basis}</Td>
+                      <Td col={3}>{row.stay}</Td>
+                      <Td col={4}>{row.indicativeRange}</Td>
+                    </tr>
+                  )
+              ))}
+            </PricingTable>
+          </ImmersePanel>
 
-        <ImmersePanel style={{ padding: 30 }}>
-          <ImmerseEyebrow>{data.pricingNotesHeading}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingNotesTitle}</ImmerseTitle>
-          <NotesList notes={data.pricingNotes} />
-        </ImmersePanel>
+          <ImmersePanel style={{ padding: 30, background: ID.panel }}>
+            <ImmerseEyebrow>{data.pricingNotesHeading}</ImmerseEyebrow>
+            <ImmerseTitle style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingNotesTitle}</ImmerseTitle>
+            <NotesList notes={data.pricingNotes} />
+          </ImmersePanel>
+        </div>
       </div>
-    </ImmerseSectionWrap>
+    </section>
   )
 }

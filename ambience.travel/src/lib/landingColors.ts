@@ -24,3 +24,33 @@ export const TRAVEL_MOMENT_COLORS: Record<string, string> = {
   'Yacht & Sea': '#38bdf8',
   'Signature Dining': '#fb923c',
 }
+
+// ── Immerse proposal system ───────────────────────────────────────────────────
+// Fixed dark palette for /immerse/ proposal pages. Always dark regardless of mode.
+// Base hex tokens live here (ID) alongside derived rgba tokens (IMMERSE).
+
+export const ID = {
+  bg:       '#060606',
+  panel:    '#101010',
+  panel2:   '#151515',
+  line:     '#272727',
+  lineSoft: '#343434',
+  text:     '#f5f2ec',
+  muted:    '#c9c3b9',
+  dim:      '#938c81',
+  gold:     '#d8b56a',
+  shadow:   '0 24px 64px rgba(0,0,0,0.36)',
+  radiusXl: 30,
+  radiusLg: 22,
+  radiusMd: 16,
+} as const
+
+export const IMMERSE = {
+  borderFaint:    'rgba(255,255,255,0.04)',
+  shimmer:        'rgba(255,235,180,0.95)',
+  goldBorder:     'rgba(216,181,106,0.34)',
+  goldBorderSoft: 'rgba(216,181,106,0.28)',
+  goldTint:       'rgba(216,181,106,0.08)',
+  pillBg:         'rgba(255,255,255,0.02)',
+  panelGradient:  'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01))',
+} as const

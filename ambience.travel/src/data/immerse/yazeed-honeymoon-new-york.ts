@@ -1,7 +1,7 @@
 // yazeed-honeymoon-new-york.ts — NYC destination data for Yazeed honeymoon proposal
 // Owns all copy, hotel options, dining, activities, and pricing for the NYC subpage.
 // Does not own the journey overview or other destination subpages.
-// Last updated: S10
+// Last updated: S11
 
 import type { ImmerseDestinationData } from '../../lib/immerseTypes'
 
@@ -37,12 +37,30 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
       nightlyNote:  'Primary recommended basis.',
       imageSrc:     'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
       imageAlt:     'Aman New York lobby style interior',
-      roomCategory: 'Room category · Aman',
-      roomBasis:    'Premier Suite or similar',
-      roomBenefits: ['Aman-level privacy and service', 'Ideal for a more insulated city stay', 'Strong spa / wellness positioning', 'Best if luxury tone matters more than classic city energy'],
-      roomImageSrc: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1800&q=80',
-      roomImageAlt: 'Elegant suite interior with city views',
       stayLabel:    '5–6 nights',
+      rooms: [
+        {
+          roomCategory: 'Room category · Aman',
+          roomBasis:    'Premier Suite or similar',
+          roomBenefits: ['Aman-level privacy and service', 'Ideal for a more insulated city stay', 'Strong spa / wellness positioning', 'Best if luxury tone matters more than classic city energy'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Elegant suite interior with city views',
+        },
+        {
+          roomCategory: 'Room category · Aman',
+          roomBasis:    'Aman Suite or similar',
+          roomBenefits: ['Larger footprint with dedicated living area', 'Enhanced privacy and butler service', 'Ideal for an extended stay', 'Strongest positioning within the property'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Luxury Aman suite living area',
+        },
+        {
+          roomCategory: 'Room category · Aman',
+          roomBasis:    'Deluxe Room or similar',
+          roomBenefits: ['Entry point to the Aman experience', 'Full access to spa and wellness facilities', 'Clean value balance within the property', 'Ideal if room is secondary to the city programme'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Aman deluxe room interior',
+        },
+      ],
     },
     {
       id:           'peninsula',
@@ -56,12 +74,30 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
       nightlyNote:  'Strong secondary alternate.',
       imageSrc:     'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1200&q=80',
       imageAlt:     'Peninsula New York style facade',
-      roomCategory: 'Room category · Peninsula',
-      roomBasis:    'Deluxe Suite or similar',
-      roomBenefits: ['Classic luxury positioning', 'Very strong Midtown base', 'Clean benchmark for comparison', 'Likely strongest value-to-positioning balance'],
-      roomImageSrc: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1800&q=80',
-      roomImageAlt: 'Peninsula style suite interior',
       stayLabel:    '5–6 nights',
+      rooms: [
+        {
+          roomCategory: 'Room category · Peninsula',
+          roomBasis:    'Deluxe Suite or similar',
+          roomBenefits: ['Classic luxury positioning', 'Very strong Midtown base', 'Clean benchmark for comparison', 'Likely strongest value-to-positioning balance'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Peninsula style suite interior',
+        },
+        {
+          roomCategory: 'Room category · Peninsula',
+          roomBasis:    'Peninsula Suite or similar',
+          roomBenefits: ['Flagship suite category', 'Panoramic Midtown views', 'Dedicated butler and enhanced arrival', 'Best positioning within the property'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Peninsula flagship suite',
+        },
+        {
+          roomCategory: 'Room category · Peninsula',
+          roomBasis:    'Superior Room or similar',
+          roomBenefits: ['Entry point to the Peninsula experience', 'Full access to rooftop bar and spa', 'Strong value balance', 'Ideal if city programme is the priority'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Peninsula superior room',
+        },
+      ],
     },
     {
       id:           'mandarin',
@@ -75,17 +111,35 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
       nightlyNote:  'Another clean alternate option.',
       imageSrc:     'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1200&q=80',
       imageAlt:     'Mandarin Oriental New York style hotel',
-      roomCategory: 'Room category · Mandarin',
-      roomBasis:    'Premier Room / Suite or similar',
-      roomBenefits: ['Excellent skyline views', 'Softer, calmer city feeling', 'Good alternate to Aman and Peninsula', 'Strong if atmosphere matters most'],
-      roomImageSrc: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1800&q=80',
-      roomImageAlt: 'Suite with skyline view interior',
       stayLabel:    '5–6 nights',
+      rooms: [
+        {
+          roomCategory: 'Room category · Mandarin',
+          roomBasis:    'Premier Room / Suite or similar',
+          roomBenefits: ['Excellent skyline views', 'Softer, calmer city feeling', 'Good alternate to Aman and Peninsula', 'Strong if atmosphere matters most'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Suite with skyline view interior',
+        },
+        {
+          roomCategory: 'Room category · Mandarin',
+          roomBasis:    'Mandarin Suite or similar',
+          roomBenefits: ['Panoramic Columbus Circle views', 'Spacious living and dining area', 'Enhanced arrival and butler service', 'Strongest positioning within the property'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1560347876-aeef00ee58a1?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Mandarin Oriental suite with views',
+        },
+        {
+          roomCategory: 'Room category · Mandarin',
+          roomBasis:    'Deluxe Room or similar',
+          roomBenefits: ['Entry point to the Mandarin experience', 'Access to spa and rooftop pool', 'Strongest value balance of the three options', 'Ideal if city programme is the priority'],
+          roomImageSrc: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1800&q=80',
+          roomImageAlt: 'Mandarin Oriental deluxe room',
+        },
+      ],
     },
   ],
 
   diningEyebrow: 'Sample dining',
-  diningTitle:   'Three strong dining blocks.',
+  diningTitle:   'A Curated Table.',
   diningBody:    'A few curated dining anchors help the destination page feel richer without becoming too dense.',
 
   dining: [
@@ -119,7 +173,7 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   ],
 
   activitiesEyebrow: 'Sample activities',
-  activitiesTitle:   'Three strong activity blocks.',
+  activitiesTitle:   'A Selected Program.',
   activitiesBody:    'A few high-quality anchors that help the client picture the stay quickly without overloading the page.',
 
   activities: [
@@ -157,11 +211,11 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   pricingBody:    'Aman treated as the primary NYC basis. Peninsula and Mandarin remain visible as alternates.',
 
   pricingRows: [
-    { id: 'pr-aman',       item: 'Aman New York',              basis: 'Primary option',      stay: '5–6 nights', indicativeRange: 'USD 18k–38k+' },
-    { id: 'pr-peninsula',  item: 'Peninsula New York',         basis: 'Secondary alternate',  stay: '5–6 nights', indicativeRange: 'USD 10k–24k+' },
-    { id: 'pr-mandarin',   item: 'Mandarin Oriental New York', basis: 'Secondary alternate',  stay: '5–6 nights', indicativeRange: 'USD 9k–22k+' },
-    { id: 'pr-dining',     item: 'Dining / activities',        basis: 'As selected',          stay: 'Optional',   indicativeRange: 'On request' },
-    { id: 'pr-total',      item: 'NYC destination basis',      basis: 'Hotel-led concept',    stay: '5–6 nights', indicativeRange: 'Primary + alternates shown', isTotal: true },
+    { id: 'pr-aman',      item: 'Aman New York',              basis: 'Primary option',     stay: '5–6 nights', indicativeRange: 'USD 18k–38k+' },
+    { id: 'pr-peninsula', item: 'Peninsula New York',         basis: 'Secondary alternate', stay: '5–6 nights', indicativeRange: 'USD 10k–24k+' },
+    { id: 'pr-mandarin',  item: 'Mandarin Oriental New York', basis: 'Secondary alternate', stay: '5–6 nights', indicativeRange: 'USD 9k–22k+' },
+    { id: 'pr-dining',    item: 'Dining / activities',        basis: 'As selected',         stay: 'Optional',   indicativeRange: 'On request' },
+    { id: 'pr-total',     item: 'NYC destination basis',      basis: 'Hotel-led concept',   stay: '5–6 nights', indicativeRange: 'Primary + alternates shown', isTotal: true },
   ],
 
   pricingNotesHeading: 'Subpage logic',
