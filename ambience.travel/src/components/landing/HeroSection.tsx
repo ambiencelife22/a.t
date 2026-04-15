@@ -179,7 +179,7 @@ export default function HeroSection() {
                 Begin the Conversation
               </button>
 
-              <button
+              {/* <button
                 disabled
                 aria-disabled='true'
                 style={{
@@ -196,7 +196,7 @@ export default function HeroSection() {
                 }}
               >
                 Explore the Experience
-              </button>
+              </button> */}
             </div>
 
             <div
