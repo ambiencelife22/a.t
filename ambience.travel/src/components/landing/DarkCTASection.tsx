@@ -61,7 +61,7 @@ export default function DarkCTASection() {
                     border:       'none',
                     borderRadius: 100,
                     cursor:       'default',
-                    opacity:      0.86,
+                    opacity:      0.22,
                   }}
                 >
                   Begin the Conversation
