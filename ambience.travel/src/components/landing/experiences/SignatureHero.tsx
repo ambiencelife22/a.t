@@ -3,24 +3,21 @@
 // Last updated: S9
 
 import { useEffect, useRef, useState } from 'react'
-import { C, OVERLAY } from '../../../lib/landingTypes'
+import { C } from '../../../lib/landingTypes'
 import { fadeUp, useVisible } from '../LandingComponents'
 
 // Iceland palette — local to this component only, not exported
 const ICE = {
-  text:        '#F7F2EA',
-  textMuted:   'rgba(247,242,234,0.78)',
-  eyebrow:     '#DEC694',
-  pillBorder:  'rgba(247,242,234,0.28)',
-  pillBg:      'rgba(247,242,234,0.10)',
+  text:           '#F7F2EA',
+  textMuted:      'rgba(247,242,234,0.78)',
+  eyebrow:        '#DEC694',
+  pillBorder:     'rgba(247,242,234,0.28)',
+  pillBg:         'rgba(247,242,234,0.10)',
   pillGoldBorder: 'rgba(222,198,148,0.70)',
-  pillGoldBg:  'rgba(184,141,59,0.18)',
-  pillGoldText: '#F4DFB0',
-  btnSecBg:    'rgba(255,255,255,0.11)',
-  btnSecBorder: 'rgba(255,255,255,0.22)',
-  breadcrumb:  'rgba(247,242,234,0.38)',
-  breadcrumbGold: '#DEC694',
-  chevron:     'rgba(247,242,234,0.25)',
+  pillGoldBg:     'rgba(184,141,59,0.18)',
+  pillGoldText:   '#F4DFB0',
+  btnSecBg:       'rgba(255,255,255,0.11)',
+  btnSecBorder:   'rgba(255,255,255,0.22)',
 }
 
 type Props = {
@@ -43,8 +40,16 @@ export default function SignatureHero({
   glassNote,
 }: Props) {
   const { ref, visible } = useVisible(0.05)
-  const bgRef            = useRef<HTMLDivElement>(null)
-  const [offsetY, setOffsetY] = useState(0)
+  const bgRef             = useRef<HTMLDivElement>(null)
+  const [offsetY,  setOffsetY]  = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth < 860) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     function handleScroll() {
@@ -68,14 +73,10 @@ export default function SignatureHero({
         padding:         'clamp(20px,3vw,36px) clamp(20px,5vw,48px) clamp(36px,5vw,56px)',
         position:        'relative',
         overflow:        'hidden',
-        // Base: deep Nordic blue-grey gradient — matches mockup exactly
         backgroundImage: [
           'linear-gradient(180deg, rgba(36,50,67,0.96) 0%, rgba(82,100,120,0.80) 38%, rgba(217,210,200,0.18) 78%, rgba(247,243,237,0.04) 100%)',
-          // Teal aurora bloom — drifts slowly via animation
           'radial-gradient(ellipse 55% 45% at 76% 18%, rgba(125,201,197,0.32) 0%, transparent 60%)',
-          // Cooler secondary bloom bottom-left — subtle counter-movement
           'radial-gradient(ellipse 40% 35% at 12% 82%, rgba(100,160,200,0.12) 0%, transparent 55%)',
-          // Base colour field
           'linear-gradient(135deg, #223247 0%, #5D738D 46%, #D9D2C8 100%)',
         ].join(', '),
         backgroundSize:     '100% 100%, 220% 220%, 180% 180%, 100% 100%',
@@ -85,24 +86,24 @@ export default function SignatureHero({
     >
       <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
-        {/* Two-column hero grid */}
+        {/* Two-column grid — stacks on mobile */}
         <div
           style={{
             display:             'grid',
-            gridTemplateColumns: 'minmax(0,1fr) minmax(360px,0.95fr)',
-            gap:                 34,
+            gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(360px,0.95fr)',
+            gap:                 isMobile ? 28 : 34,
             alignItems:          'stretch',
-            minHeight:           600,
+            minHeight:           isMobile ? 'auto' : 600,
           }}
         >
-          {/* Left — copy — light-on-dark matching mockup */}
+          {/* Left — copy */}
           <div
             style={{
               display:        'flex',
               flexDirection:  'column',
               justifyContent: 'flex-start',
-              paddingTop:     'clamp(16px,2.5vw,32px)',
-              gap:            20,
+              paddingTop:     isMobile ? 8 : 'clamp(16px,2.5vw,32px)',
+              gap:            isMobile ? 16 : 20,
               color:          ICE.text,
             }}
           >
@@ -121,12 +122,12 @@ export default function SignatureHero({
 
             <h1
               style={{
-                fontSize:      'clamp(46px,7vw,82px)',
+                fontSize:      'clamp(38px,7vw,82px)',
                 fontWeight:    800,
                 letterSpacing: '-0.06em',
                 lineHeight:    0.95,
                 color:         ICE.text,
-                margin:        '0 0 20px',
+                margin:        0,
                 ...fadeUp(visible, 140),
               }}
             >
@@ -135,11 +136,11 @@ export default function SignatureHero({
 
             <p
               style={{
-                fontSize:   19,
+                fontSize:   isMobile ? 16 : 19,
                 lineHeight: 1.85,
                 color:      ICE.textMuted,
                 maxWidth:   720,
-                margin:     '0 0 28px',
+                margin:     0,
                 ...fadeUp(visible, 220),
               }}
             >
@@ -147,19 +148,19 @@ export default function SignatureHero({
             </p>
 
             {/* Pills */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 28, ...fadeUp(visible, 300) }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, ...fadeUp(visible, 300) }}>
               {pills.map((pill, i) => (
                 <div
                   key={pill}
                   style={{
                     display:        'inline-flex',
                     alignItems:     'center',
-                    padding:        '10px 15px',
+                    padding:        '9px 14px',
                     borderRadius:   999,
                     border:         `1px solid ${i === 0 ? ICE.pillBorder : ICE.pillGoldBorder}`,
                     background:     i === 0 ? ICE.pillBg : ICE.pillGoldBg,
                     color:          i === 0 ? ICE.text : ICE.pillGoldText,
-                    fontSize:       12,
+                    fontSize:       11,
                     fontWeight:     600,
                     letterSpacing:  '0.06em',
                     textTransform:  'uppercase',
@@ -172,7 +173,15 @@ export default function SignatureHero({
             </div>
 
             {/* CTAs */}
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', ...fadeUp(visible, 380) }}>
+            <div
+              style={{
+                display:       'flex',
+                gap:           12,
+                flexWrap:      'wrap',
+                flexDirection: isMobile ? 'column' : 'row',
+                ...fadeUp(visible, 380),
+              }}
+            >
               <a
                 href='#enquire'
                 style={{
@@ -189,7 +198,6 @@ export default function SignatureHero({
                   textTransform:  'uppercase',
                   textDecoration: 'none',
                   border:         `1px solid ${C.gold}`,
-                  minWidth:       170,
                 }}
               >
                 Request details
@@ -210,7 +218,6 @@ export default function SignatureHero({
                   textTransform:  'uppercase',
                   textDecoration: 'none',
                   border:         `1px solid ${ICE.btnSecBorder}`,
-                  minWidth:       170,
                 }}
               >
                 Enquire privately
@@ -218,28 +225,28 @@ export default function SignatureHero({
             </div>
           </div>
 
-          {/* Right — image card with parallax — unchanged structurally */}
+          {/* Right — image card with parallax */}
           <div
             style={{
               ...fadeUp(visible, 200),
               position:     'relative',
-              borderRadius: 34,
+              borderRadius: 28,
               overflow:     'hidden',
-              border:       'rgba(247,242,234,0.18)',
+              border:       '1px solid rgba(247,242,234,0.18)',
               boxShadow:    '0 28px 80px rgba(17,24,28,0.22)',
-              minHeight:    600,
+              minHeight:    isMobile ? 320 : 600,
               background:   '#1A2530',
             }}
           >
-            {/* Parallax image layer */}
+            {/* Parallax image layer — disabled on mobile for perf */}
             <div
               ref={bgRef}
               style={{
                 position:   'absolute',
                 inset:      '-8% 0',
-                transform:  `translateY(${offsetY}px)`,
-                willChange: 'transform',
-                transition: 'transform 0.08s linear',
+                transform:  isMobile ? 'none' : `translateY(${offsetY}px)`,
+                willChange: isMobile ? 'auto' : 'transform',
+                transition: isMobile ? 'none' : 'transform 0.08s linear',
               }}
             >
               <img
@@ -259,29 +266,29 @@ export default function SignatureHero({
               }}
             />
 
-            {/* Overlay captions */}
+            {/* Overlay captions — hide glass note on mobile to reduce clutter */}
             <div
               style={{
                 position:       'absolute',
-                left:           22,
-                right:          22,
-                bottom:         22,
+                left:           16,
+                right:          16,
+                bottom:         16,
                 display:        'flex',
                 justifyContent: 'space-between',
                 alignItems:     'flex-end',
-                gap:            14,
+                gap:            12,
                 flexWrap:       'wrap',
                 zIndex:         2,
               }}
             >
               <div
                 style={{
-                  padding:        '11px 15px',
+                  padding:        '10px 14px',
                   borderRadius:   999,
                   background:     'rgba(251,248,243,0.85)',
                   border:         '1px solid rgba(251,248,243,0.50)',
                   color:          '#1E2320',
-                  fontSize:       11,
+                  fontSize:       10,
                   fontWeight:     700,
                   letterSpacing:  '0.12em',
                   textTransform:  'uppercase',
@@ -290,44 +297,39 @@ export default function SignatureHero({
                 Elemental immersion
               </div>
 
-              <div
-                style={{
-                  maxWidth:       320,
-                  padding:        '15px 17px',
-                  borderRadius:   22,
-                  background:     'rgba(251,248,243,0.16)',
-                  border:         '1px solid rgba(251,248,243,0.22)',
-                  backdropFilter: 'blur(14px)',
-                  color:          '#FBFAF3',
-                }}
-              >
+              {!isMobile && (
                 <div
                   style={{
-                    fontSize:      10,
-                    letterSpacing: '0.16em',
-                    textTransform: 'uppercase',
-                    color:         'rgba(251,248,243,0.72)',
-                    marginBottom:  8,
-                    fontWeight:    700,
+                    maxWidth:       300,
+                    padding:        '14px 16px',
+                    borderRadius:   20,
+                    background:     'rgba(251,248,243,0.16)',
+                    border:         '1px solid rgba(251,248,243,0.22)',
+                    backdropFilter: 'blur(14px)',
+                    color:          '#FBFAF3',
                   }}
                 >
-                  Signature note
+                  <div
+                    style={{
+                      fontSize:      10,
+                      letterSpacing: '0.16em',
+                      textTransform: 'uppercase',
+                      color:         'rgba(251,248,243,0.72)',
+                      marginBottom:  8,
+                      fontWeight:    700,
+                    }}
+                  >
+                    Signature note
+                  </div>
+                  <div style={{ fontSize: 15, lineHeight: 1.55, letterSpacing: '-0.02em' }}>
+                    {glassNote}
+                  </div>
                 </div>
-                <div style={{ fontSize: 16, lineHeight: 1.55, letterSpacing: '-0.02em' }}>
-                  {glassNote}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 860px) {
-          .sig-hero-grid { grid-template-columns: 1fr !important; }
-          .sig-hero-img  { min-height: 360px !important; }
-        }
-      `}</style>
     </section>
   )
 }
