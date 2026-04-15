@@ -130,7 +130,7 @@ export type ImmerseDestinationData = {
   introBody:    string
   // hotels
   hotelsEyebrow: string
-  hotelsTitle:   string
+  // hotelsTitle:   string
   hotelsBody:    string
   hotels:        ImmerseHotelOption[]
   // dining

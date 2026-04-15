@@ -16,12 +16,12 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   heroImageAlt: 'New York City skyline at dusk',
   heroPills:    ['5-6 nights suggested', 'Three hotel options', 'Dining + activities'],
 
-  introEyebrow: 'Why this fits',
-  introTitle:   'The right urban contrast.',
-  introBody:    'New York works best here as the high-energy city contrast between the winter opening and the beach portion of the honeymoon. The key decision is less about whether New York belongs, and more about which hotel style best matches the couple\'s preferences.',
+  introEyebrow: 'Why here',
+  introTitle:   'Winter city contrast.',
+  introBody:    'There\'s a version of New York most people never experience. Quieter mornings. Warmer evenings indoors. Moments that feel more personal, more intentional. In winter, the city doesn\'t disappear; it reveals a different side of itself. And, that\'s where this experience lives.',
 
   hotelsEyebrow: 'Hotel options',
-  hotelsTitle:   'Aman first, with two clear alternates.',
+  // hotelsTitle:   'Aman first, with two clear alternates.',
   hotelsBody:    'One primary recommendation, two clean alternates — decision-friendly without creating three separate NYC presentations unless the client asks for that later.',
 
   hotels: [

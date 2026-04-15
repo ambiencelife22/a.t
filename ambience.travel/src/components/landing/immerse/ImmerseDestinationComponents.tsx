@@ -15,24 +15,51 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
   const isMobile         = useImmerseMobile()
 
   return (
-    <ImmerseSectionWrap refProp={ref as React.RefObject<HTMLElement>} style={{ background: C.bgAlt }}>
-      <div
-        style={{
-          display:             'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '0.86fr 1.14fr',
-          gap:                 18,
-          alignItems:          'start',
-        }}
-      >
-        <div>
-          <ImmerseEyebrow style={{ color: C.faint, ...immerseFadeUp(visible, 0) }}>{data.introEyebrow}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', color: C.text, ...immerseFadeUp(visible, 60) }}>
-            {data.introTitle}
-          </ImmerseTitle>
-        </div>
-        <ImmerseBody style={{ color: C.muted, ...immerseFadeUp(visible, 120) }}>{data.introBody}</ImmerseBody>
-      </div>
-    </ImmerseSectionWrap>
+    <ImmerseSectionWrap
+  refProp={ref as React.RefObject<HTMLElement>}
+  style={{
+    background: C.bgAlt,
+  }}
+>
+  <div
+    style={{
+      maxWidth: 720,
+      margin: '0 auto',
+      textAlign: 'center',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+    }}
+  >
+    <ImmerseEyebrow
+      style={{
+        color: C.faint,
+        ...immerseFadeUp(visible, 0),
+      }}
+    >
+      {data.introEyebrow}
+    </ImmerseEyebrow>
+
+    <ImmerseTitle
+      style={{
+        fontSize: 'clamp(28px,4vw,50px)',
+        color: C.text,
+        ...immerseFadeUp(visible, 60),
+      }}
+    >
+      {data.introTitle}
+    </ImmerseTitle>
+
+    <ImmerseBody
+      style={{
+        color: C.muted,
+        ...immerseFadeUp(visible, 120),
+      }}
+    >
+      {data.introBody}
+    </ImmerseBody>
+  </div>
+</ImmerseSectionWrap>
   )
 }
 
@@ -115,9 +142,9 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
         >
           <div>
             <ImmerseEyebrow>{data.hotelsEyebrow}</ImmerseEyebrow>
-            <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0 }}>{data.hotelsTitle}</ImmerseTitle>
+            {/* <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0 }}>{data.hotelsTitle}</ImmerseTitle> */}
           </div>
-          <ImmerseBody>{data.hotelsBody}</ImmerseBody>
+          {/* <ImmerseBody>{data.hotelsBody}</ImmerseBody> */}
         </div>
 
         {/* Hotel option cards — desktop: 3-col grid. Mobile: swipe carousel */}
