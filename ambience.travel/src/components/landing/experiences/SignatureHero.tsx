@@ -3,7 +3,6 @@
 // Last updated: S9
 
 import { useEffect, useRef, useState } from 'react'
-import AmbienceLogo from '../../AmbienceLogo'
 import { C, OVERLAY } from '../../../lib/landingTypes'
 import { fadeUp, useVisible } from '../LandingComponents'
 
@@ -119,21 +118,6 @@ export default function SignatureHero({
             >
               {eyebrow}
             </p>
-
-            {/* Emblem + logo — mirrors IntroSection identity treatment */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, ...fadeUp(visible, 100) }}>
-              <img
-                src='/emblem.png'
-                alt='ambience.travel emblem'
-                style={{
-                  width:        56,
-                  height:       56,
-                  borderRadius: '50%',
-                  boxShadow:    '0 0 0 1px rgba(201,184,142,0.35), 0 0 36px rgba(201,184,142,0.22)',
-                }}
-              />
-              <AmbienceLogo isDark={true} product='travel' height='clamp(72px,3.5vw,80px)' />
-            </div>
 
             <h1
               style={{

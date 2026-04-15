@@ -9,6 +9,22 @@ export const experience = {
     eyebrow:  'Signature Experience · Iceland',
   },
 
+  // Theme — controls accent colour on blue sections (Elements, Practical, CTA)
+  // Each experience defines its own palette here
+  theme: {
+    gradientLayers: [
+      'linear-gradient(180deg, #223247 0%, #3A5468 50%, #2E4558 100%)',
+      'radial-gradient(ellipse 70% 55% at 80% 20%, rgba(125,201,197,0.22) 0%, transparent 60%)',
+      'radial-gradient(ellipse 45% 40% at 15% 80%, rgba(100,160,200,0.14) 0%, transparent 55%)',
+    ],
+    borderColor: 'rgba(34,50,71,0.6)',
+  },
+
+  video: {
+    src:    '/landing/experiences/iceland-4e/lagoon.mp4',
+    poster: '/landing/experiences/iceland-4e/lagoon-poster.webp',
+  },
+
   hero: {
     eyebrow:   'Signature Experience · Iceland',
     title:     'Iceland · 4 Elements',
@@ -36,26 +52,26 @@ export const experience = {
       {
         tag:      'Water',
         text:     'Thermal bathing, coastlines, glacial presence, and the slow reset that only water seems able to offer.',
-        imageSrc: '/landing/experiences/iceland-water.webp',
+        imageSrc: '/landing/experiences/iceland-4e/water.webp',
         imageAlt: 'Glacial water and Icelandic coastline',
       },
       {
         tag:      'Earth',
         text:     'Volcanic terrain, moss fields, black sand, and the grounding effect of moving through a landscape that feels older than language.',
-        imageSrc: '/landing/experiences/iceland-earth.webp',
-        imageAlt: 'Volcanic moss-covered terrain in Iceland',
+        imageSrc: '/landing/experiences/iceland-4e/earth.webp',
+        imageAlt: 'Moss-covered lava field, Iceland',
       },
       {
         tag:      'Fire',
         text:     'Geothermal energy, warmth, contrast, and the quiet exhilaration that comes from elemental power held close.',
-        imageSrc: '/landing/experiences/iceland-fire.webp',
-        imageAlt: 'Geothermal energy and volcanic heat',
+        imageSrc: '/landing/experiences/iceland-4e/fire.webp',
+        imageAlt: 'Geothermal Blue Lagoon at sunrise, Iceland',
       },
       {
         tag:      'Air',
         text:     'Space, stillness, weather, breath, and the subtle internal shift that arrives when the mind is finally given room.',
-        imageSrc: '/landing/experiences/iceland-air.webp',
-        imageAlt: 'Open Icelandic sky and stillness',
+        imageSrc: '/landing/experiences/iceland-4e/air.webp',
+        imageAlt: 'Black sand beach and sea stacks, Reynisfjara, Iceland',
       },
     ],
   },
@@ -65,12 +81,12 @@ export const experience = {
     title:   'A week shaped more by feeling than by hurry.',
     body:    'Structured enough to guide, open enough to breathe.',
     rows: [
-      { label: 'Arrival',    title: 'Settle into a slower frequency',  text: 'Arrival, grounding, a first exhale, and the beginning of a different pace.' },
-      { label: 'Water',      title: 'Release and restoration',         text: 'Thermal immersion, spaciousness, and gentle restoration through Iceland\'s most natural medium.' },
-      { label: 'Earth',      title: 'Grounding and movement',          text: 'Movement through terrain, volcanic textures, and the stabilising intelligence of the landscape.' },
-      { label: 'Fire',       title: 'Vitality and contrast',           text: 'Heat, energy, and the enlivening quality that comes from reconnecting with raw forces.' },
-      { label: 'Air',        title: 'Perspective and space',           text: 'Breath, weather, stillness, and the kind of room that helps you hear yourself think again.' },
-      { label: 'Departure',  title: 'Return differently',              text: 'A composed close, integration, and a departure that carries more than photographs home with it.' },
+      { label: 'Arrival',   title: 'Settle into a slower frequency', text: 'Arrival, grounding, a first exhale, and the beginning of a different pace.' },
+      { label: 'Air',       title: 'Perspective and space',          text: 'Breath, weather, stillness, and the kind of room that helps you hear yourself think again.' },
+      { label: 'Earth',     title: 'Grounding and movement',         text: 'Movement through volcanic terrain, moss fields, and the stabilising intelligence of an ancient landscape.' },
+      { label: 'Fire',      title: 'Vitality and contrast',          text: 'Geothermal heat, elemental warmth, and the enlivening quality that comes from raw force held close.' },
+      { label: 'Water',     title: 'Release and restoration',        text: 'Thermal immersion, stillness, and the slow reset that only water seems able to offer.' },
+      { label: 'Departure', title: 'Return differently',             text: 'A composed close, integration, and a departure that carries more than photographs home with it.' },
     ],
   },
 
@@ -85,8 +101,8 @@ export const experience = {
       { label: 'Setting',  text: 'Chosen to deepen immersion in the landscape' },
       { label: 'Approach', text: 'Room categories and exact properties advised with release' },
     ],
-    imageSrc: '/landing/experiences/iceland-accommodation.webp',
-    imageAlt: 'Understated Icelandic lodge interior',
+    imageSrc: '/landing/experiences/iceland-4e/accom.webp',
+    imageAlt: 'Understated Icelandic lodge interior with panoramic landscape view',
   },
 
   inclusions: {

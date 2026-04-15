@@ -4,12 +4,13 @@
 // Last updated: S9
 
 import { experience as iceland4e } from '../../../data/experiences/iceland-4e'
-import ExperiencesLayout      from '../../layouts/ExperiencesLayout'
+import ExperiencesLayout    from '../../layouts/ExperiencesLayout'
 import SignatureHero        from './SignatureHero'
 import SignatureIntro       from './SignatureIntro'
 import SignatureElements    from './SignatureElements'
 import SignatureRhythm      from './SignatureRhythm'
 import SignatureStay        from './SignatureStay'
+import SignatureVideo       from './SignatureVideo'
 import SignatureInclusions  from './SignatureInclusions'
 import SignaturePractical   from './SignaturePractical'
 import SignatureQuote       from './SignatureQuote'
@@ -22,14 +23,7 @@ const REGISTRY: Record<string, typeof iceland4e> = {
 }
 
 function resolveSlug(): string {
-  const hostname = window.location.hostname
   const pathname = window.location.pathname
-
-  if (hostname === 'ambience.travel') {
-    return pathname.replace('/experiences/', '').replace(/\/$/, '')
-  }
-
-  // Local dev: /experiences/iceland-4e
   return pathname.replace('/experiences/', '').replace(/\/$/, '')
 }
 
@@ -49,7 +43,6 @@ export default function SignatureExperiencePage() {
             justifyContent: 'center',
             flexDirection:  'column',
             gap:            16,
-            color:          C.muted,
           }}
         >
           <p style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.gold }}>
@@ -61,71 +54,80 @@ export default function SignatureExperiencePage() {
     )
   }
 
+  const { theme, video } = data
+
   return (
     <ExperiencesLayout>
       <div style={{ width: '100%', overflowX: 'hidden', background: C.bg, color: C.text }}>
-      <SignatureHero
-        eyebrow={data.hero.eyebrow}
-        title={data.hero.title}
-        subtitle={data.hero.subtitle}
-        pills={data.hero.pills}
-        imageSrc={data.hero.imageSrc}
-        imageAlt={data.hero.imageAlt}
-        glassNote={data.hero.glassNote}
-      />
-      <SignatureIntro
-        eyebrow={data.intro.eyebrow}
-        title={data.intro.title}
-        body={data.intro.body}
-      />
-      <SignatureElements
-        eyebrow={data.elements.eyebrow}
-        title={data.elements.title}
-        body={data.elements.body}
-        items={data.elements.items}
-      />
-      <SignatureRhythm
-        eyebrow={data.rhythm.eyebrow}
-        title={data.rhythm.title}
-        body={data.rhythm.body}
-        rows={data.rhythm.rows}
-      />
-      <SignatureStay
-        eyebrow={data.stay.eyebrow}
-        title={data.stay.title}
-        body={data.stay.body}
-        description={data.stay.description}
-        bullets={data.stay.bullets}
-        imageSrc={data.stay.imageSrc}
-        imageAlt={data.stay.imageAlt}
-      />
-      <SignatureInclusions
-        eyebrow={data.inclusions.eyebrow}
-        title={data.inclusions.title}
-        body={data.inclusions.body}
-        included={data.inclusions.included}
-        excluded={data.inclusions.excluded}
-      />
-      <SignaturePractical
-        eyebrow={data.practical.eyebrow}
-        title={data.practical.title}
-        body={data.practical.body}
-        cards={data.practical.cards}
-      />
-      <SignatureQuote
-        eyebrow={data.quote.eyebrow}
-        title={data.quote.title}
-        body={data.quote.body}
-        text={data.quote.text}
-        attrib={data.quote.attrib}
-      />
-      <SignatureEnquiryCTA
-        eyebrow={data.cta.eyebrow}
-        title={data.cta.title}
-        body={data.cta.body}
-        primaryLabel={data.cta.primaryLabel}
-        secondaryLabel={data.cta.secondaryLabel}
-      />
+        <SignatureHero
+          eyebrow={data.hero.eyebrow}
+          title={data.hero.title}
+          subtitle={data.hero.subtitle}
+          pills={data.hero.pills}
+          imageSrc={data.hero.imageSrc}
+          imageAlt={data.hero.imageAlt}
+          glassNote={data.hero.glassNote}
+        />
+        <SignatureIntro
+          eyebrow={data.intro.eyebrow}
+          title={data.intro.title}
+          body={data.intro.body}
+        />
+        <SignatureElements
+          eyebrow={data.elements.eyebrow}
+          title={data.elements.title}
+          body={data.elements.body}
+          items={data.elements.items}
+          theme={theme}
+        />
+        <SignatureRhythm
+          eyebrow={data.rhythm.eyebrow}
+          title={data.rhythm.title}
+          body={data.rhythm.body}
+          rows={data.rhythm.rows}
+        />
+        <SignatureStay
+          eyebrow={data.stay.eyebrow}
+          title={data.stay.title}
+          body={data.stay.body}
+          description={data.stay.description}
+          bullets={data.stay.bullets}
+          imageSrc={data.stay.imageSrc}
+          imageAlt={data.stay.imageAlt}
+        />
+        <SignaturePractical
+          eyebrow={data.practical.eyebrow}
+          title={data.practical.title}
+          body={data.practical.body}
+          cards={data.practical.cards}
+          theme={theme}
+        />
+        <SignatureInclusions
+          eyebrow={data.inclusions.eyebrow}
+          title={data.inclusions.title}
+          body={data.inclusions.body}
+          included={data.inclusions.included}
+          excluded={data.inclusions.excluded}
+        />
+        <SignatureVideo
+          videoSrc={video.src}
+          posterSrc={video.poster}
+        />
+        <SignatureQuote
+          eyebrow={data.quote.eyebrow}
+          title={data.quote.title}
+          body={data.quote.body}
+          text={data.quote.text}
+          attrib={data.quote.attrib}
+        />
+        <SignatureEnquiryCTA
+          eyebrow={data.cta.eyebrow}
+          title={data.cta.title}
+          body={data.cta.body}
+          primaryLabel={data.cta.primaryLabel}
+          secondaryLabel={data.cta.secondaryLabel}
+          theme={theme}
+        />
       </div>
     </ExperiencesLayout>
   )
