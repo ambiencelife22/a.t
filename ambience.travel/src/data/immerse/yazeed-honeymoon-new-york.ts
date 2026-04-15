@@ -12,16 +12,16 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   eyebrow:      'Destination · New York City',
   title:        'New York City',
   subtitle:     'A polished city stop designed to bring energy, dining, shopping, and a strong hotel experience into the middle of the honeymoon — with Aman as the primary option and Peninsula and Mandarin as clear alternates.',
-  heroImageSrc: 'https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&fm=jpg&q=90&w=2400',
+  heroImageSrc: 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?auto=format&fit=crop&w=2200&q=80',
   heroImageAlt: 'New York City skyline at dusk',
-  heroPills:    ['5-6 nights suggested', 'Three hotel options', 'Dining + activities'],
+  heroPills:    ['5–6 nights suggested', 'Three hotel options', 'Dining + activities'],
 
-  introEyebrow: 'Why here',
-  introTitle:   'Winter city contrast.',
-  introBody:    'There\'s a version of New York most people never experience. Quieter mornings. Warmer evenings indoors. Moments that feel more personal, more intentional. In winter, the city doesn\'t disappear; it reveals a different side of itself. And, that\'s where this experience lives.',
+  introEyebrow: 'Why this fits',
+  introTitle:   'The right urban contrast.',
+  introBody:    'New York works best here as the high-energy city contrast between the winter opening and the beach portion of the honeymoon. The key decision is less about whether New York belongs, and more about which hotel style best matches the couple\'s preferences.',
 
   hotelsEyebrow: 'Hotel options',
-  // hotelsTitle:   'Aman first, with two clear alternates.',
+  hotelsTitle:   'Aman first, with two clear alternates.',
   hotelsBody:    'One primary recommendation, two clean alternates — decision-friendly without creating three separate NYC presentations unless the client asks for that later.',
 
   hotels: [
@@ -33,11 +33,18 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
       tagline:      'Best for privacy, ultra-luxury, and a more insulated city feel',
       description:  'The strongest luxury positioning of the set and the best fit if the goal is to experience New York from a place of calm and separation.',
       bullets:      ['Most private feel', 'Strongest wellness positioning', 'Highest nightly range'],
-      nightlyRange: 'USD 3,500-7,000+',
+      nightlyRange: 'USD 3,500–7,000+',
       nightlyNote:  'Primary recommended basis.',
       imageSrc:     'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
       imageAlt:     'Aman New York lobby style interior',
-      stayLabel:    '5-6 nights',
+      stayLabel:    '5–6 nights',
+      gallery: [
+        'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1540541338-5e8e9974ead0?auto=format&fit=crop&w=1400&q=80',
+      ],
       rooms: [
         {
           roomCategory: 'Room category · Aman',
@@ -70,11 +77,18 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
       tagline:      'Best for classic luxury and a familiar benchmark feel',
       description:  'The cleanest classic benchmark option if the client prefers a more traditional luxury city stay with strong Midtown positioning.',
       bullets:      ['Closest to classic benchmark', 'Strong Midtown base', 'Likely cleaner value balance'],
-      nightlyRange: 'USD 2,000-4,500+',
+      nightlyRange: 'USD 2,000–4,500+',
       nightlyNote:  'Strong secondary alternate.',
       imageSrc:     'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1200&q=80',
       imageAlt:     'Peninsula New York style facade',
-      stayLabel:    '5-6 nights',
+      stayLabel:    '5–6 nights',
+      gallery: [
+        'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1400&q=80',
+      ],
       rooms: [
         {
           roomCategory: 'Room category · Peninsula',
@@ -107,11 +121,18 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
       tagline:      'Best for views and a calmer, slightly softer city feeling',
       description:  'A strong alternate if skyline views and a more serene New York atmosphere matter more than classic Midtown positioning.',
       bullets:      ['Excellent views', 'Calmer feel throughout', 'Strong alternate to keep visible'],
-      nightlyRange: 'USD 1,800-4,000+',
+      nightlyRange: 'USD 1,800–4,000+',
       nightlyNote:  'Another clean alternate option.',
       imageSrc:     'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1200&q=80',
       imageAlt:     'Mandarin Oriental New York style hotel',
-      stayLabel:    '5-6 nights',
+      stayLabel:    '5–6 nights',
+      gallery: [
+        'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1560347876-aeef00ee58a1?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1400&q=80',
+        'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1400&q=80',
+      ],
       rooms: [
         {
           roomCategory: 'Room category · Mandarin',
@@ -138,7 +159,7 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
     },
   ],
 
-  diningEyebrow: 'Dining',
+  diningEyebrow: 'Sample dining',
   diningTitle:   'A Curated Table.',
   diningBody:    'A few curated dining anchors help the destination page feel richer without becoming too dense.',
 
@@ -175,7 +196,7 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
     },
   ],
 
-  activitiesEyebrow: 'Activities',
+  activitiesEyebrow: 'Sample activities',
   activitiesTitle:   'A Selected Program.',
   activitiesBody:    'A few high-quality anchors that help the client picture the stay quickly without overloading the page.',
 
@@ -217,11 +238,11 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   pricingBody:    'Aman treated as the primary NYC basis. Peninsula and Mandarin remain visible as alternates.',
 
   pricingRows: [
-    { id: 'pr-aman',      item: 'Aman New York',              basis: 'Primary option',     stay: '5-6 nights', indicativeRange: 'USD 18k-38k+' },
-    { id: 'pr-peninsula', item: 'Peninsula New York',         basis: 'Secondary alternate', stay: '5-6 nights', indicativeRange: 'USD 10k-24k+' },
-    { id: 'pr-mandarin',  item: 'Mandarin Oriental New York', basis: 'Secondary alternate', stay: '5-6 nights', indicativeRange: 'USD 9k-22k+' },
+    { id: 'pr-aman',      item: 'Aman New York',              basis: 'Primary option',     stay: '5–6 nights', indicativeRange: 'USD 18k–38k+' },
+    { id: 'pr-peninsula', item: 'Peninsula New York',         basis: 'Secondary alternate', stay: '5–6 nights', indicativeRange: 'USD 10k–24k+' },
+    { id: 'pr-mandarin',  item: 'Mandarin Oriental New York', basis: 'Secondary alternate', stay: '5–6 nights', indicativeRange: 'USD 9k–22k+' },
     { id: 'pr-dining',    item: 'Dining / activities',        basis: 'As selected',         stay: 'Optional',   indicativeRange: 'On request' },
-    { id: 'pr-total',     item: 'NYC destination basis',      basis: 'Hotel-led concept',   stay: '5-6 nights', indicativeRange: 'Primary + alternates shown', isTotal: true },
+    { id: 'pr-total',     item: 'NYC destination basis',      basis: 'Hotel-led concept',   stay: '5–6 nights', indicativeRange: 'Primary + alternates shown', isTotal: true },
   ],
 
   pricingNotesHeading: 'Subpage logic',

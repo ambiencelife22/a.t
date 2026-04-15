@@ -27,6 +27,7 @@ export type ImmerseHotelOption = {
   imageAlt:     string
   stayLabel:    string
   rooms:        ImmerseRoomOption[]
+  gallery?:     string[]   // additional hotel images shown in the expandable gallery strip
 }
 
 export type ImmerseContentCard = {
@@ -130,7 +131,7 @@ export type ImmerseDestinationData = {
   introBody:    string
   // hotels
   hotelsEyebrow: string
-  // hotelsTitle:   string
+  hotelsTitle:   string
   hotelsBody:    string
   hotels:        ImmerseHotelOption[]
   // dining

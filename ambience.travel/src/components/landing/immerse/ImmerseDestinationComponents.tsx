@@ -16,74 +16,61 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
 
   return (
     <ImmerseSectionWrap
-  refProp={ref as React.RefObject<HTMLElement>}
-  style={{
-    background: C.bgAlt,
-  }}
->
-  <div
-    style={{
-      maxWidth: 720,
-      margin: '0 auto',
-      textAlign: 'center',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 16,
-    }}
-  >
-    <ImmerseEyebrow
-      style={{
-        color: C.faint,
-        ...immerseFadeUp(visible, 0),
-      }}
+      refProp={ref as React.RefObject<HTMLElement>}
+      style={{ background: C.bgAlt }}
     >
-      {data.introEyebrow}
-    </ImmerseEyebrow>
-
-    <ImmerseTitle
-      style={{
-        fontSize: 'clamp(28px,4vw,50px)',
-        color: C.text,
-        ...immerseFadeUp(visible, 60),
-      }}
-    >
-      {data.introTitle}
-    </ImmerseTitle>
-
-    <ImmerseBody
-      style={{
-        color: C.muted,
-        ...immerseFadeUp(visible, 120),
-      }}
-    >
-      {data.introBody}
-    </ImmerseBody>
-  </div>
-</ImmerseSectionWrap>
+      <div
+        style={{
+          maxWidth:      720,
+          margin:        '0 auto',
+          textAlign:     'center',
+          display:       'flex',
+          flexDirection: 'column',
+          gap:           16,
+        }}
+      >
+        <ImmerseEyebrow style={{ color: C.faint, ...immerseFadeUp(visible, 0) }}>
+          {data.introEyebrow}
+        </ImmerseEyebrow>
+        <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', color: C.text, ...immerseFadeUp(visible, 60) }}>
+          {data.introTitle}
+        </ImmerseTitle>
+        <ImmerseBody style={{ color: C.muted, ...immerseFadeUp(visible, 120) }}>
+          {data.introBody}
+        </ImmerseBody>
+      </div>
+    </ImmerseSectionWrap>
   )
 }
 
 // ─── Hotel options ────────────────────────────────────────────────────────────
 
 export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) {
-  const { ref, visible }                     = useImmerseVisible()
-  const { ref: ref2, visible: visible2 }     = useImmerseVisible()
-  const isMobile                             = useImmerseMobile()
-  const [activeHotel, setActiveHotel]        = useState(0)
-  const [activeRoom,  setActiveRoom]         = useState(0)
-  const [dragStart,   setDragStart]          = useState<number | null>(null)
-  const carouselRef                          = useRef<HTMLDivElement>(null)
-  const hotelCarouselRef                     = useRef<HTMLDivElement>(null)
+  const { ref, visible }                 = useImmerseVisible()
+  const { ref: ref2, visible: visible2 } = useImmerseVisible()
+  const isMobile                         = useImmerseMobile()
+  const [activeHotel, setActiveHotel]    = useState(0)
+  const [activeRoom,  setActiveRoom]     = useState(0)
+  const [galleryOpen, setGalleryOpen]    = useState(false)
+  const [dragStart,   setDragStart]      = useState<number | null>(null)
+  const carouselRef                      = useRef<HTMLDivElement>(null)
+  const hotelCarouselRef                 = useRef<HTMLDivElement>(null)
 
-  const hotel      = data.hotels[activeHotel]
-  const rooms      = hotel.rooms
-  const totalRooms = rooms.length
+  const hotel       = data.hotels[activeHotel]
+  const rooms       = hotel.rooms
+  const totalRooms  = rooms.length
   const totalHotels = data.hotels.length
+  const gallery     = hotel.gallery ?? []
 
   function goHotel(idx: number) {
     const clamped = Math.max(0, Math.min(totalHotels - 1, idx))
+    if (clamped === activeHotel) {
+      setGalleryOpen(prev => !prev)
+      return
+    }
     setActiveHotel(clamped)
     setActiveRoom(0)
+    setGalleryOpen(true)
   }
 
   function goRoom(idx: number) {
@@ -142,16 +129,13 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
         >
           <div>
             <ImmerseEyebrow>{data.hotelsEyebrow}</ImmerseEyebrow>
-            {/* <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0 }}>{data.hotelsTitle}</ImmerseTitle> */}
           </div>
-          {/* <ImmerseBody>{data.hotelsBody}</ImmerseBody> */}
         </div>
 
         {/* Hotel option cards — desktop: 3-col grid. Mobile: swipe carousel */}
         {isMobile ? (
           <div style={{ ...immerseFadeUp(visible, 80) }}>
             <div
-              ref={hotelCarouselRef}
               style={{ position: 'relative', userSelect: 'none', touchAction: 'pan-y' }}
               onMouseDown={e => setDragStart(e.clientX)}
               onMouseUp={e => { if (dragStart !== null) { const d = dragStart - e.clientX; if (d > 40) goHotel(activeHotel + 1); if (d < -40) goHotel(activeHotel - 1); setDragStart(null) } }}
@@ -160,12 +144,11 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               <HotelOptionCard
                 hotel={data.hotels[activeHotel]}
                 active={true}
-                onClick={() => {}}
+                galleryOpen={galleryOpen}
+                onClick={() => goHotel(activeHotel)}
               />
-              {/* Touch capture overlay — intercepts horizontal swipe on mobile */}
               <div ref={hotelCarouselRef} style={{ position: 'absolute', inset: 0, zIndex: 10 }} />
             </div>
-            {/* Hotel dot indicators */}
             {totalHotels > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
                 {data.hotels.map((_, i) => (
@@ -201,12 +184,64 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                 key={h.id}
                 hotel={h}
                 active={i === activeHotel}
+                galleryOpen={i === activeHotel && galleryOpen}
                 onClick={() => goHotel(i)}
                 index={i}
               />
             ))}
           </div>
         )}
+
+        {/* Gallery strip — animates open below cards */}
+        <div
+          style={{
+            overflow:   'hidden',
+            maxHeight:  galleryOpen && gallery.length > 0 ? 360 : 0,
+            opacity:    galleryOpen && gallery.length > 0 ? 1 : 0,
+            transition: 'max-height 0.55s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease',
+            marginTop:  galleryOpen && gallery.length > 0 ? 18 : 0,
+          }}
+        >
+          <div
+            style={{
+              display:          'flex',
+              gap:              12,
+              overflowX:        'auto',
+              paddingBottom:    12,
+              scrollbarWidth:   'none',
+              msOverflowStyle:  'none',
+            }}
+          >
+            {gallery.map((src, i) => (
+              <div
+                key={i}
+                style={{
+                  flexShrink:   0,
+                  width:        isMobile ? 240 : 320,
+                  height:       isMobile ? 180 : 260,
+                  borderRadius: ID.radiusLg,
+                  overflow:     'hidden',
+                  border:       `1px solid ${ID.line}`,
+                  boxShadow:    '0 8px 24px rgba(0,0,0,0.36)',
+                }}
+              >
+                <img
+                  src={src}
+                  alt={`${hotel.name} gallery image ${i + 1}`}
+                  style={{
+                    width:      '100%',
+                    height:     '100%',
+                    objectFit:  'cover',
+                    display:    'block',
+                    transition: 'transform 0.6s cubic-bezier(0.16,1,0.3,1)',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLImageElement).style.transform = 'scale(1.04)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLImageElement).style.transform = 'scale(1)' }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </ImmerseSectionWrap>
 
       {/* Room categories — full-width animated warm gradient band */}
@@ -222,6 +257,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0);   }
         }
+        .gallery-strip::-webkit-scrollbar { display: none; }
       `}</style>
       <section
         ref={ref2 as React.RefObject<HTMLElement>}
@@ -241,6 +277,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           paddingTop:         94,
           position:           'relative',
           zIndex:             1,
+          transition:         'margin-top 0.55s cubic-bezier(0.16,1,0.3,1)',
         }}
       >
         <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
@@ -261,60 +298,25 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                 fadeIn
               />
 
-              {/* Prev arrow */}
               {activeRoom > 0 && (
                 <button
                   onClick={() => goRoom(activeRoom - 1)}
-                  style={{
-                    position:       'absolute',
-                    left:           -20,
-                    top:            '50%',
-                    transform:      'translateY(-50%)',
-                    background:     'none',
-                    border:         'none',
-                    color:          ID.muted,
-                    fontSize:       22,
-                    cursor:         'pointer',
-                    opacity:        0.38,
-                    padding:        '8px 6px',
-                    lineHeight:     1,
-                    transition:     'opacity 0.2s ease',
-                  }}
+                  style={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: ID.muted, fontSize: 22, cursor: 'pointer', opacity: 0.38, padding: '8px 6px', lineHeight: 1, transition: 'opacity 0.2s ease' }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = '0.78')}
                   onMouseLeave={e => (e.currentTarget.style.opacity = '0.38')}
-                >
-                  ‹
-                </button>
+                >‹</button>
               )}
 
-              {/* Next arrow */}
               {activeRoom < totalRooms - 1 && (
                 <button
                   onClick={() => goRoom(activeRoom + 1)}
-                  style={{
-                    position:       'absolute',
-                    right:          -20,
-                    top:            '50%',
-                    transform:      'translateY(-50%)',
-                    background:     'none',
-                    border:         'none',
-                    color:          ID.muted,
-                    fontSize:       22,
-                    cursor:         'pointer',
-                    opacity:        0.38,
-                    padding:        '8px 6px',
-                    lineHeight:     1,
-                    transition:     'opacity 0.2s ease',
-                  }}
+                  style={{ position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: ID.muted, fontSize: 22, cursor: 'pointer', opacity: 0.38, padding: '8px 6px', lineHeight: 1, transition: 'opacity 0.2s ease' }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = '0.78')}
                   onMouseLeave={e => (e.currentTarget.style.opacity = '0.38')}
-                >
-                  ›
-                </button>
+                >›</button>
               )}
             </div>
 
-            {/* Dot indicators */}
             {totalRooms > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
                 {rooms.map((_, i) => (
@@ -335,7 +337,6 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                 ))}
               </div>
             )}
-
           </div>
         </div>
       </section>
@@ -343,7 +344,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   )
 }
 
-function HotelOptionCard({ hotel, active, onClick, index = 0 }: { hotel: ImmerseHotelOption; active: boolean; onClick: () => void; index?: number }) {
+function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { hotel: ImmerseHotelOption; active: boolean; galleryOpen: boolean; onClick: () => void; index?: number }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -352,7 +353,7 @@ function HotelOptionCard({ hotel, active, onClick, index = 0 }: { hotel: Immerse
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        border:        `1px solid ${active ? 'rgba(216,181,106,0.55)' : hovered ? 'rgba(216,181,106,0.28)' : ID.line}`,
+        border:        `1px solid ${active ? (galleryOpen ? ID.gold : 'rgba(216,181,106,0.55)') : hovered ? 'rgba(216,181,106,0.28)' : ID.line}`,
         borderRadius:  24,
         overflow:      'hidden',
         background:    active ? ID.panel : ID.panel2,
@@ -360,7 +361,7 @@ function HotelOptionCard({ hotel, active, onClick, index = 0 }: { hotel: Immerse
         display:       'flex',
         flexDirection: 'column',
         transition:    'border-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease',
-        cursor:        active ? 'default' : 'pointer',
+        cursor:        'pointer',
         opacity:       active ? 1 : 0.58,
         transform:     active ? 'scale(1)' : 'scale(0.97)',
         animation:     `immerseFadeIn 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
@@ -408,6 +409,29 @@ function HotelOptionCard({ hotel, active, onClick, index = 0 }: { hotel: Immerse
           </div>
           <div style={{ color: ID.muted, fontSize: 12, lineHeight: 1.55 }}>{hotel.nightlyNote}</div>
         </div>
+
+        {/* Gallery hint when active */}
+        {active && hotel.gallery && hotel.gallery.length > 0 && (
+          <div
+            style={{
+              marginTop:     12,
+              paddingTop:    12,
+              borderTop:     `1px solid ${ID.line}`,
+              display:       'flex',
+              alignItems:    'center',
+              gap:           6,
+              color:         ID.gold,
+              fontSize:      10,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              fontWeight:    700,
+              opacity:       0.72,
+            }}
+          >
+            <span style={{ transition: 'transform 0.3s ease', transform: galleryOpen ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}>▾</span>
+            {galleryOpen ? 'Hide gallery' : `View gallery · ${hotel.gallery.length} images`}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -495,19 +519,20 @@ type ContentGridProps = {
   body:    string
   items:   ImmerseContentCard[]
   dark?:   boolean
+  id?:     string
 }
 
-export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false }: ContentGridProps) {
+export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, id }: ContentGridProps) {
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
-  const eyebrowColor = dark ? ID.gold   : C.faint
-  const titleColor   = dark ? ID.text   : C.text
-  const bodyColor    = dark ? ID.muted  : C.muted
-  const sectionBg    = dark ? {}        : { background: C.bgAlt }
+  const eyebrowColor  = dark ? ID.gold  : C.faint
+  const titleColor    = dark ? ID.text  : C.text
+  const bodyColor     = dark ? ID.muted : C.muted
+  const sectionBg     = dark ? {}       : { background: C.bgAlt }
 
   return (
-    <ImmerseSectionWrap refProp={ref as React.RefObject<HTMLElement>} style={sectionBg}>
+    <ImmerseSectionWrap id={id} refProp={ref as React.RefObject<HTMLElement>} style={sectionBg}>
       <div
         style={{
           display:             'grid',
@@ -544,12 +569,12 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false }
 function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseContentCard; index?: number; inverted?: boolean }) {
   const [hovered, setHovered] = useState(false)
 
-  const cardBg      = inverted ? C.bgAlt            : ID.panel2
-  const cardBorder  = inverted ? C.border            : ID.line
-  const nameColor   = inverted ? C.text              : ID.text
-  const mutedColor  = inverted ? C.muted             : ID.muted
-  const ruleColor   = inverted ? `${C.gold}88`       : `${ID.gold}55`
-  const dividerColor = inverted ? C.border            : ID.line
+  const cardBg       = inverted ? C.bgAlt   : ID.panel2
+  const cardBorder   = inverted ? C.border  : ID.line
+  const nameColor    = inverted ? C.text    : ID.text
+  const mutedColor   = inverted ? C.muted   : ID.muted
+  const ruleColor    = inverted ? `${C.gold}88` : `${ID.gold}55`
+  const dividerColor = inverted ? C.border  : ID.line
 
   return (
     <div
@@ -583,7 +608,6 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
         />
       </div>
       <div style={{ padding: 18 }}>
-        {/* Gold rule above kicker */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${ruleColor}, transparent)` }} />
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: inverted ? C.gold : ID.gold, fontWeight: 700 }}>
