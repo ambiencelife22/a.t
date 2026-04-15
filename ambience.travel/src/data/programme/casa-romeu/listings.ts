@@ -235,7 +235,7 @@ export const listings: Listing[] = [
     address:  'C/ Roger de Lauria, 19, 46002 València',
     website:  'https://www.mercadona.es',
     genre:    'Supermarket',
-    hours:    'Mon–Sat 9:00–21:30',
+    hours:    'Mon-Sat 9:00-21:30',
   },
   {
     id:       'consum',
@@ -244,7 +244,7 @@ export const listings: Listing[] = [
     address:  'Carrer de Sueca, 34, L\'Eixample, 46006 València',
     website:  'https://www.consum.es',
     genre:    'Supermarket',
-    hours:    'Mon–Sat 9:00–21:30',
+    hours:    'Mon-Sat 9:00-21:30',
   },
   {
     id:       'farmacia',
@@ -252,7 +252,7 @@ export const listings: Listing[] = [
     category: 'shopping',
     address:  'C/ de Cadis, 62, L\'Eixample, 46006 València',
     genre:    'Pharmacy',
-    hours:    'Mon–Sat 9:00–22:00 · Sun 9:30–14:00',
+    hours:    'Mon-Sat 9:00-22:00 · Sun 9:30-14:00',
   },
   {
     id:       'normal',
@@ -260,7 +260,7 @@ export const listings: Listing[] = [
     category: 'shopping',
     address:  'Av. de Pius XII, 2, 46009 Valencia',
     genre:    'Toiletries',
-    hours:    'Mon–Sat 9:30–21:30',
+    hours:    'Mon-Sat 9:30-21:30',
   },
   {
     id:       'valencia-iii',
@@ -268,7 +268,7 @@ export const listings: Listing[] = [
     category: 'shopping',
     address:  'C/ de l\'Almirall Cadarso, 25, L\'Eixample, 46005 València',
     genre:    'Shopping Centre',
-    hours:    'Mon–Sat 9:30–21:30',
+    hours:    'Mon-Sat 9:30-21:30',
   },
   {
     id:       'el-corte-ingles',
@@ -277,7 +277,7 @@ export const listings: Listing[] = [
     address:  'C/ Pintor Sorolla, 26, 46002 Valencia',
     website:  'https://www.elcorteingles.es',
     genre:    'Department Store',
-    hours:    'Mon–Sat 10:00–22:00',
+    hours:    'Mon-Sat 10:00-22:00',
   },
   {
     id:       'mediamarkt',
@@ -286,6 +286,6 @@ export const listings: Listing[] = [
     address:  'Carrer de Colón, 6, L\'Eixample, 46004 València',
     website:  'https://www.mediamarkt.es',
     genre:    'Electronics',
-    hours:    'Mon–Sat 10:00–22:00',
+    hours:    'Mon-Sat 10:00-22:00',
   },
 ]

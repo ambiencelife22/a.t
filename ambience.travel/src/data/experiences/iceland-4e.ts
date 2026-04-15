@@ -133,7 +133,7 @@ export const experience = {
     body:    'The reality of the offer, visible without pushing the page into a heavy itinerary-document feel.',
     cards: [
       { label: 'Dates',      big: 'To be advised',          small: 'Guests can register interest now and receive first notice when dates are released.' },
-      { label: 'Length',     big: '6–7 nights',             small: 'Long enough to feel restorative, short enough to remain focused and beautifully paced.' },
+      { label: 'Length',     big: '6-7 nights',             small: 'Long enough to feel restorative, short enough to remain focused and beautifully paced.' },
       { label: 'Format',     big: 'Small group or private', small: 'Suitable either as a limited hosted departure or a privately tailored variation.' },
       { label: 'Extensions', big: 'Available',              small: 'Additional nights, Reykjavik time, or broader Iceland routing can be layered in separately.' },
     ],

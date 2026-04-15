@@ -1218,7 +1218,7 @@ function ListingsTab() {
               <input style={inputStyle} value={form.genre} onChange={e => setForm(f => ({ ...f, genre: e.target.value }))} placeholder='e.g. Italian, Paella, Market' />
             </Field>
             <Field label='Hours'>
-              <input style={inputStyle} value={form.hours} onChange={e => setForm(f => ({ ...f, hours: e.target.value }))} placeholder='e.g. Mon–Sat 9:00–21:30' />
+              <input style={inputStyle} value={form.hours} onChange={e => setForm(f => ({ ...f, hours: e.target.value }))} placeholder='e.g. Mon-Sat 9:00-21:30' />
             </Field>
             <Field label='Address'>
               <input style={inputStyle} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder='Full address' />

@@ -417,7 +417,7 @@ function PastRow({ p }: { p: GuestProgramme }) {
         <div style={{ fontSize: 12, color: C.muted, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {[p.property.city, p.property.country].filter(Boolean).join(', ')}
           {p.checkIn && ` · ${formatDateShort(p.checkIn)}`}
-          {p.checkOut && ` – ${formatDateShort(p.checkOut)}`}
+          {p.checkOut && ` - ${formatDateShort(p.checkOut)}`}
         </div>
       </div>
       <div style={{

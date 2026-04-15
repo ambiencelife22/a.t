@@ -11,7 +11,7 @@ type Props = {
   guestName:       string
   titlePrefix?:    string   // renders in Cormorant Garamond italic — e.g. "Honeymoon in"
   dateLabel?:      string   // renders in gold below title — e.g. "January 2027"
-  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5–6 Nights"
+  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5-6 Nights"
   // Content
   title:           string
   subtitle:        string
