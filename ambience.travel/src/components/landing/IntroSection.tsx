@@ -405,7 +405,7 @@ export default function IntroSection({ heroVis }: { heroVis: boolean }) {
               fontWeight:    700,
             }}
           >
-            Designed around the guest.
+            Designed around you.
           </p>
         </div>
 

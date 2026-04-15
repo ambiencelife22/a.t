@@ -36,7 +36,7 @@ export default function HeroSection() {
     'Highly tailored, never formulaic',
     'Discreet support with exacting care',
     'Shaped by taste, privacy, and rhythm',
-    'Designed around the guest, not the itinerary',
+    'Designed around you, not the itinerary',
   ]
 
   return (
