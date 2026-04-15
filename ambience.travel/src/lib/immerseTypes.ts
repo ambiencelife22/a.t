@@ -18,11 +18,11 @@ export type ImmerseHotelOption = {
   rank:         'primary' | 'secondary'
   rankLabel:    string
   name:         string
-  tagline:      string
-  description:  string
+  // tagline:      string
+  // description:  string
   bullets:      string[]
   nightlyRange: string
-  nightlyNote:  string
+  // nightlyNote:  string
   imageSrc:     string
   imageAlt:     string
   stayLabel:    string

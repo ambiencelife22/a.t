@@ -388,8 +388,8 @@ function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { h
         <div style={{ fontSize: 28, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text, marginBottom: 8 }}>
           {hotel.name}
         </div>
-        <div style={{ color: ID.muted, fontSize: 13, marginBottom: 12 }}>{hotel.tagline}</div>
-        <div style={{ color: ID.muted, fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>{hotel.description}</div>
+        {/* <div style={{ color: ID.muted, fontSize: 13, marginBottom: 12 }}>{hotel.tagline}</div> */}
+        {/* <div style={{ color: ID.muted, fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>{hotel.description}</div> */}
 
         <div style={{ display: 'grid', gap: 7, marginBottom: 14 }}>
           {hotel.bullets.map(b => (
@@ -407,7 +407,7 @@ function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { h
           <div style={{ fontSize: 25, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text, marginBottom: 5 }}>
             {hotel.nightlyRange}
           </div>
-          <div style={{ color: ID.muted, fontSize: 12, lineHeight: 1.55 }}>{hotel.nightlyNote}</div>
+          {/* <div style={{ color: ID.muted, fontSize: 12, lineHeight: 1.55 }}>{hotel.nightlyNote}</div> */}
         </div>
 
         {/* Gallery hint when active */}
@@ -482,7 +482,7 @@ function RoomCategory({ room, hotel, fadeIn = false }: { room: ImmerseRoomOption
               <div style={{ fontSize: isMobile ? 28 : 40, lineHeight: 0.98, letterSpacing: '-0.055em', fontWeight: 800, color: ID.text, marginBottom: 8 }}>
                 {room.roomBasis}
               </div>
-              <ImmerseBody>{hotel.description}</ImmerseBody>
+              {/* <ImmerseBody>{hotel.description}</ImmerseBody> */}
             </div>
             <ImmerseStayBox label={hotel.stayLabel} />
           </div>
