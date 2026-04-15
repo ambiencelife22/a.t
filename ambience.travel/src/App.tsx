@@ -3,6 +3,9 @@
  *
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
+ *   ambience.travel/experiences/:slug                   → SignatureExperiencePage
+ *   ambience.travel/immerse/honeymoon/                  → HoneymoonOverviewPage
+ *   ambience.travel/immerse/honeymoon/new-york          → HoneymoonNewYorkPage
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -16,6 +19,8 @@
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
+ *   localhost:5173/immerse/honeymoon/                   → HoneymoonOverviewPage
+ *   localhost:5173/immerse/honeymoon/new-york            → HoneymoonNewYorkPage
  *
  * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
  * full-page programme view. The programme root renders the app shell.
@@ -31,13 +36,15 @@ import ProgrammeList from './components/ProgrammeList'
 import Profile from './components/Profile'
 import Auth from './components/Auth'
 import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
+import HoneymoonOverviewPage  from './components/landing/immerse/HoneymoonOverviewPage'
+import HoneymoonNewYorkPage   from './components/landing/immerse/HoneymoonNewYorkPage'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
 import { ThemeContext } from './lib/ThemeContext'
 import type { Session } from '@supabase/supabase-js'
 
-type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience'
+type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience' | 'immerse'
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -52,6 +59,15 @@ function hasUrlId(): boolean {
 
 function isExperienceRoute(): boolean {
   return window.location.pathname.startsWith('/experiences/')
+}
+
+function isImmerseRoute(): boolean {
+  return window.location.pathname.startsWith('/immerse/')
+}
+
+function resolveImmerseSlug(): { journey: string; destination: string | null } {
+  const parts = window.location.pathname.replace('/immerse/', '').replace(/\/$/, '').split('/')
+  return { journey: parts[0] ?? '', destination: parts[1] ?? null }
 }
 
 function resolveRoute(): Route {
@@ -73,6 +89,7 @@ function resolveRoute(): Route {
     return 'app'
   }
 
+  if (isImmerseRoute())    return 'immerse'
   if (isExperienceRoute()) return 'experience'
 
   return 'landing'
@@ -89,6 +106,16 @@ export default function App() {
 
   if (route === 'landing')          return <LandingLayout />
   if (route === 'experience')       return <SignatureExperiencePage />
+
+  if (route === 'immerse') {
+    const { journey, destination } = resolveImmerseSlug()
+    if (journey === 'honeymoon') {
+      if (destination === 'new-york') return <HoneymoonNewYorkPage />
+      return <HoneymoonOverviewPage />
+    }
+    return <LandingLayout />
+  }
+
   if (route === 'signup')           return <Auth onAuth={() => { window.location.search = '' }} initialMode='signup' />
   if (route === 'admin')            return <ProgrammeAdmin />
   if (route === 'programme-detail') return <ProgrammeGate full />
