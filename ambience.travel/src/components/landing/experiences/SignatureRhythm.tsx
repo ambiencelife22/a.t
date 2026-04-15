@@ -1,7 +1,8 @@
 // SignatureRhythm.tsx — experience rhythm section for signature experience pages
-// Owns the day/phase cadence list only. Does not own elements or stay sections.
+// Owns the day/phase cadence list only.
 // Last updated: S9
 
+import { useEffect, useState } from 'react'
 import { C } from '../../../lib/landingTypes'
 import { fadeUp, useVisible } from '../LandingComponents'
 
@@ -19,14 +20,22 @@ type Props = {
 }
 
 export default function SignatureRhythm({ eyebrow, title, body, rows }: Props) {
-  const { ref, visible } = useVisible(0.10)
+  const { ref, visible }        = useVisible(0.10)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth < 768) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   return (
     <section
       ref={ref}
       style={{
         padding:      'clamp(56px,7vw,96px) clamp(20px,5vw,48px)',
-        background:   `linear-gradient(180deg, ${C.bg}, #F2ECE2)`,
+        background:   `linear-gradient(180deg, ${C.bg}, #EEF3F5)`,
         borderBottom: `1px solid ${C.border}`,
       }}
     >
@@ -35,8 +44,8 @@ export default function SignatureRhythm({ eyebrow, title, body, rows }: Props) {
           maxWidth:            1280,
           margin:              '0 auto',
           display:             'grid',
-          gridTemplateColumns: 'minmax(0,0.82fr) minmax(0,1.18fr)',
-          gap:                 34,
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,0.82fr) minmax(0,1.18fr)',
+          gap:                 isMobile ? 32 : 34,
           alignItems:          'start',
         }}
       >
@@ -87,11 +96,11 @@ export default function SignatureRhythm({ eyebrow, title, body, rows }: Props) {
             <div
               key={row.label}
               style={{
-                display:     'grid',
-                gridTemplateColumns: '112px 1fr',
-                gap:         18,
-                padding:     '18px 0',
-                borderTop:   i === 0 ? 'none' : `1px solid ${C.border}`,
+                display:             'grid',
+                gridTemplateColumns: isMobile ? '80px 1fr' : '112px 1fr',
+                gap:                 isMobile ? 12 : 18,
+                padding:             '18px 0',
+                borderTop:           i === 0 ? 'none' : `1px solid ${C.border}`,
               }}
             >
               <div
@@ -109,7 +118,7 @@ export default function SignatureRhythm({ eyebrow, title, body, rows }: Props) {
               <div>
                 <div
                   style={{
-                    fontSize:      20,
+                    fontSize:      isMobile ? 17 : 20,
                     fontWeight:    700,
                     letterSpacing: '-0.03em',
                     color:         C.text,

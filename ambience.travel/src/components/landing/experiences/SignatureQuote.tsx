@@ -2,6 +2,7 @@
 // Owns the quote + left editorial copy only.
 // Last updated: S9
 
+import { useEffect, useState } from 'react'
 import { C } from '../../../lib/landingTypes'
 import { fadeUp, useVisible } from '../LandingComponents'
 
@@ -14,7 +15,15 @@ type Props = {
 }
 
 export default function SignatureQuote({ eyebrow, title, body, text, attrib }: Props) {
-  const { ref, visible } = useVisible(0.12)
+  const { ref, visible }        = useVisible(0.12)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth < 768) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   return (
     <section
@@ -30,36 +39,17 @@ export default function SignatureQuote({ eyebrow, title, body, text, attrib }: P
           maxWidth:            1280,
           margin:              '0 auto',
           display:             'grid',
-          gridTemplateColumns: '0.85fr 1.15fr',
-          gap:                 24,
+          gridTemplateColumns: isMobile ? '1fr' : '0.85fr 1.15fr',
+          gap:                 isMobile ? 32 : 24,
           alignItems:          'center',
         }}
       >
-        {/* Left — editorial framing */}
+        {/* Left */}
         <div>
-          <p
-            style={{
-              fontSize:      11,
-              letterSpacing: '0.28em',
-              textTransform: 'uppercase',
-              color:         C.gold,
-              marginBottom:  16,
-              ...fadeUp(visible, 0),
-            }}
-          >
+          <p style={{ fontSize: 11, letterSpacing: '0.28em', textTransform: 'uppercase', color: C.gold, marginBottom: 16, ...fadeUp(visible, 0) }}>
             {eyebrow}
           </p>
-          <h2
-            style={{
-              fontSize:      'clamp(28px,4vw,50px)',
-              fontWeight:    700,
-              letterSpacing: '-0.05em',
-              lineHeight:    1.04,
-              color:         C.text,
-              marginBottom:  16,
-              ...fadeUp(visible, 80),
-            }}
-          >
+          <h2 style={{ fontSize: 'clamp(28px,4vw,50px)', fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.04, color: C.text, marginBottom: 16, ...fadeUp(visible, 80) }}>
             {title}
           </h2>
           <p style={{ fontSize: 16, lineHeight: 1.8, color: C.muted, margin: 0, ...fadeUp(visible, 160) }}>
@@ -67,49 +57,32 @@ export default function SignatureQuote({ eyebrow, title, body, text, attrib }: P
           </p>
         </div>
 
-        {/* Right — quote card */}
+        {/* Quote card */}
         <div
           style={{
             ...fadeUp(visible, 200),
             background:   '#FFFFFF',
             border:       `1px solid ${C.border}`,
             borderRadius: 28,
-            padding:      34,
+            padding:      isMobile ? 24 : 34,
             boxShadow:    '0 20px 56px rgba(0,0,0,0.07)',
           }}
         >
-          <div
-            style={{
-              fontFamily:  'Georgia, serif',
-              fontSize:    52,
-              color:       '#D0C3AE',
-              lineHeight:  1,
-              marginBottom: 4,
-            }}
-          >
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: 52, color: '#D0C3AE', lineHeight: 1, marginBottom: 4 }}>
             "
           </div>
           <blockquote
             style={{
               margin:     0,
               fontFamily: 'Georgia, serif',
-              fontSize:   20,
+              fontSize:   isMobile ? 17 : 20,
               lineHeight: 1.9,
               color:      '#373C37',
             }}
           >
             {text}
           </blockquote>
-          <div
-            style={{
-              marginTop:     18,
-              fontSize:      11,
-              fontWeight:    700,
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color:         C.muted,
-            }}
-          >
+          <div style={{ marginTop: 18, fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>
             {attrib}
           </div>
         </div>

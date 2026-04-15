@@ -2,6 +2,7 @@
 // Owns the two-column "why this exists" framing only.
 // Last updated: S9
 
+import { useEffect, useState } from 'react'
 import { C } from '../../../lib/landingTypes'
 import { fadeUp, useVisible } from '../LandingComponents'
 
@@ -12,7 +13,15 @@ type Props = {
 }
 
 export default function SignatureIntro({ eyebrow, title, body }: Props) {
-  const { ref, visible } = useVisible(0.12)
+  const { ref, visible }      = useVisible(0.12)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    function check() { setIsMobile(window.innerWidth < 768) }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   return (
     <section
@@ -28,8 +37,8 @@ export default function SignatureIntro({ eyebrow, title, body }: Props) {
           maxWidth:            1280,
           margin:              '0 auto',
           display:             'grid',
-          gridTemplateColumns: 'minmax(0,0.82fr) minmax(0,1.18fr)',
-          gap:                 34,
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,0.82fr) minmax(0,1.18fr)',
+          gap:                 isMobile ? 24 : 34,
           alignItems:          'start',
         }}
       >
