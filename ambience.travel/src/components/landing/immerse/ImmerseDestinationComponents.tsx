@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
 import { C } from '../../../lib/landingTypes'
-import { PricingTable, Td, TotalTd, NotesList } from './ImmerseJourneyComponents'
+import { PricingTable, Td, TotalTd, NotesList } from './ImmerseTripComponents'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
