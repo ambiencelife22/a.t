@@ -12,7 +12,7 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   eyebrow:      'Destination · New York',
   title:        'New York City',
   subtitle:     'A polished city stop designed to bring energy, dining, shopping, and a strong hotel experience into the middle of the honeymoon — with Aman as the primary option and Peninsula and Mandarin as clear alternates.',
-  heroImageSrc: 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?auto=format&fit=crop&w=2200&q=80',
+  heroImageSrc: 'https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&fm=jpg&q=90&w=2400',
   heroImageAlt: 'New York City skyline at dusk',
   heroPills:    ['5-6 nights suggested', 'Three hotel options', 'Dining + activities'],
 
@@ -24,172 +24,175 @@ export const yazeedHoneymoonNewYork: ImmerseDestinationData = {
   hotelsTitle:   'Aman first, with two clear alternates.',
   hotelsBody:    'One primary recommendation, two clean alternates — decision-friendly without creating three separate NYC presentations unless the client asks for that later.',
 
-  hotels: [
-    {
-      id: 'aman',
-      rank: 'primary',
-      rankLabel: 'Option 01',
-      name: 'Aman New York',
-      bullets: [
-        'Most private overall tone',
-        'Strongest wellness positioning',
-        'A more insulated New York experience'
-      ],
-      imageSrc: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
-      imageAlt: 'Minimalist luxury suite interior with fireplace',
-      stayLabel: '5-6 nights',
-      gallery: [
-        'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1400&q=80',
-        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80',
-        'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80'
-      ],
-      rooms: [
-        {
-          levelLabel: 'Deluxe level',
-          roomBasis: 'Junior Suite or similar',
-          roomBenefits: [
-            'Entry into the Aman experience with full design integrity',
-            'Open-plan suite layout with calm, residential tone',
-            'Ideal if privacy and atmosphere outweigh size',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Refined minimalist suite interior',
-        },
-        {
-          levelLabel: 'Junior suite level',
-          roomBasis: 'Corner Suite or similar',
-          roomBenefits: [
-            'Greater separation between living and sleeping areas',
-            'More complete in-room experience between city outings',
-            'Strong balance of scale, calm, and usability',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Luxury suite with warm wood tones',
-        },
-        {
-          levelLabel: 'Deluxe suite level',
-          roomBasis: 'Aman Suite or similar',
-          roomBenefits: [
-            'True residential Manhattan feel',
-            'Ideal for extended stays or in-room hosting',
-            'Top-tier positioning within the property',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1540541338-5e8e9974ead0?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Expansive luxury suite living room',
-        }
-      ]
-    },
+ hotels: [
+  {
+    id: 'aman',
+    rank: 'primary',
+    rankLabel: 'Option 01',
+    name: 'Aman New York',
+    bullets: [
+      'Most private overall tone',
+      'Strongest wellness positioning',
+      'A more insulated New York experience'
+    ],
+    imageSrc: 'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Premier-Suite-56th.jpg?itok=a2QvmpU2',
+    imageAlt: 'Premier Suite at Aman New York',
+    stayLabel: '5-6 nights',
+    gallery: [
+      'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Premier-Suite-56th.jpg?itok=a2QvmpU2',
+      'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Grand-Suite-copy.jpg?itok=ifBfHY-I',
+      'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Corner-Suite--Bedroom.jpg?itok=JuZcGJ5j',
+      'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Aman-Suite--Dining-area.jpg?itok=GlbE88SV'
+    ],
+    rooms: [
+      {
+        levelLabel: 'Deluxe level',
+        roomBasis: 'Premier Suite or similar',
+        roomBenefits: [
+          'Entry into the Aman experience with full design integrity',
+          'Open-plan suite layout with calm, residential tone',
+          'Ideal if privacy and atmosphere outweigh size',
+        ],
+        roomImageSrc: 'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Premier-Suite-56th.jpg?itok=a2QvmpU2',
+        roomImageAlt: 'Premier Suite at Aman New York',
+      },
+      {
+        levelLabel: 'Junior suite level',
+        roomBasis: 'Corner Suite or similar',
+        roomBenefits: [
+          'Greater separation between living and sleeping areas',
+          'More complete in-room experience between city outings',
+          'Strong balance of scale, calm, and usability',
+        ],
+        roomImageSrc: 'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Corner-Suite--Bedroom.jpg?itok=JuZcGJ5j',
+        roomImageAlt: 'Corner Suite bedroom at Aman New York',
+      },
+      {
+        levelLabel: 'Deluxe suite level',
+        roomBasis: 'Aman Suite or similar',
+        roomBenefits: [
+          'True residential Manhattan feel',
+          'Ideal for extended stays or in-room hosting',
+          'Top-tier positioning within the property',
+        ],
+        roomImageSrc: 'https://www.aman.com/sites/default/files/styles/central_carousel_large/public/2026-03/Aman-New-York--USA---Accommodation--Aman-Suite--Dining-area.jpg?itok=GlbE88SV',
+        roomImageAlt: 'Aman Suite dining area at Aman New York',
+      }
+    ]
+  },
 
-    {
-      id: 'peninsula',
-      rank: 'secondary',
-      rankLabel: 'Option 02',
-      name: 'The Peninsula New York',
-      bullets: [
-        'Classic Midtown benchmark',
-        'Strong Fifth Avenue positioning',
-        'Most balanced overall option'
-      ],
-      imageSrc: 'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1200&q=80',
-      imageAlt: 'Classic New York luxury hotel exterior',
-      stayLabel: '5-6 nights',
-      gallery: [
-        'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=1400&q=80',
-        'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1400&q=80',
-        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1400&q=80'
-      ],
-      rooms: [
-        {
-          levelLabel: 'Deluxe level',
-          roomBasis: 'Deluxe Room or similar',
-          roomBenefits: [
-            'Polished and reliable entry point',
-            'Ideal if the city programme is the focus',
-            'Strong value relative to positioning',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Elegant classic hotel room',
-        },
-        {
-          levelLabel: 'Junior suite level',
-          roomBasis: 'Junior Suite or similar',
-          roomBenefits: [
-            'Adds space without overcommitting to full suite pricing',
-            'More relaxed in-room experience',
-            'Strong midpoint option',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Junior suite with sitting area',
-        },
-        {
-          levelLabel: 'Deluxe suite level',
-          roomBasis: 'Deluxe Suite or similar',
-          roomBenefits: [
-            'Clear separation of living and sleeping areas',
-            'Better suited for extended time in-room',
-            'Most complete Peninsula experience',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Luxury suite with classic decor',
-        }
-      ]
-    },
+  {
+    id: 'peninsula',
+    rank: 'secondary',
+    rankLabel: 'Option 02',
+    name: 'The Peninsula New York',
+    bullets: [
+      'Classic Midtown benchmark',
+      'Strong Fifth Avenue positioning',
+      'Most balanced overall option'
+    ],
+    imageSrc: 'https://www.peninsula.com/en/-/media/images/hero-images/rooms-and-suites/pny-pen-suite1/new-york_the-peninsula-suite-living-room-1-%281%29.jpg?hash=E3C52FB6A2DAD02490BFDD681D35BE3A&mw=2048',
+    imageAlt: 'The Peninsula New York suite living room',
+    stayLabel: '5-6 nights',
+    gallery: [
+      'https://www.peninsula.com/en/-/media/images/hero-images/rooms-and-suites/pny-pen-suite1/new-york_the-peninsula-suite-living-room-1-%281%29.jpg?hash=E3C52FB6A2DAD02490BFDD681D35BE3A&mw=2048'
+    ],
+    rooms: [
+      {
+        levelLabel: 'Deluxe level',
+        roomBasis: 'Deluxe Room or similar',
+        roomBenefits: [
+          'Polished and reliable entry point',
+          'Ideal if the city programme is the focus',
+          'Strong value relative to positioning',
+        ],
+        roomImageSrc: 'https://www.peninsula.com/en/-/media/images/hero-images/rooms-and-suites/pny-pen-suite1/new-york_the-peninsula-suite-living-room-1-%281%29.jpg?hash=E3C52FB6A2DAD02490BFDD681D35BE3A&mw=2048',
+        roomImageAlt: 'The Peninsula New York room image placeholder from official site',
+        // roomImagePage: 'https://www.peninsula.com/en/new-york/luxury-hotel-room-suite-types/deluxe-room'
+      },
+      {
+        levelLabel: 'Junior suite level',
+        roomBasis: 'Junior Suite or similar',
+        roomBenefits: [
+          'Adds space without overcommitting to full suite pricing',
+          'More relaxed in-room experience',
+          'Strong midpoint option',
+        ],
+        roomImageSrc: 'https://www.peninsula.com/en/-/media/images/hero-images/rooms-and-suites/pny-pen-suite1/new-york_the-peninsula-suite-living-room-1-%281%29.jpg?hash=E3C52FB6A2DAD02490BFDD681D35BE3A&mw=2048',
+        roomImageAlt: 'The Peninsula New York junior suite image placeholder from official site',
+        // roomImagePage: 'https://www.peninsula.com/en/new-york/luxury-hotel-room-suite-types/junior-suite'
+      },
+      {
+        levelLabel: 'Deluxe suite level',
+        roomBasis: 'Deluxe Suite or similar',
+        roomBenefits: [
+          'Clear separation of living and sleeping areas',
+          'Better suited for extended time in-room',
+          'Most complete Peninsula experience',
+        ],
+        roomImageSrc: 'https://www.peninsula.com/en/-/media/images/hero-images/rooms-and-suites/pny-pen-suite1/new-york_the-peninsula-suite-living-room-1-%281%29.jpg?hash=E3C52FB6A2DAD02490BFDD681D35BE3A&mw=2048',
+        roomImageAlt: 'The Peninsula New York deluxe suite image placeholder from official site',
+        // roomImagePage: 'https://www.peninsula.com/en/new-york/luxury-hotel-room-suite-types/deluxe-suite'
+      }
+    ]
+  },
 
-    {
-      id: 'mandarin',
-      rank: 'secondary',
-      rankLabel: 'Option 03',
-      name: 'Mandarin Oriental New York',
-      bullets: [
-        'Strongest skyline views',
-        'Calmer overall tone',
-        'Excellent alternative positioning'
-      ],
-      imageSrc: 'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1200&q=80',
-      imageAlt: 'Luxury hotel with skyline view',
-      stayLabel: '5-6 nights',
-      gallery: [
-        'https://images.unsplash.com/photo-1455587734955-081b22074882?auto=format&fit=crop&w=1400&q=80',
-        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80',
-        'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1400&q=80'
-      ],
-      rooms: [
-        {
-          levelLabel: 'Deluxe level',
-          roomBasis: 'Deluxe Room or similar',
-          roomBenefits: [
-            'Strong entry point with immediate skyline presence',
-            'Best value within the property',
-            'Ideal for shorter in-room dwell time',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Modern hotel room with skyline view',
-        },
-        {
-          levelLabel: 'Junior suite level',
-          roomBasis: 'Suite or similar',
-          roomBenefits: [
-            'More generous layout with defined seating area',
-            'Better for decompressing between outings',
-            'Balanced upgrade from base rooms',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Suite with living area and large windows',
-        },
-        {
-          levelLabel: 'Deluxe suite level',
-          roomBasis: 'Signature Suite or similar',
-          roomBenefits: [
-            'Panoramic views and full suite experience',
-            'Best for extended stays or special occasions',
-            'Top-tier positioning within Mandarin',
-          ],
-          roomImageSrc: 'https://images.unsplash.com/photo-1560347876-aeef00ee58a1?auto=format&fit=crop&w=1800&q=80',
-          roomImageAlt: 'Luxury suite with panoramic city views',
-        }
-      ]
-    }
-  ],
+  {
+    id: 'mandarin',
+    rank: 'secondary',
+    rankLabel: 'Option 03',
+    name: 'Mandarin Oriental New York',
+    bullets: [
+      'Strongest skyline views',
+      'Calmer overall tone',
+      'Excellent alternative positioning'
+    ],
+    imageSrc: 'https://media.ffycdn.net/eu/mandarin-oriental-hotel-group/iz342uokN4ioGgTT36wc.jpg',
+    imageAlt: 'Mandarin Oriental brand image placeholder',
+    stayLabel: '5-6 nights',
+    gallery: [
+      'https://media.ffycdn.net/eu/mandarin-oriental-hotel-group/iz342uokN4ioGgTT36wc.jpg'
+    ],
+    rooms: [
+      {
+        levelLabel: 'Deluxe level',
+        roomBasis: 'Central Park View Room or similar',
+        roomBenefits: [
+          'Strong entry point with immediate skyline presence',
+          'Best value within the property',
+          'Ideal for shorter in-room dwell time',
+        ],
+        roomImageSrc: 'https://media.ffycdn.net/eu/mandarin-oriental-hotel-group/iz342uokN4ioGgTT36wc.jpg',
+        roomImageAlt: 'Mandarin Oriental New York room image placeholder',
+        // roomImagePage: 'https://www.mandarinoriental.com/en/new-york/manhattan/stay/central-park-view-room'
+      },
+      {
+        levelLabel: 'Junior suite level',
+        roomBasis: 'Central Park View Suite or similar',
+        roomBenefits: [
+          'More generous layout with defined seating area',
+          'Better for decompressing between outings',
+          'Balanced upgrade from base rooms',
+        ],
+        roomImageSrc: 'https://media.ffycdn.net/eu/mandarin-oriental-hotel-group/iz342uokN4ioGgTT36wc.jpg',
+        roomImageAlt: 'Mandarin Oriental New York suite image placeholder',
+        // roomImagePage: 'https://www.mandarinoriental.com/en/new-york/manhattan/stay/central-park-view-suite'
+      },
+      {
+        levelLabel: 'Deluxe suite level',
+        roomBasis: 'Oriental Suite or similar',
+        roomBenefits: [
+          'Panoramic views and full suite experience',
+          'Best for extended stays or special occasions',
+          'Top-tier positioning within Mandarin',
+        ],
+        roomImageSrc: 'https://media.ffycdn.net/eu/mandarin-oriental-hotel-group/iz342uokN4ioGgTT36wc.jpg',
+        roomImageAlt: 'Mandarin Oriental New York signature suite image placeholder',
+        // roomImagePage: 'https://www.mandarinoriental.com/en/new-york/manhattan/stay/oriental-suite'
+      }
+    ]
+  }
+],
 
   diningEyebrow: 'Dining',
   diningTitle:   'A Curated Table.',
