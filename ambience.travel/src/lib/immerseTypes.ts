@@ -124,6 +124,7 @@ export type ImmerseDestinationData = {
   // meta
   destinationId: string
   journeyId:     string
+  shorthand?:    string   // e.g. "NYC" — display shorthand for the destination
   // hero
   eyebrow:      string
   title:        string

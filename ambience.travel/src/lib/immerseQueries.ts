@@ -69,6 +69,7 @@ export async function getImmerseDestination(
   return {
     destinationId: dest.destination_slug,
     journeyId:     journeySlug,
+    shorthand:     dest.shorthand ?? undefined,
 
     eyebrow:      dest.eyebrow      ?? '',
     title:        dest.title        ?? '',
