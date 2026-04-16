@@ -1,6 +1,6 @@
 // ImmerseJourneyComponents.tsx — section components for /immerse/ journey overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseJourneyPricing
-// Last updated: S10
+// Last updated: S12
 
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel, ImmerseStayBox } from './ImmerseComponents'
 import type { ImmerseJourneyData, ImmerseRouteStop, ImmerseDestinationRow, ImmerseJourneyPricingRow } from '../../../lib/immerseTypes'
@@ -264,18 +264,18 @@ export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode
 
 export function NotesList({ notes }: { notes: string[] }) {
   return (
-    <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+    <div style={{ display: 'grid', gap: 20, marginTop: 14 }}>
       {notes.map(note => (
         <div
           key={note}
           style={{
-            padding:      '14px 15px',
+            padding:      '18px 18px',
             border:       `1px solid ${ID.line}`,
             borderRadius: ID.radiusMd,
             background:   ID.panel2,
             color:        ID.muted,
             fontSize:     14,
-            lineHeight:   1.7,
+            lineHeight:   1.8,
           }}
         >
           {note}

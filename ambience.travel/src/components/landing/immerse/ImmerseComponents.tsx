@@ -1,7 +1,7 @@
 // ImmerseComponents.tsx - shared primitives for all /immerse/ proposal components
 // Owns: ID palette, useImmerseMobile, immerseFadeUp, useImmerseVisible, shared UI atoms
 // Does not own page-level components or data.
-// Last updated: S11
+// Last updated: S12
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ID, IMMERSE } from '../../../lib/landingColors'
@@ -40,8 +40,8 @@ export function useImmerseVisible(threshold = 0.10) {
 
 export function immerseFadeUp(visible: boolean, delayMs = 0): CSSProperties {
   return {
-    opacity:    visible ? 1 : 0,
-    transform:  visible ? 'translateY(0)' : 'translateY(18px)',
+    opacity: visible ? 1 : 0,
+    transform: visible ? 'translateY(0)' : 'translateY(18px)',
     transition: `opacity 0.75s ease ${delayMs}ms, transform 0.75s ease ${delayMs}ms`,
     willChange: 'opacity, transform',
   }
@@ -50,11 +50,11 @@ export function immerseFadeUp(visible: boolean, delayMs = 0): CSSProperties {
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
 type SectionWrapProps = {
-  children:    ReactNode
-  id?:         string
-  style?:      CSSProperties
+  children: ReactNode
+  id?: string
+  style?: CSSProperties
   innerStyle?: CSSProperties
-  refProp?:    React.RefObject<HTMLElement>
+  refProp?: React.RefObject<HTMLElement>
 }
 
 export function ImmerseSectionWrap({ children, id, style, innerStyle, refProp }: SectionWrapProps) {
@@ -63,15 +63,16 @@ export function ImmerseSectionWrap({ children, id, style, innerStyle, refProp }:
       id={id}
       ref={refProp}
       style={{
-        padding:   '58px 0',
+        padding: '58px 0',
         borderTop: `1px solid ${IMMERSE.borderFaint}`,
         ...style,
       }}
     >
       <div
         style={{
-          width:    'min(1220px, calc(100% - 36px))',
-          margin:   '0 auto',
+          width: 'min(1220px, calc(100% - 36px))',
+          margin: '0 auto',
+          overflow: 'hidden',
           ...innerStyle,
         }}
       >
@@ -96,19 +97,19 @@ export function ImmerseEyebrow({ children, style, shimmer = true }: { children: 
       )}
       <div
         style={{
-          color:                shimmer ? 'transparent' : ID.gold,
-          fontSize:             11,
-          letterSpacing:        '0.22em',
-          textTransform:        'uppercase',
-          fontWeight:           700,
-          marginBottom:         14,
-          backgroundImage:      shimmer
+          color: shimmer ? 'transparent' : ID.gold,
+          fontSize: 11,
+          letterSpacing: '0.22em',
+          textTransform: 'uppercase',
+          fontWeight: 700,
+          marginBottom: 14,
+          backgroundImage: shimmer
             ? `linear-gradient(90deg, ${ID.gold} 0%, ${ID.gold} 35%, ${IMMERSE.shimmer} 50%, ${ID.gold} 65%, ${ID.gold} 100%)`
             : undefined,
-          backgroundSize:       shimmer ? '200% auto' : undefined,
-          backgroundClip:       shimmer ? 'text' : undefined,
+          backgroundSize: shimmer ? '200% auto' : undefined,
+          backgroundClip: shimmer ? 'text' : undefined,
           WebkitBackgroundClip: shimmer ? 'text' : undefined,
-          animation:            shimmer ? 'immerseShimmer 2.2s ease 0.3s 1 both' : undefined,
+          animation: shimmer ? 'immerseShimmer 2.2s ease 0.3s 1 both' : undefined,
           ...style,
         }}
       >
@@ -122,13 +123,13 @@ export function ImmerseTitle({ children, style, serif = false }: { children: str
   return (
     <h2
       style={{
-        fontSize:      'clamp(32px,4vw,56px)',
-        lineHeight:    serif ? 1.08 : 1.02,
+        fontSize: 'clamp(32px,4vw,56px)',
+        lineHeight: serif ? 1.08 : 1.02,
         letterSpacing: serif ? '-0.02em' : '-0.05em',
-        fontWeight:    serif ? 400 : 800,
-        fontFamily:    serif ? '"Cormorant Garamond", "Cormorant", "Times New Roman", serif' : undefined,
-        margin:        '0 0 12px',
-        color:         ID.text,
+        fontWeight: serif ? 400 : 800,
+        fontFamily: serif ? '"Cormorant Garamond", "Cormorant", "Times New Roman", serif' : undefined,
+        margin: '0 0 12px',
+        color: ID.text,
         ...style,
       }}
     >
@@ -141,10 +142,10 @@ export function ImmerseBody({ children, style }: { children: string; style?: CSS
   return (
     <p
       style={{
-        color:      ID.muted,
-        fontSize:   15,
+        color: ID.muted,
+        fontSize: 15,
         lineHeight: 1.82,
-        margin:     0,
+        margin: 0,
         ...style,
       }}
     >
@@ -159,25 +160,25 @@ type PillProps = { children: string; isGold?: boolean }
 
 export function ImmersePill({ children, isGold }: PillProps) {
   const borderColor = isGold ? IMMERSE.goldBorder : ID.lineSoft
-  const background  = isGold ? IMMERSE.goldTint   : IMMERSE.pillBg
-  const color       = isGold ? ID.gold            : ID.muted
+  const background  = isGold ? IMMERSE.goldTint : IMMERSE.pillBg
+  const color       = isGold ? ID.gold : ID.muted
 
   return (
     <div
       style={{
-        display:        'inline-flex',
-        alignItems:     'center',
+        display: 'inline-flex',
+        alignItems: 'center',
         justifyContent: 'center',
-        padding:        '10px 14px',
-        borderRadius:   999,
-        border:         `1px solid ${borderColor}`,
+        padding: '10px 14px',
+        borderRadius: 999,
+        border: `1px solid ${borderColor}`,
         background,
         color,
-        fontSize:       11,
-        letterSpacing:  '0.08em',
-        textTransform:  'uppercase',
-        fontWeight:     800,
-        whiteSpace:     'nowrap',
+        fontSize: 11,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        fontWeight: 800,
+        whiteSpace: 'nowrap',
       }}
     >
       {children}
@@ -191,10 +192,10 @@ export function ImmersePanel({ children, style }: { children: ReactNode; style?:
   return (
     <div
       style={{
-        border:       `1px solid ${ID.line}`,
+        border: `1px solid ${ID.line}`,
         borderRadius: ID.radiusXl,
-        background:   IMMERSE.panelGradient,
-        boxShadow:    ID.shadow,
+        background: ID.panel,
+        boxShadow: ID.shadow,
         ...style,
       }}
     >
@@ -209,34 +210,34 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
   return (
     <div
       style={{
-        minWidth:     160,
-        flexShrink:   0,
-        border:       `1px solid ${IMMERSE.goldBorderSoft}`,
+        minWidth: 160,
+        flexShrink: 0,
+        border: `1px solid ${IMMERSE.goldBorderSoft}`,
         borderRadius: 18,
-        background:   IMMERSE.goldTint,
-        padding:      '12px 14px',
-        textAlign:    'center',
+        background: IMMERSE.goldTint,
+        padding: '12px 14px',
+        textAlign: 'center',
       }}
     >
       <div
         style={{
-          fontSize:      10,
+          fontSize: 10,
           letterSpacing: '0.16em',
           textTransform: 'uppercase',
-          color:         ID.gold,
-          fontWeight:    700,
-          marginBottom:  6,
+          color: ID.gold,
+          fontWeight: 700,
+          marginBottom: 6,
         }}
       >
         {nightlyRange ? 'Per night' : 'Suggested stay'}
       </div>
       <div
         style={{
-          fontSize:      nightlyRange ? 16 : 22,
-          lineHeight:    1.08,
+          fontSize: nightlyRange ? 16 : 22,
+          lineHeight: 1.08,
           letterSpacing: nightlyRange ? '-0.02em' : '-0.04em',
-          fontWeight:    800,
-          color:         ID.text,
+          fontWeight: 800,
+          color: ID.text,
         }}
       >
         {nightlyRange ?? label}
@@ -244,12 +245,12 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
       {nightlyRange && (
         <div
           style={{
-            fontSize:      10,
+            fontSize: 10,
             letterSpacing: '0.10em',
             textTransform: 'uppercase',
-            color:         ID.dim,
-            fontWeight:    600,
-            marginTop:     4,
+            color: ID.dim,
+            fontWeight: 600,
+            marginTop: 4,
           }}
         >
           {label}

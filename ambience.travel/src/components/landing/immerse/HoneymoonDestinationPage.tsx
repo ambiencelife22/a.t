@@ -1,14 +1,15 @@
-// HoneymoonDestinationPage.tsx — NYC destination subpage for Yazeed honeymoon proposal
+// HoneymoonDestinationPage.tsx — Destination subpage honeymoon proposal
 // Route: /immerse/honeymoon/new-york
 // Composes all NYC-specific sections. Does not own other destination subpages.
-// Last updated: S11
+// Last updated: S12
 
 import ImmerseLayout                  from '../../layouts/ImmerseLayout'
-import ImmerseHero                    from '../immerse/ImmerseHero'
-import { ImmerseDestIntro }           from '../immerse/ImmerseDestinationComponents'
-import { ImmerseHotelOptions }        from '../immerse/ImmerseDestinationComponents'
-import { ImmerseContentGrid }         from '../immerse/ImmerseDestinationComponents'
-import { ImmerseDestPricing }         from '../immerse/ImmerseDestinationComponents'
+import ImmerseHero                    from './ImmerseHero'
+import ImmerseStructuredData          from './ImmerseStructuredData'
+import { ImmerseDestIntro }           from './ImmerseDestinationComponents'
+import { ImmerseHotelOptions }        from './ImmerseDestinationComponents'
+import { ImmerseContentGrid }         from './ImmerseDestinationComponents'
+import { ImmerseDestPricing }         from './ImmerseDestinationComponents'
 import { yazeedHoneymoonNewYork }     from '../../../data/immerse/yazeed-honeymoon-new-york'
 
 export default function HoneymoonDestinationPage() {
@@ -16,6 +17,7 @@ export default function HoneymoonDestinationPage() {
 
   return (
     <ImmerseLayout>
+      <ImmerseStructuredData data={data} />
       <ImmerseHero
         guestName='Yazeed'
         titlePrefix='Honeymoon in'

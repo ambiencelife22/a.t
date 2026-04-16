@@ -1,7 +1,7 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for journey overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S11
+// Last updated: S12
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -26,19 +26,25 @@ export type ImmerseHotelOption = {
   imageSrc: string
   imageAlt: string
   stayLabel: string
-  rooms:    ImmerseRoomOption[]
-  gallery?: string[]
+  rooms:            ImmerseRoomOption[]
+  gallery?:         string[]
+  imageCredit?:     string   // photographer or rights holder — e.g. "Aman Resorts"
+  imageCreditUrl?:  string   // acquireLicensePage — e.g. "https://www.aman.com"
+  imageLicense?:    string   // license URL — inferred for Unsplash if omitted
 }
 
 export type ImmerseContentCard = {
-  id:       string
-  kicker:   string
-  name:     string
-  tagline:  string
-  body:     string
-  bullets?: string[]
-  imageSrc: string
-  imageAlt: string
+  id:              string
+  kicker:          string
+  name:            string
+  tagline:         string
+  body:            string
+  bullets?:        string[]
+  imageSrc:        string
+  imageAlt:        string
+  imageCredit?:    string   // photographer or rights holder
+  imageCreditUrl?: string   // acquireLicensePage
+  imageLicense?:   string   // license URL — inferred for Unsplash if omitted
 }
 
 export type ImmersePricingRow = {

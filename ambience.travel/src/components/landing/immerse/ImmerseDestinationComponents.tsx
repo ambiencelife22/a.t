@@ -1,13 +1,13 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S11
+// Last updated: S12
 
 import { useState, useRef, useEffect } from 'react'
-import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel, ImmerseStayBox } from './ImmerseComponents'
+import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
 import { C } from '../../../lib/landingTypes'
 import { getDestinationName, getDestinationShorthand } from '../../../lib/destinations'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseJourneyComponents'
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRoomOption, ImmerseContentCard, ImmersePricingRow } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
@@ -15,7 +15,6 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
-  // Resolve canonical destination name from lib/destinations
   const destShorthand = getDestinationShorthand(data.destinationId)
   const eyebrow       = `Destination · ${destShorthand}`
 
@@ -55,15 +54,15 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   const { ref: ref2, visible: visible2 } = useImmerseVisible()
   const isMobile                         = useImmerseMobile()
   const [activeHotel, setActiveHotel]    = useState(0)
-  const [activeRoom,  setActiveRoom]     = useState(0)
+  const [activeRoom, setActiveRoom]      = useState(0)
   const [lightboxIdx, setLightboxIdx]    = useState<number | null>(null)
-  const [dragStart,   setDragStart]      = useState<number | null>(null)
+  const [dragStart, setDragStart]        = useState<number | null>(null)
   const carouselRef                      = useRef<HTMLDivElement>(null)
 
-  const hotel       = data.hotels[activeHotel]
-  const rooms       = hotel.rooms
-  const totalRooms  = rooms.length
-  const gallery     = hotel.gallery ?? []
+  const hotel      = data.hotels[activeHotel]
+  const rooms      = hotel.rooms
+  const totalRooms = rooms.length
+  const gallery    = hotel.gallery ?? []
 
   function goHotel(idx: number) {
     setActiveHotel(idx)
@@ -75,41 +74,54 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
     setActiveRoom(clamped)
   }
 
-  // Room carousel — non-passive touch
   useEffect(() => {
     const el = carouselRef.current
     if (!el) return
     let startX = 0
     function onTouchStart(e: TouchEvent) { startX = e.touches[0].clientX }
     function onTouchMove(e: TouchEvent)  { if (Math.abs(startX - e.touches[0].clientX) > 10) e.preventDefault() }
-    function onTouchEnd(e: TouchEvent)   { const d = startX - e.changedTouches[0].clientX; if (d > 40) goRoom(activeRoom + 1); if (d < -40) goRoom(activeRoom - 1) }
+    function onTouchEnd(e: TouchEvent)   {
+      const d = startX - e.changedTouches[0].clientX
+      if (d > 40)  goRoom(activeRoom + 1)
+      if (d < -40) goRoom(activeRoom - 1)
+    }
     el.addEventListener('touchstart', onTouchStart, { passive: true })
     el.addEventListener('touchmove',  onTouchMove,  { passive: false })
     el.addEventListener('touchend',   onTouchEnd,   { passive: true })
-    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); el.removeEventListener('touchend', onTouchEnd) }
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove',  onTouchMove)
+      el.removeEventListener('touchend',   onTouchEnd)
+    }
   }, [activeRoom, totalRooms, isMobile])
 
   return (
     <>
-      <ImmerseSectionWrap id='hotel-options' refProp={ref as React.RefObject<HTMLElement>} style={{
-        borderRadius: '30px 30px 30px 30px',
-        background:   ID.bg,
-        position:     'relative',
-        zIndex:       2,
-        marginTop:    -24,
-        boxShadow:    '0 -12px 48px rgba(0,0,0,0.48), 0 12px 48px rgba(0,0,0,0.56), 0 2px 0 rgba(216,181,106,0.10)',
-      }}>
-        {/* Section eyebrow */}
+      <ImmerseSectionWrap
+        id='hotel-options'
+        refProp={ref as React.RefObject<HTMLElement>}
+        style={{
+          borderRadius: '30px 30px 30px 30px',
+          background:   ID.bg,
+          position:     'relative',
+          zIndex:       2,
+          marginTop:    -24,
+          overflow:     'hidden',
+          boxShadow:    '0 -12px 48px rgba(0,0,0,0.48), 0 12px 48px rgba(0,0,0,0.56), 0 2px 0 rgba(216,181,106,0.10)',
+        }}
+      >
         <div style={{ marginBottom: 20, ...immerseFadeUp(visible, 0) }}>
           <ImmerseEyebrow>{data.hotelsEyebrow}</ImmerseEyebrow>
         </div>
 
-        {/* Hotel button strip */}
         <div
           style={{
-            display:   'flex',
-            gap:       10,
-            flexWrap:  isMobile ? 'wrap' : 'nowrap',
+            display:             'grid',
+            gridTemplateColumns: isMobile ? '1fr' : `repeat(${data.hotels.length}, minmax(0, 1fr))`,
+            gap:                 10,
+            width:               '100%',
+            minWidth:            0,
+            boxSizing:           'border-box',
             ...immerseFadeUp(visible, 60),
           }}
         >
@@ -118,16 +130,18 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               key={h.id}
               hotel={h}
               active={i === activeHotel}
+              isMobile={isMobile}
               onClick={() => goHotel(i)}
             />
           ))}
         </div>
 
-        {/* Hotel detail panel — animates in below buttons */}
         <div
           style={{
-            marginTop:  24,
-            animation:  'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
+            marginTop: 24,
+            width:     '100%',
+            minWidth:  0,
+            animation: 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
           }}
           key={activeHotel}
         >
@@ -141,15 +155,24 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
         </div>
       </ImmerseSectionWrap>
 
-      {/* Room categories — full-width animated warm gradient band */}
+      {/* Room categories — animated gold gradient band */}
       <style>{`
         @keyframes immerseRoomGlow {
-          0%   { background-position: 0% 0%,   100% 0%,   0% 100%; }
-          35%  { background-position: 55% 35%,  10% 90%,  90% 10%; }
-          50%  { background-position: 60% 40%,   0% 100%, 100%  0%; }
-          65%  { background-position: 58% 42%,   5% 95%,  95%  5%; }
-          100% { background-position: 100% 100%, 50% 50%,  0%  0%; }
+          0%   { background-position: 0% 0%, 100% 0%, 0% 100%; background-size: 200% 200%, 240% 240%, 180% 180%; }
+          22%  { background-position: 30% 20%, 70% 30%, 60% 40%; background-size: 200% 200%, 240% 240%, 180% 180%; }
+          66%  { background-position: 58% 38%, 22% 78%, 80% 22%; background-size: 200% 200%, 240% 240%, 180% 180%; }
+          88%  { background-position: 100% 100%, 50% 50%, 0% 0%; background-size: 200% 200%, 240% 240%, 180% 180%; }
+          100% { background-position: 0% 0%, 100% 0%, 0% 100%; background-size: 200% 200%, 240% 240%, 180% 180%; }
         }
+
+        @keyframes immerseRoomBreath {
+          0%   { opacity: 0.38; }
+          22%  { opacity: 0.78; }
+          66%  { opacity: 0.72; }
+          88%  { opacity: 0.34; }
+          100% { opacity: 0.38; }
+        }
+        
         @keyframes immerseFadeIn {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0);   }
@@ -158,31 +181,56 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
       <section
         ref={ref2 as React.RefObject<HTMLElement>}
         style={{
-          padding:            '58px 0',
-          backgroundImage:    [
-            'linear-gradient(135deg, rgba(216,181,106,0.14) 0%, rgba(180,140,80,0.09) 40%, rgba(120,90,50,0.04) 70%, rgba(6,6,6,0) 100%)',
-            'linear-gradient(220deg, rgba(200,160,90,0.09) 0%, rgba(160,110,60,0.05) 40%, rgba(6,6,6,0) 65%)',
-            'linear-gradient(310deg, rgba(216,181,106,0.06) 0%, rgba(6,6,6,0) 50%)',
-          ].join(', '),
-          backgroundSize:     '200% 200%, 240% 240%, 180% 180%',
-          backgroundPosition: '0% 0%, 100% 0%, 0% 100%',
-          animation:          'immerseRoomGlow 24s ease-in-out infinite alternate',
-          borderTop:          '1px solid rgba(216,181,106,0.12)',
-          borderBottom:       '1px solid rgba(216,181,106,0.08)',
-          marginTop:          -36,
-          paddingTop:         94,
-          position:           'relative',
-          zIndex:             1,
-          transition:         'margin-top 0.55s cubic-bezier(0.16,1,0.3,1)',
+          padding:      '58px 0',
+          borderTop:    '1px solid rgba(216,181,106,0.12)',
+          borderBottom: '1px solid rgba(216,181,106,0.08)',
+          marginTop:    -36,
+          paddingTop:   94,
+          position:     'relative',
+          zIndex:       1,
+          overflow:     'hidden',
+          transition:   'margin-top 0.55s cubic-bezier(0.16,1,0.3,1)',
+          background:   '#060606',
         }}
       >
-        <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
+        <div
+          style={{
+            position:           'absolute',
+            inset:              0,
+            pointerEvents:      'none',
+            zIndex:             0,
+            backgroundImage: [
+              'linear-gradient(135deg, rgba(216,181,106,0.22) 0%, rgba(180,140,80,0.14) 40%, rgba(120,90,50,0.06) 70%, rgba(6,6,6,0) 100%)',
+              'linear-gradient(220deg, rgba(200,160,90,0.14) 0%, rgba(160,110,60,0.08) 40%, rgba(6,6,6,0) 65%)',
+              'linear-gradient(310deg, rgba(216,181,106,0.10) 0%, rgba(6,6,6,0) 50%)',
+            ].join(', '),
+            backgroundSize:     '200% 200%, 240% 240%, 180% 180%',
+            backgroundPosition: '0% 0%, 100% 0%, 0% 100%',
+            animation:          'immerseRoomGlow 18s ease-in-out infinite, immerseRoomBreath 18s ease-in-out infinite',
+          }}
+        />
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex:   1,
+            width:    isMobile ? 'calc(100% - 24px)' : 'min(1220px, calc(100% - 36px))',
+            margin:   '0 auto',
+          }}
+        >
           <div style={{ ...immerseFadeUp(visible2, 0) }}>
             <div
               ref={carouselRef}
-              style={{ position: 'relative', userSelect: 'none' }}
+              style={{ position: 'relative', userSelect: 'none', minWidth: 0 }}
               onMouseDown={e  => setDragStart(e.clientX)}
-              onMouseUp={e    => { if (dragStart !== null) { const d = dragStart - e.clientX; if (d > 40) goRoom(activeRoom + 1); if (d < -40) goRoom(activeRoom - 1); setDragStart(null) } }}
+              onMouseUp={e    => {
+                if (dragStart !== null) {
+                  const d = dragStart - e.clientX
+                  if (d > 40)  goRoom(activeRoom + 1)
+                  if (d < -40) goRoom(activeRoom - 1)
+                  setDragStart(null)
+                }
+              }}
               onMouseLeave={() => setDragStart(null)}
             >
               <RoomCategory
@@ -191,23 +239,58 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                 hotel={hotel}
                 fadeIn
               />
+
               {activeRoom > 0 && (
                 <button
                   onClick={() => goRoom(activeRoom - 1)}
-                  style={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: ID.muted, fontSize: 22, cursor: 'pointer', opacity: 0.38, padding: '8px 6px', lineHeight: 1, transition: 'opacity 0.2s ease' }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.78')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.38')}
+                  style={{
+                    position:     'absolute',
+                    left:         isMobile ? 6 : -20,
+                    top:          '50%',
+                    transform:    'translateY(-50%)',
+                    background:   isMobile ? 'rgba(10,10,10,0.55)' : 'none',
+                    border:       'none',
+                    borderRadius: isMobile ? 999 : 0,
+                    color:        ID.muted,
+                    fontSize:     22,
+                    cursor:       'pointer',
+                    opacity:      0.72,
+                    padding:      isMobile ? '10px 12px' : '8px 6px',
+                    lineHeight:   1,
+                    transition:   'opacity 0.2s ease',
+                    zIndex:       2,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.92')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.72')}
                 >‹</button>
               )}
+
               {activeRoom < totalRooms - 1 && (
                 <button
                   onClick={() => goRoom(activeRoom + 1)}
-                  style={{ position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: ID.muted, fontSize: 22, cursor: 'pointer', opacity: 0.38, padding: '8px 6px', lineHeight: 1, transition: 'opacity 0.2s ease' }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.78')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.38')}
+                  style={{
+                    position:     'absolute',
+                    right:        isMobile ? 6 : -20,
+                    top:          '50%',
+                    transform:    'translateY(-50%)',
+                    background:   isMobile ? 'rgba(10,10,10,0.55)' : 'none',
+                    border:       'none',
+                    borderRadius: isMobile ? 999 : 0,
+                    color:        ID.muted,
+                    fontSize:     22,
+                    cursor:       'pointer',
+                    opacity:      0.72,
+                    padding:      isMobile ? '10px 12px' : '8px 6px',
+                    lineHeight:   1,
+                    transition:   'opacity 0.2s ease',
+                    zIndex:       2,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.92')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.72')}
                 >›</button>
               )}
             </div>
+
             {totalRooms > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
                 {rooms.map((_, i) => (
@@ -229,25 +312,33 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {/* Gallery strip — same hotel gallery, below rooms */}
             {gallery.length > 0 && (
               <div style={{ marginTop: 40 }}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
                   Gallery · {gallery.length} photos
                 </div>
-                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <div
+                  style={{
+                    display:             'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(240px, 1fr))',
+                    gap:                 10,
+                    width:               '100%',
+                    minWidth:            0,
+                  }}
+                >
                   {gallery.map((src, i) => (
                     <div
                       key={i}
                       onClick={() => setLightboxIdx(i)}
                       style={{
-                        flexShrink:   0,
-                        width:        isMobile ? 180 : 240,
-                        height:       isMobile ? 120 : 160,
+                        width:        '100%',
+                        height:       isMobile ? 118 : 160,
                         borderRadius: ID.radiusMd,
                         overflow:     'hidden',
                         border:       `1px solid ${ID.line}`,
                         cursor:       'pointer',
+                        minWidth:     0,
+                        boxSizing:    'border-box',
                       }}
                     >
                       <img
@@ -266,7 +357,6 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
         </div>
       </section>
 
-      {/* Lightbox */}
       {lightboxIdx !== null && gallery.length > 0 && (
         <LightboxOverlay
           images={gallery}
@@ -281,9 +371,9 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   )
 }
 
-// ─── Hotel button — minimal pill-style selector ───────────────────────────────
+// ─── Hotel button ─────────────────────────────────────────────────────────────
 
-function HotelButton({ hotel, active, onClick }: { hotel: ImmerseHotelOption; active: boolean; onClick: () => void }) {
+function HotelButton({ hotel, active, isMobile, onClick }: { hotel: ImmerseHotelOption; active: boolean; isMobile: boolean; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -292,14 +382,16 @@ function HotelButton({ hotel, active, onClick }: { hotel: ImmerseHotelOption; ac
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        flex:          '1 1 auto',
-        padding:       '16px 20px',
-        borderRadius:  ID.radiusMd,
-        border:        `1px solid ${active ? ID.gold : hovered ? 'rgba(216,181,106,0.30)' : ID.line}`,
-        background:    active ? 'rgba(216,181,106,0.08)' : 'transparent',
-        cursor:        'pointer',
-        textAlign:     'left',
-        transition:    'border-color 0.25s ease, background 0.25s ease',
+        width:        '100%',
+        minWidth:     0,
+        padding:      isMobile ? '14px 16px' : '16px 20px',
+        borderRadius: ID.radiusMd,
+        border:       `1px solid ${active ? ID.gold : hovered ? 'rgba(216,181,106,0.30)' : ID.line}`,
+        background:   active ? 'rgba(216,181,106,0.08)' : 'transparent',
+        cursor:       'pointer',
+        textAlign:    'left',
+        transition:   'border-color 0.25s ease, background 0.25s ease',
+        boxSizing:    'border-box',
       }}
     >
       <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: active ? ID.gold : ID.dim, fontWeight: 700, marginBottom: 6, transition: 'color 0.25s ease' }}>
@@ -315,7 +407,7 @@ function HotelButton({ hotel, active, onClick }: { hotel: ImmerseHotelOption; ac
   )
 }
 
-// ─── Hotel detail panel — full content below button strip ─────────────────────
+// ─── Hotel detail panel ───────────────────────────────────────────────────────
 
 function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbox }: {
   hotel:        ImmerseHotelOption
@@ -327,15 +419,16 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
   const gallery = hotel.gallery ?? []
 
   return (
-    <div style={{ display: 'grid', gap: 24 }}>
-
+    <div style={{ display: 'grid', gap: 24, width: '100%', minWidth: 0 }}>
       {/* Hero image + name */}
       <div
         style={{
           position:     'relative',
           borderRadius: ID.radiusXl,
           overflow:     'hidden',
-          height:       isMobile ? 260 : 420,
+          height:       isMobile ? 220 : 420,
+          width:        '100%',
+          minWidth:     0,
         }}
       >
         <img
@@ -343,25 +436,26 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
           alt={hotel.imageAlt}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
-        {/* Name overlay */}
         <div
           style={{
             position:   'absolute',
             bottom:     0,
             left:       0,
             right:      0,
-            padding:    isMobile ? '32px 22px 22px' : '64px 36px 28px',
+            padding:    isMobile ? '24px 16px 16px' : '64px 36px 28px',
             background: 'linear-gradient(0deg, rgba(3,3,3,0.72) 0%, rgba(3,3,3,0) 100%)',
+            boxSizing:  'border-box',
           }}
         >
           <div
             style={{
-              fontSize:      isMobile ? 36 : 'clamp(44px,5vw,72px)',
-              lineHeight:    0.95,
+              fontSize:      isMobile ? 28 : 'clamp(44px,5vw,72px)',
+              lineHeight:    isMobile ? 1.02 : 0.95,
               letterSpacing: '-0.03em',
               fontWeight:    400,
               fontFamily:    '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
               color:         ID.text,
+              wordBreak:     'break-word',
             }}
           >
             {hotel.name}
@@ -370,18 +464,20 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
       </div>
 
       {/* Bullets */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%', minWidth: 0, overflow: 'hidden' }}>
         {hotel.bullets.map(b => (
           <div
             key={b}
             style={{
-              padding:       '8px 14px',
-              borderRadius:  999,
-              border:        `1px solid ${ID.line}`,
-              background:    ID.panel2,
-              color:         ID.muted,
-              fontSize:      12,
+              padding:      isMobile ? '7px 12px' : '8px 14px',
+              borderRadius: 999,
+              border:       `1px solid ${ID.line}`,
+              background:   ID.panel2,
+              color:        ID.muted,
+              fontSize:     isMobile ? 11 : 12,
               letterSpacing: '0.04em',
+              maxWidth:     '100%',
+              boxSizing:    'border-box',
             }}
           >
             {b}
@@ -392,31 +488,31 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
       {/* Gallery strip */}
       {gallery.length > 0 && (
         <div>
-          <div
-            style={{
-              fontSize:      10,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              color:         ID.dim,
-              fontWeight:    700,
-              marginBottom:  10,
-            }}
-          >
+          <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 10 }}>
             Gallery · {gallery.length} photos
           </div>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div
+            style={{
+              display:             'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap:                 10,
+              width:               '100%',
+              minWidth:            0,
+            }}
+          >
             {gallery.map((src, i) => (
               <div
                 key={i}
                 onClick={() => onLightbox(i)}
                 style={{
-                  flexShrink:   0,
-                  width:        isMobile ? 180 : 240,
-                  height:       isMobile ? 120 : 160,
+                  width:        '100%',
+                  height:       isMobile ? 118 : 160,
                   borderRadius: ID.radiusMd,
                   overflow:     'hidden',
                   border:       `1px solid ${ID.line}`,
                   cursor:       'pointer',
+                  minWidth:     0,
+                  boxSizing:    'border-box',
                 }}
               >
                 <img
@@ -468,7 +564,6 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
         animation:      'immerseFadeIn 0.25s ease both',
       }}
     >
-      {/* Close */}
       <button
         onClick={onClose}
         style={{
@@ -489,7 +584,6 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
         onMouseLeave={e => (e.currentTarget.style.color = 'rgba(245,242,236,0.5)')}
       >×</button>
 
-      {/* Counter */}
       <div
         style={{
           position:      'fixed',
@@ -507,7 +601,6 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
         {hotelName} · {index + 1} / {images.length}
       </div>
 
-      {/* Prev */}
       {index > 0 && (
         <button
           onClick={e => { e.stopPropagation(); onPrev() }}
@@ -531,7 +624,6 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
         >‹</button>
       )}
 
-      {/* Next */}
       {index < images.length - 1 && (
         <button
           onClick={e => { e.stopPropagation(); onNext() }}
@@ -555,7 +647,6 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
         >›</button>
       )}
 
-      {/* Image */}
       <img
         key={index}
         src={images[index]}
@@ -572,7 +663,6 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
         }}
       />
 
-      {/* Dot strip */}
       <div
         style={{
           position:  'fixed',
@@ -601,6 +691,9 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
   )
 }
 
+// ─── Room category ────────────────────────────────────────────────────────────
+// Desktop: text panel left, room image right — side by side
+// Mobile:  text panel top, room image below — stacked
 
 function RoomCategory({ room, hotel, fadeIn = false }: { room: ImmerseRoomOption; hotel: ImmerseHotelOption; fadeIn?: boolean }) {
   const isMobile = useImmerseMobile()
@@ -609,68 +702,142 @@ function RoomCategory({ room, hotel, fadeIn = false }: { room: ImmerseRoomOption
     <div
       style={{
         display:             'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '1.02fr 0.98fr',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
         gap:                 18,
         alignItems:          'stretch',
         animation:           fadeIn ? 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
+        minWidth:            0,
       }}
     >
-      <div
+      {/* Text panel — always first in DOM, left on desktop, top on mobile */}
+      <ImmersePanel
         style={{
-          minHeight:    isMobile ? 260 : 480,
-          overflow:     'hidden',
-          border:       `1px solid ${ID.line}`,
-          borderRadius: ID.radiusXl,
-          boxShadow:    '0 8px 32px rgba(0,0,0,0.48), 0 1px 0 rgba(216,181,106,0.08)',
+          padding:        isMobile ? 22 : 32,
+          display:        'flex',
+          flexDirection:  'column',
+          gap:            18,
+          background:     ID.panel,
+          boxShadow:      '0 8px 32px rgba(0,0,0,0.48), 0 1px 0 rgba(216,181,106,0.08)',
+          minWidth:       0,
         }}
       >
-        <img
-          src={room.roomImageSrc}
-          alt={room.roomImageAlt}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.4s ease' }}
-        />
-      </div>
-
-      <ImmersePanel style={{ padding: isMobile ? 22 : 32, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 18, background: ID.panel, boxShadow: '0 8px 32px rgba(0,0,0,0.48), 0 1px 0 rgba(216,181,106,0.08)' }}>
+        {/* Level + name */}
         <div>
           <ImmerseEyebrow>{room.levelLabel}</ImmerseEyebrow>
           <div
             style={{
-              display:        'flex',
-              justifyContent: 'space-between',
-              alignItems:     'flex-start',
-              gap:            16,
-              flexDirection:  isMobile ? 'column' : 'row',
+              fontSize:      isMobile ? 28 : 40,
+              lineHeight:    0.98,
+              letterSpacing: '-0.02em',
+              fontWeight:    400,
+              fontFamily:    '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
+              color:         ID.text,
+              marginBottom:  16,
             }}
           >
-            <div>
-              <div style={{ fontSize: isMobile ? 28 : 40, lineHeight: 0.98, letterSpacing: '-0.02em', fontWeight: 400, fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif', color: ID.text, marginBottom: 6 }}>
-                {room.roomBasis}
+            {room.roomBasis}
+          </div>
+
+          {/* Pills row: size · price per night · public rate */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {(room.sqft || room.sqm) && (
+              <div
+                style={{
+                  padding:       '7px 13px',
+                  borderRadius:  999,
+                  border:        `1px solid ${ID.line}`,
+                  background:    ID.panel2,
+                  color:         ID.dim,
+                  fontSize:      11,
+                  letterSpacing: '0.10em',
+                  textTransform: 'uppercase',
+                  fontWeight:    600,
+                  whiteSpace:    'nowrap',
+                }}
+              >
+                {room.sqft ? `${room.sqft.toLocaleString()} sq ft` : ''}
+                {room.sqft && room.sqm ? ' · ' : ''}
+                {room.sqm ? `${room.sqm} sqm` : ''}
               </div>
-              {(room.sqft || room.sqm) && (
-                <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: ID.dim, fontWeight: 600, marginBottom: 4 }}>
-                  {room.sqft ? `${room.sqft.toLocaleString()} sq ft` : ''}{room.sqft && room.sqm ? ' / ' : ''}{room.sqm ? `${room.sqm} sqm` : ''}
-                </div>
-              )}
-              {(room.nightlyRate || room.publicNightlyRate) && (
-                <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', marginTop: 8, flexWrap: 'wrap' }}>
-                  {room.nightlyRate && (
-                    <div style={{ fontSize: 13, fontWeight: 700, color: ID.gold, letterSpacing: '0.04em' }}>
-                      {room.nightlyRate} <span style={{ fontSize: 10, fontWeight: 600, color: ID.dim, letterSpacing: '0.12em', textTransform: 'uppercase' }}>per night</span>
-                    </div>
-                  )}
-                  {room.publicNightlyRate && (
-                    <div style={{ fontSize: 11, color: ID.dim, letterSpacing: '0.08em' }}>
-                      Public rate: {room.publicNightlyRate}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <ImmerseStayBox label={hotel.stayLabel} />
+            )}
+            {room.publicNightlyRate && (
+              <div
+                style={{
+                  position:      'relative',
+                  padding:       '7px 13px',
+                  borderRadius:  999,
+                  border:        `1px solid ${ID.line}`,
+                  background:    ID.panel2,
+                  color:         ID.dim,
+                  opacity:       0.55,
+                  fontSize:      11,
+                  letterSpacing: '0.08em',
+                  fontWeight:    600,
+                  whiteSpace:    'nowrap',
+                  display:       'flex',
+                  gap:           5,
+                  alignItems:    'center',
+                  overflow:      'hidden',
+                }}
+              >
+                {/* diagonal slash */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    left:     '-10%',
+                    top:      '50%',
+                    width:    '120%',
+                    height:   1,
+                    background: `linear-gradient(90deg, transparent, ${ID.dim}77, transparent)`,
+                    transform: 'rotate(-18deg)',
+                    pointerEvents: 'none',
+                  }}
+                />
+
+                <span
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                    opacity: 0.8,
+                  }}
+                >
+                  Public
+                </span>
+
+                <span style={{ opacity: 0.8 }}>
+                  {room.publicNightlyRate}
+                </span>
+              </div>
+            )}
+
+            {room.nightlyRate && (
+              <div
+                style={{
+                  padding:       '7px 13px',
+                  borderRadius:  999,
+                  border:        `1px solid rgba(216,181,106,0.30)`,
+                  background:    'rgba(216,181,106,0.07)',
+                  color:         ID.gold,
+                  fontSize:      11,
+                  letterSpacing: '0.08em',
+                  fontWeight:    700,
+                  whiteSpace:    'nowrap',
+                  display:       'flex',
+                  gap:           5,
+                  alignItems:    'center',
+                }}
+              >
+                {room.nightlyRate}
+                <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+              </div>
+            )}
+
           </div>
         </div>
 
+        {/* Benefit tiles */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
           {room.roomBenefits.map(b => (
             <div
@@ -690,6 +857,24 @@ function RoomCategory({ room, hotel, fadeIn = false }: { room: ImmerseRoomOption
           ))}
         </div>
       </ImmersePanel>
+
+      {/* Room image — right on desktop, below on mobile */}
+      <div
+        style={{
+          minHeight:    isMobile ? 260 : 480,
+          overflow:     'hidden',
+          border:       `1px solid ${ID.line}`,
+          borderRadius: ID.radiusXl,
+          boxShadow:    '0 8px 32px rgba(0,0,0,0.48), 0 1px 0 rgba(216,181,106,0.08)',
+          minWidth:     0,
+        }}
+      >
+        <img
+          src={room.roomImageSrc}
+          alt={room.roomImageAlt}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.4s ease' }}
+        />
+      </div>
     </div>
   )
 }
@@ -709,13 +894,19 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
-  const eyebrowColor  = dark ? ID.gold  : C.faint
-  const titleColor    = dark ? ID.text  : C.text
-  const bodyColor     = dark ? ID.muted : C.muted
-  const sectionBg     = dark ? {}       : { background: C.bgAlt }
+  const eyebrowColor = dark ? ID.gold  : C.faint
+  const titleColor   = dark ? ID.text  : C.text
+  const bodyColor    = dark ? ID.muted : C.muted
+  const sectionBg    = dark ? {}       : { background: C.bgAlt }
+  const darkExtras   = dark ? {
+    borderRadius: '0 0 30px 30px',
+    boxShadow:    '0 16px 56px rgba(0,0,0,0.52), 0 2px 0 rgba(216,181,106,0.08)',
+    position:     'relative' as const,
+    zIndex:       2,
+  } : {}
 
   return (
-    <ImmerseSectionWrap id={id} refProp={ref as React.RefObject<HTMLElement>} style={sectionBg}>
+    <ImmerseSectionWrap id={id} refProp={ref as React.RefObject<HTMLElement>} style={{ ...sectionBg, ...darkExtras }}>
       <div
         style={{
           display:             'grid',
@@ -752,12 +943,12 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
 function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseContentCard; index?: number; inverted?: boolean }) {
   const [hovered, setHovered] = useState(false)
 
-  const cardBg       = inverted ? C.bgAlt   : ID.panel2
-  const cardBorder   = inverted ? C.border  : ID.line
-  const nameColor    = inverted ? C.text    : ID.text
-  const mutedColor   = inverted ? C.muted   : ID.muted
+  const cardBg       = inverted ? C.bgAlt  : ID.panel2
+  const cardBorder   = inverted ? C.border : ID.line
+  const nameColor    = inverted ? C.text   : ID.text
+  const mutedColor   = inverted ? C.muted  : ID.muted
   const ruleColor    = inverted ? `${C.gold}88` : `${ID.gold}55`
-  const dividerColor = inverted ? C.border  : ID.line
+  const dividerColor = inverted ? C.border : ID.line
 
   return (
     <div
@@ -834,18 +1025,18 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
       style={{
         padding:            '58px 0',
         backgroundImage:    [
-          'linear-gradient(135deg, rgba(216,181,106,0.14) 0%, rgba(180,140,80,0.09) 40%, rgba(120,90,50,0.04) 70%, rgba(6,6,6,0) 100%)',
-          'linear-gradient(220deg, rgba(200,160,90,0.09) 0%, rgba(160,110,60,0.05) 40%, rgba(6,6,6,0) 65%)',
-          'linear-gradient(310deg, rgba(216,181,106,0.06) 0%, rgba(6,6,6,0) 50%)',
+          'linear-gradient(135deg, rgba(216,181,106,0.22) 0%, rgba(180,140,80,0.14) 40%, rgba(120,90,50,0.06) 70%, rgba(6,6,6,0) 100%)',
+          'linear-gradient(220deg, rgba(200,160,90,0.14) 0%, rgba(160,110,60,0.08) 40%, rgba(6,6,6,0) 65%)',
+          'linear-gradient(310deg, rgba(216,181,106,0.10) 0%, rgba(6,6,6,0) 50%)',
         ].join(', '),
         backgroundSize:     '200% 200%, 240% 240%, 180% 180%',
         backgroundPosition: '0% 0%, 100% 0%, 0% 100%',
-        animation:          'immerseRoomGlow 24s ease-in-out infinite alternate',
+        animation:          'immerseRoomGlow 18s ease-in-out infinite',
         borderTop:          '1px solid rgba(216,181,106,0.12)',
         borderBottom:       '1px solid rgba(216,181,106,0.08)',
       }}
     >
-      <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
+      <div style={{ width: isMobile ? 'calc(100% - 24px)' : 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
         <div
           style={{
             display:             'grid',
