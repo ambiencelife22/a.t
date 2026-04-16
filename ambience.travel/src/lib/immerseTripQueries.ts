@@ -1,7 +1,7 @@
 // immerseTripQueries.ts — Supabase query layer for immerse trip master data
 // Owns: getImmerseTrip(urlId) — full ImmerseTripData fetch by public url_id
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S14
+// Last updated: S14 — reads clientName via people_display (person_id join)
 
 import { supabaseAnon } from './supabase'
 import type {
@@ -20,7 +20,8 @@ type TripRow = {
   slug:                   string
   trip_format:            string
   journey_types:          string[] | null
-  client_name:            string | null
+  person_id:              string | null
+  client_name:            string | null  // legacy, kept for backward compat; source of truth is people
   status_label:           string | null
   eyebrow:                string | null
   title:                  string | null
@@ -39,6 +40,13 @@ type TripRow = {
   pricing_notes_heading:  string | null
   pricing_notes_title:    string | null
   pricing_notes:          string[] | null
+}
+
+type PersonDisplayRow = {
+  id:         string
+  first_name: string | null
+  last_name:  string | null
+  nickname:   string | null
 }
 
 type RouteStopRow = {
@@ -80,7 +88,7 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
     .from('immerse_trips')
     .select(`
       id, url_id, slug, trip_format, journey_types,
-      client_name, status_label,
+      person_id, client_name, status_label,
       eyebrow, title, subtitle,
       hero_image_src, hero_image_alt, hero_pills,
       route_heading, route_body,
@@ -97,7 +105,16 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
   const tripRow = trip as TripRow
   const tripId  = tripRow.id
 
-  const [stopsRes, destsRes, pricingRes] = await Promise.all([
+  // Fetch person display + all child content in parallel.
+  // person_id may be null for trips that haven't been linked to a people row yet.
+  const [personRes, stopsRes, destsRes, pricingRes] = await Promise.all([
+    tripRow.person_id
+      ? supabaseAnon
+          .from('people_display')
+          .select('id, first_name, last_name, nickname')
+          .eq('id', tripRow.person_id)
+          .single()
+      : Promise.resolve({ data: null, error: null }),
     supabaseAnon
       .from('immerse_route_stops')
       .select('id, sort_order, title, stay_label, note, image_src, image_alt')
@@ -115,17 +132,24 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
       .order('sort_order'),
   ])
 
-  const stopRows    = (stopsRes.data    ?? []) as RouteStopRow[]
-  const destRows    = (destsRes.data    ?? []) as DestinationRowRow[]
-  const pricingRows = (pricingRes.data  ?? []) as PricingRowRow[]
+  const personRow  = (personRes.data  ?? null) as PersonDisplayRow | null
+  const stopRows   = (stopsRes.data   ?? []) as RouteStopRow[]
+  const destRows   = (destsRes.data   ?? []) as DestinationRowRow[]
+  const priceRows  = (pricingRes.data ?? []) as PricingRowRow[]
+
+  // Display name: nickname → first_name → legacy client_name fallback
+  const clientName = personRow?.nickname
+    ?? personRow?.first_name
+    ?? tripRow.client_name
+    ?? ''
 
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
     id:        r.id,
-    title:     r.title     ?? '',
+    title:     r.title      ?? '',
     stayLabel: r.stay_label ?? '',
-    note:      r.note      ?? '',
-    imageSrc:  r.image_src ?? '',
-    imageAlt:  r.image_alt ?? '',
+    note:      r.note       ?? '',
+    imageSrc:  r.image_src  ?? '',
+    imageAlt:  r.image_alt  ?? '',
   }))
 
   const destinationRows: ImmerseDestinationRow[] = destRows.map(r => ({
@@ -140,7 +164,7 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
     destinationSlug: r.destination_slug,
   }))
 
-  const tripPricingRows: ImmerseTripPricingRow[] = pricingRows.map(r => ({
+  const tripPricingRows: ImmerseTripPricingRow[] = priceRows.map(r => ({
     id:               r.id,
     destination:      r.destination        ?? '',
     recommendedBasis: r.recommended_basis  ?? '',
@@ -154,8 +178,8 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
     slug:          tripRow.slug,
     tripFormat:    (tripRow.trip_format as ImmerseTripFormat) ?? 'journey',
     journeyTypes:  tripRow.journey_types ?? [],
-    clientName:    tripRow.client_name   ?? '',
-    statusLabel:   tripRow.status_label  ?? '',
+    clientName,
+    statusLabel:   tripRow.status_label ?? '',
 
     eyebrow:       tripRow.eyebrow        ?? '',
     title:         tripRow.title          ?? '',
