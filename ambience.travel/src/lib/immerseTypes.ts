@@ -6,12 +6,15 @@
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 export type ImmerseRoomOption = {
-  roomCategory: string
-  roomBasis:    string
-  roomBenefits: string[]
-  roomImageSrc: string
-  roomImageAlt: string
-  nightlyRange: string
+  levelLabel:         string
+  roomBasis:          string
+  roomBenefits:       string[]
+  roomImageSrc:       string
+  roomImageAlt:       string
+  nightlyRate?:       string   // indicative nightly rate shown in room panel
+  publicNightlyRate?: string   // publicly listed rate for context
+  sqft?:              number
+  sqm?:               number
 }
 
 export type ImmerseHotelOption = {

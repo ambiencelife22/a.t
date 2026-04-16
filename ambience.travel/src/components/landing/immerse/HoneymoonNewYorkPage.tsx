@@ -35,6 +35,7 @@ export default function HoneymoonNewYorkPage() {
       <ImmerseDestIntro data={data} />
       <ImmerseHotelOptions data={data} />
       <ImmerseContentGrid
+        id='dining'
         eyebrow={data.diningEyebrow}
         title={data.diningTitle}
         body={data.diningBody}

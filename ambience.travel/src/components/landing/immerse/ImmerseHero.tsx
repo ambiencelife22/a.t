@@ -11,7 +11,7 @@ type Props = {
   guestName:       string
   titlePrefix?:    string   // renders in Cormorant Garamond italic — e.g. "Honeymoon in"
   dateLabel?:      string   // renders in gold below title — e.g. "January 2027"
-  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5-6 Nights"
+  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5–6 Nights"
   // Content
   title:           string
   subtitle:        string
@@ -136,13 +136,14 @@ export default function ImmerseHero({
               </div>
             )}
 
-            {/* Main title — Plus Jakarta Sans, word stagger */}
+            {/* Main title — Cormorant Garamond, word stagger */}
             <div
               style={{
-                fontSize:      isMobile ? 38 : 'clamp(48px,6.2vw,88px)',
-                lineHeight:    0.93,
-                letterSpacing: '-0.075em',
-                fontWeight:    800,
+                fontSize:      isMobile ? 52 : 'clamp(60px,7.5vw,108px)',
+                lineHeight:    0.95,
+                letterSpacing: '-0.02em',
+                fontWeight:    400,
+                fontFamily:    '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
                 marginBottom:  dateLabel ? 14 : 16,
                 color:         ID.text,
               }}

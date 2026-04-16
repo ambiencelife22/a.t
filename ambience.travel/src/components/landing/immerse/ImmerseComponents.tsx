@@ -1,4 +1,4 @@
-// ImmerseComponents.tsx — shared primitives for all /immerse/ proposal components
+// ImmerseComponents.tsx - shared primitives for all /immerse/ proposal components
 // Owns: ID palette, useImmerseMobile, immerseFadeUp, useImmerseVisible, shared UI atoms
 // Does not own page-level components or data.
 // Last updated: S11
