@@ -1,8 +1,9 @@
 // HoneymoonDestinationPage.tsx — Destination subpage honeymoon proposal
 // Route: /immerse/honeymoon/new-york
 // Composes all NYC-specific sections. Does not own other destination subpages.
-// Last updated: S12
+// Last updated: S13
 
+import { useEffect, useState }        from 'react'
 import ImmerseLayout                  from '../../layouts/ImmerseLayout'
 import ImmerseHero                    from './ImmerseHero'
 import ImmerseStructuredData          from './ImmerseStructuredData'
@@ -10,10 +11,27 @@ import { ImmerseDestIntro }           from './ImmerseDestinationComponents'
 import { ImmerseHotelOptions }        from './ImmerseDestinationComponents'
 import { ImmerseContentGrid }         from './ImmerseDestinationComponents'
 import { ImmerseDestPricing }         from './ImmerseDestinationComponents'
-import { yazeedHoneymoonNewYork }     from '../../../data/immerse/yazeed-honeymoon-new-york'
+import { getImmerseDestination }      from '../../../lib/immerseQueries'
+import type { ImmerseDestinationData } from '../../../lib/immerseTypes'
 
 export default function HoneymoonDestinationPage() {
-  const data = yazeedHoneymoonNewYork
+  const [data,    setData]    = useState<ImmerseDestinationData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getImmerseDestination('yazeed-honeymoon', 'new-york')
+      .then(result => {
+        setData(result)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('HoneymoonDestinationPage: failed to load destination', err)
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) return null
+  if (!data)   return null
 
   return (
     <ImmerseLayout>

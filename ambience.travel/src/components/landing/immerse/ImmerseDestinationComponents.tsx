@@ -66,7 +66,13 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   const hotel      = data.hotels[activeHotel]
   const rooms      = hotel.rooms
   const totalRooms = rooms.length
-  const gallery    = hotel.gallery ?? []
+  const gallery = hotel.gallery ?? []
+
+  const displayGallery = gallery.filter(src => src !== hotel.imageSrc)
+  const lightboxImages = [
+    hotel.imageSrc,
+    ...gallery.filter(src => src !== hotel.imageSrc),
+  ]
 
   function goHotel(idx: number) {
     setActiveHotel(idx)
@@ -379,10 +385,10 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {gallery.length > 0 && (
+            {displayGallery.length > 0 && (
               <div style={{ marginTop: 40 }}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
-                  Gallery · {gallery.length} photos
+                  Gallery · {displayGallery.length} photos
                 </div>
                 <div
                   style={{
@@ -393,7 +399,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                     minWidth:            0,
                   }}
                 >
-                  {gallery.map((src, i) => (
+                  {displayGallery.map((src, i) => (
                     <div
                       key={i}
                       onClick={() => setLightboxIdx(i)}
@@ -502,6 +508,13 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
 }) {
   const gallery = hotel.gallery ?? []
 
+  const displayGallery = gallery.filter((src: string) => src !== hotel.imageSrc)
+
+  const lightboxImages = [
+    hotel.imageSrc,
+    ...gallery.filter((src: string) => src !== hotel.imageSrc),
+  ]
+
   return (
     <div style={{ display: 'grid', gap: 24, width: '100%', minWidth: 0 }}>
 
@@ -584,7 +597,7 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
       {gallery.length > 0 && (
         <div>
           <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 10 }}>
-            Gallery · {gallery.length} photos
+            Gallery · {displayGallery.length} photos
           </div>
           <div
             style={{
@@ -595,10 +608,10 @@ function HotelDetailPanel({ hotel, activeRoom, isMobile, onRoomChange, onLightbo
               minWidth:            0,
             }}
           >
-            {gallery.map((src, i) => (
+            {displayGallery.map((src, i) => (
               <div
                 key={i}
-                onClick={() => onLightbox(i)}
+                onClick={() => onLightbox(i + 1)}
                 style={{
                   width:        '100%',
                   height:       isMobile ? 118 : 160,
