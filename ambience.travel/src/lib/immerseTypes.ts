@@ -11,23 +11,20 @@ export type ImmerseRoomOption = {
   roomBenefits: string[]
   roomImageSrc: string
   roomImageAlt: string
+  nightlyRange: string
 }
 
 export type ImmerseHotelOption = {
-  id:           string
-  rank:         'primary' | 'secondary'
-  rankLabel:    string
-  name:         string
-  // tagline:      string
-  // description:  string
-  bullets:      string[]
-  nightlyRange: string
-  // nightlyNote:  string
-  imageSrc:     string
-  imageAlt:     string
-  stayLabel:    string
-  rooms:        ImmerseRoomOption[]
-  gallery?:     string[]   // additional hotel images shown in the expandable gallery strip
+  id:       string
+  rank:     'primary' | 'secondary'
+  rankLabel: string
+  name:     string
+  bullets:  string[]
+  imageSrc: string
+  imageAlt: string
+  stayLabel: string
+  rooms:    ImmerseRoomOption[]
+  gallery?: string[]
 }
 
 export type ImmerseContentCard = {

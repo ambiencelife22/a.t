@@ -52,6 +52,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   const [activeHotel, setActiveHotel]    = useState(0)
   const [activeRoom,  setActiveRoom]     = useState(0)
   const [galleryOpen, setGalleryOpen]    = useState(false)
+  const [lightboxIdx, setLightboxIdx]    = useState<number | null>(null)
   const [dragStart,   setDragStart]      = useState<number | null>(null)
   const carouselRef                      = useRef<HTMLDivElement>(null)
   const hotelCarouselRef                 = useRef<HTMLDivElement>(null)
@@ -215,6 +216,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
             {gallery.map((src, i) => (
               <div
                 key={i}
+                onClick={() => setLightboxIdx(i)}
                 style={{
                   flexShrink:   0,
                   width:        isMobile ? 240 : 320,
@@ -223,6 +225,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                   overflow:     'hidden',
                   border:       `1px solid ${ID.line}`,
                   boxShadow:    '0 8px 24px rgba(0,0,0,0.36)',
+                  cursor:       'pointer',
                 }}
               >
                 <img
@@ -340,12 +343,190 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           </div>
         </div>
       </section>
+      {/* Lightbox */}
+      {lightboxIdx !== null && gallery.length > 0 && (
+        <LightboxOverlay
+          images={gallery}
+          index={lightboxIdx}
+          hotelName={hotel.name}
+          onClose={() => setLightboxIdx(null)}
+          onPrev={() => setLightboxIdx(i => i !== null && i > 0 ? i - 1 : i)}
+          onNext={() => setLightboxIdx(i => i !== null && i < gallery.length - 1 ? i + 1 : i)}
+        />
+      )}
     </>
+  )
+}
+
+function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: {
+  images:    string[]
+  index:     number
+  hotelName: string
+  onClose:   () => void
+  onPrev:    () => void
+  onNext:    () => void
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape')     onClose()
+      if (e.key === 'ArrowLeft')  onPrev()
+      if (e.key === 'ArrowRight') onNext()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose, onPrev, onNext])
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position:       'fixed',
+        inset:          0,
+        zIndex:         999,
+        background:     'rgba(3,3,3,0.94)',
+        backdropFilter: 'blur(12px)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        animation:      'immerseFadeIn 0.25s ease both',
+      }}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        style={{
+          position:   'fixed',
+          top:        24,
+          right:      28,
+          background: 'none',
+          border:     'none',
+          color:      'rgba(245,242,236,0.5)',
+          fontSize:   28,
+          cursor:     'pointer',
+          lineHeight: 1,
+          padding:    8,
+          transition: 'color 0.2s ease',
+          zIndex:     1000,
+        }}
+        onMouseEnter={e => (e.currentTarget.style.color = ID.text)}
+        onMouseLeave={e => (e.currentTarget.style.color = 'rgba(245,242,236,0.5)')}
+      >×</button>
+
+      {/* Counter */}
+      <div
+        style={{
+          position:      'fixed',
+          top:           28,
+          left:          '50%',
+          transform:     'translateX(-50%)',
+          color:         ID.dim,
+          fontSize:      11,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          fontWeight:    700,
+          zIndex:        1000,
+        }}
+      >
+        {hotelName} · {index + 1} / {images.length}
+      </div>
+
+      {/* Prev */}
+      {index > 0 && (
+        <button
+          onClick={e => { e.stopPropagation(); onPrev() }}
+          style={{
+            position:   'fixed',
+            left:       20,
+            top:        '50%',
+            transform:  'translateY(-50%)',
+            background: 'none',
+            border:     'none',
+            color:      'rgba(245,242,236,0.36)',
+            fontSize:   42,
+            cursor:     'pointer',
+            lineHeight: 1,
+            padding:    '8px 12px',
+            transition: 'color 0.2s ease',
+            zIndex:     1000,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = ID.text)}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(245,242,236,0.36)')}
+        >‹</button>
+      )}
+
+      {/* Next */}
+      {index < images.length - 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); onNext() }}
+          style={{
+            position:   'fixed',
+            right:      20,
+            top:        '50%',
+            transform:  'translateY(-50%)',
+            background: 'none',
+            border:     'none',
+            color:      'rgba(245,242,236,0.36)',
+            fontSize:   42,
+            cursor:     'pointer',
+            lineHeight: 1,
+            padding:    '8px 12px',
+            transition: 'color 0.2s ease',
+            zIndex:     1000,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = ID.text)}
+          onMouseLeave={e => (e.currentTarget.style.color = 'rgba(245,242,236,0.36)')}
+        >›</button>
+      )}
+
+      {/* Image */}
+      <img
+        key={index}
+        src={images[index]}
+        alt={`${hotelName} image ${index + 1}`}
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth:     'calc(100vw - 120px)',
+          maxHeight:    'calc(100vh - 120px)',
+          objectFit:    'contain',
+          borderRadius: ID.radiusLg,
+          boxShadow:    '0 32px 80px rgba(0,0,0,0.64)',
+          animation:    'immerseFadeIn 0.3s ease both',
+          display:      'block',
+        }}
+      />
+
+      {/* Dot strip */}
+      <div
+        style={{
+          position:  'fixed',
+          bottom:    28,
+          left:      '50%',
+          transform: 'translateX(-50%)',
+          display:   'flex',
+          gap:       8,
+          zIndex:    1000,
+        }}
+      >
+        {images.map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width:        i === index ? 22 : 7,
+              height:       7,
+              borderRadius: 999,
+              background:   i === index ? ID.gold : 'rgba(245,242,236,0.22)',
+              transition:   'width 0.3s ease, background 0.3s ease',
+            }}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
 
 function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { hotel: ImmerseHotelOption; active: boolean; galleryOpen: boolean; onClick: () => void; index?: number }) {
   const [hovered, setHovered] = useState(false)
+  const isOpen = active && galleryOpen
 
   return (
     <div
@@ -353,7 +534,7 @@ function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { h
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        border:        `1px solid ${active ? (galleryOpen ? ID.gold : 'rgba(216,181,106,0.55)') : hovered ? 'rgba(216,181,106,0.28)' : ID.line}`,
+        border:        `1px solid ${isOpen ? ID.gold : active ? 'rgba(216,181,106,0.55)' : hovered ? 'rgba(216,181,106,0.28)' : ID.line}`,
         borderRadius:  24,
         overflow:      'hidden',
         background:    active ? ID.panel : ID.panel2,
@@ -385,11 +566,9 @@ function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { h
         <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: ID.gold, fontWeight: 700, marginBottom: 8 }}>
           {hotel.rankLabel}
         </div>
-        <div style={{ fontSize: 28, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text, marginBottom: 8 }}>
+        <div style={{ fontSize: 28, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text, marginBottom: 14 }}>
           {hotel.name}
         </div>
-        {/* <div style={{ color: ID.muted, fontSize: 13, marginBottom: 12 }}>{hotel.tagline}</div> */}
-        {/* <div style={{ color: ID.muted, fontSize: 13, lineHeight: 1.7, marginBottom: 14 }}>{hotel.description}</div> */}
 
         <div style={{ display: 'grid', gap: 7, marginBottom: 14 }}>
           {hotel.bullets.map(b => (
@@ -404,14 +583,13 @@ function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { h
           <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: ID.gold, fontWeight: 700, marginBottom: 5 }}>
             Indicative nightly range
           </div>
-          <div style={{ fontSize: 25, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text, marginBottom: 5 }}>
-            {hotel.nightlyRange}
+          <div style={{ fontSize: 25, lineHeight: 1.02, letterSpacing: '-0.04em', fontWeight: 800, color: ID.text }}>
+            {hotel.rooms[0]?.nightlyRange ?? '—'}
           </div>
-          {/* <div style={{ color: ID.muted, fontSize: 12, lineHeight: 1.55 }}>{hotel.nightlyNote}</div> */}
         </div>
 
-        {/* Gallery hint when active */}
-        {active && hotel.gallery && hotel.gallery.length > 0 && (
+        {/* Gallery hint — always visible on all cards */}
+        {hotel.gallery && hotel.gallery.length > 0 && (
           <div
             style={{
               marginTop:     12,
@@ -420,16 +598,20 @@ function HotelOptionCard({ hotel, active, galleryOpen, onClick, index = 0 }: { h
               display:       'flex',
               alignItems:    'center',
               gap:           6,
-              color:         ID.gold,
+              color:         isOpen ? ID.gold : ID.dim,
               fontSize:      10,
               letterSpacing: '0.14em',
               textTransform: 'uppercase',
               fontWeight:    700,
-              opacity:       0.72,
+              transition:    'color 0.3s ease',
             }}
           >
-            <span style={{ transition: 'transform 0.3s ease', transform: galleryOpen ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}>▾</span>
-            {galleryOpen ? 'Hide gallery' : `View gallery · ${hotel.gallery.length} images`}
+            <span style={{
+              transition:  'transform 0.3s ease',
+              transform:   isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              display:     'inline-block',
+            }}>▾</span>
+            {isOpen ? 'Hide gallery' : `Gallery · ${hotel.gallery.length} photos`}
           </div>
         )}
       </div>
@@ -482,9 +664,8 @@ function RoomCategory({ room, hotel, fadeIn = false }: { room: ImmerseRoomOption
               <div style={{ fontSize: isMobile ? 28 : 40, lineHeight: 0.98, letterSpacing: '-0.055em', fontWeight: 800, color: ID.text, marginBottom: 8 }}>
                 {room.roomBasis}
               </div>
-              {/* <ImmerseBody>{hotel.description}</ImmerseBody> */}
             </div>
-            <ImmerseStayBox label={hotel.stayLabel} />
+            <ImmerseStayBox label={hotel.stayLabel} nightlyRange={room.nightlyRange} />
           </div>
         </div>
 

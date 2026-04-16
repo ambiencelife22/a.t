@@ -96,19 +96,19 @@ export function ImmerseEyebrow({ children, style, shimmer = true }: { children: 
       )}
       <div
         style={{
-          color:              shimmer ? 'transparent' : ID.gold,
-          fontSize:           11,
-          letterSpacing:      '0.22em',
-          textTransform:      'uppercase',
-          fontWeight:         700,
-          marginBottom:       14,
-          backgroundImage:    shimmer
+          color:                shimmer ? 'transparent' : ID.gold,
+          fontSize:             11,
+          letterSpacing:        '0.22em',
+          textTransform:        'uppercase',
+          fontWeight:           700,
+          marginBottom:         14,
+          backgroundImage:      shimmer
             ? `linear-gradient(90deg, ${ID.gold} 0%, ${ID.gold} 35%, ${IMMERSE.shimmer} 50%, ${ID.gold} 65%, ${ID.gold} 100%)`
             : undefined,
-          backgroundSize:     shimmer ? '200% auto' : undefined,
-          backgroundClip:     shimmer ? 'text' : undefined,
+          backgroundSize:       shimmer ? '200% auto' : undefined,
+          backgroundClip:       shimmer ? 'text' : undefined,
           WebkitBackgroundClip: shimmer ? 'text' : undefined,
-          animation:          shimmer ? 'immerseShimmer 2.2s ease 0.3s 1 both' : undefined,
+          animation:            shimmer ? 'immerseShimmer 2.2s ease 0.3s 1 both' : undefined,
           ...style,
         }}
       >
@@ -205,7 +205,7 @@ export function ImmersePanel({ children, style }: { children: ReactNode; style?:
 
 // ─── Stay box ────────────────────────────────────────────────────────────────
 
-export function ImmerseStayBox({ label }: { label: string }) {
+export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightlyRange?: string }) {
   return (
     <div
       style={{
@@ -228,19 +228,33 @@ export function ImmerseStayBox({ label }: { label: string }) {
           marginBottom:  6,
         }}
       >
-        Suggested stay
+        {nightlyRange ? 'Per night' : 'Suggested stay'}
       </div>
       <div
         style={{
-          fontSize:      22,
+          fontSize:      nightlyRange ? 16 : 22,
           lineHeight:    1.08,
-          letterSpacing: '-0.04em',
+          letterSpacing: nightlyRange ? '-0.02em' : '-0.04em',
           fontWeight:    800,
           color:         ID.text,
         }}
       >
-        {label}
+        {nightlyRange ?? label}
       </div>
+      {nightlyRange && (
+        <div
+          style={{
+            fontSize:      10,
+            letterSpacing: '0.10em',
+            textTransform: 'uppercase',
+            color:         ID.dim,
+            fontWeight:    600,
+            marginTop:     4,
+          }}
+        >
+          {label}
+        </div>
+      )}
     </div>
   )
 }
