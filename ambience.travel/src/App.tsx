@@ -3,9 +3,10 @@
  *
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
- *   ambience.travel/experiences/:slug                   → SignatureExperiencePage
- *   ambience.travel/immerse/honeymoon/                  → HoneymoonOverviewPage
- *   ambience.travel/immerse/honeymoon/new-york          → HoneymoonDestinationPage
+ *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
+ *   ambience.travel/immerse/:journey_type/:destination   → HoneymoonDestinationPage (public inspiration)
+ *   ambience.travel/immerse/:url_id                      → ImmerseTripRoute (trip overview)
+ *   ambience.travel/immerse/:url_id/:destination         → ImmerseTripRoute (trip destination subpage)
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -19,11 +20,17 @@
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
- *   localhost:5173/immerse/honeymoon/                   → HoneymoonOverviewPage
- *   localhost:5173/immerse/honeymoon/new-york            → HoneymoonDestinationPage
+ *   localhost:5173/immerse/:journey_type/:destination    → HoneymoonDestinationPage (public inspiration)
+ *   localhost:5173/immerse/:url_id                       → ImmerseTripRoute (trip overview)
+ *   localhost:5173/immerse/:url_id/:destination          → ImmerseTripRoute (trip destination subpage)
+ *
+ * Immerse disambiguator: first /immerse/ segment is shape-tested.
+ *   - 11-char [A-Za-z0-9] hash → trip route (private, url_id keyed)
+ *   - anything else            → public inspiration route (journey_type keyed)
  *
  * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
  * full-page programme view. The programme root renders the app shell.
+ * Last updated: S14
  */
 
 import { useEffect, useState, useContext } from 'react'
@@ -36,8 +43,8 @@ import ProgrammeList from './components/ProgrammeList'
 import Profile from './components/Profile'
 import Auth from './components/Auth'
 import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
-import HoneymoonOverviewPage  from './components/landing/immerse/HoneymoonOverviewPage'
-import HoneymoonDestinationPage   from './components/landing/immerse/HoneymoonDestinationPage'
+import ImmerseTripRoute          from './components/landing/immerse/ImmerseTripRoute'
+import HoneymoonDestinationPage  from './components/landing/immerse/HoneymoonDestinationPage'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
@@ -65,9 +72,13 @@ function isImmerseRoute(): boolean {
   return window.location.pathname.startsWith('/immerse/')
 }
 
-function resolveImmerseSlug(): { journey: string; destination: string | null } {
+function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
   const parts = window.location.pathname.replace('/immerse/', '').replace(/\/$/, '').split('/')
-  return { journey: parts[0] ?? '', destination: parts[1] ?? null }
+  return { seg1: parts[0] ?? '', seg2: parts[1] ?? null }
+}
+
+function isTripUrlId(seg: string): boolean {
+  return /^[A-Za-z0-9]{11}$/.test(seg)
 }
 
 function resolveRoute(): Route {
@@ -108,11 +119,14 @@ export default function App() {
   if (route === 'experience')       return <SignatureExperiencePage />
 
   if (route === 'immerse') {
-    const { journey, destination } = resolveImmerseSlug()
-    if (journey === 'honeymoon') {
-      if (destination === 'new-york') return <HoneymoonDestinationPage />
-      return <HoneymoonOverviewPage />
-    }
+    const { seg1, seg2 } = resolveImmerseSegments()
+
+    // Shape-based disambiguator: 11-char alphanumeric → trip route
+    if (isTripUrlId(seg1)) return <ImmerseTripRoute />
+
+    // Public inspiration: /immerse/:journey_type/:destination
+    if (seg1 === 'honeymoon' && seg2) return <HoneymoonDestinationPage />
+
     return <LandingLayout />
   }
 

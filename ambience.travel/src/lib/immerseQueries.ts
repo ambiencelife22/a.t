@@ -1,8 +1,9 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
-// Owns all DB reads for immerse_journeys, immerse_destinations, and child tables.
+// Owns all DB reads for immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData exactly — zero component changes required.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S13
+// Last updated: S14 — dropped immerse_journeys lookup (table renamed to immerse_trips;
+//                     destination_slug is the sole key per S13 canon).
 
 import { supabase } from './supabase'
 import type {
@@ -24,8 +25,16 @@ export interface ImmerseDestinationMeta {
 }
 
 // ─── getImmerseDestination ────────────────────────────────────────────────────
-// Fetches a full destination subpage by journey slug + destination slug.
+// Fetches a full destination subpage by destination slug.
 // Returns null if not found.
+//
+// S14 NOTE: journeySlug is retained in the signature for backwards compatibility
+// and passed through to the returned journeyId field. It is NOT used as a DB
+// filter — destination_slug is the sole key per S13 canon. This means all
+// current destinations live in a single namespace (NYC, St Barths, etc).
+// If multiple journey types ever need the same destination slug with different
+// content, reintroduce the filter against a stable template table.
+//
 // All child tables are fetched in parallel — one round-trip per child type.
 
 export async function getImmerseDestination(
@@ -33,20 +42,10 @@ export async function getImmerseDestination(
   destinationSlug: string,
 ): Promise<ImmerseDestinationData | null> {
 
-  // Step 1 — resolve journey id from slug
-  const { data: journey, error: journeyErr } = await supabase
-    .from('immerse_journeys')
-    .select('id')
-    .eq('journey_slug', journeySlug)
-    .single()
-
-  if (journeyErr || !journey) return null
-
-  // Step 2 — resolve destination row
+  // Step 1 — resolve destination row by slug
   const { data: dest, error: destErr } = await supabase
     .from('immerse_destinations')
     .select('*')
-    .eq('journey_id', journey.id)
     .eq('destination_slug', destinationSlug)
     .single()
 
@@ -54,7 +53,7 @@ export async function getImmerseDestination(
 
   const destId = dest.id
 
-  // Step 3 — fetch all child data in parallel
+  // Step 2 — fetch all child data in parallel
   const [
     hotelsResult,
     cardsResult,
@@ -65,7 +64,7 @@ export async function getImmerseDestination(
     fetchPricingRows(destId),
   ])
 
-  // Step 4 — assemble into ImmerseDestinationData shape
+  // Step 3 — assemble into ImmerseDestinationData shape
   return {
     destinationId: dest.destination_slug,
     journeyId:     journeySlug,

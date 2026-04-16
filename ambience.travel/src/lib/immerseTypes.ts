@@ -1,7 +1,7 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
-// Owns all data contracts for journey overview and destination subpages.
+// Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S12
+// Last updated: S14 — trip renaming: ImmerseJourneyData → ImmerseTripData, destination row links via slug
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -56,7 +56,9 @@ export type ImmersePricingRow = {
   isTotal?:        boolean
 }
 
-// ─── Journey overview (master page) ──────────────────────────────────────────
+// ─── Trip overview (master page) ─────────────────────────────────────────────
+
+export type ImmerseTripFormat = 'journey' | 'experience'
 
 export type ImmerseRouteStop = {
   id:        string
@@ -68,18 +70,20 @@ export type ImmerseRouteStop = {
 }
 
 export type ImmerseDestinationRow = {
-  id:          string
-  numberLabel: string
-  title:       string
-  mood:        string
-  summary:     string
-  stayLabel:   string
-  imageSrc:    string
-  imageAlt:    string
-  href:        string
+  id:              string
+  numberLabel:     string
+  title:           string
+  mood:            string
+  summary:         string
+  stayLabel:       string
+  imageSrc:        string
+  imageAlt:        string
+  // When set, overview renders /immerse/{urlId}/{destinationSlug}.
+  // When null, the card renders without a subpage link.
+  destinationSlug: string | null
 }
 
-export type ImmerseJourneyPricingRow = {
+export type ImmerseTripPricingRow = {
   id:               string
   destination:      string
   recommendedBasis: string
@@ -87,11 +91,15 @@ export type ImmerseJourneyPricingRow = {
   indicativeRange:  string
 }
 
-export type ImmerseJourneyData = {
+export type ImmerseTripData = {
   // meta
-  journeyId:   string
-  clientName:  string
-  statusLabel: string
+  tripId:       string        // DB uuid
+  urlId:        string        // 11-char public key
+  slug:         string        // internal admin slug, e.g. 'yazeed-honeymoon'
+  tripFormat:   ImmerseTripFormat
+  journeyTypes: string[]      // display metadata — ['honeymoon'], ['family'], etc.
+  clientName:   string
+  statusLabel:  string
   // hero
   eyebrow:      string
   title:        string
@@ -110,7 +118,7 @@ export type ImmerseJourneyData = {
   pricingHeading:      string
   pricingTitle:        string
   pricingBody:         string
-  pricingRows:         ImmerseJourneyPricingRow[]
+  pricingRows:         ImmerseTripPricingRow[]
   pricingTotalLabel:   string
   pricingTotalValue:   string
   pricingNotesHeading: string
@@ -123,7 +131,7 @@ export type ImmerseJourneyData = {
 export type ImmerseDestinationData = {
   // meta
   destinationId: string
-  journeyId:     string
+  journeyId:     string   // journey-type slug reference (e.g. 'honeymoon') — template key
   shorthand?:    string   // e.g. "NYC" — display shorthand for the destination
   // hero
   eyebrow:      string
