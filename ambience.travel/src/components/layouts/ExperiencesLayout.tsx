@@ -102,7 +102,7 @@ export default function ExperiencesLayout({ children }: Props) {
           </a>
 
           {/* CTA */}
-          <button
+          {/* <button
             disabled
             aria-disabled='true'
             style={{
@@ -119,7 +119,7 @@ export default function ExperiencesLayout({ children }: Props) {
             }}
           >
             Begin the Conversation
-          </button>
+          </button> */}
         </nav>
       )}
 

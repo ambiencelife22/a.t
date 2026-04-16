@@ -60,7 +60,7 @@ export default function ImmerseLayout({ children }: Props) {
           <AmbienceLogo isDark={false} product='travel' height={44} />
         </a>
 
-        <button
+        {/* <button
           disabled
           aria-disabled='true'
           style={{
@@ -77,7 +77,7 @@ export default function ImmerseLayout({ children }: Props) {
           }}
         >
           Begin the Conversation
-        </button>
+        </button> */}
       </nav>
 
       <div style={{ paddingTop: 60 }}>

@@ -5,7 +5,7 @@
  *   ambience.travel/*                                    → LandingLayout (public)
  *   ambience.travel/experiences/:slug                   → SignatureExperiencePage
  *   ambience.travel/immerse/honeymoon/                  → HoneymoonOverviewPage
- *   ambience.travel/immerse/honeymoon/new-york          → HoneymoonNewYorkPage
+ *   ambience.travel/immerse/honeymoon/new-york          → HoneymoonDestinationPage
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -20,7 +20,7 @@
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/honeymoon/                   → HoneymoonOverviewPage
- *   localhost:5173/immerse/honeymoon/new-york            → HoneymoonNewYorkPage
+ *   localhost:5173/immerse/honeymoon/new-york            → HoneymoonDestinationPage
  *
  * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
  * full-page programme view. The programme root renders the app shell.
@@ -37,7 +37,7 @@ import Profile from './components/Profile'
 import Auth from './components/Auth'
 import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
 import HoneymoonOverviewPage  from './components/landing/immerse/HoneymoonOverviewPage'
-import HoneymoonNewYorkPage   from './components/landing/immerse/HoneymoonNewYorkPage'
+import HoneymoonDestinationPage   from './components/landing/immerse/HoneymoonDestinationPage'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
@@ -110,7 +110,7 @@ export default function App() {
   if (route === 'immerse') {
     const { journey, destination } = resolveImmerseSlug()
     if (journey === 'honeymoon') {
-      if (destination === 'new-york') return <HoneymoonNewYorkPage />
+      if (destination === 'new-york') return <HoneymoonDestinationPage />
       return <HoneymoonOverviewPage />
     }
     return <LandingLayout />

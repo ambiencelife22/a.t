@@ -49,7 +49,7 @@ export default function DarkCTASection() {
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', ...fadeUp(visible, 340) }}>
-                <button
+                {/* <button
                   disabled
                   aria-disabled='true'
                   style={{
@@ -65,7 +65,7 @@ export default function DarkCTASection() {
                   }}
                 >
                   Begin the Conversation
-                </button>
+                </button> */}
               </div>
             </div>
 

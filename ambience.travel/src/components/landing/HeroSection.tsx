@@ -160,7 +160,7 @@ export default function HeroSection() {
                 ...fadeUp(ready, 420),
               }}
             >
-              <button
+              {/* <button
                 disabled
                 aria-disabled='true'
                 style={{
@@ -177,7 +177,7 @@ export default function HeroSection() {
                 }}
               >
                 Begin the Conversation
-              </button>
+              </button> */}
 
               {/* <button
                 disabled

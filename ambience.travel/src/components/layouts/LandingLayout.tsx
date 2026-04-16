@@ -148,7 +148,7 @@ export default function LandingLayout({ children: _children }: LayoutProps) {
             <AmbienceLogo isDark={false} product='travel' height={44} />
           </a>
 
-          <button
+          {/* <button
             disabled
             aria-disabled='true'
             style={{
@@ -165,7 +165,7 @@ export default function LandingLayout({ children: _children }: LayoutProps) {
             }}
           >
             Begin the Conversation
-          </button>
+          </button> */}
         </nav>
       )}
 
