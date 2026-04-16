@@ -21,7 +21,10 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
   return (
     <ImmerseSectionWrap
       refProp={ref as React.RefObject<HTMLElement>}
-      style={{ background: C.bgAlt }}
+      style={{
+        background:  C.bgAlt,
+        animation:   visible ? 'immerseBorderFadeIn 0.8s ease 0.1s both' : undefined,
+      }}
     >
       <div
         style={{
@@ -33,7 +36,7 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
           gap:           16,
         }}
       >
-        <ImmerseEyebrow style={{ color: C.faint, ...immerseFadeUp(visible, 0) }}>
+        <ImmerseEyebrow style={{ color: C.faint, ...(visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) both' } : { opacity: 0 }) }}>
           {eyebrow}
         </ImmerseEyebrow>
         <ImmerseTitle serif style={{ fontSize: 'clamp(28px,4vw,50px)', color: C.text, ...immerseFadeUp(visible, 60) }}>
@@ -55,6 +58,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   const isMobile                         = useImmerseMobile()
   const [activeHotel, setActiveHotel]    = useState(0)
   const [activeRoom, setActiveRoom]      = useState(0)
+  const [prevRoom, setPrevRoom]          = useState<number | null>(null)
   const [lightboxIdx, setLightboxIdx]    = useState<number | null>(null)
   const [dragStart, setDragStart]        = useState<number | null>(null)
   const carouselRef                      = useRef<HTMLDivElement>(null)
@@ -71,7 +75,10 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
 
   function goRoom(idx: number) {
     const clamped = Math.max(0, Math.min(totalRooms - 1, idx))
+    setPrevRoom(activeRoom)
     setActiveRoom(clamped)
+    // Clear prevRoom after trail animation completes
+    setTimeout(() => setPrevRoom(null), 450)
   }
 
   useEffect(() => {
@@ -107,11 +114,14 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           zIndex:       2,
           marginTop:    -24,
           overflow:     'hidden',
-          boxShadow:    '0 -12px 48px rgba(0,0,0,0.48), 0 12px 48px rgba(0,0,0,0.56), 0 2px 0 rgba(216,181,106,0.10)',
+          animation:    visible ? 'immerseBorderFadeIn 0.8s ease 0.1s both' : undefined,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.32)',
         }}
       >
         <div style={{ marginBottom: 20, ...immerseFadeUp(visible, 0) }}>
-          <ImmerseEyebrow>{data.hotelsEyebrow}</ImmerseEyebrow>
+          <ImmerseEyebrow style={visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) both' } : { opacity: 0 }}>
+            {data.hotelsEyebrow}
+          </ImmerseEyebrow>
         </div>
 
         <div
@@ -187,6 +197,33 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           0%, 100% { border-color: rgba(216,181,106,0.30); }
           50%      { border-color: rgba(216,181,106,0.70); }
         }
+        @keyframes immerseGoldScan {
+          0%   { width: 0%;   opacity: 1;   }
+          72%  { width: 100%; opacity: 1;   }
+          100% { width: 100%; opacity: 0;   }
+        }
+        @keyframes immerseBorderFadeIn {
+          from { border-top-color: transparent; }
+          to   { border-top-color: rgba(216,181,106,0.12); }
+        }
+        @keyframes immerseBorderFadeInAlt {
+          from { border-top-color: transparent; }
+          to   { border-top-color: rgba(216,181,106,0.08); }
+        }
+        @keyframes immerseEyebrowSettle {
+          from { letter-spacing: 0.06em; opacity: 0.4; }
+          to   { letter-spacing: 0.22em; opacity: 1;   }
+        }
+        @keyframes immerseRuleShimmer {
+          0%   { background-position: -200% center; opacity: 0.4; }
+          60%  { background-position:  200% center; opacity: 1;   }
+          100% { background-position:  200% center; opacity: 1;   }
+        }
+        @keyframes immerseDotDim {
+          0%   { opacity: 1;    }
+          30%  { opacity: 0.12; }
+          100% { opacity: 0.38; }
+        }
       `}</style>
 
       {/* Room categories — animated gold gradient band */}
@@ -205,6 +242,20 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           background:   '#060606',
         }}
       >
+        {/* Gold scan line — fires once on section entry, settles into the border */}
+        {visible2 && (
+          <div style={{
+            position:   'absolute',
+            top:        0,
+            left:       0,
+            height:     1,
+            width:      '100%',
+            background: 'rgba(216,181,106,0.55)',
+            animation:  'immerseGoldScan 1.1s cubic-bezier(0.16,1,0.3,1) both',
+            pointerEvents: 'none',
+            zIndex:     2,
+          }} />
+        )}
         {/* Breathing gold overlay */}
         <div
           style={{
@@ -317,7 +368,11 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                       cursor:       'pointer',
                       padding:      0,
                       transition:   'width 0.3s ease, background 0.3s ease',
-                      animation:    i === activeRoom ? 'immerseDotPulse 2.4s ease-in-out infinite' : undefined,
+                      animation:    i === activeRoom
+                        ? 'immerseDotPulse 2.4s ease-in-out infinite'
+                        : i === prevRoom
+                          ? 'immerseDotDim 0.45s ease-out both'
+                          : undefined,
                     }}
                   />
                 ))}
@@ -369,7 +424,6 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                         onMouseEnter={e => { (e.currentTarget as HTMLImageElement).style.transform = 'scale(1.06)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLImageElement).style.transform = 'scale(1)' }}
                       />
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 'inherit', background: 'radial-gradient(ellipse at center, transparent 35%, rgba(3,3,3,0.44) 100%)' }} />
                     </div>
                   ))}
                 </div>
@@ -962,16 +1016,20 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
   const eyebrowColor = dark ? ID.gold  : C.faint
   const titleColor   = dark ? ID.text  : C.text
   const bodyColor    = dark ? ID.muted : C.muted
-  const sectionBg    = dark ? {}       : { background: C.bgAlt }
+  const sectionBg    = dark ? {}       : { background: C.bgAlt, position: 'relative' as const, zIndex: 1 }
   const darkExtras   = dark ? {
     borderRadius: '0 0 30px 30px',
-    boxShadow:    '0 16px 56px rgba(0,0,0,0.52), 0 2px 0 rgba(216,181,106,0.08)',
+    boxShadow:    '0 2px 0 rgba(216,181,106,0.08)',
     position:     'relative' as const,
     zIndex:       2,
   } : {}
 
   return (
-    <ImmerseSectionWrap id={id} refProp={ref as React.RefObject<HTMLElement>} style={{ ...sectionBg, ...darkExtras }}>
+    <ImmerseSectionWrap id={id} refProp={ref as React.RefObject<HTMLElement>} style={{
+      ...sectionBg,
+      ...darkExtras,
+      animation: visible ? 'immerseBorderFadeIn 0.8s ease 0.1s both' : undefined,
+    }}>
       <div
         style={{
           display:             'grid',
@@ -983,7 +1041,10 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
         }}
       >
         <div>
-          <ImmerseEyebrow style={{ color: eyebrowColor }} shimmer={false}>{eyebrow}</ImmerseEyebrow>
+          <ImmerseEyebrow
+            style={{ color: eyebrowColor, ...(visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) both' } : { opacity: 0 }) }}
+            shimmer={false}
+          >{eyebrow}</ImmerseEyebrow>
           <ImmerseTitle serif style={{ fontSize: 'clamp(28px,4vw,50px)', margin: 0, color: titleColor }}>{title}</ImmerseTitle>
         </div>
         <ImmerseBody style={{ color: bodyColor }}>{body}</ImmerseBody>
@@ -1024,9 +1085,7 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
         borderRadius:  24,
         overflow:      'hidden',
         background:    cardBg,
-        boxShadow:     hovered
-          ? (inverted ? '0 8px 32px rgba(0,0,0,0.16)' : '0 12px 40px rgba(0,0,0,0.52), 0 1px 0 rgba(216,181,106,0.12)')
-          : (inverted ? '0 4px 24px rgba(0,0,0,0.10)' : ID.shadow),
+        boxShadow:     hovered ? '0 10px 24px rgba(0,0,0,0.18)' : 'none',
         display:       'flex',
         animation:     `immerseFadeIn 0.6s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
         flexDirection: 'column',
@@ -1052,11 +1111,23 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
       </div>
       <div style={{ padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${ruleColor}, transparent)` }} />
+          <div style={{
+            flex:       1,
+            height:     1,
+            background: `linear-gradient(90deg, ${ID.gold}44 0%, ${ID.gold}99 50%, transparent 100%)`,
+            backgroundSize: '200% auto',
+            animation:  `immerseRuleShimmer 1.2s cubic-bezier(0.16,1,0.3,1) ${index * 90 + 400}ms both`,
+          }} />
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: inverted ? C.gold : ID.gold, fontWeight: 700 }}>
             {item.kicker}
           </div>
-          <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, ${ruleColor}, transparent)` }} />
+          <div style={{
+            flex:       1,
+            height:     1,
+            background: `linear-gradient(270deg, ${ID.gold}44 0%, ${ID.gold}99 50%, transparent 100%)`,
+            backgroundSize: '200% auto',
+            animation:  `immerseRuleShimmer 1.2s cubic-bezier(0.16,1,0.3,1) ${index * 90 + 400}ms both`,
+          }} />
         </div>
         <div style={{ fontSize: 26, lineHeight: 1.05, letterSpacing: '-0.01em', fontWeight: 400, fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif', color: nameColor, marginBottom: 8 }}>
           {item.name}
@@ -1120,6 +1191,21 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
         }}
       />
 
+      {/* Gold scan line on section entry */}
+      {visible && (
+        <div style={{
+          position:      'absolute',
+          top:           0,
+          left:          0,
+          height:        1,
+          width:         '100%',
+          background:    'rgba(216,181,106,0.55)',
+          animation:     'immerseGoldScan 1.1s cubic-bezier(0.16,1,0.3,1) both',
+          pointerEvents: 'none',
+          zIndex:        2,
+        }} />
+      )}
+
       <div
         style={{
           position: 'relative',
@@ -1137,33 +1223,33 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
           }}
         >
           <PricingPanel style={{ padding: 30, background: ID.panel }}>
-            <ImmerseEyebrow>{data.pricingEyebrow}</ImmerseEyebrow>
+            <ImmerseEyebrow style={visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) 0.2s both' } : { opacity: 0 }}>{data.pricingEyebrow}</ImmerseEyebrow>
             <ImmerseTitle serif style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingTitle}</ImmerseTitle>
             <ImmerseBody style={{ marginBottom: 14 }}>{data.pricingBody}</ImmerseBody>
             <PricingTable>
               {data.pricingRows.map(row => (
                 row.isTotal
                   ? (
-                    <tr key={row.id}>
+                    <PricingRow key={row.id} isTotal>
                       <TotalTd col={1}>{row.item}</TotalTd>
                       <TotalTd col={2} colSpan={2}>{row.basis}</TotalTd>
                       <TotalTd col={4}>{row.indicativeRange}</TotalTd>
-                    </tr>
+                    </PricingRow>
                   )
                   : (
-                    <tr key={row.id}>
+                    <PricingRow key={row.id}>
                       <Td col={1}>{row.item}</Td>
                       <Td col={2}>{row.basis}</Td>
                       <Td col={3}>{row.stay}</Td>
                       <Td col={4}>{row.indicativeRange}</Td>
-                    </tr>
+                    </PricingRow>
                   )
               ))}
             </PricingTable>
           </PricingPanel>
 
           <PricingPanel style={{ padding: 30, background: ID.panel }}>
-            <ImmerseEyebrow>{data.pricingNotesHeading}</ImmerseEyebrow>
+            <ImmerseEyebrow style={visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) 0.3s both' } : { opacity: 0 }}>{data.pricingNotesHeading}</ImmerseEyebrow>
             <ImmerseTitle serif style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingNotesTitle}</ImmerseTitle>
             <NotesList notes={data.pricingNotes} />
           </PricingPanel>
@@ -1173,7 +1259,29 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
   )
 }
 
-// ─── Pricing panel — hover-lift wrapper ──────────────────────────────────────
+// ─── Pricing row — hover highlight ───────────────────────────────────────────
+
+function PricingRow({ children, isTotal = false }: { children: React.ReactNode; isTotal?: boolean }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <tr
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background:  hovered
+          ? isTotal
+            ? 'rgba(216,181,106,0.06)'
+            : 'rgba(216,181,106,0.03)'
+          : 'transparent',
+        transition:  'background 0.25s ease',
+        cursor:      'default',
+      }}
+    >
+      {children}
+    </tr>
+  )
+}
 
 function PricingPanel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   const [hovered, setHovered] = useState(false)
