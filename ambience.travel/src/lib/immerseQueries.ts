@@ -1,8 +1,10 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
-// Owns all DB reads for immerse_destinations and child tables.
-// Returns data shaped to match ImmerseDestinationData exactly — zero component changes required.
-// Does not own rendering, routing, or theme tokens.
-// Last updated: S17 — Added hero_image_src_2, hero_image_alt_2 SELECT + mapping
+// Owns all DB reads for travel_immerse_destinations and child tables.
+// Returns data shaped to match ImmerseDestinationData — component layer unchanged.
+// Last updated: S17 — UUID-first queries + per-trip override resolution
+//   - fetchTripOverride queries travel_immerse_trip_destination_rows by destination_id (UUID)
+//   - Resolution chain: trip_override → destination_template → fallback
+//   - Hotel identity switched: id = real UUID, storageSlug = hotel_slug (for image paths)
 
 import { supabase } from './supabase'
 import type {
@@ -23,25 +25,77 @@ export interface ImmerseDestinationMeta {
   eyebrow:          string
 }
 
+// ─── Per-trip override row ────────────────────────────────────────────────────
+// When tripId is a url_id (not 'honeymoon'/'public'), fetch the matching
+// travel_immerse_trip_destination_rows row. Non-null *_override fields overlay
+// the destination template.
+//
+// S17 Phase 5A: queries by destination_slug (unchanged column post-migration-06).
+// S18 Phase 5C will swap to destination_id UUID after migration 07 runs.
+
+type TripDestinationOverride = {
+  hero_image_src_override:   string | null
+  hero_image_alt_override:   string | null
+  hero_image_src_2_override: string | null
+  hero_image_alt_2_override: string | null
+  hero_title_2_override:     string | null
+  hero_subtitle_2_override:  string | null
+  intro_title_override:      string | null
+  intro_body_override:       string | null
+  pricing_body_override:     string | null
+}
+
+async function fetchTripOverride(
+  tripId: string,
+  destinationSlug: string,
+): Promise<TripDestinationOverride | null> {
+  // Public path has no per-trip override row.
+  if (tripId === 'honeymoon' || tripId === 'public' || !tripId) return null
+
+  // Resolve url_id → trip uuid
+  const { data: trip } = await supabase
+    .from('travel_immerse_trips')
+    .select('id')
+    .eq('url_id', tripId)
+    .maybeSingle()
+
+  if (!trip) return null
+
+  // S17 Phase 5A: query by destination_slug (still present after migration 06).
+  // S18 Phase 5C will migrate this to destination_id UUID after migration 07.
+  const { data: row, error } = await supabase
+    .from('travel_immerse_trip_destination_rows')
+    .select(`
+      hero_image_src_override,
+      hero_image_alt_override,
+      hero_image_src_2_override,
+      hero_image_alt_2_override,
+      hero_title_2_override,
+      hero_subtitle_2_override,
+      intro_title_override,
+      intro_body_override,
+      pricing_body_override
+    `)
+    .eq('trip_id', trip.id)
+    .eq('destination_slug', destinationSlug)
+    .maybeSingle()
+
+  if (error || !row) return null
+  return row as TripDestinationOverride
+}
+
 // ─── getImmerseDestination ────────────────────────────────────────────────────
-// Fetches a full destination subpage by destination slug.
-// Returns null if not found.
+// Fetches a full destination subpage. Applies per-trip overrides where present.
+// Returns null if destination not found.
 //
-// S14 NOTE: journeySlug is retained in the signature for backwards compatibility
-// and passed through to the returned journeyId field. It is NOT used as a DB
-// filter — destination_slug is the sole key per S13 canon. This means all
-// current destinations live in a single namespace (NYC, St Barths, etc).
-// If multiple journey types ever need the same destination slug with different
-// content, reintroduce the filter against a stable template table.
-//
-// All child tables are fetched in parallel — one round-trip per child type.
+// URL slug → destination UUID happens inside this function.
 
 export async function getImmerseDestination(
   journeySlug:     string,
   destinationSlug: string,
 ): Promise<ImmerseDestinationData | null> {
 
-  // Step 1 — resolve destination row by slug
+  // Step 1 — resolve destination template (slug → full row including UUID)
   const { data: dest, error: destErr } = await supabase
     .from('travel_immerse_destinations')
     .select('*')
@@ -50,37 +104,45 @@ export async function getImmerseDestination(
 
   if (destErr || !dest) return null
 
-  const destId = dest.id
+  const destId = dest.id as string
 
-  // Step 2 — fetch all child data in parallel
+  // Step 2 — fetch override + child data in parallel
+  // Override still queried by destination_slug until Phase 5C (migration 07) runs.
   const [
+    overrideResult,
     hotelsResult,
     cardsResult,
     pricingResult,
   ] = await Promise.all([
+    fetchTripOverride(journeySlug, destinationSlug),
     fetchHotels(destId),
     fetchContentCards(destId),
     fetchPricingRows(destId),
   ])
 
-  // Step 3 — assemble into ImmerseDestinationData shape
+  const ov = overrideResult
+
+  // Step 3 — assemble with override resolution
   return {
-    destinationId: dest.destination_slug,
-    journeyId:     journeySlug,
-    shorthand:     dest.shorthand ?? undefined,
+    destinationId:   destId,                         // S17: UUID primary
+    destinationSlug: dest.destination_slug ?? '',    // S17: slug for URL building
+    journeyId:       journeySlug,
+    shorthand:       dest.shorthand ?? undefined,
 
-    eyebrow:       dest.eyebrow         ?? '',
-    title:         dest.title           ?? '',
-    subtitle:      dest.subtitle        ?? '',
-    heroImageSrc:  dest.hero_image_src  ?? '',
-    heroImageAlt:  dest.hero_image_alt  ?? '',
-    heroImageSrc2: dest.hero_image_src_2 ?? undefined,  // S17: secondary hero
-    heroImageAlt2: dest.hero_image_alt_2 ?? undefined,  // S17: secondary hero alt
-    heroPills:     (dest.hero_pills as string[]) ?? [],
+    eyebrow:       dest.eyebrow                        ?? '',
+    title:         dest.title                          ?? '',
+    subtitle:      dest.subtitle                       ?? '',
+    heroImageSrc:  ov?.hero_image_src_override         ?? dest.hero_image_src   ?? '',
+    heroImageAlt:  ov?.hero_image_alt_override         ?? dest.hero_image_alt   ?? '',
+    heroImageSrc2: ov?.hero_image_src_2_override       ?? dest.hero_image_src_2 ?? undefined,
+    heroImageAlt2: ov?.hero_image_alt_2_override       ?? dest.hero_image_alt_2 ?? undefined,
+    heroTitle2:    ov?.hero_title_2_override           ?? dest.hero_title_2     ?? undefined,
+    heroSubtitle2: ov?.hero_subtitle_2_override        ?? dest.hero_subtitle_2  ?? undefined,
+    heroPills:     (dest.hero_pills as string[])       ?? [],
 
-    introEyebrow: dest.intro_eyebrow ?? '',
-    introTitle:   dest.intro_title   ?? '',
-    introBody:    dest.intro_body    ?? '',
+    introEyebrow: dest.intro_eyebrow                  ?? '',
+    introTitle:   ov?.intro_title_override            ?? dest.intro_title ?? '',
+    introBody:    ov?.intro_body_override             ?? dest.intro_body  ?? '',
 
     hotelsEyebrow: dest.hotels_eyebrow ?? '',
     hotelsTitle:   dest.hotels_title   ?? '',
@@ -99,7 +161,7 @@ export async function getImmerseDestination(
 
     pricingEyebrow:      dest.pricing_eyebrow       ?? '',
     pricingTitle:        dest.pricing_title         ?? '',
-    pricingBody:         dest.pricing_body          ?? '',
+    pricingBody:         ov?.pricing_body_override  ?? dest.pricing_body ?? '',
     pricingRows:         pricingResult,
     pricingNotesHeading: dest.pricing_notes_heading ?? '',
     pricingNotesTitle:   dest.pricing_notes_title   ?? '',
@@ -118,7 +180,6 @@ async function fetchHotels(destId: string): Promise<ImmerseHotelOption[]> {
 
   if (error || !hotels) return []
 
-  // Fetch rooms and gallery for all hotels in parallel
   const hotelIds = hotels.map(h => h.id)
 
   const [roomsResult, galleryResult] = await Promise.all([
@@ -127,7 +188,8 @@ async function fetchHotels(destId: string): Promise<ImmerseHotelOption[]> {
   ])
 
   return hotels.map(h => ({
-    id:              h.hotel_slug,
+    id:              h.id,               // S17: real UUID (was hotel_slug)
+    storageSlug:     h.hotel_slug ?? '', // S17: retained for storage path construction
     rank:            h.rank as 'primary' | 'secondary',
     rankLabel:       h.rank_label        ?? '',
     name:            h.name              ?? '',
@@ -204,7 +266,6 @@ async function fetchAllGallery(
   return grouped
 }
 
-// Internal type — card_type carried through filtering, stripped before return
 type ContentCardWithType = ImmerseContentCard & { _cardType: string }
 
 async function fetchContentCards(destId: string): Promise<ContentCardWithType[]> {
@@ -212,7 +273,7 @@ async function fetchContentCards(destId: string): Promise<ContentCardWithType[]>
     .from('travel_immerse_content_cards')
     .select('*')
     .eq('destination_id', destId)
-    .order('card_type', { ascending: true })   // dining before activity
+    .order('card_type', { ascending: true })
     .order('sort_order', { ascending: true })
 
   if (error || !rows) return []

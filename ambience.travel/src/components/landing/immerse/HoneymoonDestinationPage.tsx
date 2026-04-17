@@ -2,7 +2,8 @@
 // Routes:
 //   Public: /immerse/honeymoon/:destination
 //   Trip:   /immerse/:tripId/:destination
-// Last updated: S17 — secondary hero now DB-driven via hero_image_src_2
+// Last updated: S17 — UUID flow: URL slug → destination data (includes UUID)
+//   → pass UUID to bottom notes. No hardcoded NYC fallback — DB is canon.
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -64,12 +65,14 @@ export default function HoneymoonDestinationPage() {
           return
         }
 
+        // S17: pass UUID + slug to bottom notes
         const bottomContent = await getImmerseBottomContent({
-          scope: isPublic ? 'public' : tripId,
-          destinationSlug,
-          fallbackHeading: result.pricingNotesHeading,
-          fallbackTitle: result.pricingNotesTitle,
-          fallbackNotes: result.pricingNotes ?? [],
+          scope:             isPublic ? 'public' : tripId,
+          destinationId:     result.destinationId,
+          destinationSlug:   result.destinationSlug,
+          fallbackHeading:   result.pricingNotesHeading,
+          fallbackTitle:     result.pricingNotesTitle,
+          fallbackNotes:     result.pricingNotes ?? [],
         })
 
         if (cancelled) return
@@ -77,8 +80,8 @@ export default function HoneymoonDestinationPage() {
         const mergedData: ImmerseDestinationData = {
           ...result,
           pricingNotesHeading: bottomContent.pricingNotesHeading ?? result.pricingNotesHeading,
-          pricingNotesTitle: bottomContent.pricingNotesTitle ?? result.pricingNotesTitle,
-          pricingNotes: bottomContent.pricingNotes,
+          pricingNotesTitle:   bottomContent.pricingNotesTitle   ?? result.pricingNotesTitle,
+          pricingNotes:        bottomContent.pricingNotes,
         }
 
         setData(mergedData)
@@ -132,12 +135,12 @@ export default function HoneymoonDestinationPage() {
         items={data.dining}
       />
 
-      {(data.heroImageSrc2 || destinationSlug === 'new-york') && (
+      {data.heroImageSrc2 && (
         <ImmerseHeroBlock
-          imageSrc={data.heroImageSrc2 ?? '/landing/nyc-temp/nyc-romance.webp'}
-          imageAlt={data.heroImageAlt2 ?? 'Romantic New York skyline view at dusk'}
-          title={data.heroTitle2 ?? 'New York City Romance'}
-          subtitle={data.heroSubtitle2 ?? 'Where the city softens into something more intimate.'}
+          imageSrc={data.heroImageSrc2}
+          imageAlt={data.heroImageAlt2}
+          title={data.heroTitle2}
+          subtitle={data.heroSubtitle2}
         />
       )}
 

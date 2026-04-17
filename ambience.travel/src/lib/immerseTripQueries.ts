@@ -1,7 +1,9 @@
 // immerseTripQueries.ts — Supabase query layer for immerse trip master data
 // Owns: getImmerseTrip(urlId) — full ImmerseTripData fetch by public url_id
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S17 — Added hero_image_src_2, hero_image_alt_2 SELECT + mapping
+// Last updated: S17 Phase 5A — Secondary hero fields + dropped client_name
+//   Still queries trip_destination_rows.destination_slug until Phase 5C (migration 07)
+//   swaps to destination_id UUID FK with JOIN hydration.
 
 import { supabaseAnon } from './supabase'
 import type {
@@ -62,6 +64,7 @@ type RouteStopRow = {
   image_alt:  string | null
 }
 
+// S17 Phase 5A: still reads destination_slug directly (no JOIN yet)
 type DestinationRowRow = {
   id:                string
   sort_order:        number
@@ -109,8 +112,6 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
   const tripRow = trip as TripRow
   const tripId  = tripRow.id
 
-  // Fetch person display + all child content in parallel.
-  // person_id may be null for trips that haven't been linked to a people row yet.
   const [personRes, stopsRes, destsRes, pricingRes] = await Promise.all([
     tripRow.person_id
       ? supabaseAnon
@@ -138,10 +139,9 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
 
   const personRow  = (personRes.data  ?? null) as PersonDisplayRow | null
   const stopRows   = (stopsRes.data   ?? []) as RouteStopRow[]
-  const destRows   = (destsRes.data   ?? []) as DestinationRowRow[]
+  const destRows   = (destsRes.data   ?? []) as unknown as DestinationRowRow[]
   const priceRows  = (pricingRes.data ?? []) as PricingRowRow[]
 
-  // Display name: nickname → first_name → empty string
   const clientName = personRow?.nickname
     ?? personRow?.first_name
     ?? ''
@@ -164,6 +164,7 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
     stayLabel:       r.stay_label   ?? '',
     imageSrc:        r.image_src    ?? '',
     imageAlt:        r.image_alt    ?? '',
+    destinationId:   null,  // S17 Phase 5A: not yet in DB; Phase 5C will populate via JOIN
     destinationSlug: r.destination_slug,
   }))
 
@@ -191,8 +192,8 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
     heroImageAlt:  tripRow.hero_image_alt ?? '',
     heroImageSrc2: tripRow.hero_image_src_2 ?? undefined,
     heroImageAlt2: tripRow.hero_image_alt_2 ?? undefined,
-    heroTitle2:    tripRow.hero_title_2     ?? undefined,
-    heroSubtitle2: tripRow.hero_subtitle_2  ?? undefined,
+    heroTitle2:    tripRow.hero_title_2    ?? undefined,
+    heroSubtitle2: tripRow.hero_subtitle_2 ?? undefined,
     heroPills:     tripRow.hero_pills     ?? [],
 
     routeHeading:  tripRow.route_heading ?? '',

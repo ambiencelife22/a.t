@@ -1,7 +1,11 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S17 — Added complete secondary hero support (src, alt, title, subtitle)
+// Last updated: S17 — UUID-first identity across all tables
+//   - ImmerseDestinationData.destinationId is now the destination UUID
+//   - ImmerseDestinationData.destinationSlug is the URL-facing slug (new field)
+//   - ImmerseHotelOption.id is now the hotel UUID (was hotel_slug); storageSlug added
+//   - Secondary hero fields (heroImageSrc2 et al) wired throughout
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -23,14 +27,15 @@ export type ImmerseRoomOption = {
 }
 
 export type ImmerseHotelOption = {
-  id:       string
-  rank:     'primary' | 'secondary'
-  rankLabel: string
-  name:     string
-  bullets:  string[]
-  imageSrc: string
-  imageAlt: string
-  stayLabel: string
+  id:           string   // S17: real DB UUID (was hotel_slug)
+  storageSlug:  string   // S17: hotel_slug for storage path construction (/ambience-assets/.../accom/{slug}/)
+  rank:         'primary' | 'secondary'
+  rankLabel:    string
+  name:         string
+  bullets:      string[]
+  imageSrc:     string
+  imageAlt:     string
+  stayLabel:    string
   rooms:            ImmerseRoomOption[]
   gallery?:         string[]
   imageCredit?:     string
@@ -83,7 +88,8 @@ export type ImmerseDestinationRow = {
   stayLabel:       string
   imageSrc:        string
   imageAlt:        string
-  destinationSlug: string | null
+  destinationId:   string | null   // S17: UUID — primary key
+  destinationSlug: string | null   // S17: hydrated via JOIN for URL building
 }
 
 export type ImmerseTripPricingRow = {
@@ -137,9 +143,10 @@ export type ImmerseTripData = {
 
 export type ImmerseDestinationData = {
   // meta
-  destinationId: string
-  journeyId:     string
-  shorthand?:    string
+  destinationId:   string   // S17: UUID — primary DB identity
+  destinationSlug: string   // S17: URL-facing slug (e.g. "new-york")
+  journeyId:       string
+  shorthand?:      string
   // hero
   eyebrow:      string
   title:        string

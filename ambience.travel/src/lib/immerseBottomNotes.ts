@@ -1,21 +1,24 @@
 // immerseBottomNotes.ts — Fetches trip/client-specific pricing notes overrides
 // Owns: DB read from travel_immerse_bottom_notes with fallback to LOCAL_BOTTOM_CONTENT
-// Last updated: S17 — Table renamed to travel_immerse_bottom_notes per global naming convention
+// Last updated: S17 Phase 5A — Still queries by destination_slug.
+//   Phase 5B (S18) will migrate to destination_id UUID after migration 08 runs.
+//   - Caller passes both destinationId and destinationSlug for forward compatibility.
 
 import { supabase } from './supabase'
 
 type ImmerseBottomContent = {
   pricingNotesHeading?: string
-  pricingNotesTitle?: string
-  pricingNotes: string[]
+  pricingNotesTitle?:   string
+  pricingNotes:         string[]
 }
 
 type GetImmerseBottomContentArgs = {
-  scope: string
-  destinationSlug: string
-  fallbackHeading?: string
-  fallbackTitle?: string
-  fallbackNotes?: string[]
+  scope:              string    // 'public' or trip url_id
+  destinationId:      string    // UUID — for DB query
+  destinationSlug:    string    // for local fallback key
+  fallbackHeading?:   string
+  fallbackTitle?:     string
+  fallbackNotes?:     string[]
 }
 
 const LOCAL_BOTTOM_CONTENT: Record<string, ImmerseBottomContent> = {
@@ -111,19 +114,22 @@ function getLocalBottomContent(
 
   return {
     pricingNotesHeading: matched.pricingNotesHeading ?? fallbackHeading ?? 'Booking Notes',
-    pricingNotesTitle: matched.pricingNotesTitle ?? fallbackTitle ?? 'What to know',
-    pricingNotes: matched.pricingNotes?.length ? matched.pricingNotes : fallbackNotes,
+    pricingNotesTitle:   matched.pricingNotesTitle   ?? fallbackTitle   ?? 'What to know',
+    pricingNotes:        matched.pricingNotes?.length ? matched.pricingNotes : fallbackNotes,
   }
 }
 
 export async function getImmerseBottomContent({
   scope,
+  destinationId,
   destinationSlug,
   fallbackHeading,
   fallbackTitle,
   fallbackNotes = [],
 }: GetImmerseBottomContentArgs): Promise<ImmerseBottomContent> {
   try {
+    // S17 Phase 5A: DB query still by destination_slug. Migration 08 (Phase 5B)
+    // will add destination_id and we'll swap to UUID then.
     const { data, error } = await supabase
       .from('travel_immerse_bottom_notes')
       .select('pricing_notes_heading, pricing_notes_title, notes')
@@ -133,45 +139,23 @@ export async function getImmerseBottomContent({
 
     if (error) {
       console.error('getImmerseBottomContent: db query failed', error)
-      return getLocalBottomContent(
-        scope,
-        destinationSlug,
-        fallbackHeading,
-        fallbackTitle,
-        fallbackNotes
-      )
+      return getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes)
     }
 
     if (data) {
+      const local = getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes)
       return {
-        pricingNotesHeading:
-          data.pricing_notes_heading ??
-          getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes).pricingNotesHeading,
-        pricingNotesTitle:
-          data.pricing_notes_title ??
-          getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes).pricingNotesTitle,
-        pricingNotes:
-          Array.isArray(data.notes) && data.notes.length > 0
-            ? data.notes
-            : getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes).pricingNotes,
+        pricingNotesHeading: data.pricing_notes_heading ?? local.pricingNotesHeading,
+        pricingNotesTitle:   data.pricing_notes_title   ?? local.pricingNotesTitle,
+        pricingNotes:        Array.isArray(data.notes) && data.notes.length > 0
+                              ? data.notes
+                              : local.pricingNotes,
       }
     }
 
-    return getLocalBottomContent(
-      scope,
-      destinationSlug,
-      fallbackHeading,
-      fallbackTitle,
-      fallbackNotes
-    )
+    return getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes)
   } catch (err) {
     console.error('getImmerseBottomContent: unexpected error', err)
-    return getLocalBottomContent(
-      scope,
-      destinationSlug,
-      fallbackHeading,
-      fallbackTitle,
-      fallbackNotes
-    )
+    return getLocalBottomContent(scope, destinationSlug, fallbackHeading, fallbackTitle, fallbackNotes)
   }
 }
