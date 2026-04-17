@@ -7,6 +7,7 @@
 import { useEffect, useState }         from 'react'
 import ImmerseLayout                   from '../../layouts/ImmerseLayout'
 import ImmerseHero                     from './ImmerseHero'
+import { ImmerseHeroBlock }               from './ImmerseHeroBlock'
 import ImmerseStructuredData           from './ImmerseStructuredData'
 import { ImmerseDestIntro }            from './ImmerseDestinationComponents'
 import { ImmerseHotelOptions }         from './ImmerseDestinationComponents'
@@ -74,6 +75,11 @@ export default function HoneymoonDestinationPage() {
         title={data.diningTitle}
         body={data.diningBody}
         items={data.dining}
+      />
+      <ImmerseHeroBlock
+        imageSrc='/nyc-temp/nyc-romance.webp'
+        title='New York, After Dark'
+        subtitle='The city shifts — and so do you'
       />
       <ImmerseContentGrid
         dark
