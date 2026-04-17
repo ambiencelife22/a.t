@@ -47,6 +47,13 @@ const HERO_BLOCKS: Record<string, HeroBlockConfig> = {
     subtitle: 'Where the city softens into something more intimate.',
   },
 
+  'gCyRNp7NjF9:nordic-winter': {
+    imageSrc: '/images/nordic-winter/nordic-winter-romance.webp',
+    imageAlt: 'Snow-covered Nordic landscape with soft winter light',
+    title: 'Nordic Winter Escape',
+    subtitle: 'Stillness, warmth, and a more intimate rhythm in the heart of winter.',
+  },
+
   '*:st-barths': {
     imageSrc: '/images/st-barths/st-barths-romance.webp',
     imageAlt: 'St. Barths coastline in soft golden light',
@@ -55,17 +62,24 @@ const HERO_BLOCKS: Record<string, HeroBlockConfig> = {
   },
 
   '*:new-york': {
-    imageSrc: '/landing/nyc-temp/nyc-romance.webp',
+    imageSrc: '/nyc-temp/nyc-romance.webp',
     imageAlt: 'Romantic New York skyline view',
     title: 'New York City Romance',
     subtitle: 'A quieter side of the city, made for two.',
   },
 
+  '*:nordic-winter': {
+    imageSrc: '/images/nordic-winter/nordic-winter-romance.webp',
+    imageAlt: 'Nordic winter landscape in soft light',
+    title: 'Nordic Winter Romance',
+    subtitle: 'Snow, stillness, and the kind of warmth that feels even closer in winter.'
+  },
+
   '*:*': {
     imageSrc: '/images/shared/romance-default.webp',
     imageAlt: 'Romantic travel moment',
-    title: 'A Romantic Interlude',
-    subtitle: 'A moment within the journey, shaped entirely around you.',
+    title: 'Nordic Winter Romance',
+subtitle: 'Snow, stillness, and the kind of warmth that feels even closer in winter.'
   },
 }
 
