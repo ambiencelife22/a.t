@@ -54,7 +54,9 @@ export function ImmerseHeroBlock({
           position: 'relative',
           minHeight: isMobile ? 480 : 620,
           backgroundImage: shellLayers.join(', '),
-          backgroundAttachment: isMobile ? 'scroll' : 'fixed, fixed, fixed, fixed',
+          backgroundAttachment: isMobile
+  ? 'scroll'
+  : 'scroll, scroll, scroll, fixed',
           backgroundSize: 'auto, auto, auto, cover',
           backgroundPosition: 'center, center, center, center',
           backgroundRepeat: 'no-repeat, no-repeat, no-repeat, no-repeat',
