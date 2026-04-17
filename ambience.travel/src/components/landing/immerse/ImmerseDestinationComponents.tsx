@@ -1,6 +1,9 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S13
+// Last updated: S15 — Gallery 1 onClick wired; duplicate gallery removed; Gallery 2 added
+//                     (per-room, independent lightbox); floor plan link in RoomCategory;
+//                     size badge range-aware (sqftMin–sqftMax); + tax subtext when taxInclusive
+//                     is false. All new fields backward compatible — render only when set.
 
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
@@ -58,6 +61,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   const [activeRoom, setActiveRoom]      = useState(0)
   const [prevRoom, setPrevRoom]          = useState<number | null>(null)
   const [lightboxIdx, setLightboxIdx]    = useState<number | null>(null)
+  const [roomLightboxIdx, setRoomLightboxIdx] = useState<number | null>(null)
   const [dragStart, setDragStart]        = useState<number | null>(null)
   const carouselRef                      = useRef<HTMLDivElement>(null)
 
@@ -65,8 +69,15 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   const rooms      = hotel.rooms
   const totalRooms = rooms.length
   const gallery        = hotel.gallery ?? []
-  const displayGallery = gallery.filter(src => src !== hotel.imageSrc)
   const lightboxImages = [hotel.imageSrc, ...gallery.filter(src => src !== hotel.imageSrc)]
+
+  // Per-room gallery — switches with the room carousel.
+  // currentRoom may be undefined briefly during hotel transitions; guard accordingly.
+  const currentRoom        = rooms[activeRoom]
+  const roomGallery        = currentRoom?.roomGallery ?? []
+  const roomLightboxImages = currentRoom?.roomImageSrc
+    ? [currentRoom.roomImageSrc, ...roomGallery.filter((s: string) => s !== currentRoom.roomImageSrc)]
+    : roomGallery
 
   function goHotel(idx: number) {
     setActiveHotel(idx)
@@ -364,10 +375,10 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {displayGallery.length > 0 && (
-              <div style={{ marginTop: 40 }}>
+            {roomGallery.length > 0 && currentRoom && (
+              <div style={{ marginTop: 40 }} key={`room-gallery-${activeHotel}-${activeRoom}`}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
-                  Gallery · {lightboxImages.length} photos
+                  Gallery · {roomLightboxImages.length} photos
                 </div>
                 <div
                   style={{
@@ -378,10 +389,10 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                     minWidth: 0,
                   }}
                 >
-                  {displayGallery.map((src: string, i: number) => (
+                  {roomGallery.map((src: string, i: number) => (
                     <div
                       key={i}
-                      onClick={() => setLightboxIdx(i + 1)}
+                      onClick={() => setRoomLightboxIdx(i + 1)}
                       style={{
                         width: '100%',
                         height: isMobile ? 118 : 160,
@@ -391,15 +402,25 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                         cursor: 'pointer',
                         minWidth: 0,
                         boxSizing: 'border-box',
-                        transition: 'border-color 0.3s ease, transform 0.3s ease',
+                        animation: `immerseFadeIn 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 80 + 200}ms both`,
                         position: 'relative',
+                        transition: 'border-color 0.3s ease, transform 0.3s ease',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = 'rgba(216,181,106,0.45)'
+                        e.currentTarget.style.transform = 'scale(1.01)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = ID.line
+                        e.currentTarget.style.transform = 'scale(1)'
                       }}
                     >
                       <img
                         src={src}
-                        alt={`${hotel.name} ${i + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.55s ease' }}
+                        alt={`${currentRoom.roomBasis} ${i + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
+                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 'inherit', background: 'radial-gradient(ellipse at center, transparent 35%, rgba(3,3,3,0.44) 100%)' }} />
                     </div>
                   ))}
                 </div>
@@ -417,6 +438,17 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
           onClose={() => setLightboxIdx(null)}
           onPrev={() => setLightboxIdx(i => i !== null && i > 0 ? i - 1 : i)}
           onNext={() => setLightboxIdx(i => i !== null && i < lightboxImages.length - 1 ? i + 1 : i)}
+        />
+      )}
+
+      {roomLightboxIdx !== null && roomLightboxImages.length > 0 && currentRoom && (
+        <LightboxOverlay
+          images={roomLightboxImages}
+          index={roomLightboxIdx}
+          hotelName={`${hotel.name} · ${currentRoom.roomBasis}`}
+          onClose={() => setRoomLightboxIdx(null)}
+          onPrev={() => setRoomLightboxIdx(i => i !== null && i > 0 ? i - 1 : i)}
+          onNext={() => setRoomLightboxIdx(i => i !== null && i < roomLightboxImages.length - 1 ? i + 1 : i)}
         />
       )}
     </>
@@ -469,7 +501,7 @@ function HotelButton({ hotel, active, isMobile, onClick }: { hotel: ImmerseHotel
 
 // ─── Hotel detail panel ───────────────────────────────────────────────────────
 
-function HotelDetailPanel({ hotel }: {
+function HotelDetailPanel({ hotel, onLightbox }: {
   hotel: ImmerseHotelOption
   activeRoom: number
   isMobile: boolean
@@ -549,16 +581,27 @@ function HotelDetailPanel({ hotel }: {
             {displayGallery.map((src, i) => (
               <div
                 key={i}
+                onClick={() => onLightbox(i + 1)}
                 style={{
                   width: '100%',
                   height: isMobile ? 118 : 160,
                   borderRadius: ID.radiusMd,
                   overflow: 'hidden',
                   border: `1px solid ${ID.line}`,
+                  cursor: 'pointer',
                   minWidth: 0,
                   boxSizing: 'border-box',
                   animation: `immerseFadeIn 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 80 + 400}ms both`,
                   position: 'relative',
+                  transition: 'border-color 0.3s ease, transform 0.3s ease',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'rgba(216,181,106,0.45)'
+                  e.currentTarget.style.transform = 'scale(1.01)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = ID.line
+                  e.currentTarget.style.transform = 'scale(1)'
                 }}
               >
                 <img src={src} alt={`${hotel.name} ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -692,11 +735,19 @@ function RoomCategory({ room, fadeIn = false }: { room: ImmerseRoomOption; hotel
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {(room.sqft || room.sqm) && (
+            {(room.sqftMin || room.sqmMin) && (
               <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, fontSize: 11, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                {room.sqft ? `${room.sqft.toLocaleString()} sq ft` : ''}
-                {room.sqft && room.sqm ? ' · ' : ''}
-                {room.sqm ? `${room.sqm} sqm` : ''}
+                {room.sqftMin
+                  ? room.sqftMax
+                    ? `${room.sqftMin.toLocaleString()}–${room.sqftMax.toLocaleString()} sq ft`
+                    : `${room.sqftMin.toLocaleString()} sq ft`
+                  : ''}
+                {room.sqftMin && room.sqmMin ? ' · ' : ''}
+                {room.sqmMin
+                  ? room.sqmMax
+                    ? `${room.sqmMin}–${room.sqmMax} sqm`
+                    : `${room.sqmMin} sqm`
+                  : ''}
               </div>
             )}
             {room.publicNightlyRate && (
@@ -707,10 +758,57 @@ function RoomCategory({ room, fadeIn = false }: { room: ImmerseRoomOption; hotel
               </div>
             )}
             {room.nightlyRate && (
-              <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid rgba(216,181,106,0.30)`, background: 'rgba(216,181,106,0.07)', color: ID.gold, fontSize: 11, letterSpacing: '0.08em', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', gap: 5, alignItems: 'center' }}>
-                {room.nightlyRate}
-                <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+              <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid rgba(216,181,106,0.30)`, background: 'rgba(216,181,106,0.07)', color: ID.gold, fontSize: 11, letterSpacing: '0.08em', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                  {room.nightlyRate}
+                  <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                </div>
+                {!room.taxInclusive && (
+                  <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+                    + tax
+                  </div>
+                )}
               </div>
+            )}
+            {room.floorplanSrc && (
+              <a
+                href={room.floorplanSrc}
+                target='_blank'
+                rel='noopener noreferrer'
+                style={{
+                  padding:        '7px 13px',
+                  borderRadius:   999,
+                  border:         `1px solid ${ID.line}`,
+                  background:     ID.panel2,
+                  color:          ID.muted,
+                  fontSize:       11,
+                  letterSpacing:  '0.10em',
+                  textTransform:  'uppercase',
+                  fontWeight:     600,
+                  whiteSpace:     'nowrap',
+                  textDecoration: 'none',
+                  display:        'inline-flex',
+                  alignItems:     'center',
+                  gap:            6,
+                  cursor:         'pointer',
+                  transition:     'border-color 0.25s ease, color 0.25s ease',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'rgba(216,181,106,0.45)'
+                  e.currentTarget.style.color       = ID.text
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = ID.line
+                  e.currentTarget.style.color       = ID.muted
+                }}
+              >
+                <svg width='10' height='10' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true'>
+                  <rect x='1.5' y='1.5' width='13' height='13' rx='1' stroke='currentColor' strokeWidth='1.2' />
+                  <line x1='1.5' y1='5.5' x2='14.5' y2='5.5' stroke='currentColor' strokeWidth='1' />
+                  <line x1='5.5' y1='5.5' x2='5.5' y2='14.5' stroke='currentColor' strokeWidth='1' />
+                </svg>
+                Floor plan
+              </a>
             )}
           </div>
         </div>

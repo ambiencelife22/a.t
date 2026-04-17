@@ -2,8 +2,8 @@
 // Owns all DB reads for immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData exactly — zero component changes required.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S14 — dropped immerse_journeys lookup (table renamed to immerse_trips;
-//                     destination_slug is the sole key per S13 canon).
+// Last updated: S15 — sqft/sqm → sqftMin/sqftMax/sqmMin/sqmMax; added roomGallery,
+//                     floorplanSrc, taxInclusive mapping from immerse_rooms.
 
 import { supabase } from './supabase'
 import type {
@@ -165,10 +165,15 @@ async function fetchAllRooms(
       roomBenefits:       (r.room_benefits as string[]) ?? [],
       roomImageSrc:       r.room_image_src        ?? '',
       roomImageAlt:       r.room_image_alt        ?? '',
+      roomGallery:        (r.room_gallery as string[]) ?? [],
+      floorplanSrc:       r.floorplan_src         ?? undefined,
       nightlyRate:        r.nightly_rate          ?? undefined,
       publicNightlyRate:  r.public_nightly_rate   ?? undefined,
-      sqft:               r.sqft                  ?? undefined,
-      sqm:                r.sqm                   ?? undefined,
+      taxInclusive:       r.tax_inclusive         ?? false,
+      sqftMin:            r.sqft_min              ?? undefined,
+      sqftMax:            r.sqft_max              ?? undefined,
+      sqmMin:             r.sqm_min               ?? undefined,
+      sqmMax:             r.sqm_max               ?? undefined,
     })
   }
 

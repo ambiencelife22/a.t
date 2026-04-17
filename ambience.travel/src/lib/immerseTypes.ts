@@ -1,20 +1,27 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S14 — trip renaming: ImmerseJourneyData → ImmerseTripData, destination row links via slug
+// Last updated: S15 — ImmerseRoomOption: sqft/sqm replaced with sqftMin/sqftMax/sqmMin/sqmMax
+//                     (range support for suites with variable sizes); added roomGallery,
+//                     floorplanSrc, taxInclusive.
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 export type ImmerseRoomOption = {
-  levelLabel:         string
-  roomBasis:          string
-  roomBenefits:       string[]
-  roomImageSrc:       string
-  roomImageAlt:       string
-  nightlyRate?:       string   // indicative nightly rate shown in room panel
-  publicNightlyRate?: string   // publicly listed rate for context
-  sqft?:              number
-  sqm?:               number
+  levelLabel:          string
+  roomBasis:           string
+  roomBenefits:        string[]
+  roomImageSrc:        string
+  roomImageAlt:        string
+  roomGallery?:        string[]  // optional — per-room gallery images
+  floorplanSrc?:       string    // optional — PDF URL
+  nightlyRate?:        string    // indicative nightly rate
+  publicNightlyRate?:  string    // publicly listed rate for context
+  taxInclusive?:       boolean   // when false/absent, renders "+ tax" subtext
+  sqftMin?:            number    // minimum sqft (or exact if sqftMax absent)
+  sqftMax?:            number    // maximum sqft — null means exact value
+  sqmMin?:             number    // minimum sqm
+  sqmMax?:             number    // maximum sqm
 }
 
 export type ImmerseHotelOption = {
