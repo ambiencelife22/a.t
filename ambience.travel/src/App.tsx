@@ -44,6 +44,7 @@ import Profile from './components/Profile'
 import Auth from './components/Auth'
 import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
 import ImmerseTripRoute          from './components/landing/immerse/ImmerseTripRoute'
+import ImmerseTripPage          from './components/landing/immerse/ImmerseTripPage'
 import HoneymoonDestinationPage  from './components/landing/immerse/HoneymoonDestinationPage'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
@@ -121,10 +122,9 @@ export default function App() {
   if (route === 'immerse') {
     const { seg1, seg2 } = resolveImmerseSegments()
 
-    // Shape-based disambiguator: 11-char alphanumeric → trip route
     if (isTripUrlId(seg1)) return <ImmerseTripRoute />
 
-    // Public inspiration: /immerse/:journey_type/:destination
+    if (seg1 === 'honeymoon' && !seg2) return <ImmerseTripPage data={null} />
     if (seg1 === 'honeymoon' && seg2) return <HoneymoonDestinationPage />
 
     return <LandingLayout />
