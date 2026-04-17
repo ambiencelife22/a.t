@@ -1,9 +1,7 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S15 — ImmerseRoomOption: sqft/sqm replaced with sqftMin/sqftMax/sqmMin/sqmMax
-//                     (range support for suites with variable sizes); added roomGallery,
-//                     floorplanSrc, taxInclusive.
+// Last updated: S17 — Added complete secondary hero support (src, alt, title, subtitle)
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -13,15 +11,15 @@ export type ImmerseRoomOption = {
   roomBenefits:        string[]
   roomImageSrc:        string
   roomImageAlt:        string
-  roomGallery?:        string[]  // optional — per-room gallery images
-  floorplanSrc?:       string    // optional — PDF URL
-  nightlyRate?:        string    // indicative nightly rate
-  publicNightlyRate?:  string    // publicly listed rate for context
-  taxInclusive?:       boolean   // when false/absent, renders "+ tax" subtext
-  sqftMin?:            number    // minimum sqft (or exact if sqftMax absent)
-  sqftMax?:            number    // maximum sqft — null means exact value
-  sqmMin?:             number    // minimum sqm
-  sqmMax?:             number    // maximum sqm
+  roomGallery?:        string[]
+  floorplanSrc?:       string
+  nightlyRate?:        string
+  publicNightlyRate?:  string
+  taxInclusive?:       boolean
+  sqftMin?:            number
+  sqftMax?:            number
+  sqmMin?:             number
+  sqmMax?:             number
 }
 
 export type ImmerseHotelOption = {
@@ -35,9 +33,9 @@ export type ImmerseHotelOption = {
   stayLabel: string
   rooms:            ImmerseRoomOption[]
   gallery?:         string[]
-  imageCredit?:     string   // photographer or rights holder — e.g. "Aman Resorts"
-  imageCreditUrl?:  string   // acquireLicensePage — e.g. "https://www.aman.com"
-  imageLicense?:    string   // license URL — inferred for Unsplash if omitted
+  imageCredit?:     string
+  imageCreditUrl?:  string
+  imageLicense?:    string
 }
 
 export type ImmerseContentCard = {
@@ -49,9 +47,9 @@ export type ImmerseContentCard = {
   bullets?:        string[]
   imageSrc:        string
   imageAlt:        string
-  imageCredit?:    string   // photographer or rights holder
-  imageCreditUrl?: string   // acquireLicensePage
-  imageLicense?:   string   // license URL — inferred for Unsplash if omitted
+  imageCredit?:    string
+  imageCreditUrl?: string
+  imageLicense?:   string
 }
 
 export type ImmersePricingRow = {
@@ -85,8 +83,6 @@ export type ImmerseDestinationRow = {
   stayLabel:       string
   imageSrc:        string
   imageAlt:        string
-  // When set, overview renders /immerse/{urlId}/{destinationSlug}.
-  // When null, the card renders without a subpage link.
   destinationSlug: string | null
 }
 
@@ -100,11 +96,11 @@ export type ImmerseTripPricingRow = {
 
 export type ImmerseTripData = {
   // meta
-  tripId:       string        // DB uuid
-  urlId:        string        // 11-char public key
-  slug:         string        // internal admin slug, e.g. 'yazeed-honeymoon'
+  tripId:       string
+  urlId:        string
+  slug:         string
   tripFormat:   ImmerseTripFormat
-  journeyTypes: string[]      // display metadata — ['honeymoon'], ['family'], etc.
+  journeyTypes: string[]
   clientName:   string
   statusLabel:  string
   // hero
@@ -113,6 +109,10 @@ export type ImmerseTripData = {
   subtitle:     string
   heroImageSrc: string
   heroImageAlt: string
+  heroImageSrc2?: string
+  heroImageAlt2?: string
+  heroTitle2?:    string
+  heroSubtitle2?: string
   heroPills:    string[]
   // route
   routeHeading: string
@@ -138,14 +138,18 @@ export type ImmerseTripData = {
 export type ImmerseDestinationData = {
   // meta
   destinationId: string
-  journeyId:     string   // journey-type slug reference (e.g. 'honeymoon') — template key
-  shorthand?:    string   // e.g. "NYC" — display shorthand for the destination
+  journeyId:     string
+  shorthand?:    string
   // hero
   eyebrow:      string
   title:        string
   subtitle:     string
   heroImageSrc: string
   heroImageAlt: string
+  heroImageSrc2?: string
+  heroImageAlt2?: string
+  heroTitle2?:    string
+  heroSubtitle2?: string
   heroPills:    string[]
   // intro
   introEyebrow: string

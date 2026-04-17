@@ -2,7 +2,7 @@
 // Routes:
 //   Public: /immerse/honeymoon/:destination
 //   Trip:   /immerse/:tripId/:destination
-// Last updated: S17
+// Last updated: S17 — secondary hero now DB-driven via hero_image_src_2
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -16,13 +16,6 @@ import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
 import { getImmerseBottomContent } from '../../../lib/immerseBottomNotes'
 import type { ImmerseDestinationData } from '../../../lib/immerseTypes'
-
-type HeroBlockConfig = {
-  imageSrc: string
-  imageAlt?: string
-  title?: string
-  subtitle?: string
-}
 
 type RouteParts = {
   tripId: string
@@ -45,68 +38,11 @@ function resolveRouteParts(): RouteParts {
   }
 }
 
-const HERO_BLOCKS: Record<string, HeroBlockConfig> = {
-  'gCyRNp7NjF9:new-york': {
-    imageSrc: '/landing/nyc-temp/nyc-romance.webp',
-    imageAlt: 'Romantic New York skyline view at dusk',
-    title: 'New York City Romance',
-    subtitle: 'Where the city softens into something more intimate.',
-  },
-  'gCyRNp7NjF9:st-barths': {
-    imageSrc: '/images/st-barths/st-barths-romance.webp',
-    imageAlt: 'Romantic St. Barths coastal view',
-    title: 'St. Barths Escape',
-    subtitle: 'Sunlight, stillness, and a rhythm that feels entirely your own.',
-  },
-  'gCyRNp7NjF9:nordic-winter': {
-    imageSrc: '/images/nordic-winter/nordic-winter-romance.webp',
-    imageAlt: 'Snow-covered Nordic landscape with soft winter light',
-    title: 'Nordic Winter Escape',
-    subtitle: 'Stillness, warmth, and a more intimate rhythm in the heart of winter.',
-  },
-  '*:new-york': {
-    imageSrc: '/landing/nyc-temp/nyc-romance.webp',
-    imageAlt: 'Romantic New York skyline view',
-    title: 'New York City Romance',
-    subtitle: 'A quieter side of the city, made for two.',
-  },
-  '*:st-barths': {
-    imageSrc: '/images/st-barths/st-barths-romance.webp',
-    imageAlt: 'St. Barths coastline in soft golden light',
-    title: 'St. Barths Escape',
-    subtitle: 'A softer rhythm, surrounded by sea and light.',
-  },
-  '*:nordic-winter': {
-    imageSrc: '/images/nordic-winter/nordic-winter-romance.webp',
-    imageAlt: 'Nordic winter landscape in soft light',
-    title: 'Nordic Winter Escape',
-    subtitle: 'A quieter, colder, more cinematic stretch of the journey.',
-  },
-  '*:*': {
-    imageSrc: '/images/shared/romance-default.webp',
-    imageAlt: 'Romantic travel moment',
-    title: 'A Romantic Interlude',
-    subtitle: 'A moment within the journey, shaped entirely around you.',
-  },
-}
-
-function getHeroBlockConfig(tripId: string, destinationSlug: string): HeroBlockConfig {
-  return (
-    HERO_BLOCKS[`${tripId}:${destinationSlug}`] ||
-    HERO_BLOCKS[`*:${destinationSlug}`] ||
-    HERO_BLOCKS['*:*']
-  )
-}
-
 export default function HoneymoonDestinationPage() {
   const [data, setData] = useState<ImmerseDestinationData | null>(null)
   const [loading, setLoading] = useState(true)
 
   const { tripId, destinationSlug, isPublic } = useMemo(() => resolveRouteParts(), [])
-  const heroBlock = useMemo(
-    () => getHeroBlockConfig(tripId, destinationSlug),
-    [tripId, destinationSlug]
-  )
 
   useEffect(() => {
     let cancelled = false
@@ -196,12 +132,23 @@ export default function HoneymoonDestinationPage() {
         items={data.dining}
       />
 
-      <ImmerseHeroBlock
-        imageSrc={heroBlock.imageSrc}
-        imageAlt={heroBlock.imageAlt}
-        title={heroBlock.title}
-        subtitle={heroBlock.subtitle}
-      />
+      {data.heroImageSrc2 && (
+        <ImmerseHeroBlock
+          imageSrc={data.heroImageSrc2}
+          imageAlt={data.heroImageAlt2}
+          title={data.heroTitle2}
+          subtitle={data.heroSubtitle2}
+        />
+      )}
+
+      {!data.heroImageSrc2 && destinationSlug === 'new-york' && (
+        <ImmerseHeroBlock
+          imageSrc='/landing/nyc-temp/nyc-romance.webp'
+          imageAlt='Romantic New York skyline view at dusk'
+          title='New York City Romance'
+          subtitle='Where the city softens into something more intimate.'
+        />
+      )}
 
       <ImmerseContentGrid
         dark

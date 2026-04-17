@@ -2,10 +2,11 @@
 // Route: /immerse/{url_id} (trip) OR /immerse/honeymoon (public fallback)
 // Renders hero + route strip + destination rows + pricing
 // Does not own destination subpages (see HoneymoonDestinationPage)
-// Last updated: S16 — public fallback mirrors Yazeed route order
+// Last updated: S17 — Added secondary hero block support
 
 import ImmerseLayout              from '../../layouts/ImmerseLayout'
 import ImmerseHero                from './ImmerseHero'
+import { ImmerseHeroBlock }       from './ImmerseHeroBlock'
 import { ImmerseRouteStrip }      from './ImmerseTripComponents'
 import { ImmerseDestinationRows } from './ImmerseTripComponents'
 import { ImmerseTripPricing }     from './ImmerseTripComponents'
@@ -178,6 +179,16 @@ export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null
         secondaryLabel='Pricing overview'
       />
       <ImmerseRouteStrip data={resolvedData} />
+      
+      {resolvedData.heroImageSrc2 && (
+        <ImmerseHeroBlock
+          imageSrc={resolvedData.heroImageSrc2}
+          imageAlt={resolvedData.heroImageAlt2}
+          title={resolvedData.heroTitle2}
+          subtitle={resolvedData.heroSubtitle2}
+        />
+      )}
+      
       <ImmerseDestinationRows data={resolvedData} />
       <ImmerseTripPricing data={resolvedData} />
     </ImmerseLayout>

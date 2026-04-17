@@ -2,8 +2,7 @@
 // Owns all DB reads for immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData exactly — zero component changes required.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S15 — sqft/sqm → sqftMin/sqftMax/sqmMin/sqmMax; added roomGallery,
-//                     floorplanSrc, taxInclusive mapping from immerse_rooms.
+// Last updated: S17 — Added hero_image_src_2, hero_image_alt_2 SELECT + mapping
 
 import { supabase } from './supabase'
 import type {
@@ -70,12 +69,14 @@ export async function getImmerseDestination(
     journeyId:     journeySlug,
     shorthand:     dest.shorthand ?? undefined,
 
-    eyebrow:      dest.eyebrow      ?? '',
-    title:        dest.title        ?? '',
-    subtitle:     dest.subtitle     ?? '',
-    heroImageSrc: dest.hero_image_src ?? '',
-    heroImageAlt: dest.hero_image_alt ?? '',
-    heroPills:    (dest.hero_pills as string[]) ?? [],
+    eyebrow:       dest.eyebrow         ?? '',
+    title:         dest.title           ?? '',
+    subtitle:      dest.subtitle        ?? '',
+    heroImageSrc:  dest.hero_image_src  ?? '',
+    heroImageAlt:  dest.hero_image_alt  ?? '',
+    heroImageSrc2: dest.hero_image_src_2 ?? undefined,  // S17: secondary hero
+    heroImageAlt2: dest.hero_image_alt_2 ?? undefined,  // S17: secondary hero alt
+    heroPills:     (dest.hero_pills as string[]) ?? [],
 
     introEyebrow: dest.intro_eyebrow ?? '',
     introTitle:   dest.intro_title   ?? '',
