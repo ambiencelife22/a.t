@@ -1,5 +1,8 @@
+// immerseBottomNotes.ts — Fetches trip/client-specific pricing notes overrides
+// Owns: DB read from travel_immerse_bottom_notes with fallback to LOCAL_BOTTOM_CONTENT
+// Last updated: S17 — Table renamed to travel_immerse_bottom_notes per global naming convention
+
 import { supabase } from './supabase'
-import type { ImmerseDestinationData } from './immerseTypes'
 
 type ImmerseBottomContent = {
   pricingNotesHeading?: string
@@ -122,7 +125,7 @@ export async function getImmerseBottomContent({
 }: GetImmerseBottomContentArgs): Promise<ImmerseBottomContent> {
   try {
     const { data, error } = await supabase
-      .from('immerse_bottom_notes')
+      .from('travel_immerse_bottom_notes')
       .select('pricing_notes_heading, pricing_notes_title, notes')
       .eq('scope', scope)
       .eq('destination_slug', destinationSlug)
