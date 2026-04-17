@@ -78,8 +78,8 @@ export default function HoneymoonDestinationPage() {
       />
       <ImmerseHeroBlock
         imageSrc='/nyc-temp/nyc-romance.webp'
-        title='New York, After Dark'
-        subtitle='The city shifts — and so do you'
+        title='New York City Romance'
+        subtitle='Just the two of you in the city that never sleeps'
       />
       <ImmerseContentGrid
         dark
