@@ -1,10 +1,11 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData — component layer unchanged.
-// Last updated: S17 — UUID-first queries + per-trip override resolution
+// Last updated: S17 — UUID-first queries + per-trip override resolution + room gallery
 //   - fetchTripOverride queries travel_immerse_trip_destination_rows by destination_id (UUID)
 //   - Resolution chain: trip_override → destination_template → fallback
 //   - Hotel identity switched: id = real UUID, storageSlug = hotel_slug (for image paths)
+//   - Per-room gallery fetched from travel_immerse_room_gallery, legacy array as fallback
 
 import { supabase } from './supabase'
 import type {
@@ -218,17 +219,30 @@ async function fetchAllRooms(
 
   if (error || !rows) return {}
 
+  // S17: Fetch per-room gallery from new travel_immerse_room_gallery table.
+  // Falls back to legacy room_gallery TEXT[] column if new table has no entries
+  // for a room (supports gradual migration).
+  const roomIds = rows.map(r => r.id)
+  const galleryByRoom = await fetchAllRoomGallery(roomIds)
+
   const grouped: Record<string, ImmerseRoomOption[]> = {}
 
   for (const r of rows) {
     if (!grouped[r.hotel_id]) grouped[r.hotel_id] = []
+
+    const newGallery    = galleryByRoom[r.id] ?? []
+    // S17: room_gallery is jsonb in DB. Supabase returns parsed JSON — typically
+    // an array of strings when populated. Defensive handling: only use if array.
+    const legacyGallery = Array.isArray(r.room_gallery) ? (r.room_gallery as string[]) : []
+    const resolvedGallery = newGallery.length > 0 ? newGallery : legacyGallery
+
     grouped[r.hotel_id].push({
       levelLabel:         r.level_label          ?? '',
       roomBasis:          r.room_basis            ?? '',
       roomBenefits:       (r.room_benefits as string[]) ?? [],
       roomImageSrc:       r.room_image_src        ?? '',
       roomImageAlt:       r.room_image_alt        ?? '',
-      roomGallery:        (r.room_gallery as string[]) ?? [],
+      roomGallery:        resolvedGallery,
       floorplanSrc:       r.floorplan_src         ?? undefined,
       nightlyRate:        r.nightly_rate          ?? undefined,
       publicNightlyRate:  r.public_nightly_rate   ?? undefined,
@@ -238,6 +252,30 @@ async function fetchAllRooms(
       sqmMin:             r.sqm_min               ?? undefined,
       sqmMax:             r.sqm_max               ?? undefined,
     })
+  }
+
+  return grouped
+}
+
+// S17: Per-room gallery fetch — matches fetchAllGallery pattern for hotels
+async function fetchAllRoomGallery(
+  roomIds: string[],
+): Promise<Record<string, string[]>> {
+  if (roomIds.length === 0) return {}
+
+  const { data: rows, error } = await supabase
+    .from('travel_immerse_room_gallery')
+    .select('room_id, image_src')
+    .in('room_id', roomIds)
+    .order('sort_order', { ascending: true })
+
+  if (error || !rows) return {}
+
+  const grouped: Record<string, string[]> = {}
+
+  for (const r of rows) {
+    if (!grouped[r.room_id]) grouped[r.room_id] = []
+    grouped[r.room_id].push(r.image_src)
   }
 
   return grouped
