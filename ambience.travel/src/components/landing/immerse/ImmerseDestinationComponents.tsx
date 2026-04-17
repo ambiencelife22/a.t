@@ -376,7 +376,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {roomGallery.length > 1 && currentRoom && (
+            {roomGallery.length > 0 && currentRoom && (
               <div style={{ marginTop: 40 }} key={`room-gallery-${activeHotel}-${activeRoom}`}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
                   Gallery · {roomLightboxImages.length} photos
