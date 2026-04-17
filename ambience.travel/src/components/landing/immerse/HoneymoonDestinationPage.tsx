@@ -132,21 +132,12 @@ export default function HoneymoonDestinationPage() {
         items={data.dining}
       />
 
-      {data.heroImageSrc2 && (
+      {(data.heroImageSrc2 || destinationSlug === 'new-york') && (
         <ImmerseHeroBlock
-          imageSrc={data.heroImageSrc2}
-          imageAlt={data.heroImageAlt2}
-          title={data.heroTitle2}
-          subtitle={data.heroSubtitle2}
-        />
-      )}
-
-      {!data.heroImageSrc2 && destinationSlug === 'new-york' && (
-        <ImmerseHeroBlock
-          imageSrc='/landing/nyc-temp/nyc-romance.webp'
-          imageAlt='Romantic New York skyline view at dusk'
-          title='New York City Romance'
-          subtitle='Where the city softens into something more intimate.'
+          imageSrc={data.heroImageSrc2 ?? '/landing/nyc-temp/nyc-romance.webp'}
+          imageAlt={data.heroImageAlt2 ?? 'Romantic New York skyline view at dusk'}
+          title={data.heroTitle2 ?? 'New York City Romance'}
+          subtitle={data.heroSubtitle2 ?? 'Where the city softens into something more intimate.'}
         />
       )}
 
