@@ -44,7 +44,7 @@ export async function getImmerseDestination(
 
   // Step 1 — resolve destination row by slug
   const { data: dest, error: destErr } = await supabase
-    .from('immerse_destinations')
+    .from('travel_immerse_destinations')
     .select('*')
     .eq('destination_slug', destinationSlug)
     .single()
@@ -110,7 +110,7 @@ export async function getImmerseDestination(
 
 async function fetchHotels(destId: string): Promise<ImmerseHotelOption[]> {
   const { data: hotels, error } = await supabase
-    .from('immerse_hotels')
+    .from('travel_immerse_hotels')
     .select('*')
     .eq('destination_id', destId)
     .order('sort_order', { ascending: true })
@@ -148,7 +148,7 @@ async function fetchAllRooms(
   if (hotelIds.length === 0) return {}
 
   const { data: rows, error } = await supabase
-    .from('immerse_rooms')
+    .from('travel_immerse_rooms')
     .select('*')
     .in('hotel_id', hotelIds)
     .order('sort_order', { ascending: true })
@@ -186,7 +186,7 @@ async function fetchAllGallery(
   if (hotelIds.length === 0) return {}
 
   const { data: rows, error } = await supabase
-    .from('immerse_hotel_gallery')
+    .from('travel_immerse_hotel_gallery')
     .select('hotel_id, image_src')
     .in('hotel_id', hotelIds)
     .order('sort_order', { ascending: true })
@@ -208,7 +208,7 @@ type ContentCardWithType = ImmerseContentCard & { _cardType: string }
 
 async function fetchContentCards(destId: string): Promise<ContentCardWithType[]> {
   const { data: rows, error } = await supabase
-    .from('immerse_content_cards')
+    .from('travel_immerse_content_cards')
     .select('*')
     .eq('destination_id', destId)
     .order('card_type', { ascending: true })   // dining before activity
@@ -239,7 +239,7 @@ function stripCardType(c: ContentCardWithType): ImmerseContentCard {
 
 async function fetchPricingRows(destId: string): Promise<ImmersePricingRow[]> {
   const { data: rows, error } = await supabase
-    .from('immerse_destination_pricing_rows')
+    .from('travel_immerse_destination_pricing_rows')
     .select('*')
     .eq('destination_id', destId)
     .order('sort_order', { ascending: true })

@@ -85,7 +85,7 @@ type PricingRowRow = {
 
 export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | null> {
   const { data: trip, error: tripErr } = await supabaseAnon
-    .from('immerse_trips')
+    .from('travel_immerse_trips')
     .select(`
       id, url_id, slug, trip_format, journey_types,
       person_id, client_name, status_label,
@@ -110,23 +110,23 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
   const [personRes, stopsRes, destsRes, pricingRes] = await Promise.all([
     tripRow.person_id
       ? supabaseAnon
-          .from('people_display')
+          .from('global_people_display')
           .select('id, first_name, last_name, nickname')
           .eq('id', tripRow.person_id)
           .single()
       : Promise.resolve({ data: null, error: null }),
     supabaseAnon
-      .from('immerse_route_stops')
+      .from('travel_immerse_route_stops')
       .select('id, sort_order, title, stay_label, note, image_src, image_alt')
       .eq('trip_id', tripId)
       .order('sort_order'),
     supabaseAnon
-      .from('immerse_trip_destination_rows')
+      .from('travel_immerse_trip_destination_rows')
       .select('id, sort_order, number_label, title, mood, summary, stay_label, image_src, image_alt, destination_slug')
       .eq('trip_id', tripId)
       .order('sort_order'),
     supabaseAnon
-      .from('immerse_trip_pricing_rows')
+      .from('travel_immerse_trip_pricing_rows')
       .select('id, sort_order, destination, recommended_basis, stay_label, indicative_range')
       .eq('trip_id', tripId)
       .order('sort_order'),
