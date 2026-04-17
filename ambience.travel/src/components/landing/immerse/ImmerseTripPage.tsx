@@ -2,7 +2,7 @@
 // Route: /immerse/{url_id} (trip) OR /immerse/honeymoon (public fallback)
 // Renders hero + route strip + destination rows + pricing
 // Does not own destination subpages (see HoneymoonDestinationPage)
-// Last updated: S18 — adds internal fallback for public honeymoon overview
+// Last updated: S16 — public fallback mirrors Yazeed route order
 
 import ImmerseLayout              from '../../layouts/ImmerseLayout'
 import ImmerseHero                from './ImmerseHero'
@@ -25,14 +25,14 @@ function getFallbackTripData(): ImmerseTripData {
     slug: 'public-honeymoon',
     tripFormat: 'journey',
     journeyTypes: ['honeymoon'],
-    clientName: 'Our Guest',
+    clientName: 'Our VIP Guest',
     statusLabel: 'Sample Journey',
 
     // hero
-    eyebrow: 'Public Inspiration',
+    eyebrow: 'Honeymoon Concept',
     title: 'A Honeymoon Journey',
     subtitle:
-      'A beautifully considered sequence of city energy, restorative stillness, and memorable stays shaped to feel romantic from beginning to end.',
+      'A beautifully considered sequence starting with winter stillness, moving through city energy, and settling into a restorative island stay.',
     heroImageSrc: '/images/shared/honeymoon-overview-hero.webp',
     heroImageAlt: 'Romantic honeymoon overview',
     heroPills: [
@@ -45,31 +45,31 @@ function getFallbackTripData(): ImmerseTripData {
     // route
     routeHeading: 'A romantic arc',
     routeBody:
-      'From skyline energy to softer island rhythms and colder cinematic stillness, each stop is chosen to create contrast, atmosphere, and ease throughout the journey.',
+      'From colder cinematic stillness to skyline energy and softer island rhythms, each stop is chosen to create contrast, atmosphere, and ease throughout the journey.',
     routeStops: [
       {
-        id: 'nyc',
+        id: 'nordic',
         stayLabel: 'Opening',
+        title: 'Nordic Winter',
+        note: 'A colder, quieter, more cinematic stretch built around stillness, warmth, and contrast.',
+        imageSrc: '/immerse/europe/nordic/nordic-winter-1.webp',
+        imageAlt: 'Nordic winter landscape',
+      },
+      {
+        id: 'nyc',
+        stayLabel: 'Middle',
         title: 'New York',
-        note: 'An energetic beginning shaped by skyline views, memorable tables, and the rhythm of the city.',
+        note: 'An energetic stretch shaped by skyline views, memorable tables, and the rhythm of the city.',
         imageSrc: '/images/immerse/overview/new-york.webp',
         imageAlt: 'New York skyline',
       },
       {
         id: 'stb',
-        stayLabel: 'Middle',
+        stayLabel: 'Main stay',
         title: 'St. Barths',
-        note: 'A softer Caribbean stretch defined by privacy, sea light, and a slower daily rhythm.',
+        note: 'The longest and strongest segment, defined by privacy, sea light, and a slower daily rhythm.',
         imageSrc: '/images/immerse/overview/st-barths.webp',
         imageAlt: 'St. Barths coastline',
-      },
-      {
-        id: 'nordic',
-        stayLabel: 'Finale',
-        title: 'Nordic Winter',
-        note: 'A colder, quieter, more cinematic stretch built around stillness, warmth, and contrast.',
-        imageSrc: '/images/immerse/overview/nordic-winter.webp',
-        imageAlt: 'Nordic winter landscape',
       },
     ],
 
@@ -77,40 +77,40 @@ function getFallbackTripData(): ImmerseTripData {
     destinationHeading: 'Destination overview',
     destinationRows: [
       {
-        id: 'dest-nyc',
+        id: 'dest-nordic',
         numberLabel: '01',
+        title: 'Nordic Winter',
+        mood: 'Snow, silence, warmth, cinematic contrast',
+        summary:
+          'A dramatic and atmospheric opening built around winter landscapes, design-led stays, and restorative calm.',
+        stayLabel: '3-4 nights',
+        destinationSlug: 'nordic-winter',
+        imageSrc: '/immerse/europe/nordic/nordic-winter-2.webp',
+        imageAlt: 'Nordic Winter destination overview',
+      },
+      {
+        id: 'dest-nyc',
+        numberLabel: '02',
         title: 'New York',
         mood: 'Urban energy, skyline romance, memorable dining',
         summary:
-          'A polished city opening with iconic views, refined stays, and the kind of pace that makes the beginning feel alive.',
-        stayLabel: '3 nights',
+          'A polished city segment with iconic views, refined stays, and the kind of pace that makes the middle feel alive.',
+        stayLabel: '5-6 nights',
         destinationSlug: 'new-york',
         imageSrc: '/images/immerse/overview/new-york-row.webp',
         imageAlt: 'New York destination overview',
       },
       {
         id: 'dest-stb',
-        numberLabel: '02',
+        numberLabel: '03',
         title: 'St. Barths',
         mood: 'Sea light, privacy, softer rhythm',
         summary:
-          'A warmer and more intimate middle stretch, balancing beach, stillness, and beautifully run hospitality.',
-        stayLabel: '4 nights',
+          'The longest and strongest stay in the journey, balancing beach, stillness, and beautifully run hospitality.',
+        stayLabel: '6-7 nights',
         destinationSlug: 'st-barths',
         imageSrc: '/images/immerse/overview/st-barths-row.webp',
         imageAlt: 'St. Barths destination overview',
-      },
-      {
-        id: 'dest-nordic',
-        numberLabel: '03',
-        title: 'Nordic Winter',
-        mood: 'Snow, silence, warmth, cinematic contrast',
-        summary:
-          'A dramatic and atmospheric stretch built around winter landscapes, design-led stays, and restorative calm.',
-        stayLabel: '5 nights',
-        destinationSlug: 'nordic-winter',
-        imageSrc: '/images/immerse/overview/nordic-winter-row.webp',
-        imageAlt: 'Nordic Winter destination overview',
       },
     ],
 
@@ -121,29 +121,29 @@ function getFallbackTripData(): ImmerseTripData {
       'A high-level hotel-led concept overview designed to give a sense of overall journey shape and spend.',
     pricingRows: [
       {
+        id: 'price-nordic',
+        destination: 'Nordic Winter',
+        recommendedBasis: 'Design-led winter stay',
+        stayLabel: '3-4 nights',
+        indicativeRange: '$4,000–$10,000',
+      },
+      {
         id: 'price-nyc',
         destination: 'New York',
         recommendedBasis: 'Luxury hotel stay',
-        stayLabel: '3 nights',
-        indicativeRange: '$8,000–$18,000',
+        stayLabel: '5-6 nights',
+        indicativeRange: '$18,000–$38,000',
       },
       {
         id: 'price-stb',
         destination: 'St. Barths',
         recommendedBasis: 'Luxury beachfront stay',
-        stayLabel: '4 nights',
-        indicativeRange: '$14,000–$34,000',
-      },
-      {
-        id: 'price-nordic',
-        destination: 'Nordic Winter',
-        recommendedBasis: 'Design-led winter stay',
-        stayLabel: '5 nights',
-        indicativeRange: '$12,000–$28,000',
+        stayLabel: '6-7 nights',
+        indicativeRange: '$22,000–$45,000',
       },
     ],
     pricingTotalLabel: 'Journey total',
-    pricingTotalValue: '$34,000–$80,000+',
+    pricingTotalValue: '$44,000–$93,000+',
     pricingNotesHeading: 'Planning notes',
     pricingNotesTitle: 'What to know',
     pricingNotes: [

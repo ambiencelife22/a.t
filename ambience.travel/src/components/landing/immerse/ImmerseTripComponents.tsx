@@ -1,7 +1,7 @@
 // ImmerseTripComponents.tsx — section components for /immerse/ trip overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseTripPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
-// Last updated: S14 — renamed from ImmerseJourneyComponents, destination links now urlId-scoped
+// Last updated: S18 — overview page made more visual, faster to skim, lighter on copy
 
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel, ImmerseStayBox } from './ImmerseComponents'
 import type { ImmerseTripData, ImmerseRouteStop, ImmerseDestinationRow } from '../../../lib/immerseTypes'
@@ -10,66 +10,121 @@ import type { ImmerseTripData, ImmerseRouteStop, ImmerseDestinationRow } from '.
 
 export function ImmerseRouteStrip({ data }: { data: ImmerseTripData }) {
   const { ref, visible } = useImmerseVisible()
-  const isMobile         = useImmerseMobile()
+  const isMobile = useImmerseMobile()
 
   return (
-    <ImmerseSectionWrap id='route' refProp={ref as React.RefObject<HTMLElement>}>
+    <ImmerseSectionWrap
+      id='route'
+      refProp={ref as React.RefObject<HTMLElement>}
+      style={{ background: '#FBF9F6' }}
+    >
       <div
         style={{
-          display:             'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '0.82fr 1.18fr',
-          gap:                 18,
-          alignItems:          'start',
-          marginBottom:        22,
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '0.9fr 1.1fr',
+          gap: 18,
+          alignItems: 'end',
+          marginBottom: 22,
         }}
       >
         <div>
-          <ImmerseEyebrow style={immerseFadeUp(visible, 0)}>Route overview</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,4vw,50px)', ...immerseFadeUp(visible, 60) }}>
+          <ImmerseEyebrow style={immerseFadeUp(visible, 0)} shimmer={false}>
+            Route overview
+          </ImmerseEyebrow>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,4vw,52px)', ...immerseFadeUp(visible, 60) }}>
             {data.routeHeading}
           </ImmerseTitle>
         </div>
-        <ImmerseBody style={immerseFadeUp(visible, 120)}>{data.routeBody}</ImmerseBody>
+        <ImmerseBody style={{ fontSize: 15, ...immerseFadeUp(visible, 120) }}>
+          {data.routeBody}
+        </ImmerseBody>
       </div>
 
       <div
         style={{
-          display:             'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)',
-          gap:                 12,
-          ...immerseFadeUp(visible, 160),
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)',
+          gap: 14,
+          ...immerseFadeUp(visible, 180),
         }}
       >
-        {data.routeStops.map(stop => (
-          <RouteStopCard key={stop.id} stop={stop} />
+        {data.routeStops.map((stop, i) => (
+          <RouteStopCard key={stop.id} stop={stop} index={i} />
         ))}
       </div>
     </ImmerseSectionWrap>
   )
 }
 
-function RouteStopCard({ stop }: { stop: ImmerseRouteStop }) {
+function RouteStopCard({ stop, index }: { stop: ImmerseRouteStop; index: number }) {
   return (
     <div
       style={{
-        border:       `1px solid ${ID.line}`,
-        borderRadius: ID.radiusLg,
-        overflow:     'hidden',
-        background:   ID.panel2,
-        boxShadow:    ID.shadow,
+        border: `1px solid ${ID.line}`,
+        borderRadius: 26,
+        overflow: 'hidden',
+        background: ID.panel2,
+        boxShadow: ID.shadow,
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        animation: `immerseFadeIn 0.55s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
       }}
     >
-      <div style={{ height: 135 }}>
-        <img src={stop.imageSrc} alt={stop.imageAlt} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      <div style={{ height: 220, position: 'relative', overflow: 'hidden' }}>
+        <img
+          src={stop.imageSrc}
+          alt={stop.imageAlt}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.46) 100%)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            left: 18,
+            bottom: 16,
+            right: 18,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: ID.gold,
+              fontWeight: 700,
+              marginBottom: 6,
+            }}
+          >
+            {stop.stayLabel}
+          </div>
+          <div
+            style={{
+              fontSize: 30,
+              lineHeight: 0.96,
+              letterSpacing: '-0.03em',
+              fontWeight: 400,
+              fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
+              color: '#F6F2EA',
+            }}
+          >
+            {stop.title}
+          </div>
+        </div>
       </div>
-      <div style={{ padding: 13 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: ID.gold, fontWeight: 700, marginBottom: 6 }}>
-          {stop.stayLabel}
-        </div>
-        <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em', color: ID.text, marginBottom: 5 }}>
-          {stop.title}
-        </div>
-        <div style={{ color: ID.muted, fontSize: 12, lineHeight: 1.58 }}>
+
+      <div style={{ padding: 18 }}>
+        <div
+          style={{
+            color: ID.muted,
+            fontSize: 13,
+            lineHeight: 1.7,
+          }}
+        >
           {stop.note}
         </div>
       </div>
@@ -81,19 +136,39 @@ function RouteStopCard({ stop }: { stop: ImmerseRouteStop }) {
 
 export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
   const { ref, visible } = useImmerseVisible()
+  const isMobile = useImmerseMobile()
 
   return (
     <ImmerseSectionWrap id='destinations' refProp={ref as React.RefObject<HTMLElement>}>
-      <ImmerseEyebrow style={{ marginBottom: 22, ...immerseFadeUp(visible, 0) }}>
-        {data.destinationHeading}
-      </ImmerseEyebrow>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '0.9fr 1.1fr',
+          gap: 18,
+          alignItems: 'end',
+          marginBottom: 22,
+        }}
+      >
+        <div>
+          <ImmerseEyebrow style={immerseFadeUp(visible, 0)} shimmer={false}>
+            {data.destinationHeading}
+          </ImmerseEyebrow>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,4vw,52px)', ...immerseFadeUp(visible, 60) }}>
+            Three destinations. One continuous feeling.
+          </ImmerseTitle>
+        </div>
+        <ImmerseBody style={{ fontSize: 15, ...immerseFadeUp(visible, 120) }}>
+          Each stop should feel distinct, highly visual, and worth entering on its own.
+        </ImmerseBody>
+      </div>
+
       <div style={{ display: 'grid', gap: 16 }}>
         {data.destinationRows.map((row, i) => (
           <DestinationRow
             key={row.id}
             row={row}
             urlId={data.urlId}
-            delay={i * 80}
+            delay={i * 90}
             visible={visible}
           />
         ))}
@@ -108,84 +183,130 @@ function DestinationRow({
   delay,
   visible,
 }: {
-  row:     ImmerseDestinationRow
-  urlId:   string
-  delay:   number
+  row: ImmerseDestinationRow
+  urlId: string
+  delay: number
   visible: boolean
 }) {
   const isMobile = useImmerseMobile()
-
-  // destinationSlug null → no subpage link. Card renders without CTA.
-  const href = row.destinationSlug ? `/immerse/${urlId}/${row.destinationSlug}` : null
+  const isPublic = urlId === 'honeymoon'
+  const href = row.destinationSlug
+    ? isPublic
+      ? `/immerse/honeymoon/${row.destinationSlug}`
+      : `/immerse/${urlId}/${row.destinationSlug}`
+    : null
 
   return (
-    <div
+    <a
+      href={href ?? undefined}
       style={{
-        display:             'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '340px 1fr auto',
-        gap:                 18,
-        alignItems:          'stretch',
-        overflow:            'hidden',
-        border:              `1px solid ${ID.line}`,
-        borderRadius:        28,
-        background:          ID.panel2,
-        boxShadow:           ID.shadow,
-        ...immerseFadeUp(visible, delay),
+        textDecoration: 'none',
+        color: 'inherit',
+        display: 'block',
       }}
     >
-      <div style={{ minHeight: isMobile ? 200 : 250 }}>
-        <img src={row.imageSrc} alt={row.imageAlt} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-      </div>
-
-      <div style={{ padding: isMobile ? '22px 22px 0' : '26px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.gold, fontWeight: 700 }}>
-          {row.numberLabel}
-        </div>
-        <div style={{ fontSize: 38, lineHeight: 0.98, letterSpacing: '-0.05em', fontWeight: 800, color: ID.text }}>
-          {row.title}
-        </div>
-        <div style={{ color: ID.muted, fontSize: 14 }}>{row.mood}</div>
-        <div style={{ color: ID.muted, fontSize: 14, lineHeight: 1.72, maxWidth: 680 }}>{row.summary}</div>
-      </div>
-
       <div
         style={{
-          padding:        isMobile ? '16px 22px 22px' : '26px 26px 26px 0',
-          display:        'flex',
-          flexDirection:  'column',
-          justifyContent: 'space-between',
-          alignItems:     isMobile ? 'flex-start' : 'flex-end',
-          gap:            14,
-          minWidth:       isMobile ? 'auto' : 220,
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '360px 1fr auto',
+          gap: 18,
+          alignItems: 'stretch',
+          overflow: 'hidden',
+          border: `1px solid ${ID.line}`,
+          borderRadius: 30,
+          background: ID.panel2,
+          boxShadow: ID.shadow,
+          transition: 'transform 0.32s ease, box-shadow 0.32s ease, border-color 0.32s ease',
+          ...immerseFadeUp(visible, delay),
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-4px)'
+          e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.10)'
+          e.currentTarget.style.borderColor = 'rgba(216,181,106,0.32)'
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.boxShadow = ID.shadow
+          e.currentTarget.style.borderColor = ID.line
         }}
       >
-        <ImmerseStayBox label={row.stayLabel} />
-        {href && (
-          <a
-            href={href}
+        <div style={{ minHeight: isMobile ? 260 : 300, position: 'relative' }}>
+          <img
+            src={row.imageSrc}
+            alt={row.imageAlt}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          <div
             style={{
-              width:          isMobile ? 'auto' : '100%',
-              minHeight:      42,
-              borderRadius:   12,
-              border:         `1px solid ${ID.lineSoft}`,
-              color:          ID.text,
-              textDecoration: 'none',
-              display:        'inline-flex',
-              alignItems:     'center',
-              justifyContent: 'center',
-              fontSize:       12,
-              letterSpacing:  '0.08em',
-              textTransform:  'uppercase',
-              fontWeight:     800,
-              background:     'transparent',
-              padding:        isMobile ? '0 20px' : '0',
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.22) 100%)',
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            padding: isMobile ? '22px 22px 8px' : '28px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: ID.gold,
+              fontWeight: 700,
             }}
           >
-            Destination subpage
-          </a>
-        )}
+            {row.numberLabel}
+          </div>
+
+          <div
+            style={{
+              fontSize: isMobile ? 42 : 54,
+              lineHeight: 0.94,
+              letterSpacing: '-0.04em',
+              fontWeight: 400,
+              fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
+              color: ID.text,
+            }}
+          >
+            {row.title}
+          </div>
+
+          <div style={{ color: ID.gold, fontSize: 12, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 700 }}>
+            {row.mood}
+          </div>
+
+          <div style={{ color: ID.muted, fontSize: 14, lineHeight: 1.72, maxWidth: 640 }}>
+            {row.summary}
+          </div>
+
+          <div style={{ color: ID.text, fontSize: 13, fontWeight: 700 }}>
+            Explore this segment →
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: isMobile ? '0 22px 22px' : '28px 28px 28px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'flex-end',
+            gap: 14,
+            minWidth: isMobile ? 'auto' : 220,
+          }}
+        >
+          <ImmerseStayBox label={row.stayLabel} />
+        </div>
       </div>
-    </div>
+    </a>
   )
 }
 
@@ -193,22 +314,30 @@ function DestinationRow({
 
 export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
   const { ref, visible } = useImmerseVisible()
-  const isMobile         = useImmerseMobile()
+  const isMobile = useImmerseMobile()
 
   return (
-    <ImmerseSectionWrap id='pricing' refProp={ref as React.RefObject<HTMLElement>}>
+    <ImmerseSectionWrap
+      id='pricing'
+      refProp={ref as React.RefObject<HTMLElement>}
+      style={{ background: '#0A0A0A', borderTop: '1px solid rgba(216,181,106,0.10)' }}
+    >
       <div
         style={{
-          display:             'grid',
+          display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap:                 18,
+          gap: 18,
           ...immerseFadeUp(visible, 0),
         }}
       >
-        <ImmersePanel style={{ padding: 30 }}>
-          <ImmerseEyebrow>{data.pricingHeading}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingTitle}</ImmerseTitle>
-          <ImmerseBody style={{ marginBottom: 14 }}>{data.pricingBody}</ImmerseBody>
+        <ImmersePanel style={{ padding: 30, background: '#111111' }}>
+          <ImmerseEyebrow shimmer={false}>{data.pricingHeading}</ImmerseEyebrow>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: '#F6F2EA' }}>
+            {data.pricingTitle}
+          </ImmerseTitle>
+          <ImmerseBody style={{ marginBottom: 14, color: 'rgba(245,242,236,0.72)' }}>
+            {data.pricingBody}
+          </ImmerseBody>
           <PricingTable>
             {data.pricingRows.map(row => (
               <tr key={row.id}>
@@ -227,9 +356,11 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
           </PricingTable>
         </ImmersePanel>
 
-        <ImmersePanel style={{ padding: 30 }}>
-          <ImmerseEyebrow>{data.pricingNotesHeading}</ImmerseEyebrow>
-          <ImmerseTitle style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>{data.pricingNotesTitle}</ImmerseTitle>
+        <ImmersePanel style={{ padding: 30, background: '#111111' }}>
+          <ImmerseEyebrow shimmer={false}>{data.pricingNotesHeading}</ImmerseEyebrow>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: '#F6F2EA' }}>
+            {data.pricingNotesTitle}
+          </ImmerseTitle>
           <NotesList notes={data.pricingNotes} />
         </ImmersePanel>
       </div>
@@ -251,7 +382,19 @@ export function PricingTable({ children }: { children: React.ReactNode }) {
       <thead>
         <tr>
           {headers.map(h => (
-            <th key={h} style={{ color: ID.gold, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700, textAlign: 'left', padding: '12px 8px', borderBottom: `1px solid ${ID.line}` }}>
+            <th
+              key={h}
+              style={{
+                color: ID.gold,
+                fontSize: 10,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                fontWeight: 700,
+                textAlign: 'left',
+                padding: '12px 8px',
+                borderBottom: `1px solid rgba(255,255,255,0.08)`,
+              }}
+            >
               {h}
             </th>
           ))}
@@ -264,10 +407,20 @@ export function PricingTable({ children }: { children: React.ReactNode }) {
 
 export function Td({ children, col }: { children: React.ReactNode; col?: number }) {
   const isMobile = window.innerWidth < 768
-  const hidden   = isMobile && (col === 2 || col === 3)
+  const hidden = isMobile && (col === 2 || col === 3)
   if (hidden) return null
+
   return (
-    <td style={{ color: ID.text, textAlign: 'left', padding: '12px 8px', borderBottom: `1px solid ${ID.line}`, verticalAlign: 'top', fontSize: 13 }}>
+    <td
+      style={{
+        color: '#F6F2EA',
+        textAlign: 'left',
+        padding: '12px 8px',
+        borderBottom: `1px solid rgba(255,255,255,0.06)`,
+        verticalAlign: 'top',
+        fontSize: 13,
+      }}
+    >
       {children}
     </td>
   )
@@ -275,10 +428,22 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
 
 export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode; col?: number; colSpan?: number }) {
   const isMobile = window.innerWidth < 768
-  const hidden   = isMobile && (col === 2 || col === 3)
+  const hidden = isMobile && (col === 2 || col === 3)
   if (hidden) return null
+
   return (
-    <td colSpan={colSpan} style={{ color: ID.gold, fontWeight: 800, fontSize: 14, textAlign: 'left', padding: '12px 8px', borderBottom: `1px solid ${ID.line}`, verticalAlign: 'top' }}>
+    <td
+      colSpan={colSpan}
+      style={{
+        color: ID.gold,
+        fontWeight: 800,
+        fontSize: 13,
+        textAlign: 'left',
+        padding: '14px 8px',
+        borderBottom: 'none',
+        verticalAlign: 'top',
+      }}
+    >
       {children}
     </td>
   )
@@ -286,20 +451,30 @@ export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode
 
 export function NotesList({ notes }: { notes: string[] }) {
   return (
-    <div style={{ display: 'grid', gap: 20, marginTop: 14 }}>
+    <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
       {notes.map(note => (
         <div
           key={note}
           style={{
-            padding:      '18px 18px',
-            border:       `1px solid ${ID.line}`,
-            borderRadius: ID.radiusMd,
-            background:   ID.panel2,
-            color:        ID.muted,
-            fontSize:     14,
-            lineHeight:   1.8,
+            color: 'rgba(245,242,236,0.78)',
+            fontSize: 14,
+            lineHeight: 1.72,
+            paddingLeft: 16,
+            position: 'relative',
           }}
         >
+          <span
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 9,
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: ID.gold,
+              display: 'block',
+            }}
+          />
           {note}
         </div>
       ))}

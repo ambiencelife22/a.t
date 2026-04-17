@@ -120,15 +120,19 @@ export default function App() {
   if (route === 'experience')       return <SignatureExperiencePage />
 
   if (route === 'immerse') {
-    const { seg1, seg2 } = resolveImmerseSegments()
+  const { seg1, seg2 } = resolveImmerseSegments()
 
-    if (isTripUrlId(seg1)) return <ImmerseTripRoute />
+  // Shape-based disambiguator: 11-char alphanumeric → trip route
+  if (isTripUrlId(seg1)) return <ImmerseTripRoute />
 
-    if (seg1 === 'honeymoon' && !seg2) return <ImmerseTripPage data={null} />
-    if (seg1 === 'honeymoon' && seg2) return <HoneymoonDestinationPage />
+  // Public honeymoon overview
+  if (seg1 === 'honeymoon' && !seg2) return <ImmerseTripPage data={null} />
 
-    return <LandingLayout />
-  }
+  // Public inspiration destination pages
+  if (seg1 === 'honeymoon' && seg2) return <HoneymoonDestinationPage />
+
+  return <LandingLayout />
+}
 
   if (route === 'signup')           return <Auth onAuth={() => { window.location.search = '' }} initialMode='signup' />
   if (route === 'admin')            return <ProgrammeAdmin />
