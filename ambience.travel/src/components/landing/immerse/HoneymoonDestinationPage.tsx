@@ -1,7 +1,8 @@
 // HoneymoonDestinationPage.tsx — Destination subpage for immerse journey
-// Route: /immerse/:tripId/:destination (e.g. /immerse/gCyRNp7NjF9/st-barths)
-// Slug-driven — reads trip + destination from URL, no per-destination component needed.
-// Last updated: S14
+// Routes:
+//   Public: /immerse/honeymoon/:destination
+//   Trip:   /immerse/:tripId/:destination
+// Last updated: S17
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -13,6 +14,7 @@ import { ImmerseHotelOptions } from './ImmerseDestinationComponents'
 import { ImmerseContentGrid } from './ImmerseDestinationComponents'
 import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
+import { getImmerseBottomContent } from '../../../lib/immerseBottomNotes'
 import type { ImmerseDestinationData } from '../../../lib/immerseTypes'
 
 type HeroBlockConfig = {
@@ -22,64 +24,69 @@ type HeroBlockConfig = {
   subtitle?: string
 }
 
-function resolveRouteParts(): { tripId: string; destinationSlug: string } {
-  // Path: /immerse/:tripId/:destination
+type RouteParts = {
+  tripId: string
+  destinationSlug: string
+  isPublic: boolean
+}
+
+function resolveRouteParts(): RouteParts {
   const parts = window.location.pathname.replace(/\/$/, '').split('/')
 
+  const secondLast = parts[parts.length - 2] ?? ''
+  const last = parts[parts.length - 1] ?? ''
+
+  const isPublic = secondLast === 'honeymoon'
+
   return {
-    tripId: parts[parts.length - 2] ?? '',
-    destinationSlug: parts[parts.length - 1] ?? '',
+    tripId: isPublic ? 'honeymoon' : secondLast,
+    destinationSlug: last,
+    isPublic,
   }
 }
 
 const HERO_BLOCKS: Record<string, HeroBlockConfig> = {
+  'gCyRNp7NjF9:new-york': {
+    imageSrc: '/landing/nyc-temp/nyc-romance.webp',
+    imageAlt: 'Romantic New York skyline view at dusk',
+    title: 'New York City Romance',
+    subtitle: 'Where the city softens into something more intimate.',
+  },
   'gCyRNp7NjF9:st-barths': {
     imageSrc: '/images/st-barths/st-barths-romance.webp',
     imageAlt: 'Romantic St. Barths coastal view',
     title: 'St. Barths Escape',
     subtitle: 'Sunlight, stillness, and a rhythm that feels entirely your own.',
   },
-
-  'gCyRNp7NjF9:new-york': {
-    imageSrc: '/nyc-temp/nyc-romance.webp',
-    imageAlt: 'Romantic New York skyline view at dusk',
-    title: 'New York City Romance',
-    subtitle: 'Where the city softens into something more intimate.',
-  },
-
   'gCyRNp7NjF9:nordic-winter': {
     imageSrc: '/images/nordic-winter/nordic-winter-romance.webp',
     imageAlt: 'Snow-covered Nordic landscape with soft winter light',
     title: 'Nordic Winter Escape',
     subtitle: 'Stillness, warmth, and a more intimate rhythm in the heart of winter.',
   },
-
+  '*:new-york': {
+    imageSrc: '/landing/nyc-temp/nyc-romance.webp',
+    imageAlt: 'Romantic New York skyline view',
+    title: 'New York City Romance',
+    subtitle: 'A quieter side of the city, made for two.',
+  },
   '*:st-barths': {
     imageSrc: '/images/st-barths/st-barths-romance.webp',
     imageAlt: 'St. Barths coastline in soft golden light',
     title: 'St. Barths Escape',
     subtitle: 'A softer rhythm, surrounded by sea and light.',
   },
-
-  '*:new-york': {
-    imageSrc: '/nyc-temp/nyc-romance.webp',
-    imageAlt: 'Romantic New York skyline view',
-    title: 'New York City Romance',
-    subtitle: 'A quieter side of the city, made for two.',
-  },
-
   '*:nordic-winter': {
     imageSrc: '/images/nordic-winter/nordic-winter-romance.webp',
     imageAlt: 'Nordic winter landscape in soft light',
-    title: 'Nordic Winter Romance',
-    subtitle: 'Snow, stillness, and the kind of warmth that feels even closer in winter.'
+    title: 'Nordic Winter Escape',
+    subtitle: 'A quieter, colder, more cinematic stretch of the journey.',
   },
-
   '*:*': {
     imageSrc: '/images/shared/romance-default.webp',
     imageAlt: 'Romantic travel moment',
-    title: 'Nordic Winter Romance',
-subtitle: 'Snow, stillness, and the kind of warmth that feels even closer in winter.'
+    title: 'A Romantic Interlude',
+    subtitle: 'A moment within the journey, shaped entirely around you.',
   },
 }
 
@@ -95,28 +102,64 @@ export default function HoneymoonDestinationPage() {
   const [data, setData] = useState<ImmerseDestinationData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const { tripId, destinationSlug } = useMemo(() => resolveRouteParts(), [])
+  const { tripId, destinationSlug, isPublic } = useMemo(() => resolveRouteParts(), [])
   const heroBlock = useMemo(
     () => getHeroBlockConfig(tripId, destinationSlug),
     [tripId, destinationSlug]
   )
 
   useEffect(() => {
-    if (!destinationSlug) {
-      setLoading(false)
-      return
+    let cancelled = false
+
+    async function load() {
+      if (!destinationSlug) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const result = await getImmerseDestination(tripId, destinationSlug)
+
+        if (cancelled) return
+
+        if (!result) {
+          setData(null)
+          setLoading(false)
+          return
+        }
+
+        const bottomContent = await getImmerseBottomContent({
+          scope: isPublic ? 'public' : tripId,
+          destinationSlug,
+          fallbackHeading: result.pricingNotesHeading,
+          fallbackTitle: result.pricingNotesTitle,
+          fallbackNotes: result.pricingNotes ?? [],
+        })
+
+        if (cancelled) return
+
+        const mergedData: ImmerseDestinationData = {
+          ...result,
+          pricingNotesHeading: bottomContent.pricingNotesHeading ?? result.pricingNotesHeading,
+          pricingNotesTitle: bottomContent.pricingNotesTitle ?? result.pricingNotesTitle,
+          pricingNotes: bottomContent.pricingNotes,
+        }
+
+        setData(mergedData)
+      } catch (err) {
+        console.error('HoneymoonDestinationPage: failed to load destination', err)
+        if (!cancelled) setData(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
-    getImmerseDestination(tripId, destinationSlug)
-      .then(result => {
-        setData(result)
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('HoneymoonDestinationPage: failed to load destination', err)
-        setLoading(false)
-      })
-  }, [tripId, destinationSlug])
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [tripId, destinationSlug, isPublic])
 
   if (loading) return null
   if (!data) return null
