@@ -376,7 +376,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {roomGallery.length > 0 && currentRoom && (
+            {currentRoom && currentRoom.roomImageSrc && roomGallery.length >= 1 && (
               <div style={{ marginTop: 40 }} key={`room-gallery-${activeHotel}-${activeRoom}`}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
                   Gallery · {roomLightboxImages.length} photos
@@ -407,21 +407,12 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                         position: 'relative',
                         transition: 'border-color 0.3s ease, transform 0.3s ease',
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = 'rgba(216,181,106,0.45)'
-                        e.currentTarget.style.transform = 'scale(1.01)'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = ID.line
-                        e.currentTarget.style.transform = 'scale(1)'
-                      }}
                     >
                       <img
                         src={src}
                         alt={`${currentRoom.roomBasis} ${i + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 'inherit', background: 'radial-gradient(ellipse at center, transparent 35%, rgba(3,3,3,0.44) 100%)' }} />
                     </div>
                   ))}
                 </div>
