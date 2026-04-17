@@ -4,6 +4,8 @@
  *   stay    → ProgrammePage (property sections, listings)
  *   journey → JourneyPage  (programme days, events, contacts)
  * No React Router — reads window.location.pathname directly.
+ * Last updated: S17 — All table refs updated to travel_programme_* convention;
+ *   joined resources aliased to preserve downstream mapper code unchanged.
  */
 
 import { useEffect, useState } from 'react'
@@ -365,7 +367,7 @@ export default function ProgrammeRoute() {
     async function load() {
       // 0 — Resolve programme first (anon read — works for public programmes)
       const { data: prog, error: progErr } = await supabaseAnon
-        .from('programmes')
+        .from('travel_programme_master')
         .select(`
           id,
           url_id,
@@ -386,7 +388,7 @@ export default function ProgrammeRoute() {
           public_manager_phone,
           no_alarm,
           public_arrival,
-          properties (
+          properties:travel_programme_properties!property_id (
             id,
             slug,
             name,
@@ -437,10 +439,10 @@ export default function ProgrammeRoute() {
       if (progErr || !prog) {
         // Check if this user has any other accessible programmes
         const { data: fallback } = await supabase
-          .from('programme_guests')
-          .select('programmes(url_id, sub_path, guest_names)')
+          .from('travel_programme_guests')
+          .select('programmes:travel_programme_master(url_id, sub_path, guest_names)')
           .eq('profile_id', session?.user?.id ?? '')
-          .not('programmes', 'is', null)
+          .not('travel_programme_master', 'is', null)
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
@@ -496,16 +498,16 @@ export default function ProgrammeRoute() {
         const client = isPublic ? supabaseAnon : supabase
         const [sectResult, listResult, overrideResult] = await Promise.all([
           client
-            .from('property_sections')
+            .from('travel_programme_property_sections')
             .select('id, title, icon, sort_order, variant, content')
             .eq('property_id', propertyId)
             .order('sort_order'),
           client
-            .from('property_listings')
+            .from('travel_programme_property_listings')
             .select('id, name, category, genre, address, website, hours, note, favourite')
             .eq('property_id', propertyId),
           client
-            .from('programme_sections')
+            .from('travel_programme_sections')
             .select('id, section_id, content')
             .eq('programme_id', row.id),
         ])
@@ -543,7 +545,7 @@ export default function ProgrammeRoute() {
         const programmeId = row.id
 
         const { data: dayData, error: dayErr } = await supabase
-          .from('programme_days')
+          .from('travel_programme_days')
           .select('id, date, title, sort_order')
           .eq('programme_id', programmeId)
           .order('sort_order')
@@ -569,7 +571,7 @@ export default function ProgrammeRoute() {
         }
 
         const { data: evData, error: evErr } = await supabase
-          .from('programme_events')
+          .from('travel_programme_events')
           .select(`
             id, day_id, event_type, status, title,
             time_local, duration, description, confirmation_number,
@@ -593,7 +595,7 @@ export default function ProgrammeRoute() {
 
         const { data: ctData, error: ctErr } = eventIds.length > 0
           ? await supabase
-              .from('programme_event_contacts')
+              .from('travel_programme_event_contacts')
               .select('id, event_id, name, role, phone')
               .in('event_id', eventIds)
           : { data: [], error: null }
