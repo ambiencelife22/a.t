@@ -1,9 +1,10 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
 // Last updated: S15 — Gallery 1 onClick wired; duplicate gallery removed; Gallery 2 added
-//                     (per-room, independent lightbox); floor plan link in RoomCategory;
-//                     size badge range-aware (sqftMin–sqftMax); + tax subtext when taxInclusive
-//                     is false. All new fields backward compatible — render only when set.
+//                     (per-room, independent lightbox, requires 2+ gallery images to render);
+//                     floor plan link in RoomCategory; size badge range-aware (sqftMin–sqftMax);
+//                     + tax subtext when taxInclusive is false. All new fields backward
+//                     compatible — render only when set.
 
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
@@ -375,7 +376,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {roomGallery.length > 0 && currentRoom && (
+            {roomGallery.length > 1 && currentRoom && (
               <div style={{ marginTop: 40 }} key={`room-gallery-${activeHotel}-${activeRoom}`}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
                   Gallery · {roomLightboxImages.length} photos
