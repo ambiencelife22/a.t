@@ -6,6 +6,7 @@
  * No React Router — reads window.location.pathname directly.
  * Last updated: S17 — All table refs updated to travel_programme_* convention;
  *   joined resources aliased to preserve downstream mapper code unchanged.
+ *   Popstate listener added for back/forward navigation re-resolution.
  */
 
 import { useEffect, useState } from 'react'
@@ -355,6 +356,19 @@ export default function ProgrammeRoute() {
   const [userEmail, setUserEmail]         = useState('')
   const [fallbackProgramme, setFallback]  = useState<{ url: string; guestNames: string } | undefined>(undefined)
 
+  // S17: track pathname so back/forward navigation re-resolves the programme
+  const [pathname, setPathname] = useState(window.location.pathname)
+
+  useEffect(() => {
+    function sync() { setPathname(window.location.pathname) }
+    window.addEventListener('popstate', sync)
+    window.addEventListener('pageshow', sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener('pageshow', sync)
+    }
+  }, [])
+
   const urlId = getUrlId()
 
   useEffect(() => {
@@ -388,7 +402,7 @@ export default function ProgrammeRoute() {
           public_manager_phone,
           no_alarm,
           public_arrival,
-          properties:travel_programme_properties!property_id (
+          properties:travel_programme_properties (
             id,
             slug,
             name,

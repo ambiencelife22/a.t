@@ -2,8 +2,7 @@
 // Routes:
 //   Public: /immerse/honeymoon/:destination
 //   Trip:   /immerse/:tripId/:destination
-// Last updated: S17 — UUID flow: URL slug → destination data (includes UUID)
-//   → pass UUID to bottom notes. No hardcoded NYC fallback — DB is canon.
+// Last updated: S17 — UUID flow + popstate-driven re-resolve for back/forward navigation
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -24,8 +23,8 @@ type RouteParts = {
   isPublic: boolean
 }
 
-function resolveRouteParts(): RouteParts {
-  const parts = window.location.pathname.replace(/\/$/, '').split('/')
+function resolveRouteParts(pathname: string): RouteParts {
+  const parts = pathname.replace(/\/$/, '').split('/')
 
   const secondLast = parts[parts.length - 2] ?? ''
   const last = parts[parts.length - 1] ?? ''
@@ -43,7 +42,23 @@ export default function HoneymoonDestinationPage() {
   const [data, setData] = useState<ImmerseDestinationData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const { tripId, destinationSlug, isPublic } = useMemo(() => resolveRouteParts(), [])
+  // S17: track pathname so back/forward navigation re-resolves the destination
+  const [pathname, setPathname] = useState(window.location.pathname)
+
+  useEffect(() => {
+    function sync() { setPathname(window.location.pathname) }
+    window.addEventListener('popstate', sync)
+    window.addEventListener('pageshow', sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener('pageshow', sync)
+    }
+  }, [])
+
+  const { tripId, destinationSlug, isPublic } = useMemo(
+    () => resolveRouteParts(pathname),
+    [pathname]
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +68,8 @@ export default function HoneymoonDestinationPage() {
         setLoading(false)
         return
       }
+
+      setLoading(true)
 
       try {
         const result = await getImmerseDestination(tripId, destinationSlug)

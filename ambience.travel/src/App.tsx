@@ -111,9 +111,15 @@ export default function App() {
   const [route, setRoute] = useState<Route>(resolveRoute())
 
   useEffect(() => {
-    function handleHashChange() { setRoute(resolveRoute()) }
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    function handleRouteChange() { setRoute(resolveRoute()) }
+    // S17: popstate fires on browser back/forward. Also listen for pageshow
+    // to handle bfcache (back-forward cache) restores on mobile Safari/Chrome.
+    window.addEventListener('popstate', handleRouteChange)
+    window.addEventListener('pageshow', handleRouteChange)
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange)
+      window.removeEventListener('pageshow', handleRouteChange)
+    }
   }, [])
 
   if (route === 'landing')          return <LandingLayout />

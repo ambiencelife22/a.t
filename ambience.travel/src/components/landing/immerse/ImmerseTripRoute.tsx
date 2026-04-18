@@ -4,7 +4,7 @@
 // Destination (/immerse/{url_id}/{slug}) → verifies trip exists, hands off to
 //   HoneymoonDestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
-// Last updated: S14
+// Last updated: S17 — Reacts to browser back/forward via popstate listener.
 
 import { useEffect, useState } from 'react'
 import { getImmerseTrip }         from '../../../lib/immerseTripQueries'
@@ -80,8 +80,22 @@ export default function ImmerseTripRoute() {
   const [error,   setError]   = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // S17: track pathname so this component re-resolves when user navigates
+  // via back/forward within the immerse subtree.
+  const [pathname, setPathname] = useState(window.location.pathname)
+
   useEffect(() => {
-    const route = resolveImmerseRoute(window.location.pathname)
+    function sync() { setPathname(window.location.pathname) }
+    window.addEventListener('popstate', sync)
+    window.addEventListener('pageshow', sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener('pageshow', sync)
+    }
+  }, [])
+
+  useEffect(() => {
+    const route = resolveImmerseRoute(pathname)
 
     if (route.kind === 'invalid') {
       setError('not-found')
@@ -89,12 +103,18 @@ export default function ImmerseTripRoute() {
       return
     }
 
+    let cancelled = false
+
     async function load() {
       if (route.kind === 'invalid') return
+
+      setLoading(true)
+      setError(null)
 
       // Always verify the trip exists before rendering anything trip-scoped.
       // This catches /immerse/badurlid0/anything cleanly.
       const tripData = await getImmerseTrip(route.urlId)
+      if (cancelled) return
       if (!tripData) {
         setError('not-found')
         setLoading(false)
@@ -107,7 +127,9 @@ export default function ImmerseTripRoute() {
     }
 
     load()
-  }, [])
+
+    return () => { cancelled = true }
+  }, [pathname])
 
   if (loading) {
     return (
