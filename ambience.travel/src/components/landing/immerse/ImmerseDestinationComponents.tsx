@@ -1,10 +1,11 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S15 — Gallery 1 onClick wired; duplicate gallery removed; Gallery 2 added
-//                     (per-room, independent lightbox, requires 2+ gallery images to render);
-//                     floor plan link in RoomCategory; size badge range-aware (sqftMin–sqftMax);
-//                     + tax subtext when taxInclusive is false. All new fields backward
-//                     compatible — render only when set.
+// Last updated: S17 — room gallery thumbnails now filter hero image (matches hotel gallery pattern)
+// Prior: S15 — Gallery 1 onClick wired; duplicate gallery removed; Gallery 2 added
+//               (per-room, independent lightbox, requires 2+ gallery images to render);
+//               floor plan link in RoomCategory; size badge range-aware (sqftMin–sqftMax);
+//               + tax subtext when taxInclusive is false. All new fields backward
+//               compatible — render only when set.
 
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
@@ -76,8 +77,11 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   // currentRoom may be undefined briefly during hotel transitions; guard accordingly.
   const currentRoom        = rooms[activeRoom]
   const roomGallery        = currentRoom?.roomGallery ?? []
+  // S17: match hotel gallery pattern — filter hero out of thumbnail grid,
+  // but keep it as index 0 in the lightbox array.
+  const displayRoomGallery = roomGallery.filter((s: string) => s !== currentRoom?.roomImageSrc)
   const roomLightboxImages = currentRoom?.roomImageSrc
-    ? [currentRoom.roomImageSrc, ...roomGallery.filter((s: string) => s !== currentRoom.roomImageSrc)]
+    ? [currentRoom.roomImageSrc, ...displayRoomGallery]
     : roomGallery
 
   function goHotel(idx: number) {
@@ -376,7 +380,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {currentRoom && currentRoom.roomImageSrc && roomGallery.length >= 1 && (
+            {currentRoom && currentRoom.roomImageSrc && displayRoomGallery.length >= 1 && (
               <div style={{ marginTop: 40 }} key={`room-gallery-${activeHotel}-${activeRoom}`}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
                   Gallery · {roomLightboxImages.length} photos
@@ -390,7 +394,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                     minWidth: 0,
                   }}
                 >
-                  {roomGallery.map((src: string, i: number) => (
+                  {displayRoomGallery.map((src: string, i: number) => (
                     <div
                       key={i}
                       onClick={() => setRoomLightboxIdx(i + 1)}
