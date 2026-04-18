@@ -24,8 +24,8 @@ export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null
     <ImmerseLayout>
       <ImmerseHero
         guestName={data.clientName}
-        titlePrefix='A Honeymoon'
-        title='Journey'
+        titlePrefix=''
+        title='Honeymoon'
         dateLabel={data.statusLabel}
         subtitle={data.subtitle}
         pills={data.heroPills}
