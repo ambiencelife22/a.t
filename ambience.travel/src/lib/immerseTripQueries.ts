@@ -1,9 +1,12 @@
 // immerseTripQueries.ts — Supabase query layer for immerse trip master data
-// Owns: getImmerseTrip(urlId) — full ImmerseTripData fetch by public url_id
+// Owns:
+//   - getImmerseTrip(urlId)        — full ImmerseTripData fetch by public url_id
+//   - getImmerseTripBySlug(slug)   — full ImmerseTripData fetch by slug
+//                                    (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S17 Phase 5A — Secondary hero fields + dropped client_name
-//   Still queries trip_destination_rows.destination_slug until Phase 5C (migration 07)
-//   swaps to destination_id UUID FK with JOIN hydration.
+// Last updated: S17 — Extracted hydrateTrip helper; added getImmerseTripBySlug
+//   for public honeymoon preview row (slug = 'honeymoon1'). Both entry points
+//   share TRIP_SELECT_COLUMNS + hydrateTrip() so response shape is identical.
 
 import { supabaseAnon } from './supabase'
 import type {
@@ -92,28 +95,51 @@ type PricingRowRow = {
 
 // ── Public fetch ─────────────────────────────────────────────────────────────
 
+// Column list reused by both entry points (by url_id, by slug)
+const TRIP_SELECT_COLUMNS = `
+  id, url_id, slug, trip_format, journey_types,
+  person_id, status_label,
+  eyebrow, title, subtitle,
+  hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
+  hero_title_2, hero_subtitle_2, hero_pills,
+  route_heading, route_body, route_eyebrow,
+  destination_heading, destination_subtitle, destination_body,
+  pricing_heading, pricing_title, pricing_body,
+  pricing_total_label, pricing_total_value,
+  pricing_notes_heading, pricing_notes_title, pricing_notes
+`
+
+// Fetch trip by public url_id (private / token-keyed trips like Yazeed)
 export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | null> {
   const { data: trip, error: tripErr } = await supabaseAnon
     .from('travel_immerse_trips')
-    .select(`
-      id, url_id, slug, trip_format, journey_types,
-      person_id, status_label,
-      eyebrow, title, subtitle,
-      hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
-      hero_title_2, hero_subtitle_2, hero_pills,
-      route_heading, route_body, route_eyebrow,
-      destination_heading, destination_subtitle, destination_body,
-      pricing_heading, pricing_title, pricing_body,
-      pricing_total_label, pricing_total_value,
-      pricing_notes_heading, pricing_notes_title, pricing_notes
-    `)
+    .select(TRIP_SELECT_COLUMNS)
     .eq('url_id', urlId)
     .single()
 
   if (tripErr || !trip) return null
+  return hydrateTrip(trip as TripRow)
+}
 
-  const tripRow = trip as TripRow
-  const tripId  = tripRow.id
+// Fetch trip by slug (public preview rows like 'honeymoon1'; no url_id)
+export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripData | null> {
+  const { data: trip, error: tripErr } = await supabaseAnon
+    .from('travel_immerse_trips')
+    .select(TRIP_SELECT_COLUMNS)
+    .eq('slug', slug)
+    .single()
+
+  if (tripErr || !trip) return null
+  return hydrateTrip(trip as TripRow)
+}
+
+// ── Shared hydration ─────────────────────────────────────────────────────────
+// Once we have the trip row, the follow-on fetches (person, routes, dests,
+// pricing) and the response shape are identical regardless of how we looked
+// up the trip.
+
+async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
+  const tripId = tripRow.id
 
   const [personRes, stopsRes, destsRes, pricingRes] = await Promise.all([
     tripRow.person_id

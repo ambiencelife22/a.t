@@ -4,6 +4,8 @@
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
+ *   ambience.travel/immerse/honeymoon                    → PublicHoneymoonRoute → ImmerseTripPage
+ *                                                          (DB-backed via slug 'honeymoon1')
  *   ambience.travel/immerse/:journey_type/:destination   → HoneymoonDestinationPage (public inspiration)
  *   ambience.travel/immerse/:url_id                      → ImmerseTripRoute (trip overview)
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseTripRoute (trip destination subpage)
@@ -20,17 +22,20 @@
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
+ *   localhost:5173/immerse/honeymoon                     → PublicHoneymoonRoute → ImmerseTripPage
  *   localhost:5173/immerse/:journey_type/:destination    → HoneymoonDestinationPage (public inspiration)
  *   localhost:5173/immerse/:url_id                       → ImmerseTripRoute (trip overview)
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseTripRoute (trip destination subpage)
  *
  * Immerse disambiguator: first /immerse/ segment is shape-tested.
  *   - 11-char [A-Za-z0-9] hash → trip route (private, url_id keyed)
- *   - anything else            → public inspiration route (journey_type keyed)
+ *   - 'honeymoon' (no seg2)    → public preview (slug = 'honeymoon1' in DB)
+ *   - 'honeymoon' + :dest      → public inspiration destination page
+ *   - anything else            → landing
  *
  * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
  * full-page programme view. The programme root renders the app shell.
- * Last updated: S14
+ * Last updated: S17 — Public honeymoon preview is now DB-backed (slug 'honeymoon1')
  */
 
 import { useEffect, useState, useContext } from 'react'
@@ -46,6 +51,8 @@ import SignatureExperiencePage from './components/landing/experiences/SignatureE
 import ImmerseTripRoute          from './components/landing/immerse/ImmerseTripRoute'
 import ImmerseTripPage          from './components/landing/immerse/ImmerseTripPage'
 import HoneymoonDestinationPage  from './components/landing/immerse/HoneymoonDestinationPage'
+import { getImmerseTripBySlug }  from './lib/immerseTripQueries'
+import type { ImmerseTripData }  from './lib/immerseTypes'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
@@ -111,15 +118,9 @@ export default function App() {
   const [route, setRoute] = useState<Route>(resolveRoute())
 
   useEffect(() => {
-    function handleRouteChange() { setRoute(resolveRoute()) }
-    // S17: popstate fires on browser back/forward. Also listen for pageshow
-    // to handle bfcache (back-forward cache) restores on mobile Safari/Chrome.
-    window.addEventListener('popstate', handleRouteChange)
-    window.addEventListener('pageshow', handleRouteChange)
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange)
-      window.removeEventListener('pageshow', handleRouteChange)
-    }
+    function handleHashChange() { setRoute(resolveRoute()) }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
   if (route === 'landing')          return <LandingLayout />
@@ -131,8 +132,8 @@ export default function App() {
   // Shape-based disambiguator: 11-char alphanumeric → trip route
   if (isTripUrlId(seg1)) return <ImmerseTripRoute />
 
-  // Public honeymoon overview
-  if (seg1 === 'honeymoon' && !seg2) return <ImmerseTripPage data={null} />
+  // Public honeymoon overview — DB-backed via slug lookup (S17)
+  if (seg1 === 'honeymoon' && !seg2) return <PublicHoneymoonRoute />
 
   // Public inspiration destination pages
   if (seg1 === 'honeymoon' && seg2) return <HoneymoonDestinationPage />
@@ -145,6 +146,33 @@ export default function App() {
   if (route === 'programme-detail') return <ProgrammeGate full />
 
   return <ProgrammeGate />
+}
+
+// ── Public honeymoon preview wrapper ────────────────────────────────────────
+// Fetches the public honeymoon trip row (slug = 'honeymoon1') and renders it
+// through the normal ImmerseTripPage. No url_id involved — this is a slug-
+// keyed public preview, distinct from Yazeed's url_id-keyed private trip.
+// As more preview options ship, this can be upgraded to select among them
+// (splash page) rather than loading a single row.
+function PublicHoneymoonRoute() {
+  const [data, setData] = useState<ImmerseTripData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    getImmerseTripBySlug('honeymoon1').then(t => {
+      if (cancelled) return
+      setData(t)
+      setLoading(false)
+    }).catch(() => {
+      if (cancelled) return
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  if (loading) return null
+  return <ImmerseTripPage data={data} />
 }
 
 function ProgrammeGate({ full = false }: { full?: boolean }) {
