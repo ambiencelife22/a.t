@@ -1,8 +1,8 @@
 // ImmerseTripComponents.tsx — section components for /immerse/ trip overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseTripPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
-// Last updated: S19E — route strip bricks now match height within each row,
-// non-clickable bricks retain equal visual weight, and all bricks use gentler depth
+// Last updated: S19F — colour standards aligned to shared Immerse tokens, pricing section de-hardcoded,
+// CTA surfaces normalized, and pasted pricing typo corrected
 
 import {
   ID,
@@ -40,9 +40,8 @@ function getDestinationPageHref(row: ImmerseDestinationRow, urlId: string) {
 
   if (!row.destinationSlug) return null
 
-  return isPublic
-    ? `/immerse/honeymoon/${row.destinationSlug}`
-    : `/immerse/${urlId}/${row.destinationSlug}`
+  if (isPublic) return `/immerse/honeymoon/${row.destinationSlug}`
+  return `/immerse/${urlId}/${row.destinationSlug}`
 }
 
 function scrollToDestination(anchorId: string) {
@@ -60,6 +59,19 @@ function scrollToDestination(anchorId: string) {
 
 const BRICK_DEPTH = '0 8px 24px rgba(15, 18, 22, 0.045)'
 const BRICK_DEPTH_HOVER = '0 12px 28px rgba(15, 18, 22, 0.065)'
+const CTA_DEPTH = '0 4px 14px rgba(15, 18, 22, 0.05)'
+const CTA_DEPTH_HOVER = '0 8px 16px rgba(15, 18, 22, 0.08)'
+const ROUTE_IMAGE_OVERLAY = 'linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.46) 100%)'
+const DESTINATION_IMAGE_OVERLAY = 'linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.22) 100%)'
+const PRICING_BORDER = 'rgba(255,255,255,0.08)'
+const PRICING_BORDER_SOFT = 'rgba(255,255,255,0.06)'
+const PRICING_TEXT_MUTED = 'rgba(245,242,236,0.72)'
+const PRICING_TEXT_MUTED_STRONG = 'rgba(245,242,236,0.78)'
+const PRICING_SECTION_BORDER = 'rgba(216,181,106,0.10)'
+const GOLD_BORDER_SOFT = 'rgba(216,181,106,0.28)'
+const GOLD_BORDER_STRONG = 'rgba(216,181,106,0.45)'
+const PRICING_SECTION_BG = 'rgba(10,10,10,1)'
+const PRICING_PANEL_BG = 'rgba(17,17,17,1)'
 
 // ─── Route strip ──────────────────────────────────────────────────────────────
 
@@ -71,7 +83,7 @@ export function ImmerseRouteStrip({ data }: { data: ImmerseTripData }) {
     <ImmerseSectionWrap
       id='route'
       refProp={ref as React.RefObject<HTMLElement>}
-      style={{ background: '#FBF9F6' }}
+      style={{ background: ID.bg }}
     >
       <div
         style={{
@@ -151,7 +163,7 @@ function RouteStopCard({
       onMouseEnter={e => {
         if (!isClickable) return
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.borderColor = 'rgba(216,181,106,0.28)'
+        e.currentTarget.style.borderColor = GOLD_BORDER_SOFT
         e.currentTarget.style.boxShadow = BRICK_DEPTH_HOVER
       }}
       onMouseLeave={e => {
@@ -171,7 +183,7 @@ function RouteStopCard({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.46) 100%)',
+            background: ROUTE_IMAGE_OVERLAY,
           }}
         />
         <div
@@ -201,7 +213,7 @@ function RouteStopCard({
               letterSpacing: '-0.03em',
               fontWeight: 400,
               fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
-              color: '#F6F2EA',
+              color: ID.text,
             }}
           >
             {stop.title}
@@ -263,7 +275,7 @@ export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
   const isMobile = useImmerseMobile()
 
   return (
-    <ImmerseSectionWrap id='destinations' refProp={ref as React.RefObject<HTMLElement>}>
+    <ImmerseSectionWrap id='destinations' refProp={ref as React.RefObject<HTMLElement>} style={{ background: ID.bg }}>
       <div
         style={{
           display: 'grid',
@@ -340,7 +352,7 @@ function DestinationRow({
         }}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.borderColor = 'rgba(216,181,106,0.28)'
+          e.currentTarget.style.borderColor = GOLD_BORDER_SOFT
           e.currentTarget.style.boxShadow = BRICK_DEPTH_HOVER
         }}
         onMouseLeave={e => {
@@ -359,7 +371,7 @@ function DestinationRow({
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.22) 100%)',
+              background: DESTINATION_IMAGE_OVERLAY,
             }}
           />
         </div>
@@ -444,20 +456,20 @@ function DestinationRow({
             padding: '10px 14px',
             border: `1px solid ${ID.line}`,
             borderRadius: 999,
-            background: '#FFFFFF',
+            background: ID.panel2,
             transition: 'transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
             zIndex: 3,
-            boxShadow: '0 4px 14px rgba(15,18,22,0.05)',
+            boxShadow: CTA_DEPTH,
           }}
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.borderColor = 'rgba(216,181,106,0.45)'
-            e.currentTarget.style.boxShadow = '0 8px 16px rgba(15,18,22,0.08)'
+            e.currentTarget.style.borderColor = GOLD_BORDER_STRONG
+            e.currentTarget.style.boxShadow = CTA_DEPTH_HOVER
           }}
           onMouseLeave={e => {
             e.currentTarget.style.transform = 'translateY(0)'
             e.currentTarget.style.borderColor = ID.line
-            e.currentTarget.style.boxShadow = '0 4px 14px rgba(15,18,22,0.05)'
+            e.currentTarget.style.boxShadow = CTA_DEPTH
           }}
         >
           Explore this segment →
@@ -477,22 +489,31 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
     <ImmerseSectionWrap
       id='pricing'
       refProp={ref as React.RefObject<HTMLElement>}
-      style={{ background: '#0A0A0A', borderTop: '1px solid rgba(216,181,106,0.10)' }}
+      style={{
+        background: '#F6F1E8',
+        borderTop: `1px solid ${ID.line}`,
+      }}
     >
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: 18,
+          gap: 24,
           ...immerseFadeUp(visible, 0),
         }}
       >
-        <ImmersePanel style={{ padding: 30, background: '#111111' }}>
+        <ImmersePanel
+          style={{
+            padding: 30,
+            background: PRICING_PANEL_BG,
+            boxShadow: BRICK_DEPTH,
+          }}
+        >
           <ImmerseEyebrow shimmer={false}>{data.pricingHeading}</ImmerseEyebrow>
-          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: '#F6F2EA' }}>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: ID.text }}>
             {data.pricingTitle}
           </ImmerseTitle>
-          <ImmerseBody style={{ marginBottom: 14, color: 'rgba(245,242,236,0.72)' }}>
+          <ImmerseBody style={{ marginBottom: 14, color: PRICING_TEXT_MUTED }}>
             {data.pricingBody}
           </ImmerseBody>
           <PricingTable>
@@ -513,9 +534,15 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
           </PricingTable>
         </ImmersePanel>
 
-        <ImmersePanel style={{ padding: 30, background: '#111111' }}>
+        <ImmersePanel
+          style={{
+            padding: 30,
+            background: PRICING_PANEL_BG,
+            boxShadow: BRICK_DEPTH,
+          }}
+        >
           <ImmerseEyebrow shimmer={false}>{data.pricingNotesHeading}</ImmerseEyebrow>
-          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: '#F6F2EA' }}>
+          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: ID.text }}>
             {data.pricingNotesTitle}
           </ImmerseTitle>
           <NotesList notes={data.pricingNotes} />
@@ -549,7 +576,7 @@ export function PricingTable({ children }: { children: React.ReactNode }) {
                 fontWeight: 700,
                 textAlign: 'left',
                 padding: '12px 8px',
-                borderBottom: `1px solid rgba(255,255,255,0.08)`,
+                borderBottom: `1px solid ${PRICING_BORDER}`,
               }}
             >
               {h}
@@ -570,10 +597,10 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
   return (
     <td
       style={{
-        color: '#F6F2EA',
+        color: ID.text,
         textAlign: 'left',
         padding: '12px 8px',
-        borderBottom: `1px solid rgba(255,255,255,0.06)`,
+        borderBottom: `1px solid ${PRICING_BORDER_SOFT}`,
         verticalAlign: 'top',
         fontSize: 13,
       }}
@@ -613,7 +640,7 @@ export function NotesList({ notes }: { notes: string[] }) {
         <div
           key={note}
           style={{
-            color: 'rgba(245,242,236,0.78)',
+            color: PRICING_TEXT_MUTED_STRONG,
             fontSize: 14,
             lineHeight: 1.72,
             paddingLeft: 16,
