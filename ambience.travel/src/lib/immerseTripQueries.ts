@@ -173,7 +173,7 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
 
   const clientName = personRow?.nickname
     ?? personRow?.first_name
-    ?? ''
+    ?? 'Our VIP Guest'
 
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
     id:        r.id,
