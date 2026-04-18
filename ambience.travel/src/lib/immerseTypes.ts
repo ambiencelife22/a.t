@@ -71,25 +71,28 @@ export type ImmersePricingRow = {
 export type ImmerseTripFormat = 'journey' | 'experience'
 
 export type ImmerseRouteStop = {
-  id:        string
-  title:     string
+  id: string
+  title: string
   stayLabel: string
-  note:      string
-  imageSrc:  string
-  imageAlt:  string
+  note: string
+  imageSrc: string
+  imageAlt: string
+  destinationSlug?: string | null
+  anchorId?: string
+  destinationRowId?: string | null
 }
 
 export type ImmerseDestinationRow = {
-  id:              string
-  numberLabel:     string
-  title:           string
-  mood:            string
-  summary:         string
-  stayLabel:       string
-  imageSrc:        string
-  imageAlt:        string
-  destinationId:   string | null   // S17: UUID — primary key
-  destinationSlug: string | null   // S17: hydrated via JOIN for URL building
+  id: string
+  numberLabel: string
+  title: string
+  mood: string
+  summary: string
+  imageSrc: string
+  imageAlt: string
+  stayLabel: string
+  destinationSlug?: string | null
+  anchorId?: string
 }
 
 export type ImmerseTripPricingRow = {

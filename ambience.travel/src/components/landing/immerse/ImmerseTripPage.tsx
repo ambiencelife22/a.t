@@ -4,18 +4,16 @@
 // Renders hero + route strip + (optional) secondary hero + destination rows + pricing
 // Does not own destination subpages (see HoneymoonDestinationPage)
 //
-// Last updated: S17 — Removed getFallbackTripData() (~164 lines of hardcoded
-// content). Public honeymoon preview is now DB-backed via slug lookup; all
-// content comes from travel_immerse_trips row 'honeymoon1' + related tables.
-// See seed_s17_honeymoon1_public_preview.sql.
+// Last updated: S17B (ChatGPT) — destination cards now scroll to lower anchor sections,
+// while preserving subpage CTAs inside each row.
 
-import ImmerseLayout              from '../../layouts/ImmerseLayout'
-import ImmerseHero                from './ImmerseHero'
-import { ImmerseHeroBlock }       from './ImmerseHeroBlock'
-import { ImmerseRouteStrip }      from './ImmerseTripComponents'
+import ImmerseLayout from '../../layouts/ImmerseLayout'
+import ImmerseHero from './ImmerseHero'
+import { ImmerseHeroBlock } from './ImmerseHeroBlock'
+import { ImmerseRouteStrip } from './ImmerseTripComponents'
 import { ImmerseDestinationRows } from './ImmerseTripComponents'
-import { ImmerseTripPricing }     from './ImmerseTripComponents'
-import type { ImmerseTripData }   from '../../../lib/immerseTypes'
+import { ImmerseTripPricing } from './ImmerseTripComponents'
+import type { ImmerseTripData } from '../../../lib/immerseTypes'
 
 export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null }) {
   if (!data) return null
@@ -36,6 +34,7 @@ export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null
         secondaryHref='#pricing'
         secondaryLabel='Pricing overview'
       />
+
       <ImmerseRouteStrip data={data} />
 
       {data.heroImageSrc2 && (

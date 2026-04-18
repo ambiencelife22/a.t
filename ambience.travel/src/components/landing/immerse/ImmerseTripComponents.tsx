@@ -1,10 +1,65 @@
 // ImmerseTripComponents.tsx — section components for /immerse/ trip overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseTripPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
-// Last updated: S18 — overview page made more visual, faster to skim, lighter on copy
+// Last updated: S19E — route strip bricks now match height within each row,
+// non-clickable bricks retain equal visual weight, and all bricks use gentler depth
 
-import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel, ImmerseStayBox } from './ImmerseComponents'
+import {
+  ID,
+  useImmerseMobile,
+  useImmerseVisible,
+  immerseFadeUp,
+  ImmerseSectionWrap,
+  ImmerseEyebrow,
+  ImmerseTitle,
+  ImmerseBody,
+  ImmersePanel,
+  ImmerseStayBox,
+} from './ImmerseComponents'
 import type { ImmerseTripData, ImmerseRouteStop, ImmerseDestinationRow } from '../../../lib/immerseTypes'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function slugifyAnchor(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function getDestinationAnchorId(row: ImmerseDestinationRow) {
+  if (row.anchorId) return row.anchorId
+  if (row.destinationSlug) return `dest-${row.destinationSlug}`
+  if (row.title) return `dest-${slugifyAnchor(row.title)}`
+  return `dest-${row.id}`
+}
+
+function getDestinationPageHref(row: ImmerseDestinationRow, urlId: string) {
+  const isPublic = urlId === 'honeymoon'
+
+  if (!row.destinationSlug) return null
+
+  return isPublic
+    ? `/immerse/honeymoon/${row.destinationSlug}`
+    : `/immerse/${urlId}/${row.destinationSlug}`
+}
+
+function scrollToDestination(anchorId: string) {
+  const el = document.getElementById(anchorId)
+  if (!el) return
+
+  const top = el.getBoundingClientRect().top + window.scrollY - 96
+
+  window.history.replaceState(null, '', `#${anchorId}`)
+  window.scrollTo({
+    top,
+    behavior: 'smooth',
+  })
+}
+
+const BRICK_DEPTH = '0 8px 24px rgba(15, 18, 22, 0.045)'
+const BRICK_DEPTH_HOVER = '0 12px 28px rgba(15, 18, 22, 0.065)'
 
 // ─── Route strip ──────────────────────────────────────────────────────────────
 
@@ -43,32 +98,70 @@ export function ImmerseRouteStrip({ data }: { data: ImmerseTripData }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
           gap: 14,
+          alignItems: 'stretch',
           ...immerseFadeUp(visible, 180),
         }}
       >
-        {data.routeStops.map((stop, i) => (
-          <RouteStopCard key={stop.id} stop={stop} index={i} />
-        ))}
+        {data.routeStops.map((stop, i) => {
+          const linkedRow = data.destinationRows[i] ?? null
+          const anchorId = linkedRow ? getDestinationAnchorId(linkedRow) : null
+
+          return (
+            <RouteStopCard
+              key={stop.id}
+              stop={stop}
+              index={i}
+              anchorId={anchorId}
+            />
+          )
+        })}
       </div>
     </ImmerseSectionWrap>
   )
 }
 
-function RouteStopCard({ stop, index }: { stop: ImmerseRouteStop; index: number }) {
-  return (
+function RouteStopCard({
+  stop,
+  index,
+  anchorId,
+}: {
+  stop: ImmerseRouteStop
+  index: number
+  anchorId: string | null
+}) {
+  const isClickable = Boolean(anchorId)
+
+  const card = (
     <div
       style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         border: `1px solid ${ID.line}`,
         borderRadius: 26,
         overflow: 'hidden',
         background: ID.panel2,
-        transition: 'transform 0.3s ease',
+        transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
         animation: `immerseFadeIn 0.55s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
+        boxShadow: BRICK_DEPTH,
+        cursor: isClickable ? 'pointer' : 'default',
+      }}
+      onMouseEnter={e => {
+        if (!isClickable) return
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        e.currentTarget.style.borderColor = 'rgba(216,181,106,0.28)'
+        e.currentTarget.style.boxShadow = BRICK_DEPTH_HOVER
+      }}
+      onMouseLeave={e => {
+        if (!isClickable) return
+        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.borderColor = ID.line
+        e.currentTarget.style.boxShadow = BRICK_DEPTH
       }}
     >
-      <div style={{ height: 220, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ height: 220, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
         <img
           src={stop.imageSrc}
           alt={stop.imageAlt}
@@ -116,7 +209,16 @@ function RouteStopCard({ stop, index }: { stop: ImmerseRouteStop; index: number 
         </div>
       </div>
 
-      <div style={{ padding: 18 }}>
+      <div
+        style={{
+          padding: 18,
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 1,
+          justifyContent: 'flex-start',
+          background: ID.panel2,
+        }}
+      >
         <div
           style={{
             color: ID.muted,
@@ -128,6 +230,29 @@ function RouteStopCard({ stop, index }: { stop: ImmerseRouteStop; index: number 
         </div>
       </div>
     </div>
+  )
+
+  if (!anchorId) {
+    return <div style={{ display: 'block', height: '100%' }}>{card}</div>
+  }
+
+  return (
+    <a
+      href={`#${anchorId}`}
+      onClick={e => {
+        e.preventDefault()
+        scrollToDestination(anchorId)
+      }}
+      style={{
+        textDecoration: 'none',
+        color: 'inherit',
+        display: 'block',
+        height: '100%',
+      }}
+      aria-label={`Jump to ${stop.title}`}
+    >
+      {card}
+    </a>
   )
 }
 
@@ -188,20 +313,15 @@ function DestinationRow({
   visible: boolean
 }) {
   const isMobile = useImmerseMobile()
-  const isPublic = urlId === 'honeymoon'
-  const href = row.destinationSlug
-    ? isPublic
-      ? `/immerse/honeymoon/${row.destinationSlug}`
-      : `/immerse/${urlId}/${row.destinationSlug}`
-    : null
+  const anchorId = getDestinationAnchorId(row)
+  const pageHref = getDestinationPageHref(row, urlId)
 
   return (
-    <a
-      href={href ?? undefined}
+    <div
+      id={anchorId}
       style={{
-        textDecoration: 'none',
-        color: 'inherit',
-        display: 'block',
+        position: 'relative',
+        scrollMarginTop: 96,
       }}
     >
       <div
@@ -214,19 +334,19 @@ function DestinationRow({
           border: `1px solid ${ID.line}`,
           borderRadius: 30,
           background: ID.panel2,
-          boxShadow: ID.shadow,
-          transition: 'transform 0.32s ease, box-shadow 0.32s ease, border-color 0.32s ease',
+          boxShadow: BRICK_DEPTH,
+          transition: 'transform 0.32s ease, border-color 0.32s ease, box-shadow 0.32s ease',
           ...immerseFadeUp(visible, delay),
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.transform = 'translateY(-4px)'
-          e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.10)'
-          e.currentTarget.style.borderColor = 'rgba(216,181,106,0.32)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.borderColor = 'rgba(216,181,106,0.28)'
+          e.currentTarget.style.boxShadow = BRICK_DEPTH_HOVER
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = 'translateY(0)'
-          e.currentTarget.style.boxShadow = ID.shadow
           e.currentTarget.style.borderColor = ID.line
+          e.currentTarget.style.boxShadow = BRICK_DEPTH
         }}
       >
         <div style={{ minHeight: isMobile ? 260 : 300, position: 'relative' }}>
@@ -278,16 +398,20 @@ function DestinationRow({
             {row.title}
           </div>
 
-          <div style={{ color: ID.gold, fontSize: 12, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 700 }}>
+          <div
+            style={{
+              color: ID.gold,
+              fontSize: 12,
+              letterSpacing: '0.10em',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+            }}
+          >
             {row.mood}
           </div>
 
           <div style={{ color: ID.muted, fontSize: 14, lineHeight: 1.72, maxWidth: 640 }}>
             {row.summary}
-          </div>
-
-          <div style={{ color: ID.text, fontSize: 13, fontWeight: 700 }}>
-            Explore this segment →
           </div>
         </div>
 
@@ -305,7 +429,41 @@ function DestinationRow({
           <ImmerseStayBox label={row.stayLabel} />
         </div>
       </div>
-    </a>
+
+      {pageHref && (
+        <a
+          href={pageHref}
+          style={{
+            position: 'absolute',
+            right: isMobile ? 22 : 28,
+            bottom: isMobile ? 22 : 28,
+            textDecoration: 'none',
+            color: ID.text,
+            fontSize: 13,
+            fontWeight: 700,
+            padding: '10px 14px',
+            border: `1px solid ${ID.line}`,
+            borderRadius: 999,
+            background: '#FFFFFF',
+            transition: 'transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
+            zIndex: 3,
+            boxShadow: '0 4px 14px rgba(15,18,22,0.05)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.borderColor = 'rgba(216,181,106,0.45)'
+            e.currentTarget.style.boxShadow = '0 8px 16px rgba(15,18,22,0.08)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.borderColor = ID.line
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(15,18,22,0.05)'
+          }}
+        >
+          Explore this segment →
+        </a>
+      )}
+    </div>
   )
 }
 
