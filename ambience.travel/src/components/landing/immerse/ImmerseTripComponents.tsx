@@ -1,8 +1,9 @@
 // ImmerseTripComponents.tsx — section components for /immerse/ trip overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseTripPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
-// Last updated: S19F — colour standards aligned to shared Immerse tokens, pricing section de-hardcoded,
-// CTA surfaces normalized, and pasted pricing typo corrected
+// Last updated: S19G — all hardcoded hex removed in favor of ID/IMMERSE tokens,
+// destinations section moved to light-surface context with rounded bottom + depth,
+// text colors in destinations section re-themed for cream background.
 
 import {
   ID,
@@ -16,6 +17,7 @@ import {
   ImmersePanel,
   ImmerseStayBox,
 } from './ImmerseComponents'
+import { IMMERSE } from '../../../lib/landingColors'
 import type { ImmerseTripData, ImmerseRouteStop, ImmerseDestinationRow } from '../../../lib/immerseTypes'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,22 +58,6 @@ function scrollToDestination(anchorId: string) {
     behavior: 'smooth',
   })
 }
-
-const BRICK_DEPTH = '0 8px 24px rgba(15, 18, 22, 0.045)'
-const BRICK_DEPTH_HOVER = '0 12px 28px rgba(15, 18, 22, 0.065)'
-const CTA_DEPTH = '0 4px 14px rgba(15, 18, 22, 0.05)'
-const CTA_DEPTH_HOVER = '0 8px 16px rgba(15, 18, 22, 0.08)'
-const ROUTE_IMAGE_OVERLAY = 'linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.46) 100%)'
-const DESTINATION_IMAGE_OVERLAY = 'linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.22) 100%)'
-const PRICING_BORDER = 'rgba(255,255,255,0.08)'
-const PRICING_BORDER_SOFT = 'rgba(255,255,255,0.06)'
-const PRICING_TEXT_MUTED = 'rgba(245,242,236,0.72)'
-const PRICING_TEXT_MUTED_STRONG = 'rgba(245,242,236,0.78)'
-const PRICING_SECTION_BORDER = 'rgba(216,181,106,0.10)'
-const GOLD_BORDER_SOFT = 'rgba(216,181,106,0.28)'
-const GOLD_BORDER_STRONG = 'rgba(216,181,106,0.45)'
-const PRICING_SECTION_BG = 'rgba(10,10,10,1)'
-const PRICING_PANEL_BG = 'rgba(17,17,17,1)'
 
 // ─── Route strip ──────────────────────────────────────────────────────────────
 
@@ -157,20 +143,20 @@ function RouteStopCard({
         background: ID.panel2,
         transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
         animation: `immerseFadeIn 0.55s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
-        boxShadow: BRICK_DEPTH,
+        boxShadow: IMMERSE.brickDepth,
         cursor: isClickable ? 'pointer' : 'default',
       }}
       onMouseEnter={e => {
         if (!isClickable) return
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.borderColor = GOLD_BORDER_SOFT
-        e.currentTarget.style.boxShadow = BRICK_DEPTH_HOVER
+        e.currentTarget.style.borderColor = IMMERSE.goldBorderSoft
+        e.currentTarget.style.boxShadow = IMMERSE.brickDepthHover
       }}
       onMouseLeave={e => {
         if (!isClickable) return
         e.currentTarget.style.transform = 'translateY(0)'
         e.currentTarget.style.borderColor = ID.line
-        e.currentTarget.style.boxShadow = BRICK_DEPTH
+        e.currentTarget.style.boxShadow = IMMERSE.brickDepth
       }}
     >
       <div style={{ height: 220, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
@@ -183,7 +169,7 @@ function RouteStopCard({
           style={{
             position: 'absolute',
             inset: 0,
-            background: ROUTE_IMAGE_OVERLAY,
+            background: IMMERSE.imageOverlayStrong,
           }}
         />
         <div
@@ -269,13 +255,26 @@ function RouteStopCard({
 }
 
 // ─── Destination rows ─────────────────────────────────────────────────────────
+// Renders on a cream (light) surface. All text + borders inside this section
+// switch to the light-context token family (textOnLight, mutedOnLight, etc.)
+// so the cards read correctly against the light background.
+// Gold accents (eyebrow, number label, mood tag) stay gold — they work on
+// both dark and light.
 
 export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile = useImmerseMobile()
 
   return (
-    <ImmerseSectionWrap id='destinations' refProp={ref as React.RefObject<HTMLElement>} style={{ background: ID.bg }}>
+    <ImmerseSectionWrap
+      id='destinations'
+      refProp={ref as React.RefObject<HTMLElement>}
+      style={{
+        background: IMMERSE.lightSurface,
+        borderRadius: '0 0 36px 36px',
+        boxShadow: IMMERSE.lightSurfaceDepth,
+      }}
+    >
       <div
         style={{
           display: 'grid',
@@ -289,16 +288,28 @@ export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
           <ImmerseEyebrow style={immerseFadeUp(visible, 0)} shimmer={false}>
             {data.destinationHeading}
           </ImmerseEyebrow>
-          <ImmerseTitle serif style={{ fontSize: 'clamp(30px,4vw,52px)', ...immerseFadeUp(visible, 60) }}>
+          <ImmerseTitle
+            serif
+            style={{
+              fontSize: 'clamp(30px,4vw,52px)',
+              color: IMMERSE.textOnLight,
+              ...immerseFadeUp(visible, 60),
+            }}
+          >
             {data.destinationSubtitle ?? 'Three destinations. One continuous feeling.'}
           </ImmerseTitle>
         </div>
-        <ImmerseBody style={{ fontSize: 15, ...immerseFadeUp(visible, 120) }}>
+        <ImmerseBody style={{ fontSize: 15, color: IMMERSE.mutedOnLight, ...immerseFadeUp(visible, 120) }}>
           {data.destinationBody ?? 'Each stop should feel distinct, highly visual, and worth entering on its own.'}
         </ImmerseBody>
       </div>
 
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div
+        style={{
+          display: 'grid',
+          gap: 16,
+        }}
+      >
         {data.destinationRows.map((row, i) => (
           <DestinationRow
             key={row.id}
@@ -343,22 +354,22 @@ function DestinationRow({
           gap: 18,
           alignItems: 'stretch',
           overflow: 'hidden',
-          border: `1px solid ${ID.line}`,
+          border: `1px solid ${IMMERSE.lineOnLight}`,
           borderRadius: 30,
-          background: ID.panel2,
-          boxShadow: BRICK_DEPTH,
+          background: IMMERSE.panelOnLight,
+          boxShadow: IMMERSE.brickDepth,
           transition: 'transform 0.32s ease, border-color 0.32s ease, box-shadow 0.32s ease',
           ...immerseFadeUp(visible, delay),
         }}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.borderColor = GOLD_BORDER_SOFT
-          e.currentTarget.style.boxShadow = BRICK_DEPTH_HOVER
+          e.currentTarget.style.borderColor = IMMERSE.goldBorderOnLight
+          e.currentTarget.style.boxShadow = IMMERSE.brickDepthHover
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = 'translateY(0)'
-          e.currentTarget.style.borderColor = ID.line
-          e.currentTarget.style.boxShadow = BRICK_DEPTH
+          e.currentTarget.style.borderColor = IMMERSE.lineOnLight
+          e.currentTarget.style.boxShadow = IMMERSE.brickDepth
         }}
       >
         <div style={{ minHeight: isMobile ? 260 : 300, position: 'relative' }}>
@@ -371,7 +382,7 @@ function DestinationRow({
             style={{
               position: 'absolute',
               inset: 0,
-              background: DESTINATION_IMAGE_OVERLAY,
+              background: IMMERSE.imageOverlaySoft,
             }}
           />
         </div>
@@ -404,7 +415,7 @@ function DestinationRow({
               letterSpacing: '-0.04em',
               fontWeight: 400,
               fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
-              color: ID.text,
+              color: IMMERSE.textOnLight,
             }}
           >
             {row.title}
@@ -422,7 +433,7 @@ function DestinationRow({
             {row.mood}
           </div>
 
-          <div style={{ color: ID.muted, fontSize: 14, lineHeight: 1.72, maxWidth: 640 }}>
+          <div style={{ color: IMMERSE.mutedOnLight, fontSize: 14, lineHeight: 1.72, maxWidth: 640 }}>
             {row.summary}
           </div>
         </div>
@@ -450,26 +461,26 @@ function DestinationRow({
             right: isMobile ? 22 : 28,
             bottom: isMobile ? 22 : 28,
             textDecoration: 'none',
-            color: ID.text,
+            color: IMMERSE.textOnLight,
             fontSize: 13,
             fontWeight: 700,
             padding: '10px 14px',
-            border: `1px solid ${ID.line}`,
+            border: `1px solid ${IMMERSE.lineOnLight}`,
             borderRadius: 999,
-            background: ID.panel2,
+            background: IMMERSE.panelOnLight,
             transition: 'transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
             zIndex: 3,
-            boxShadow: CTA_DEPTH,
+            boxShadow: IMMERSE.ctaDepth,
           }}
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.borderColor = GOLD_BORDER_STRONG
-            e.currentTarget.style.boxShadow = CTA_DEPTH_HOVER
+            e.currentTarget.style.borderColor = IMMERSE.goldBorderOnLight
+            e.currentTarget.style.boxShadow = IMMERSE.ctaDepthHover
           }}
           onMouseLeave={e => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.borderColor = ID.line
-            e.currentTarget.style.boxShadow = CTA_DEPTH
+            e.currentTarget.style.borderColor = IMMERSE.lineOnLight
+            e.currentTarget.style.boxShadow = IMMERSE.ctaDepth
           }}
         >
           Explore this segment →
@@ -490,7 +501,7 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
       id='pricing'
       refProp={ref as React.RefObject<HTMLElement>}
       style={{
-        background: '#F6F1E8',
+        background: ID.bg,
         borderTop: `1px solid ${ID.line}`,
       }}
     >
@@ -505,15 +516,15 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
         <ImmersePanel
           style={{
             padding: 30,
-            background: PRICING_PANEL_BG,
-            boxShadow: BRICK_DEPTH,
+            background: ID.panel2,
+            boxShadow: IMMERSE.brickDepth,
           }}
         >
           <ImmerseEyebrow shimmer={false}>{data.pricingHeading}</ImmerseEyebrow>
           <ImmerseTitle serif style={{ fontSize: 'clamp(30px,3.8vw,46px)', color: ID.text }}>
             {data.pricingTitle}
           </ImmerseTitle>
-          <ImmerseBody style={{ marginBottom: 14, color: PRICING_TEXT_MUTED }}>
+          <ImmerseBody style={{ marginBottom: 14, color: ID.muted }}>
             {data.pricingBody}
           </ImmerseBody>
           <PricingTable>
@@ -537,8 +548,8 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
         <ImmersePanel
           style={{
             padding: 30,
-            background: PRICING_PANEL_BG,
-            boxShadow: BRICK_DEPTH,
+            background: ID.panel2,
+            boxShadow: IMMERSE.brickDepth,
           }}
         >
           <ImmerseEyebrow shimmer={false}>{data.pricingNotesHeading}</ImmerseEyebrow>
@@ -576,7 +587,7 @@ export function PricingTable({ children }: { children: React.ReactNode }) {
                 fontWeight: 700,
                 textAlign: 'left',
                 padding: '12px 8px',
-                borderBottom: `1px solid ${PRICING_BORDER}`,
+                borderBottom: `1px solid ${IMMERSE.tableBorder}`,
               }}
             >
               {h}
@@ -600,7 +611,7 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
         color: ID.text,
         textAlign: 'left',
         padding: '12px 8px',
-        borderBottom: `1px solid ${PRICING_BORDER_SOFT}`,
+        borderBottom: `1px solid ${IMMERSE.tableBorderSoft}`,
         verticalAlign: 'top',
         fontSize: 13,
       }}
@@ -640,7 +651,7 @@ export function NotesList({ notes }: { notes: string[] }) {
         <div
           key={note}
           style={{
-            color: PRICING_TEXT_MUTED_STRONG,
+            color: ID.muted,
             fontSize: 14,
             lineHeight: 1.72,
             paddingLeft: 16,
