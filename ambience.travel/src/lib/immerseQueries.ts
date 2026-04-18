@@ -236,10 +236,13 @@ async function fetchAllRooms(
     const legacyGallery = Array.isArray(r.room_gallery) ? (r.room_gallery as string[]) : []
     const resolvedGallery = newGallery.length > 0 ? newGallery : legacyGallery
 
+    // S17: room_benefits is jsonb. Defensive handling matches room_gallery pattern.
+    const roomBenefits = Array.isArray(r.room_benefits) ? (r.room_benefits as string[]) : []
+
     grouped[r.hotel_id].push({
       levelLabel:         r.level_label          ?? '',
       roomBasis:          r.room_basis            ?? '',
-      roomBenefits:       (r.room_benefits as string[]) ?? [],
+      roomBenefits:       roomBenefits,
       roomImageSrc:       r.room_image_src        ?? '',
       roomImageAlt:       r.room_image_alt        ?? '',
       roomGallery:        resolvedGallery,

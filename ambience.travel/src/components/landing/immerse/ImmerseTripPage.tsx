@@ -35,8 +35,8 @@ function getFallbackTripData(): ImmerseTripData {
     title: 'A Honeymoon Journey',
     subtitle:
       'A beautifully considered sequence starting with winter stillness, moving through city energy, and settling into a restorative island stay.',
-    heroImageSrc: '/images/shared/honeymoon-overview-hero.webp',
-    heroImageAlt: 'Romantic honeymoon overview',
+    heroImageSrc: 'https://rjobcbpnhymuczjhqzmh.supabase.co/storage/v1/object/public/ambience-assets/immerse/europe/iceland/accom/11dep/11Dep1.webp',
+    heroImageAlt: '11 Deplar Farm exterior, Iceland',
     heroPills: [
       'Thoughtfully paced',
       'Beautiful stays',
@@ -55,7 +55,7 @@ function getFallbackTripData(): ImmerseTripData {
         stayLabel: '3-4 nights',
         title: 'Nordic Winter Experience',
         note: 'A colder, quieter, more cinematic stretch built around stillness, warmth, and contrast.',
-        imageSrc: '/immerse/europe/nordic/nordic-winter-1.webp',
+        imageSrc: '/immerse/europe/nordic/nordic-winter-4.webp',
         imageAlt: 'Nordic winter landscape',
       },
       {
@@ -63,8 +63,8 @@ function getFallbackTripData(): ImmerseTripData {
         stayLabel: '5-6 nights',
         title: 'New York City',
         note: 'An energetic stretch shaped by skyline views, memorable tables, and the rhythm of the city.',
-        imageSrc: '/images/immerse/overview/new-york.webp',
-        imageAlt: 'New York skyline',
+        imageSrc: '/immerse/na/usa/ny/nyc/nyc-winter1.webp',
+        imageAlt: 'New York City winter view',
       },
       {
         id: 'stb',
@@ -99,7 +99,7 @@ function getFallbackTripData(): ImmerseTripData {
         stayLabel: '3-4 nights',
         destinationId: null,
         destinationSlug: 'nordic-winter',
-        imageSrc: '/immerse/europe/nordic/nordic-winter-2.webp',
+        imageSrc: '/immerse/europe/nordic/nordic-winter-4.webp',
         imageAlt: 'Nordic Winter destination overview',
       },
       {
@@ -112,8 +112,8 @@ function getFallbackTripData(): ImmerseTripData {
         stayLabel: '5-6 nights',
         destinationId: null,
         destinationSlug: 'new-york',
-        imageSrc: '/images/immerse/overview/new-york-row.webp',
-        imageAlt: 'New York destination overview',
+        imageSrc: '/immerse/na/usa/ny/nyc/nyc-winter1.webp',
+        imageAlt: 'New York City destination overview',
       },
       {
         id: 'dest-stb',
@@ -138,7 +138,7 @@ function getFallbackTripData(): ImmerseTripData {
         stayLabel: '2-3 nights',
         destinationId: null,
         destinationSlug: null,
-        imageSrc: '/immerse/europe/nordic/nordic-winter-1.webp',
+        imageSrc: '/immerse/europe/nordic/nordic-winter-3.webp',
         imageAlt: 'Europe return segment',
       },
     ],
