@@ -29,7 +29,7 @@ export function ImmerseRouteStrip({ data }: { data: ImmerseTripData }) {
       >
         <div>
           <ImmerseEyebrow style={immerseFadeUp(visible, 0)} shimmer={false}>
-            Route overview
+            {data.routeEyebrow ?? 'Route overview'}
           </ImmerseEyebrow>
           <ImmerseTitle serif style={{ fontSize: 'clamp(30px,4vw,52px)', ...immerseFadeUp(visible, 60) }}>
             {data.routeHeading}
@@ -64,8 +64,7 @@ function RouteStopCard({ stop, index }: { stop: ImmerseRouteStop; index: number 
         borderRadius: 26,
         overflow: 'hidden',
         background: ID.panel2,
-        boxShadow: ID.shadow,
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        transition: 'transform 0.3s ease',
         animation: `immerseFadeIn 0.55s cubic-bezier(0.16,1,0.3,1) ${index * 90}ms both`,
       }}
     >
@@ -154,11 +153,11 @@ export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
             {data.destinationHeading}
           </ImmerseEyebrow>
           <ImmerseTitle serif style={{ fontSize: 'clamp(30px,4vw,52px)', ...immerseFadeUp(visible, 60) }}>
-            Three destinations. One continuous feeling.
+            {data.destinationSubtitle ?? 'Three destinations. One continuous feeling.'}
           </ImmerseTitle>
         </div>
         <ImmerseBody style={{ fontSize: 15, ...immerseFadeUp(visible, 120) }}>
-          Each stop should feel distinct, highly visual, and worth entering on its own.
+          {data.destinationBody ?? 'Each stop should feel distinct, highly visual, and worth entering on its own.'}
         </ImmerseBody>
       </div>
 

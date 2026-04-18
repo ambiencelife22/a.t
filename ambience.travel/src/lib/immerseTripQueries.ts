@@ -36,7 +36,10 @@ type TripRow = {
   hero_pills:             string[] | null
   route_heading:          string | null
   route_body:             string | null
+  route_eyebrow:          string | null
   destination_heading:    string | null
+  destination_subtitle:   string | null
+  destination_body:       string | null
   pricing_heading:        string | null
   pricing_title:          string | null
   pricing_body:           string | null
@@ -98,8 +101,8 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
       eyebrow, title, subtitle,
       hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
       hero_title_2, hero_subtitle_2, hero_pills,
-      route_heading, route_body,
-      destination_heading,
+      route_heading, route_body, route_eyebrow,
+      destination_heading, destination_subtitle, destination_body,
       pricing_heading, pricing_title, pricing_body,
       pricing_total_label, pricing_total_value,
       pricing_notes_heading, pricing_notes_title, pricing_notes
@@ -198,9 +201,12 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
 
     routeHeading:  tripRow.route_heading ?? '',
     routeBody:     tripRow.route_body    ?? '',
+    routeEyebrow:  tripRow.route_eyebrow ?? undefined,
     routeStops,
 
-    destinationHeading: tripRow.destination_heading ?? '',
+    destinationHeading:   tripRow.destination_heading   ?? '',
+    destinationSubtitle:  tripRow.destination_subtitle  ?? undefined,
+    destinationBody:      tripRow.destination_body      ?? undefined,
     destinationRows,
 
     pricingHeading:      tripRow.pricing_heading       ?? '',

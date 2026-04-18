@@ -1,8 +1,9 @@
 // ImmerseTripPage.tsx — DB-wired trip overview page
 // Route: /immerse/{url_id} (trip) OR /immerse/honeymoon (public fallback)
-// Renders hero + route strip + destination rows + pricing
+// Renders hero + route strip + (optional) secondary hero + destination rows + pricing
 // Does not own destination subpages (see HoneymoonDestinationPage)
-// Last updated: S17 — Added secondary hero block support
+// Last updated: S17 — Added secondary hero + 4-destination public fallback (Europe Return)
+//   Public fallback now uses DB-driven copy fields (routeEyebrow, destinationSubtitle, destinationBody)
 
 import ImmerseLayout              from '../../layouts/ImmerseLayout'
 import ImmerseHero                from './ImmerseHero'
@@ -45,73 +46,100 @@ function getFallbackTripData(): ImmerseTripData {
 
     // route
     routeHeading: 'A romantic arc',
+    routeEyebrow: 'Program Overview',
     routeBody:
       'From colder cinematic stillness to skyline energy and softer island rhythms, each stop is chosen to create contrast, atmosphere, and ease throughout the journey.',
     routeStops: [
       {
         id: 'nordic',
-        stayLabel: 'Opening',
-        title: 'Nordic Winter',
+        stayLabel: '3-4 nights',
+        title: 'Nordic Winter Experience',
         note: 'A colder, quieter, more cinematic stretch built around stillness, warmth, and contrast.',
         imageSrc: '/immerse/europe/nordic/nordic-winter-1.webp',
         imageAlt: 'Nordic winter landscape',
       },
       {
         id: 'nyc',
-        stayLabel: 'Middle',
-        title: 'New York',
+        stayLabel: '5-6 nights',
+        title: 'New York City',
         note: 'An energetic stretch shaped by skyline views, memorable tables, and the rhythm of the city.',
         imageSrc: '/images/immerse/overview/new-york.webp',
         imageAlt: 'New York skyline',
       },
       {
         id: 'stb',
-        stayLabel: 'Main stay',
-        title: 'St. Barths',
-        note: 'The longest and strongest segment, defined by privacy, sea light, and a slower daily rhythm.',
+        stayLabel: '6-7 nights',
+        title: 'St Barths',
+        note: 'The main honeymoon stay, defined by privacy, sea light, and a slower daily rhythm.',
         imageSrc: '/images/immerse/overview/st-barths.webp',
-        imageAlt: 'St. Barths coastline',
+        imageAlt: 'St Barths coastline',
+      },
+      {
+        id: 'euro-return',
+        stayLabel: '2-3 nights',
+        title: 'Europe Return',
+        note: 'A graceful decompression segment before the final return home.',
+        imageSrc: '/immerse/europe/nordic/nordic-winter-2.webp',
+        imageAlt: 'European skyline on return',
       },
     ],
 
-    // destinations
-    destinationHeading: 'Destination overview',
+    // destinations (S17: include destinationId null for public fallback)
+    destinationHeading:  'Destination overview',
+    destinationSubtitle: 'Four destinations. One continuous feeling.',
+    destinationBody:     'Each stop should feel distinct, highly visual, and worth entering on its own.',
     destinationRows: [
       {
         id: 'dest-nordic',
-        numberLabel: '01',
-        title: 'Nordic Winter',
+        numberLabel: 'Destination 01',
+        title: 'Nordic Winter Experience',
         mood: 'Snow, silence, warmth, cinematic contrast',
         summary:
           'A dramatic and atmospheric opening built around winter landscapes, design-led stays, and restorative calm.',
         stayLabel: '3-4 nights',
+        destinationId: null,
         destinationSlug: 'nordic-winter',
         imageSrc: '/immerse/europe/nordic/nordic-winter-2.webp',
         imageAlt: 'Nordic Winter destination overview',
       },
       {
         id: 'dest-nyc',
-        numberLabel: '02',
-        title: 'New York',
+        numberLabel: 'Destination 02',
+        title: 'New York City',
         mood: 'Urban energy, skyline romance, memorable dining',
         summary:
           'A polished city segment with iconic views, refined stays, and the kind of pace that makes the middle feel alive.',
         stayLabel: '5-6 nights',
+        destinationId: null,
         destinationSlug: 'new-york',
         imageSrc: '/images/immerse/overview/new-york-row.webp',
         imageAlt: 'New York destination overview',
       },
       {
         id: 'dest-stb',
-        numberLabel: '03',
-        title: 'St. Barths',
+        numberLabel: 'Destination 03',
+        title: 'St Barths',
         mood: 'Sea light, privacy, softer rhythm',
         summary:
           'The longest and strongest stay in the journey, balancing beach, stillness, and beautifully run hospitality.',
         stayLabel: '6-7 nights',
+        destinationId: null,
         destinationSlug: 'st-barths',
         imageSrc: '/images/immerse/overview/st-barths-row.webp',
-        imageAlt: 'St. Barths destination overview',
+        imageAlt: 'St Barths destination overview',
+      },
+      {
+        id: 'dest-euro-return',
+        numberLabel: 'Destination 04',
+        title: 'Europe Return',
+        mood: 'Graceful decompression, smooth routing home',
+        summary:
+          'A short and graceful segment designed to make the close feel elegant rather than abrupt.',
+        stayLabel: '2-3 nights',
+        destinationId: null,
+        destinationSlug: null,
+        imageSrc: '/immerse/europe/nordic/nordic-winter-1.webp',
+        imageAlt: 'Europe return segment',
       },
     ],
 
@@ -179,7 +207,7 @@ export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null
         secondaryLabel='Pricing overview'
       />
       <ImmerseRouteStrip data={resolvedData} />
-      
+
       {resolvedData.heroImageSrc2 && (
         <ImmerseHeroBlock
           imageSrc={resolvedData.heroImageSrc2}
@@ -188,7 +216,7 @@ export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null
           subtitle={resolvedData.heroSubtitle2}
         />
       )}
-      
+
       <ImmerseDestinationRows data={resolvedData} />
       <ImmerseTripPricing data={resolvedData} />
     </ImmerseLayout>

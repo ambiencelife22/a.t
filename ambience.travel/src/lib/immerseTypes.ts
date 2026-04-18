@@ -123,10 +123,13 @@ export type ImmerseTripData = {
   // route
   routeHeading: string
   routeBody:    string
+  routeEyebrow?: string
   routeStops:   ImmerseRouteStop[]
   // destinations
-  destinationHeading: string
-  destinationRows:    ImmerseDestinationRow[]
+  destinationHeading:    string
+  destinationSubtitle?:  string
+  destinationBody?:      string
+  destinationRows:       ImmerseDestinationRow[]
   // pricing
   pricingHeading:      string
   pricingTitle:        string
