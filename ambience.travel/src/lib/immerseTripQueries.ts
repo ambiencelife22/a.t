@@ -4,9 +4,9 @@
 //   - getImmerseTripBySlug(slug)   — full ImmerseTripData fetch by slug
 //                                    (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S17 — Extracted hydrateTrip helper; added getImmerseTripBySlug
-//   for public honeymoon preview row (slug = 'honeymoon1'). Both entry points
-//   share TRIP_SELECT_COLUMNS + hydrateTrip() so response shape is identical.
+// Last updated: S20 — hydrate subpage_status column into ImmerseDestinationRow.subpageStatus
+//   Filter 'hidden' rows out at the query layer so the component never sees them.
+//   Default to 'live' if column is NULL (defensive — DB has NOT NULL DEFAULT 'live').
 
 import { supabaseAnon } from './supabase'
 import type {
@@ -14,6 +14,7 @@ import type {
   ImmerseTripFormat,
   ImmerseRouteStop,
   ImmerseDestinationRow,
+  ImmerseSubpageStatus,
   ImmerseTripPricingRow,
 } from './immerseTypes'
 
@@ -70,7 +71,8 @@ type RouteStopRow = {
   image_alt:  string | null
 }
 
-// S17 Phase 5A: still reads destination_slug directly (no JOIN yet)
+// S20: subpage_status added to select list. NOT NULL DEFAULT 'live' in DB —
+// nullable here only as a defensive fallback if a legacy row somehow lacks it.
 type DestinationRowRow = {
   id:                string
   sort_order:        number
@@ -82,6 +84,7 @@ type DestinationRowRow = {
   image_src:         string | null
   image_alt:         string | null
   destination_slug:  string | null
+  subpage_status:    string | null
 }
 
 type PricingRowRow = {
@@ -95,7 +98,6 @@ type PricingRowRow = {
 
 // ── Public fetch ─────────────────────────────────────────────────────────────
 
-// Column list reused by both entry points (by url_id, by slug)
 const TRIP_SELECT_COLUMNS = `
   id, url_id, slug, trip_format, journey_types,
   person_id, status_label,
@@ -109,7 +111,6 @@ const TRIP_SELECT_COLUMNS = `
   pricing_notes_heading, pricing_notes_title, pricing_notes
 `
 
-// Fetch trip by public url_id (private / token-keyed trips like Yazeed)
 export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | null> {
   const { data: trip, error: tripErr } = await supabaseAnon
     .from('travel_immerse_trips')
@@ -121,7 +122,6 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
   return hydrateTrip(trip as TripRow)
 }
 
-// Fetch trip by slug (public preview rows like 'honeymoon1'; no url_id)
 export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripData | null> {
   const { data: trip, error: tripErr } = await supabaseAnon
     .from('travel_immerse_trips')
@@ -134,9 +134,6 @@ export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripDat
 }
 
 // ── Shared hydration ─────────────────────────────────────────────────────────
-// Once we have the trip row, the follow-on fetches (person, routes, dests,
-// pricing) and the response shape are identical regardless of how we looked
-// up the trip.
 
 async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
   const tripId = tripRow.id
@@ -154,10 +151,12 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
       .select('id, sort_order, title, stay_label, note, image_src, image_alt')
       .eq('trip_id', tripId)
       .order('sort_order'),
+    // S20: subpage_status added to select; 'hidden' rows filtered server-side
     supabaseAnon
       .from('travel_immerse_trip_destination_rows')
-      .select('id, sort_order, number_label, title, mood, summary, stay_label, image_src, image_alt, destination_slug')
+      .select('id, sort_order, number_label, title, mood, summary, stay_label, image_src, image_alt, destination_slug, subpage_status')
       .eq('trip_id', tripId)
+      .neq('subpage_status', 'hidden')
       .order('sort_order'),
     supabaseAnon
       .from('travel_immerse_trip_pricing_rows')
@@ -193,8 +192,8 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     stayLabel:       r.stay_label   ?? '',
     imageSrc:        r.image_src    ?? '',
     imageAlt:        r.image_alt    ?? '',
-    destinationId:   null,  // S17 Phase 5A: not yet in DB; Phase 5C will populate via JOIN
     destinationSlug: r.destination_slug,
+    subpageStatus:   normalizeSubpageStatus(r.subpage_status),  // S20
   }))
 
   const tripPricingRows: ImmerseTripPricingRow[] = priceRows.map(r => ({
@@ -245,4 +244,13 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     pricingNotesTitle:   tripRow.pricing_notes_title   ?? '',
     pricingNotes:        tripRow.pricing_notes         ?? [],
   }
+}
+
+// S20: defensive normalizer — DB has NOT NULL DEFAULT 'live' but this catches
+// any unexpected value from a legacy migration or schema drift.
+function normalizeSubpageStatus(value: string | null): ImmerseSubpageStatus {
+  if (value === 'live')    return 'live'
+  if (value === 'preview') return 'preview'
+  if (value === 'hidden')  return 'hidden'
+  return 'live'
 }

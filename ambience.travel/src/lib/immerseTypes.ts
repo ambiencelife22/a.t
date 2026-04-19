@@ -1,11 +1,8 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S17 — UUID-first identity across all tables
-//   - ImmerseDestinationData.destinationId is now the destination UUID
-//   - ImmerseDestinationData.destinationSlug is the URL-facing slug (new field)
-//   - ImmerseHotelOption.id is now the hotel UUID (was hotel_slug); storageSlug added
-//   - Secondary hero fields (heroImageSrc2 et al) wired throughout
+// Last updated: S20 — added subpageStatus to ImmerseDestinationRow
+//   (live | preview | hidden) for per-trip per-destination render state control
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -70,6 +67,12 @@ export type ImmersePricingRow = {
 
 export type ImmerseTripFormat = 'journey' | 'experience'
 
+// S20: Per-trip per-destination subpage render state
+//   'live'    — clickable card, normal CTA (Discover More →)
+//   'preview' — non-clickable card, opacity 0.5, "Coming soon" badge
+//   'hidden'  — filtered out server-side; row not rendered at all
+export type ImmerseSubpageStatus = 'live' | 'preview' | 'hidden'
+
 export type ImmerseRouteStop = {
   id: string
   title: string
@@ -93,6 +96,7 @@ export type ImmerseDestinationRow = {
   stayLabel: string
   destinationSlug?: string | null
   anchorId?: string
+  subpageStatus: ImmerseSubpageStatus  // S20: render state — live | preview | hidden
 }
 
 export type ImmerseTripPricingRow = {
