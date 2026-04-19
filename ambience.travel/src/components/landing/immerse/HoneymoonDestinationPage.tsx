@@ -2,7 +2,10 @@
 // Routes:
 //   Public: /immerse/honeymoon/:destination
 //   Trip:   /immerse/:tripId/:destination
-// Last updated: S17 — UUID flow + popstate-driven re-resolve for back/forward navigation
+// Last updated: S20 — bad destination slug now redirects to trip overview with toast
+//   instead of rendering blank. Trip is already verified by ImmerseTripRoute,
+//   so any "not found" here is a destination-level problem (typo or unimplemented
+//   subpage). Redirect uses pushState so back button works as expected.
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -15,6 +18,7 @@ import { ImmerseContentGrid } from './ImmerseDestinationComponents'
 import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
 import { getImmerseBottomContent } from '../../../lib/immerseBottomNotes'
+import { useToast } from '../../../lib/ToastContext'
 import type { ImmerseDestinationData } from '../../../lib/immerseTypes'
 
 type RouteParts = {
@@ -38,9 +42,16 @@ function resolveRouteParts(pathname: string): RouteParts {
   }
 }
 
+// S20: build the parent overview URL for redirect-on-not-found
+function getParentOverviewUrl(tripId: string, isPublic: boolean): string {
+  if (isPublic) return '/immerse/honeymoon'
+  return `/immerse/${tripId}`
+}
+
 export default function HoneymoonDestinationPage() {
   const [data, setData] = useState<ImmerseDestinationData | null>(null)
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   // S17: track pathname so back/forward navigation re-resolves the destination
   const [pathname, setPathname] = useState(window.location.pathname)
@@ -64,8 +75,9 @@ export default function HoneymoonDestinationPage() {
     let cancelled = false
 
     async function load() {
+      // S20: empty slug — same redirect treatment as bad slug
       if (!destinationSlug) {
-        setLoading(false)
+        handleNotFound('Destination not found.')
         return
       }
 
@@ -77,8 +89,8 @@ export default function HoneymoonDestinationPage() {
         if (cancelled) return
 
         if (!result) {
-          setData(null)
-          setLoading(false)
+          // S20: destination slug didn't resolve — redirect to overview with toast
+          handleNotFound(`We couldn't find that page. Returning to the overview.`)
           return
         }
 
@@ -102,12 +114,25 @@ export default function HoneymoonDestinationPage() {
         }
 
         setData(mergedData)
+        setLoading(false)
       } catch (err) {
         console.error('HoneymoonDestinationPage: failed to load destination', err)
-        if (!cancelled) setData(null)
-      } finally {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        handleNotFound('Something went wrong loading that destination. Returning to the overview.')
       }
+    }
+
+    // S20: redirect handler — navigates to parent overview, fires toast,
+    // and updates browser history via pushState so back button returns to landing,
+    // not the bad URL.
+    function handleNotFound(message: string) {
+      const overviewUrl = getParentOverviewUrl(tripId, isPublic)
+      toast.warning(message)
+      // Replace current history entry — bad URL never shows in back stack
+      window.history.replaceState(null, '', overviewUrl)
+      // Trigger pathname re-resolution at the App level
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      setLoading(false)
     }
 
     load()
@@ -115,7 +140,7 @@ export default function HoneymoonDestinationPage() {
     return () => {
       cancelled = true
     }
-  }, [tripId, destinationSlug, isPublic])
+  }, [tripId, destinationSlug, isPublic, toast])
 
   if (loading) return null
   if (!data) return null

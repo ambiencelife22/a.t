@@ -1,16 +1,19 @@
-/* ToastContext.ts
- * Global toast notification system for ambience.SPORTS.
+/* ToastContext.tsx
+ * Global toast notification system — used by both ambience.SPORTS and
+ * ambience.TRAVEL.
  *
  * Usage:
  *   const { toast } = useToast()
- *   toast.success('Bet settled.')
+ *   toast.success('Saved.')
  *   toast.error('Failed to save — please try again.')
  *   toast.warning('No active sportsbooks found.')
  *   toast.info('Tip: use book:DK to filter by book.')
  *
- * Wire-up (App.tsx):
+ * Wire-up (main.tsx):
  *   1. Wrap app with <ToastProvider>
- *   2. Render <ToastContainer /> once, outside Layout (alongside TutorialModal)
+ *   2. Render <ToastContainer /> once, outside Layout
+ *
+ * Last updated: S20 — header note added re: cross-product use.
  */
 
 import { createContext, useContext } from 'react'

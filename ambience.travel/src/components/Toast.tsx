@@ -2,8 +2,15 @@
  * ToastProvider  — wraps the app, manages toast state
  * ToastContainer — fixed overlay that renders the toast stack
  *
+ * Cross-product: this toast system is used by both ambience.SPORTS and
+ * ambience.TRAVEL. In TRAVEL, mounted at the root in main.tsx — wraps the
+ * entire app including the immerse routes. useToast() works inside any
+ * component beneath that.
+ *
  * Keyframes live in animations.ts (injected once via injectAppStyles).
  * Palette colours read from C.* — dark/light reactive.
+ *
+ * Last updated: S20 — header note added re: cross-product use.
  */
 
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
@@ -77,7 +84,7 @@ const toast = {
 }
 
 // ── ToastContainer ────────────────────────────────────────────────────────────
-// Render this once in App.tsx, outside Layout, alongside TutorialModal.
+// Render this once in main.tsx, outside Layout.
 
 export function ToastContainer() {
   const { toasts, toast } = useContext(ToastContext)
