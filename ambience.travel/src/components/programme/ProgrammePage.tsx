@@ -1,9 +1,16 @@
 /* ProgrammePage.tsx
  * Guest-facing stay programme page for ambience.travel.
  * Uses C.* from theme.ts and DANGER from colors.ts — no hardcoded hex.
+ *
+ * Last updated: S23 — HouseManual section toggle now scroll-locks. When the
+ *   user opens a different section, the clicked button's viewport position is
+ *   captured before state mutation; after layout, the page is scrolled so the
+ *   button lands at the same viewport y. Prevents the jarring jump that
+ *   happens when an above-fold panel collapses (shifting later sections up by
+ *   the panel height) at the moment another section is opening.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { C } from '../../lib/theme'
 import { DANGER } from '../../lib/colors'
 import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../lib/programmeTypes'
@@ -170,6 +177,31 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
 
 function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival, publicOwnerPhone, publicManagerPhone, mapsUrl, mapsEmbedUrl }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean; mapsUrl: string | null; mapsEmbedUrl: string | null }) {
   const [open, setOpen] = useState<string | null>(null)
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
+  // S23: scroll-anchored toggle. When opening a section, capture the
+  // *clicked* button's viewport y before state mutation. After layout,
+  // restore that y by scrolling so the button stays under the cursor.
+  // This prevents the page jump when an above-fold panel collapses while
+  // another opens.
+  function handleToggle(sectionId: string) {
+    const isClosing = open === sectionId
+    const targetBtn = buttonRefs.current.get(sectionId)
+    const beforeY   = targetBtn?.getBoundingClientRect().top ?? null
+
+    setOpen(isClosing ? null : sectionId)
+
+    if (isClosing) return
+    if (beforeY === null) return
+
+    requestAnimationFrame(() => {
+      const afterY = targetBtn?.getBoundingClientRect().top ?? null
+      if (afterY === null) return
+      const delta = afterY - beforeY
+      if (delta === 0) return
+      window.scrollBy({ top: delta, left: 0, behavior: 'instant' as ScrollBehavior })
+    })
+  }
 
   // Section gating:
   // - Arrival: if public and not revealed, replace with redacted content + note
@@ -228,7 +260,11 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
           {resolvedSections.map(section => (
             <div key={section.id}>
               <button
-                onClick={() => setOpen(open === section.id ? null : section.id)}
+                ref={el => {
+                  if (el) buttonRefs.current.set(section.id, el)
+                  else    buttonRefs.current.delete(section.id)
+                }}
+                onClick={() => handleToggle(section.id)}
                 style={{
                   width:          '100%',
                   display:        'flex',
