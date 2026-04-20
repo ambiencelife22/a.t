@@ -6,17 +6,17 @@
  * — same alternating left/right anchor positions
  * Instead of TravelCard widgets, cycles through property photos.
  *
- * Last updated: S23 — Timezone-safe date rendering. Previously `new Date('2026-04-25')`
- *   parsed as UTC midnight; .toLocaleDateString() rendered it in local time, subtracting
- *   a day for any user west of UTC. Date-only ISO strings now formatted via a parser
- *   that constructs a local-midnight Date so the displayed day matches the DB value
- *   regardless of viewer timezone.
+ * Last updated: S23 (post-audit) — Date rendering now routes through the
+ *   shared formatDateOnly helper in lib/dates.ts. The local helper defined
+ *   here in the initial S23 fix has been hoisted to lib/dates.ts so all
+ *   travel components share a single implementation.
  */
 
 import { useEffect, useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
 import { DARK } from '../../lib/landingTypes'
 import { WIDGET } from '../../lib/landingColors'
+import { formatDateOnly } from '../../lib/dates'
 
 // ── Float positions — 8 anchors, alternating left/right ──────────────────────
 // Identical to IntroSection.tsx ALL_POSITIONS
@@ -36,21 +36,6 @@ const ALL_POSITIONS = [
 const FADE_IN_MS  = 500
 const FADE_OUT_MS = 4000
 const NEXT_MS     = 4400
-
-// ── Date helpers ─────────────────────────────────────────────────────────────
-// S23: timezone-safe formatter for date-only ISO strings (YYYY-MM-DD).
-// `new Date('2026-04-25')` parses as UTC midnight; rendering in local time
-// shifts the day backward for users west of UTC. Construct from explicit
-// year/month/day so the Date object is local-midnight on the intended day.
-function formatDateOnly(iso: string): string {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (!m) return iso
-  const year  = parseInt(m[1], 10)
-  const month = parseInt(m[2], 10) - 1
-  const day   = parseInt(m[3], 10)
-  const d = new Date(year, month, day)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-}
 
 // ── Floating photo — one image at a time, alternates sides ───────────────────
 

@@ -13,6 +13,11 @@
  *   keys (e.g. properties:travel_programme_properties) so downstream mapping
  *   code stays unchanged. Added error toasts on every load() failure so future
  *   schema drift surfaces immediately instead of silently rendering empty.
+ *   Also: programme list row now renders check-in/check-out via shared
+ *   formatDateOnly helper — canonical DD Month YYYY format, timezone-safe.
+ *   Added View button per row that opens guest-facing programme in new tab,
+ *   resolving to programme.ambience.travel when admin is on a different
+ *   subdomain, or current origin when admin lives on the programme subdomain.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -22,6 +27,7 @@ import { getSession } from '../../lib/auth'
 // import { WIDGET } from '../../lib/landingColors'
 
 import type { ListingCategory } from '../../lib/programmeTypes'
+import { formatDateOnly } from '../../lib/dates'
 import ClientProfilePage from './ClientProfilePage'
 import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'
 import GuestLinker from './GuestLinker'
@@ -41,6 +47,31 @@ const A = {
   danger:     '#ef4444',
   positive:   '#4ade80',
   font:       "'Plus Jakarta Sans', sans-serif",
+}
+
+// ── Guest-facing URL resolution ───────────────────────────────────────────────
+// Routing shape varies by environment:
+// — Production on programme.ambience.travel: /{sub_path}/{url_id} (no prefix,
+//   subdomain routes the programme product)
+// — Localhost: /programme/{sub_path}/{url_id} (prefix required because single
+//   dev server serves all products under path-based routing)
+// — Other subdomains (e.g. design.ambience.travel): absolute URL to canonical
+//   programme subdomain
+
+const PROGRAMME_HOST = 'programme.ambience.travel'
+
+function buildGuestUrl(subPath: string, urlId: string): string {
+  if (typeof window === 'undefined') {
+    return `https://${PROGRAMME_HOST}/${subPath}/${urlId}`
+  }
+  const host = window.location.hostname
+  if (host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1') {
+    return `${window.location.origin}/programme/${subPath}/${urlId}`
+  }
+  if (host === PROGRAMME_HOST) {
+    return `${window.location.origin}/${subPath}/${urlId}`
+  }
+  return `https://${PROGRAMME_HOST}/${subPath}/${urlId}`
 }
 
 // ── Shared input styles ───────────────────────────────────────────────────────
@@ -620,12 +651,30 @@ function ProgrammesTab() {
               /{prog.sub_path}/{prog.url_id}
             </div>
             <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-              {prog.check_in ?? 'TBA'} → {prog.check_out ?? 'TBA'}
+              {prog.check_in ? formatDateOnly(prog.check_in) : 'TBA'} → {prog.check_out ? formatDateOnly(prog.check_out) : 'TBA'}
             </div>
           </div>
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <a
+              href={buildGuestUrl(prog.sub_path, prog.url_id)}
+              target='_blank'
+              rel='noopener noreferrer'
+              style={{
+                ...btnGhost,
+                fontSize:       12,
+                padding:        '7px 16px',
+                color:          A.gold,
+                borderColor:    A.borderGold,
+                textDecoration: 'none',
+                display:        'inline-flex',
+                alignItems:     'center',
+                gap:            6,
+              }}
+            >
+              View ↗
+            </a>
             <button onClick={() => openEdit(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px' }}>
               Edit
             </button>

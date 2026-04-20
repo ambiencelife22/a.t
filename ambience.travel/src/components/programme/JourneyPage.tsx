@@ -3,12 +3,17 @@
  * Renders PropertyIntroSection + WelcomeLetter (shared with stays),
  * then a sticky three-tab shell: Itinerary · Trip Brief · Contacts.
  * Dark ambience theme throughout.
+ *
+ * Last updated: S23 — All date-only ISO strings now route through
+ *   shared formatDateOnly / formatDateWithWeekday helpers (lib/dates.ts).
+ *   Fixes the -1-day-west-of-UTC bug. Canonical render: DD Month YYYY.
  */
 
 import { useEffect, useState } from 'react'
 import type { Booking, Property } from '../../lib/programmeTypes'
 import type { JourneyDay, JourneyEvent, EventStatus } from '../../lib/journeyTypes'
 import PropertyIntroSection from './PropertyIntroSection'
+import { formatDateOnly, formatDateWithWeekday } from '../../lib/dates'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -214,8 +219,8 @@ function EventCard({ event }: { event: JourneyEvent }) {
           {[
             { label: 'Confirmation', value: event.confirmation_number },
             { label: 'Room',         value: event.room_type },
-            { label: 'Check-in',     value: event.check_in_date },
-            { label: 'Check-out',    value: event.check_out_date },
+            { label: 'Check-in',     value: event.check_in_date  ? formatDateOnly(event.check_in_date)  : null },
+            { label: 'Check-out',    value: event.check_out_date ? formatDateOnly(event.check_out_date) : null },
             { label: 'Inclusions',   value: event.inclusions },
           ].filter(f => f.value).map(f => (
             <div key={f.label}>
@@ -272,9 +277,7 @@ function EventCard({ event }: { event: JourneyEvent }) {
 // ── Day block ─────────────────────────────────────────────────────────────────
 
 function DayBlock({ day }: { day: JourneyDay }) {
-  const dateLabel = day.date
-    ? new Date(day.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
-    : null
+  const dateLabel = day.date ? formatDateWithWeekday(day.date) : null
 
   return (
     <div style={{ marginBottom: 48 }}>
@@ -360,8 +363,8 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
       {/* Trip overview */}
       <BriefSection title='Overview'>
         <BriefRow label='Guests'    value={booking.guestNames} />
-        {booking.checkIn  && <BriefRow label='Departure'  value={new Date(booking.checkIn).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />}
-        {booking.checkOut && <BriefRow label='Return'     value={new Date(booking.checkOut).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />}
+        {booking.checkIn  && <BriefRow label='Departure'  value={formatDateWithWeekday(booking.checkIn)} />}
+        {booking.checkOut && <BriefRow label='Return'     value={formatDateWithWeekday(booking.checkOut)} />}
         <BriefRow label='Duration'  value={`${days.length} day${days.length !== 1 ? 's' : ''}`} />
       </BriefSection>
 
@@ -385,9 +388,9 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
           {hotels.map(h => (
             <BriefRow
               key={h.id}
-              label={h.check_in_date ?? '—'}
+              label={h.check_in_date ? formatDateOnly(h.check_in_date) : '—'}
               value={h.title}
-              sub={[h.room_type, h.check_out_date ? `Until ${h.check_out_date}` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' · ')}
+              sub={[h.room_type, h.check_out_date ? `Until ${formatDateOnly(h.check_out_date)}` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' · ')}
             />
           ))}
         </BriefSection>
