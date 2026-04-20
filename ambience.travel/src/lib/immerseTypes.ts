@@ -1,7 +1,13 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S22 — Three-tier rate taxonomy on ImmerseRoomOption:
+// Last updated: S22 — No type shape changes. Pricing notes per-trip override
+//   path consolidated into immerseQueries (was: parallel travel_immerse_bottom_notes
+//   table + immerseBottomNotes.ts). pricingNotesHeading, pricingNotesTitle,
+//   pricingNotes on ImmerseDestinationData are now resolved as
+//   trip-override → canonical-destination → empty by the query layer.
+//   Component fallback ("To be advised") handled at render time.
+// Prior: S22 — Three-tier rate taxonomy on ImmerseRoomOption:
 //   publicNightlyRate (was: same), nonNegotiatedNightlyRate (was: nightlyRate),
 //   ambienceNightlyRate (NEW). Reflects DB rename of travel_immerse_rooms.nightly_rate
 //   → non_negotiated_nightly_rate plus addition of ambience_nightly_rate column.

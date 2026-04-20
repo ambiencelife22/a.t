@@ -1,10 +1,16 @@
 // DestinationPage.tsx — Destination subpage for immerse journey
 // Routes:
 //   Public legacy: /immerse/honeymoon/:destination
-//   Public S21:    /immerse/:public_journey_slug/:destination
+//   Public S22:    /immerse/pubMuirRzSW/:destination (and other pub-prefixed url_ids)
 //   Private trip:  /immerse/:url_id/:destination
-// Last updated: S21 — renamed from HoneymoonDestinationPage. Fully data-driven
-//   hero (guestName, dateLabel, titlePrefix, nightsLabel all derived from trip +
+// Last updated: S22 — Removed the getImmerseBottomContent merge block.
+//   Pricing notes (heading, title, notes) are now resolved entirely by the
+//   query layer (trip-override → canonical-destination → empty), with the
+//   "To be advised" fallback rendered at the component level. Single source of
+//   truth, no shadow override system. immerseBottomNotes.ts is deleted.
+//   Trip promise simplified to two cases (legacy 'honeymoon' slug or url_id).
+// Prior: S21 — renamed from HoneymoonDestinationPage. Fully data-driven hero
+//   (guestName, dateLabel, titlePrefix, nightsLabel all derived from trip +
 //   destination data). Consumes ImmerseDestinationHotelsShape discriminated
 //   union (flat vs regioned hotels). Bad destination slug still redirects to
 //   parent overview with toast.
@@ -20,12 +26,11 @@ import { ImmerseContentGrid } from './ImmerseDestinationComponents'
 import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
 import { getImmerseTrip, getImmerseTripBySlug } from '../../../lib/immerseTripQueries'
-import { getImmerseBottomContent } from '../../../lib/immerseBottomNotes'
 import { useToast } from '../../../lib/ToastContext'
 import type { ImmerseDestinationData, ImmerseTripData } from '../../../lib/immerseTypes'
 
 type RouteParts = {
-  journeyToken:    string        // 'honeymoon' | 11-char url_id | public_journey_slug
+  journeyToken:    string        // 'honeymoon' | 11-char url_id (private or pub-prefixed template)
   destinationSlug: string
   isPublicLegacy:  boolean       // true when journeyToken === 'honeymoon'
 }
@@ -121,16 +126,11 @@ export default function DestinationPage() {
 
       try {
         // Fetch trip + destination in parallel.
-        // For public legacy ('honeymoon'), trip comes via slug lookup.
-        // For url_id / public_journey_slug, trip comes via url_id / slug.
-        // Queries layer (resolveTripId inside getImmerseDestination) handles
-        // the same fan-out internally; here we fetch the trip separately so
-        // the hero can derive clientName, dateLabel, nightsLabel, titlePrefix.
+        // Two cases: legacy 'honeymoon' slug, or any url_id (private or
+        // public-template — both flow through getImmerseTrip which keys on url_id).
         const tripPromise = isPublicLegacy
           ? getImmerseTripBySlug('honeymoon1')
-          : /^[A-Za-z0-9]{11}$/.test(journeyToken)
-              ? getImmerseTrip(journeyToken)
-              : getImmerseTripBySlug(journeyToken)
+          : getImmerseTrip(journeyToken)
 
         const [destinationResult, tripResult] = await Promise.all([
           getImmerseDestination(journeyToken, destinationSlug),
@@ -144,26 +144,10 @@ export default function DestinationPage() {
           return
         }
 
-        // Merge bottom content (pricing notes, etc.)
-        const bottomContent = await getImmerseBottomContent({
-          scope:             isPublicLegacy ? 'public' : journeyToken,
-          destinationId:     destinationResult.destinationId,
-          destinationSlug:   destinationResult.destinationSlug,
-          fallbackHeading:   destinationResult.pricingNotesHeading,
-          fallbackTitle:     destinationResult.pricingNotesTitle,
-          fallbackNotes:     destinationResult.pricingNotes ?? [],
-        })
-
-        if (cancelled) return
-
-        const mergedData: ImmerseDestinationData = {
-          ...destinationResult,
-          pricingNotesHeading: bottomContent.pricingNotesHeading ?? destinationResult.pricingNotesHeading,
-          pricingNotesTitle:   bottomContent.pricingNotesTitle   ?? destinationResult.pricingNotesTitle,
-          pricingNotes:        bottomContent.pricingNotes,
-        }
-
-        setData(mergedData)
+        // S22: pricing notes (heading, title, notes) are now fully resolved by
+        // the query layer (trip-override → canonical-destination). No shadow
+        // override system, no merge step here. Component handles empty fallback.
+        setData(destinationResult)
         setTrip(tripResult)
         setLoading(false)
       } catch (err) {

@@ -1,6 +1,11 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S22 — Three-tier rate pills in RoomCategory:
+// Last updated: S22 — Added 'To be advised' fallback (single TBA constant) in
+//   ImmerseDestPricing for pricingNotesHeading, pricingNotesTitle, and pricingNotes
+//   when DB returns empty/missing. No hardcoded content maps anywhere — DB is the
+//   source of truth, this is purely a "no data yet" placeholder. Coupled with
+//   the queries-side merge consolidation (immerseBottomNotes.ts deleted).
+// Prior: S22 — Three-tier rate pills in RoomCategory:
 //   Public Rate (struck-through, dim, low opacity) — what you'd pay direct
 //   Non-Negotiated Rate (visible, normal weight, neutral) — current published rate
 //   Ambience Rate (gold, slightly larger, prominent) — partner-negotiated rate
@@ -20,6 +25,11 @@ import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionW
 import { C } from '../../../lib/landingTypes'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseTripComponents'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
+
+// S22: Single literal fallback when DB returns no value. No hardcoded content
+// maps anywhere — DB is the source of truth, this is purely a "we don't have
+// data yet" placeholder.
+const TBA = 'To be advised'
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
@@ -1320,12 +1330,12 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
 
           <PricingPanel style={{ padding: 30, background: ID.panel }}>
             <ImmerseEyebrow style={visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) 0.3s both' } : { opacity: 0 }}>
-              {data.pricingNotesHeading}
+              {data.pricingNotesHeading || TBA}
             </ImmerseEyebrow>
             <ImmerseTitle serif style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>
-              {data.pricingNotesTitle}
+              {data.pricingNotesTitle || TBA}
             </ImmerseTitle>
-            <NotesList notes={data.pricingNotes} />
+            <NotesList notes={data.pricingNotes.length > 0 ? data.pricingNotes : [TBA]} />
           </PricingPanel>
         </div>
       </div>

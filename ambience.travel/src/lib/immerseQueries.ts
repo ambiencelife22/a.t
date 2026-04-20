@@ -1,7 +1,13 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S22 — Three-tier rate taxonomy. travel_immerse_rooms.nightly_rate
+// Last updated: S22 — Pricing notes per-trip override system folded into the
+//   existing trip_destination_rows override pattern. fetchTripOverride now
+//   selects pricing_notes_heading_override, pricing_notes_title_override,
+//   and pricing_notes_override (jsonb). Return mapping merges trip override →
+//   canonical destination notes. Replaces the parallel travel_immerse_bottom_notes
+//   table + immerseBottomNotes.ts file (both pending DROP/DELETE).
+// Prior: S22 — Three-tier rate taxonomy. travel_immerse_rooms.nightly_rate
 //   renamed to non_negotiated_nightly_rate; new ambience_nightly_rate column
 //   added (NULL until partner-negotiated rates are seeded). Reads + override
 //   resolution updated. Public rate behaviour unchanged.
@@ -70,15 +76,18 @@ async function resolveTripId(journeySlug: string): Promise<string | null> {
 // ─── Per-trip destination override ────────────────────────────────────────────
 
 type TripDestinationOverride = {
-  hero_image_src_override:   string | null
-  hero_image_alt_override:   string | null
-  hero_image_src_2_override: string | null
-  hero_image_alt_2_override: string | null
-  hero_title_2_override:     string | null
-  hero_subtitle_2_override:  string | null
-  intro_title_override:      string | null
-  intro_body_override:       string | null
-  pricing_body_override:     string | null
+  hero_image_src_override:        string | null
+  hero_image_alt_override:        string | null
+  hero_image_src_2_override:      string | null
+  hero_image_alt_2_override:      string | null
+  hero_title_2_override:          string | null
+  hero_subtitle_2_override:       string | null
+  intro_title_override:           string | null
+  intro_body_override:            string | null
+  pricing_body_override:          string | null
+  pricing_notes_heading_override: string | null
+  pricing_notes_title_override:   string | null
+  pricing_notes_override:         string[] | null
 }
 
 async function fetchTripOverride(
@@ -98,7 +107,10 @@ async function fetchTripOverride(
       hero_subtitle_2_override,
       intro_title_override,
       intro_body_override,
-      pricing_body_override
+      pricing_body_override,
+      pricing_notes_heading_override,
+      pricing_notes_title_override,
+      pricing_notes_override
     `)
     .eq('trip_id', tripId)
     .eq('destination_slug', destinationSlug)
@@ -180,9 +192,11 @@ export async function getImmerseDestination(
     pricingTitle:        dest.pricing_title         ?? '',
     pricingBody:         ov?.pricing_body_override  ?? dest.pricing_body ?? '',
     pricingRows:         pricingResult,
-    pricingNotesHeading: dest.pricing_notes_heading ?? '',
-    pricingNotesTitle:   dest.pricing_notes_title   ?? '',
-    pricingNotes:        (dest.pricing_notes as string[]) ?? [],
+    pricingNotesHeading: ov?.pricing_notes_heading_override ?? dest.pricing_notes_heading ?? '',
+    pricingNotesTitle:   ov?.pricing_notes_title_override   ?? dest.pricing_notes_title   ?? '',
+    pricingNotes:        (ov?.pricing_notes_override as string[] | null)
+                          ?? (dest.pricing_notes as string[] | null)
+                          ?? [],
   }
 }
 
