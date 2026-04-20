@@ -1,7 +1,15 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S22 — No type shape changes. Pricing notes per-trip override
+// Last updated: S23 — Added ImmerseDestinationData.pricingCloser. Per-trip
+//   overlay of the canonical destination pricing closer row (the "Pricing
+//   Based On Selection" line at the bottom of every destination pricing
+//   table). Resolution: trip override (4 nullable columns on
+//   travel_immerse_trip_destination_rows) → frontend constant default
+//   PRICING_CLOSER_DEFAULT (in ImmerseDestinationComponents.tsx). Closer is
+//   structurally separate from data.pricingRows and never lives in
+//   travel_immerse_destination_pricing_rows.
+// Prior: S22 — No type shape changes. Pricing notes per-trip override
 //   path consolidated into immerseQueries (was: parallel travel_immerse_bottom_notes
 //   table + immerseBottomNotes.ts). pricingNotesHeading, pricingNotesTitle,
 //   pricingNotes on ImmerseDestinationData are now resolved as
@@ -75,6 +83,19 @@ export type ImmersePricingRow = {
   stay:            string
   indicativeRange: string
   isTotal?:        boolean
+}
+
+// S23: Pricing closer row (final closer beneath the pricing table).
+// All four fields nullable — null means "fall back to the frontend constant
+// PRICING_CLOSER_DEFAULT in ImmerseDestinationComponents.tsx". Populated per
+// trip via 4 nullable override columns on travel_immerse_trip_destination_rows
+// once a price has been quoted. Default closer reads "Pricing Based On
+// Selection" in the indicative_range column with the other three blank.
+export type ImmersePricingCloser = {
+  item:            string | null
+  basis:           string | null
+  stay:            string | null
+  indicativeRange: string | null
 }
 
 // ─── Region grouping (S21) ────────────────────────────────────────────────────
@@ -231,6 +252,7 @@ export type ImmerseDestinationData = {
   pricingTitle:        string
   pricingBody:         string
   pricingRows:         ImmersePricingRow[]
+  pricingCloser:       ImmersePricingCloser  // S23: per-trip overlay of canonical default closer
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        string[]

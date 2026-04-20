@@ -1,7 +1,15 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S22 — Pricing notes per-trip override system folded into the
+// Last updated: S23 — Added pricing closer per-trip override path. fetchTripOverride
+//   now selects pricing_closer_item_override, pricing_closer_basis_override,
+//   pricing_closer_stay_override, and pricing_closer_indicative_range_override.
+//   getImmerseDestination return shape now includes pricingCloser: { item,
+//   basis, stay, indicativeRange } where each field is the trip override value
+//   or null. Component layer fills nulls from the PRICING_CLOSER_DEFAULT
+//   constant (default indicative_range "Pricing Based On Selection", others
+//   blank). No row in travel_immerse_destination_pricing_rows for the closer.
+// Prior: S22 — Pricing notes per-trip override system folded into the
 //   existing trip_destination_rows override pattern. fetchTripOverride now
 //   selects pricing_notes_heading_override, pricing_notes_title_override,
 //   and pricing_notes_override (jsonb). Return mapping merges trip override →
@@ -76,18 +84,23 @@ async function resolveTripId(journeySlug: string): Promise<string | null> {
 // ─── Per-trip destination override ────────────────────────────────────────────
 
 type TripDestinationOverride = {
-  hero_image_src_override:        string | null
-  hero_image_alt_override:        string | null
-  hero_image_src_2_override:      string | null
-  hero_image_alt_2_override:      string | null
-  hero_title_2_override:          string | null
-  hero_subtitle_2_override:       string | null
-  intro_title_override:           string | null
-  intro_body_override:            string | null
-  pricing_body_override:          string | null
-  pricing_notes_heading_override: string | null
-  pricing_notes_title_override:   string | null
-  pricing_notes_override:         string[] | null
+  hero_image_src_override:                   string | null
+  hero_image_alt_override:                   string | null
+  hero_image_src_2_override:                 string | null
+  hero_image_alt_2_override:                 string | null
+  hero_title_2_override:                     string | null
+  hero_subtitle_2_override:                  string | null
+  intro_title_override:                      string | null
+  intro_body_override:                       string | null
+  pricing_body_override:                     string | null
+  pricing_notes_heading_override:            string | null
+  pricing_notes_title_override:              string | null
+  pricing_notes_override:                    string[] | null
+  // S23: pricing closer overrides
+  pricing_closer_item_override:              string | null
+  pricing_closer_basis_override:             string | null
+  pricing_closer_stay_override:              string | null
+  pricing_closer_indicative_range_override:  string | null
 }
 
 async function fetchTripOverride(
@@ -110,7 +123,11 @@ async function fetchTripOverride(
       pricing_body_override,
       pricing_notes_heading_override,
       pricing_notes_title_override,
-      pricing_notes_override
+      pricing_notes_override,
+      pricing_closer_item_override,
+      pricing_closer_basis_override,
+      pricing_closer_stay_override,
+      pricing_closer_indicative_range_override
     `)
     .eq('trip_id', tripId)
     .eq('destination_slug', destinationSlug)
@@ -192,6 +209,12 @@ export async function getImmerseDestination(
     pricingTitle:        dest.pricing_title         ?? '',
     pricingBody:         ov?.pricing_body_override  ?? dest.pricing_body ?? '',
     pricingRows:         pricingResult,
+    pricingCloser: {
+      item:            ov?.pricing_closer_item_override             ?? null,
+      basis:           ov?.pricing_closer_basis_override            ?? null,
+      stay:            ov?.pricing_closer_stay_override             ?? null,
+      indicativeRange: ov?.pricing_closer_indicative_range_override ?? null,
+    },
     pricingNotesHeading: ov?.pricing_notes_heading_override ?? dest.pricing_notes_heading ?? '',
     pricingNotesTitle:   ov?.pricing_notes_title_override   ?? dest.pricing_notes_title   ?? '',
     pricingNotes:        (ov?.pricing_notes_override as string[] | null)

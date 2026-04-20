@@ -613,7 +613,6 @@ export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
             ))}
             <tr>
               <TotalTd col={1}>{data.pricingTotalLabel}</TotalTd>
-              <TotalTd col={2}>Hotel-led concept total</TotalTd>
               <TotalTd col={3}></TotalTd>
               <TotalTd col={4}>{data.pricingTotalValue}</TotalTd>
             </tr>

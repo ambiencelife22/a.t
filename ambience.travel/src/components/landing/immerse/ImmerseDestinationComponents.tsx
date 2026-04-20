@@ -1,6 +1,17 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S22 — Added 'To be advised' fallback (single TBA constant) in
+// Last updated: S23 — Added PRICING_CLOSER_DEFAULT constant and closer render row
+//   in ImmerseDestPricing. The closer row sits beneath the data.pricingRows map
+//   and renders a single is_total-styled row with PRICING_CLOSER_DEFAULT values
+//   merged with per-trip overrides from data.pricingCloser. Default closer
+//   reads "Pricing Based On Selection" in the indicative_range column with the
+//   other three columns blank. Per-trip override fields (4 nullable columns
+//   on travel_immerse_trip_destination_rows: pricing_closer_{item,basis,stay,
+//   indicative_range}_override) replace the default once a price is quoted.
+//   Resolution order: trip override (data.pricingCloser.X) → constant default
+//   (PRICING_CLOSER_DEFAULT.X). Closer is structurally separate from
+//   data.pricingRows and never lives in travel_immerse_destination_pricing_rows.
+// Prior: S22 — Added 'To be advised' fallback (single TBA constant) in
 //   ImmerseDestPricing for pricingNotesHeading, pricingNotesTitle, and pricingNotes
 //   when DB returns empty/missing. No hardcoded content maps anywhere — DB is the
 //   source of truth, this is purely a "no data yet" placeholder. Coupled with
@@ -26,10 +37,23 @@ import { C } from '../../../lib/landingTypes'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseTripComponents'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
 
-// S22: Single literal fallback when DB returns no value. No hardcoded content
-// maps anywhere — DB is the source of truth, this is purely a "we don't have
-// data yet" placeholder.
+// S22: Single literal fallback when DB returns no value for pricing notes.
+// No hardcoded content maps anywhere — DB is the source of truth, this is
+// purely a "we don't have data yet" placeholder.
 const TBA = 'To be advised'
+
+// S23: Canonical default pricing closer row. Renders as a single is_total row
+// at the bottom of every destination's pricing table. Per-trip overrides (4
+// nullable columns on travel_immerse_trip_destination_rows) replace these
+// values once a price has been quoted for the trip. Closer is structurally
+// separate from data.pricingRows and never lives in
+// travel_immerse_destination_pricing_rows.
+const PRICING_CLOSER_DEFAULT = {
+  item:            '',
+  basis:           '',
+  stay:            '',
+  indicativeRange: 'Pricing Based On Selection',
+}
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
@@ -1243,6 +1267,14 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
+  // S23: resolve closer values — trip override (data.pricingCloser.X) →
+  // PRICING_CLOSER_DEFAULT.X. Closer is a single is_total row appended at the
+  // bottom of the data.pricingRows map. Never lives in
+  // travel_immerse_destination_pricing_rows.
+  const closerItem            = data.pricingCloser.item            ?? PRICING_CLOSER_DEFAULT.item
+  const closerBasis           = data.pricingCloser.basis           ?? PRICING_CLOSER_DEFAULT.basis
+  const closerIndicativeRange = data.pricingCloser.indicativeRange ?? PRICING_CLOSER_DEFAULT.indicativeRange
+
   return (
     <section
       id='pricing'
@@ -1325,6 +1357,12 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
                   </PricingRow>
                 )
               ))}
+              {/* S23: canonical closer row — frontend default, per-trip overlay */}
+              <PricingRow isTotal>
+                <TotalTd col={1}>{closerItem}</TotalTd>
+                <TotalTd col={2} colSpan={2}>{closerBasis}</TotalTd>
+                <TotalTd col={4}>{closerIndicativeRange}</TotalTd>
+              </PricingRow>
             </PricingTable>
           </PricingPanel>
 
