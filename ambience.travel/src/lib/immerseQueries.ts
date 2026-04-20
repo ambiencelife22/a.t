@@ -1,7 +1,21 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S23 — Added pricing closer per-trip override path. fetchTripOverride
+// Last updated: S23 addendum — Added bullets_heading field to content cards
+//   (canonical + override). Renders a small header above each card's bullets
+//   list (e.g. "Highlights"). Resolves via standard ov?.X_override ?? canon.X
+//   ?? '' chain. Empty string = hide header.
+// Prior: S23 addendum — Added per-trip content card overrides.
+//   fetchContentCards now takes tripId and LEFT JOINs
+//   travel_immerse_trip_content_card_overrides. Every card text field
+//   (kicker, name, tagline, body, bullets, image_src, image_alt, image_credit,
+//   image_credit_url, image_license) resolves via ov?.X_override ?? canon.X.
+//   Empty string on any text override = hide. Null = no override, canonical
+//   shows through. Card overrides scoped by (trip_id, card_id) with UNIQUE.
+// Prior: S23 addendum — Added dining section per-trip override path on
+//   travel_immerse_trip_destination_rows (dining_eyebrow_override,
+//   dining_title_override, dining_body_override). Standard ?? chain merge.
+// Prior: S23 — Added pricing closer per-trip override path. fetchTripOverride
 //   now selects pricing_closer_item_override, pricing_closer_basis_override,
 //   pricing_closer_stay_override, and pricing_closer_indicative_range_override.
 //   getImmerseDestination return shape now includes pricingCloser: { item,
@@ -92,6 +106,10 @@ type TripDestinationOverride = {
   hero_subtitle_2_override:                  string | null
   intro_title_override:                      string | null
   intro_body_override:                       string | null
+  // S23 addendum: dining section overrides (empty string = hide section)
+  dining_eyebrow_override:                   string | null
+  dining_title_override:                     string | null
+  dining_body_override:                      string | null
   pricing_body_override:                     string | null
   pricing_notes_heading_override:            string | null
   pricing_notes_title_override:              string | null
@@ -120,6 +138,9 @@ async function fetchTripOverride(
       hero_subtitle_2_override,
       intro_title_override,
       intro_body_override,
+      dining_eyebrow_override,
+      dining_title_override,
+      dining_body_override,
       pricing_body_override,
       pricing_notes_heading_override,
       pricing_notes_title_override,
@@ -163,7 +184,7 @@ export async function getImmerseDestination(
   ] = await Promise.all([
     fetchTripOverride(tripId, destinationSlug),
     fetchHotelsShape(tripId, destId),
-    fetchContentCards(destId),
+    fetchContentCards(tripId, destId),
     fetchPricingRows(destId),
   ])
 
@@ -195,9 +216,12 @@ export async function getImmerseDestination(
     hotelsBody:    dest.hotels_body    ?? '',
     hotels:        hotelsShape,
 
-    diningEyebrow: dest.dining_eyebrow ?? '',
-    diningTitle:   dest.dining_title   ?? '',
-    diningBody:    dest.dining_body    ?? '',
+    // S23 addendum: dining overrides use standard ?? chain. Empty string on
+    // override passes through as "hide" because ?? only falls back on
+    // null/undefined — empty string short-circuits to itself.
+    diningEyebrow: ov?.dining_eyebrow_override        ?? dest.dining_eyebrow ?? '',
+    diningTitle:   ov?.dining_title_override          ?? dest.dining_title   ?? '',
+    diningBody:    ov?.dining_body_override           ?? dest.dining_body    ?? '',
     dining:        cardsResult.filter(c => c._cardType === 'dining').map(stripCardType),
 
     activitiesEyebrow: dest.activities_eyebrow ?? '',
@@ -573,11 +597,34 @@ async function fetchAllRoomGallery(
   return grouped
 }
 
-// ─── Content cards + pricing (unchanged from pre-S21) ─────────────────────────
+// ─── Content cards + pricing ──────────────────────────────────────────────────
+// S23 addendum: fetchContentCards now takes tripId and merges per-trip
+// card overrides from travel_immerse_trip_content_card_overrides.
+// Every text field resolves via ov.X_override ?? canon.X ?? ''.
+// Empty string on any text override = hide that field.
+// Null = no override, canonical flows through.
 
 type ContentCardWithType = ImmerseContentCard & { _cardType: string }
 
-async function fetchContentCards(destId: string): Promise<ContentCardWithType[]> {
+type CardOverrideRow = {
+  card_id:                   string
+  kicker_override:           string | null
+  name_override:             string | null
+  tagline_override:          string | null
+  body_override:             string | null
+  bullets_heading_override:  string | null
+  bullets_override:          string[] | null
+  image_src_override:        string | null
+  image_alt_override:        string | null
+  image_credit_override:     string | null
+  image_credit_url_override: string | null
+  image_license_override:    string | null
+}
+
+async function fetchContentCards(
+  tripId: string | null,
+  destId: string,
+): Promise<ContentCardWithType[]> {
   const { data: rows, error } = await supabase
     .from('travel_immerse_content_cards')
     .select('*')
@@ -586,21 +633,63 @@ async function fetchContentCards(destId: string): Promise<ContentCardWithType[]>
     .order('sort_order', { ascending: true })
 
   if (error || !rows) return []
+  if (rows.length === 0) return []
 
-  return rows.map(r => ({
-    _cardType:       r.card_type,
-    id:              r.id,
-    kicker:          r.kicker          ?? '',
-    name:            r.name            ?? '',
-    tagline:         r.tagline         ?? '',
-    body:            r.body            ?? '',
-    bullets:         (r.bullets as string[] | null) ?? undefined,
-    imageSrc:        r.image_src       ?? '',
-    imageAlt:        r.image_alt       ?? '',
-    imageCredit:     r.image_credit    ?? undefined,
-    imageCreditUrl:  r.image_credit_url ?? undefined,
-    imageLicense:    r.image_license   ?? undefined,
-  }))
+  // Fetch per-trip overrides for all cards on this destination
+  const overridesByCardId = new Map<string, CardOverrideRow>()
+  if (tripId) {
+    const cardIds = rows.map(r => r.id as string)
+    const { data: ovRows } = await supabase
+      .from('travel_immerse_trip_content_card_overrides')
+      .select(`
+        card_id,
+        kicker_override,
+        name_override,
+        tagline_override,
+        body_override,
+        bullets_heading_override,
+        bullets_override,
+        image_src_override,
+        image_alt_override,
+        image_credit_override,
+        image_credit_url_override,
+        image_license_override
+      `)
+      .eq('trip_id', tripId)
+      .eq('is_active', true)
+      .in('card_id', cardIds)
+
+    for (const ov of (ovRows ?? []) as CardOverrideRow[]) {
+      overridesByCardId.set(ov.card_id, ov)
+    }
+  }
+
+  return rows.map(r => {
+    const ov = overridesByCardId.get(r.id as string)
+
+    // Bullets: override array wins if present; empty array = hide
+    const bulletsOverride = ov?.bullets_override
+    const bulletsCanon    = Array.isArray(r.bullets) ? (r.bullets as string[]) : null
+    const bullets         = Array.isArray(bulletsOverride)
+      ? (bulletsOverride as string[])
+      : bulletsCanon ?? undefined
+
+    return {
+      _cardType:       r.card_type,
+      id:              r.id,
+      kicker:          ov?.kicker_override            ?? r.kicker            ?? '',
+      name:            ov?.name_override              ?? r.name              ?? '',
+      tagline:         ov?.tagline_override           ?? r.tagline           ?? '',
+      body:            ov?.body_override              ?? r.body              ?? '',
+      bulletsHeading:  ov?.bullets_heading_override   ?? r.bullets_heading   ?? '',
+      bullets:         bullets,
+      imageSrc:        ov?.image_src_override         ?? r.image_src         ?? '',
+      imageAlt:        ov?.image_alt_override         ?? r.image_alt         ?? '',
+      imageCredit:     ov?.image_credit_override      ?? r.image_credit      ?? undefined,
+      imageCreditUrl:  ov?.image_credit_url_override  ?? r.image_credit_url  ?? undefined,
+      imageLicense:    ov?.image_license_override     ?? r.image_license     ?? undefined,
+    }
+  })
 }
 
 function stripCardType(c: ContentCardWithType): ImmerseContentCard {

@@ -1,5 +1,9 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
+// Last updated: S23 addendum — bullets_heading render added in ContentCard.
+//   Renders a small gold-uppercase header above the bullets list when
+//   item.bulletsHeading is populated. Canonical default: "Highlights".
+//   Per-card override via travel_immerse_trip_content_card_overrides.
 // Last updated: S23 — Added PRICING_CLOSER_DEFAULT constant and closer render row
 //   in ImmerseDestPricing. The closer row sits beneath the data.pricingRows map
 //   and renders a single is_total-styled row with PRICING_CLOSER_DEFAULT values
@@ -11,25 +15,6 @@
 //   Resolution order: trip override (data.pricingCloser.X) → constant default
 //   (PRICING_CLOSER_DEFAULT.X). Closer is structurally separate from
 //   data.pricingRows and never lives in travel_immerse_destination_pricing_rows.
-// Prior: S22 — Added 'To be advised' fallback (single TBA constant) in
-//   ImmerseDestPricing for pricingNotesHeading, pricingNotesTitle, and pricingNotes
-//   when DB returns empty/missing. No hardcoded content maps anywhere — DB is the
-//   source of truth, this is purely a "no data yet" placeholder. Coupled with
-//   the queries-side merge consolidation (immerseBottomNotes.ts deleted).
-// Prior: S22 — Three-tier rate pills in RoomCategory:
-//   Public Rate (struck-through, dim, low opacity) — what you'd pay direct
-//   Non-Negotiated Rate (visible, normal weight, neutral) — current published rate
-//   Ambience Rate (gold, slightly larger, prominent) — partner-negotiated rate
-//   Each rate is conditionally rendered (only if populated). Tax subtext shown
-//   on Non-Negotiated and Ambience pills when taxInclusive=false.
-// Prior: S22 — ImmerseHotelOptions switches on data.hotels.kind:
-//   - kind: 'flat'     → renders hotels in selector + their rooms in carousel (NYC, St-Barths)
-//   - kind: 'regioned' → renders regions in selector + that region's hotels in carousel (Nordic Winter, Europe Finale)
-//   Both branches reuse the same HotelButton + HotelDetailPanel + carousel scaffolding.
-// Prior: S17 — room gallery thumbnails now filter hero image (matches hotel
-//   gallery pattern). S15 — Gallery 1 onClick wired; duplicate gallery removed;
-//   Gallery 2 added; floor plan link in RoomCategory; size badge range-aware;
-//   + tax subtext when taxInclusive is false.
 
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
@@ -1246,6 +1231,11 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
         {item.bullets && item.bullets.length > 0 && (
           <>
             <div style={{ height: 1, background: dividerColor, margin: '10px 0' }} />
+            {item.bulletsHeading && (
+              <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: inverted ? C.gold : ID.gold, fontWeight: 700, marginBottom: 8 }}>
+                {item.bulletsHeading}
+              </div>
+            )}
             <div style={{ display: 'grid', gap: 6 }}>
               {item.bullets.map(b => (
                 <div key={b} style={{ color: mutedColor, fontSize: 12, lineHeight: 1.55, paddingLeft: 14, position: 'relative' }}>

@@ -1,7 +1,10 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S23 — Added ImmerseDestinationData.pricingCloser. Per-trip
+// Last updated: S23 addendum — Added bulletsHeading to ImmerseContentCard.
+//   Small header rendered above each card's bullets list (e.g. "Highlights").
+//   Resolves trip-override → canonical → ''. Empty string = hide header.
+// Prior: S23 — Added ImmerseDestinationData.pricingCloser. Per-trip
 //   overlay of the canonical destination pricing closer row (the "Pricing
 //   Based On Selection" line at the bottom of every destination pricing
 //   table). Resolution: trip override (4 nullable columns on
@@ -68,6 +71,7 @@ export type ImmerseContentCard = {
   name:            string
   tagline:         string
   body:            string
+  bulletsHeading?: string   // S23 addendum: small header above bullets (e.g. "Highlights")
   bullets?:        string[]
   imageSrc:        string
   imageAlt:        string
