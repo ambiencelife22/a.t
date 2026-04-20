@@ -11,6 +11,11 @@
  *   — User data: backupUserData, deleteAllUserData, deleteAccount
  *
  * DO NOT import supabase directly in components — always go through this file.
+ *
+ * Last updated: S23 — Renamed programme_guests → travel_programme_guests and
+ *   programmes → travel_programme_master with nested properties:travel_programme_properties
+ *   alias to align with S17 table convention. support_tickets unchanged
+ *   (cross-product table, not migrated).
  */
 
 import { supabase } from './supabase'
@@ -84,7 +89,7 @@ export async function getProfile(): Promise<TravelProfile | null> {
   if (!user) return null
 
   const { data, error } = await supabase
-    .from('profiles')
+    .from('global_profiles')
     .select('id, display_name, is_admin')
     .eq('id', user.id)
     .single()
@@ -104,7 +109,7 @@ export async function updateDisplayName(name: string): Promise<void> {
   if (!user) throw new Error('Not authenticated')
 
   const { error } = await supabase
-    .from('profiles')
+    .from('global_profiles')
     .update({ display_name: name })
     .eq('id', user.id)
 
@@ -127,13 +132,16 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  // RLS on programme_guests filters to profile_id = auth.uid() automatically.
-  // Inner join ensures we only get rows with a valid programme.
+  // S23: Renamed programme_guests → travel_programme_guests,
+  // programmes → travel_programme_master, properties → travel_programme_properties.
+  // Nested PostgREST relations aliased back to old keys (programmes, properties)
+  // so the downstream mapping code stays unchanged.
+  // RLS on travel_programme_guests filters to profile_id = auth.uid() automatically.
   const { data, error } = await supabase
-    .from('programme_guests')
+    .from('travel_programme_guests')
     .select(`
       programme_id,
-      programmes!inner (
+      programmes:travel_programme_master!inner (
         id,
         url_id,
         programme_type,
@@ -144,7 +152,7 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
         check_out,
         title,
         active,
-        properties (
+        properties:travel_programme_properties (
           id,
           name,
           city,
@@ -209,7 +217,7 @@ export async function createTicket(fields: {
   if (!user) throw new Error('Not authenticated')
 
   const { data, error } = await supabase
-    .from('support_tickets')
+    .from('global_support_tickets')
     .insert({
       user_id:  user.id,
       category: fields.category,
@@ -227,7 +235,7 @@ export async function createTicket(fields: {
 
 export async function getUserTickets(): Promise<SupportTicket[]> {
   const { data, error } = await supabase
-    .from('support_tickets')
+    .from('global_support_tickets')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -237,7 +245,7 @@ export async function getUserTickets(): Promise<SupportTicket[]> {
 
 export async function getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
   const { data, error } = await supabase
-    .from('ticket_messages')
+    .from('global_ticket_messages')
     .select('*')
     .eq('ticket_id', ticketId)
     .order('created_at', { ascending: true })
@@ -259,7 +267,7 @@ export async function addTicketMessage(ticketId: string, body: string): Promise<
   if (!user) throw new Error('Not authenticated')
 
   const { error } = await supabase
-    .from('ticket_messages')
+    .from('global_ticket_messages')
     .insert({
       ticket_id:      ticketId,
       author_id:      user.id,
@@ -272,7 +280,7 @@ export async function addTicketMessage(ticketId: string, body: string): Promise<
 
 export async function closeTicket(ticketId: string): Promise<void> {
   const { error } = await supabase
-    .from('support_tickets')
+    .from('global_support_tickets')
     .update({ status: 'closed' })
     .eq('id', ticketId)
 
@@ -286,7 +294,7 @@ export async function insertLoginEvent(): Promise<void> {
   if (!user) return
 
   const { error } = await supabase
-    .from('login_events')
+    .from('global_login_events')
     .insert({
       user_id:    user.id,
       ip_address: null,
@@ -299,7 +307,7 @@ export async function insertLoginEvent(): Promise<void> {
 
 export async function getRecentLogins(): Promise<RecentLogin[]> {
   const { data, error } = await supabase
-    .from('login_events')
+    .from('global_login_events')
     .select('id, created_at, ip_address, user_agent, city, country')
     .order('created_at', { ascending: false })
     .limit(10)
@@ -342,7 +350,7 @@ export async function deleteAllUserData(): Promise<void> {
   if (!user) throw new Error('Not authenticated')
 
   const { error } = await supabase
-    .from('support_tickets')
+    .from('global_support_tickets')
     .delete()
     .eq('user_id', user.id)
 

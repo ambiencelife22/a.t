@@ -4,6 +4,15 @@
  * Four tabs: Programmes, Welcome Letters, Listings, Property Sections.
  * Dark theme throughout — matches ProgrammeLayout shell.
  * No external dependencies beyond supabase client and landingTypes tokens.
+ *
+ * Last updated: S23 — Full surgical rename pass to align with travel_programme_*
+ *   table convention shipped in S17. Old table names (programmes, properties,
+ *   property_sections, property_listings, programme_sections, programme_guests)
+ *   were dropped during S12-S20 refactor and admin queries silently failed.
+ *   All .from() calls updated. Nested PostgREST relations aliased back to old
+ *   keys (e.g. properties:travel_programme_properties) so downstream mapping
+ *   code stays unchanged. Added error toasts on every load() failure so future
+ *   schema drift surfaces immediately instead of silently rendering empty.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -187,7 +196,7 @@ function useToast() {
 
   function showToast(message: string, type: 'success' | 'error') {
     setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 5000)
   }
 
   return { toast, showToast }
@@ -291,19 +300,26 @@ function ProgrammesTab() {
   async function load() {
     setLoading(true)
 
-    const [{ data: progs }, { data: props }] = await Promise.all([
+    const [progRes, propRes] = await Promise.all([
       supabase
-        .from('programmes')
-        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, no_alarm, public_arrival, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties(id, name, slug)')
+        .from('travel_programme_master')
+        .select('id, url_id, programme_type, sub_path, status, active, is_public, public_wifi, public_alarm, public_owner_phone, public_manager_phone, no_alarm, public_arrival, guest_names, guest_count, check_in, check_out, welcome_letter, property_id, active_listing_ids, alarm_code_provided, properties:travel_programme_properties(id, name, slug)')
         .order('created_at', { ascending: false }),
       supabase
-        .from('properties')
+        .from('travel_programme_properties')
         .select('id, name, slug')
         .order('name'),
     ])
 
-    setProgrammes((progs ?? []) as unknown as Programme[])
-    setProperties((props ?? []) as Property[])
+    if (progRes.error) {
+      showToast(`Failed to load programmes: ${progRes.error.message}`, 'error')
+    }
+    if (propRes.error) {
+      showToast(`Failed to load properties: ${propRes.error.message}`, 'error')
+    }
+
+    setProgrammes((progRes.data ?? []) as unknown as Programme[])
+    setProperties((propRes.data ?? []) as Property[])
     setLoading(false)
   }
 
@@ -361,23 +377,23 @@ function ProgrammesTab() {
 
     if (editing) {
       const { error } = await supabase
-        .from('programmes')
+        .from('travel_programme_master')
         .update(payload)
         .eq('id', editing.id)
 
       if (error) {
-        showToast('Failed to update programme.', 'error')
+        showToast(`Failed to update programme: ${error.message}`, 'error')
         setSaving(false)
         return
       }
       showToast('Programme updated.', 'success')
     } else {
       const { error } = await supabase
-        .from('programmes')
+        .from('travel_programme_master')
         .insert(payload)
 
       if (error) {
-        showToast(error.message.includes('unique') ? 'URL ID already exists.' : 'Failed to create programme.', 'error')
+        showToast(error.message.includes('unique') ? 'URL ID already exists.' : `Failed to create programme: ${error.message}`, 'error')
         setSaving(false)
         return
       }
@@ -391,38 +407,38 @@ function ProgrammesTab() {
 
   async function handleToggleActive(prog: Programme) {
     const { error } = await supabase
-      .from('programmes')
+      .from('travel_programme_master')
       .update({ active: !prog.active })
       .eq('id', prog.id)
-    if (error) { showToast('Failed to update programme.', 'error'); return }
+    if (error) { showToast(`Failed to update programme: ${error.message}`, 'error'); return }
     showToast(prog.active ? 'Programme deactivated.' : 'Programme activated.', 'success')
     load()
   }
 
   async function handleTogglePublic(prog: Programme) {
     const { error } = await supabase
-      .from('programmes')
+      .from('travel_programme_master')
       .update({ is_public: !prog.is_public })
       .eq('id', prog.id)
-    if (error) { showToast('Failed to update programme.', 'error'); return }
+    if (error) { showToast(`Failed to update programme: ${error.message}`, 'error'); return }
     showToast(prog.is_public ? 'Programme set to private.' : 'Programme is now public — no login required.', 'success')
     load()
   }
 
   async function handleToggleField(prog: Programme, field: 'public_wifi' | 'public_alarm' | 'public_owner_phone' | 'public_manager_phone' | 'no_alarm' | 'public_arrival') {
     const { error } = await supabase
-      .from('programmes')
+      .from('travel_programme_master')
       .update({ [field]: !prog[field] })
       .eq('id', prog.id)
-    if (error) { showToast('Failed to update visibility.', 'error'); return }
+    if (error) { showToast(`Failed to update visibility: ${error.message}`, 'error'); return }
     load()
   }
 
   async function handleDelete(id: string) {
     if (!window.confirm('Delete this programme? This cannot be undone.')) return
-    const { error } = await supabase.from('programmes').delete().eq('id', id)
+    const { error } = await supabase.from('travel_programme_master').delete().eq('id', id)
     if (error) {
-      showToast('Failed to delete programme.', 'error')
+      showToast(`Failed to delete programme: ${error.message}`, 'error')
       return
     }
     showToast('Programme deleted.', 'success')
@@ -706,9 +722,17 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
 
   async function load() {
     const [secRes, ovRes] = await Promise.all([
-      supabase.from('property_sections').select('id, title, icon').eq('property_id', propertyId).eq('variant', 'default').order('sort_order'),
-      supabase.from('programme_sections').select('id, section_id, content').eq('programme_id', programmeId),
+      supabase.from('travel_programme_property_sections').select('id, title, icon').eq('property_id', propertyId).eq('variant', 'default').order('sort_order'),
+      supabase.from('travel_programme_sections').select('id, section_id, content').eq('programme_id', programmeId),
     ])
+
+    if (secRes.error) {
+      showToast(`Failed to load sections: ${secRes.error.message}`, 'error')
+    }
+    if (ovRes.error) {
+      showToast(`Failed to load overrides: ${ovRes.error.message}`, 'error')
+    }
+
     setSections((secRes.data ?? []) as SectionOption[])
     setOverrides((ovRes.data ?? []) as OverrideRow[])
   }
@@ -739,11 +763,11 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
     setSaving(true)
     const existing = overrides.find(o => o.section_id === editing.section_id)
     if (existing) {
-      const { error } = await supabase.from('programme_sections').update({ content: editContent }).eq('id', existing.id)
-      if (error) { showToast('Failed to save override.', 'error'); setSaving(false); return }
+      const { error } = await supabase.from('travel_programme_sections').update({ content: editContent }).eq('id', existing.id)
+      if (error) { showToast(`Failed to save override: ${error.message}`, 'error'); setSaving(false); return }
     } else {
-      const { error } = await supabase.from('programme_sections').insert({ programme_id: programmeId, section_id: editing.section_id, content: editContent })
-      if (error) { showToast('Failed to save override.', 'error'); setSaving(false); return }
+      const { error } = await supabase.from('travel_programme_sections').insert({ programme_id: programmeId, section_id: editing.section_id, content: editContent })
+      if (error) { showToast(`Failed to save override: ${error.message}`, 'error'); setSaving(false); return }
     }
     showToast('Section override saved.', 'success')
     setSaving(false)
@@ -754,7 +778,8 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
   async function handleDelete(sectionId: string) {
     const existing = overrides.find(o => o.section_id === sectionId)
     if (!existing) return
-    await supabase.from('programme_sections').delete().eq('id', existing.id)
+    const { error } = await supabase.from('travel_programme_sections').delete().eq('id', existing.id)
+    if (error) { showToast(`Failed to remove override: ${error.message}`, 'error'); return }
     showToast('Override removed — using property default.', 'success')
     load()
   }
@@ -916,10 +941,13 @@ function WelcomeLettersTab() {
 
   useEffect(() => {
     supabase
-      .from('programmes')
-      .select('id, url_id, guest_names, status, welcome_letter, property_id, programme_type, sub_path, guest_count, check_in, check_out, active_listing_ids, properties(id, name, slug)')
+      .from('travel_programme_master')
+      .select('id, url_id, guest_names, status, welcome_letter, property_id, programme_type, sub_path, guest_count, check_in, check_out, active_listing_ids, properties:travel_programme_properties(id, name, slug)')
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          showToast(`Failed to load programmes: ${error.message}`, 'error')
+        }
         setProgrammes((data ?? []) as unknown as Programme[])
         setLoading(false)
       })
@@ -935,12 +963,12 @@ function WelcomeLettersTab() {
     setSaving(true)
 
     const { error } = await supabase
-      .from('programmes')
+      .from('travel_programme_master')
       .update({ welcome_letter: letter })
       .eq('id', selected.id)
 
     if (error) {
-      showToast('Failed to save.', 'error')
+      showToast(`Failed to save: ${error.message}`, 'error')
       setSaving(false)
       return
     }
@@ -1073,10 +1101,13 @@ function ListingsTab() {
 
   useEffect(() => {
     supabase
-      .from('properties')
+      .from('travel_programme_properties')
       .select('id, name, slug')
       .order('name')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          showToast(`Failed to load properties: ${error.message}`, 'error')
+        }
         const props = (data ?? []) as Property[]
         setProperties(props)
         if (props.length > 0) {
@@ -1092,11 +1123,14 @@ function ListingsTab() {
 
   async function loadListings() {
     setLoading(true)
-    const { data } = await supabase
-      .from('property_listings')
+    const { data, error } = await supabase
+      .from('travel_programme_property_listings')
       .select('id, name, category, genre, address, website, hours, note, favourite, property_id')
       .eq('property_id', selectedProp)
       .order('category')
+    if (error) {
+      showToast(`Failed to load listings: ${error.message}`, 'error')
+    }
     setListings((data ?? []) as Listing[])
     setLoading(false)
   }
@@ -1149,12 +1183,12 @@ function ListingsTab() {
     }
 
     if (editing) {
-      const { error } = await supabase.from('property_listings').update(payload).eq('id', editing.id)
-      if (error) { showToast('Failed to update listing.', 'error'); setSaving(false); return }
+      const { error } = await supabase.from('travel_programme_property_listings').update(payload).eq('id', editing.id)
+      if (error) { showToast(`Failed to update listing: ${error.message}`, 'error'); setSaving(false); return }
       showToast('Listing updated.', 'success')
     } else {
-      const { error } = await supabase.from('property_listings').insert(payload)
-      if (error) { showToast('Failed to create listing.', 'error'); setSaving(false); return }
+      const { error } = await supabase.from('travel_programme_property_listings').insert(payload)
+      if (error) { showToast(`Failed to create listing: ${error.message}`, 'error'); setSaving(false); return }
       showToast('Listing created.', 'success')
     }
 
@@ -1165,8 +1199,8 @@ function ListingsTab() {
 
   async function handleDelete(id: string) {
     if (!window.confirm('Delete this listing?')) return
-    const { error } = await supabase.from('property_listings').delete().eq('id', id)
-    if (error) { showToast('Failed to delete.', 'error'); return }
+    const { error } = await supabase.from('travel_programme_property_listings').delete().eq('id', id)
+    if (error) { showToast(`Failed to delete: ${error.message}`, 'error'); return }
     showToast('Listing deleted.', 'success')
     loadListings()
   }
@@ -1328,10 +1362,13 @@ function PropertySectionsTab() {
 
   useEffect(() => {
     supabase
-      .from('properties')
+      .from('travel_programme_properties')
       .select('id, name, slug')
       .order('name')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          showToast(`Failed to load properties: ${error.message}`, 'error')
+        }
         const props = (data ?? []) as Property[]
         setProperties(props)
         if (props.length > 0) setSelectedProp(props[0].id)
@@ -1345,11 +1382,14 @@ function PropertySectionsTab() {
 
   async function loadSections() {
     setLoading(true)
-    const { data } = await supabase
-      .from('property_sections')
+    const { data, error } = await supabase
+      .from('travel_programme_property_sections')
       .select('id, title, icon, sort_order, variant, content, property_id')
       .eq('property_id', selectedProp)
       .order('sort_order')
+    if (error) {
+      showToast(`Failed to load sections: ${error.message}`, 'error')
+    }
     setSections((data ?? []) as Section[])
     setLoading(false)
   }
@@ -1393,10 +1433,10 @@ function PropertySectionsTab() {
     if (!editingContent) return
     setSaving(true)
     const { error } = await supabase
-      .from('property_sections')
+      .from('travel_programme_property_sections')
       .update({ content: editContent })
       .eq('id', editingContent.id)
-    if (error) { showToast('Failed to save content.', 'error'); setSaving(false); return }
+    if (error) { showToast(`Failed to save content: ${error.message}`, 'error'); setSaving(false); return }
     showToast('Section content saved.', 'success')
     setSaving(false)
     cancelContentEdit()
@@ -1434,11 +1474,11 @@ function PropertySectionsTab() {
     setSaving(true)
 
     const { error } = await supabase
-      .from('property_sections')
+      .from('travel_programme_property_sections')
       .update({ title: editTitle.trim(), icon: editIcon.trim() })
       .eq('id', editing.id)
 
-    if (error) { showToast('Failed to save.', 'error'); setSaving(false); return }
+    if (error) { showToast(`Failed to save: ${error.message}`, 'error'); setSaving(false); return }
 
     showToast('Section updated.', 'success')
     setSaving(false)
@@ -1456,8 +1496,8 @@ function PropertySectionsTab() {
     const swap    = sections[swapIdx]
 
     await Promise.all([
-      supabase.from('property_sections').update({ sort_order: swap.sort_order }).eq('id', section.id),
-      supabase.from('property_sections').update({ sort_order: section.sort_order }).eq('id', swap.id),
+      supabase.from('travel_programme_property_sections').update({ sort_order: swap.sort_order }).eq('id', section.id),
+      supabase.from('travel_programme_property_sections').update({ sort_order: section.sort_order }).eq('id', swap.id),
     ])
 
     loadSections()
@@ -1736,10 +1776,13 @@ function PropertiesTab() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('properties')
+    const { data, error } = await supabase
+      .from('travel_programme_properties')
       .select('id, slug, name, tagline, city, country, hero_image, maps_url, maps_embed_url, owner_name, owner_phone, manager_name, manager_phone, emergency_contacts, active')
       .order('name')
+    if (error) {
+      showToast(`Failed to load properties: ${error.message}`, 'error')
+    }
     setProperties((data ?? []) as FullProperty[])
     setLoading(false)
   }
@@ -1804,10 +1847,10 @@ function PropertiesTab() {
       emergency_contacts: form.emergency_contacts.filter(e => e.label.trim() || e.phone.trim()),
     }
 
-    const { error } = await supabase.from('properties').update(payload).eq('id', editing.id)
+    const { error } = await supabase.from('travel_programme_properties').update(payload).eq('id', editing.id)
 
     if (error) {
-      showToast('Failed to save property.', 'error')
+      showToast(`Failed to save property: ${error.message}`, 'error')
       setSaving(false)
       return
     }
@@ -1820,18 +1863,18 @@ function PropertiesTab() {
 
   async function handleToggleActive(prop: FullProperty) {
     const { error } = await supabase
-      .from('properties')
+      .from('travel_programme_properties')
       .update({ active: !prop.active })
       .eq('id', prop.id)
-    if (error) { showToast('Failed to update property.', 'error'); return }
+    if (error) { showToast(`Failed to update property: ${error.message}`, 'error'); return }
     showToast(prop.active ? 'Property deactivated.' : 'Property activated.', 'success')
     load()
   }
 
   async function handleDelete(prop: FullProperty) {
     if (!window.confirm(`Delete "${prop.name}"? This cannot be undone and will affect any linked programmes.`)) return
-    const { error } = await supabase.from('properties').delete().eq('id', prop.id)
-    if (error) { showToast('Failed to delete property.', 'error'); return }
+    const { error } = await supabase.from('travel_programme_properties').delete().eq('id', prop.id)
+    if (error) { showToast(`Failed to delete property: ${error.message}`, 'error'); return }
     showToast('Property deleted.', 'success')
     load()
   }
@@ -2279,7 +2322,7 @@ export default function ProgrammeAdmin() {
       }
 
       const { data } = await supabase
-        .from('profiles')
+        .from('global_profiles')
         .select('is_admin')
         .eq('id', session.user.id)
         .single()

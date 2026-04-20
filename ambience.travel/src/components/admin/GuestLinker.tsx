@@ -9,6 +9,9 @@
  *
  * Existing guests shown above search with unlink/remove options.
  * Usage: <GuestLinker programmeId={prog.id} />
+ *
+ * Last updated: S23 — Renamed programme_guests → travel_programme_guests to
+ *   align with S17 table naming convention. travel_clients unchanged.
  */
 
 import { useEffect, useState, useRef } from 'react'
@@ -52,18 +55,11 @@ function fullName(c: ClientResult): string {
   return [c.first_name, c.last_name].filter(Boolean).join(' ')
 }
 
-function clientSummary(c: ClientResult): string {
-  const parts = [fullName(c)]
-  if (c.nickname) parts.push(`"${c.nickname}"`)
-  if (c.email)    parts.push(c.email)
-  if (c.phone)    parts.push(c.phone)
-  return parts.join(' · ')
-}
-
 export default function GuestLinker({ programmeId }: { programmeId: string }) {
   const [open,      setOpen]      = useState(false)
   const [guests,    setGuests]    = useState<GuestRow[]>([])
   const [loading,   setLoading]   = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   // Search
   const [query,     setQuery]     = useState('')
@@ -83,11 +79,15 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
 
   async function loadGuests() {
     setLoading(true)
-    const { data } = await supabase
-      .from('programme_guests')
+    setLoadError('')
+    const { data, error } = await supabase
+      .from('travel_programme_guests')
       .select('id, display_name, profile_id, is_lead, sort_order')
       .eq('programme_id', programmeId)
       .order('sort_order')
+    if (error) {
+      setLoadError(`Failed to load guests: ${error.message}`)
+    }
     setGuests((data ?? []) as GuestRow[])
     setLoading(false)
   }
@@ -137,7 +137,7 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
     const isFirst     = guests.length === 0
 
     const { error } = await supabase
-      .from('programme_guests')
+      .from('travel_programme_guests')
       .insert({
         programme_id: programmeId,
         display_name: displayName,
@@ -149,7 +149,7 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
     setSaving(false)
 
     if (error) {
-      setSaveError('Failed to add guest. They may already be linked.')
+      setSaveError(`Failed to add guest: ${error.message}`)
       return
     }
 
@@ -158,16 +158,24 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
   }
 
   async function handleUnlink(guestId: string) {
-    await supabase
-      .from('programme_guests')
+    const { error } = await supabase
+      .from('travel_programme_guests')
       .update({ profile_id: null })
       .eq('id', guestId)
+    if (error) {
+      setLoadError(`Failed to unlink: ${error.message}`)
+      return
+    }
     loadGuests()
   }
 
   async function handleRemove(guestId: string, name: string) {
     if (!window.confirm(`Remove ${name} from this programme?`)) return
-    await supabase.from('programme_guests').delete().eq('id', guestId)
+    const { error } = await supabase.from('travel_programme_guests').delete().eq('id', guestId)
+    if (error) {
+      setLoadError(`Failed to remove: ${error.message}`)
+      return
+    }
     loadGuests()
   }
 
@@ -202,6 +210,18 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
           background: A.bg, borderRadius: 10,
           border: `1px solid ${A.border}`,
         }}>
+
+          {/* Load error */}
+          {loadError && (
+            <div style={{
+              padding: '10px 12px', marginBottom: 12,
+              background: `${A.danger}10`, border: `1px solid ${A.danger}40`,
+              borderRadius: 8, fontSize: 12, color: A.danger,
+              fontFamily: A.font,
+            }}>
+              {loadError}
+            </div>
+          )}
 
           {/* ── Existing guests ── */}
           {loading && (
