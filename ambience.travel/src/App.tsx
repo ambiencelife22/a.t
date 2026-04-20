@@ -6,7 +6,7 @@
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
  *   ambience.travel/immerse/honeymoon                    → PublicHoneymoonRoute → ImmerseTripPage
  *                                                          (DB-backed via slug 'honeymoon1')
- *   ambience.travel/immerse/:journey_type/:destination   → HoneymoonDestinationPage (public inspiration)
+ *   ambience.travel/immerse/:journey_type/:destination   → DestinationPage (public inspiration)
  *   ambience.travel/immerse/:url_id                      → ImmerseTripRoute (trip overview)
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseTripRoute (trip destination subpage)
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin
@@ -23,7 +23,7 @@
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/honeymoon                     → PublicHoneymoonRoute → ImmerseTripPage
- *   localhost:5173/immerse/:journey_type/:destination    → HoneymoonDestinationPage (public inspiration)
+ *   localhost:5173/immerse/:journey_type/:destination    → DestinationPage (public inspiration)
  *   localhost:5173/immerse/:url_id                       → ImmerseTripRoute (trip overview)
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseTripRoute (trip destination subpage)
  *
@@ -50,7 +50,7 @@ import Auth from './components/Auth'
 import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
 import ImmerseTripRoute          from './components/landing/immerse/ImmerseTripRoute'
 import ImmerseTripPage          from './components/landing/immerse/ImmerseTripPage'
-import HoneymoonDestinationPage  from './components/landing/immerse/HoneymoonDestinationPage'
+import DestinationPage          from './components/landing/immerse/DestinationPage'
 import { getImmerseTripBySlug }  from './lib/immerseTripQueries'
 import type { ImmerseTripData }  from './lib/immerseTypes'
 import { getSession } from './lib/auth'
@@ -136,7 +136,7 @@ export default function App() {
   if (seg1 === 'honeymoon' && !seg2) return <PublicHoneymoonRoute />
 
   // Public inspiration destination pages
-  if (seg1 === 'honeymoon' && seg2) return <HoneymoonDestinationPage />
+  if (seg1 === 'honeymoon' && seg2) return <DestinationPage />
 
   return <LandingLayout />
 }

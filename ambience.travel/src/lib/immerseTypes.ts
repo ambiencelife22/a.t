@@ -1,8 +1,10 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S20 — added subpageStatus to ImmerseDestinationRow
-//   (live | preview | hidden) for per-trip per-destination render state control
+// Last updated: S21 — ImmerseDestinationHotelsShape discriminated union.
+//   Destinations can render hotels flat (NYC, St-Barths) or grouped by region
+//   (Nordic Winter, Europe Finale). Region-grouped reads now flow through
+//   travel_immerse_trip_region_hotels keyed on canonical trip_id.
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -24,8 +26,8 @@ export type ImmerseRoomOption = {
 }
 
 export type ImmerseHotelOption = {
-  id:           string   // S17: real DB UUID (was hotel_slug)
-  storageSlug:  string   // S17: hotel_slug for storage path construction (/ambience-assets/.../accom/{slug}/)
+  id:           string   // S17: real DB UUID (canonical travel_accom_hotels.id)
+  storageSlug:  string   // hotel_slug for storage path construction (/ambience-assets/.../accom/{slug}/)
   rank:         'primary' | 'secondary'
   rankLabel:    string
   name:         string
@@ -62,6 +64,31 @@ export type ImmersePricingRow = {
   indicativeRange: string
   isTotal?:        boolean
 }
+
+// ─── Region grouping (S21) ────────────────────────────────────────────────────
+// Nordic Winter has 3 regions (Iceland, Norway, Finland). Europe Finale has
+// 3 (Swiss Alps, Paris, French Alps). Each region carries its own positioning
+// (rank, rank_label, bullets from travel_immerse_trip_regions) plus a list of
+// hotel picks (from travel_immerse_trip_region_hotels).
+
+export type ImmerseRegionGroup = {
+  regionId:     string
+  slug:         string
+  title:        string
+  shorthand?:   string
+  rank:         'primary' | 'secondary'
+  rankLabel:    string
+  bullets:      string[]
+  stayLabel:    string
+  heroImageSrc?: string
+  heroImageAlt?: string
+  hotels:       ImmerseHotelOption[]
+}
+
+// Discriminated union — destination renders either flat hotels or region groups
+export type ImmerseDestinationHotelsShape =
+  | { kind: 'flat';     hotels: ImmerseHotelOption[] }
+  | { kind: 'regioned'; regions: ImmerseRegionGroup[] }
 
 // ─── Trip overview (master page) ─────────────────────────────────────────────
 
@@ -172,11 +199,11 @@ export type ImmerseDestinationData = {
   introEyebrow: string
   introTitle:   string
   introBody:    string
-  // hotels
+  // hotels — S21: flat OR region-grouped depending on destination
   hotelsEyebrow: string
   hotelsTitle:   string
   hotelsBody:    string
-  hotels:        ImmerseHotelOption[]
+  hotels:        ImmerseDestinationHotelsShape
   // dining
   diningEyebrow: string
   diningTitle:   string

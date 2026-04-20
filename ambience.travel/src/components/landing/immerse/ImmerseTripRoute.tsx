@@ -2,7 +2,7 @@
 // Resolves url_id (+ optional destination_slug) from pathname.
 // Overview (/immerse/{url_id})          → fetches trip, renders ImmerseTripPage.
 // Destination (/immerse/{url_id}/{slug}) → verifies trip exists, hands off to
-//   HoneymoonDestinationPage which resolves its own slug from the URL.
+//   DestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
 // Last updated: S17 — Reacts to browser back/forward via popstate listener.
 
@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { getImmerseTrip }         from '../../../lib/immerseTripQueries'
 import type { ImmerseTripData }   from '../../../lib/immerseTypes'
 import ImmerseTripPage            from './ImmerseTripPage'
-import HoneymoonDestinationPage   from './HoneymoonDestinationPage'
+import DestinationPage            from './DestinationPage'
 import ImmerseLayout              from '../../layouts/ImmerseLayout'
 
 // ── URL resolution ───────────────────────────────────────────────────────────
@@ -152,10 +152,10 @@ export default function ImmerseTripRoute() {
   }
 
   if (kind === 'destination' && trip) {
-    // Hand off to HoneymoonDestinationPage — it resolves its own destination slug
+    // Hand off to DestinationPage — it resolves its own destination slug
     // from window.location.pathname (last URL segment). Trip context available
     // via closure if per-trip overrides are added later.
-    return <HoneymoonDestinationPage />
+    return <DestinationPage />
   }
 
   return (

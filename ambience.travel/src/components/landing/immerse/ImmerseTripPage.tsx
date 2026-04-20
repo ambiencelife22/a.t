@@ -2,7 +2,7 @@
 // Route: /immerse/{url_id}        (private, token-keyed — e.g. Yazeed)
 //        /immerse/honeymoon       (public preview — slug = 'honeymoon1')
 // Renders hero + route strip + (optional) secondary hero + destination rows + pricing
-// Does not own destination subpages (see HoneymoonDestinationPage)
+// Does not own destination subpages (see DestinationPage)
 //
 // Last updated: S17B (ChatGPT) — destination cards now scroll to lower anchor sections,
 // while preserving subpage CTAs inside each row.

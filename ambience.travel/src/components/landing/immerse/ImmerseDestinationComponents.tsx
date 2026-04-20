@@ -1,17 +1,20 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S17 — room gallery thumbnails now filter hero image (matches hotel gallery pattern)
-// Prior: S15 — Gallery 1 onClick wired; duplicate gallery removed; Gallery 2 added
-//               (per-room, independent lightbox, requires 2+ gallery images to render);
-//               floor plan link in RoomCategory; size badge range-aware (sqftMin–sqftMax);
-//               + tax subtext when taxInclusive is false. All new fields backward
-//               compatible — render only when set.
+// Last updated: S22 — ImmerseHotelOptions now switches on data.hotels.kind.
+//   - kind: 'flat'     → renders hotels in selector + their rooms in carousel (NYC, St-Barths)
+//   - kind: 'regioned' → renders regions in selector + that region's hotels in carousel (Nordic Winter, Europe Finale)
+//   Both branches reuse the same HotelButton + HotelDetailPanel + carousel scaffolding.
+//   Zero visual change for flat destinations.
+// Prior: S17 — room gallery thumbnails now filter hero image (matches hotel
+//   gallery pattern). S15 — Gallery 1 onClick wired; duplicate gallery removed;
+//   Gallery 2 added; floor plan link in RoomCategory; size badge range-aware;
+//   + tax subtext when taxInclusive is false.
 
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
 import { C } from '../../../lib/landingTypes'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseTripComponents'
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
@@ -53,48 +56,222 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
   )
 }
 
-// ─── Hotel options ────────────────────────────────────────────────────────────
+// ─── Hotel options (switches on hotels.kind) ─────────────────────────────────
 
 export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) {
-  const { ref, visible }                 = useImmerseVisible()
-  const { ref: ref2, visible: visible2 } = useImmerseVisible()
-  const isMobile                         = useImmerseMobile()
-  const [activeHotel, setActiveHotel]    = useState(0)
-  const [activeRoom, setActiveRoom]      = useState(0)
-  const [prevRoom, setPrevRoom]          = useState<number | null>(null)
-  const [lightboxIdx, setLightboxIdx]    = useState<number | null>(null)
+  if (data.hotels.kind === 'flat') {
+    return <FlatHotelOptions data={data} hotels={data.hotels.hotels} />
+  }
+  return <RegionedHotelOptions data={data} regions={data.hotels.regions} />
+}
+
+// ─── Flat (NYC, St-Barths) ────────────────────────────────────────────────────
+// Selector cards = hotels. Carousel = active hotel's rooms.
+
+function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hotels: ImmerseHotelOption[] }) {
+  const [activeHotel, setActiveHotel] = useState(0)
+  const [activeRoom, setActiveRoom]   = useState(0)
+  const [prevRoom, setPrevRoom]       = useState<number | null>(null)
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const [roomLightboxIdx, setRoomLightboxIdx] = useState<number | null>(null)
-  const [dragStart, setDragStart]        = useState<number | null>(null)
-  const carouselRef                      = useRef<HTMLDivElement>(null)
-
-  const hotel      = data.hotels[activeHotel]
-  const rooms      = hotel.rooms
-  const totalRooms = rooms.length
-  const gallery        = hotel.gallery ?? []
-  const lightboxImages = [hotel.imageSrc, ...gallery.filter(src => src !== hotel.imageSrc)]
-
-  // Per-room gallery — switches with the room carousel.
-  // currentRoom may be undefined briefly during hotel transitions; guard accordingly.
-  const currentRoom        = rooms[activeRoom]
-  const roomGallery        = currentRoom?.roomGallery ?? []
-  // S17: match hotel gallery pattern — filter hero out of thumbnail grid,
-  // but keep it as index 0 in the lightbox array.
-  const displayRoomGallery = roomGallery.filter((s: string) => s !== currentRoom?.roomImageSrc)
-  const roomLightboxImages = currentRoom?.roomImageSrc
-    ? [currentRoom.roomImageSrc, ...displayRoomGallery]
-    : roomGallery
 
   function goHotel(idx: number) {
     setActiveHotel(idx)
     setActiveRoom(0)
   }
 
+  if (hotels.length === 0) return null
+  const hotel = hotels[activeHotel]
+  if (!hotel) return null
+
   function goRoom(idx: number) {
-    const clamped = Math.max(0, Math.min(totalRooms - 1, idx))
+    const total = hotel.rooms.length
+    const clamped = Math.max(0, Math.min(total - 1, idx))
     setPrevRoom(activeRoom)
     setActiveRoom(clamped)
     setTimeout(() => setPrevRoom(null), 450)
   }
+
+  return (
+    <SelectorAndCarousel
+      data={data}
+      cards={hotels}
+      activeIdx={activeHotel}
+      onCardClick={goHotel}
+      detailHotel={hotel}
+      onLightbox={setLightboxIdx}
+      lightboxIdx={lightboxIdx}
+      setLightboxIdx={setLightboxIdx}
+      carouselItems={hotel.rooms}
+      activeCarouselIdx={activeRoom}
+      prevCarouselIdx={prevRoom}
+      onCarouselChange={goRoom}
+      renderCarouselItem={(room, key, fadeIn) => (
+        <RoomCategory key={key} room={room} hotel={hotel} fadeIn={fadeIn} onHeroClick={() => setRoomLightboxIdx(0)} />
+      )}
+      activeRoomGallery={hotel.rooms[activeRoom]?.roomGallery}
+      activeRoomImageSrc={hotel.rooms[activeRoom]?.roomImageSrc}
+      activeRoomBasis={hotel.rooms[activeRoom]?.roomBasis}
+      roomLightboxIdx={roomLightboxIdx}
+      setRoomLightboxIdx={setRoomLightboxIdx}
+      lightboxLabel={hotel.name}
+      roomLightboxLabel={hotel.rooms[activeRoom] ? `${hotel.name} · ${hotel.rooms[activeRoom].roomBasis}` : hotel.name}
+    />
+  )
+}
+
+// ─── Regioned (Nordic Winter, Europe Finale) ─────────────────────────────────
+// Selector cards = regions. Carousel = active region's hotels.
+// Each region is mapped onto a synthetic ImmerseHotelOption for the selector +
+// detail panel; each hotel-in-region is mapped onto a synthetic ImmerseRoomOption
+// for the carousel so the existing RoomCategory renders it.
+
+function RegionedHotelOptions({ data, regions }: { data: ImmerseDestinationData; regions: ImmerseRegionGroup[] }) {
+  const [activeRegion, setActiveRegion] = useState(0)
+  const [activeHotel, setActiveHotel]   = useState(0)
+  const [prevHotel, setPrevHotel]       = useState<number | null>(null)
+  const [lightboxIdx, setLightboxIdx]   = useState<number | null>(null)
+  const [hotelLightboxIdx, setHotelLightboxIdx] = useState<number | null>(null)
+
+  function goRegion(idx: number) {
+    setActiveRegion(idx)
+    setActiveHotel(0)
+  }
+
+  if (regions.length === 0) return null
+  const region = regions[activeRegion]
+  if (!region) return null
+
+  // Map regions → ImmerseHotelOption shape for the selector + detail panel
+  const regionCards: ImmerseHotelOption[] = regions.map(r => ({
+    id:           r.regionId,
+    storageSlug:  r.slug,
+    rank:         r.rank,
+    rankLabel:    r.rankLabel,
+    name:         r.title,
+    bullets:      r.bullets,
+    imageSrc:     r.heroImageSrc ?? '',
+    imageAlt:     r.heroImageAlt ?? r.title,
+    stayLabel:    r.stayLabel,
+    rooms:        [],
+    gallery:      [],
+  }))
+
+  const detailRegion = regionCards[activeRegion]
+  if (!detailRegion) return null
+
+  function goHotel(idx: number) {
+    const total = region.hotels.length
+    const clamped = Math.max(0, Math.min(total - 1, idx))
+    setPrevHotel(activeHotel)
+    setActiveHotel(clamped)
+    setTimeout(() => setPrevHotel(null), 450)
+  }
+
+  // Map each hotel-in-region → ImmerseRoomOption so RoomCategory renders it
+  const hotelsAsRooms: ImmerseRoomOption[] = region.hotels.map(h => ({
+    levelLabel:   h.rankLabel,
+    roomBasis:    h.name,
+    roomBenefits: h.bullets,
+    roomImageSrc: h.imageSrc,
+    roomImageAlt: h.imageAlt,
+    roomGallery:  h.gallery,
+  }))
+
+  const activeHotelInRegion = region.hotels[activeHotel]
+
+  return (
+    <SelectorAndCarousel
+      data={data}
+      cards={regionCards}
+      activeIdx={activeRegion}
+      onCardClick={goRegion}
+      detailHotel={detailRegion}
+      onLightbox={setLightboxIdx}
+      lightboxIdx={lightboxIdx}
+      setLightboxIdx={setLightboxIdx}
+      carouselItems={hotelsAsRooms}
+      activeCarouselIdx={activeHotel}
+      prevCarouselIdx={prevHotel}
+      onCarouselChange={goHotel}
+      renderCarouselItem={(item, key, fadeIn) => (
+        <RoomCategory key={key} room={item} hotel={detailRegion} fadeIn={fadeIn} onHeroClick={() => setHotelLightboxIdx(0)} />
+      )}
+      activeRoomGallery={activeHotelInRegion?.gallery}
+      activeRoomImageSrc={activeHotelInRegion?.imageSrc}
+      activeRoomBasis={activeHotelInRegion?.name}
+      roomLightboxIdx={hotelLightboxIdx}
+      setRoomLightboxIdx={setHotelLightboxIdx}
+      lightboxLabel={region.title}
+      roomLightboxLabel={activeHotelInRegion ? `${region.title} · ${activeHotelInRegion.name}` : region.title}
+    />
+  )
+}
+
+// ─── Shared selector + carousel scaffolding ──────────────────────────────────
+// One layout for both flat and regioned. Generic over the carousel item type.
+
+type SelectorAndCarouselProps<T> = {
+  data:                  ImmerseDestinationData
+  cards:                 ImmerseHotelOption[]
+  activeIdx:             number
+  onCardClick:           (i: number) => void
+  detailHotel:           ImmerseHotelOption
+  onLightbox:            (i: number) => void
+  lightboxIdx:           number | null
+  setLightboxIdx:        (i: number | null) => void
+  carouselItems:         T[]
+  activeCarouselIdx:     number
+  prevCarouselIdx:       number | null
+  onCarouselChange:      (i: number) => void
+  renderCarouselItem:    (item: T, key: string, fadeIn: boolean) => React.ReactNode
+  activeRoomGallery?:    string[]
+  activeRoomImageSrc?:   string
+  activeRoomBasis?:      string
+  roomLightboxIdx:       number | null
+  setRoomLightboxIdx:    (i: number | null) => void
+  lightboxLabel:         string
+  roomLightboxLabel:     string
+}
+
+function SelectorAndCarousel<T>({
+  data,
+  cards,
+  activeIdx,
+  onCardClick,
+  detailHotel,
+  onLightbox,
+  lightboxIdx,
+  setLightboxIdx,
+  carouselItems,
+  activeCarouselIdx,
+  prevCarouselIdx,
+  onCarouselChange,
+  renderCarouselItem,
+  activeRoomGallery,
+  activeRoomImageSrc,
+  activeRoomBasis,
+  roomLightboxIdx,
+  setRoomLightboxIdx,
+  lightboxLabel,
+  roomLightboxLabel,
+}: SelectorAndCarouselProps<T>) {
+  const { ref, visible }                 = useImmerseVisible()
+  const { ref: ref2, visible: visible2 } = useImmerseVisible()
+  const isMobile                         = useImmerseMobile()
+  const [dragStart, setDragStart]        = useState<number | null>(null)
+  const carouselRef                      = useRef<HTMLDivElement>(null)
+
+  const total = carouselItems.length
+
+  const gallery        = detailHotel.gallery ?? []
+  const lightboxImages = [detailHotel.imageSrc, ...gallery.filter(src => src !== detailHotel.imageSrc)]
+
+  const roomGallery        = activeRoomGallery ?? []
+  const displayRoomGallery = roomGallery.filter((s: string) => s !== activeRoomImageSrc)
+  const roomLightboxImages = activeRoomImageSrc
+    ? [activeRoomImageSrc, ...displayRoomGallery]
+    : roomGallery
 
   useEffect(() => {
     const el = carouselRef.current
@@ -104,8 +281,8 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
     function onTouchMove(e: TouchEvent)  { if (Math.abs(startX - e.touches[0].clientX) > 10) e.preventDefault() }
     function onTouchEnd(e: TouchEvent)   {
       const d = startX - e.changedTouches[0].clientX
-      if (d > 40)  goRoom(activeRoom + 1)
-      if (d < -40) goRoom(activeRoom - 1)
+      if (d > 40)  onCarouselChange(activeCarouselIdx + 1)
+      if (d < -40) onCarouselChange(activeCarouselIdx - 1)
     }
     el.addEventListener('touchstart', onTouchStart, { passive: true })
     el.addEventListener('touchmove', onTouchMove, { passive: false })
@@ -115,7 +292,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
       el.removeEventListener('touchmove', onTouchMove)
       el.removeEventListener('touchend', onTouchEnd)
     }
-  }, [activeRoom, totalRooms])
+  }, [activeCarouselIdx, total, onCarouselChange])
 
   return (
     <>
@@ -142,7 +319,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : `repeat(${data.hotels.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: isMobile ? '1fr' : `repeat(${cards.length}, minmax(0, 1fr))`,
             gap: 10,
             width: '100%',
             minWidth: 0,
@@ -150,13 +327,13 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
             ...immerseFadeUp(visible, 60),
           }}
         >
-          {data.hotels.map((h, i) => (
+          {cards.map((c, i) => (
             <HotelButton
-              key={h.id}
-              hotel={h}
-              active={i === activeHotel}
+              key={c.id}
+              hotel={c}
+              active={i === activeIdx}
               isMobile={isMobile}
-              onClick={() => goHotel(i)}
+              onClick={() => onCardClick(i)}
             />
           ))}
         </div>
@@ -168,13 +345,13 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
             minWidth: 0,
             animation: 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
           }}
-          key={activeHotel}
+          key={activeIdx}
         >
           <HotelDetailPanel
-            hotel={hotel}
-            activeRoom={activeRoom}
+            hotel={detailHotel}
+            activeRoom={activeCarouselIdx}
             isMobile={isMobile}
-            onRoomChange={goRoom}
+            onRoomChange={onCarouselChange}
             onLightbox={setLightboxIdx}
           />
         </div>
@@ -295,22 +472,21 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               onMouseUp={e => {
                 if (dragStart !== null) {
                   const d = dragStart - e.clientX
-                  if (d > 40)  goRoom(activeRoom + 1)
-                  if (d < -40) goRoom(activeRoom - 1)
+                  if (d > 40)  onCarouselChange(activeCarouselIdx + 1)
+                  if (d < -40) onCarouselChange(activeCarouselIdx - 1)
                   setDragStart(null)
                 }
               }}
               onMouseLeave={() => setDragStart(null)}
             >
-              <RoomCategory
-                key={`${activeHotel}-${activeRoom}`}
-                room={rooms[activeRoom]}
-                hotel={hotel}
-                fadeIn
-              />
-              {activeRoom > 0 && (
+              {carouselItems[activeCarouselIdx] && renderCarouselItem(
+                carouselItems[activeCarouselIdx],
+                `${activeIdx}-${activeCarouselIdx}`,
+                true,
+              )}
+              {activeCarouselIdx > 0 && (
                 <button
-                  onClick={() => goRoom(activeRoom - 1)}
+                  onClick={() => onCarouselChange(activeCarouselIdx - 1)}
                   style={{
                     position: 'absolute',
                     left: isMobile ? 6 : -20,
@@ -330,9 +506,9 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                   }}
                 >‹</button>
               )}
-              {activeRoom < totalRooms - 1 && (
+              {activeCarouselIdx < total - 1 && (
                 <button
-                  onClick={() => goRoom(activeRoom + 1)}
+                  onClick={() => onCarouselChange(activeCarouselIdx + 1)}
                   style={{
                     position: 'absolute',
                     right: isMobile ? 6 : -20,
@@ -354,24 +530,24 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               )}
             </div>
 
-            {totalRooms > 1 && (
+            {total > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-                {rooms.map((_, i) => (
+                {carouselItems.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => goRoom(i)}
+                    onClick={() => onCarouselChange(i)}
                     style={{
-                      width: i === activeRoom ? 22 : 7,
+                      width: i === activeCarouselIdx ? 22 : 7,
                       height: 7,
                       borderRadius: 999,
-                      background: i === activeRoom ? ID.gold : ID.lineSoft,
+                      background: i === activeCarouselIdx ? ID.gold : ID.lineSoft,
                       border: 'none',
                       cursor: 'pointer',
                       padding: 0,
                       transition: 'width 0.3s ease, background 0.3s ease',
-                      animation: i === activeRoom
+                      animation: i === activeCarouselIdx
                         ? 'immerseDotPulse 2.4s ease-in-out infinite'
-                        : i === prevRoom
+                        : i === prevCarouselIdx
                           ? 'immerseDotDim 0.45s ease-out both'
                           : undefined,
                     }}
@@ -380,8 +556,8 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
               </div>
             )}
 
-            {currentRoom && currentRoom.roomImageSrc && displayRoomGallery.length >= 1 && (
-              <div style={{ marginTop: 40 }} key={`room-gallery-${activeHotel}-${activeRoom}`}>
+            {activeRoomImageSrc && displayRoomGallery.length >= 1 && (
+              <div style={{ marginTop: 40 }} key={`room-gallery-${activeIdx}-${activeCarouselIdx}`}>
                 <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: ID.dim, fontWeight: 700, marginBottom: 12 }}>
                   Gallery · {roomLightboxImages.length} photos
                 </div>
@@ -414,7 +590,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
                     >
                       <img
                         src={src}
-                        alt={`${currentRoom.roomBasis} ${i + 1}`}
+                        alt={`${activeRoomBasis ?? ''} ${i + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                       />
                     </div>
@@ -426,25 +602,25 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
         </div>
       </section>
 
-      {lightboxIdx !== null && gallery.length > 0 && (
+      {lightboxIdx !== null && lightboxImages.length > 0 && (
         <LightboxOverlay
           images={lightboxImages}
           index={lightboxIdx}
-          hotelName={hotel.name}
+          hotelName={lightboxLabel}
           onClose={() => setLightboxIdx(null)}
-          onPrev={() => setLightboxIdx(i => i !== null && i > 0 ? i - 1 : i)}
-          onNext={() => setLightboxIdx(i => i !== null && i < lightboxImages.length - 1 ? i + 1 : i)}
+          onPrev={() => setLightboxIdx(lightboxIdx > 0 ? lightboxIdx - 1 : lightboxIdx)}
+          onNext={() => setLightboxIdx(lightboxIdx < lightboxImages.length - 1 ? lightboxIdx + 1 : lightboxIdx)}
         />
       )}
 
-      {roomLightboxIdx !== null && roomLightboxImages.length > 0 && currentRoom && (
+      {roomLightboxIdx !== null && roomLightboxImages.length > 0 && (
         <LightboxOverlay
           images={roomLightboxImages}
           index={roomLightboxIdx}
-          hotelName={`${hotel.name} · ${currentRoom.roomBasis}`}
+          hotelName={roomLightboxLabel}
           onClose={() => setRoomLightboxIdx(null)}
-          onPrev={() => setRoomLightboxIdx(i => i !== null && i > 0 ? i - 1 : i)}
-          onNext={() => setRoomLightboxIdx(i => i !== null && i < roomLightboxImages.length - 1 ? i + 1 : i)}
+          onPrev={() => setRoomLightboxIdx(roomLightboxIdx > 0 ? roomLightboxIdx - 1 : roomLightboxIdx)}
+          onNext={() => setRoomLightboxIdx(roomLightboxIdx < roomLightboxImages.length - 1 ? roomLightboxIdx + 1 : roomLightboxIdx)}
         />
       )}
     </>
@@ -512,6 +688,7 @@ function HotelDetailPanel({ hotel, onLightbox }: {
   return (
     <div style={{ display: 'grid', gap: 24, width: '100%', minWidth: 0 }}>
       <div
+        onClick={() => onLightbox(0)}
         style={{
           position: 'relative',
           borderRadius: ID.radiusXl,
@@ -519,6 +696,7 @@ function HotelDetailPanel({ hotel, onLightbox }: {
           height: isMobile ? 220 : 420,
           width: '100%',
           minWidth: 0,
+          cursor: 'pointer',
         }}
       >
         <img
@@ -671,7 +849,7 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
 
 // ─── Room category ────────────────────────────────────────────────────────────
 
-function RoomCategory({ room, fadeIn = false }: { room: ImmerseRoomOption; hotel: ImmerseHotelOption; fadeIn?: boolean }) {
+function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoomOption; hotel: ImmerseHotelOption; fadeIn?: boolean; onHeroClick?: () => void }) {
   const isMobile              = useImmerseMobile()
   const [hovered, setHovered] = useState(false)
   const [pressed, setPressed] = useState(false)
@@ -830,6 +1008,7 @@ function RoomCategory({ room, fadeIn = false }: { room: ImmerseRoomOption; hotel
       </ImmersePanel>
 
       <div
+        onClick={onHeroClick}
         style={{
           minHeight: isMobile ? 260 : 480,
           overflow: 'hidden',
@@ -842,6 +1021,7 @@ function RoomCategory({ room, fadeIn = false }: { room: ImmerseRoomOption; hotel
           position: 'relative',
           transform: isActive ? 'translateY(-3px)' : 'translateY(0)',
           transition: 'box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease',
+          cursor: onHeroClick ? 'pointer' : 'default',
         }}
       >
         <img

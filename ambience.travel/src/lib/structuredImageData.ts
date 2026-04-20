@@ -1,9 +1,23 @@
 // structuredImageData.ts — schema.org JSON-LD builder for /immerse/ destination pages
 // Owns: buildImageObjects, buildWebPageSchema, buildDestinationSchema
 // Does not own rendering, routing, or injection — that belongs to ImmerseStructuredData.tsx
-// Last updated: S12
+// Last updated: S21 — flattenHotels() normalizes the new ImmerseDestinationHotelsShape
+//   discriminated union into a flat ImmerseHotelOption[] before iteration.
+//   Regioned destinations (Nordic Winter, Europe Finale) emit the union of all
+//   region hotels; flat destinations (NYC, St-Barths) emit the hotels array as-is.
+// Prior: S12 — initial schema builder.
+//
+// Known debt (flagged for S22):
+//   - WebPage + TouristTrip @id values are hardcoded to /immerse/honeymoon/new-york.
+//     Should derive from data.journeyId + data.destinationSlug.
+//   - TouristTrip.touristType is hardcoded 'Honeymoon'. Should derive from trip.journeyTypes.
 
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseContentCard } from './immerseTypes'
+import type {
+  ImmerseDestinationData,
+  ImmerseDestinationHotelsShape,
+  ImmerseHotelOption,
+  ImmerseContentCard,
+} from './immerseTypes'
 
 const UNSPLASH_LICENSE = 'https://unsplash.com/license'
 const UNSPLASH_CREDIT  = 'Unsplash'
@@ -50,6 +64,14 @@ function makeImageObject(
     'acquireLicensePage': resolveCreditUrl(src, creditUrl),
     'license':          resolveLicense(src, license),
   }
+}
+
+// S21: flatten the discriminated union into a single ImmerseHotelOption[].
+// For regioned destinations, emits the concatenated list of all region hotels
+// in region order. For flat, returns as-is.
+function flattenHotels(shape: ImmerseDestinationHotelsShape): ImmerseHotelOption[] {
+  if (shape.kind === 'flat') return shape.hotels
+  return shape.regions.flatMap(region => region.hotels)
 }
 
 // ─── Image object collectors ──────────────────────────────────────────────────
@@ -128,7 +150,12 @@ function buildWebPageSchema(data: ImmerseDestinationData, images: Record<string,
   }
 }
 
-function buildTouristTripSchema(data: ImmerseDestinationData): Record<string, unknown> {
+// S21: takes a pre-flattened hotels array instead of reading data.hotels directly
+// (data.hotels is now a discriminated union, not iterable).
+function buildTouristTripSchema(
+  data:   ImmerseDestinationData,
+  hotels: ImmerseHotelOption[],
+): Record<string, unknown> {
   return {
     '@type':       'TouristTrip',
     '@id':         `https://ambience.travel/immerse/honeymoon/new-york#trip`,
@@ -137,7 +164,7 @@ function buildTouristTripSchema(data: ImmerseDestinationData): Record<string, un
     'touristType':  'Honeymoon',
     'itinerary': {
       '@type': 'ItemList',
-      'itemListElement': data.hotels.map((hotel, i) => ({
+      'itemListElement': hotels.map((hotel, i) => ({
         '@type':    'ListItem',
         'position': i + 1,
         'item': {
@@ -156,6 +183,9 @@ function buildTouristTripSchema(data: ImmerseDestinationData): Record<string, un
 export function buildDestinationStructuredData(data: ImmerseDestinationData): string {
   const allImages: Record<string, unknown>[] = []
 
+  // S21: flatten the hotels union once, reuse for all downstream iterations
+  const hotels = flattenHotels(data.hotels)
+
   // Hero image
   allImages.push(makeImageObject(
     data.heroImageSrc,
@@ -167,7 +197,7 @@ export function buildDestinationStructuredData(data: ImmerseDestinationData): st
   ))
 
   // Hotel images (hero + gallery + rooms per hotel)
-  data.hotels.forEach(hotel => {
+  hotels.forEach(hotel => {
     collectHotelImages(hotel).forEach(img => allImages.push(img))
   })
 
@@ -181,7 +211,7 @@ export function buildDestinationStructuredData(data: ImmerseDestinationData): st
     '@context': 'https://schema.org',
     '@graph': [
       buildWebPageSchema(data, allImages),
-      buildTouristTripSchema(data),
+      buildTouristTripSchema(data, hotels),
       ...allImages,
     ],
   }
