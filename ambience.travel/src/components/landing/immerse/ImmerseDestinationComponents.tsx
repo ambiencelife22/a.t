@@ -1,10 +1,15 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S22 — ImmerseHotelOptions now switches on data.hotels.kind.
+// Last updated: S22 — Three-tier rate pills in RoomCategory:
+//   Public Rate (struck-through, dim, low opacity) — what you'd pay direct
+//   Non-Negotiated Rate (visible, normal weight, neutral) — current published rate
+//   Ambience Rate (gold, slightly larger, prominent) — partner-negotiated rate
+//   Each rate is conditionally rendered (only if populated). Tax subtext shown
+//   on Non-Negotiated and Ambience pills when taxInclusive=false.
+// Prior: S22 — ImmerseHotelOptions switches on data.hotels.kind:
 //   - kind: 'flat'     → renders hotels in selector + their rooms in carousel (NYC, St-Barths)
 //   - kind: 'regioned' → renders regions in selector + that region's hotels in carousel (Nordic Winter, Europe Finale)
 //   Both branches reuse the same HotelButton + HotelDetailPanel + carousel scaffolding.
-//   Zero visual change for flat destinations.
 // Prior: S17 — room gallery thumbnails now filter hero image (matches hotel
 //   gallery pattern). S15 — Gallery 1 onClick wired; duplicate gallery removed;
 //   Gallery 2 added; floor plan link in RoomCategory; size badge range-aware;
@@ -931,11 +936,26 @@ function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoom
                 <span style={{ opacity: 0.8 }}>{room.publicNightlyRate}</span>
               </div>
             )}
-            {room.nightlyRate && (
-              <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid rgba(216,181,106,0.30)`, background: 'rgba(216,181,106,0.07)', color: ID.gold, fontSize: 11, letterSpacing: '0.08em', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+            {room.nonNegotiatedNightlyRate && (
+              <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.muted, fontSize: 11, letterSpacing: '0.08em', fontWeight: 500, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                  {room.nightlyRate}
+                  <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: ID.dim }}>Non-Negotiated</span>
+                  <span>{room.nonNegotiatedNightlyRate}</span>
                   <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                </div>
+                {!room.taxInclusive && (
+                  <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+                    + tax
+                  </div>
+                )}
+              </div>
+            )}
+            {room.ambienceNightlyRate && (
+              <div style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid rgba(216,181,106,0.45)`, background: 'rgba(216,181,106,0.10)', color: ID.gold, fontSize: 13, letterSpacing: '0.06em', fontWeight: 800, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start', boxShadow: '0 0 0 1px rgba(216,181,106,0.10)' }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>Ambience</span>
+                  <span>{room.ambienceNightlyRate}</span>
+                  <span style={{ fontSize: 10, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
                 </div>
                 {!room.taxInclusive && (
                   <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>

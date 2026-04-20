@@ -1,7 +1,11 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S21 — ImmerseDestinationHotelsShape discriminated union.
+// Last updated: S22 — Three-tier rate taxonomy on ImmerseRoomOption:
+//   publicNightlyRate (was: same), nonNegotiatedNightlyRate (was: nightlyRate),
+//   ambienceNightlyRate (NEW). Reflects DB rename of travel_immerse_rooms.nightly_rate
+//   → non_negotiated_nightly_rate plus addition of ambience_nightly_rate column.
+// Prior: S21 — ImmerseDestinationHotelsShape discriminated union.
 //   Destinations can render hotels flat (NYC, St-Barths) or grouped by region
 //   (Nordic Winter, Europe Finale). Region-grouped reads now flow through
 //   travel_immerse_trip_region_hotels keyed on canonical trip_id.
@@ -9,20 +13,22 @@
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 export type ImmerseRoomOption = {
-  levelLabel:          string
-  roomBasis:           string
-  roomBenefits:        string[]
-  roomImageSrc:        string
-  roomImageAlt:        string
-  roomGallery?:        string[]
-  floorplanSrc?:       string
-  nightlyRate?:        string
-  publicNightlyRate?:  string
-  taxInclusive?:       boolean
-  sqftMin?:            number
-  sqftMax?:            number
-  sqmMin?:             number
-  sqmMax?:             number
+  levelLabel:                 string
+  roomBasis:                  string
+  roomBenefits:               string[]
+  roomImageSrc:               string
+  roomImageAlt:               string
+  roomGallery?:               string[]
+  floorplanSrc?:              string
+  // S22: three-tier rate taxonomy
+  publicNightlyRate?:         string   // direct/rack rate — struck-through in UI
+  nonNegotiatedNightlyRate?:  string   // current published rate — was 'nightlyRate' pre-S22
+  ambienceNightlyRate?:       string   // partner-negotiated rate — NULL until rates locked
+  taxInclusive?:              boolean
+  sqftMin?:                   number
+  sqftMax?:                   number
+  sqmMin?:                    number
+  sqmMax?:                    number
 }
 
 export type ImmerseHotelOption = {

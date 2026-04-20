@@ -1,22 +1,16 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S22 — Gallery table reads now point at canonical names
+// Last updated: S22 — Three-tier rate taxonomy. travel_immerse_rooms.nightly_rate
+//   renamed to non_negotiated_nightly_rate; new ambience_nightly_rate column
+//   added (NULL until partner-negotiated rates are seeded). Reads + override
+//   resolution updated. Public rate behaviour unchanged.
+// Prior: S22 — Gallery table reads now point at canonical names
 //   (travel_accom_hotel_gallery, travel_accom_room_gallery). Tables were
 //   renamed from travel_immerse_* — galleries are canonical hotel/room
 //   facts, not trip-scoped presentation. No query shape changes.
 // Prior: S21 — Full rewrite. Reads from canonical junctions instead of
 //   legacy travel_immerse_hotels.
-//     - fetchHotels(tripId, destId) joins travel_immerse_trip_destination_hotels
-//       with canonical travel_accom_hotels.
-//     - fetchRegionGroups(tripId, destId) joins travel_immerse_trip_regions
-//       + travel_immerse_trip_region_hotels + canonical hotels.
-//     - fetchRooms(tripId, hotelIds) pulls overlay rooms for that trip's hotels
-//       via canonical room_id, then hydrates canonical travel_accom_rooms.
-//     - fetchAllGallery uses accom_hotel_id; fetchAllRoomGallery uses accom_room_id.
-//   Discriminated union ImmerseDestinationHotelsShape picks flat vs regioned
-//   layout per destination. NYC/St-Barths → flat; Nordic Winter/Europe Finale
-//   → regioned.
 
 import { supabase } from './supabase'
 import type {
@@ -40,9 +34,6 @@ export interface ImmerseDestinationMeta {
 }
 
 // ─── Trip resolver ────────────────────────────────────────────────────────────
-// S21: journeySlug may be a url_id (private trip), 'honeymoon' (legacy public
-// route), or a public_journey_slug. Resolve to canonical trip.id for all
-// downstream trip-scoped queries.
 
 async function resolveTripId(journeySlug: string): Promise<string | null> {
   if (!journeySlug) return null
@@ -57,7 +48,7 @@ async function resolveTripId(journeySlug: string): Promise<string | null> {
     return data?.id ?? null
   }
 
-  // 11-char url_id → private trip
+  // 11-char url_id → trip lookup (private + public templates both use this shape)
   if (/^[A-Za-z0-9]{11}$/.test(journeySlug)) {
     const { data } = await supabase
       .from('travel_immerse_trips')
@@ -67,7 +58,7 @@ async function resolveTripId(journeySlug: string): Promise<string | null> {
     return data?.id ?? null
   }
 
-  // Otherwise: public_journey_slug (S21 forward path)
+  // Otherwise: legacy public_journey_slug fallback (deprecated, retained transitionally)
   const { data } = await supabase
     .from('travel_immerse_trips')
     .select('id')
@@ -124,7 +115,6 @@ export async function getImmerseDestination(
   destinationSlug: string,
 ): Promise<ImmerseDestinationData | null> {
 
-  // Step 1 — destination template (slug → full row including UUID)
   const { data: dest, error: destErr } = await supabase
     .from('travel_immerse_destinations')
     .select('*')
@@ -134,11 +124,8 @@ export async function getImmerseDestination(
   if (destErr || !dest) return null
 
   const destId = dest.id as string
-
-  // Step 2 — resolve trip id once, use everywhere downstream
   const tripId = await resolveTripId(journeySlug)
 
-  // Step 3 — fetch override + hotels + content cards + pricing in parallel
   const [
     overrideResult,
     hotelsShape,
@@ -153,7 +140,6 @@ export async function getImmerseDestination(
 
   const ov = overrideResult
 
-  // Step 4 — assemble with override resolution
   return {
     destinationId:   destId,
     destinationSlug: dest.destination_slug ?? '',
@@ -201,16 +187,12 @@ export async function getImmerseDestination(
 }
 
 // ─── Hotels shape resolver ────────────────────────────────────────────────────
-// Decides whether this destination renders as a flat hotel list or as regions.
-// If travel_immerse_destination_regions has rows for this destination, we
-// render regioned. Otherwise flat.
 
 async function fetchHotelsShape(
   tripId: string | null,
   destId: string,
 ): Promise<ImmerseDestinationHotelsShape> {
 
-  // Is this destination regioned? Check destination_regions for child rows.
   const { data: regions } = await supabase
     .from('travel_immerse_destination_regions')
     .select('id, slug, title, shorthand, hero_image_src, hero_image_alt')
@@ -228,9 +210,7 @@ async function fetchHotelsShape(
   return { kind: 'flat', hotels }
 }
 
-// ─── Flat hotels (NYC, St-Barths, etc.) ───────────────────────────────────────
-// Reads travel_immerse_trip_destination_hotels filtered by trip_id + destination.
-// Joins canonical travel_accom_hotels for name/slug.
+// ─── Flat hotels ──────────────────────────────────────────────────────────────
 
 async function fetchFlatHotels(
   tripId: string | null,
@@ -252,7 +232,6 @@ async function fetchFlatHotels(
 
   if (error || !data) return []
 
-  // Build hotel list
   const canonicalHotelIds = data
     .map(r => {
       const h = r.travel_accom_hotels as unknown as { id: string } | null
@@ -288,10 +267,7 @@ async function fetchFlatHotels(
   })
 }
 
-// ─── Regioned hotels (Nordic Winter, Europe Finale) ───────────────────────────
-// Reads travel_immerse_trip_regions for per-region positioning (rank, bullets,
-// stay_label) then fetches travel_immerse_trip_region_hotels for each region's
-// hotel picks. Joins canonical hotels + rooms.
+// ─── Regioned hotels ──────────────────────────────────────────────────────────
 
 type RegionRow = {
   id:              string
@@ -310,7 +286,6 @@ async function fetchRegionGroups(
 
   const regionIds = regions.map(r => r.id)
 
-  // Trip-scoped region positioning + hotel picks (parallel)
   const [tripRegionsRes, regionHotelsRes] = await Promise.all([
     supabase
       .from('travel_immerse_trip_regions')
@@ -348,7 +323,6 @@ async function fetchRegionGroups(
     })
   }
 
-  // Hotels per region with canonical metadata
   const hotelRows = regionHotelsRes.data ?? []
 
   const canonicalHotelIds = hotelRows
@@ -387,7 +361,6 @@ async function fetchRegionGroups(
     hotelsByRegionId.set(r.region_id as string, bucket)
   }
 
-  // Assemble groups, ordered by trip_regions.sort_order
   const groups: ImmerseRegionGroup[] = regions.map(region => {
     const tr = tripRegionByRegionId.get(region.id)
     return {
@@ -405,7 +378,6 @@ async function fetchRegionGroups(
     }
   })
 
-  // Sort by trip-scoped sort_order if present; fall back to destination_regions sort
   groups.sort((a, b) => {
     const sa = tripRegionByRegionId.get(a.regionId)?.sortOrder ?? 99
     const sb = tripRegionByRegionId.get(b.regionId)?.sortOrder ?? 99
@@ -416,9 +388,8 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (trip-scoped overlay + canonical join) ─────────────────────────────
-// For each canonical hotel the trip cares about, find that trip's overlay rows
-// in travel_immerse_rooms (keyed on trip_id + canonical room_id) and hydrate
-// with canonical room data for pricing-free facts.
+// S22: rate columns now non_negotiated_nightly_rate (renamed from nightly_rate)
+// and new ambience_nightly_rate. public_nightly_rate unchanged.
 
 async function fetchRoomsForHotels(
   tripId:   string,
@@ -426,7 +397,6 @@ async function fetchRoomsForHotels(
 ): Promise<Record<string, ImmerseRoomOption[]>> {
   if (hotelIds.length === 0) return {}
 
-  // Canonical rooms for these hotels — pricing-free facts
   const { data: canonRooms } = await supabase
     .from('travel_accom_rooms')
     .select(`
@@ -444,14 +414,15 @@ async function fetchRoomsForHotels(
   const canonById   = new Map<string, typeof canonRooms[number]>()
   for (const c of canonRooms) canonById.set(c.id as string, c)
 
-  // Trip-scoped overlay rows (pricing + level_label)
+  // Trip-scoped overlay rows — three-tier rates (S22)
   const { data: overlayRooms } = await supabase
     .from('travel_immerse_rooms')
     .select(`
       room_id, level_label, room_basis, room_benefits, room_inclusions,
       room_image_src, room_image_alt, hero_image_src_override,
       floorplan_src, floorplan_src_override,
-      nightly_rate, public_nightly_rate, tax_inclusive,
+      public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
+      tax_inclusive,
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
       sort_order
@@ -463,7 +434,6 @@ async function fetchRoomsForHotels(
 
   if (!overlayRooms || overlayRooms.length === 0) return {}
 
-  // Gallery lookup by canonical room_id (uses new accom_room_id FK column)
   const galleryByRoom = await fetchAllRoomGallery(canonIds)
 
   const grouped: Record<string, ImmerseRoomOption[]> = {}
@@ -472,7 +442,6 @@ async function fetchRoomsForHotels(
     const canon = canonById.get(o.room_id as string)
     if (!canon) continue
 
-    // Override resolution: overlay override > canonical > overlay base
     const roomImageSrc = o.hero_image_src_override
       ?? canon.room_image_src
       ?? o.room_image_src
@@ -493,7 +462,6 @@ async function fetchRoomsForHotels(
       ? (o.room_benefits as string[])
       : (Array.isArray(canon.room_benefits) ? (canon.room_benefits as string[]) : [])
 
-    // Per-room gallery: prefer canonical-keyed gallery, fallback to canonical's jsonb column
     const galleryCanonical = galleryByRoom[canon.id as string] ?? []
     const galleryJsonb     = Array.isArray(canon.room_gallery) ? (canon.room_gallery as string[]) : []
     const roomGallery      = galleryCanonical.length > 0 ? galleryCanonical : galleryJsonb
@@ -502,16 +470,17 @@ async function fetchRoomsForHotels(
     if (!grouped[hotelId]) grouped[hotelId] = []
 
     grouped[hotelId].push({
-      levelLabel:         o.level_label         ?? '',
-      roomBasis:          o.room_basis          ?? canon.room_basis ?? '',
-      roomBenefits:       roomBenefits,
-      roomImageSrc:       roomImageSrc,
-      roomImageAlt:       roomImageAlt,
-      roomGallery:        roomGallery,
-      floorplanSrc:       floorplanSrc,
-      nightlyRate:        o.nightly_rate        ?? undefined,
-      publicNightlyRate:  o.public_nightly_rate ?? undefined,
-      taxInclusive:       o.tax_inclusive       ?? false,
+      levelLabel:               o.level_label                  ?? '',
+      roomBasis:                o.room_basis                   ?? canon.room_basis ?? '',
+      roomBenefits:             roomBenefits,
+      roomImageSrc:             roomImageSrc,
+      roomImageAlt:             roomImageAlt,
+      roomGallery:              roomGallery,
+      floorplanSrc:             floorplanSrc,
+      publicNightlyRate:        o.public_nightly_rate          ?? undefined,
+      nonNegotiatedNightlyRate: o.non_negotiated_nightly_rate  ?? undefined,
+      ambienceNightlyRate:      o.ambience_nightly_rate        ?? undefined,
+      taxInclusive:             o.tax_inclusive                ?? false,
       sqftMin, sqftMax, sqmMin, sqmMax,
     })
   }
@@ -520,7 +489,6 @@ async function fetchRoomsForHotels(
 }
 
 // ─── Hotel gallery (canonical) ────────────────────────────────────────────────
-// S22: reads travel_accom_hotel_gallery (renamed from travel_immerse_hotel_gallery).
 
 async function fetchAllGallery(
   canonicalHotelIds: string[],
@@ -545,7 +513,6 @@ async function fetchAllGallery(
 }
 
 // ─── Room gallery (canonical) ─────────────────────────────────────────────────
-// S22: reads travel_accom_room_gallery (renamed from travel_immerse_room_gallery).
 
 async function fetchAllRoomGallery(
   canonicalRoomIds: string[],
