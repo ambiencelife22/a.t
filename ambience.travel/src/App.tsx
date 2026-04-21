@@ -118,9 +118,13 @@ export default function App() {
   const [route, setRoute] = useState<Route>(resolveRoute())
 
   useEffect(() => {
-    function handleHashChange() { setRoute(resolveRoute()) }
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    function handleChange() { setRoute(resolveRoute()) }
+    window.addEventListener('hashchange', handleChange)
+    window.addEventListener('popstate', handleChange)
+    return () => {
+      window.removeEventListener('hashchange', handleChange)
+      window.removeEventListener('popstate', handleChange)
+    }
   }, [])
 
   if (route === 'landing')          return <LandingLayout />
