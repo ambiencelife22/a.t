@@ -4,9 +4,12 @@
 //   - getImmerseTripBySlug(slug)   — full ImmerseTripData fetch by slug
 //                                    (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S20 — hydrate subpage_status column into ImmerseDestinationRow.subpageStatus
-//   Filter 'hidden' rows out at the query layer so the component never sees them.
-//   Default to 'live' if column is NULL (defensive — DB has NOT NULL DEFAULT 'live').
+// Last updated: S25 — swap display-name read from global_people_display → travel_immerse_trip_display.
+//   Trip-keyed, unconditional, maybeSingle(). Preserves nickname → first_name →
+//   'Our VIP Guest' fallback via trip_display's first_name + nickname columns.
+//   Sync from global_people handled DB-side by trg_sync_trip_display_from_person.
+// Prior: S20 — hydrate subpage_status column into ImmerseDestinationRow.subpageStatus;
+//   filter 'hidden' rows at the query layer.
 
 import { supabaseAnon } from './supabase'
 import type {
@@ -54,10 +57,11 @@ type TripRow = {
   pricing_notes:          string[] | null
 }
 
-type PersonDisplayRow = {
-  id:         string
+// S25: narrowed from PersonDisplayRow(id, first_name, last_name, nickname)
+// to only the fields trip_display exposes. first_name + nickname are sufficient
+// for the display-name fallback chain in hydrateTrip.
+type TripDisplayRow = {
   first_name: string | null
-  last_name:  string | null
   nickname:   string | null
 }
 
@@ -138,14 +142,15 @@ export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripDat
 async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
   const tripId = tripRow.id
 
-  const [personRes, stopsRes, destsRes, pricingRes] = await Promise.all([
-    tripRow.person_id
-      ? supabaseAnon
-          .from('global_people_display')
-          .select('id, first_name, last_name, nickname')
-          .eq('id', tripRow.person_id)
-          .single()
-      : Promise.resolve({ data: null, error: null }),
+  // S25: display-name read is now trip-keyed and unconditional. Public template
+  // hits its trip_display row with first_name=NULL and falls through to the
+  // 'Our VIP Guest' default. Yazeed's trip hits his row with first_name='Yazeed'.
+  const [displayRes, stopsRes, destsRes, pricingRes] = await Promise.all([
+    supabaseAnon
+      .from('travel_immerse_trip_display')
+      .select('first_name, nickname')
+      .eq('trip_id', tripId)
+      .maybeSingle(),
     supabaseAnon
       .from('travel_immerse_route_stops')
       .select('id, sort_order, title, stay_label, note, image_src, image_alt')
@@ -165,13 +170,13 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
       .order('sort_order'),
   ])
 
-  const personRow  = (personRes.data  ?? null) as PersonDisplayRow | null
-  const stopRows   = (stopsRes.data   ?? []) as RouteStopRow[]
-  const destRows   = (destsRes.data   ?? []) as unknown as DestinationRowRow[]
-  const priceRows  = (pricingRes.data ?? []) as PricingRowRow[]
+  const displayRow = (displayRes.data  ?? null) as TripDisplayRow | null
+  const stopRows   = (stopsRes.data    ?? []) as RouteStopRow[]
+  const destRows   = (destsRes.data    ?? []) as unknown as DestinationRowRow[]
+  const priceRows  = (pricingRes.data  ?? []) as PricingRowRow[]
 
-  const clientName = personRow?.nickname
-    ?? personRow?.first_name
+  const clientName = displayRow?.nickname
+    ?? displayRow?.first_name
     ?? 'Our VIP Guest'
 
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
