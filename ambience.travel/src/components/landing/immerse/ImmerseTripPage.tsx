@@ -4,8 +4,12 @@
 // Renders hero + route strip + (optional) secondary hero + destination rows + pricing
 // Does not own destination subpages (see DestinationPage)
 //
-// Last updated: S17B (ChatGPT) — destination cards now scroll to lower anchor sections,
-// while preserving subpage CTAs inside each row.
+// Last updated: S26 — Builds navItems from data.destinationRows and passes to
+//   ImmerseLayout. This is the overview route — currentDestinationSlug is
+//   always null, so "Trip Overview" is always the active item. logoHref
+//   points at this trip's own overview URL.
+// Prior: S17B (ChatGPT) — destination cards now scroll to lower anchor sections,
+//   while preserving subpage CTAs inside each row.
 
 import ImmerseLayout from '../../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
@@ -13,13 +17,18 @@ import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseRouteStrip } from './ImmerseTripComponents'
 import { ImmerseDestinationRows } from './ImmerseTripComponents'
 import { ImmerseTripPricing } from './ImmerseTripComponents'
+import { buildImmerseNavItems } from './ImmerseTripRoute'
 import type { ImmerseTripData } from '../../../lib/immerseTypes'
 
 export default function ImmerseTripPage({ data }: { data: ImmerseTripData | null }) {
   if (!data) return null
 
+  // S26: Trip Overview is always the active item here (this IS the overview route).
+  const navItems = buildImmerseNavItems(data, null)
+  const logoHref = `/immerse/${data.urlId}`
+
   return (
-    <ImmerseLayout>
+    <ImmerseLayout navItems={navItems} logoHref={logoHref}>
       <ImmerseHero
         guestName={data.clientName}
         titlePrefix=''

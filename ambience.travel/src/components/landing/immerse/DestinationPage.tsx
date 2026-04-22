@@ -3,7 +3,10 @@
 //   Public legacy: /immerse/honeymoon/:destination
 //   Public S22:    /immerse/pubMuirRzSW/:destination (and other pub-prefixed url_ids)
 //   Private trip:  /immerse/:url_id/:destination
-// Last updated: S22 — Removed the getImmerseBottomContent merge block.
+// Last updated: S26 — Builds navItems from trip.destinationRows and passes to
+//   ImmerseLayout. Current destination is marked active via destinationSlug
+//   match. logoHref resolves to /immerse/{journeyToken}.
+// Prior: S22 — Removed the getImmerseBottomContent merge block.
 //   Pricing notes (heading, title, notes) are now resolved entirely by the
 //   query layer (trip-override → canonical-destination → empty), with the
 //   "To be advised" fallback rendered at the component level. Single source of
@@ -27,6 +30,7 @@ import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
 import { getImmerseTrip, getImmerseTripBySlug } from '../../../lib/immerseTripQueries'
 import { useToast } from '../../../lib/ToastContext'
+import { buildImmerseNavItems } from './ImmerseTripRoute'
 import type { ImmerseDestinationData, ImmerseTripData } from '../../../lib/immerseTypes'
 
 type RouteParts = {
@@ -182,8 +186,14 @@ export default function DestinationPage() {
   const titlePrefix = deriveTitlePrefix(trip?.journeyTypes ?? [])
   const nightsLabel = deriveNightsLabel(trip, destinationSlug)
 
+  // S26: Build nav items. Trip may be null if hydration failed — in that case
+  // skip the menu entirely (renders logo-only nav). Otherwise pass the full
+  // list with the current destination marked active.
+  const navItems = trip ? buildImmerseNavItems(trip, destinationSlug) : undefined
+  const logoHref = `/immerse/${journeyToken}`
+
   return (
-    <ImmerseLayout>
+    <ImmerseLayout navItems={navItems} logoHref={logoHref}>
       <ImmerseStructuredData data={data} />
 
       <ImmerseHero

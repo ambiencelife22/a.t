@@ -4,14 +4,18 @@
 // Destination (/immerse/{url_id}/{slug}) → verifies trip exists, hands off to
 //   DestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
-// Last updated: S17 — Reacts to browser back/forward via popstate listener.
+// Last updated: S26 — Builds navItems from trip.destinationRows and passes to
+//   ImmerseLayout on loading / not-found / unknown states. On the overview
+//   state ImmerseTripPage owns its own layout wrapper and consumes nav data
+//   from trip; this component only wraps states that render Layout here.
+// Prior: S17 — Reacts to browser back/forward via popstate listener.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getImmerseTrip }         from '../../../lib/immerseTripQueries'
 import type { ImmerseTripData }   from '../../../lib/immerseTypes'
 import ImmerseTripPage            from './ImmerseTripPage'
 import DestinationPage            from './DestinationPage'
-import ImmerseLayout              from '../../layouts/ImmerseLayout'
+import ImmerseLayout, { type ImmerseNavItem } from '../../layouts/ImmerseLayout'
 
 // ── URL resolution ───────────────────────────────────────────────────────────
 
@@ -35,6 +39,38 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
 
   if (seg2) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
   return { kind: 'overview', urlId: seg1 }
+}
+
+// ── Nav items builder ────────────────────────────────────────────────────────
+// Pure function — takes trip + current destination slug (or null for overview)
+// and returns the ImmerseLayout nav items. Trip Overview first, then one item
+// per destination row in sort_order. 'hidden' rows are already filtered server
+// side in immerseTripQueries.ts; 'preview' rows render with the Preview pill.
+
+export function buildImmerseNavItems(
+  trip: ImmerseTripData,
+  currentDestinationSlug: string | null,
+): ImmerseNavItem[] {
+  const items: ImmerseNavItem[] = [
+    {
+      label:    'Trip Overview',
+      href:     `/immerse/${trip.urlId}`,
+      isActive: currentDestinationSlug === null,
+    },
+  ]
+
+  for (const row of trip.destinationRows) {
+    const slug = row.destinationSlug ?? ''
+    if (!slug) continue
+    items.push({
+      label:     row.title || slug,
+      href:      `/immerse/${trip.urlId}/${slug}`,
+      isActive:  currentDestinationSlug === slug,
+      isPreview: row.subpageStatus === 'preview',
+    })
+  }
+
+  return items
 }
 
 // ── Loading / not found ──────────────────────────────────────────────────────
@@ -131,9 +167,26 @@ export default function ImmerseTripRoute() {
     return () => { cancelled = true }
   }, [pathname])
 
+  // S26: nav items for Layout wrapper on states we render here.
+  // Overview branch delegates to ImmerseTripPage which owns its own Layout;
+  // we only need items for loading / not-found shells. We build them whenever
+  // trip is loaded so loading-inside-a-valid-trip states show the menu.
+  const currentDestinationSlug = useMemo(() => {
+    const route = resolveImmerseRoute(pathname)
+    if (route.kind === 'destination') return route.destinationSlug
+    return null
+  }, [pathname])
+
+  const navItems = useMemo(() => {
+    if (!trip) return undefined
+    return buildImmerseNavItems(trip, currentDestinationSlug)
+  }, [trip, currentDestinationSlug])
+
+  const logoHref = trip ? `/immerse/${trip.urlId}` : undefined
+
   if (loading) {
     return (
-      <ImmerseLayout>
+      <ImmerseLayout navItems={navItems} logoHref={logoHref}>
         <LoadingScreen />
       </ImmerseLayout>
     )
@@ -159,7 +212,7 @@ export default function ImmerseTripRoute() {
   }
 
   return (
-    <ImmerseLayout>
+    <ImmerseLayout navItems={navItems} logoHref={logoHref}>
       <NotFound message='Something went wrong. Please try again.' />
     </ImmerseLayout>
   )
