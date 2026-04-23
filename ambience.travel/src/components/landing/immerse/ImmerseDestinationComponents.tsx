@@ -964,7 +964,7 @@ function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoom
                 </div>
                 {!room.taxInclusive && (
                   <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                    + tax
+                    + Taxes & Fees
                   </div>
                 )}
               </div>
