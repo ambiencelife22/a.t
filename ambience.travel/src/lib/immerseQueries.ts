@@ -1,7 +1,15 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S23 addendum — Added bullets_heading field to content cards
+// Last updated: S26 — Hero image, alt, and credit fields now read from canonical
+//   travel_accom_hotels (hero_image_src, hero_image_alt, image_credit). Junction
+//   tables (travel_immerse_trip_destination_hotels, travel_immerse_trip_region_hotels)
+//   provide curation only — which hotels go with which trip, rank, bullets,
+//   stay_label. Their image_src / image_alt / image_credit columns are no
+//   longer read by the frontend and will be DROPPED in S26_06 once this patch
+//   is verified live. Same architecture for region rooms via travel_accom_rooms
+//   (already canonical for rooms — no frontend change needed there).
+// Prior: S23 addendum — Added bullets_heading field to content cards
 //   (canonical + override). Renders a small header above each card's bullets
 //   list (e.g. "Highlights"). Resolves via standard ov?.X_override ?? canon.X
 //   ?? '' chain. Empty string = hide header.
@@ -272,6 +280,9 @@ async function fetchHotelsShape(
 }
 
 // ─── Flat hotels ──────────────────────────────────────────────────────────────
+// S26: hero image, alt, and credit now come from canonical travel_accom_hotels
+//   (hero_image_src, hero_image_alt, image_credit). Junction table is curation
+//   only: which hotel, rank, rank_label, bullets, stay_label, sort_order.
 
 async function fetchFlatHotels(
   tripId: string | null,
@@ -283,8 +294,11 @@ async function fetchFlatHotels(
     .from('travel_immerse_trip_destination_hotels')
     .select(`
       id, hotel_id, rank, rank_label, bullets,
-      image_src, image_alt, image_credit, stay_label, sort_order,
-      travel_accom_hotels ( id, slug, name, short_slug )
+      stay_label, sort_order,
+      travel_accom_hotels (
+        id, slug, name, short_slug,
+        hero_image_src, hero_image_alt, image_credit
+      )
     `)
     .eq('trip_id', tripId)
     .eq('destination_id', destId)
@@ -306,7 +320,15 @@ async function fetchFlatHotels(
   ])
 
   return data.map(r => {
-    const h = r.travel_accom_hotels as unknown as { id: string; slug: string; name: string; short_slug: string } | null
+    const h = r.travel_accom_hotels as unknown as {
+      id:              string
+      slug:            string
+      name:            string
+      short_slug:      string
+      hero_image_src:  string | null
+      hero_image_alt:  string | null
+      image_credit:    string | null
+    } | null
     const hotelId   = h?.id ?? r.hotel_id
     const hotelSlug = h?.short_slug ?? h?.slug ?? ''
     const hotelName = h?.name ?? ''
@@ -318,9 +340,9 @@ async function fetchFlatHotels(
       rankLabel:       r.rank_label     ?? '',
       name:            hotelName,
       bullets:         Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
-      imageSrc:        r.image_src      ?? '',
-      imageAlt:        r.image_alt      ?? '',
-      imageCredit:     r.image_credit   ?? undefined,
+      imageSrc:        h?.hero_image_src ?? '',
+      imageAlt:        h?.hero_image_alt ?? '',
+      imageCredit:     h?.image_credit   ?? undefined,
       stayLabel:       r.stay_label     ?? '',
       rooms:           roomsByHotel[hotelId]   ?? [],
       gallery:         galleryByHotel[hotelId] ?? [],
@@ -329,6 +351,8 @@ async function fetchFlatHotels(
 }
 
 // ─── Regioned hotels ──────────────────────────────────────────────────────────
+// S26: same architecture change as fetchFlatHotels — hero/alt/credit from
+//   canonical travel_accom_hotels, junction is curation only.
 
 type RegionRow = {
   id:              string
@@ -358,8 +382,11 @@ async function fetchRegionGroups(
       .from('travel_immerse_trip_region_hotels')
       .select(`
         id, region_id, hotel_id, rank, rank_label, bullets,
-        image_src, image_alt, image_credit, stay_label, sort_order,
-        travel_accom_hotels ( id, slug, name, short_slug )
+        stay_label, sort_order,
+        travel_accom_hotels (
+          id, slug, name, short_slug,
+          hero_image_src, hero_image_alt, image_credit
+        )
       `)
       .eq('trip_id', tripId)
       .eq('is_active', true)
@@ -397,7 +424,15 @@ async function fetchRegionGroups(
 
   const hotelsByRegionId = new Map<string, ImmerseHotelOption[]>()
   for (const r of hotelRows) {
-    const h = r.travel_accom_hotels as unknown as { id: string; slug: string; name: string; short_slug: string } | null
+    const h = r.travel_accom_hotels as unknown as {
+      id:              string
+      slug:            string
+      name:            string
+      short_slug:      string
+      hero_image_src:  string | null
+      hero_image_alt:  string | null
+      image_credit:    string | null
+    } | null
     const hotelId   = h?.id ?? r.hotel_id
     const hotelSlug = h?.short_slug ?? h?.slug ?? ''
     const hotelName = h?.name ?? ''
@@ -409,9 +444,9 @@ async function fetchRegionGroups(
       rankLabel:       r.rank_label    ?? '',
       name:            hotelName,
       bullets:         Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
-      imageSrc:        r.image_src     ?? '',
-      imageAlt:        r.image_alt     ?? '',
-      imageCredit:     r.image_credit  ?? undefined,
+      imageSrc:        h?.hero_image_src ?? '',
+      imageAlt:        h?.hero_image_alt ?? '',
+      imageCredit:     h?.image_credit   ?? undefined,
       stayLabel:       r.stay_label    ?? '',
       rooms:           roomsByHotel[hotelId]   ?? [],
       gallery:         galleryByHotel[hotelId] ?? [],
