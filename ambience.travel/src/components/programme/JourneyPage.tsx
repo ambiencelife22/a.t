@@ -410,7 +410,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
         </BriefSection>
       )}
 
-      {/* Activities */}
+      {/* Experiencers */}
       {activities.length > 0 && (
         <BriefSection title='Confirmed Activities'>
           {activities.map(a => (
