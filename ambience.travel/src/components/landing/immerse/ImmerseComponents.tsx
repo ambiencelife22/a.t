@@ -205,6 +205,9 @@ export function ImmersePanel({ children, style }: { children: ReactNode; style?:
 }
 
 // ─── Stay box ────────────────────────────────────────────────────────────────
+// Used on the cream destination-rows section only. All text tokens are *OnLight
+// variants — using ID.text / ID.dim here was the S29 muddy-text bug on Nordic +
+// NYC stay bricks (dark-theme text on cream surface).
 
 export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightlyRange?: string }) {
   return (
@@ -237,7 +240,7 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
           lineHeight: 1.08,
           letterSpacing: nightlyRange ? '-0.02em' : '-0.04em',
           fontWeight: 800,
-          color: ID.text,
+          color: IMMERSE.textOnLight,
         }}
       >
         {nightlyRange ?? label}
@@ -248,7 +251,7 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
             fontSize: 10,
             letterSpacing: '0.10em',
             textTransform: 'uppercase',
-            color: ID.dim,
+            color: IMMERSE.mutedOnLight,
             fontWeight: 600,
             marginTop: 4,
           }}
