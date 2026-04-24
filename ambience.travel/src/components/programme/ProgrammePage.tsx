@@ -53,7 +53,7 @@ const CATEGORIES: { id: ListingCategory; label: string; icon: string }[] = [
   { id: 'lunch',    label: 'Lunch',      icon: '☀️' },
   { id: 'dinner',   label: 'Dinner',     icon: '🌙' },
   { id: 'takeaway', label: 'Take Away',  icon: '🥡' },
-  { id: 'activity', label: 'Experiences', icon: '🗺' },
+  { id: 'experience', label: 'Experiences', icon: '🗺' },
   { id: 'shopping', label: 'Shopping',   icon: '🛍' },
 ]
 

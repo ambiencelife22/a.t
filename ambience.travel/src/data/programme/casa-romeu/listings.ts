@@ -1,5 +1,5 @@
 // casa-romeu/listings.ts
-// All dining, activity, and shopping listings for Casa Romeu.
+// All dining, experiences, and shopping listings for Casa Romeu.
 
 import type { Listing } from '../../../lib/programmeTypes'
 
@@ -149,7 +149,7 @@ export const listings: Listing[] = [
   {
     id:       'ciutat-arts',
     name:     'City of Arts and Sciences',
-    category: 'activity',
+    category: 'experience',
     address:  'Quatre Carreres, 46013 Valencia, Spain',
     website:  'https://www.cac.es',
     note:     'One of Valencia\'s most iconic landmarks — architecture alone is worth the visit.',
@@ -157,21 +157,21 @@ export const listings: Listing[] = [
   {
     id:       'malvarrosa',
     name:     'Malvarrosa Beach',
-    category: 'activity',
+    category: 'experience',
     address:  'Malvarrosa Beach, Valencia, Spain',
     note:     'Valencia\'s main urban beach. Excellent for morning walks and paella by the sea.',
   },
   {
     id:       'bike-rental',
     name:     'Bike & Tours',
-    category: 'activity',
+    category: 'experience',
     address:  'C. de Puerto Rico, 23, Valencia',
     note:     'Best way to explore the Turia Garden and the city at your own pace.',
   },
   {
     id:       'oceanografic',
     name:     'Oceanogràfic València',
-    category: 'activity',
+    category: 'experience',
     address:  'Carrer d\'Eduardo Primo Yúfera, 1, 46013 Valencia',
     website:  'https://www.oceanografic.org',
     note:     'Europe\'s largest aquarium.',
@@ -179,49 +179,49 @@ export const listings: Listing[] = [
   {
     id:       'palau-musica',
     name:     'Palau de la Música',
-    category: 'activity',
+    category: 'experience',
     address:  'Alameda Avenue, 30, 46023, Valencia, Spain',
     website:  'https://www.palaudevalencia.com',
   },
   {
     id:       'bioparc',
     name:     'Bioparc Valencia',
-    category: 'activity',
+    category: 'experience',
     address:  'Av. Pío Baroja, 3, Campanar, 46015 València',
     website:  'https://www.bioparcvalencia.es',
   },
   {
     id:       'turia-garden',
     name:     'Turia Garden',
-    category: 'activity',
+    category: 'experience',
     address:  'Quatre Carreres, 46013 Valencia, Spain',
     note:     'Nine kilometres of parkland through the heart of the city — perfect for cycling or a long walk.',
   },
   {
     id:       'plaza-toros',
     name:     'Plaza de Toros',
-    category: 'activity',
+    category: 'experience',
     address:  'C/ de Xàtiva, 28, L\'Eixample, 46004 València',
     website:  'https://www.plazadetorosvalencia.com',
   },
   {
     id:       'serranos',
     name:     'Serranos Towers',
-    category: 'activity',
+    category: 'experience',
     address:  'Plaza de los Fueros s/n, 46003 - Valencia',
     note:     'Medieval gateway towers with panoramic city views.',
   },
   {
     id:       'cathedral',
     name:     'Cathedral de Valencia',
-    category: 'activity',
+    category: 'experience',
     address:  'Plaza de la Almoina, s/n, 46003 Valencia, Spain',
     note:     'Houses what is claimed to be the Holy Grail. Worth the tower climb for the views.',
   },
   {
     id:       'central-market',
     name:     'Central Market',
-    category: 'activity',
+    category: 'experience',
     address:  'Plaza del Mercado, s/n, 46001 - Valencia',
     note:     'One of Europe\'s largest and most beautiful fresh food markets. Go in the morning.',
   },

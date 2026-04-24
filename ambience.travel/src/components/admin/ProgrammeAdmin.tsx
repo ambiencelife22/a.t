@@ -1123,7 +1123,7 @@ function WelcomeLettersTab() {
 
 // ── Tab: Listings ─────────────────────────────────────────────────────────────
 
-const LISTING_CATEGORIES: ListingCategory[] = ['lunch', 'dinner', 'takeaway', 'activity', 'shopping']
+const LISTING_CATEGORIES: ListingCategory[] = ['lunch', 'dinner', 'takeaway', 'experience', 'shopping']
 
 function ListingsTab() {
   const [properties, setProperties] = useState<Property[]>([])

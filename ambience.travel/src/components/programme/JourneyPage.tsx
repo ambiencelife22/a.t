@@ -58,7 +58,7 @@ function eventIcon(type: JourneyEvent['event_type']): string {
   if (type === 'transfer')  return '🚗'
   if (type === 'check_in')  return '🏨'
   if (type === 'check_out') return '🏨'
-  if (type === 'activity')  return '🗺'
+  if (type === 'experience')  return '🗺'
   if (type === 'dining')    return '🍽'
   return '•'
 }
@@ -333,7 +333,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
   const flights    = allEvents.filter(e => e.event_type === 'flight' && e.status !== 'cancelled')
   const hotels     = allEvents.filter(e => e.event_type === 'check_in' && e.status !== 'cancelled')
   const transfers  = allEvents.filter(e => e.event_type === 'transfer' && e.status === 'confirmed')
-  const activities = allEvents.filter(e => e.event_type === 'activity' && e.status === 'confirmed')
+  const activities = allEvents.filter(e => e.event_type === 'experience' && e.status === 'confirmed')
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (

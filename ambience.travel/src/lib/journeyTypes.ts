@@ -10,7 +10,7 @@ export type EventType =
   | 'transfer'
   | 'check_in'
   | 'check_out'
-  | 'activity'
+  | 'experience'
   | 'dining'
 
 export type EventStatus = 'confirmed' | 'recommended' | 'cancelled'

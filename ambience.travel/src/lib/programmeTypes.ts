@@ -54,7 +54,7 @@ export type ManualBlock =
 
 // ── Listings ──────────────────────────────────────────────────────────────────
 
-export type ListingCategory = 'lunch' | 'dinner' | 'takeaway' | 'activity' | 'shopping'
+export type ListingCategory = 'lunch' | 'dinner' | 'takeaway' | 'experience' | 'shopping'
 
 export type Listing = {
   id:       string
