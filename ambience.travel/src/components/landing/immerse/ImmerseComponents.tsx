@@ -343,7 +343,7 @@ export function ImmerseWelcomeLetter({
           </div>
         )}
         {(signoffBody || signoffName) && (
-          <div style={{ marginTop: 32 }}>
+          <div style={{ marginTop: 44 }}>
             {signoffBody && (
               <div
                 style={{
@@ -360,10 +360,9 @@ export function ImmerseWelcomeLetter({
               <div
                 style={{
                   marginTop: 4,
-                  color: IMMERSE.textOnLight,
+                  color: IMMERSE.mutedOnLight,
                   fontSize: 15,
                   lineHeight: 1.82,
-                  fontWeight: 600,
                 }}
               >
                 {signoffName}
