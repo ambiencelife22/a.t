@@ -4,7 +4,12 @@
 //   - getImmerseTripBySlug(slug)   — full ImmerseTripData fetch by slug
 //                                    (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S25 — swap display-name read from global_people_display → travel_immerse_trip_display.
+// Last updated: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter()
+//   reads the single row in travel_immerse_welcome_letter. Per-trip 5x
+//   welcome_*_override columns on travel_immerse_trips resolved via the
+//   standard ?? chain. ImmerseTripData.welcomeLetter is always present
+//   (never optional); every field is '' when all sources are null.
+// Prior: S25 — swap display-name read from global_people_display → travel_immerse_trip_display.
 //   Trip-keyed, unconditional, maybeSingle(). Preserves nickname → first_name →
 //   'Our VIP Guest' fallback via trip_display's first_name + nickname columns.
 //   Sync from global_people handled DB-side by trg_sync_trip_display_from_person.
@@ -19,42 +24,48 @@ import type {
   ImmerseDestinationRow,
   ImmerseSubpageStatus,
   ImmerseTripPricingRow,
+  ImmerseWelcomeLetter,
 } from './immerseTypes'
 
 // ── DB row types ─────────────────────────────────────────────────────────────
 
 type TripRow = {
-  id:                     string
-  url_id:                 string
-  slug:                   string
-  trip_format:            string
-  journey_types:          string[] | null
-  person_id:              string | null
-  status_label:           string | null
-  eyebrow:                string | null
-  title:                  string | null
-  subtitle:               string | null
-  hero_image_src:         string | null
-  hero_image_alt:         string | null
-  hero_image_src_2:       string | null
-  hero_image_alt_2:       string | null
-  hero_title_2:           string | null
-  hero_subtitle_2:        string | null
-  hero_pills:             string[] | null
-  route_heading:          string | null
-  route_body:             string | null
-  route_eyebrow:          string | null
-  destination_heading:    string | null
-  destination_subtitle:   string | null
-  destination_body:       string | null
-  pricing_heading:        string | null
-  pricing_title:          string | null
-  pricing_body:           string | null
-  pricing_total_label:    string | null
-  pricing_total_value:    string | null
-  pricing_notes_heading:  string | null
-  pricing_notes_title:    string | null
-  pricing_notes:          string[] | null
+  id:                              string
+  url_id:                          string
+  slug:                            string
+  trip_format:                     string
+  journey_types:                   string[] | null
+  person_id:                       string | null
+  status_label:                    string | null
+  eyebrow:                         string | null
+  title:                           string | null
+  subtitle:                        string | null
+  hero_image_src:                  string | null
+  hero_image_alt:                  string | null
+  hero_image_src_2:                string | null
+  hero_image_alt_2:                string | null
+  hero_title_2:                    string | null
+  hero_subtitle_2:                 string | null
+  hero_pills:                      string[] | null
+  welcome_eyebrow_override:        string | null   // S30
+  welcome_title_override:          string | null   // S30
+  welcome_body_override:           string | null   // S30
+  welcome_signoff_body_override:   string | null   // S30
+  welcome_signoff_name_override:   string | null   // S30
+  route_heading:                   string | null
+  route_body:                      string | null
+  route_eyebrow:                   string | null
+  destination_heading:             string | null
+  destination_subtitle:            string | null
+  destination_body:                string | null
+  pricing_heading:                 string | null
+  pricing_title:                   string | null
+  pricing_body:                    string | null
+  pricing_total_label:             string | null
+  pricing_total_value:             string | null
+  pricing_notes_heading:           string | null
+  pricing_notes_title:             string | null
+  pricing_notes:                   string[] | null
 }
 
 // S25: narrowed from PersonDisplayRow(id, first_name, last_name, nickname)
@@ -63,6 +74,15 @@ type TripRow = {
 type TripDisplayRow = {
   first_name: string | null
   nickname:   string | null
+}
+
+// S30: Canonical proposal welcome letter row shape.
+type WelcomeLetterRow = {
+  eyebrow:      string | null
+  title:        string | null
+  body:         string | null
+  signoff_body: string | null
+  signoff_name: string | null
 }
 
 type RouteStopRow = {
@@ -108,6 +128,8 @@ const TRIP_SELECT_COLUMNS = `
   eyebrow, title, subtitle,
   hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
   hero_title_2, hero_subtitle_2, hero_pills,
+  welcome_eyebrow_override, welcome_title_override, welcome_body_override,
+  welcome_signoff_body_override, welcome_signoff_name_override,
   route_heading, route_body, route_eyebrow,
   destination_heading, destination_subtitle, destination_body,
   pricing_heading, pricing_title, pricing_body,
@@ -137,6 +159,17 @@ export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripDat
   return hydrateTrip(trip as TripRow)
 }
 
+// S30: Canonical welcome letter is a single-row table. maybeSingle() returns
+// null if the table is somehow empty; component handles "all empty" as hidden.
+async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
+  const { data } = await supabaseAnon
+    .from('travel_immerse_welcome_letter')
+    .select('eyebrow, title, body, signoff_body, signoff_name')
+    .limit(1)
+    .maybeSingle()
+  return (data ?? null) as WelcomeLetterRow | null
+}
+
 // ── Shared hydration ─────────────────────────────────────────────────────────
 
 async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
@@ -145,7 +178,8 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
   // S25: display-name read is now trip-keyed and unconditional. Public template
   // hits its trip_display row with first_name=NULL and falls through to the
   // 'Our VIP Guest' default. Yazeed's trip hits his row with first_name='Yazeed'.
-  const [displayRes, stopsRes, destsRes, pricingRes] = await Promise.all([
+  // S30: canonical welcome letter fetched in parallel.
+  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon] = await Promise.all([
     supabaseAnon
       .from('travel_immerse_trip_display')
       .select('first_name, nickname')
@@ -168,6 +202,7 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
       .select('id, sort_order, destination, recommended_basis, stay_label, indicative_range')
       .eq('trip_id', tripId)
       .order('sort_order'),
+    fetchCanonicalWelcomeLetter(),
   ])
 
   const displayRow = (displayRes.data  ?? null) as TripDisplayRow | null
@@ -178,6 +213,15 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
   const clientName = displayRow?.nickname
     ?? displayRow?.first_name
     ?? 'Our VIP Guest'
+
+  // S30: trip override → canonical → '' for all 5 welcome letter fields.
+  const welcomeLetter: ImmerseWelcomeLetter = {
+    eyebrow:     tripRow.welcome_eyebrow_override      ?? welcomeCanon?.eyebrow      ?? '',
+    title:       tripRow.welcome_title_override        ?? welcomeCanon?.title        ?? '',
+    body:        tripRow.welcome_body_override         ?? welcomeCanon?.body         ?? '',
+    signoffBody: tripRow.welcome_signoff_body_override ?? welcomeCanon?.signoff_body ?? '',
+    signoffName: tripRow.welcome_signoff_name_override ?? welcomeCanon?.signoff_name ?? '',
+  }
 
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
     id:        r.id,
@@ -217,6 +261,8 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     journeyTypes:  tripRow.journey_types ?? [],
     clientName,
     statusLabel:   tripRow.status_label ?? '',
+
+    welcomeLetter,
 
     eyebrow:       tripRow.eyebrow        ?? '',
     title:         tripRow.title          ?? '',
