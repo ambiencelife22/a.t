@@ -144,7 +144,7 @@ export const listings: Listing[] = [
     favorite: true,
   },
 
-  // ── Activities ────────────────────────────────────────────────────────────
+  // ── Experiences ────────────────────────────────────────────────────────────
 
   {
     id:       'ciutat-arts',

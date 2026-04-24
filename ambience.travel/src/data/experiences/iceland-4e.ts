@@ -122,7 +122,7 @@ export const experience = {
       'International flights to and from Iceland',
       'Comprehensive travel insurance',
       'Personal expenses, spa add-ons, and discretionary purchases',
-      'Optional activities not listed within the programme',
+      'Optional experiences not listed within the programme',
       'Additional pre- or post-experience nights unless arranged',
     ],
   },

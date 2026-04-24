@@ -1081,7 +1081,7 @@ function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoom
   )
 }
 
-// ─── Content card grid (dining + activities) ──────────────────────────────────
+// ─── Content card grid (Dining + Experiences) ──────────────────────────────────
 
 type ContentGridProps = {
   eyebrow: string

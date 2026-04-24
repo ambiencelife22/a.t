@@ -239,10 +239,10 @@ export async function getImmerseDestination(
     diningBody:    ov?.dining_body_override           ?? dest.dining_body    ?? '',
     dining:        cardsResult.filter(c => c._cardType === 'dining').map(stripCardType),
 
-    activitiesEyebrow: dest.activities_eyebrow ?? '',
-    activitiesTitle:   dest.activities_title   ?? '',
-    activitiesBody:    dest.activities_body    ?? '',
-    activities:        cardsResult.filter(c => c._cardType === 'activity').map(stripCardType),
+experiencesEyebrow: dest.experiences_eyebrow ?? '',
+    experiencesTitle:   dest.experiences_title   ?? '',
+    experiencesBody:    dest.experiences_body    ?? '',
+    experiences:        cardsResult.filter(c => c._cardType === 'experience').map(stripCardType),
 
     pricingEyebrow:      dest.pricing_eyebrow       ?? '',
     pricingTitle:        dest.pricing_title         ?? '',

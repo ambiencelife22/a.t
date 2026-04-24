@@ -204,8 +204,8 @@ export function buildDestinationStructuredData(data: ImmerseDestinationData): st
   // Dining images
   collectContentCardImages(data.dining, 'Dining').forEach(img => allImages.push(img))
 
-  // Activities images
-  collectContentCardImages(data.activities, 'Experiences').forEach(img => allImages.push(img))
+  // Experiences images
+collectContentCardImages(data.experiences, 'Experiences').forEach(img => allImages.push(img))
 
   const payload = {
     '@context': 'https://schema.org',

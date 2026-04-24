@@ -247,11 +247,11 @@ export type ImmerseDestinationData = {
   diningTitle:   string
   diningBody:    string
   dining:        ImmerseContentCard[]
-  // activities
-  activitiesEyebrow: string
-  activitiesTitle:   string
-  activitiesBody:    string
-  activities:        ImmerseContentCard[]
+ // experiences
+  experiencesEyebrow: string
+  experiencesTitle:   string
+  experiencesBody:    string
+  experiences:        ImmerseContentCard[]
   // pricing
   pricingEyebrow:      string
   pricingTitle:        string

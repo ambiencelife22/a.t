@@ -208,7 +208,7 @@ export default function DestinationPage() {
         primaryHref='#hotel-options'
         primaryLabel='Hotel options'
         diningHref='#dining'
-        diningLabel='Dining + activities'
+        diningLabel='Dining + Experiences'
         secondaryHref='#pricing'
         secondaryLabel='Pricing'
       />
@@ -235,10 +235,10 @@ export default function DestinationPage() {
 
       <ImmerseContentGrid
         dark
-        eyebrow={data.activitiesEyebrow}
-        title={data.activitiesTitle}
-        body={data.activitiesBody}
-        items={data.activities}
+        eyebrow={data.experiencesEyebrow}
+        title={data.experiencesTitle}
+        body={data.experiencesBody}
+        items={data.experiences}
       />
 
       <ImmerseDestPricing data={data} />

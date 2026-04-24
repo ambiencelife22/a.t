@@ -20,7 +20,7 @@ type Props = {
   heroImageAlt:    string
   primaryHref?:    string
   primaryLabel?:   string
-  diningHref?:     string   // optional third CTA — "Dining + activities"
+  diningHref?:     string   // optional third CTA — "Dining + Experiences"
   diningLabel?:    string
   secondaryHref?:  string
   secondaryLabel?: string
@@ -39,7 +39,7 @@ export default function ImmerseHero({
   primaryHref    = '#destinations',
   primaryLabel   = 'View destinations',
   diningHref,
-  diningLabel    = 'Dining + activities',
+  diningLabel    = 'Dining + Experiences',
   secondaryHref  = '#pricing',
   secondaryLabel = 'Pricing',
 }: Props) {

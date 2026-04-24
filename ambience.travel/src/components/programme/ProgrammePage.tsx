@@ -53,7 +53,7 @@ const CATEGORIES: { id: ListingCategory; label: string; icon: string }[] = [
   { id: 'lunch',    label: 'Lunch',      icon: '☀️' },
   { id: 'dinner',   label: 'Dinner',     icon: '🌙' },
   { id: 'takeaway', label: 'Take Away',  icon: '🥡' },
-  { id: 'activity', label: 'Activities', icon: '🗺' },
+  { id: 'activity', label: 'Experiences', icon: '🗺' },
   { id: 'shopping', label: 'Shopping',   icon: '🛍' },
 ]
 
@@ -420,7 +420,7 @@ function ListingsSection({ listings }: { listings: Listing[] }) {
           Local Recommendations
         </p>
         <h2 style={{ fontSize: 'clamp(24px,3vw,40px)', fontWeight: 600, letterSpacing: '-0.03em', color: L.text, marginBottom: 32 }}>
-          Dining, activities & more.
+          Dining, Experiences, & more.
         </h2>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32 }}>
