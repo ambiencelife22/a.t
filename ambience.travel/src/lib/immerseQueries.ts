@@ -1,7 +1,14 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S26 — Hero image, alt, and credit fields now read from canonical
+// Last updated: S29 — Region gallery support. travel_immerse_destination_regions
+//   now carries a region_gallery jsonb column. fetchHotelsShape reads it,
+//   RegionRow type carries it, fetchRegionGroups maps it into ImmerseRegionGroup
+//   as regionGallery. Consumed by RegionedHotelOptions in
+//   ImmerseDestinationComponents.tsx (gallery wired through the existing
+//   HotelDetailPanel gallery block). Empty array on regions without a seeded
+//   gallery — silently renders nothing until seeded.
+// Prior: S26 — Hero image, alt, and credit fields now read from canonical
 //   travel_accom_hotels (hero_image_src, hero_image_alt, image_credit). Junction
 //   tables (travel_immerse_trip_destination_hotels, travel_immerse_trip_region_hotels)
 //   provide curation only — which hotels go with which trip, rank, bullets,
@@ -262,9 +269,11 @@ async function fetchHotelsShape(
   destId: string,
 ): Promise<ImmerseDestinationHotelsShape> {
 
+  // S29: region_gallery added to SELECT — canonical jsonb array of gallery URLs
+  // on the region row. Consumed by RegionedHotelOptions via ImmerseRegionGroup.
   const { data: regions } = await supabase
     .from('travel_immerse_destination_regions')
-    .select('id, slug, title, shorthand, hero_image_src, hero_image_alt')
+    .select('id, slug, title, shorthand, hero_image_src, hero_image_alt, region_gallery')
     .eq('destination_id', destId)
     .eq('is_active', true)
 
@@ -353,6 +362,9 @@ async function fetchFlatHotels(
 // ─── Regioned hotels ──────────────────────────────────────────────────────────
 // S26: same architecture change as fetchFlatHotels — hero/alt/credit from
 //   canonical travel_accom_hotels, junction is curation only.
+// S29: region_gallery added to RegionRow and mapped into ImmerseRegionGroup
+//   so RegionedHotelOptions can feed the region's own gallery through the
+//   existing HotelDetailPanel gallery block.
 
 type RegionRow = {
   id:              string
@@ -361,6 +373,7 @@ type RegionRow = {
   shorthand:       string | null
   hero_image_src:  string | null
   hero_image_alt:  string | null
+  region_gallery:  string[] | null
 }
 
 async function fetchRegionGroups(
@@ -470,6 +483,7 @@ async function fetchRegionGroups(
       stayLabel:     tr?.stayLabel ?? '',
       heroImageSrc:  region.hero_image_src ?? undefined,
       heroImageAlt:  region.hero_image_alt ?? undefined,
+      regionGallery: Array.isArray(region.region_gallery) ? region.region_gallery : [],
       hotels:        hotelsByRegionId.get(region.id) ?? [],
     }
   })

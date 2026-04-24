@@ -119,6 +119,7 @@ export type ImmerseRegionGroup = {
   stayLabel:    string
   heroImageSrc?: string
   heroImageAlt?: string
+  regionGallery?: string[]
   hotels:       ImmerseHotelOption[]
 }
 

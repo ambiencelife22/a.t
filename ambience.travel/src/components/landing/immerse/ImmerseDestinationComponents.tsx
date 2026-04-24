@@ -178,7 +178,7 @@ function RegionedHotelOptions({ data, regions }: { data: ImmerseDestinationData;
     imageAlt:     r.heroImageAlt ?? r.title,
     stayLabel:    r.stayLabel,
     rooms:        [],
-    gallery:      [],
+    gallery: r.regionGallery ?? [],
   }))
 
   const detailRegion = regionCards[activeRegion]
