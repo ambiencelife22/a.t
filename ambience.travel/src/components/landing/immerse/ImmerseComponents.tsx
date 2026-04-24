@@ -1,11 +1,13 @@
 // ImmerseComponents.tsx - shared primitives for all /immerse/ proposal components
 // Owns: ID palette, useImmerseMobile, immerseFadeUp, useImmerseVisible, shared UI atoms
 // Does not own page-level components or data.
-// Last updated: S30 — Added ImmerseWelcomeLetter. Renders between Hero 1 and
-//   Hero 2 on trip overview pages. Mirrors destination subpage intro block
-//   styling via ImmerseEyebrow + ImmerseTitle(serif) + body paragraphs + italic
-//   signoff block. Hides entire section if all 5 fields empty (empty-string-
-//   means-hide convention). Body splits on \n\n for paragraph breaks.
+// Last updated: S30 — ImmerseWelcomeLetter flipped to left-align + cream light surface.
+//   All text tokens inside the welcome block use *OnLight variants
+//   (textOnLight, mutedOnLight) per the light-surface token rule earned in
+//   S29 Addendum 2 via the ImmerseStayBox muddy-text bug. Section background
+//   is IMMERSE.lightSurface. ImmerseTitle received an optional lightSurface
+//   prop to swap its default ID.text → IMMERSE.textOnLight.
+// Prior: S30 — Added ImmerseWelcomeLetter (initial centered/dark version).
 // Prior: S12 — original primitives shipped.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
@@ -124,7 +126,18 @@ export function ImmerseEyebrow({ children, style, shimmer = true }: { children: 
   )
 }
 
-export function ImmerseTitle({ children, style, serif = false }: { children: string; style?: CSSProperties; serif?: boolean }) {
+// S30: lightSurface prop — when rendering on IMMERSE.lightSurface (cream),
+// use textOnLight instead of ID.text to avoid the light-on-light muddy-text bug
+// earned via S29 Addendum 2 (ImmerseStayBox). Default remains ID.text for
+// dark-surface parents (the original use case).
+export function ImmerseTitle({
+  children, style, serif = false, lightSurface = false,
+}: {
+  children: string
+  style?: CSSProperties
+  serif?: boolean
+  lightSurface?: boolean
+}) {
   return (
     <h2
       style={{
@@ -134,7 +147,7 @@ export function ImmerseTitle({ children, style, serif = false }: { children: str
         fontWeight: serif ? 400 : 800,
         fontFamily: serif ? '"Cormorant Garamond", "Cormorant", "Times New Roman", serif' : undefined,
         margin: '0 0 12px',
-        color: ID.text,
+        color: lightSurface ? IMMERSE.textOnLight : ID.text,
         ...style,
       }}
     >
@@ -269,9 +282,9 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
 }
 
 // ─── Welcome letter (S30) ─────────────────────────────────────────────────────
-// Renders between Hero 1 and Hero 2 on the trip overview page. Mirrors intro
-// block styling from destination subpages: eyebrow + serif title + body + italic
-// signoff + signer name. Body supports paragraph breaks (split on \n\n).
+// Renders between Hero 1 and Route Strip on the trip overview page.
+// Cream light surface, left-aligned. All text tokens are *OnLight variants.
+// Body supports paragraph breaks (split on \n\n).
 // Empty-string-means-hide applies at both section and field level:
 //   - All 5 fields empty  → entire section hides
 //   - Any single field '' → that field hides, others render
@@ -298,24 +311,27 @@ export function ImmerseWelcomeLetter({
     : []
 
   return (
-    <ImmerseSectionWrap refProp={ref as React.RefObject<HTMLElement>}>
+    <ImmerseSectionWrap
+      refProp={ref as React.RefObject<HTMLElement>}
+      style={{ background: IMMERSE.lightSurface, borderTop: 'none' }}
+    >
       <div
         style={{
           maxWidth: 720,
-          margin: '0 auto',
-          textAlign: 'center',
+          margin: '0',
+          textAlign: 'left',
           ...immerseFadeUp(visible),
         }}
       >
         {eyebrow && <ImmerseEyebrow>{eyebrow}</ImmerseEyebrow>}
-        {title && <ImmerseTitle serif>{title}</ImmerseTitle>}
+        {title && <ImmerseTitle serif lightSurface>{title}</ImmerseTitle>}
         {paragraphs.length > 0 && (
           <div style={{ marginTop: 24 }}>
             {paragraphs.map((p, i) => (
               <p
                 key={i}
                 style={{
-                  color: ID.muted,
+                  color: IMMERSE.mutedOnLight,
                   fontSize: 15,
                   lineHeight: 1.82,
                   margin: i === 0 ? 0 : '16px 0 0',
@@ -331,7 +347,7 @@ export function ImmerseWelcomeLetter({
             {signoffBody && (
               <div
                 style={{
-                  color: ID.muted,
+                  color: IMMERSE.mutedOnLight,
                   fontSize: 15,
                   lineHeight: 1.82,
                   fontStyle: 'italic',
@@ -344,7 +360,7 @@ export function ImmerseWelcomeLetter({
               <div
                 style={{
                   marginTop: 4,
-                  color: ID.text,
+                  color: IMMERSE.textOnLight,
                   fontSize: 15,
                   lineHeight: 1.82,
                   fontWeight: 600,
