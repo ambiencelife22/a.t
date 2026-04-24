@@ -1,7 +1,12 @@
 // ImmerseComponents.tsx - shared primitives for all /immerse/ proposal components
 // Owns: ID palette, useImmerseMobile, immerseFadeUp, useImmerseVisible, shared UI atoms
 // Does not own page-level components or data.
-// Last updated: S12
+// Last updated: S30 — Added ImmerseWelcomeLetter. Renders between Hero 1 and
+//   Hero 2 on trip overview pages. Mirrors destination subpage intro block
+//   styling via ImmerseEyebrow + ImmerseTitle(serif) + body paragraphs + italic
+//   signoff block. Hides entire section if all 5 fields empty (empty-string-
+//   means-hide convention). Body splits on \n\n for paragraph breaks.
+// Prior: S12 — original primitives shipped.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ID, IMMERSE } from '../../../lib/landingColors'
@@ -260,5 +265,97 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Welcome letter (S30) ─────────────────────────────────────────────────────
+// Renders between Hero 1 and Hero 2 on the trip overview page. Mirrors intro
+// block styling from destination subpages: eyebrow + serif title + body + italic
+// signoff + signer name. Body supports paragraph breaks (split on \n\n).
+// Empty-string-means-hide applies at both section and field level:
+//   - All 5 fields empty  → entire section hides
+//   - Any single field '' → that field hides, others render
+
+export function ImmerseWelcomeLetter({
+  eyebrow,
+  title,
+  body,
+  signoffBody,
+  signoffName,
+}: {
+  eyebrow:     string
+  title:       string
+  body:        string
+  signoffBody: string
+  signoffName: string
+}) {
+  const { ref, visible } = useImmerseVisible()
+
+  if (!eyebrow && !title && !body && !signoffBody && !signoffName) return null
+
+  const paragraphs = body
+    ? body.split('\n\n').map(p => p.trim()).filter(p => p.length > 0)
+    : []
+
+  return (
+    <ImmerseSectionWrap refProp={ref as React.RefObject<HTMLElement>}>
+      <div
+        style={{
+          maxWidth: 720,
+          margin: '0 auto',
+          textAlign: 'center',
+          ...immerseFadeUp(visible),
+        }}
+      >
+        {eyebrow && <ImmerseEyebrow>{eyebrow}</ImmerseEyebrow>}
+        {title && <ImmerseTitle serif>{title}</ImmerseTitle>}
+        {paragraphs.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            {paragraphs.map((p, i) => (
+              <p
+                key={i}
+                style={{
+                  color: ID.muted,
+                  fontSize: 15,
+                  lineHeight: 1.82,
+                  margin: i === 0 ? 0 : '16px 0 0',
+                }}
+              >
+                {p}
+              </p>
+            ))}
+          </div>
+        )}
+        {(signoffBody || signoffName) && (
+          <div style={{ marginTop: 32 }}>
+            {signoffBody && (
+              <div
+                style={{
+                  color: ID.muted,
+                  fontSize: 15,
+                  lineHeight: 1.82,
+                  fontStyle: 'italic',
+                }}
+              >
+                {signoffBody}
+              </div>
+            )}
+            {signoffName && (
+              <div
+                style={{
+                  marginTop: 4,
+                  color: ID.text,
+                  fontSize: 15,
+                  lineHeight: 1.82,
+                  fontWeight: 600,
+                }}
+              >
+                {signoffName}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </ImmerseSectionWrap>
   )
 }
