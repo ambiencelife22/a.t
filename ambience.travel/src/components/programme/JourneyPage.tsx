@@ -333,7 +333,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
   const flights    = allEvents.filter(e => e.event_type === 'flight' && e.status !== 'cancelled')
   const hotels     = allEvents.filter(e => e.event_type === 'check_in' && e.status !== 'cancelled')
   const transfers  = allEvents.filter(e => e.event_type === 'transfer' && e.status === 'confirmed')
-  const activities = allEvents.filter(e => e.event_type === 'experience' && e.status === 'confirmed')
+  const experiences = allEvents.filter(e => e.event_type === 'experience' && e.status === 'confirmed')
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -411,9 +411,9 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
       )}
 
       {/* Experiencers */}
-      {activities.length > 0 && (
+      {experiences.length > 0 && (
         <BriefSection title='Confirmed Activities'>
-          {activities.map(a => (
+          {experiences.map(a => (
             <BriefRow
               key={a.id}
               label={a.time_local ?? '—'}
