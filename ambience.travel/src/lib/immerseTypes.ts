@@ -1,7 +1,13 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S23 addendum — Added bulletsHeading to ImmerseContentCard.
+// Last updated: S30 — Added ImmerseWelcomeLetter + welcomeLetter on ImmerseTripData.
+//   Canonical table travel_immerse_welcome_letter holds a single shared proposal
+//   letter. Per-trip overrides live as 5 nullable welcome_*_override columns on
+//   travel_immerse_trips. Resolution: trip override → canonical → ''. Empty
+//   string = hide field; component hides section if all five fields empty.
+// Prior: S29 addendum 2 — Added regionGallery to ImmerseRegionGroup.
+// Prior: S23 addendum — Added bulletsHeading to ImmerseContentCard.
 //   Small header rendered above each card's bullets list (e.g. "Highlights").
 //   Resolves trip-override → canonical → ''. Empty string = hide header.
 // Prior: S23 — Added ImmerseDestinationData.pricingCloser. Per-trip
@@ -102,6 +108,19 @@ export type ImmersePricingCloser = {
   indicativeRange: string | null
 }
 
+// S30: Proposal-wide welcome letter. Single canonical row shared across all
+// trips; per-trip overrides on travel_immerse_trips.welcome_*_override.
+// Resolution: trip override → canonical → ''. Empty string on all five
+// fields hides the entire section; empty string on an individual field hides
+// just that field (handled in ImmerseWelcomeLetter component).
+export type ImmerseWelcomeLetter = {
+  eyebrow:     string
+  title:       string
+  body:        string
+  signoffBody: string
+  signoffName: string
+}
+
 // ─── Region grouping (S21) ────────────────────────────────────────────────────
 // Nordic Winter has 3 regions (Iceland, Norway, Finland). Europe Finale has
 // 3 (Swiss Alps, Paris, French Alps). Each region carries its own positioning
@@ -181,6 +200,8 @@ export type ImmerseTripData = {
   journeyTypes: string[]
   clientName:   string
   statusLabel:  string
+  // welcome (S30)
+  welcomeLetter: ImmerseWelcomeLetter
   // hero
   eyebrow:      string
   title:        string
@@ -247,7 +268,7 @@ export type ImmerseDestinationData = {
   diningTitle:   string
   diningBody:    string
   dining:        ImmerseContentCard[]
- // experiences
+  // experiences
   experiencesEyebrow: string
   experiencesTitle:   string
   experiencesBody:    string
