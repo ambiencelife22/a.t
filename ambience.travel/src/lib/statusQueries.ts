@@ -3,13 +3,13 @@
 //   - fetchEngagementStatuses()  — all rows of travel_engagement_statuses
 //   - fetchItineraryStatuses()   — all rows of travel_itinerary_statuses
 //   - mapEngagementStatus / mapItineraryStatus — row → camelCase mappers,
-//     exported so hydrateEngagement in immerseTripQueries.ts can reuse them
+//     exported so hydrateEngagement in immerseEngagementQueries.ts can reuse them
 //     on the nested join row without duplicating the snake_case → camelCase
 //     shape.
 //
 // Used by admin dropdowns (operator-facing). Neither fetcher is consumed
 // by guest-facing routes — guests see resolved labels via the joined
-// status object on ImmerseEngagementData (see immerseTripQueries.ts
+// status object on ImmerseEngagementData (see immerseEngagementQueries.ts
 // hydrateEngagement).
 //
 // Last updated: S30E — Engagement abstraction. Renames mirror DB:
@@ -69,7 +69,7 @@ export async function fetchItineraryStatuses(activeOnly = true): Promise<Itinera
 }
 
 // ─── Internal mappers ────────────────────────────────────────────────────────
-// Exported for reuse by hydrateEngagement (immerseTripQueries.ts) on nested
+// Exported for reuse by hydrateEngagement (immerseEngagementQueries.ts) on nested
 // join rows.
 
 export function mapEngagementStatus(row: EngagementStatusRow): EngagementStatus {

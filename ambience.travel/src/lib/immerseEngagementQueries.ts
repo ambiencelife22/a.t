@@ -1,11 +1,14 @@
-// immerseTripQueries.ts — Supabase query layer for immerse engagement master data
+// immerseEngagementQueries.ts — Supabase query layer for immerse engagement master data
 // Owns:
 //   - getImmerseEngagement(urlId)        — full ImmerseEngagementData fetch by public url_id
 //   - getImmerseEngagementBySlug(slug)   — full ImmerseEngagementData fetch by slug
 //                                          (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S30E — Engagement abstraction. Master table reads now target
+// Last updated: S30E stage 3 — Filename renamed immerseEngagementQueries.ts →
+//   immerseEngagementQueries.ts (no content changes). Three consumer import
+//   paths updated: App.tsx, DestinationPage.tsx, ImmerseEngagementRoute.tsx.
+// Prior: S30E stage 1 — Engagement abstraction. Master table reads now target
 //   travel_immerse_engagements; status FK column engagement_status_id replaces
 //   trip_status_id; nested status join targets travel_engagement_statuses.
 //   Type renames: TripRow → EngagementRow, ImmerseTripData → ImmerseEngagementData,
@@ -65,14 +68,13 @@ type EngagementRow = {
   url_id:                          string
   slug:                            string
   trip_format:                     string
-  engagement_type:                 string                // S30E discriminator
+  engagement_type:                 string
   journey_types:                   string[] | null
   person_id:                       string | null
   status_label:                    string | null
-  // S30E: status FK column + nested join row both renamed
   engagement_status_id:            string
   itinerary_status_id:             string
-  travel_engagement_statuses:      StatusJoinRow | null  // S30E
+  travel_engagement_statuses:      StatusJoinRow | null
   travel_itinerary_statuses:       StatusJoinRow | null
   eyebrow:                         string | null
   title:                           string | null
@@ -155,8 +157,6 @@ type PricingRowRow = {
 }
 
 // ── Public fetch ─────────────────────────────────────────────────────────────
-// S30E: SELECT pulls engagement_type + engagement_status_id + nested join
-// from travel_engagement_statuses. Itinerary nested join unchanged.
 
 const ENGAGEMENT_SELECT_COLUMNS = `
   id, url_id, slug, trip_format, engagement_type, journey_types,

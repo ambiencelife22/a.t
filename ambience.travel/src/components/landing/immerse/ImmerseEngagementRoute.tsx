@@ -16,7 +16,7 @@
 //   state ImmerseEngagementPage owns its own layout wrapper.
 
 import { useEffect, useMemo, useState } from 'react'
-import { getImmerseEngagement }            from '../../../lib/immerseTripQueries'
+import { getImmerseEngagement }            from '../../../lib/immerseEngagementQueries'
 import type { ImmerseEngagementData }      from '../../../lib/immerseTypes'
 import ImmerseEngagementPage               from './ImmerseEngagementPage'
 import DestinationPage                     from './DestinationPage'

@@ -35,11 +35,11 @@
  *
  * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
  * full-page programme view. The programme root renders the app shell.
- *
+ 
  * Last updated: S30E stage 2 — Component + import path renames for the
- *   ImmerseTrip* → ImmerseEngagement* file rename. ImmerseTripRoute →
- *   ImmerseEngagementRoute; ImmerseTripPage → ImmerseEngagementPage.
- *   PublicHoneymoonRoute callback variable renamed for clarity.
+ * Last updated: S30E stage 3 — Import path updated for renamed
+ *   immerseEngagementQueries.ts → immerseEngagementQueries.ts.
+ * Prior: S30E stage 2 — Component + import path renames for the
  * Prior: S30E stage 1 — getImmerseTripBySlug → getImmerseEngagementBySlug;
  *   type ImmerseTripData → ImmerseEngagementData.
  * Prior: S17 — Public honeymoon preview is now DB-backed (slug 'honeymoon1')
@@ -58,7 +58,7 @@ import SignatureExperiencePage from './components/landing/experiences/SignatureE
 import ImmerseEngagementRoute   from './components/landing/immerse/ImmerseEngagementRoute'
 import ImmerseEngagementPage    from './components/landing/immerse/ImmerseEngagementPage'
 import DestinationPage          from './components/landing/immerse/DestinationPage'
-import { getImmerseEngagementBySlug } from './lib/immerseTripQueries'
+import { getImmerseEngagementBySlug } from './lib/immerseEngagementQueries'
 import type { ImmerseEngagementData } from './lib/immerseTypes'
 import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
