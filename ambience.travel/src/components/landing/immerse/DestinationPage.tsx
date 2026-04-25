@@ -1,22 +1,16 @@
-// DestinationPage.tsx — Destination subpage for immerse journey
+// DestinationPage.tsx — Destination subpage for immerse engagement
 // Routes:
 //   Public legacy: /immerse/honeymoon/:destination
 //   Public S22:    /immerse/pubMuirRzSW/:destination (and other pub-prefixed url_ids)
-//   Private trip:  /immerse/:url_id/:destination
-// Last updated: S26 — Builds navItems from trip.destinationRows and passes to
+//   Private:       /immerse/:url_id/:destination
+//
+// Last updated: S30E — Engagement abstraction. getImmerseTrip →
+//   getImmerseEngagement; getImmerseTripBySlug → getImmerseEngagementBySlug;
+//   type ImmerseTripData → ImmerseEngagementData; local state trip →
+//   engagement; deriveNightsLabel parameter renamed.
+// Prior: S26 — Builds navItems from engagement.destinationRows and passes to
 //   ImmerseLayout. Current destination is marked active via destinationSlug
 //   match. logoHref resolves to /immerse/{journeyToken}.
-// Prior: S22 — Removed the getImmerseBottomContent merge block.
-//   Pricing notes (heading, title, notes) are now resolved entirely by the
-//   query layer (trip-override → canonical-destination → empty), with the
-//   "To be advised" fallback rendered at the component level. Single source of
-//   truth, no shadow override system. immerseBottomNotes.ts is deleted.
-//   Trip promise simplified to two cases (legacy 'honeymoon' slug or url_id).
-// Prior: S21 — renamed from HoneymoonDestinationPage. Fully data-driven hero
-//   (guestName, dateLabel, titlePrefix, nightsLabel all derived from trip +
-//   destination data). Consumes ImmerseDestinationHotelsShape discriminated
-//   union (flat vs regioned hotels). Bad destination slug still redirects to
-//   parent overview with toast.
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -28,10 +22,10 @@ import { ImmerseHotelOptions } from './ImmerseDestinationComponents'
 import { ImmerseContentGrid } from './ImmerseDestinationComponents'
 import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
-import { getImmerseTrip, getImmerseTripBySlug } from '../../../lib/immerseTripQueries'
+import { getImmerseEngagement, getImmerseEngagementBySlug } from '../../../lib/immerseTripQueries'
 import { useToast } from '../../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseTripRoute'
-import type { ImmerseDestinationData, ImmerseTripData } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseEngagementData } from '../../../lib/immerseTypes'
 
 type RouteParts = {
   journeyToken:    string        // 'honeymoon' | 11-char url_id (private or pub-prefixed template)
@@ -52,22 +46,21 @@ function resolveRouteParts(pathname: string): RouteParts {
   }
 }
 
-// S21: parent overview URL for redirect-on-not-found.
-// Legacy /immerse/honeymoon maps back to /immerse/honeymoon.
-// Other journey tokens map back to /immerse/<token>.
+// Parent overview URL for redirect-on-not-found. Legacy /immerse/honeymoon
+// maps back to /immerse/honeymoon. Other journey tokens map back to
+// /immerse/<token>.
 function getParentOverviewUrl(journeyToken: string): string {
   return `/immerse/${journeyToken}`
 }
 
 // ─── Hero derivation helpers ──────────────────────────────────────────────────
 
-// Pull a "Month Year" or similar date fragment out of trip.statusLabel.
+// Pull a "Month Year" or similar date fragment out of engagement.statusLabel.
 // Examples: "Designed For You · January 2027" → "January 2027"
 //           "Designed For You"                → ""
 //           "January 2027 concept preview"    → "January 2027"
 function deriveDateLabel(statusLabel: string | undefined): string {
   if (!statusLabel) return ''
-  // Match something like "Month YYYY" or "Month YYYY–Month YYYY"
   const m = statusLabel.match(
     /(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}(\s*[–-]\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})?/i,
   )
@@ -84,18 +77,18 @@ function deriveTitlePrefix(journeyTypes: string[]): string {
 }
 
 // Find the destination row by slug to get the stay_label (3-4 nights etc.).
-function deriveNightsLabel(trip: ImmerseTripData | null, destinationSlug: string): string {
-  if (!trip) return ''
-  const row = trip.destinationRows.find(r => r.destinationSlug === destinationSlug)
+function deriveNightsLabel(engagement: ImmerseEngagementData | null, destinationSlug: string): string {
+  if (!engagement) return ''
+  const row = engagement.destinationRows.find(r => r.destinationSlug === destinationSlug)
   return row?.stayLabel ?? ''
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DestinationPage() {
-  const [data, setData]     = useState<ImmerseDestinationData | null>(null)
-  const [trip, setTrip]     = useState<ImmerseTripData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData]               = useState<ImmerseDestinationData | null>(null)
+  const [engagement, setEngagement]   = useState<ImmerseEngagementData | null>(null)
+  const [loading, setLoading]         = useState(true)
   const { toast } = useToast()
 
   // Track pathname so back/forward navigation re-resolves the destination
@@ -129,16 +122,17 @@ export default function DestinationPage() {
       setLoading(true)
 
       try {
-        // Fetch trip + destination in parallel.
+        // Fetch engagement + destination in parallel.
         // Two cases: legacy 'honeymoon' slug, or any url_id (private or
-        // public-template — both flow through getImmerseTrip which keys on url_id).
-        const tripPromise = isPublicLegacy
-          ? getImmerseTripBySlug('honeymoon1')
-          : getImmerseTrip(journeyToken)
+        // public-template — both flow through getImmerseEngagement which
+        // keys on url_id).
+        const engagementPromise = isPublicLegacy
+          ? getImmerseEngagementBySlug('honeymoon1')
+          : getImmerseEngagement(journeyToken)
 
-        const [destinationResult, tripResult] = await Promise.all([
+        const [destinationResult, engagementResult] = await Promise.all([
           getImmerseDestination(journeyToken, destinationSlug),
-          tripPromise,
+          engagementPromise,
         ])
 
         if (cancelled) return
@@ -148,11 +142,8 @@ export default function DestinationPage() {
           return
         }
 
-        // S22: pricing notes (heading, title, notes) are now fully resolved by
-        // the query layer (trip-override → canonical-destination). No shadow
-        // override system, no merge step here. Component handles empty fallback.
         setData(destinationResult)
-        setTrip(tripResult)
+        setEngagement(engagementResult)
         setLoading(false)
       } catch (err) {
         console.error('DestinationPage: failed to load destination', err)
@@ -161,7 +152,6 @@ export default function DestinationPage() {
       }
     }
 
-    // S20: redirect handler — toast + pushState back to overview
     function handleNotFound(message: string) {
       const overviewUrl = getParentOverviewUrl(journeyToken)
       toast.warning(message)
@@ -180,16 +170,16 @@ export default function DestinationPage() {
   if (loading) return null
   if (!data)   return null
 
-  // S21: hero values derived from trip + destination data — no hardcodes
-  const guestName   = trip?.clientName   ?? 'Our VIP Guest'
-  const dateLabel   = deriveDateLabel(trip?.statusLabel)
-  const titlePrefix = deriveTitlePrefix(trip?.journeyTypes ?? [])
-  const nightsLabel = deriveNightsLabel(trip, destinationSlug)
+  // Hero values derived from engagement + destination data — no hardcodes
+  const guestName   = engagement?.clientName   ?? 'Our VIP Guest'
+  const dateLabel   = deriveDateLabel(engagement?.statusLabel)
+  const titlePrefix = deriveTitlePrefix(engagement?.journeyTypes ?? [])
+  const nightsLabel = deriveNightsLabel(engagement, destinationSlug)
 
-  // S26: Build nav items. Trip may be null if hydration failed — in that case
-  // skip the menu entirely (renders logo-only nav). Otherwise pass the full
-  // list with the current destination marked active.
-  const navItems = trip ? buildImmerseNavItems(trip, destinationSlug) : undefined
+  // Build nav items. Engagement may be null if hydration failed — in that
+  // case skip the menu entirely (renders logo-only nav). Otherwise pass the
+  // full list with the current destination marked active.
+  const navItems = engagement ? buildImmerseNavItems(engagement, destinationSlug) : undefined
   const logoHref = `/immerse/${journeyToken}`
 
   return (

@@ -1,20 +1,25 @@
 // ImmerseTripRoute.tsx — Route resolver for /immerse/{url_id}/...
 // Resolves url_id (+ optional destination_slug) from pathname.
-// Overview (/immerse/{url_id})          → fetches trip, renders ImmerseTripPage.
-// Destination (/immerse/{url_id}/{slug}) → verifies trip exists, hands off to
+// Overview (/immerse/{url_id})          → fetches engagement, renders ImmerseTripPage.
+// Destination (/immerse/{url_id}/{slug}) → verifies engagement exists, hands off to
 //   DestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
-// Last updated: S26 — Builds navItems from trip.destinationRows and passes to
+//
+// Last updated: S30E — Engagement abstraction. getImmerseTrip →
+//   getImmerseEngagement; type ImmerseTripData → ImmerseEngagementData;
+//   buildImmerseNavItems first arg renamed engagement (parameter only —
+//   call sites still pass the engagement record). Component name + filename
+//   preserved this session; full ImmerseTrip* → ImmerseEngagement* file
+//   rename deferred to stage 2.
+// Prior: S26 — Builds navItems from engagement.destinationRows and passes to
 //   ImmerseLayout on loading / not-found / unknown states. On the overview
-//   state ImmerseTripPage owns its own layout wrapper and consumes nav data
-//   from trip; this component only wraps states that render Layout here.
-// Prior: S17 — Reacts to browser back/forward via popstate listener.
+//   state ImmerseTripPage owns its own layout wrapper.
 
 import { useEffect, useMemo, useState } from 'react'
-import { getImmerseTrip }         from '../../../lib/immerseTripQueries'
-import type { ImmerseTripData }   from '../../../lib/immerseTypes'
-import ImmerseTripPage            from './ImmerseTripPage'
-import DestinationPage            from './DestinationPage'
+import { getImmerseEngagement }            from '../../../lib/immerseTripQueries'
+import type { ImmerseEngagementData }      from '../../../lib/immerseTypes'
+import ImmerseTripPage                     from './ImmerseTripPage'
+import DestinationPage                     from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../../layouts/ImmerseLayout'
 
 // ── URL resolution ───────────────────────────────────────────────────────────
@@ -33,7 +38,7 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
 
   if (!seg1) return { kind: 'invalid' }
 
-  // 11-char alphanumeric = trip url_id
+  // 11-char alphanumeric = engagement url_id
   const isUrlId = /^[A-Za-z0-9]{11}$/.test(seg1)
   if (!isUrlId) return { kind: 'invalid' }
 
@@ -42,29 +47,29 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
 }
 
 // ── Nav items builder ────────────────────────────────────────────────────────
-// Pure function — takes trip + current destination slug (or null for overview)
-// and returns the ImmerseLayout nav items. Trip Overview first, then one item
-// per destination row in sort_order. 'hidden' rows are already filtered server
-// side in immerseTripQueries.ts; 'preview' rows render with the Preview pill.
+// Pure function — takes engagement + current destination slug (or null for
+// overview) and returns the ImmerseLayout nav items. Trip Overview first,
+// then one item per destination row in sort_order. 'hidden' rows are already
+// filtered server side; 'preview' rows render with the Preview pill.
 
 export function buildImmerseNavItems(
-  trip: ImmerseTripData,
+  engagement: ImmerseEngagementData,
   currentDestinationSlug: string | null,
 ): ImmerseNavItem[] {
   const items: ImmerseNavItem[] = [
     {
       label:    'Trip Overview',
-      href:     `/immerse/${trip.urlId}`,
+      href:     `/immerse/${engagement.urlId}`,
       isActive: currentDestinationSlug === null,
     },
   ]
 
-  for (const row of trip.destinationRows) {
+  for (const row of engagement.destinationRows) {
     const slug = row.destinationSlug ?? ''
     if (!slug) continue
     items.push({
       label:     row.title || slug,
-      href:      `/immerse/${trip.urlId}/${slug}`,
+      href:      `/immerse/${engagement.urlId}/${slug}`,
       isActive:  currentDestinationSlug === slug,
       isPreview: row.subpageStatus === 'preview',
     })
@@ -111,13 +116,13 @@ function NotFound({ message }: { message: string }) {
 // ── Main component ──────────────────────────────────────────────────────────
 
 export default function ImmerseTripRoute() {
-  const [trip,    setTrip]    = useState<ImmerseTripData | null>(null)
+  const [engagement, setEngagement] = useState<ImmerseEngagementData | null>(null)
   const [kind,    setKind]    = useState<'overview' | 'destination' | null>(null)
   const [error,   setError]   = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // S17: track pathname so this component re-resolves when user navigates
-  // via back/forward within the immerse subtree.
+  // Track pathname so this component re-resolves when user navigates via
+  // back/forward within the immerse subtree.
   const [pathname, setPathname] = useState(window.location.pathname)
 
   useEffect(() => {
@@ -147,17 +152,17 @@ export default function ImmerseTripRoute() {
       setLoading(true)
       setError(null)
 
-      // Always verify the trip exists before rendering anything trip-scoped.
-      // This catches /immerse/badurlid0/anything cleanly.
-      const tripData = await getImmerseTrip(route.urlId)
+      // Always verify the engagement exists before rendering anything
+      // engagement-scoped. This catches /immerse/badurlid0/anything cleanly.
+      const engagementData = await getImmerseEngagement(route.urlId)
       if (cancelled) return
-      if (!tripData) {
+      if (!engagementData) {
         setError('not-found')
         setLoading(false)
         return
       }
 
-      setTrip(tripData)
+      setEngagement(engagementData)
       setKind(route.kind)
       setLoading(false)
     }
@@ -167,10 +172,10 @@ export default function ImmerseTripRoute() {
     return () => { cancelled = true }
   }, [pathname])
 
-  // S26: nav items for Layout wrapper on states we render here.
-  // Overview branch delegates to ImmerseTripPage which owns its own Layout;
-  // we only need items for loading / not-found shells. We build them whenever
-  // trip is loaded so loading-inside-a-valid-trip states show the menu.
+  // Nav items for Layout wrapper on states we render here. Overview branch
+  // delegates to ImmerseTripPage which owns its own Layout; we only need
+  // items for loading / not-found shells. Build them whenever engagement is
+  // loaded so loading-inside-a-valid-engagement states show the menu.
   const currentDestinationSlug = useMemo(() => {
     const route = resolveImmerseRoute(pathname)
     if (route.kind === 'destination') return route.destinationSlug
@@ -178,11 +183,11 @@ export default function ImmerseTripRoute() {
   }, [pathname])
 
   const navItems = useMemo(() => {
-    if (!trip) return undefined
-    return buildImmerseNavItems(trip, currentDestinationSlug)
-  }, [trip, currentDestinationSlug])
+    if (!engagement) return undefined
+    return buildImmerseNavItems(engagement, currentDestinationSlug)
+  }, [engagement, currentDestinationSlug])
 
-  const logoHref = trip ? `/immerse/${trip.urlId}` : undefined
+  const logoHref = engagement ? `/immerse/${engagement.urlId}` : undefined
 
   if (loading) {
     return (
@@ -200,14 +205,14 @@ export default function ImmerseTripRoute() {
     )
   }
 
-  if (kind === 'overview' && trip) {
-    return <ImmerseTripPage data={trip} />
+  if (kind === 'overview' && engagement) {
+    return <ImmerseTripPage data={engagement} />
   }
 
-  if (kind === 'destination' && trip) {
+  if (kind === 'destination' && engagement) {
     // Hand off to DestinationPage — it resolves its own destination slug
-    // from window.location.pathname (last URL segment). Trip context available
-    // via closure if per-trip overrides are added later.
+    // from window.location.pathname (last URL segment). Engagement context
+    // available via closure if per-engagement overrides are added later.
     return <DestinationPage />
   }
 

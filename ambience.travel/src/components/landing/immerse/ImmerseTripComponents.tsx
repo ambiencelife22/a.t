@@ -1,7 +1,11 @@
-// ImmerseTripComponents.tsx — section components for /immerse/ trip overview pages
+// ImmerseTripComponents.tsx — section components for /immerse/ engagement overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseTripPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
-// Last updated: S20 — DestinationRow rewrite:
+//
+// Last updated: S30E — Type rename ImmerseTripData → ImmerseEngagementData
+//   on every consumer signature. Filename preserved this session; full
+//   ImmerseTrip* → ImmerseEngagement* file rename deferred to stage 2.
+// Prior: S20 — DestinationRow rewrite:
 //   (1) Whole card now clickable (anchor wraps card) when subpageStatus === 'live'
 //   (2) 'preview' state renders opacity 0.5, cursor not-allowed, no hover lift,
 //       "Coming soon" badge in bottom-right (replaces Discover More CTA slot)
@@ -20,7 +24,7 @@ import {
   ImmerseStayBox,
 } from './ImmerseComponents'
 import { IMMERSE } from '../../../lib/landingColors'
-import type { ImmerseTripData, ImmerseRouteStop, ImmerseDestinationRow } from '../../../lib/immerseTypes'
+import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../../lib/immerseTypes'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,7 +43,7 @@ function getDestinationAnchorId(row: ImmerseDestinationRow) {
   return `dest-${row.id}`
 }
 
-// S20: defensive — destination_slug literal text "null" was the source of the
+// Defensive — destination_slug literal text "null" was the source of the
 // /immerse/honeymoon/null bug. Reject it explicitly along with empty/whitespace.
 function hasUsableDestinationSlug(row: ImmerseDestinationRow): boolean {
   const slug = row.destinationSlug
@@ -73,7 +77,7 @@ function scrollToDestination(anchorId: string) {
 
 // ─── Route strip ──────────────────────────────────────────────────────────────
 
-export function ImmerseRouteStrip({ data }: { data: ImmerseTripData }) {
+export function ImmerseRouteStrip({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile = useImmerseMobile()
 
@@ -271,12 +275,12 @@ function RouteStopCard({
 // switch to the light-context token family so the cards read correctly against
 // the light background. Gold accents (eyebrow, number label, mood) stay gold.
 //
-// S20: each row reads row.subpageStatus to decide render mode:
+// Each row reads row.subpageStatus to decide render mode:
 //   'live'    — whole card is an anchor, normal hover, "Discover More →" CTA
 //   'preview' — plain div, opacity 0.5, no hover lift, "Coming soon" badge
 //   'hidden'  — already filtered server-side; never reaches this component
 
-export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
+export function ImmerseDestinationRows({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile = useImmerseMobile()
 
@@ -339,9 +343,9 @@ export function ImmerseDestinationRows({ data }: { data: ImmerseTripData }) {
   )
 }
 
-// S20: rewritten so the entire card is the click target (when live).
-// 'preview' state renders the same card visually but at opacity 0.5,
-// non-clickable, with a "Coming soon" badge replacing the CTA pill.
+// Whole card is the click target (when live). 'preview' state renders the
+// same card visually but at opacity 0.5, non-clickable, with a "Coming soon"
+// badge replacing the CTA pill.
 function DestinationRow({
   row,
   urlId,
@@ -512,7 +516,7 @@ function DestinationRow({
   )
 }
 
-// S20: corner CTA / status badge — lives in the bottom-right slot of the card.
+// Corner CTA / status badge — lives in the bottom-right slot of the card.
 // Live state shows the gold-bordered "Discover More →" pill (visual only — the
 // whole card is the click target now). Preview shows a muted "Coming Soon" pill.
 function CornerBadge({ isLive, isPreview }: { isLive: boolean; isPreview: boolean }) {
@@ -565,9 +569,9 @@ function CornerBadge({ isLive, isPreview }: { isLive: boolean; isPreview: boolea
   return null
 }
 
-// ─── Trip pricing ─────────────────────────────────────────────────────────────
+// ─── Engagement pricing ───────────────────────────────────────────────────────
 
-export function ImmerseTripPricing({ data }: { data: ImmerseTripData }) {
+export function ImmerseTripPricing({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile = useImmerseMobile()
 
