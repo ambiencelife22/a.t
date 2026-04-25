@@ -60,9 +60,6 @@ function hasUsableDestinationSlug(row: ImmerseDestinationRow): boolean {
 
 function getDestinationPageHref(row: ImmerseDestinationRow, urlId: string) {
   if (!hasUsableDestinationSlug(row)) return null
-
-  const isPublic = urlId === 'honeymoon'
-  if (isPublic) return `/immerse/honeymoon/${row.destinationSlug}`
   return `/immerse/${urlId}/${row.destinationSlug}`
 }
 

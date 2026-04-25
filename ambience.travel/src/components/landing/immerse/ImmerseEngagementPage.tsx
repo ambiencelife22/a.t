@@ -1,6 +1,6 @@
 // ImmerseEngagementPage.tsx — DB-wired engagement overview page
-// Route: /immerse/{url_id}        (private, token-keyed — e.g. Yazeed)
-//        /immerse/honeymoon       (public preview — slug = 'honeymoon1')
+// Route: /immerse/{url_id} — private + public-template engagements
+//   (public templates use 'pub' prefix convention on url_id, e.g. pubMuirRzSW)
 // Renders hero + welcome letter + route strip + (optional) secondary hero + destination rows + pricing
 // Does not own destination subpages (see DestinationPage)
 //

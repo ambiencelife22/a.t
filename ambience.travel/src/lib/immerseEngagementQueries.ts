@@ -1,34 +1,34 @@
 // immerseEngagementQueries.ts — Supabase query layer for immerse engagement master data
 // Owns:
-//   - getImmerseEngagement(urlId)        — full ImmerseEngagementData fetch by public url_id
-//   - getImmerseEngagementBySlug(slug)   — full ImmerseEngagementData fetch by slug
-//                                          (used for public previews like /immerse/honeymoon/)
+//   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by public url_id
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S30E stage 3 — Filename renamed immerseEngagementQueries.ts →
-//   immerseEngagementQueries.ts (no content changes). Three consumer import
-//   paths updated: App.tsx, DestinationPage.tsx, ImmerseEngagementRoute.tsx.
+// Last updated: S30E perf — Removed getImmerseEngagementBySlug. The
+//   slug-keyed public preview route (/immerse/honeymoon) was deleted in the
+//   same perf pass; the only canonical immerse URL shape is now
+//   /immerse/<11-char-url_id>, with public templates carrying the 'pub'
+//   visual prefix convention. By-slug lookup had no remaining consumers.
+// Prior: S30E stage 3 — Filename renamed immerseTripQueries.ts →
+//   immerseEngagementQueries.ts (no content changes).
 // Prior: S30E stage 1 — Engagement abstraction. Master table reads now target
 //   travel_immerse_engagements; status FK column engagement_status_id replaces
 //   trip_status_id; nested status join targets travel_engagement_statuses.
 //   Type renames: TripRow → EngagementRow, ImmerseTripData → ImmerseEngagementData,
-//   TripStatus → EngagementStatus. Function renames: getImmerseTrip →
-//   getImmerseEngagement, getImmerseTripBySlug → getImmerseEngagementBySlug,
-//   hydrateTrip → hydrateEngagement, TRIP_SELECT_COLUMNS → ENGAGEMENT_SELECT_COLUMNS.
-//   New field on output: engagementType discriminator pulled from the new
-//   DB column (DEFAULT 'journey'). Child table reads still .eq() on trip_id —
+//   TripStatus → EngagementStatus. Function rename: getImmerseTrip →
+//   getImmerseEngagement; hydrateTrip → hydrateEngagement;
+//   TRIP_SELECT_COLUMNS → ENGAGEMENT_SELECT_COLUMNS. New field on output:
+//   engagementType discriminator pulled from the new DB column
+//   (DEFAULT 'journey'). Child table reads still .eq() on trip_id —
 //   children retain "trip" prefix because their content is journey-engagement-
 //   specific (scope-preservation). Mappers imported from statusQueries
 //   renamed to mapEngagementStatus.
-// Prior: S30D — Trip + itinerary status FK lookups. travel_immerse_trips
-//   carried trip_status_id + itinerary_status_id (both NOT NULL FKs) into
-//   travel_trip_statuses + travel_itinerary_statuses. Hydration resolved
+// Prior: S30D — Trip + itinerary status FK lookups. Hydration resolved
 //   both via Supabase nested select. Storage URL rewriting at the read
-//   layer: trip hero (image 1 + image 2), route stop image_src, and
-//   destination row image_src pass through rewriteImageUrl() before reaching
-//   components. The Supabase project-host prefix never reaches rendered
-//   HTML; the /img/* rewrite in vercel.json proxies these to Supabase
-//   Storage at the edge. Defensive + idempotent — see imageUrl.ts.
+//   layer: hero (image 1 + image 2), route stop image_src, and destination
+//   row image_src pass through rewriteImageUrl() before reaching components.
+//   The Supabase project-host prefix never reaches rendered HTML; the
+//   /img/* rewrite in vercel.json proxies these to Supabase Storage at
+//   the edge. Defensive + idempotent — see imageUrl.ts.
 // Prior: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter()
 //   reads the single row in travel_immerse_welcome_letter. Per-engagement
 //   5x welcome_*_override columns on the master row resolved via the
@@ -187,17 +187,6 @@ export async function getImmerseEngagement(urlId: string): Promise<ImmerseEngage
   return hydrateEngagement(engagement as unknown as EngagementRow)
 }
 
-export async function getImmerseEngagementBySlug(slug: string): Promise<ImmerseEngagementData | null> {
-  const { data: engagement, error } = await supabaseAnon
-    .from('travel_immerse_engagements')
-    .select(ENGAGEMENT_SELECT_COLUMNS)
-    .eq('slug', slug)
-    .single()
-
-  if (error || !engagement) return null
-  return hydrateEngagement(engagement as unknown as EngagementRow)
-}
-
 // Canonical welcome letter is a single-row table. maybeSingle() returns null
 // if the table is somehow empty; component handles "all empty" as hidden.
 async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
@@ -220,10 +209,6 @@ const EMPTY_ITINERARY_STATUS:  ItineraryStatus  = { id: '', slug: '', label: '',
 async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseEngagementData | null> {
   const engagementId = engagementRow.id
 
-  // Display-name read is engagement-keyed and unconditional. Public template
-  // hits its trip_display row with first_name=NULL and falls through to the
-  // 'Our VIP Guest' default. Yazeed's row carries first_name='Yazeed'.
-  // Canonical welcome letter fetched in parallel.
   const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon] = await Promise.all([
     supabaseAnon
       .from('travel_immerse_trip_display')
@@ -258,10 +243,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     ?? displayRow?.first_name
     ?? 'Our VIP Guest'
 
-  // Status FKs resolved via nested join. Both NOT NULL in DB so the fallback
-  // to EMPTY_*_STATUS should never trigger; if it ever does, the empty slug
-  // ('') will fail the union narrow at any consumer that branches on
-  // EngagementStatusSlug — visible failure mode preferred over silent default.
   const engagementStatus: EngagementStatus = engagementRow.travel_engagement_statuses
     ? mapEngagementStatus(engagementRow.travel_engagement_statuses)
     : EMPTY_ENGAGEMENT_STATUS
@@ -270,7 +251,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     ? mapItineraryStatus(engagementRow.travel_itinerary_statuses)
     : EMPTY_ITINERARY_STATUS
 
-  // Engagement override → canonical → '' for all 5 welcome letter fields.
   const welcomeLetter: ImmerseWelcomeLetter = {
     eyebrow:     engagementRow.welcome_eyebrow_override      ?? welcomeCanon?.eyebrow      ?? '',
     title:       engagementRow.welcome_title_override        ?? welcomeCanon?.title        ?? '',
@@ -279,7 +259,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     signoffName: engagementRow.welcome_signoff_name_override ?? welcomeCanon?.signoff_name ?? '',
   }
 
-  // Route stop image_src rewritten on the way out.
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
     id:        r.id,
     title:     r.title      ?? '',
@@ -289,7 +268,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     imageAlt:  r.image_alt  ?? '',
   }))
 
-  // Destination row image_src rewritten on the way out.
   const destinationRows: ImmerseDestinationRow[] = destRows.map(r => ({
     id:              r.id,
     numberLabel:     r.number_label ?? '',
@@ -311,9 +289,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     indicativeRange:  r.indicative_range   ?? '',
   }))
 
-  // Hero image fields rewritten. heroImageSrc2 uses `|| undefined` to
-  // preserve the optional-undefined contract — rewriteImageUrl returns ''
-  // on null/empty input.
   const heroSrc2Resolved = rewriteImageUrl(engagementRow.hero_image_src_2)
 
   return {

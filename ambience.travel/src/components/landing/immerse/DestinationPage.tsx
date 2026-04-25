@@ -1,18 +1,21 @@
 // DestinationPage.tsx — Destination subpage for immerse engagement
 // Routes:
-//   Public legacy: /immerse/honeymoon/:destination
-//   Public S22:    /immerse/pubMuirRzSW/:destination (and other pub-prefixed url_ids)
-//   Private:       /immerse/:url_id/:destination
+//   /immerse/:url_id/:destination — private + public-template engagements
+//                                   (public templates use 'pub' prefix
+//                                   convention on url_id, e.g. pubMuirRzSW)
 //
-// Last updated: S30E stage 2 — buildImmerseNavItems import path updated for
+// Last updated: S30E perf — Removed isPublicLegacy branch and
+//   getImmerseEngagementBySlug import. The /immerse/honeymoon/:destination
+//   slug-keyed route was deleted; only canonical url_id-keyed routing
+//   remains. Route resolver simplified accordingly.
+// Prior: S30E stage 3 — buildImmerseNavItems import path updated for
 //   renamed source file (ImmerseTripRoute → ImmerseEngagementRoute).
 // Prior: S30E stage 1 — Engagement abstraction. getImmerseTrip →
-//   getImmerseEngagement; getImmerseTripBySlug → getImmerseEngagementBySlug;
-//   type ImmerseTripData → ImmerseEngagementData; local state trip →
-//   engagement; deriveNightsLabel parameter renamed.
+//   getImmerseEngagement; type ImmerseTripData → ImmerseEngagementData;
+//   local state trip → engagement; deriveNightsLabel parameter renamed.
 // Prior: S26 — Builds navItems from engagement.destinationRows and passes to
 //   ImmerseLayout. Current destination is marked active via destinationSlug
-//   match. logoHref resolves to /immerse/{journeyToken}.
+//   match. logoHref resolves to /immerse/{urlId}.
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../../layouts/ImmerseLayout'
@@ -24,35 +27,27 @@ import { ImmerseHotelOptions } from './ImmerseDestinationComponents'
 import { ImmerseContentGrid } from './ImmerseDestinationComponents'
 import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
-import { getImmerseEngagement, getImmerseEngagementBySlug } from '../../../lib/immerseEngagementQueries'
+import { getImmerseEngagement } from '../../../lib/immerseEngagementQueries'
 import { useToast } from '../../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import type { ImmerseDestinationData, ImmerseEngagementData } from '../../../lib/immerseTypes'
 
 type RouteParts = {
-  journeyToken:    string        // 'honeymoon' | 11-char url_id (private or pub-prefixed template)
+  urlId:           string
   destinationSlug: string
-  isPublicLegacy:  boolean       // true when journeyToken === 'honeymoon'
 }
 
 function resolveRouteParts(pathname: string): RouteParts {
   const parts = pathname.replace(/\/$/, '').split('/')
-  const secondLast = parts[parts.length - 2] ?? ''
-  const last       = parts[parts.length - 1] ?? ''
-  const isPublicLegacy = secondLast === 'honeymoon'
-
   return {
-    journeyToken:    secondLast,
-    destinationSlug: last,
-    isPublicLegacy,
+    urlId:           parts[parts.length - 2] ?? '',
+    destinationSlug: parts[parts.length - 1] ?? '',
   }
 }
 
-// Parent overview URL for redirect-on-not-found. Legacy /immerse/honeymoon
-// maps back to /immerse/honeymoon. Other journey tokens map back to
-// /immerse/<token>.
-function getParentOverviewUrl(journeyToken: string): string {
-  return `/immerse/${journeyToken}`
+// Parent overview URL for redirect-on-not-found.
+function getParentOverviewUrl(urlId: string): string {
+  return `/immerse/${urlId}`
 }
 
 // ─── Hero derivation helpers ──────────────────────────────────────────────────
@@ -106,7 +101,7 @@ export default function DestinationPage() {
     }
   }, [])
 
-  const { journeyToken, destinationSlug, isPublicLegacy } = useMemo(
+  const { urlId, destinationSlug } = useMemo(
     () => resolveRouteParts(pathname),
     [pathname]
   )
@@ -124,17 +119,9 @@ export default function DestinationPage() {
       setLoading(true)
 
       try {
-        // Fetch engagement + destination in parallel.
-        // Two cases: legacy 'honeymoon' slug, or any url_id (private or
-        // public-template — both flow through getImmerseEngagement which
-        // keys on url_id).
-        const engagementPromise = isPublicLegacy
-          ? getImmerseEngagementBySlug('honeymoon1')
-          : getImmerseEngagement(journeyToken)
-
         const [destinationResult, engagementResult] = await Promise.all([
-          getImmerseDestination(journeyToken, destinationSlug),
-          engagementPromise,
+          getImmerseDestination(urlId, destinationSlug),
+          getImmerseEngagement(urlId),
         ])
 
         if (cancelled) return
@@ -155,7 +142,7 @@ export default function DestinationPage() {
     }
 
     function handleNotFound(message: string) {
-      const overviewUrl = getParentOverviewUrl(journeyToken)
+      const overviewUrl = getParentOverviewUrl(urlId)
       toast.warning(message)
       window.history.replaceState(null, '', overviewUrl)
       window.dispatchEvent(new PopStateEvent('popstate'))
@@ -167,7 +154,7 @@ export default function DestinationPage() {
     return () => {
       cancelled = true
     }
-  }, [journeyToken, destinationSlug, isPublicLegacy, toast])
+  }, [urlId, destinationSlug, toast])
 
   if (loading) return null
   if (!data)   return null
@@ -182,7 +169,7 @@ export default function DestinationPage() {
   // case skip the menu entirely (renders logo-only nav). Otherwise pass the
   // full list with the current destination marked active.
   const navItems = engagement ? buildImmerseNavItems(engagement, destinationSlug) : undefined
-  const logoHref = `/immerse/${journeyToken}`
+  const logoHref = `/immerse/${urlId}`
 
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>

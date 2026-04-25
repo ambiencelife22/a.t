@@ -2,14 +2,17 @@
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
 //
-// Last updated: S30E — Engagement abstraction. resolveTripId →
-//   resolveEngagementId. Master table reads target travel_immerse_engagements
-//   (3 lookup paths: legacy 'honeymoon' slug, 11-char url_id, deprecated
-//   public_journey_slug). TripDestinationOverride type → EngagementDestinationOverride.
-//   Internal locals tripId → engagementId. Child table reads still .eq() on
+// Last updated: S30E perf — Removed legacy 'honeymoon' slug branch from
+//   resolveEngagementId. The /immerse/honeymoon public-preview route was
+//   deleted; only canonical 11-char url_id and the deprecated
+//   public_journey_slug fallback remain. The deprecated branch will be
+//   removed when public_journey_slug column drops.
+// Prior: S30E stage 1 — Engagement abstraction. resolveTripId →
+//   resolveEngagementId. Master table reads target
+//   travel_immerse_engagements. TripDestinationOverride type →
+//   EngagementDestinationOverride. Child table reads still .eq() on
 //   trip_id — child tables retain "trip" prefix because their content is
-//   journey-engagement-specific. Comments referencing per-trip overlays
-//   updated to per-engagement where the entity name matters.
+//   journey-engagement-specific.
 // Prior: S30D — Storage URL rewriting at the read layer. Every image
 //   field returned by this module passes through rewriteImageUrl() (or
 //   rewriteImageUrls() for arrays). The Supabase project-host prefix is
@@ -46,47 +49,34 @@ export interface ImmerseDestinationMeta {
 }
 
 // ─── Engagement resolver ──────────────────────────────────────────────────────
-// S30E: renamed from resolveTripId. Three lookup paths preserved verbatim —
-// legacy 'honeymoon' slug, canonical 11-char url_id, deprecated
-// public_journey_slug. All three target the renamed master table
-// travel_immerse_engagements.
+// Two lookup paths: canonical 11-char url_id (private + public templates both
+// use this shape, public templates carry a 'pub' visual prefix), and the
+// deprecated public_journey_slug fallback retained transitionally until that
+// column drops.
 
-async function resolveEngagementId(journeySlug: string): Promise<string | null> {
-  if (!journeySlug) return null
+async function resolveEngagementId(journeyToken: string): Promise<string | null> {
+  if (!journeyToken) return null
 
-  // Public legacy route: '/immerse/honeymoon' — slug = 'honeymoon1' in DB
-  if (journeySlug === 'honeymoon') {
+  // 11-char url_id → engagement lookup
+  if (/^[A-Za-z0-9]{11}$/.test(journeyToken)) {
     const { data } = await supabase
       .from('travel_immerse_engagements')
       .select('id')
-      .eq('slug', 'honeymoon1')
+      .eq('url_id', journeyToken)
       .maybeSingle()
     return data?.id ?? null
   }
 
-  // 11-char url_id → engagement lookup (private + public templates both use this shape)
-  if (/^[A-Za-z0-9]{11}$/.test(journeySlug)) {
-    const { data } = await supabase
-      .from('travel_immerse_engagements')
-      .select('id')
-      .eq('url_id', journeySlug)
-      .maybeSingle()
-    return data?.id ?? null
-  }
-
-  // Otherwise: legacy public_journey_slug fallback (deprecated, retained transitionally)
+  // Legacy public_journey_slug fallback (deprecated, retained transitionally)
   const { data } = await supabase
     .from('travel_immerse_engagements')
     .select('id')
-    .eq('public_journey_slug', journeySlug)
+    .eq('public_journey_slug', journeyToken)
     .maybeSingle()
   return data?.id ?? null
 }
 
 // ─── Per-engagement destination override ──────────────────────────────────────
-// S30E: type renamed TripDestinationOverride → EngagementDestinationOverride.
-// Underlying table travel_immerse_trip_destination_rows retains "trip" prefix
-// (journey-engagement-specific child).
 
 type EngagementDestinationOverride = {
   hero_image_src_override:                   string | null
@@ -150,7 +140,7 @@ async function fetchEngagementOverride(
 // ─── getImmerseDestination ────────────────────────────────────────────────────
 
 export async function getImmerseDestination(
-  journeySlug:     string,
+  journeyToken:    string,
   destinationSlug: string,
 ): Promise<ImmerseDestinationData | null> {
 
@@ -163,7 +153,7 @@ export async function getImmerseDestination(
   if (destErr || !dest) return null
 
   const destId = dest.id as string
-  const engagementId = await resolveEngagementId(journeySlug)
+  const engagementId = await resolveEngagementId(journeyToken)
 
   const [
     overrideResult,
@@ -179,15 +169,12 @@ export async function getImmerseDestination(
 
   const ov = overrideResult
 
-  // Hero image fields rewritten on the way out. heroImageSrc2 uses
-  // `|| undefined` to preserve the optional-undefined contract when the
-  // resolved value is empty — rewriteImageUrl returns '' on null/empty.
   const heroSrc2Resolved  = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
 
   return {
     destinationId:   destId,
     destinationSlug: dest.destination_slug ?? '',
-    journeyId:       journeySlug,
+    journeyId:       journeyToken,
     shorthand:       dest.shorthand ?? undefined,
 
     eyebrow:       dest.eyebrow                        ?? '',
@@ -245,8 +232,6 @@ async function fetchHotelsShape(
   destId: string,
 ): Promise<ImmerseDestinationHotelsShape> {
 
-  // region_gallery: canonical jsonb array of gallery URLs on the region row.
-  // Consumed by RegionedHotelOptions via ImmerseRegionGroup.
   const { data: regions } = await supabase
     .from('travel_immerse_destination_regions')
     .select('id, slug, title, shorthand, hero_image_src, hero_image_alt, region_gallery')
@@ -265,10 +250,6 @@ async function fetchHotelsShape(
 }
 
 // ─── Flat hotels ──────────────────────────────────────────────────────────────
-// Hero image, alt, and credit come from canonical travel_accom_hotels.
-// Junction is curation only: which hotel, rank, rank_label, bullets,
-// stay_label, sort_order. imageSrc rewritten on the way out via
-// rewriteImageUrl. gallery already rewritten inside fetchAllGallery.
 
 async function fetchFlatHotels(
   engagementId: string | null,
@@ -337,10 +318,6 @@ async function fetchFlatHotels(
 }
 
 // ─── Regioned hotels ──────────────────────────────────────────────────────────
-// Same architecture as fetchFlatHotels — hero/alt/credit from canonical
-// travel_accom_hotels, junction is curation only. region_gallery feeds the
-// region's own gallery through the existing HotelDetailPanel gallery block.
-// All image fields rewritten on the way out.
 
 type RegionRow = {
   id:              string
@@ -475,8 +452,6 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
-// roomImageSrc, floorplanSrc, room gallery (both canonical + jsonb path)
-// all rewritten before being returned to component layer.
 
 async function fetchRoomsForHotels(
   engagementId: string,
@@ -501,7 +476,6 @@ async function fetchRoomsForHotels(
   const canonById   = new Map<string, typeof canonRooms[number]>()
   for (const c of canonRooms) canonById.set(c.id as string, c)
 
-  // Engagement-scoped overlay rows — three-tier rates
   const { data: overlayRooms } = await supabase
     .from('travel_immerse_rooms')
     .select(`
@@ -529,8 +503,6 @@ async function fetchRoomsForHotels(
     const canon = canonById.get(o.room_id as string)
     if (!canon) continue
 
-    // Rewrite the resolved value, not each candidate. Single rewrite call
-    // covers whichever source wins the ?? chain.
     const roomImageSrc = rewriteImageUrl(
       o.hero_image_src_override
         ?? canon.room_image_src
@@ -554,7 +526,7 @@ async function fetchRoomsForHotels(
       ? (o.room_benefits as string[])
       : (Array.isArray(canon.room_benefits) ? (canon.room_benefits as string[]) : [])
 
-    const galleryCanonical = galleryByRoom[canon.id as string] ?? []   // already rewritten
+    const galleryCanonical = galleryByRoom[canon.id as string] ?? []
     const galleryJsonb     = rewriteImageUrls(canon.room_gallery as string[] | null)
     const roomGallery      = galleryCanonical.length > 0 ? galleryCanonical : galleryJsonb
 
@@ -581,7 +553,6 @@ async function fetchRoomsForHotels(
 }
 
 // ─── Hotel gallery (canonical) ────────────────────────────────────────────────
-// image_src rewritten as rows are bucketed.
 
 async function fetchAllGallery(
   canonicalHotelIds: string[],
@@ -606,7 +577,6 @@ async function fetchAllGallery(
 }
 
 // ─── Room gallery (canonical) ─────────────────────────────────────────────────
-// image_src rewritten as rows are bucketed.
 
 async function fetchAllRoomGallery(
   canonicalRoomIds: string[],
@@ -631,15 +601,6 @@ async function fetchAllRoomGallery(
 }
 
 // ─── Content cards + pricing ──────────────────────────────────────────────────
-// fetchContentCards merges per-engagement card overrides from
-// travel_immerse_trip_content_card_overrides. Every text field resolves via
-// ov.X_override ?? canon.X ?? ''. Empty string on any text override = hide.
-// Null = no override, canonical flows through.
-//
-// imageSrc rewritten on the way out. imageCreditUrl is intentionally NOT
-// rewritten — it points at brand sites (e.g. aman.com), not Supabase
-// storage. The defensive idempotency in rewriteImageUrl would handle it
-// correctly anyway, but leaving it raw makes the intent obvious.
 
 type ContentCardWithType = ImmerseContentCard & { _cardType: string }
 
@@ -672,7 +633,6 @@ async function fetchContentCards(
   if (error || !rows) return []
   if (rows.length === 0) return []
 
-  // Fetch per-engagement overrides for all cards on this destination
   const overridesByCardId = new Map<string, CardOverrideRow>()
   if (engagementId) {
     const cardIds = rows.map(r => r.id as string)
@@ -704,7 +664,6 @@ async function fetchContentCards(
   return rows.map(r => {
     const ov = overridesByCardId.get(r.id as string)
 
-    // Bullets: override array wins if present; empty array = hide
     const bulletsOverride = ov?.bullets_override
     const bulletsCanon    = Array.isArray(r.bullets) ? (r.bullets as string[]) : null
     const bullets         = Array.isArray(bulletsOverride)
