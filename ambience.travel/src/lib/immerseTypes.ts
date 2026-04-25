@@ -1,8 +1,19 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
-// Owns all data contracts for trip overview and destination subpages.
+// Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S30D — Added TripStatus + ItineraryStatus interfaces and slug
-//   union types. ImmerseTripData now carries tripStatus + itineraryStatus
+// Last updated: S30E — Engagement abstraction. Master data type renamed
+//   ImmerseTripData → ImmerseEngagementData and now carries an engagementType
+//   discriminator ('journey' | 'service' | 'experience' | 'acquisition'),
+//   defaulted to 'journey' DB-side. Status types renamed TripStatus →
+//   EngagementStatus + TripStatusSlug → EngagementStatusSlug to mirror the
+//   underlying lookup table rename (travel_trip_statuses →
+//   travel_engagement_statuses). Itinerary side unchanged — itinerary is
+//   journey-engagement-specific lifecycle, not universal. Journey-shape
+//   types (ImmerseTripFormat, ImmerseTripPricingRow, ImmerseRouteStop,
+//   ImmerseDestinationRow) preserved as-is — they describe journey-typed
+//   engagement detail, which stays semantically "trip"-shaped.
+// Prior: S30D — Added TripStatus + ItineraryStatus interfaces and slug
+//   union types. ImmerseTripData carried tripStatus + itineraryStatus
 //   resolved from the new lookup tables travel_trip_statuses +
 //   travel_itinerary_statuses (FK columns trip_status_id + itinerary_status_id
 //   on travel_immerse_trips, both NOT NULL). Slug union types narrow to the
@@ -42,16 +53,35 @@
 //   (Nordic Winter, Europe Finale). Region-grouped reads now flow through
 //   travel_immerse_trip_region_hotels keyed on canonical trip_id.
 
-// ─── Status lookups (S30D) ───────────────────────────────────────────────────
+// ─── Engagement-level discriminator (S30E) ───────────────────────────────────
+// engagement_type discriminator on travel_immerse_engagements. Drives
+// frontend dispatch and lets queries scope correctly when product types
+// beyond 'journey' arrive (service, experience, acquisition). DB DEFAULT
+// is 'journey'; the union below mirrors the CHECK constraint enum.
+
+export type EngagementType =
+  | 'journey'
+  | 'service'
+  | 'experience'
+  | 'acquisition'
+
+// ─── Status lookups (S30D, renamed S30E) ─────────────────────────────────────
 // Slug union types match the canonical seed values from
 // migration_s30d_01_trip_itinerary_status_lookups.sql. Adding a new status
 // row to either lookup table without updating the union here will still
 // type-check at runtime — the runtime slug field is `string`. The unions
-// exist so consumers that want to branch on known slugs (e.g. "if the trip
-// is in_travel, show the in-trip dashboard") get compile-time coverage of
-// the canonical set.
+// exist so consumers that want to branch on known slugs (e.g. "if the
+// engagement is in_travel, show the in-trip dashboard") get compile-time
+// coverage of the canonical set.
+//
+// S30E: TripStatus → EngagementStatus, TripStatusSlug → EngagementStatusSlug
+// to mirror travel_trip_statuses → travel_engagement_statuses table rename.
+// ItineraryStatus stays as-is — itinerary is journey-engagement-specific
+// lifecycle, not universal. When product type #2 arrives, services likely
+// bring a sibling status table (ServiceStatus) rather than reshape the
+// universal one.
 
-export type TripStatusSlug =
+export type EngagementStatusSlug =
   | 'new_request'
   | 'proposal_in_progress'
   | 'proposal_sent'
@@ -74,9 +104,9 @@ export type ItineraryStatusSlug =
   | 'cancelled'
   | 'archived'
 
-export interface TripStatus {
+export interface EngagementStatus {
   id:        string
-  slug:      string   // narrows to TripStatusSlug for known canonical values
+  slug:      string   // narrows to EngagementStatusSlug for known canonical values
   label:     string
   sortOrder: number
   isActive:  boolean
@@ -155,7 +185,7 @@ export type ImmersePricingRow = {
 // S23: Pricing closer row (final closer beneath the pricing table).
 // All four fields nullable — null means "fall back to the frontend constant
 // PRICING_CLOSER_DEFAULT in ImmerseDestinationComponents.tsx". Populated per
-// trip via 4 nullable override columns on travel_immerse_trip_destination_rows
+// engagement via 4 nullable override columns on travel_immerse_trip_destination_rows
 // once a price has been quoted. Default closer reads "Pricing Based On
 // Selection" in the indicative_range column with the other three blank.
 export type ImmersePricingCloser = {
@@ -166,8 +196,8 @@ export type ImmersePricingCloser = {
 }
 
 // S30: Proposal-wide welcome letter. Single canonical row shared across all
-// trips; per-trip overrides on travel_immerse_trips.welcome_*_override.
-// Resolution: trip override → canonical → ''. Empty string on all five
+// engagements; per-engagement overrides on travel_immerse_engagements.welcome_*_override.
+// Resolution: engagement override → canonical → ''. Empty string on all five
 // fields hides the entire section; empty string on an individual field hides
 // just that field (handled in ImmerseWelcomeLetter component).
 export type ImmerseWelcomeLetter = {
@@ -182,7 +212,8 @@ export type ImmerseWelcomeLetter = {
 // Nordic Winter has 3 regions (Iceland, Norway, Finland). Europe Finale has
 // 3 (Swiss Alps, Paris, French Alps). Each region carries its own positioning
 // (rank, rank_label, bullets from travel_immerse_trip_regions) plus a list of
-// hotel picks (from travel_immerse_trip_region_hotels).
+// hotel picks (from travel_immerse_trip_region_hotels). S30E: child tables
+// retain "trip" prefix because their content is journey-engagement-specific.
 
 export type ImmerseRegionGroup = {
   regionId:     string
@@ -204,11 +235,16 @@ export type ImmerseDestinationHotelsShape =
   | { kind: 'flat';     hotels: ImmerseHotelOption[] }
   | { kind: 'regioned'; regions: ImmerseRegionGroup[] }
 
-// ─── Trip overview (master page) ─────────────────────────────────────────────
+// ─── Engagement overview (master page) ───────────────────────────────────────
+// S30E: Renamed from "Trip overview". The master page surface is the same;
+// the data shape now identifies as engagement and carries engagementType.
+// Journey-shape detail types (ImmerseTripFormat, ImmerseRouteStop,
+// ImmerseDestinationRow, ImmerseTripPricingRow) keep "trip" naming because
+// they describe journey-engagement-specific content.
 
 export type ImmerseTripFormat = 'journey' | 'experience'
 
-// S20: Per-trip per-destination subpage render state
+// S20: Per-engagement per-destination subpage render state
 //   'live'    — clickable card, normal CTA (Discover More →)
 //   'preview' — non-clickable card, opacity 0.5, "Coming soon" badge
 //   'hidden'  — filtered out server-side; row not rendered at all
@@ -248,18 +284,19 @@ export type ImmerseTripPricingRow = {
   indicativeRange:  string
 }
 
-export type ImmerseTripData = {
+export type ImmerseEngagementData = {
   // meta
-  tripId:       string
-  urlId:        string
-  slug:         string
-  tripFormat:   ImmerseTripFormat
-  journeyTypes: string[]
-  clientName:   string
-  statusLabel:  string                 // guest-facing display copy (e.g. 'Designed For You · January 2027')
-  // status (S30D) — operator-facing lifecycle, distinct from statusLabel
-  tripStatus:       TripStatus
-  itineraryStatus:  ItineraryStatus
+  engagementId:    string
+  engagementType:  EngagementType        // S30E: 'journey' | 'service' | 'experience' | 'acquisition'
+  urlId:           string
+  slug:            string
+  tripFormat:      ImmerseTripFormat     // journey-engagement format detail
+  journeyTypes:    string[]
+  clientName:      string
+  statusLabel:     string                // guest-facing display copy (e.g. 'Designed For You · January 2027')
+  // status (S30D, renamed S30E) — operator-facing lifecycle, distinct from statusLabel
+  engagementStatus:  EngagementStatus
+  itineraryStatus:   ItineraryStatus
   // welcome (S30)
   welcomeLetter: ImmerseWelcomeLetter
   // hero
@@ -338,7 +375,7 @@ export type ImmerseDestinationData = {
   pricingTitle:        string
   pricingBody:         string
   pricingRows:         ImmersePricingRow[]
-  pricingCloser:       ImmersePricingCloser  // S23: per-trip overlay of canonical default closer
+  pricingCloser:       ImmersePricingCloser  // S23: per-engagement overlay of canonical default closer
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        string[]

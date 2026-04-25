@@ -1,7 +1,16 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S30D — Storage URL rewriting at the read layer. Every image
+//
+// Last updated: S30E — Engagement abstraction. resolveTripId →
+//   resolveEngagementId. Master table reads target travel_immerse_engagements
+//   (3 lookup paths: legacy 'honeymoon' slug, 11-char url_id, deprecated
+//   public_journey_slug). TripDestinationOverride type → EngagementDestinationOverride.
+//   Internal locals tripId → engagementId. Child table reads still .eq() on
+//   trip_id — child tables retain "trip" prefix because their content is
+//   journey-engagement-specific. Comments referencing per-trip overlays
+//   updated to per-engagement where the entity name matters.
+// Prior: S30D — Storage URL rewriting at the read layer. Every image
 //   field returned by this module passes through rewriteImageUrl() (or
 //   rewriteImageUrls() for arrays). The Supabase project-host prefix is
 //   stripped on the way out so rendered HTML carries '/img/...' paths only.
@@ -9,43 +18,10 @@
 //   the edge. Effect: zero project-ref leakage in page source. Defensive +
 //   idempotent — see imageUrl.ts. image_credit_url is NOT rewritten because
 //   it points at brand websites, not storage.
-// Prior: S29 — Region gallery support. travel_immerse_destination_regions
-//   now carries a region_gallery jsonb column. fetchHotelsShape reads it,
-//   RegionRow type carries it, fetchRegionGroups maps it into ImmerseRegionGroup
-//   as regionGallery. Consumed by RegionedHotelOptions in
-//   ImmerseDestinationComponents.tsx (gallery wired through the existing
-//   HotelDetailPanel gallery block). Empty array on regions without a seeded
-//   gallery — silently renders nothing until seeded.
-// Prior: S26 — Hero image, alt, and credit fields now read from canonical
-//   travel_accom_hotels (hero_image_src, hero_image_alt, image_credit). Junction
-//   tables (travel_immerse_trip_destination_hotels, travel_immerse_trip_region_hotels)
-//   provide curation only — which hotels go with which trip, rank, bullets,
-//   stay_label. Their image_src / image_alt / image_credit columns are no
-//   longer read by the frontend and will be DROPPED in S26_06 once this patch
-//   is verified live. Same architecture for region rooms via travel_accom_rooms
-//   (already canonical for rooms — no frontend change needed there).
-// Prior: S23 addendum — Added bullets_heading field to content cards
-//   (canonical + override). Renders a small header above each card's bullets
-//   list (e.g. "Highlights"). Resolves via standard ov?.X_override ?? canon.X
-//   ?? '' chain. Empty string = hide header.
-// Prior: S23 addendum — Added per-trip content card overrides.
-//   fetchContentCards now takes tripId and LEFT JOINs
-//   travel_immerse_trip_content_card_overrides. Every card text field
-//   (kicker, name, tagline, body, bullets, image_src, image_alt, image_credit,
-//   image_credit_url, image_license) resolves via ov?.X_override ?? canon.X.
-//   Empty string on any text override = hide. Null = no override, canonical
-//   shows through. Card overrides scoped by (trip_id, card_id) with UNIQUE.
-// Prior: S23 addendum — Added dining section per-trip override path on
-//   travel_immerse_trip_destination_rows (dining_eyebrow_override,
-//   dining_title_override, dining_body_override). Standard ?? chain merge.
-// Prior: S23 — Added pricing closer per-trip override path. fetchTripOverride
-//   now selects pricing_closer_item_override, pricing_closer_basis_override,
-//   pricing_closer_stay_override, and pricing_closer_indicative_range_override.
-//   getImmerseDestination return shape now includes pricingCloser: { item,
-//   basis, stay, indicativeRange } where each field is the trip override value
-//   or null. Component layer fills nulls from the PRICING_CLOSER_DEFAULT
-//   constant (default indicative_range "Pricing Based On Selection", others
-//   blank). No row in travel_immerse_destination_pricing_rows for the closer.
+// Prior: S30 — fetchContentCards merges per-engagement card overrides via
+//   travel_immerse_trip_content_card_overrides; bullets_heading + override.
+//   Pricing closer, dining section, pricing notes overrides resolved via
+//   the standard ?? chain on travel_immerse_trip_destination_rows.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
@@ -69,25 +45,29 @@ export interface ImmerseDestinationMeta {
   eyebrow:          string
 }
 
-// ─── Trip resolver ────────────────────────────────────────────────────────────
+// ─── Engagement resolver ──────────────────────────────────────────────────────
+// S30E: renamed from resolveTripId. Three lookup paths preserved verbatim —
+// legacy 'honeymoon' slug, canonical 11-char url_id, deprecated
+// public_journey_slug. All three target the renamed master table
+// travel_immerse_engagements.
 
-async function resolveTripId(journeySlug: string): Promise<string | null> {
+async function resolveEngagementId(journeySlug: string): Promise<string | null> {
   if (!journeySlug) return null
 
   // Public legacy route: '/immerse/honeymoon' — slug = 'honeymoon1' in DB
   if (journeySlug === 'honeymoon') {
     const { data } = await supabase
-      .from('travel_immerse_trips')
+      .from('travel_immerse_engagements')
       .select('id')
       .eq('slug', 'honeymoon1')
       .maybeSingle()
     return data?.id ?? null
   }
 
-  // 11-char url_id → trip lookup (private + public templates both use this shape)
+  // 11-char url_id → engagement lookup (private + public templates both use this shape)
   if (/^[A-Za-z0-9]{11}$/.test(journeySlug)) {
     const { data } = await supabase
-      .from('travel_immerse_trips')
+      .from('travel_immerse_engagements')
       .select('id')
       .eq('url_id', journeySlug)
       .maybeSingle()
@@ -96,16 +76,19 @@ async function resolveTripId(journeySlug: string): Promise<string | null> {
 
   // Otherwise: legacy public_journey_slug fallback (deprecated, retained transitionally)
   const { data } = await supabase
-    .from('travel_immerse_trips')
+    .from('travel_immerse_engagements')
     .select('id')
     .eq('public_journey_slug', journeySlug)
     .maybeSingle()
   return data?.id ?? null
 }
 
-// ─── Per-trip destination override ────────────────────────────────────────────
+// ─── Per-engagement destination override ──────────────────────────────────────
+// S30E: type renamed TripDestinationOverride → EngagementDestinationOverride.
+// Underlying table travel_immerse_trip_destination_rows retains "trip" prefix
+// (journey-engagement-specific child).
 
-type TripDestinationOverride = {
+type EngagementDestinationOverride = {
   hero_image_src_override:                   string | null
   hero_image_alt_override:                   string | null
   hero_image_src_2_override:                 string | null
@@ -114,7 +97,6 @@ type TripDestinationOverride = {
   hero_subtitle_2_override:                  string | null
   intro_title_override:                      string | null
   intro_body_override:                       string | null
-  // S23 addendum: dining section overrides (empty string = hide section)
   dining_eyebrow_override:                   string | null
   dining_title_override:                     string | null
   dining_body_override:                      string | null
@@ -122,18 +104,17 @@ type TripDestinationOverride = {
   pricing_notes_heading_override:            string | null
   pricing_notes_title_override:              string | null
   pricing_notes_override:                    string[] | null
-  // S23: pricing closer overrides
   pricing_closer_item_override:              string | null
   pricing_closer_basis_override:             string | null
   pricing_closer_stay_override:              string | null
   pricing_closer_indicative_range_override:  string | null
 }
 
-async function fetchTripOverride(
-  tripId: string | null,
+async function fetchEngagementOverride(
+  engagementId: string | null,
   destinationSlug: string,
-): Promise<TripDestinationOverride | null> {
-  if (!tripId) return null
+): Promise<EngagementDestinationOverride | null> {
+  if (!engagementId) return null
 
   const { data, error } = await supabase
     .from('travel_immerse_trip_destination_rows')
@@ -158,12 +139,12 @@ async function fetchTripOverride(
       pricing_closer_stay_override,
       pricing_closer_indicative_range_override
     `)
-    .eq('trip_id', tripId)
+    .eq('trip_id', engagementId)
     .eq('destination_slug', destinationSlug)
     .maybeSingle()
 
   if (error || !data) return null
-  return data as TripDestinationOverride
+  return data as EngagementDestinationOverride
 }
 
 // ─── getImmerseDestination ────────────────────────────────────────────────────
@@ -182,7 +163,7 @@ export async function getImmerseDestination(
   if (destErr || !dest) return null
 
   const destId = dest.id as string
-  const tripId = await resolveTripId(journeySlug)
+  const engagementId = await resolveEngagementId(journeySlug)
 
   const [
     overrideResult,
@@ -190,17 +171,17 @@ export async function getImmerseDestination(
     cardsResult,
     pricingResult,
   ] = await Promise.all([
-    fetchTripOverride(tripId, destinationSlug),
-    fetchHotelsShape(tripId, destId),
-    fetchContentCards(tripId, destId),
+    fetchEngagementOverride(engagementId, destinationSlug),
+    fetchHotelsShape(engagementId, destId),
+    fetchContentCards(engagementId, destId),
     fetchPricingRows(destId),
   ])
 
   const ov = overrideResult
 
-  // S30D: hero image fields rewritten on the way out. heroImageSrc2 uses
-  // `|| undefined` to preserve the existing optional-undefined contract when
-  // the resolved value is empty — rewriteImageUrl returns '' on null/empty.
+  // Hero image fields rewritten on the way out. heroImageSrc2 uses
+  // `|| undefined` to preserve the optional-undefined contract when the
+  // resolved value is empty — rewriteImageUrl returns '' on null/empty.
   const heroSrc2Resolved  = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
 
   return {
@@ -229,9 +210,6 @@ export async function getImmerseDestination(
     hotelsBody:    dest.hotels_body    ?? '',
     hotels:        hotelsShape,
 
-    // S23 addendum: dining overrides use standard ?? chain. Empty string on
-    // override passes through as "hide" because ?? only falls back on
-    // null/undefined — empty string short-circuits to itself.
     diningEyebrow: ov?.dining_eyebrow_override        ?? dest.dining_eyebrow ?? '',
     diningTitle:   ov?.dining_title_override          ?? dest.dining_title   ?? '',
     diningBody:    ov?.dining_body_override           ?? dest.dining_body    ?? '',
@@ -263,12 +241,12 @@ export async function getImmerseDestination(
 // ─── Hotels shape resolver ────────────────────────────────────────────────────
 
 async function fetchHotelsShape(
-  tripId: string | null,
+  engagementId: string | null,
   destId: string,
 ): Promise<ImmerseDestinationHotelsShape> {
 
-  // S29: region_gallery added to SELECT — canonical jsonb array of gallery URLs
-  // on the region row. Consumed by RegionedHotelOptions via ImmerseRegionGroup.
+  // region_gallery: canonical jsonb array of gallery URLs on the region row.
+  // Consumed by RegionedHotelOptions via ImmerseRegionGroup.
   const { data: regions } = await supabase
     .from('travel_immerse_destination_regions')
     .select('id, slug, title, shorthand, hero_image_src, hero_image_alt, region_gallery')
@@ -278,26 +256,25 @@ async function fetchHotelsShape(
   const isRegioned = (regions?.length ?? 0) > 0
 
   if (isRegioned) {
-    const groups = await fetchRegionGroups(tripId, regions ?? [])
+    const groups = await fetchRegionGroups(engagementId, regions ?? [])
     return { kind: 'regioned', regions: groups }
   }
 
-  const hotels = await fetchFlatHotels(tripId, destId)
+  const hotels = await fetchFlatHotels(engagementId, destId)
   return { kind: 'flat', hotels }
 }
 
 // ─── Flat hotels ──────────────────────────────────────────────────────────────
-// S26: hero image, alt, and credit now come from canonical travel_accom_hotels
-//   (hero_image_src, hero_image_alt, image_credit). Junction table is curation
-//   only: which hotel, rank, rank_label, bullets, stay_label, sort_order.
-// S30D: imageSrc rewritten on the way out via rewriteImageUrl. gallery already
-//   rewritten inside fetchAllGallery so no further work here.
+// Hero image, alt, and credit come from canonical travel_accom_hotels.
+// Junction is curation only: which hotel, rank, rank_label, bullets,
+// stay_label, sort_order. imageSrc rewritten on the way out via
+// rewriteImageUrl. gallery already rewritten inside fetchAllGallery.
 
 async function fetchFlatHotels(
-  tripId: string | null,
+  engagementId: string | null,
   destId: string,
 ): Promise<ImmerseHotelOption[]> {
-  if (!tripId) return []
+  if (!engagementId) return []
 
   const { data, error } = await supabase
     .from('travel_immerse_trip_destination_hotels')
@@ -309,7 +286,7 @@ async function fetchFlatHotels(
         hero_image_src, hero_image_alt, image_credit
       )
     `)
-    .eq('trip_id', tripId)
+    .eq('trip_id', engagementId)
     .eq('destination_id', destId)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
@@ -324,7 +301,7 @@ async function fetchFlatHotels(
     .filter((x): x is string => Boolean(x))
 
   const [roomsByHotel, galleryByHotel] = await Promise.all([
-    fetchRoomsForHotels(tripId, canonicalHotelIds),
+    fetchRoomsForHotels(engagementId, canonicalHotelIds),
     fetchAllGallery(canonicalHotelIds),
   ])
 
@@ -360,12 +337,10 @@ async function fetchFlatHotels(
 }
 
 // ─── Regioned hotels ──────────────────────────────────────────────────────────
-// S26: same architecture change as fetchFlatHotels — hero/alt/credit from
-//   canonical travel_accom_hotels, junction is curation only.
-// S29: region_gallery added to RegionRow and mapped into ImmerseRegionGroup
-//   so RegionedHotelOptions can feed the region's own gallery through the
-//   existing HotelDetailPanel gallery block.
-// S30D: hotel imageSrc, region heroImageSrc, regionGallery all rewritten.
+// Same architecture as fetchFlatHotels — hero/alt/credit from canonical
+// travel_accom_hotels, junction is curation only. region_gallery feeds the
+// region's own gallery through the existing HotelDetailPanel gallery block.
+// All image fields rewritten on the way out.
 
 type RegionRow = {
   id:              string
@@ -378,10 +353,10 @@ type RegionRow = {
 }
 
 async function fetchRegionGroups(
-  tripId:  string | null,
-  regions: RegionRow[],
+  engagementId:  string | null,
+  regions:       RegionRow[],
 ): Promise<ImmerseRegionGroup[]> {
-  if (!tripId || regions.length === 0) return []
+  if (!engagementId || regions.length === 0) return []
 
   const regionIds = regions.map(r => r.id)
 
@@ -389,7 +364,7 @@ async function fetchRegionGroups(
     supabase
       .from('travel_immerse_trip_regions')
       .select('region_id, rank, rank_label, bullets, stay_label, sort_order')
-      .eq('trip_id', tripId)
+      .eq('trip_id', engagementId)
       .eq('is_active', true)
       .in('region_id', regionIds),
     supabase
@@ -402,7 +377,7 @@ async function fetchRegionGroups(
           hero_image_src, hero_image_alt, image_credit
         )
       `)
-      .eq('trip_id', tripId)
+      .eq('trip_id', engagementId)
       .eq('is_active', true)
       .in('region_id', regionIds)
       .order('sort_order', { ascending: true }),
@@ -432,7 +407,7 @@ async function fetchRegionGroups(
     .filter((x): x is string => Boolean(x))
 
   const [roomsByHotel, galleryByHotel] = await Promise.all([
-    fetchRoomsForHotels(tripId, canonicalHotelIds),
+    fetchRoomsForHotels(engagementId, canonicalHotelIds),
     fetchAllGallery(canonicalHotelIds),
   ])
 
@@ -499,15 +474,13 @@ async function fetchRegionGroups(
   return groups
 }
 
-// ─── Rooms (trip-scoped overlay + canonical join) ─────────────────────────────
-// S22: rate columns now non_negotiated_nightly_rate (renamed from nightly_rate)
-// and new ambience_nightly_rate. public_nightly_rate unchanged.
-// S30D: roomImageSrc, floorplanSrc, room gallery (both canonical + jsonb path)
-//   all rewritten before being returned to component layer.
+// ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
+// roomImageSrc, floorplanSrc, room gallery (both canonical + jsonb path)
+// all rewritten before being returned to component layer.
 
 async function fetchRoomsForHotels(
-  tripId:   string,
-  hotelIds: string[],
+  engagementId: string,
+  hotelIds:     string[],
 ): Promise<Record<string, ImmerseRoomOption[]>> {
   if (hotelIds.length === 0) return {}
 
@@ -528,7 +501,7 @@ async function fetchRoomsForHotels(
   const canonById   = new Map<string, typeof canonRooms[number]>()
   for (const c of canonRooms) canonById.set(c.id as string, c)
 
-  // Trip-scoped overlay rows — three-tier rates (S22)
+  // Engagement-scoped overlay rows — three-tier rates
   const { data: overlayRooms } = await supabase
     .from('travel_immerse_rooms')
     .select(`
@@ -541,7 +514,7 @@ async function fetchRoomsForHotels(
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
       sort_order
     `)
-    .eq('trip_id', tripId)
+    .eq('trip_id', engagementId)
     .eq('is_active', true)
     .in('room_id', canonIds)
     .order('sort_order', { ascending: true })
@@ -556,8 +529,8 @@ async function fetchRoomsForHotels(
     const canon = canonById.get(o.room_id as string)
     if (!canon) continue
 
-    // S30D: rewrite the resolved value, not each candidate. Single rewrite
-    // call covers whichever source wins the ?? chain.
+    // Rewrite the resolved value, not each candidate. Single rewrite call
+    // covers whichever source wins the ?? chain.
     const roomImageSrc = rewriteImageUrl(
       o.hero_image_src_override
         ?? canon.room_image_src
@@ -608,7 +581,7 @@ async function fetchRoomsForHotels(
 }
 
 // ─── Hotel gallery (canonical) ────────────────────────────────────────────────
-// S30D: image_src rewritten as rows are bucketed.
+// image_src rewritten as rows are bucketed.
 
 async function fetchAllGallery(
   canonicalHotelIds: string[],
@@ -633,7 +606,7 @@ async function fetchAllGallery(
 }
 
 // ─── Room gallery (canonical) ─────────────────────────────────────────────────
-// S30D: image_src rewritten as rows are bucketed.
+// image_src rewritten as rows are bucketed.
 
 async function fetchAllRoomGallery(
   canonicalRoomIds: string[],
@@ -658,15 +631,15 @@ async function fetchAllRoomGallery(
 }
 
 // ─── Content cards + pricing ──────────────────────────────────────────────────
-// S23 addendum: fetchContentCards now takes tripId and merges per-trip
-// card overrides from travel_immerse_trip_content_card_overrides.
-// Every text field resolves via ov.X_override ?? canon.X ?? ''.
-// Empty string on any text override = hide that field.
+// fetchContentCards merges per-engagement card overrides from
+// travel_immerse_trip_content_card_overrides. Every text field resolves via
+// ov.X_override ?? canon.X ?? ''. Empty string on any text override = hide.
 // Null = no override, canonical flows through.
-// S30D: imageSrc rewritten on the way out. imageCreditUrl is intentionally
-//   NOT rewritten — it points at brand sites (e.g. aman.com), not Supabase
-//   storage. The defensive idempotency in rewriteImageUrl would handle it
-//   correctly anyway, but leaving it raw makes the intent obvious.
+//
+// imageSrc rewritten on the way out. imageCreditUrl is intentionally NOT
+// rewritten — it points at brand sites (e.g. aman.com), not Supabase
+// storage. The defensive idempotency in rewriteImageUrl would handle it
+// correctly anyway, but leaving it raw makes the intent obvious.
 
 type ContentCardWithType = ImmerseContentCard & { _cardType: string }
 
@@ -686,8 +659,8 @@ type CardOverrideRow = {
 }
 
 async function fetchContentCards(
-  tripId: string | null,
-  destId: string,
+  engagementId: string | null,
+  destId:       string,
 ): Promise<ContentCardWithType[]> {
   const { data: rows, error } = await supabase
     .from('travel_immerse_content_cards')
@@ -699,9 +672,9 @@ async function fetchContentCards(
   if (error || !rows) return []
   if (rows.length === 0) return []
 
-  // Fetch per-trip overrides for all cards on this destination
+  // Fetch per-engagement overrides for all cards on this destination
   const overridesByCardId = new Map<string, CardOverrideRow>()
-  if (tripId) {
+  if (engagementId) {
     const cardIds = rows.map(r => r.id as string)
     const { data: ovRows } = await supabase
       .from('travel_immerse_trip_content_card_overrides')
@@ -719,7 +692,7 @@ async function fetchContentCards(
         image_credit_url_override,
         image_license_override
       `)
-      .eq('trip_id', tripId)
+      .eq('trip_id', engagementId)
       .eq('is_active', true)
       .in('card_id', cardIds)
 

@@ -1,27 +1,34 @@
-// statusQueries.ts — Trip + itinerary status lookup queries
+// statusQueries.ts — Engagement + itinerary status lookup queries
 // Owns:
-//   - fetchTripStatuses()        — all rows of travel_trip_statuses
+//   - fetchEngagementStatuses()  — all rows of travel_engagement_statuses
 //   - fetchItineraryStatuses()   — all rows of travel_itinerary_statuses
-//   - mapTripStatus / mapItineraryStatus — row → camelCase mappers, exported
-//     so hydrateTrip in immerseTripQueries.ts can reuse them on the nested
-//     join row without duplicating the snake_case → camelCase shape.
+//   - mapEngagementStatus / mapItineraryStatus — row → camelCase mappers,
+//     exported so hydrateEngagement in immerseTripQueries.ts can reuse them
+//     on the nested join row without duplicating the snake_case → camelCase
+//     shape.
 //
 // Used by admin dropdowns (operator-facing). Neither fetcher is consumed
 // by guest-facing routes — guests see resolved labels via the joined
-// status object on ImmerseTripData (see immerseTripQueries.ts hydrateTrip).
+// status object on ImmerseEngagementData (see immerseTripQueries.ts
+// hydrateEngagement).
 //
-// Last updated: S30D — initial.
+// Last updated: S30E — Engagement abstraction. Renames mirror DB:
+//   travel_trip_statuses → travel_engagement_statuses; fetchTripStatuses →
+//   fetchEngagementStatuses; mapTripStatus → mapEngagementStatus;
+//   TripStatus type → EngagementStatus. Itinerary side unchanged —
+//   itinerary lifecycle is journey-engagement-specific.
+// Prior: S30D — initial.
 //
 // Lookup tables are public-readable per RLS; using `supabase` (auth-attached)
 // is fine. Order by sort_order so dropdowns render in the operator-facing
 // logical sequence without re-sorting client-side.
 
 import { supabase } from './supabase'
-import type { TripStatus, ItineraryStatus } from './immerseTypes'
+import type { EngagementStatus, ItineraryStatus } from './immerseTypes'
 
 // ─── DB row types ────────────────────────────────────────────────────────────
 
-type TripStatusRow = {
+type EngagementStatusRow = {
   id:         string
   slug:       string
   label:      string
@@ -29,13 +36,13 @@ type TripStatusRow = {
   is_active:  boolean
 }
 
-type ItineraryStatusRow = TripStatusRow   // identical shape
+type ItineraryStatusRow = EngagementStatusRow   // identical shape
 
 // ─── Fetchers ────────────────────────────────────────────────────────────────
 
-export async function fetchTripStatuses(activeOnly = true): Promise<TripStatus[]> {
+export async function fetchEngagementStatuses(activeOnly = true): Promise<EngagementStatus[]> {
   const query = supabase
-    .from('travel_trip_statuses')
+    .from('travel_engagement_statuses')
     .select('id, slug, label, sort_order, is_active')
     .order('sort_order', { ascending: true })
 
@@ -44,7 +51,7 @@ export async function fetchTripStatuses(activeOnly = true): Promise<TripStatus[]
   const { data, error } = await query
   if (error || !data) return []
 
-  return (data as TripStatusRow[]).map(mapTripStatus)
+  return (data as EngagementStatusRow[]).map(mapEngagementStatus)
 }
 
 export async function fetchItineraryStatuses(activeOnly = true): Promise<ItineraryStatus[]> {
@@ -62,9 +69,10 @@ export async function fetchItineraryStatuses(activeOnly = true): Promise<Itinera
 }
 
 // ─── Internal mappers ────────────────────────────────────────────────────────
-// Exported for reuse by hydrateTrip (immerseTripQueries.ts) on nested join rows.
+// Exported for reuse by hydrateEngagement (immerseTripQueries.ts) on nested
+// join rows.
 
-export function mapTripStatus(row: TripStatusRow): TripStatus {
+export function mapEngagementStatus(row: EngagementStatusRow): EngagementStatus {
   return {
     id:        row.id,
     slug:      row.slug,
