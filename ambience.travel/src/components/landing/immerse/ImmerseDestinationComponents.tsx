@@ -19,7 +19,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
 import { C } from '../../../lib/landingTypes'
-import { PricingTable, Td, TotalTd, NotesList } from './ImmerseTripComponents'
+import { PricingTable, Td, TotalTd, NotesList } from './ImmerseEngagementComponents'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption, ImmerseContentCard } from '../../../lib/immerseTypes'
 
 // S22: Single literal fallback when DB returns no value for pricing notes.

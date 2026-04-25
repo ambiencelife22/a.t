@@ -4,11 +4,11 @@
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
- *   ambience.travel/immerse/honeymoon                    → PublicHoneymoonRoute → ImmerseTripPage
+ *   ambience.travel/immerse/honeymoon                    → PublicHoneymoonRoute → ImmerseEngagementPage
  *                                                          (DB-backed via slug 'honeymoon1')
  *   ambience.travel/immerse/:journey_type/:destination   → DestinationPage (public inspiration)
- *   ambience.travel/immerse/:url_id                      → ImmerseTripRoute (engagement overview)
- *   ambience.travel/immerse/:url_id/:destination         → ImmerseTripRoute (destination subpage)
+ *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute (engagement overview)
+ *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute (destination subpage)
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -22,10 +22,10 @@
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
- *   localhost:5173/immerse/honeymoon                     → PublicHoneymoonRoute → ImmerseTripPage
+ *   localhost:5173/immerse/honeymoon                     → PublicHoneymoonRoute → ImmerseEngagementPage
  *   localhost:5173/immerse/:journey_type/:destination    → DestinationPage (public inspiration)
- *   localhost:5173/immerse/:url_id                       → ImmerseTripRoute (engagement overview)
- *   localhost:5173/immerse/:url_id/:destination          → ImmerseTripRoute (destination subpage)
+ *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute (engagement overview)
+ *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute (destination subpage)
  *
  * Immerse disambiguator: first /immerse/ segment is shape-tested.
  *   - 11-char [A-Za-z0-9] hash → engagement route (private, url_id keyed)
@@ -36,9 +36,12 @@
  * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
  * full-page programme view. The programme root renders the app shell.
  *
- * Last updated: S30E — Engagement abstraction. getImmerseTripBySlug →
- *   getImmerseEngagementBySlug; type ImmerseTripData → ImmerseEngagementData.
- *   Component name + filename preserved this session.
+ * Last updated: S30E stage 2 — Component + import path renames for the
+ *   ImmerseTrip* → ImmerseEngagement* file rename. ImmerseTripRoute →
+ *   ImmerseEngagementRoute; ImmerseTripPage → ImmerseEngagementPage.
+ *   PublicHoneymoonRoute callback variable renamed for clarity.
+ * Prior: S30E stage 1 — getImmerseTripBySlug → getImmerseEngagementBySlug;
+ *   type ImmerseTripData → ImmerseEngagementData.
  * Prior: S17 — Public honeymoon preview is now DB-backed (slug 'honeymoon1')
  */
 
@@ -52,8 +55,8 @@ import ProgrammeList from './components/ProgrammeList'
 import Profile from './components/Profile'
 import Auth from './components/Auth'
 import SignatureExperiencePage from './components/landing/experiences/SignatureExperiencePage'
-import ImmerseTripRoute          from './components/landing/immerse/ImmerseTripRoute'
-import ImmerseTripPage          from './components/landing/immerse/ImmerseTripPage'
+import ImmerseEngagementRoute   from './components/landing/immerse/ImmerseEngagementRoute'
+import ImmerseEngagementPage    from './components/landing/immerse/ImmerseEngagementPage'
 import DestinationPage          from './components/landing/immerse/DestinationPage'
 import { getImmerseEngagementBySlug } from './lib/immerseTripQueries'
 import type { ImmerseEngagementData } from './lib/immerseTypes'
@@ -138,7 +141,7 @@ export default function App() {
   const { seg1, seg2 } = resolveImmerseSegments()
 
   // Shape-based disambiguator: 11-char alphanumeric → engagement route
-  if (isTripUrlId(seg1)) return <ImmerseTripRoute />
+  if (isTripUrlId(seg1)) return <ImmerseEngagementRoute />
 
   // Public honeymoon overview — DB-backed via slug lookup
   if (seg1 === 'honeymoon' && !seg2) return <PublicHoneymoonRoute />
@@ -158,19 +161,19 @@ export default function App() {
 
 // ── Public honeymoon preview wrapper ────────────────────────────────────────
 // Fetches the public honeymoon engagement row (slug = 'honeymoon1') and
-// renders it through the normal ImmerseTripPage. No url_id involved — this
-// is a slug-keyed public preview, distinct from Yazeed's url_id-keyed private
-// engagement. As more preview options ship, this can be upgraded to select
-// among them (splash page) rather than loading a single row.
+// renders it through the normal ImmerseEngagementPage. No url_id involved —
+// this is a slug-keyed public preview, distinct from Yazeed's url_id-keyed
+// private engagement. As more preview options ship, this can be upgraded to
+// select among them (splash page) rather than loading a single row.
 function PublicHoneymoonRoute() {
   const [data, setData] = useState<ImmerseEngagementData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    getImmerseEngagementBySlug('honeymoon1').then(t => {
+    getImmerseEngagementBySlug('honeymoon1').then(engagement => {
       if (cancelled) return
-      setData(t)
+      setData(engagement)
       setLoading(false)
     }).catch(() => {
       if (cancelled) return
@@ -180,7 +183,7 @@ function PublicHoneymoonRoute() {
   }, [])
 
   if (loading) return null
-  return <ImmerseTripPage data={data} />
+  return <ImmerseEngagementPage data={data} />
 }
 
 function ProgrammeGate({ full = false }: { full?: boolean }) {

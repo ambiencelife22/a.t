@@ -1,12 +1,15 @@
-// ImmerseTripPage.tsx — DB-wired engagement overview page
+// ImmerseEngagementPage.tsx — DB-wired engagement overview page
 // Route: /immerse/{url_id}        (private, token-keyed — e.g. Yazeed)
 //        /immerse/honeymoon       (public preview — slug = 'honeymoon1')
 // Renders hero + welcome letter + route strip + (optional) secondary hero + destination rows + pricing
 // Does not own destination subpages (see DestinationPage)
 //
-// Last updated: S30E — Type rename ImmerseTripData → ImmerseEngagementData.
-//   Component name + filename preserved this session; full ImmerseTrip* →
-//   ImmerseEngagement* file rename deferred to stage 2.
+// Last updated: S30E stage 2 — File renamed ImmerseTripPage.tsx →
+//   ImmerseEngagementPage.tsx. Component renamed ImmerseTripPage →
+//   ImmerseEngagementPage. Imports updated for renamed
+//   ImmerseEngagementComponents + ImmerseEngagementRoute. Internal pricing
+//   import renamed ImmerseTripPricing → ImmerseEngagementPricing.
+// Prior: S30E stage 1 — Type rename ImmerseTripData → ImmerseEngagementData.
 // Prior: S30 — Welcome letter wired between Hero 1 and Route Strip.
 //   Canonical singleton (travel_immerse_welcome_letter) + per-engagement
 //   overrides (welcome_*_override columns). Component hides if all 5 fields
@@ -16,13 +19,13 @@ import ImmerseLayout from '../../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
-import { ImmerseRouteStrip } from './ImmerseTripComponents'
-import { ImmerseDestinationRows } from './ImmerseTripComponents'
-import { ImmerseTripPricing } from './ImmerseTripComponents'
-import { buildImmerseNavItems } from './ImmerseTripRoute'
+import { ImmerseRouteStrip } from './ImmerseEngagementComponents'
+import { ImmerseDestinationRows } from './ImmerseEngagementComponents'
+import { ImmerseEngagementPricing } from './ImmerseEngagementComponents'
+import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import type { ImmerseEngagementData } from '../../../lib/immerseTypes'
 
-export default function ImmerseTripPage({ data }: { data: ImmerseEngagementData | null }) {
+export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagementData | null }) {
   if (!data) return null
 
   // Trip Overview is always the active item here (this IS the overview route).
@@ -60,7 +63,7 @@ export default function ImmerseTripPage({ data }: { data: ImmerseEngagementData 
       )}
 
       <ImmerseDestinationRows data={data} />
-      <ImmerseTripPricing data={data} />
+      <ImmerseEngagementPricing data={data} />
     </ImmerseLayout>
   )
 }

@@ -4,7 +4,9 @@
 //   Public S22:    /immerse/pubMuirRzSW/:destination (and other pub-prefixed url_ids)
 //   Private:       /immerse/:url_id/:destination
 //
-// Last updated: S30E — Engagement abstraction. getImmerseTrip →
+// Last updated: S30E stage 2 — buildImmerseNavItems import path updated for
+//   renamed source file (ImmerseTripRoute → ImmerseEngagementRoute).
+// Prior: S30E stage 1 — Engagement abstraction. getImmerseTrip →
 //   getImmerseEngagement; getImmerseTripBySlug → getImmerseEngagementBySlug;
 //   type ImmerseTripData → ImmerseEngagementData; local state trip →
 //   engagement; deriveNightsLabel parameter renamed.
@@ -24,7 +26,7 @@ import { ImmerseDestPricing } from './ImmerseDestinationComponents'
 import { getImmerseDestination } from '../../../lib/immerseQueries'
 import { getImmerseEngagement, getImmerseEngagementBySlug } from '../../../lib/immerseTripQueries'
 import { useToast } from '../../../lib/ToastContext'
-import { buildImmerseNavItems } from './ImmerseTripRoute'
+import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import type { ImmerseDestinationData, ImmerseEngagementData } from '../../../lib/immerseTypes'
 
 type RouteParts = {

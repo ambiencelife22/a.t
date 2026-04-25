@@ -1,10 +1,14 @@
-// ImmerseTripComponents.tsx — section components for /immerse/ engagement overview pages
-// Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseTripPricing
+// ImmerseEngagementComponents.tsx — section components for /immerse/ engagement overview pages
+// Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
 //
-// Last updated: S30E — Type rename ImmerseTripData → ImmerseEngagementData
-//   on every consumer signature. Filename preserved this session; full
-//   ImmerseTrip* → ImmerseEngagement* file rename deferred to stage 2.
+// Last updated: S30E stage 2 — File renamed ImmerseTripComponents.tsx →
+//   ImmerseEngagementComponents.tsx. Component rename: ImmerseTripPricing →
+//   ImmerseEngagementPricing. ImmerseRouteStrip + ImmerseDestinationRows
+//   names preserved (engagement-agnostic concepts — route segments and
+//   destination cards, not master-entity wrappers).
+// Prior: S30E stage 1 — Type rename ImmerseTripData → ImmerseEngagementData
+//   on every consumer signature.
 // Prior: S20 — DestinationRow rewrite:
 //   (1) Whole card now clickable (anchor wraps card) when subpageStatus === 'live'
 //   (2) 'preview' state renders opacity 0.5, cursor not-allowed, no hover lift,
@@ -571,7 +575,7 @@ function CornerBadge({ isLive, isPreview }: { isLive: boolean; isPreview: boolea
 
 // ─── Engagement pricing ───────────────────────────────────────────────────────
 
-export function ImmerseTripPricing({ data }: { data: ImmerseEngagementData }) {
+export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile = useImmerseMobile()
 

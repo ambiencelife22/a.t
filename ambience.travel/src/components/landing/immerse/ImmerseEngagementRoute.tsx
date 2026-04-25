@@ -1,24 +1,24 @@
-// ImmerseTripRoute.tsx — Route resolver for /immerse/{url_id}/...
+// ImmerseEngagementRoute.tsx — Route resolver for /immerse/{url_id}/...
 // Resolves url_id (+ optional destination_slug) from pathname.
-// Overview (/immerse/{url_id})          → fetches engagement, renders ImmerseTripPage.
+// Overview (/immerse/{url_id})          → fetches engagement, renders ImmerseEngagementPage.
 // Destination (/immerse/{url_id}/{slug}) → verifies engagement exists, hands off to
 //   DestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
 //
-// Last updated: S30E — Engagement abstraction. getImmerseTrip →
+// Last updated: S30E stage 2 — File renamed ImmerseTripRoute.tsx →
+//   ImmerseEngagementRoute.tsx. Component renamed ImmerseTripRoute →
+//   ImmerseEngagementRoute. Import updated to ImmerseEngagementPage.
+// Prior: S30E stage 1 — Engagement abstraction. getImmerseTrip →
 //   getImmerseEngagement; type ImmerseTripData → ImmerseEngagementData;
-//   buildImmerseNavItems first arg renamed engagement (parameter only —
-//   call sites still pass the engagement record). Component name + filename
-//   preserved this session; full ImmerseTrip* → ImmerseEngagement* file
-//   rename deferred to stage 2.
+//   buildImmerseNavItems first arg renamed engagement.
 // Prior: S26 — Builds navItems from engagement.destinationRows and passes to
 //   ImmerseLayout on loading / not-found / unknown states. On the overview
-//   state ImmerseTripPage owns its own layout wrapper.
+//   state ImmerseEngagementPage owns its own layout wrapper.
 
 import { useEffect, useMemo, useState } from 'react'
 import { getImmerseEngagement }            from '../../../lib/immerseTripQueries'
 import type { ImmerseEngagementData }      from '../../../lib/immerseTypes'
-import ImmerseTripPage                     from './ImmerseTripPage'
+import ImmerseEngagementPage               from './ImmerseEngagementPage'
 import DestinationPage                     from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../../layouts/ImmerseLayout'
 
@@ -115,7 +115,7 @@ function NotFound({ message }: { message: string }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export default function ImmerseTripRoute() {
+export default function ImmerseEngagementRoute() {
   const [engagement, setEngagement] = useState<ImmerseEngagementData | null>(null)
   const [kind,    setKind]    = useState<'overview' | 'destination' | null>(null)
   const [error,   setError]   = useState<string | null>(null)
@@ -173,9 +173,10 @@ export default function ImmerseTripRoute() {
   }, [pathname])
 
   // Nav items for Layout wrapper on states we render here. Overview branch
-  // delegates to ImmerseTripPage which owns its own Layout; we only need
-  // items for loading / not-found shells. Build them whenever engagement is
-  // loaded so loading-inside-a-valid-engagement states show the menu.
+  // delegates to ImmerseEngagementPage which owns its own Layout; we only
+  // need items for loading / not-found shells. Build them whenever
+  // engagement is loaded so loading-inside-a-valid-engagement states show
+  // the menu.
   const currentDestinationSlug = useMemo(() => {
     const route = resolveImmerseRoute(pathname)
     if (route.kind === 'destination') return route.destinationSlug
@@ -206,7 +207,7 @@ export default function ImmerseTripRoute() {
   }
 
   if (kind === 'overview' && engagement) {
-    return <ImmerseTripPage data={engagement} />
+    return <ImmerseEngagementPage data={engagement} />
   }
 
   if (kind === 'destination' && engagement) {
