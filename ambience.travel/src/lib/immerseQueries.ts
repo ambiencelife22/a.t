@@ -1,7 +1,15 @@
 // immerseQueries.ts — Supabase query functions for the /immerse/ proposal system
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
-// Last updated: S29 — Region gallery support. travel_immerse_destination_regions
+// Last updated: S30D — Storage URL rewriting at the read layer. Every image
+//   field returned by this module passes through rewriteImageUrl() (or
+//   rewriteImageUrls() for arrays). The Supabase project-host prefix is
+//   stripped on the way out so rendered HTML carries '/img/...' paths only.
+//   The /img/* rewrite in vercel.json proxies these to Supabase Storage at
+//   the edge. Effect: zero project-ref leakage in page source. Defensive +
+//   idempotent — see imageUrl.ts. image_credit_url is NOT rewritten because
+//   it points at brand websites, not storage.
+// Prior: S29 — Region gallery support. travel_immerse_destination_regions
 //   now carries a region_gallery jsonb column. fetchHotelsShape reads it,
 //   RegionRow type carries it, fetchRegionGroups maps it into ImmerseRegionGroup
 //   as regionGallery. Consumed by RegionedHotelOptions in
@@ -38,24 +46,9 @@
 //   or null. Component layer fills nulls from the PRICING_CLOSER_DEFAULT
 //   constant (default indicative_range "Pricing Based On Selection", others
 //   blank). No row in travel_immerse_destination_pricing_rows for the closer.
-// Prior: S22 — Pricing notes per-trip override system folded into the
-//   existing trip_destination_rows override pattern. fetchTripOverride now
-//   selects pricing_notes_heading_override, pricing_notes_title_override,
-//   and pricing_notes_override (jsonb). Return mapping merges trip override →
-//   canonical destination notes. Replaces the parallel travel_immerse_bottom_notes
-//   table + immerseBottomNotes.ts file (both pending DROP/DELETE).
-// Prior: S22 — Three-tier rate taxonomy. travel_immerse_rooms.nightly_rate
-//   renamed to non_negotiated_nightly_rate; new ambience_nightly_rate column
-//   added (NULL until partner-negotiated rates are seeded). Reads + override
-//   resolution updated. Public rate behaviour unchanged.
-// Prior: S22 — Gallery table reads now point at canonical names
-//   (travel_accom_hotel_gallery, travel_accom_room_gallery). Tables were
-//   renamed from travel_immerse_* — galleries are canonical hotel/room
-//   facts, not trip-scoped presentation. No query shape changes.
-// Prior: S21 — Full rewrite. Reads from canonical junctions instead of
-//   legacy travel_immerse_hotels.
 
 import { supabase } from './supabase'
+import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
 import type {
   ImmerseDestinationData,
   ImmerseDestinationHotelsShape,
@@ -205,6 +198,11 @@ export async function getImmerseDestination(
 
   const ov = overrideResult
 
+  // S30D: hero image fields rewritten on the way out. heroImageSrc2 uses
+  // `|| undefined` to preserve the existing optional-undefined contract when
+  // the resolved value is empty — rewriteImageUrl returns '' on null/empty.
+  const heroSrc2Resolved  = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
+
   return {
     destinationId:   destId,
     destinationSlug: dest.destination_slug ?? '',
@@ -214,9 +212,9 @@ export async function getImmerseDestination(
     eyebrow:       dest.eyebrow                        ?? '',
     title:         dest.title                          ?? '',
     subtitle:      dest.subtitle                       ?? '',
-    heroImageSrc:  ov?.hero_image_src_override         ?? dest.hero_image_src   ?? '',
+    heroImageSrc:  rewriteImageUrl(ov?.hero_image_src_override ?? dest.hero_image_src),
     heroImageAlt:  ov?.hero_image_alt_override         ?? dest.hero_image_alt   ?? '',
-    heroImageSrc2: ov?.hero_image_src_2_override       ?? dest.hero_image_src_2 ?? undefined,
+    heroImageSrc2: heroSrc2Resolved || undefined,
     heroImageAlt2: ov?.hero_image_alt_2_override       ?? dest.hero_image_alt_2 ?? undefined,
     heroTitle2:    ov?.hero_title_2_override           ?? dest.hero_title_2     ?? undefined,
     heroSubtitle2: ov?.hero_subtitle_2_override        ?? dest.hero_subtitle_2  ?? undefined,
@@ -239,7 +237,7 @@ export async function getImmerseDestination(
     diningBody:    ov?.dining_body_override           ?? dest.dining_body    ?? '',
     dining:        cardsResult.filter(c => c._cardType === 'dining').map(stripCardType),
 
-experiencesEyebrow: dest.experiences_eyebrow ?? '',
+    experiencesEyebrow: dest.experiences_eyebrow ?? '',
     experiencesTitle:   dest.experiences_title   ?? '',
     experiencesBody:    dest.experiences_body    ?? '',
     experiences:        cardsResult.filter(c => c._cardType === 'experience').map(stripCardType),
@@ -292,6 +290,8 @@ async function fetchHotelsShape(
 // S26: hero image, alt, and credit now come from canonical travel_accom_hotels
 //   (hero_image_src, hero_image_alt, image_credit). Junction table is curation
 //   only: which hotel, rank, rank_label, bullets, stay_label, sort_order.
+// S30D: imageSrc rewritten on the way out via rewriteImageUrl. gallery already
+//   rewritten inside fetchAllGallery so no further work here.
 
 async function fetchFlatHotels(
   tripId: string | null,
@@ -349,7 +349,7 @@ async function fetchFlatHotels(
       rankLabel:       r.rank_label     ?? '',
       name:            hotelName,
       bullets:         Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
-      imageSrc:        h?.hero_image_src ?? '',
+      imageSrc:        rewriteImageUrl(h?.hero_image_src),
       imageAlt:        h?.hero_image_alt ?? '',
       imageCredit:     h?.image_credit   ?? undefined,
       stayLabel:       r.stay_label     ?? '',
@@ -365,6 +365,7 @@ async function fetchFlatHotels(
 // S29: region_gallery added to RegionRow and mapped into ImmerseRegionGroup
 //   so RegionedHotelOptions can feed the region's own gallery through the
 //   existing HotelDetailPanel gallery block.
+// S30D: hotel imageSrc, region heroImageSrc, regionGallery all rewritten.
 
 type RegionRow = {
   id:              string
@@ -457,7 +458,7 @@ async function fetchRegionGroups(
       rankLabel:       r.rank_label    ?? '',
       name:            hotelName,
       bullets:         Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
-      imageSrc:        h?.hero_image_src ?? '',
+      imageSrc:        rewriteImageUrl(h?.hero_image_src),
       imageAlt:        h?.hero_image_alt ?? '',
       imageCredit:     h?.image_credit   ?? undefined,
       stayLabel:       r.stay_label    ?? '',
@@ -472,6 +473,7 @@ async function fetchRegionGroups(
 
   const groups: ImmerseRegionGroup[] = regions.map(region => {
     const tr = tripRegionByRegionId.get(region.id)
+    const heroResolved = rewriteImageUrl(region.hero_image_src)
     return {
       regionId:      region.id,
       slug:          region.slug,
@@ -481,9 +483,9 @@ async function fetchRegionGroups(
       rankLabel:     tr?.rankLabel ?? '',
       bullets:       tr?.bullets   ?? [],
       stayLabel:     tr?.stayLabel ?? '',
-      heroImageSrc:  region.hero_image_src ?? undefined,
+      heroImageSrc:  heroResolved || undefined,
       heroImageAlt:  region.hero_image_alt ?? undefined,
-      regionGallery: Array.isArray(region.region_gallery) ? region.region_gallery : [],
+      regionGallery: rewriteImageUrls(region.region_gallery),
       hotels:        hotelsByRegionId.get(region.id) ?? [],
     }
   })
@@ -500,6 +502,8 @@ async function fetchRegionGroups(
 // ─── Rooms (trip-scoped overlay + canonical join) ─────────────────────────────
 // S22: rate columns now non_negotiated_nightly_rate (renamed from nightly_rate)
 // and new ambience_nightly_rate. public_nightly_rate unchanged.
+// S30D: roomImageSrc, floorplanSrc, room gallery (both canonical + jsonb path)
+//   all rewritten before being returned to component layer.
 
 async function fetchRoomsForHotels(
   tripId:   string,
@@ -552,10 +556,13 @@ async function fetchRoomsForHotels(
     const canon = canonById.get(o.room_id as string)
     if (!canon) continue
 
-    const roomImageSrc = o.hero_image_src_override
-      ?? canon.room_image_src
-      ?? o.room_image_src
-      ?? ''
+    // S30D: rewrite the resolved value, not each candidate. Single rewrite
+    // call covers whichever source wins the ?? chain.
+    const roomImageSrc = rewriteImageUrl(
+      o.hero_image_src_override
+        ?? canon.room_image_src
+        ?? o.room_image_src
+    )
     const roomImageAlt = canon.room_image_alt ?? o.room_image_alt ?? ''
 
     const sqftMin = o.sqft_min_override ?? canon.sqft_min ?? o.sqft_min ?? undefined
@@ -563,17 +570,19 @@ async function fetchRoomsForHotels(
     const sqmMin  = o.sqm_min_override  ?? canon.sqm_min  ?? o.sqm_min  ?? undefined
     const sqmMax  = o.sqm_max_override  ?? canon.sqm_max  ?? o.sqm_max  ?? undefined
 
-    const floorplanSrc = o.floorplan_src_override
-      ?? canon.floorplan_src
-      ?? o.floorplan_src
-      ?? undefined
+    const floorplanResolved = rewriteImageUrl(
+      o.floorplan_src_override
+        ?? canon.floorplan_src
+        ?? o.floorplan_src
+    )
+    const floorplanSrc = floorplanResolved || undefined
 
     const roomBenefits = Array.isArray(o.room_benefits) && (o.room_benefits as string[]).length > 0
       ? (o.room_benefits as string[])
       : (Array.isArray(canon.room_benefits) ? (canon.room_benefits as string[]) : [])
 
-    const galleryCanonical = galleryByRoom[canon.id as string] ?? []
-    const galleryJsonb     = Array.isArray(canon.room_gallery) ? (canon.room_gallery as string[]) : []
+    const galleryCanonical = galleryByRoom[canon.id as string] ?? []   // already rewritten
+    const galleryJsonb     = rewriteImageUrls(canon.room_gallery as string[] | null)
     const roomGallery      = galleryCanonical.length > 0 ? galleryCanonical : galleryJsonb
 
     const hotelId = canon.hotel_id as string
@@ -599,6 +608,7 @@ async function fetchRoomsForHotels(
 }
 
 // ─── Hotel gallery (canonical) ────────────────────────────────────────────────
+// S30D: image_src rewritten as rows are bucketed.
 
 async function fetchAllGallery(
   canonicalHotelIds: string[],
@@ -617,12 +627,13 @@ async function fetchAllGallery(
   for (const r of rows) {
     const key = r.accom_hotel_id as string
     if (!grouped[key]) grouped[key] = []
-    grouped[key].push(r.image_src as string)
+    grouped[key].push(rewriteImageUrl(r.image_src as string))
   }
   return grouped
 }
 
 // ─── Room gallery (canonical) ─────────────────────────────────────────────────
+// S30D: image_src rewritten as rows are bucketed.
 
 async function fetchAllRoomGallery(
   canonicalRoomIds: string[],
@@ -641,7 +652,7 @@ async function fetchAllRoomGallery(
   for (const r of rows) {
     const key = r.accom_room_id as string
     if (!grouped[key]) grouped[key] = []
-    grouped[key].push(r.image_src as string)
+    grouped[key].push(rewriteImageUrl(r.image_src as string))
   }
   return grouped
 }
@@ -652,6 +663,10 @@ async function fetchAllRoomGallery(
 // Every text field resolves via ov.X_override ?? canon.X ?? ''.
 // Empty string on any text override = hide that field.
 // Null = no override, canonical flows through.
+// S30D: imageSrc rewritten on the way out. imageCreditUrl is intentionally
+//   NOT rewritten — it points at brand sites (e.g. aman.com), not Supabase
+//   storage. The defensive idempotency in rewriteImageUrl would handle it
+//   correctly anyway, but leaving it raw makes the intent obvious.
 
 type ContentCardWithType = ImmerseContentCard & { _cardType: string }
 
@@ -732,7 +747,7 @@ async function fetchContentCards(
       body:            ov?.body_override              ?? r.body              ?? '',
       bulletsHeading:  ov?.bullets_heading_override   ?? r.bullets_heading   ?? '',
       bullets:         bullets,
-      imageSrc:        ov?.image_src_override         ?? r.image_src         ?? '',
+      imageSrc:        rewriteImageUrl(ov?.image_src_override ?? r.image_src),
       imageAlt:        ov?.image_alt_override         ?? r.image_alt         ?? '',
       imageCredit:     ov?.image_credit_override      ?? r.image_credit      ?? undefined,
       imageCreditUrl:  ov?.image_credit_url_override  ?? r.image_credit_url  ?? undefined,

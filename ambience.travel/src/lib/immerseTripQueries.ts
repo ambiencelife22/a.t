@@ -4,7 +4,13 @@
 //   - getImmerseTripBySlug(slug)   — full ImmerseTripData fetch by slug
 //                                    (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter()
+// Last updated: S30D — Storage URL rewriting at the read layer. Trip hero
+//   (image 1 + image 2), route stop image_src, and destination row image_src
+//   pass through rewriteImageUrl() before reaching components. The Supabase
+//   project-host prefix never reaches rendered HTML; the /img/* rewrite in
+//   vercel.json proxies these to Supabase Storage at the edge. Defensive +
+//   idempotent — see imageUrl.ts.
+// Prior: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter()
 //   reads the single row in travel_immerse_welcome_letter. Per-trip 5x
 //   welcome_*_override columns on travel_immerse_trips resolved via the
 //   standard ?? chain. ImmerseTripData.welcomeLetter is always present
@@ -17,6 +23,7 @@
 //   filter 'hidden' rows at the query layer.
 
 import { supabaseAnon } from './supabase'
+import { rewriteImageUrl } from './imageUrl'
 import type {
   ImmerseTripData,
   ImmerseTripFormat,
@@ -223,15 +230,17 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     signoffName: tripRow.welcome_signoff_name_override ?? welcomeCanon?.signoff_name ?? '',
   }
 
+  // S30D: route stop image_src rewritten on the way out.
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
     id:        r.id,
     title:     r.title      ?? '',
     stayLabel: r.stay_label ?? '',
     note:      r.note       ?? '',
-    imageSrc:  r.image_src  ?? '',
+    imageSrc:  rewriteImageUrl(r.image_src),
     imageAlt:  r.image_alt  ?? '',
   }))
 
+  // S30D: destination row image_src rewritten on the way out.
   const destinationRows: ImmerseDestinationRow[] = destRows.map(r => ({
     id:              r.id,
     numberLabel:     r.number_label ?? '',
@@ -239,7 +248,7 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     mood:            r.mood         ?? '',
     summary:         r.summary      ?? '',
     stayLabel:       r.stay_label   ?? '',
-    imageSrc:        r.image_src    ?? '',
+    imageSrc:        rewriteImageUrl(r.image_src),
     imageAlt:        r.image_alt    ?? '',
     destinationSlug: r.destination_slug,
     subpageStatus:   normalizeSubpageStatus(r.subpage_status),  // S20
@@ -252,6 +261,11 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     stayLabel:        r.stay_label         ?? '',
     indicativeRange:  r.indicative_range   ?? '',
   }))
+
+  // S30D: trip hero image fields rewritten. heroImageSrc2 uses `|| undefined`
+  // to preserve the existing optional-undefined contract — rewriteImageUrl
+  // returns '' on null/empty input.
+  const heroSrc2Resolved = rewriteImageUrl(tripRow.hero_image_src_2)
 
   return {
     tripId:        tripRow.id,
@@ -267,9 +281,9 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     eyebrow:       tripRow.eyebrow        ?? '',
     title:         tripRow.title          ?? '',
     subtitle:      tripRow.subtitle       ?? '',
-    heroImageSrc:  tripRow.hero_image_src ?? '',
+    heroImageSrc:  rewriteImageUrl(tripRow.hero_image_src),
     heroImageAlt:  tripRow.hero_image_alt ?? '',
-    heroImageSrc2: tripRow.hero_image_src_2 ?? undefined,
+    heroImageSrc2: heroSrc2Resolved || undefined,
     heroImageAlt2: tripRow.hero_image_alt_2 ?? undefined,
     heroTitle2:    tripRow.hero_title_2    ?? undefined,
     heroSubtitle2: tripRow.hero_subtitle_2 ?? undefined,

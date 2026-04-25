@@ -1,6 +1,6 @@
 /* supabase.ts
  * Supabase client for ambience.travel.
- * Same project as ambience.SPORTS — rjobcbpnhymuczjhqzmh.
+ * Same project as ambience.SPORTS —
  * Shared auth, shared profiles table, shared infrastructure.
  */
 

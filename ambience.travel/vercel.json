@@ -1,6 +1,10 @@
 {
   "framework": "vite",
   "rewrites": [
+    {
+      "source": "/img/:path*",
+      "destination": "https://rjobcbpnhymuczjhqzmh.supabase.co/storage/v1/object/public/ambience-assets/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
