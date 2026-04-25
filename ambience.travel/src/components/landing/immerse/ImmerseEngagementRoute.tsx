@@ -5,7 +5,10 @@
 //   DestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
 //
-// Last updated: S30E stage 2 — File renamed ImmerseTripRoute.tsx →
+// Last updated: S30E perf — Extracted LoadingScreen + NotFound to shared
+//   ImmerseStateScreens.tsx so DestinationPage can consume the same shells
+//   and fix its white-flash. No behaviour change here.
+// Prior: S30E stage 2 — File renamed ImmerseTripRoute.tsx →
 //   ImmerseEngagementRoute.tsx. Component renamed ImmerseTripRoute →
 //   ImmerseEngagementRoute. Import updated to ImmerseEngagementPage.
 // Prior: S30E stage 1 — Engagement abstraction. getImmerseTrip →
@@ -21,6 +24,7 @@ import type { ImmerseEngagementData }      from '../../../lib/immerseTypes'
 import ImmerseEngagementPage               from './ImmerseEngagementPage'
 import DestinationPage                     from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../../layouts/ImmerseLayout'
+import { LoadingScreen, NotFound }         from './ImmerseStateScreens'
 
 // ── URL resolution ───────────────────────────────────────────────────────────
 
@@ -76,41 +80,6 @@ export function buildImmerseNavItems(
   }
 
   return items
-}
-
-// ── Loading / not found ──────────────────────────────────────────────────────
-
-function LoadingScreen() {
-  return (
-    <div style={{
-      minHeight:      'calc(100vh - 60px)',
-      display:        'flex',
-      alignItems:     'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{ fontSize: 13, color: '#7A8476', letterSpacing: '0.06em' }}>
-        Loading your proposal…
-      </div>
-    </div>
-  )
-}
-
-function NotFound({ message }: { message: string }) {
-  return (
-    <div style={{
-      minHeight:      'calc(100vh - 60px)',
-      display:        'flex',
-      flexDirection:  'column',
-      alignItems:     'center',
-      justifyContent: 'center',
-      gap:            16,
-    }}>
-      <div style={{ fontSize: 20, fontWeight: 600, color: '#171917' }}>{message}</div>
-      <a href='https://ambience.travel' style={{ fontSize: 13, color: '#C9B88E', textDecoration: 'none' }}>
-        Return to ambience.travel →
-      </a>
-    </div>
-  )
 }
 
 // ── Main component ──────────────────────────────────────────────────────────

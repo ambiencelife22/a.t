@@ -4,7 +4,14 @@
 //                                   (public templates use 'pub' prefix
 //                                   convention on url_id, e.g. pubMuirRzSW)
 //
-// Last updated: S30E perf — Removed isPublicLegacy branch and
+// Last updated: S30E perf — Fix white-flash on load. Was returning `null`
+//   while loading, producing an unstyled gap between unmount and mount.
+//   Now renders ImmerseLayout + LoadingScreen during load, matching the
+//   shell shape used by ImmerseEngagementRoute. NavItems show as soon as
+//   engagement hydrates; LoadingScreen replaces the body until destination
+//   data arrives. Imports LoadingScreen + NotFound from shared
+//   ImmerseStateScreens.tsx.
+// Prior: S30E perf — Removed isPublicLegacy branch and
 //   getImmerseEngagementBySlug import. The /immerse/honeymoon/:destination
 //   slug-keyed route was deleted; only canonical url_id-keyed routing
 //   remains. Route resolver simplified accordingly.
@@ -30,6 +37,7 @@ import { getImmerseDestination } from '../../../lib/immerseQueries'
 import { getImmerseEngagement } from '../../../lib/immerseEngagementQueries'
 import { useToast } from '../../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
+import { LoadingScreen, NotFound } from './ImmerseStateScreens'
 import type { ImmerseDestinationData, ImmerseEngagementData } from '../../../lib/immerseTypes'
 
 type RouteParts = {
@@ -86,6 +94,7 @@ export default function DestinationPage() {
   const [data, setData]               = useState<ImmerseDestinationData | null>(null)
   const [engagement, setEngagement]   = useState<ImmerseEngagementData | null>(null)
   const [loading, setLoading]         = useState(true)
+  const [errored, setErrored]         = useState(false)
   const { toast } = useToast()
 
   // Track pathname so back/forward navigation re-resolves the destination
@@ -117,6 +126,7 @@ export default function DestinationPage() {
       }
 
       setLoading(true)
+      setErrored(false)
 
       try {
         const [destinationResult, engagementResult] = await Promise.all([
@@ -146,6 +156,7 @@ export default function DestinationPage() {
       toast.warning(message)
       window.history.replaceState(null, '', overviewUrl)
       window.dispatchEvent(new PopStateEvent('popstate'))
+      setErrored(true)
       setLoading(false)
     }
 
@@ -156,20 +167,35 @@ export default function DestinationPage() {
     }
   }, [urlId, destinationSlug, toast])
 
-  if (loading) return null
-  if (!data)   return null
+  // Hero values derived from engagement + destination data — no hardcodes.
+  // Computed up here so the loading branch can also use the partial nav
+  // items (engagement may already be hydrated while destination still loads).
+  const navItems = engagement ? buildImmerseNavItems(engagement, destinationSlug) : undefined
+  const logoHref = `/immerse/${urlId}`
 
-  // Hero values derived from engagement + destination data — no hardcodes
+  // S30E perf: render layout shell during load and error states so there's
+  // no unstyled gap between mount transitions. Matches ImmerseEngagementRoute
+  // pattern.
+  if (loading) {
+    return (
+      <ImmerseLayout navItems={navItems} logoHref={logoHref}>
+        <LoadingScreen />
+      </ImmerseLayout>
+    )
+  }
+
+  if (errored || !data) {
+    return (
+      <ImmerseLayout navItems={navItems} logoHref={logoHref}>
+        <NotFound message='Returning to the overview…' />
+      </ImmerseLayout>
+    )
+  }
+
   const guestName   = engagement?.clientName   ?? 'Our VIP Guest'
   const dateLabel   = deriveDateLabel(engagement?.statusLabel)
   const titlePrefix = deriveTitlePrefix(engagement?.journeyTypes ?? [])
   const nightsLabel = deriveNightsLabel(engagement, destinationSlug)
-
-  // Build nav items. Engagement may be null if hydration failed — in that
-  // case skip the menu entirely (renders logo-only nav). Otherwise pass the
-  // full list with the current destination marked active.
-  const navItems = engagement ? buildImmerseNavItems(engagement, destinationSlug) : undefined
-  const logoHref = `/immerse/${urlId}`
 
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>
