@@ -4,7 +4,16 @@
 //   - getImmerseTripBySlug(slug)   — full ImmerseTripData fetch by slug
 //                                    (used for public previews like /immerse/honeymoon/)
 // Does not own: destination subpage data (see immerseQueries.ts)
-// Last updated: S30D — Storage URL rewriting at the read layer. Trip hero
+// Last updated: S30D — Trip + itinerary status FK lookups. travel_immerse_trips
+//   now carries trip_status_id + itinerary_status_id (both NOT NULL FKs) into
+//   travel_trip_statuses + travel_itinerary_statuses. Hydration resolves both
+//   via Supabase nested select; ImmerseTripData carries tripStatus +
+//   itineraryStatus as full TripStatus / ItineraryStatus objects (id, slug,
+//   label, sortOrder, isActive). Existing statusLabel free-text field
+//   preserved — different concept (guest-facing display copy vs operator-facing
+//   lifecycle state). Mappers imported from statusQueries.ts to avoid
+//   duplicating the snake_case → camelCase shape.
+// Prior: S30D — Storage URL rewriting at the read layer. Trip hero
 //   (image 1 + image 2), route stop image_src, and destination row image_src
 //   pass through rewriteImageUrl() before reaching components. The Supabase
 //   project-host prefix never reaches rendered HTML; the /img/* rewrite in
@@ -24,6 +33,7 @@
 
 import { supabaseAnon } from './supabase'
 import { rewriteImageUrl } from './imageUrl'
+import { mapTripStatus, mapItineraryStatus } from './statusQueries'
 import type {
   ImmerseTripData,
   ImmerseTripFormat,
@@ -32,9 +42,21 @@ import type {
   ImmerseSubpageStatus,
   ImmerseTripPricingRow,
   ImmerseWelcomeLetter,
+  TripStatus,
+  ItineraryStatus,
 } from './immerseTypes'
 
 // ── DB row types ─────────────────────────────────────────────────────────────
+
+// S30D: nested join row shape returned by Supabase for status FKs.
+// Identical for both trip + itinerary statuses (lookup tables share schema).
+type StatusJoinRow = {
+  id:         string
+  slug:       string
+  label:      string
+  sort_order: number
+  is_active:  boolean
+}
 
 type TripRow = {
   id:                              string
@@ -44,6 +66,11 @@ type TripRow = {
   journey_types:                   string[] | null
   person_id:                       string | null
   status_label:                    string | null
+  // S30D: status FK columns + nested join rows
+  trip_status_id:                  string
+  itinerary_status_id:             string
+  travel_trip_statuses:            StatusJoinRow | null
+  travel_itinerary_statuses:       StatusJoinRow | null
   eyebrow:                         string | null
   title:                           string | null
   subtitle:                        string | null
@@ -128,10 +155,16 @@ type PricingRowRow = {
 }
 
 // ── Public fetch ─────────────────────────────────────────────────────────────
+// S30D: TRIP_SELECT_COLUMNS extended to pull both status FKs + their joined
+// lookup rows in a single round trip. Pattern matches the canonical
+// travel_accom_hotels nested select used in immerseQueries.ts.
 
 const TRIP_SELECT_COLUMNS = `
   id, url_id, slug, trip_format, journey_types,
   person_id, status_label,
+  trip_status_id, itinerary_status_id,
+  travel_trip_statuses (id, slug, label, sort_order, is_active),
+  travel_itinerary_statuses (id, slug, label, sort_order, is_active),
   eyebrow, title, subtitle,
   hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
   hero_title_2, hero_subtitle_2, hero_pills,
@@ -152,7 +185,7 @@ export async function getImmerseTrip(urlId: string): Promise<ImmerseTripData | n
     .single()
 
   if (tripErr || !trip) return null
-  return hydrateTrip(trip as TripRow)
+  return hydrateTrip(trip as unknown as TripRow)
 }
 
 export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripData | null> {
@@ -163,7 +196,7 @@ export async function getImmerseTripBySlug(slug: string): Promise<ImmerseTripDat
     .single()
 
   if (tripErr || !trip) return null
-  return hydrateTrip(trip as TripRow)
+  return hydrateTrip(trip as unknown as TripRow)
 }
 
 // S30: Canonical welcome letter is a single-row table. maybeSingle() returns
@@ -176,6 +209,12 @@ async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
     .maybeSingle()
   return (data ?? null) as WelcomeLetterRow | null
 }
+
+// S30D: defensive fallback when a status join row is somehow missing.
+// Both FK columns are NOT NULL in DB so this should never fire — keeps
+// the type contract on ImmerseTripData (non-nullable) honest if it does.
+const EMPTY_TRIP_STATUS:      TripStatus      = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
+const EMPTY_ITINERARY_STATUS: ItineraryStatus = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 
 // ── Shared hydration ─────────────────────────────────────────────────────────
 
@@ -220,6 +259,18 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
   const clientName = displayRow?.nickname
     ?? displayRow?.first_name
     ?? 'Our VIP Guest'
+
+  // S30D: status FKs resolved via nested join. Both NOT NULL in DB so the
+  // fallback to EMPTY_*_STATUS should never trigger; if it ever does, the
+  // empty slug ('') will fail the union narrow at any consumer that branches
+  // on TripStatusSlug — visible failure mode preferred over silent default.
+  const tripStatus: TripStatus = tripRow.travel_trip_statuses
+    ? mapTripStatus(tripRow.travel_trip_statuses)
+    : EMPTY_TRIP_STATUS
+
+  const itineraryStatus: ItineraryStatus = tripRow.travel_itinerary_statuses
+    ? mapItineraryStatus(tripRow.travel_itinerary_statuses)
+    : EMPTY_ITINERARY_STATUS
 
   // S30: trip override → canonical → '' for all 5 welcome letter fields.
   const welcomeLetter: ImmerseWelcomeLetter = {
@@ -275,6 +326,9 @@ async function hydrateTrip(tripRow: TripRow): Promise<ImmerseTripData | null> {
     journeyTypes:  tripRow.journey_types ?? [],
     clientName,
     statusLabel:   tripRow.status_label ?? '',
+
+    tripStatus,         // S30D
+    itineraryStatus,    // S30D
 
     welcomeLetter,
 

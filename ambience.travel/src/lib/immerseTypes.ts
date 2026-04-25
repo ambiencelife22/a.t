@@ -1,7 +1,16 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for trip overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S30 — Added ImmerseWelcomeLetter + welcomeLetter on ImmerseTripData.
+// Last updated: S30D — Added TripStatus + ItineraryStatus interfaces and slug
+//   union types. ImmerseTripData now carries tripStatus + itineraryStatus
+//   resolved from the new lookup tables travel_trip_statuses +
+//   travel_itinerary_statuses (FK columns trip_status_id + itinerary_status_id
+//   on travel_immerse_trips, both NOT NULL). Slug union types narrow to the
+//   canonical seed values for compile-time safety; the runtime slug field is
+//   `string` so adding a new lookup row doesn't break type-checking.
+//   statusLabel preserved — different concept (guest-facing display copy
+//   like 'Designed For You · January 2027' vs operator-facing lifecycle).
+// Prior: S30 — Added ImmerseWelcomeLetter + welcomeLetter on ImmerseTripData.
 //   Canonical table travel_immerse_welcome_letter holds a single shared proposal
 //   letter. Per-trip overrides live as 5 nullable welcome_*_override columns on
 //   travel_immerse_trips. Resolution: trip override → canonical → ''. Empty
@@ -32,6 +41,54 @@
 //   Destinations can render hotels flat (NYC, St-Barths) or grouped by region
 //   (Nordic Winter, Europe Finale). Region-grouped reads now flow through
 //   travel_immerse_trip_region_hotels keyed on canonical trip_id.
+
+// ─── Status lookups (S30D) ───────────────────────────────────────────────────
+// Slug union types match the canonical seed values from
+// migration_s30d_01_trip_itinerary_status_lookups.sql. Adding a new status
+// row to either lookup table without updating the union here will still
+// type-check at runtime — the runtime slug field is `string`. The unions
+// exist so consumers that want to branch on known slugs (e.g. "if the trip
+// is in_travel, show the in-trip dashboard") get compile-time coverage of
+// the canonical set.
+
+export type TripStatusSlug =
+  | 'new_request'
+  | 'proposal_in_progress'
+  | 'proposal_sent'
+  | 'revisions_in_progress'
+  | 'booked'
+  | 'in_travel'
+  | 'completed'
+  | 'cancelled'
+  | 'lost'
+
+export type ItineraryStatusSlug =
+  | 'draft'
+  | 'initial_proposal'
+  | 'refined_proposal'
+  | 'final_proposal'
+  | 'partially_confirmed'
+  | 'confirmed'
+  | 'in_travel'
+  | 'completed'
+  | 'cancelled'
+  | 'archived'
+
+export interface TripStatus {
+  id:        string
+  slug:      string   // narrows to TripStatusSlug for known canonical values
+  label:     string
+  sortOrder: number
+  isActive:  boolean
+}
+
+export interface ItineraryStatus {
+  id:        string
+  slug:      string   // narrows to ItineraryStatusSlug for known canonical values
+  label:     string
+  sortOrder: number
+  isActive:  boolean
+}
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -199,7 +256,10 @@ export type ImmerseTripData = {
   tripFormat:   ImmerseTripFormat
   journeyTypes: string[]
   clientName:   string
-  statusLabel:  string
+  statusLabel:  string                 // guest-facing display copy (e.g. 'Designed For You · January 2027')
+  // status (S30D) — operator-facing lifecycle, distinct from statusLabel
+  tripStatus:       TripStatus
+  itineraryStatus:  ItineraryStatus
   // welcome (S30)
   welcomeLetter: ImmerseWelcomeLetter
   // hero
