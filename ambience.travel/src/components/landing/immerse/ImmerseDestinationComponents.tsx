@@ -1,10 +1,18 @@
 // ImmerseDestinationComponents.tsx — section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseHotelOptions, ImmerseContentGrid, ImmerseDestPricing
-// Last updated: S23 addendum — bullets_heading render added in ContentCard.
+// Last updated: S30F — Replaced hardcoded "+ Taxes & Fees" and "+ tax" rate
+//   suffixes in RoomCategory with reads from room.rateSuffix. Free-text per-room
+//   suffix resolved override → canonical → undefined in immerseQueries.ts.
+//   When room.rateSuffix is undefined, the entire suffix line is omitted —
+//   no assumed-standard fallback. Same value renders below both the
+//   nonNegotiated rate chip and the ambience rate chip (one suffix per room,
+//   applies to both rate chips). taxInclusive boolean preserved as the gate:
+//   tax-inclusive rooms render no suffix regardless of rateSuffix value.
+// Prior: S23 addendum — bullets_heading render added in ContentCard.
 //   Renders a small gold-uppercase header above the bullets list when
 //   item.bulletsHeading is populated. Canonical default: "Highlights".
 //   Per-card override via travel_immerse_trip_content_card_overrides.
-// Last updated: S23 — Added PRICING_CLOSER_DEFAULT constant and closer render row
+// Prior: S23 — Added PRICING_CLOSER_DEFAULT constant and closer render row
 //   in ImmerseDestPricing. The closer row sits beneath the data.pricingRows map
 //   and renders a single is_total-styled row with PRICING_CLOSER_DEFAULT values
 //   merged with per-trip overrides from data.pricingCloser. Default closer
@@ -881,6 +889,11 @@ function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoom
   const isActive = !isMobile && hovered
   const scale    = pressed ? 0.99 : 1
 
+  // S30F: render rate suffix iff the room is not tax-inclusive AND a suffix exists.
+  // taxInclusive=true gates the suffix off entirely (rates already include tax).
+  // rateSuffix=undefined renders nothing (no assumed-standard fallback).
+  const showRateSuffix = !room.taxInclusive && Boolean(room.rateSuffix)
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -962,9 +975,9 @@ function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoom
                   <span>{room.nonNegotiatedNightlyRate}</span>
                   <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
                 </div>
-                {!room.taxInclusive && (
+                {showRateSuffix && (
                   <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                    + Taxes & Fees
+                    {room.rateSuffix}
                   </div>
                 )}
               </div>
@@ -976,9 +989,9 @@ function RoomCategory({ room, fadeIn = false, onHeroClick }: { room: ImmerseRoom
                   <span>{room.ambienceNightlyRate}</span>
                   <span style={{ fontSize: 10, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
                 </div>
-                {!room.taxInclusive && (
+                {showRateSuffix && (
                   <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                    + tax
+                    {room.rateSuffix}
                   </div>
                 )}
               </div>

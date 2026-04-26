@@ -2,7 +2,13 @@
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
 //
-// Last updated: S30E perf — Removed legacy 'honeymoon' slug branch from
+// Last updated: S30F — Added rate_suffix (canonical travel_accom_rooms) and
+//   rate_suffix_override (overlay travel_immerse_rooms) to fetchRoomsForHotels.
+//   Merged via standard ?? chain — override → canonical → undefined — into
+//   ImmerseRoomOption.rateSuffix. Free-text per-room suffix that replaces the
+//   hardcoded "+ Taxes & Fees" / "+ tax" strings in RoomCategory. NULL renders
+//   nothing (no assumed-standard fallback per D direction).
+// Prior: S30E perf — Removed legacy 'honeymoon' slug branch from
 //   resolveEngagementId. The /immerse/honeymoon public-preview route was
 //   deleted; only canonical 11-char url_id and the deprecated
 //   public_journey_slug fallback remain. The deprecated branch will be
@@ -465,6 +471,7 @@ async function fetchRoomsForHotels(
       id, hotel_id, slug, room_basis, room_benefits,
       room_image_src, room_image_alt, room_gallery,
       floorplan_src, sqft_min, sqft_max, sqm_min, sqm_max,
+      rate_suffix,
       sort_order
     `)
     .in('hotel_id', hotelIds)
@@ -484,6 +491,7 @@ async function fetchRoomsForHotels(
       floorplan_src, floorplan_src_override,
       public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
       tax_inclusive,
+      rate_suffix_override,
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
       sort_order
@@ -530,6 +538,9 @@ async function fetchRoomsForHotels(
     const galleryJsonb     = rewriteImageUrls(canon.room_gallery as string[] | null)
     const roomGallery      = galleryCanonical.length > 0 ? galleryCanonical : galleryJsonb
 
+    // S30F: per-room rate suffix — overlay override → canonical → undefined
+    const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
+
     const hotelId = canon.hotel_id as string
     if (!grouped[hotelId]) grouped[hotelId] = []
 
@@ -545,6 +556,7 @@ async function fetchRoomsForHotels(
       nonNegotiatedNightlyRate: o.non_negotiated_nightly_rate  ?? undefined,
       ambienceNightlyRate:      o.ambience_nightly_rate        ?? undefined,
       taxInclusive:             o.tax_inclusive                ?? false,
+      rateSuffix:               rateSuffix,
       sqftMin, sqftMax, sqmMin, sqmMax,
     })
   }

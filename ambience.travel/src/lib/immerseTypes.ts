@@ -1,7 +1,15 @@
 // immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
-// Last updated: S30E — Engagement abstraction. Master data type renamed
+// Last updated: S30F — Added rateSuffix to ImmerseRoomOption. Free-text per-room
+//   suffix rendered after both nonNegotiated and ambience rate chips. Resolved
+//   override (travel_immerse_rooms.rate_suffix_override) → canonical
+//   (travel_accom_rooms.rate_suffix) → undefined in immerseQueries.ts via the
+//   standard ?? chain. Replaces hardcoded "+ Taxes & Fees" / "+ tax" in
+//   RoomCategory. NULL renders nothing — no assumed-standard behaviour. The
+//   domain demands per-room verbatim suffixes (taxes vary, fees vary, some
+//   rooms have one, some both, some neither — see deferred admin selector).
+// Prior: S30E — Engagement abstraction. Master data type renamed
 //   ImmerseTripData → ImmerseEngagementData and now carries an engagementType
 //   discriminator ('journey' | 'service' | 'experience' | 'acquisition'),
 //   defaulted to 'journey' DB-side. Status types renamed TripStatus →
@@ -135,6 +143,9 @@ export type ImmerseRoomOption = {
   nonNegotiatedNightlyRate?:  string   // current published rate — was 'nightlyRate' pre-S22
   ambienceNightlyRate?:       string   // partner-negotiated rate — NULL until rates locked
   taxInclusive?:              boolean
+  // S30F: free-text per-room rate suffix rendered after both rate chips.
+  // Resolved override → canonical → undefined. NULL renders nothing.
+  rateSuffix?:                string
   sqftMin?:                   number
   sqftMax?:                   number
   sqmMin?:                    number
