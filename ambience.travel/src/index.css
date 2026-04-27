@@ -36,3 +36,71 @@ img {
   max-width: 100%;
   height: auto;
 }
+
+/* ─── Immerse keyframes (S31) ───────────────────────────────────────────── */
+/* Hoisted from inline <style> blocks in ImmerseDestinationComponents.tsx.   */
+/* Consumed by section components in immerse/* (Hotel options, Dest pricing,*/
+/* Room category, Content cards, Carousel nav).                             */
+
+@keyframes immerseGoldBreatheSolid {
+  0%   { opacity: 0.11; filter: brightness(0.84) saturate(1); }
+  12%  { opacity: 0.11; filter: brightness(0.84) saturate(1); }
+  30%  { opacity: 0.22; filter: brightness(0.94) saturate(1.04); }
+  44%  { opacity: 0.44; filter: brightness(1.00) saturate(1.08); }
+  68%  { opacity: 0.44; filter: brightness(1.00) saturate(1.08); }
+  84%  { opacity: 0.22; filter: brightness(0.92) saturate(1.03); }
+  100% { opacity: 0.11; filter: brightness(0.84) saturate(1); }
+}
+
+@keyframes immerseFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes immerseKenBurns {
+  0%   { transform: scale(1) translate(0%, 0%); }
+  100% { transform: scale(1.035) translate(-0.8%, -0.5%); }
+}
+
+@keyframes immerseDotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(216,181,106,0); }
+  50%      { box-shadow: 0 0 0 4px rgba(216,181,106,0.18); }
+}
+
+@keyframes immerseGoldBorderPulse {
+  0%, 100% { border-color: rgba(216,181,106,0.30); }
+  50%      { border-color: rgba(216,181,106,0.70); }
+}
+
+@keyframes immerseGoldScan {
+  0%   { width: 0%; opacity: 1; }
+  72%  { width: 100%; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+
+@keyframes immerseBorderFadeIn {
+  from { border-top-color: transparent; }
+  to   { border-top-color: rgba(216,181,106,0.12); }
+}
+
+@keyframes immerseBorderFadeInAlt {
+  from { border-top-color: transparent; }
+  to   { border-top-color: rgba(216,181,106,0.08); }
+}
+
+@keyframes immerseEyebrowSettle {
+  from { letter-spacing: 0.06em; opacity: 0.4; }
+  to   { letter-spacing: 0.22em; opacity: 1; }
+}
+
+@keyframes immerseRuleShimmer {
+  0%   { background-position: -200% center; opacity: 0.4; }
+  60%  { background-position: 200% center; opacity: 1; }
+  100% { background-position: 200% center; opacity: 1; }
+}
+
+@keyframes immerseDotDim {
+  0%   { opacity: 1; }
+  30%  { opacity: 0.12; }
+  100% { opacity: 0.38; }
+}
