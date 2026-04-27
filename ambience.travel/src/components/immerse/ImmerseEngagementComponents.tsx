@@ -60,7 +60,10 @@ function hasUsableDestinationSlug(row: ImmerseDestinationRow): boolean {
 
 function getDestinationPageHref(row: ImmerseDestinationRow, urlId: string) {
   if (!hasUsableDestinationSlug(row)) return null
-  return `/immerse/${urlId}/${row.destinationSlug}`
+  const base = window.location.hostname === 'immerse.ambience.travel'
+    ? `/${urlId}`
+    : `/immerse/${urlId}`
+  return `${base}/${row.destinationSlug}`
 }
 
 function scrollToDestination(anchorId: string) {

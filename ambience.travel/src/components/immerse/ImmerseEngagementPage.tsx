@@ -30,7 +30,9 @@ export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagemen
 
   // Trip Overview is always the active item here (this IS the overview route).
   const navItems = buildImmerseNavItems(data, null)
-  const logoHref = `/immerse/${data.urlId}`
+  const logoHref = window.location.hostname === 'immerse.ambience.travel'
+    ? `/${data.urlId}`
+    : `/immerse/${data.urlId}`
 
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>
