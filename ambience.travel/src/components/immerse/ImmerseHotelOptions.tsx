@@ -4,9 +4,21 @@
 //   LightboxOverlay
 // Does not own: RoomCategory (ImmerseRoomCategory.tsx), NavRow + arrow styles
 //   (ImmerseCarouselNav.tsx), keyframes (src/index.css)
-// Last updated: S31 — Regioned room-switch desktop arrows centered in the
-//   flow row (was: justify-content space-between pushing to row edges). Now
-//   side-by-side in the middle with 64px gap.
+//
+// Last updated: S32 — LightboxOverlay rendered via React Portal into
+//   document.body. Earned: lightbox image was rendering size-correct but
+//   positioned outside the viewport on desktop (visible only at the bottom
+//   of the screen) because position:fixed was being trapped by a transformed
+//   ancestor. The carousel container's transform-based animations
+//   (immerseKenBurns + immerseFadeOnly + carousel slide transforms) create
+//   new containing blocks for descendants per the CSS spec, which makes
+//   position:fixed anchor to the transformed ancestor rather than the
+//   viewport. Portal-rendering escapes the DOM subtree entirely; the
+//   lightbox now mounts as a direct child of <body> so position:fixed
+//   correctly anchors to the viewport.
+// Prior: S31 — Regioned room-switch desktop arrows centered in the flow row
+//   (was: justify-content space-between pushing to row edges). Now side-by-side
+//   in the middle with 64px gap.
 // Prior: S31 — Hotel transition animation swapped from immerseFadeIn
 //   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Two surfaces:
 //   HotelWithRooms outer (carousel item swap) + SelectorAndCarousel upper
@@ -17,20 +29,14 @@
 //   relocated to a flow row between RoomCategory and the gallery (was: gutter
 //   arrows flanking the RoomCategory at left/right -20). Disabled state stays
 //   in layout via low opacity so the row doesn't shift on first/last room.
-//   Flat destinations: room arrows still gutter-positioned in
-//   SelectorAndCarousel lower section.
 // Prior: S31 — Regioned destinations: hotel-switch desktop arrows
 //   relocated to flank the bullets row inside HotelDetailPanel.
 // Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
 //   <style> keyframe block removed (now global in src/index.css). NavRow +
 //   arrow styles now imported from ImmerseCarouselNav.
-// Prior: S30G — RegionedHotelOptions renders three tiers: region selector →
-//   region detail → hotel sub-carousel where each hotel item carries its own
-//   hotel detail + room sub-carousel.
-// Prior: S30G — Mobile NavRows repositioned. Hotel NavRow renders between
-//   hotel hero and hotel bullets (inside HotelDetailPanel on mobile).
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
 import { C } from '../../lib/landingTypes'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
@@ -941,6 +947,14 @@ function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots, hotelDesktopArrows
   )
 }
 
+// ─── Lightbox overlay ─────────────────────────────────────────────────────────
+// Rendered via React Portal into document.body so position:fixed correctly
+// anchors to the viewport. Without the portal, the lightbox is rendered
+// inside the carousel subtree, where transform-based animations on
+// ancestors (Ken Burns, fade-only, slide transforms) create new containing
+// blocks per the CSS spec — which traps position:fixed and produces the
+// "image lives at the bottom of the screen" bug seen on desktop.
+
 function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: {
   images: string[]
   index: number
@@ -959,7 +973,7 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, onPrev, onNext])
 
-  return (
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -995,6 +1009,7 @@ function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: 
           display: 'block',
         }}
       />
-    </div>
+    </div>,
+    document.body
   )
 }
