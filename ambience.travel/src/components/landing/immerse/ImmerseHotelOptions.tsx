@@ -84,6 +84,7 @@ function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hote
                 activeIdx={activeRoom}
                 prevIdx={prevRoom}
                 onChange={goRoom}
+                preserveScrollPosition
               />
             ) : null
           }
@@ -302,6 +303,7 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots }: {
                     activeIdx={activeRoom}
                     prevIdx={prevRoom}
                     onChange={goRoom}
+                    preserveScrollPosition
                   />
                 ) : null
               }

@@ -1,13 +1,21 @@
 // ImmerseCarouselNav.tsx — carousel nav helpers shared across hotel + room carousels
 // Owns: NavRow (dots + mobile flanking arrows), desktopGutterArrowStyle, mobileNavArrowStyle
 // Does not own: any carousel state — pure presentation, all state passed in
-// Last updated: S31 — Extracted from ImmerseDestinationComponents.tsx.
+// Last updated: S31 — NavRow now optionally preserves its on-screen position
+//   across taps via preserveScrollPosition prop. Used by RoomCategory mobile
+//   NavRow where content above changes height between rooms (varying bullet
+//   counts, rate chips, floorplan link presence) and would otherwise cause
+//   page jump. Pure-presentation prop; no state moved.
+// Prior: S31 — Mobile arrow size bumped a further 22% (font 22→27,
+//   padding 11/16→13/20). fontWeight 600 retained.
+// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx.
 //   Mobile arrow size bumped 10% (font 20→22, padding 10/14→11/16) +
-//   fontWeight 600 added per S31 brief.
+//   fontWeight 600 added.
 // Prior: S30G — Mobile arrows: removed background pill, border, border-radius.
 //   Mobile arrow size shrunk ~11% (font 20, padding 10/14).
 //   Mobile carousel arrows moved into dot row (flanking dots).
 
+import { useRef, useLayoutEffect } from 'react'
 import { ID } from './ImmerseComponents'
 
 export function desktopGutterArrowStyle(side: 'left' | 'right'): React.CSSProperties {
@@ -34,10 +42,10 @@ export function mobileNavArrowStyle(): React.CSSProperties {
     background: 'none',
     border: 'none',
     color: ID.text,
-    fontSize: 22,
+    fontSize: 27,
     fontWeight: 600,
     cursor: 'pointer',
-    padding: '11px 16px',
+    padding: '13px 20px',
     lineHeight: 1,
     transition: 'opacity 0.2s ease',
     display: 'flex',
@@ -46,22 +54,48 @@ export function mobileNavArrowStyle(): React.CSSProperties {
   }
 }
 
-export function NavRow({ isMobile, total, activeIdx, prevIdx, onChange }: {
-  isMobile:   boolean
-  total:      number
-  activeIdx:  number
-  prevIdx:    number | null
-  onChange:   (i: number) => void
+export function NavRow({ isMobile, total, activeIdx, prevIdx, onChange, preserveScrollPosition = false }: {
+  isMobile:                 boolean
+  total:                    number
+  activeIdx:                number
+  prevIdx:                  number | null
+  onChange:                 (i: number) => void
+  preserveScrollPosition?:  boolean
 }) {
   const prevAvailable = activeIdx > 0
   const nextAvailable = activeIdx < total - 1
+
+  // Scroll-position preservation: when content above the NavRow changes height
+  // between taps (e.g. RoomCategory content panel with varying bullet counts),
+  // capture pre-tap top and restore post-render so the row stays under the
+  // user's finger. Mobile-only — desktop has no equivalent jump issue.
+  const rowRef             = useRef<HTMLDivElement>(null)
+  const pendingTopRef      = useRef<number | null>(null)
+
+  function handleChange(nextIdx: number) {
+    if (preserveScrollPosition && isMobile && rowRef.current) {
+      pendingTopRef.current = rowRef.current.getBoundingClientRect().top
+    }
+    onChange(nextIdx)
+  }
+
+  useLayoutEffect(() => {
+    if (pendingTopRef.current === null) return
+    if (!rowRef.current) return
+    const newTop = rowRef.current.getBoundingClientRect().top
+    const delta  = newTop - pendingTopRef.current
+    pendingTopRef.current = null
+    if (delta !== 0) {
+      window.scrollBy({ top: delta, left: 0, behavior: 'instant' as ScrollBehavior })
+    }
+  }, [activeIdx])
 
   const dots = (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
       {Array.from({ length: total }).map((_, i) => (
         <button
           key={i}
-          onClick={() => onChange(i)}
+          onClick={() => handleChange(i)}
           style={{
             width: i === activeIdx ? 22 : 7,
             height: 7,
@@ -83,11 +117,12 @@ export function NavRow({ isMobile, total, activeIdx, prevIdx, onChange }: {
   )
 
   if (!isMobile) {
-    return <div style={{ marginTop: 24 }}>{dots}</div>
+    return <div ref={rowRef} style={{ marginTop: 24 }}>{dots}</div>
   }
 
   return (
     <div
+      ref={rowRef}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -96,7 +131,7 @@ export function NavRow({ isMobile, total, activeIdx, prevIdx, onChange }: {
       }}
     >
       <button
-        onClick={() => prevAvailable && onChange(activeIdx - 1)}
+        onClick={() => prevAvailable && handleChange(activeIdx - 1)}
         style={{
           ...mobileNavArrowStyle(),
           visibility: prevAvailable ? 'visible' : 'hidden',
@@ -105,7 +140,7 @@ export function NavRow({ isMobile, total, activeIdx, prevIdx, onChange }: {
       >‹</button>
       {dots}
       <button
-        onClick={() => nextAvailable && onChange(activeIdx + 1)}
+        onClick={() => nextAvailable && handleChange(activeIdx + 1)}
         style={{
           ...mobileNavArrowStyle(),
           visibility: nextAvailable ? 'visible' : 'hidden',
