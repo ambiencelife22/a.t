@@ -2,7 +2,10 @@
 // Owns: RoomCategory component. Renders the room's level, basis, size/rate
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
-// Last updated: S31 — Extracted from ImmerseDestinationComponents.tsx; no
+// Last updated: S31 — Room transition animation swapped from immerseFadeIn
+//   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Slide felt like
+//   a page jump on room switch.
+// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; no
 //   behaviour change.
 // Prior: S30G — Mobile NavRow renders between content panel and hero.
 // Prior: S30G — Restored <a opening tag on RoomCategory floorplan link.
@@ -225,7 +228,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
           gridTemplateColumns: '1fr',
           gap: 18,
           alignItems: 'stretch',
-          animation: fadeIn ? 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
+          animation: fadeIn ? 'immerseFadeOnly 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
           minWidth: 0,
           transform: `scale(${scale})`,
           transition: 'transform 0.18s ease',
@@ -251,7 +254,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
         gridTemplateColumns: '1fr 1fr',
         gap: 18,
         alignItems: 'stretch',
-        animation: fadeIn ? 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
+        animation: fadeIn ? 'immerseFadeOnly 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
         minWidth: 0,
         transform: `scale(${scale})`,
         transition: 'transform 0.18s ease',

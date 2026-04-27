@@ -1,7 +1,12 @@
 // ImmerseCarouselNav.tsx — carousel nav helpers shared across hotel + room carousels
 // Owns: NavRow (dots + mobile flanking arrows), desktopGutterArrowStyle, mobileNavArrowStyle
 // Does not own: any carousel state — pure presentation, all state passed in
-// Last updated: S31 — NavRow now optionally preserves its on-screen position
+// Last updated: S31 — Added desktopFlowArrowStyle for inline (non-absolute)
+//   desktop arrows. Used by HotelWithRooms room-switch row between RoomCategory
+//   and gallery. Disabled state preserved in layout via opacity 0.18.
+// Prior: S31 — Desktop gutter arrow size bumped to fontSize 88 +
+//   fontWeight 600 (was 22 / regular).
+// Prior: S31 — NavRow now optionally preserves its on-screen position
 //   across taps via preserveScrollPosition prop. Used by RoomCategory mobile
 //   NavRow where content above changes height between rooms (varying bullet
 //   counts, rate chips, floorplan link presence) and would otherwise cause
@@ -27,7 +32,8 @@ export function desktopGutterArrowStyle(side: 'left' | 'right'): React.CSSProper
     background: 'none',
     border: 'none',
     color: ID.muted,
-    fontSize: 22,
+    fontSize: 88,
+    fontWeight: 600,
     cursor: 'pointer',
     opacity: 0.72,
     padding: '8px 6px',
@@ -35,6 +41,25 @@ export function desktopGutterArrowStyle(side: 'left' | 'right'): React.CSSProper
     transition: 'opacity 0.2s ease',
     zIndex: 2,
   } as React.CSSProperties
+}
+
+// Desktop flow-positioned arrow (no absolute positioning; sits where it's
+// rendered in the layout). Use when the arrows are an inline element of a
+// row, not floating in a gutter. Disabled state stays in layout via low
+// opacity rather than disappearing.
+export function desktopFlowArrowStyle(disabled: boolean): React.CSSProperties {
+  return {
+    background: 'none',
+    border: 'none',
+    color: ID.muted,
+    fontSize: 88,
+    fontWeight: 600,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.18 : 0.72,
+    padding: '8px 6px',
+    lineHeight: 1,
+    transition: 'opacity 0.2s ease',
+  }
 }
 
 export function mobileNavArrowStyle(): React.CSSProperties {

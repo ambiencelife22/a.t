@@ -4,7 +4,21 @@
 //   LightboxOverlay
 // Does not own: RoomCategory (ImmerseRoomCategory.tsx), NavRow + arrow styles
 //   (ImmerseCarouselNav.tsx), keyframes (src/index.css)
-// Last updated: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
+// Last updated: S31 — Hotel transition animation swapped from immerseFadeIn
+//   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Two surfaces:
+//   HotelWithRooms outer (carousel item swap) + SelectorAndCarousel upper
+//   HotelDetailPanel (top selector button click). Staggered child cascades
+//   (gallery thumbs, bullet pills) keep the original slide-up — they read
+//   as entrance choreography, not transitions.
+// Prior: S31 — Regioned destinations: room-switch desktop arrows
+//   relocated to a flow row between RoomCategory and the gallery (was: gutter
+//   arrows flanking the RoomCategory at left/right -20). Disabled state stays
+//   in layout via low opacity so the row doesn't shift on first/last room.
+//   Flat destinations: room arrows still gutter-positioned in
+//   SelectorAndCarousel lower section.
+// Prior: S31 — Regioned destinations: hotel-switch desktop arrows
+//   relocated to flank the bullets row inside HotelDetailPanel.
+// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
 //   <style> keyframe block removed (now global in src/index.css). NavRow +
 //   arrow styles now imported from ImmerseCarouselNav.
 // Prior: S30G — RegionedHotelOptions renders three tiers: region selector →
@@ -16,7 +30,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
 import { C } from '../../../lib/landingTypes'
-import { NavRow, desktopGutterArrowStyle } from './ImmerseCarouselNav'
+import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup } from '../../../lib/immerseTypes'
 
@@ -175,6 +189,14 @@ function RegionedHotelOptions({ data, regions }: { data: ImmerseDestinationData;
               />
             ) : null
           }
+          hotelDesktopArrows={
+            region.hotels.length > 1
+              ? {
+                  onPrev: activeHotel > 0 ? () => goHotel(activeHotel - 1) : undefined,
+                  onNext: activeHotel < region.hotels.length - 1 ? () => goHotel(activeHotel + 1) : undefined,
+                }
+              : undefined
+          }
         />
       )}
       activeRoomGallery={undefined}
@@ -185,17 +207,19 @@ function RegionedHotelOptions({ data, regions }: { data: ImmerseDestinationData;
       lightboxLabel={region.title}
       roomLightboxLabel=""
       detailHotelArrowsAndDots={null}
+      gutterArrowsAroundHero
     />
   )
 }
 
 // ─── HotelWithRooms ──────────────────────────────────────────────────────────
 
-function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots }: {
+function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots, hotelDesktopArrows }: {
   hotel:              ImmerseHotelOption
   fadeIn:             boolean
   regionTitle:        string
   hotelArrowsAndDots: React.ReactNode
+  hotelDesktopArrows?: { onPrev?: () => void; onNext?: () => void }
 }) {
   const isMobile      = useImmerseMobile()
   const [activeRoom, setActiveRoom] = useState(0)
@@ -259,7 +283,7 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots }: {
       style={{
         display: 'grid',
         gap: 36,
-        animation: fadeIn ? 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
+        animation: fadeIn ? 'immerseFadeOnly 0.4s cubic-bezier(0.16,1,0.3,1) both' : undefined,
         minWidth: 0,
         width: '100%',
       }}
@@ -271,6 +295,7 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots }: {
         onRoomChange={goRoom}
         onLightbox={setHotelLightboxIdx}
         arrowsAndDots={hotelArrowsAndDots}
+        hotelDesktopArrows={hotelDesktopArrows}
       />
 
       {total > 0 && activeRoomData && (
@@ -308,19 +333,32 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots }: {
                 ) : null
               }
             />
-            {!isMobile && activeRoom > 0 && (
-              <button
-                onClick={() => goRoom(activeRoom - 1)}
-                style={desktopGutterArrowStyle('left')}
-              >‹</button>
-            )}
-            {!isMobile && activeRoom < total - 1 && (
-              <button
-                onClick={() => goRoom(activeRoom + 1)}
-                style={desktopGutterArrowStyle('right')}
-              >›</button>
-            )}
           </div>
+
+          {!isMobile && total > 1 && (
+            <div
+              style={{
+                marginTop: 28,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+              }}
+            >
+              <button
+                onClick={() => activeRoom > 0 && goRoom(activeRoom - 1)}
+                disabled={activeRoom === 0}
+                style={desktopFlowArrowStyle(activeRoom === 0)}
+                aria-label='Previous room'
+              >‹</button>
+              <button
+                onClick={() => activeRoom < total - 1 && goRoom(activeRoom + 1)}
+                disabled={activeRoom === total - 1}
+                style={desktopFlowArrowStyle(activeRoom === total - 1)}
+                aria-label='Next room'
+              >›</button>
+            </div>
+          )}
 
           {activeRoomData.roomImageSrc && displayRoomGallery.length >= 1 && (
             <div style={{ marginTop: 40 }} key={`room-gallery-${hotel.id}-${activeRoom}`}>
@@ -416,6 +454,7 @@ type SelectorAndCarouselProps<T> = {
   setRoomLightboxIdx:         (i: number | null) => void
   lightboxLabel:              string
   roomLightboxLabel:          string
+  gutterArrowsAroundHero?:    boolean
 }
 
 function SelectorAndCarousel<T>({
@@ -440,6 +479,7 @@ function SelectorAndCarousel<T>({
   setRoomLightboxIdx,
   lightboxLabel,
   roomLightboxLabel,
+  gutterArrowsAroundHero = false,
 }: SelectorAndCarouselProps<T>) {
   const { ref, visible }                 = useImmerseVisible()
   const { ref: ref2, visible: visible2 } = useImmerseVisible()
@@ -528,7 +568,7 @@ function SelectorAndCarousel<T>({
             marginTop: 24,
             width: '100%',
             minWidth: 0,
-            animation: 'immerseFadeIn 0.4s cubic-bezier(0.16,1,0.3,1) both',
+            animation: 'immerseFadeOnly 0.4s cubic-bezier(0.16,1,0.3,1) both',
           }}
           key={activeIdx}
         >
@@ -612,13 +652,13 @@ function SelectorAndCarousel<T>({
                 `${activeIdx}-${activeCarouselIdx}`,
                 true,
               )}
-              {!isMobile && activeCarouselIdx > 0 && (
+              {!isMobile && !gutterArrowsAroundHero && activeCarouselIdx > 0 && (
                 <button
                   onClick={() => onCarouselChange(activeCarouselIdx - 1)}
                   style={desktopGutterArrowStyle('left')}
                 >‹</button>
               )}
-              {!isMobile && activeCarouselIdx < total - 1 && (
+              {!isMobile && !gutterArrowsAroundHero && activeCarouselIdx < total - 1 && (
                 <button
                   onClick={() => onCarouselChange(activeCarouselIdx + 1)}
                   style={desktopGutterArrowStyle('right')}
@@ -753,13 +793,14 @@ function HotelButton({ hotel, active, isMobile, onClick }: { hotel: ImmerseHotel
 
 // ─── Hotel detail panel ───────────────────────────────────────────────────────
 
-function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots }: {
+function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots, hotelDesktopArrows }: {
   hotel: ImmerseHotelOption
   activeRoom: number
   isMobile: boolean
   onRoomChange: (i: number) => void
   onLightbox: (i: number) => void
   arrowsAndDots?: React.ReactNode
+  hotelDesktopArrows?: { onPrev?: () => void; onNext?: () => void }
 }) {
   const isMobile = useImmerseMobile()
   const gallery        = hotel.gallery ?? []
@@ -802,24 +843,49 @@ function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots }: {
 
       {isMobile && arrowsAndDots}
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
-        {hotel.bullets.map((b, i) => (
-          <div
-            key={b}
-            style={{
-              padding: isMobile ? '7px 12px' : '8px 14px',
-              borderRadius: 999,
-              border: `1px solid ${ID.line}`,
-              background: ID.panel2,
-              color: ID.muted,
-              fontSize: isMobile ? 11 : 12,
-              letterSpacing: '0.04em',
-              animation: `immerseFadeIn 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 60 + 200}ms both`,
-            }}
-          >
-            {b}
-          </div>
-        ))}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          paddingLeft:  !isMobile && hotelDesktopArrows ? 80 : 0,
+          paddingRight: !isMobile && hotelDesktopArrows ? 80 : 0,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
+          {hotel.bullets.map((b, i) => (
+            <div
+              key={b}
+              style={{
+                padding: isMobile ? '7px 12px' : '8px 14px',
+                borderRadius: 999,
+                border: `1px solid ${ID.line}`,
+                background: ID.panel2,
+                color: ID.muted,
+                fontSize: isMobile ? 11 : 12,
+                letterSpacing: '0.04em',
+                animation: `immerseFadeIn 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 60 + 200}ms both`,
+              }}
+            >
+              {b}
+            </div>
+          ))}
+        </div>
+
+        {!isMobile && hotelDesktopArrows?.onPrev && (
+          <button
+            onClick={hotelDesktopArrows.onPrev}
+            style={{ ...desktopGutterArrowStyle('left'), left: 0 }}
+            aria-label='Previous hotel'
+          >‹</button>
+        )}
+        {!isMobile && hotelDesktopArrows?.onNext && (
+          <button
+            onClick={hotelDesktopArrows.onNext}
+            style={{ ...desktopGutterArrowStyle('right'), right: 0 }}
+            aria-label='Next hotel'
+          >›</button>
+        )}
       </div>
 
       {gallery.length > 0 && (
