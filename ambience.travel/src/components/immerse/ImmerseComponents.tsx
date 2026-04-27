@@ -11,8 +11,8 @@
 // Prior: S12 — original primitives shipped.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ID, IMMERSE } from '../../../lib/landingColors'
-export { ID } from '../../../lib/landingColors'
+import { ID, IMMERSE } from '../../lib/landingColors'
+export { ID } from '../../lib/landingColors'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 

@@ -25,7 +25,7 @@
 //   match. logoHref resolves to /immerse/{urlId}.
 
 import { useEffect, useMemo, useState } from 'react'
-import ImmerseLayout from '../../layouts/ImmerseLayout'
+import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import ImmerseStructuredData from './ImmerseStructuredData'
@@ -33,12 +33,12 @@ import { ImmerseDestIntro } from './ImmerseDestinationComponents'
 import { ImmerseHotelOptions } from './ImmerseDestinationComponents'
 import { ImmerseContentGrid } from './ImmerseDestinationComponents'
 import { ImmerseDestPricing } from './ImmerseDestinationComponents'
-import { getImmerseDestination } from '../../../lib/immerseQueries'
-import { getImmerseEngagement } from '../../../lib/immerseEngagementQueries'
-import { useToast } from '../../../lib/ToastContext'
+import { getImmerseDestination } from '../../lib/immerseQueries'
+import { getImmerseEngagement } from '../../lib/immerseEngagementQueries'
+import { useToast } from '../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { LoadingScreen, NotFound } from './ImmerseStateScreens'
-import type { ImmerseDestinationData, ImmerseEngagementData } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseEngagementData } from '../../lib/immerseTypes'
 
 type RouteParts = {
   urlId:           string

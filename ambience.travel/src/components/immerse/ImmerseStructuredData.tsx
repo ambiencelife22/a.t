@@ -4,8 +4,8 @@
 // Last updated: S12
 
 import { useEffect } from 'react'
-import { buildDestinationStructuredData } from '../../../lib/structuredImageData'
-import type { ImmerseDestinationData } from '../../../lib/immerseTypes'
+import { buildDestinationStructuredData } from '../../lib/structuredImageData'
+import type { ImmerseDestinationData } from '../../lib/immerseTypes'
 
 const SCRIPT_ID = 'immerse-structured-data'
 

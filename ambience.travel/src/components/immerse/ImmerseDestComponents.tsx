@@ -14,9 +14,9 @@
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
-import { C } from '../../../lib/landingTypes'
+import { C } from '../../lib/landingTypes'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseEngagementComponents'
-import type { ImmerseDestinationData, ImmerseContentCard } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseContentCard } from '../../lib/immerseTypes'
 
 const TBA = 'To be advised'
 

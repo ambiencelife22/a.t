@@ -15,7 +15,7 @@
 //   overrides (welcome_*_override columns). Component hides if all 5 fields
 //   resolve empty.
 
-import ImmerseLayout from '../../layouts/ImmerseLayout'
+import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
@@ -23,7 +23,7 @@ import { ImmerseRouteStrip } from './ImmerseEngagementComponents'
 import { ImmerseDestinationRows } from './ImmerseEngagementComponents'
 import { ImmerseEngagementPricing } from './ImmerseEngagementComponents'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
-import type { ImmerseEngagementData } from '../../../lib/immerseTypes'
+import type { ImmerseEngagementData } from '../../lib/immerseTypes'
 
 export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagementData | null }) {
   if (!data) return null

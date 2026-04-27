@@ -32,10 +32,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
-import { C } from '../../../lib/landingTypes'
+import { C } from '../../lib/landingTypes'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup } from '../../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup } from '../../lib/immerseTypes'
 
 // ─── Hotel options (switches on hotels.kind) ─────────────────────────────────
 

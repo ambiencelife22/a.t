@@ -14,7 +14,7 @@
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
-import type { ImmerseHotelOption, ImmerseRoomOption } from '../../../lib/immerseTypes'
+import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/immerseTypes'
 
 export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrowsAndDots }: {
   room: ImmerseRoomOption

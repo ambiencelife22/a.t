@@ -27,8 +27,8 @@ import {
   ImmersePanel,
   ImmerseStayBox,
 } from './ImmerseComponents'
-import { IMMERSE } from '../../../lib/landingColors'
-import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../../lib/immerseTypes'
+import { IMMERSE } from '../../lib/landingColors'
+import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../lib/immerseTypes'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
