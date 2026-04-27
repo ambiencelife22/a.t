@@ -72,7 +72,7 @@ const ProgrammeList            = lazy(() => import('./components/ProgrammeList')
 const Profile                  = lazy(() => import('./components/Profile'))
 const Auth                     = lazy(() => import('./components/Auth'))
 const SignatureExperiencePage  = lazy(() => import('./components/landing/experiences/SignatureExperiencePage'))
-const ImmerseEngagementRoute   = lazy(() => import('./components/landing/immerse/ImmerseEngagementRoute'))
+const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 
 type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience' | 'immerse'
 

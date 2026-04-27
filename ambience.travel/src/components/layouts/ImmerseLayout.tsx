@@ -14,7 +14,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
 import { C, DARK, OVERLAY } from '../../lib/landingTypes'
-import { ID } from '../landing/immerse/ImmerseComponents'
+import { ID } from '../immerse/ImmerseComponents'
 
 export type ImmerseNavItem = {
   label:      string

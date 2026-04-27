@@ -19,11 +19,11 @@
 //   state ImmerseEngagementPage owns its own layout wrapper.
 
 import { useEffect, useMemo, useState } from 'react'
-import { getImmerseEngagement }            from '../../../lib/immerseEngagementQueries'
-import type { ImmerseEngagementData }      from '../../../lib/immerseTypes'
+import { getImmerseEngagement }            from '../../lib/immerseEngagementQueries'
+import type { ImmerseEngagementData }      from '../../lib/immerseTypes'
 import ImmerseEngagementPage               from './ImmerseEngagementPage'
 import DestinationPage                     from './DestinationPage'
-import ImmerseLayout, { type ImmerseNavItem } from '../../layouts/ImmerseLayout'
+import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
 import { LoadingScreen, NotFound }         from './ImmerseStateScreens'
 
 // ── URL resolution ───────────────────────────────────────────────────────────
