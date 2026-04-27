@@ -1,22 +1,29 @@
-// ImmerseEngagementRoute.tsx — Route resolver for /immerse/{url_id}/...
-// Resolves url_id (+ optional destination_slug) from pathname.
-// Overview (/immerse/{url_id})          → fetches engagement, renders ImmerseEngagementPage.
-// Destination (/immerse/{url_id}/{slug}) → verifies engagement exists, hands off to
+// ImmerseEngagementRoute.tsx — Route resolver for immerse engagement pages.
+// Resolves url_id (+ optional destination_slug) from pathname, with
+// hostname-aware path parsing.
+//
+// Subdomain awareness:
+//   immerse.ambience.travel/<url_id>[/<dest>]   → path[0] = url_id
+//   ambience.travel/immerse/<url_id>[/<dest>]   → path[1] = url_id  (path[0] = 'immerse')
+//   localhost:5173/immerse/<url_id>[/<dest>]    → same as above
+//
+// Overview (no destination segment)  → fetches engagement, renders ImmerseEngagementPage.
+// Destination (with slug)             → verifies engagement exists, hands off to
 //   DestinationPage which resolves its own slug from the URL.
 // No React Router — reads window.location.pathname directly.
 //
-// Last updated: S30E perf — Extracted LoadingScreen + NotFound to shared
+// Last updated: S32 — Added subdomain-aware path parsing. resolveImmerseRoute
+//   now strips the /immerse/ prefix when not on the immerse subdomain;
+//   accepts the bare /<url_id> shape directly on immerse.ambience.travel.
+//   Hostname check inlined to keep the file self-contained; same logic
+//   exists in App.tsx + DestinationPage.tsx. Worth lifting to lib/immersePath.ts
+//   in next pass.
+// Prior: S30E perf — Extracted LoadingScreen + NotFound to shared
 //   ImmerseStateScreens.tsx so DestinationPage can consume the same shells
 //   and fix its white-flash. No behaviour change here.
-// Prior: S30E stage 2 — File renamed ImmerseTripRoute.tsx →
-//   ImmerseEngagementRoute.tsx. Component renamed ImmerseTripRoute →
-//   ImmerseEngagementRoute. Import updated to ImmerseEngagementPage.
-// Prior: S30E stage 1 — Engagement abstraction. getImmerseTrip →
-//   getImmerseEngagement; type ImmerseTripData → ImmerseEngagementData;
-//   buildImmerseNavItems first arg renamed engagement.
-// Prior: S26 — Builds navItems from engagement.destinationRows and passes to
-//   ImmerseLayout on loading / not-found / unknown states. On the overview
-//   state ImmerseEngagementPage owns its own layout wrapper.
+// Prior: S30E — Engagement abstraction. getImmerseTrip → getImmerseEngagement;
+//   type ImmerseTripData → ImmerseEngagementData; buildImmerseNavItems first
+//   arg renamed engagement.
 
 import { useEffect, useMemo, useState } from 'react'
 import { getImmerseEngagement }            from '../../lib/immerseEngagementQueries'
@@ -26,6 +33,12 @@ import DestinationPage                     from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
 import { LoadingScreen, NotFound }         from './ImmerseStateScreens'
 
+const IMMERSE_HOST = 'immerse.ambience.travel'
+
+function isImmerseHost(): boolean {
+  return typeof window !== 'undefined' && window.location.hostname === IMMERSE_HOST
+}
+
 // ── URL resolution ───────────────────────────────────────────────────────────
 
 type ResolvedRoute =
@@ -33,12 +46,17 @@ type ResolvedRoute =
   | { kind: 'destination'; urlId: string; destinationSlug: string }
   | { kind: 'invalid' }
 
+// S32: subdomain-aware. Strips /immerse/ prefix only when not on the immerse
+// subdomain. On immerse.ambience.travel the URL is /<url_id>[/<dest>] and
+// the prefix doesn't exist.
 export function resolveImmerseRoute(pathname: string): ResolvedRoute {
-  // Expects pathname starting with /immerse/
-  const parts = pathname.replace(/^\/+|\/+$/g, '').split('/')
-  // parts[0] === 'immerse'
-  const seg1 = parts[1]
-  const seg2 = parts[2]
+  const stripped = isImmerseHost()
+    ? pathname.replace(/^\/+|\/+$/g, '')
+    : pathname.replace(/^\/+|\/+$/g, '').replace(/^immerse\/?/, '')
+
+  const parts = stripped.split('/').filter(Boolean)
+  const seg1 = parts[0]
+  const seg2 = parts[1]
 
   if (!seg1) return { kind: 'invalid' }
 
@@ -55,15 +73,23 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
 // overview) and returns the ImmerseLayout nav items. Trip Overview first,
 // then one item per destination row in sort_order. 'hidden' rows are already
 // filtered server side; 'preview' rows render with the Preview pill.
+//
+// S32: hrefs use root-relative paths on the immerse subdomain (/<url_id>...)
+// and the legacy /immerse/<url_id>... shape elsewhere. This keeps in-page
+// navigation on the same host.
 
 export function buildImmerseNavItems(
   engagement: ImmerseEngagementData,
   currentDestinationSlug: string | null,
 ): ImmerseNavItem[] {
+  const base = isImmerseHost()
+    ? `/${engagement.urlId}`
+    : `/immerse/${engagement.urlId}`
+
   const items: ImmerseNavItem[] = [
     {
       label:    'Trip Overview',
-      href:     `/immerse/${engagement.urlId}`,
+      href:     base,
       isActive: currentDestinationSlug === null,
     },
   ]
@@ -73,7 +99,7 @@ export function buildImmerseNavItems(
     if (!slug) continue
     items.push({
       label:     row.title || slug,
-      href:      `/immerse/${engagement.urlId}/${slug}`,
+      href:      `${base}/${slug}`,
       isActive:  currentDestinationSlug === slug,
       isPreview: row.subpageStatus === 'preview',
     })
@@ -122,7 +148,7 @@ export default function ImmerseEngagementRoute() {
       setError(null)
 
       // Always verify the engagement exists before rendering anything
-      // engagement-scoped. This catches /immerse/badurlid0/anything cleanly.
+      // engagement-scoped. This catches bad url_ids cleanly.
       const engagementData = await getImmerseEngagement(route.urlId)
       if (cancelled) return
       if (!engagementData) {
@@ -157,7 +183,9 @@ export default function ImmerseEngagementRoute() {
     return buildImmerseNavItems(engagement, currentDestinationSlug)
   }, [engagement, currentDestinationSlug])
 
-  const logoHref = engagement ? `/immerse/${engagement.urlId}` : undefined
+  const logoHref = engagement
+    ? (isImmerseHost() ? `/${engagement.urlId}` : `/immerse/${engagement.urlId}`)
+    : undefined
 
   if (loading) {
     return (

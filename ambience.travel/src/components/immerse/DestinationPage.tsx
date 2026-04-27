@@ -1,28 +1,23 @@
-// DestinationPage.tsx — Destination subpage for immerse engagement
+// DestinationPage.tsx — Destination subpage for immerse engagement.
 // Routes:
-//   /immerse/:url_id/:destination — private + public-template engagements
-//                                   (public templates use 'pub' prefix
-//                                   convention on url_id, e.g. pubMuirRzSW)
+//   immerse.ambience.travel/<url_id>/<dest>     → subpage (S32)
+//   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S30E perf — Fix white-flash on load. Was returning `null`
-//   while loading, producing an unstyled gap between unmount and mount.
-//   Now renders ImmerseLayout + LoadingScreen during load, matching the
-//   shell shape used by ImmerseEngagementRoute. NavItems show as soon as
-//   engagement hydrates; LoadingScreen replaces the body until destination
-//   data arrives. Imports LoadingScreen + NotFound from shared
-//   ImmerseStateScreens.tsx.
-// Prior: S30E perf — Removed isPublicLegacy branch and
-//   getImmerseEngagementBySlug import. The /immerse/honeymoon/:destination
-//   slug-keyed route was deleted; only canonical url_id-keyed routing
-//   remains. Route resolver simplified accordingly.
-// Prior: S30E stage 3 — buildImmerseNavItems import path updated for
-//   renamed source file (ImmerseTripRoute → ImmerseEngagementRoute).
-// Prior: S30E stage 1 — Engagement abstraction. getImmerseTrip →
-//   getImmerseEngagement; type ImmerseTripData → ImmerseEngagementData;
-//   local state trip → engagement; deriveNightsLabel parameter renamed.
-// Prior: S26 — Builds navItems from engagement.destinationRows and passes to
-//   ImmerseLayout. Current destination is marked active via destinationSlug
-//   match. logoHref resolves to /immerse/{urlId}.
+// Last updated: S32 — Added subdomain-aware path parsing. resolveRouteParts
+//   now reads the last two non-empty segments from a path that may or may
+//   not carry the /immerse/ prefix. Parent overview URL builder is also
+//   subdomain-aware so toast-redirect-on-not-found stays on the correct host.
+//   Hostname check inlined; same logic exists in App.tsx +
+//   ImmerseEngagementRoute.tsx. Worth lifting to lib/immersePath.ts in next pass.
+// Prior: S30E perf — Fix white-flash on load. Was returning `null` while
+//   loading, producing an unstyled gap between unmount and mount. Now renders
+//   ImmerseLayout + LoadingScreen during load, matching the shell shape used
+//   by ImmerseEngagementRoute. NavItems show as soon as engagement hydrates;
+//   LoadingScreen replaces the body until destination data arrives. Imports
+//   LoadingScreen + NotFound from shared ImmerseStateScreens.tsx.
+// Prior: S30E — Engagement abstraction. getImmerseTrip → getImmerseEngagement;
+//   type ImmerseTripData → ImmerseEngagementData; local state trip → engagement;
+//   deriveNightsLabel parameter renamed.
 
 import { useEffect, useMemo, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
@@ -40,22 +35,31 @@ import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { LoadingScreen, NotFound } from './ImmerseStateScreens'
 import type { ImmerseDestinationData, ImmerseEngagementData } from '../../lib/immerseTypes'
 
+const IMMERSE_HOST = 'immerse.ambience.travel'
+
+function isImmerseHost(): boolean {
+  return typeof window !== 'undefined' && window.location.hostname === IMMERSE_HOST
+}
+
 type RouteParts = {
   urlId:           string
   destinationSlug: string
 }
 
+// S32: subdomain-aware. The last two non-empty segments of the path are
+// [url_id, destinationSlug] regardless of whether the /immerse/ prefix is
+// present (subdomain) or absent (legacy host).
 function resolveRouteParts(pathname: string): RouteParts {
-  const parts = pathname.replace(/\/$/, '').split('/')
+  const parts = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)
   return {
     urlId:           parts[parts.length - 2] ?? '',
     destinationSlug: parts[parts.length - 1] ?? '',
   }
 }
 
-// Parent overview URL for redirect-on-not-found.
+// Parent overview URL for redirect-on-not-found. Subdomain-aware.
 function getParentOverviewUrl(urlId: string): string {
-  return `/immerse/${urlId}`
+  return isImmerseHost() ? `/${urlId}` : `/immerse/${urlId}`
 }
 
 // ─── Hero derivation helpers ──────────────────────────────────────────────────
@@ -73,11 +77,10 @@ function deriveDateLabel(statusLabel: string | undefined): string {
 }
 
 // Derive the "titlePrefix" line above the destination name.
-// "honeymoon" → "Honeymoon in", other → fall back to generic.
 function deriveTitlePrefix(journeyTypes: string[]): string {
-  if (journeyTypes.includes('honeymoon')) return 'Honeymoon in'
+  if (journeyTypes.includes('honeymoon'))   return 'Honeymoon in'
   if (journeyTypes.includes('anniversary')) return 'Anniversary in'
-  if (journeyTypes.includes('family')) return 'Family time in'
+  if (journeyTypes.includes('family'))      return 'Family time in'
   return 'Your time in'
 }
 
@@ -171,11 +174,10 @@ export default function DestinationPage() {
   // Computed up here so the loading branch can also use the partial nav
   // items (engagement may already be hydrated while destination still loads).
   const navItems = engagement ? buildImmerseNavItems(engagement, destinationSlug) : undefined
-  const logoHref = `/immerse/${urlId}`
+  const logoHref = getParentOverviewUrl(urlId)
 
-  // S30E perf: render layout shell during load and error states so there's
-  // no unstyled gap between mount transitions. Matches ImmerseEngagementRoute
-  // pattern.
+  // Render layout shell during load and error states so there's no unstyled
+  // gap between mount transitions. Matches ImmerseEngagementRoute pattern.
   if (loading) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
