@@ -2,7 +2,20 @@
 // Owns: RoomCategory component. Renders the room's level, basis, size/rate
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
-// Last updated: S31 — Room transition animation swapped from immerseFadeIn
+//
+// Last updated: S32 — Three rendering fixes on the chip row:
+//   (1) Square footage range collapses when min === max (was: '678–678 SQ FT'
+//       now: '678 SQ FT'). Same for sqm. Was caused by sqftMax being truthy
+//       even when equal to sqftMin.
+//   (2) Rate chips (Non-Negotiated, Ambience) detect non-numeric rate strings
+//       (e.g. 'Winter Pricing Not Yet Available') and switch to a single-line
+//       label-and-copy layout. The '/ night' suffix is suppressed for non-
+//       numeric rates because '<message> / night' reads as gibberish.
+//   (3) Non-numeric rate chips drop white-space: nowrap so the long copy can
+//       wrap on narrow viewports instead of bleeding off the card edge.
+//   Detection: rate string starts with currency symbol ($/€/£/¥) or digit →
+//   numeric. Anything else → copy. Cheap and handles every realistic case.
+// Prior: S31 — Room transition animation swapped from immerseFadeIn
 //   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Slide felt like
 //   a page jump on room switch.
 // Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; no
@@ -15,6 +28,20 @@
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
 import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/immerseTypes'
+
+// S32: detect numeric rate strings ($1,200 / €420 / 1500). Anything else
+// (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is
+// treated as informational copy and rendered without the '/ night' suffix.
+function isNumericRate(rate: string): boolean {
+  return /^[$€£¥]?\s*\d/.test(rate.trim())
+}
+
+// S32: collapse degenerate ranges (678-678 → 678). Both bounds optional.
+function formatSqRange(min: number | undefined, max: number | undefined, unit: string): string {
+  if (!min) return ''
+  if (!max || max === min) return `${min.toLocaleString()} ${unit}`
+  return `${min.toLocaleString()}–${max.toLocaleString()} ${unit}`
+}
 
 export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrowsAndDots }: {
   room: ImmerseRoomOption
@@ -31,6 +58,14 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
   const scale    = pressed ? 0.99 : 1
 
   const showRateSuffix = !room.taxInclusive && Boolean(room.rateSuffix)
+
+  // S32: collapsed sq ranges + numeric vs copy rate detection
+  const sqftPart = formatSqRange(room.sqftMin, room.sqftMax, 'sq ft')
+  const sqmPart  = formatSqRange(room.sqmMin,  room.sqmMax,  'sqm')
+  const sqLabel  = [sqftPart, sqmPart].filter(Boolean).join(' · ')
+
+  const nonNegIsNumeric  = room.nonNegotiatedNightlyRate ? isNumericRate(room.nonNegotiatedNightlyRate) : false
+  const ambienceIsNumeric = room.ambienceNightlyRate     ? isNumericRate(room.ambienceNightlyRate)     : false
 
   const contentPanel = (
     <ImmersePanel
@@ -66,21 +101,12 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {(room.sqftMin || room.sqmMin) && (
+          {sqLabel && (
             <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, fontSize: 11, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
-              {room.sqftMin
-                ? room.sqftMax
-                  ? `${room.sqftMin.toLocaleString()}–${room.sqftMax.toLocaleString()} sq ft`
-                  : `${room.sqftMin.toLocaleString()} sq ft`
-                : ''}
-              {room.sqftMin && room.sqmMin ? ' · ' : ''}
-              {room.sqmMin
-                ? room.sqmMax
-                  ? `${room.sqmMin}–${room.sqmMax} sqm`
-                  : `${room.sqmMin} sqm`
-                : ''}
+              {sqLabel}
             </div>
           )}
+
           {room.publicNightlyRate && (
             <div style={{ position: 'relative', padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, opacity: 0.55, fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', gap: 5, alignItems: 'center', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', left: '-10%', top: '50%', width: '120%', height: 1, background: `linear-gradient(90deg, transparent, ${ID.dim}77, transparent)`, transform: 'rotate(-18deg)', pointerEvents: 'none' }} />
@@ -88,34 +114,74 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               <span style={{ opacity: 0.8 }}>{room.publicNightlyRate}</span>
             </div>
           )}
+
           {room.nonNegotiatedNightlyRate && (
-            <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.muted, fontSize: 11, letterSpacing: '0.08em', fontWeight: 500, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <div style={{
+              padding: '7px 13px',
+              borderRadius: nonNegIsNumeric ? 999 : 14,
+              border: `1px solid ${ID.line}`,
+              background: ID.panel2,
+              color: ID.muted,
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              fontWeight: 500,
+              whiteSpace: nonNegIsNumeric ? 'nowrap' : 'normal',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              alignItems: 'flex-start',
+              maxWidth: '100%',
+              minWidth: 0,
+            }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: nonNegIsNumeric ? 'nowrap' : 'wrap' }}>
                 <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: ID.dim }}>Non-Negotiated</span>
                 <span>{room.nonNegotiatedNightlyRate}</span>
-                <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                {nonNegIsNumeric && (
+                  <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                )}
               </div>
-              {showRateSuffix && (
+              {showRateSuffix && nonNegIsNumeric && (
                 <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
                   {room.rateSuffix}
                 </div>
               )}
             </div>
           )}
+
           {room.ambienceNightlyRate && (
-            <div style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid rgba(216,181,106,0.45)`, background: 'rgba(216,181,106,0.10)', color: ID.gold, fontSize: 13, letterSpacing: '0.06em', fontWeight: 800, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start', boxShadow: '0 0 0 1px rgba(216,181,106,0.10)' }}>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{
+              padding: '8px 14px',
+              borderRadius: ambienceIsNumeric ? 999 : 14,
+              border: `1px solid rgba(216,181,106,0.45)`,
+              background: 'rgba(216,181,106,0.10)',
+              color: ID.gold,
+              fontSize: 13,
+              letterSpacing: '0.06em',
+              fontWeight: 800,
+              whiteSpace: ambienceIsNumeric ? 'nowrap' : 'normal',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              alignItems: 'flex-start',
+              boxShadow: '0 0 0 1px rgba(216,181,106,0.10)',
+              maxWidth: '100%',
+              minWidth: 0,
+            }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: ambienceIsNumeric ? 'nowrap' : 'wrap' }}>
                 <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>Ambience</span>
                 <span>{room.ambienceNightlyRate}</span>
-                <span style={{ fontSize: 10, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                {ambienceIsNumeric && (
+                  <span style={{ fontSize: 10, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                )}
               </div>
-              {showRateSuffix && (
+              {showRateSuffix && ambienceIsNumeric && (
                 <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
                   {room.rateSuffix}
                 </div>
               )}
             </div>
           )}
+
           {room.floorplanSrc && (
             <a
               href={room.floorplanSrc}
