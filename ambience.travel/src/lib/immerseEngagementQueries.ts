@@ -1,39 +1,34 @@
 // immerseEngagementQueries.ts — Supabase query layer for immerse engagement master data
 // Owns:
-//   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by public url_id
+//   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S30E perf — Removed getImmerseEngagementBySlug. The
-//   slug-keyed public preview route (/immerse/honeymoon) was deleted in the
-//   same perf pass; the only canonical immerse URL shape is now
-//   /immerse/<11-char-url_id>, with public templates carrying the 'pub'
-//   visual prefix convention. By-slug lookup had no remaining consumers.
-// Prior: S30E stage 3 — Filename renamed immerseTripQueries.ts →
-//   immerseEngagementQueries.ts (no content changes).
-// Prior: S30E stage 1 — Engagement abstraction. Master table reads now target
-//   travel_immerse_engagements; status FK column engagement_status_id replaces
-//   trip_status_id; nested status join targets travel_engagement_statuses.
-//   Type renames: TripRow → EngagementRow, ImmerseTripData → ImmerseEngagementData,
-//   TripStatus → EngagementStatus. Function rename: getImmerseTrip →
-//   getImmerseEngagement; hydrateTrip → hydrateEngagement;
-//   TRIP_SELECT_COLUMNS → ENGAGEMENT_SELECT_COLUMNS. New field on output:
-//   engagementType discriminator pulled from the new DB column
+// Last updated: S32 — Added audience to the SELECT, EngagementRow type, and
+//   ImmerseEngagementData hydration. Default 'private' if column NULL (defensive
+//   — column is NOT NULL DEFAULT 'private' DB-side per s32_01). Powers the
+//   route dispatcher branch between private and public render paths.
+// Prior: S30E perf — Removed getImmerseEngagementBySlug. The slug-keyed
+//   public preview route (/immerse/honeymoon) was deleted; the only canonical
+//   immerse URL shape is now /immerse/<11-char-url_id>. By-slug lookup had no
+//   remaining consumers.
+// Prior: S30E — Engagement abstraction. Master table reads target
+//   travel_immerse_engagements; engagement_status_id replaces trip_status_id;
+//   nested status join targets travel_engagement_statuses. New field on output:
+//   engagementType discriminator pulled from the engagement_type column
 //   (DEFAULT 'journey'). Child table reads still .eq() on trip_id —
 //   children retain "trip" prefix because their content is journey-engagement-
-//   specific (scope-preservation). Mappers imported from statusQueries
-//   renamed to mapEngagementStatus.
-// Prior: S30D — Trip + itinerary status FK lookups. Hydration resolved
-//   both via Supabase nested select. Storage URL rewriting at the read
-//   layer: hero (image 1 + image 2), route stop image_src, and destination
-//   row image_src pass through rewriteImageUrl() before reaching components.
-//   The Supabase project-host prefix never reaches rendered HTML; the
-//   /img/* rewrite in vercel.json proxies these to Supabase Storage at
-//   the edge. Defensive + idempotent — see imageUrl.ts.
-// Prior: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter()
-//   reads the single row in travel_immerse_welcome_letter. Per-engagement
-//   5x welcome_*_override columns on the master row resolved via the
-//   standard ?? chain. ImmerseEngagementData.welcomeLetter is always present
-//   (never optional); every field is '' when all sources are null.
+//   specific (scope-preservation).
+// Prior: S30D — Trip + itinerary status FK lookups. Hydration resolves both
+//   via Supabase nested select. Storage URL rewriting at the read layer:
+//   hero (image 1 + image 2), route stop image_src, and destination row
+//   image_src pass through rewriteImageUrl() before reaching components.
+//   The /img/* rewrite in vercel.json proxies these to Supabase Storage at
+//   the edge.
+// Prior: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter() reads
+//   the single row in travel_immerse_welcome_letter. Per-engagement 5x
+//   welcome_*_override columns on the master row resolved via the standard
+//   ?? chain. ImmerseEngagementData.welcomeLetter is always present (never
+//   optional); every field is '' when all sources are null.
 
 import { supabaseAnon } from './supabase'
 import { rewriteImageUrl } from './imageUrl'
@@ -47,6 +42,7 @@ import type {
   ImmerseTripPricingRow,
   ImmerseWelcomeLetter,
   EngagementType,
+  EngagementAudience,
   EngagementStatus,
   ItineraryStatus,
 } from './immerseTypes'
@@ -69,6 +65,7 @@ type EngagementRow = {
   slug:                            string
   trip_format:                     string
   engagement_type:                 string
+  audience:                        string                  // S32: 'private' | 'public'
   journey_types:                   string[] | null
   person_id:                       string | null
   status_label:                    string | null
@@ -159,7 +156,7 @@ type PricingRowRow = {
 // ── Public fetch ─────────────────────────────────────────────────────────────
 
 const ENGAGEMENT_SELECT_COLUMNS = `
-  id, url_id, slug, trip_format, engagement_type, journey_types,
+  id, url_id, slug, trip_format, engagement_type, audience, journey_types,
   person_id, status_label,
   engagement_status_id, itinerary_status_id,
   travel_engagement_statuses (id, slug, label, sort_order, is_active),
@@ -294,6 +291,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   return {
     engagementId:    engagementRow.id,
     engagementType:  (engagementRow.engagement_type as EngagementType) ?? 'journey',
+    audience:        normalizeAudience(engagementRow.audience),  // S32
     urlId:           engagementRow.url_id,
     slug:            engagementRow.slug,
     tripFormat:      (engagementRow.trip_format as ImmerseTripFormat) ?? 'journey',
@@ -346,4 +344,12 @@ function normalizeSubpageStatus(value: string | null): ImmerseSubpageStatus {
   if (value === 'preview') return 'preview'
   if (value === 'hidden')  return 'hidden'
   return 'live'
+}
+
+// S32: Defensive normalizer — DB has NOT NULL DEFAULT 'private' but this
+// catches any unexpected value from a legacy migration or schema drift.
+function normalizeAudience(value: string | null): EngagementAudience {
+  if (value === 'private') return 'private'
+  if (value === 'public')  return 'public'
+  return 'private'
 }

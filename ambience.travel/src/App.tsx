@@ -4,8 +4,10 @@
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
- *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute (engagement overview)
- *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute (destination subpage)
+ *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
+ *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
+ *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
+ *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -19,34 +21,31 @@
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
- *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute (engagement overview)
- *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute (destination subpage)
+ *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
+ *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
  *
- * Immerse disambiguator: first /immerse/ segment is shape-tested.
- *   - 11-char [A-Za-z0-9] hash → engagement route (private + public templates both
- *     use this shape; public templates use a 'pub' visual prefix convention)
+ * Immerse subdomain (S32): immerse.ambience.travel is the canonical immerse host.
+ *   On that host, the URL shape is /<url_id> (no /immerse/ prefix). The
+ *   ambience.travel/immerse/* path-prefix shape continues to work in parallel
+ *   until verified, after which it 301s to the new subdomain.
+ *
+ * Immerse disambiguator: first immerse path segment is shape-tested.
+ *   - 11-char [A-Za-z0-9] hash → engagement route
  *   - anything else            → redirect to / (homepage)
  *
- * Key distinction: a url_id segment (stays/:id or journeys/:id) renders the
- * full-page programme view. The programme root renders the app shell.
- *
- * Last updated: S30E perf — Route-level code splitting via React.lazy() +
- *   Suspense. Every route component lazy-loaded so /immerse/<url_id> cold
- *   load no longer downloads ProgrammeAdmin / GuestLinker / SignatureExperience
- *   / etc. Removed PublicHoneymoonRoute and the /immerse/honeymoon and
- *   /immerse/honeymoon/<dest> routes — the only canonical immerse URL shape
- *   is now /immerse/<11-char-url_id>. Slug-based public preview replaced by
- *   url_id with the 'pub' visual prefix convention (e.g. pubMuirRzSW).
- *   Bad immerse paths now redirect to / via window.location.replace.
- *   getImmerseEngagementBySlug import removed (dead code).
- * Prior: S30E stage 3 — Import path updated for renamed
- *   immerseEngagementQueries.ts → immerseEngagementQueries.ts.
- * Prior: S30E stage 2 — Component + import path renames for the
- *   engagement abstraction.
- * Prior: S30E stage 1 — getImmerseTripBySlug → getImmerseEngagementBySlug;
- *   type ImmerseTripData → ImmerseEngagementData.
- * Prior: S17 — Public honeymoon preview was DB-backed via slug 'honeymoon1'.
- *   Replaced S30E perf with the url_id 'pub' prefix convention.
+ * Last updated: S32 — Added immerse.ambience.travel hostname routing.
+ *   resolveRoute() detects the new subdomain and routes any 11-char path
+ *   segment to ImmerseEngagementRoute. resolveImmerseSegments() uses
+ *   subdomain-aware path parsing (no /immerse/ prefix on the new subdomain).
+ *   Both URL shapes (subdomain + path-prefix) work simultaneously during
+ *   transition. Path-prefix → subdomain 301 redirect deferred until both
+ *   shapes are verified rendering identically on prod.
+ * Prior: S30E perf — Route-level code splitting via React.lazy() + Suspense.
+ *   Every route component lazy-loaded so /immerse/<url_id> cold load no
+ *   longer downloads ProgrammeAdmin / GuestLinker / SignatureExperience /
+ *   etc. Slug-based public preview replaced by url_id with the 'pub' visual
+ *   prefix convention (e.g. pubMuirRzSW). Bad immerse paths redirect to /
+ *   via window.location.replace.
  */
 
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'
@@ -61,7 +60,6 @@ import type { Page } from './components/Layout'
 // ── Lazy route components ────────────────────────────────────────────────────
 // Every route boundary is a code-split point. Each component below becomes its
 // own Vite chunk at build time, downloaded only when the route resolves to it.
-// /immerse/<url_id> no longer downloads ProgrammeAdmin / GuestLinker / etc.
 
 const LandingLayout            = lazy(() => import('./components/layouts/LandingLayout'))
 const ProgrammeRoute           = lazy(() => import('./components/programme/ProgrammeRoute'))
@@ -75,6 +73,12 @@ const SignatureExperiencePage  = lazy(() => import('./components/landing/experie
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 
 type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience' | 'immerse'
+
+const IMMERSE_HOST = 'immerse.ambience.travel'
+
+function isImmerseHost(): boolean {
+  return window.location.hostname === IMMERSE_HOST
+}
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -91,12 +95,22 @@ function isExperienceRoute(): boolean {
   return window.location.pathname.startsWith('/experiences/')
 }
 
+// S32: immerse routes match either ambience.travel/immerse/* OR any path on
+// immerse.ambience.travel.
 function isImmerseRoute(): boolean {
+  if (isImmerseHost()) return true
   return window.location.pathname.startsWith('/immerse/')
 }
 
+// S32: subdomain-aware segment resolution.
+// On immerse.ambience.travel the URL is /<url_id>[/<destination>].
+// On ambience.travel (and localhost) the URL is /immerse/<url_id>[/<destination>].
 function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
-  const parts = window.location.pathname.replace('/immerse/', '').replace(/\/$/, '').split('/')
+  const pathname = window.location.pathname.replace(/\/$/, '')
+  const stripped = isImmerseHost()
+    ? pathname.replace(/^\/+/, '')
+    : pathname.replace(/^\/immerse\/?/, '').replace(/^\/+/, '')
+  const parts = stripped.split('/').filter(Boolean)
   return { seg1: parts[0] ?? '', seg2: parts[1] ?? null }
 }
 
@@ -112,6 +126,9 @@ function resolveRoute(): Route {
 
   if (params.get('signup') === '1') return 'signup'
   if (hash === '#admin')            return 'admin'
+
+  // S32: immerse.ambience.travel → always immerse route.
+  if (isImmerseHost()) return 'immerse'
 
   if (hostname === 'programme.ambience.travel') {
     if (hasUrlId()) return 'programme-detail'
@@ -162,7 +179,6 @@ export default function App() {
     const { seg1 } = resolveImmerseSegments()
 
     // Shape-based disambiguator: 11-char alphanumeric → engagement route.
-    // Public templates (pub-prefix visual convention) match the same regex.
     if (isTripUrlId(seg1)) {
       return (
         <Suspense fallback={<RouteLoading />}>
@@ -171,10 +187,12 @@ export default function App() {
       )
     }
 
-    // Anything else under /immerse/ — bad path, slug-based legacy URL,
-    // or empty — redirect to homepage. window.location.replace avoids a
-    // history entry pointing at the dead route.
-    window.location.replace('/')
+    // Anything else under the immerse surface — bad path, slug-based legacy
+    // URL, or empty — redirect to homepage. window.location.replace avoids a
+    // history entry pointing at the dead route. On the new subdomain we
+    // redirect to the marketing site root, not the immerse subdomain root.
+    const homeUrl = isImmerseHost() ? 'https://ambience.travel/' : '/'
+    window.location.replace(homeUrl)
     return <RouteLoading />
   }
 
