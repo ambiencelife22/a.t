@@ -1,5 +1,40 @@
 {
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/immerse/:url_id/:dest",
+      "destination": "https://immerse.ambience.travel/:url_id/:dest",
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "ambience.travel"
+        }
+      ]
+    },
+    {
+      "source": "/immerse/:url_id",
+      "destination": "https://immerse.ambience.travel/:url_id",
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "ambience.travel"
+        }
+      ]
+    },
+    {
+      "source": "/immerse",
+      "destination": "https://immerse.ambience.travel/",
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "ambience.travel"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/img/:path*",
@@ -7,4 +42,5 @@
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
+}
 }
