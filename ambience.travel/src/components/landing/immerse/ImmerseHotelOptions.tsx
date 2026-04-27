@@ -4,7 +4,10 @@
 //   LightboxOverlay
 // Does not own: RoomCategory (ImmerseRoomCategory.tsx), NavRow + arrow styles
 //   (ImmerseCarouselNav.tsx), keyframes (src/index.css)
-// Last updated: S31 — Hotel transition animation swapped from immerseFadeIn
+// Last updated: S31 — Regioned room-switch desktop arrows centered in the
+//   flow row (was: justify-content space-between pushing to row edges). Now
+//   side-by-side in the middle with 64px gap.
+// Prior: S31 — Hotel transition animation swapped from immerseFadeIn
 //   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Two surfaces:
 //   HotelWithRooms outer (carousel item swap) + SelectorAndCarousel upper
 //   HotelDetailPanel (top selector button click). Staggered child cascades
@@ -341,8 +344,8 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots, hotelD
                 marginTop: 28,
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 16,
+                justifyContent: 'center',
+                gap: 64,
               }}
             >
               <button
