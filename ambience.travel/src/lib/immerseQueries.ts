@@ -2,14 +2,18 @@
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
 //
-// Last updated: S32C — Phase 3 of destination FK refactor. All destination
-//   reads now flow through global_destination_id FK, with URL slug resolved
-//   to FK once at the top of getImmerseDestination via global_destinations
-//   lookup. fetchEngagementOverride switches from slug-keyed to FK-keyed
-//   read. The immerse table's own .id continues to anchor descendant tables
-//   (regions, content_cards, destination_pricing_rows) that still join by
-//   immerse-id; only destination identity at the URL boundary moves to
-//   global_destinations as canon.
+// Last updated: S32C — Phase D of cards refactor. fetchContentCards now reads
+//   via UNION of two queries on travel_immerse_trip_content_card_selections,
+//   joined to canonical travel_dining_venues + travel_experiences. Filter is
+//   the canonical row's global_destination_id (FK truth). Override merge keys
+//   on the new dual FK (dining_venue_id / experience_id), surviving the
+//   phase E drop of card_id + travel_immerse_content_cards. Signature change:
+//   fetchContentCards(engagementId, globalDestinationId) — destId no longer
+//   needed. Call site in getImmerseDestination updated to match.
+// Prior: S32C — Phase 3 of destination FK refactor. All destination reads
+//   flow through global_destination_id FK, with URL slug resolved to FK once
+//   at the top of getImmerseDestination via global_destinations lookup.
+//   fetchEngagementOverride switches from slug-keyed to FK-keyed read.
 // Prior: S32B — fetchContentCards reads via trip_content_card_selections
 //   inner-join (engagement-scoped pool). getImmerseDestination enforces
 //   itinerary membership: returns null if no trip_destination_rows row
@@ -175,7 +179,7 @@ export async function getImmerseDestination(
   ] = await Promise.all([
     fetchEngagementOverride(engagementId, globalDestinationId),
     fetchHotelsShape(engagementId, destId),
-    fetchContentCards(engagementId, destId),
+    fetchContentCards(engagementId, globalDestinationId),
     fetchPricingRows(destId),
   ])
 
@@ -624,10 +628,11 @@ async function fetchAllRoomGallery(
 
 // ─── Content cards + pricing ──────────────────────────────────────────────────
 
-type ContentCardWithType = ImmerseContentCard & { _cardType: string }
+type ContentCardWithType = ImmerseContentCard & { _cardType: 'dining' | 'experience' }
 
 type CardOverrideRow = {
-  card_id:                   string
+  dining_venue_id:           string | null
+  experience_id:             string | null
   kicker_override:           string | null
   name_override:             string | null
   tagline_override:          string | null
@@ -641,83 +646,158 @@ type CardOverrideRow = {
   image_license_override:    string | null
 }
 
+type CanonicalCardRow = {
+  id:                string
+  kicker:            string | null
+  name:              string | null
+  tagline:           string | null
+  body:              string | null
+  bullets_heading:   string | null
+  bullets:           unknown
+  image_src:         string | null
+  image_alt:         string | null
+  image_credit:      string | null
+  image_credit_url:  string | null
+  image_license:     string | null
+}
+
+// S32C: Reads via UNION of two queries on travel_immerse_trip_content_card_selections,
+// joined to canonical travel_dining_venues + travel_experiences. Filtered by the
+// canonical row's global_destination_id (FK truth, not slug). Override merge keys
+// on the new dual FK (dining_venue_id / experience_id) — survives phase E drop.
 async function fetchContentCards(
-  engagementId: string | null,
-  destId:       string,
+  engagementId:        string | null,
+  globalDestinationId: string,
 ): Promise<ContentCardWithType[]> {
   if (!engagementId) return []
 
-  const { data: selRows, error } = await supabase
-    .from('travel_immerse_trip_content_card_selections')
-    .select(`
-      sort_order,
-      travel_immerse_content_cards!inner (
-        id, destination_id, card_type,
-        kicker, name, tagline, body,
-        bullets_heading, bullets,
-        image_src, image_alt, image_credit, image_credit_url, image_license,
-        sort_order
-      )
-    `)
-    .eq('trip_id', engagementId)
-    .eq('is_active', true)
-    .eq('travel_immerse_content_cards.destination_id', destId)
-    .order('sort_order', { ascending: true })
+  const [diningRes, expRes] = await Promise.all([
+    supabase
+      .from('travel_immerse_trip_content_card_selections')
+      .select(`
+        sort_order,
+        dining_venue_id,
+        travel_dining_venues!inner (
+          id, global_destination_id,
+          kicker, name, tagline, body,
+          bullets_heading, bullets,
+          image_src, image_alt, image_credit, image_credit_url, image_license
+        )
+      `)
+      .eq('trip_id', engagementId)
+      .eq('is_active', true)
+      .not('dining_venue_id', 'is', null)
+      .eq('travel_dining_venues.global_destination_id', globalDestinationId)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('travel_immerse_trip_content_card_selections')
+      .select(`
+        sort_order,
+        experience_id,
+        travel_experiences!inner (
+          id, global_destination_id,
+          kicker, name, tagline, body,
+          bullets_heading, bullets,
+          image_src, image_alt, image_credit, image_credit_url, image_license
+        )
+      `)
+      .eq('trip_id', engagementId)
+      .eq('is_active', true)
+      .not('experience_id', 'is', null)
+      .eq('travel_experiences.global_destination_id', globalDestinationId)
+      .order('sort_order', { ascending: true }),
+  ])
 
-  if (error || !selRows || selRows.length === 0) return []
+  if (diningRes.error && expRes.error) return []
 
-  type CanonicalCardRow = {
-    id:                string
-    destination_id:    string
-    card_type:         string
-    kicker:            string | null
-    name:              string | null
-    tagline:           string | null
-    body:              string | null
-    bullets_heading:   string | null
-    bullets:           unknown
-    image_src:         string | null
-    image_alt:         string | null
-    image_credit:      string | null
-    image_credit_url:  string | null
-    image_license:     string | null
-    sort_order:        number
+  type SelectionWithCanon = {
+    sort_order: number
+    cardType:   'dining' | 'experience'
+    fkId:       string
+    canon:      CanonicalCardRow
   }
 
-  const rows: CanonicalCardRow[] = selRows
-    .map(s => s.travel_immerse_content_cards as unknown as CanonicalCardRow | null)
-    .filter((c): c is CanonicalCardRow => c !== null)
+  const selections: SelectionWithCanon[] = []
 
-  if (rows.length === 0) return []
-
-  const overridesByCardId = new Map<string, CardOverrideRow>()
-  const cardIds = rows.map(r => r.id)
-  const { data: ovRows } = await supabase
-    .from('travel_immerse_trip_content_card_overrides')
-    .select(`
-      card_id,
-      kicker_override,
-      name_override,
-      tagline_override,
-      body_override,
-      bullets_heading_override,
-      bullets_override,
-      image_src_override,
-      image_alt_override,
-      image_credit_override,
-      image_credit_url_override,
-      image_license_override
-    `)
-    .eq('trip_id', engagementId)
-    .eq('is_active', true)
-    .in('card_id', cardIds)
-
-  for (const ov of (ovRows ?? []) as CardOverrideRow[]) {
-    overridesByCardId.set(ov.card_id, ov)
+  for (const row of (diningRes.data ?? [])) {
+    const canon = row.travel_dining_venues as unknown as CanonicalCardRow | null
+    if (!canon || !row.dining_venue_id) continue
+    selections.push({
+      sort_order: row.sort_order as number,
+      cardType:   'dining',
+      fkId:       row.dining_venue_id as string,
+      canon,
+    })
+  }
+  for (const row of (expRes.data ?? [])) {
+    const canon = row.travel_experiences as unknown as CanonicalCardRow | null
+    if (!canon || !row.experience_id) continue
+    selections.push({
+      sort_order: row.sort_order as number,
+      cardType:   'experience',
+      fkId:       row.experience_id as string,
+      canon,
+    })
   }
 
-  return rows.map(r => {
-    const ov = overridesByCardId.get(r.id)
+  if (selections.length === 0) return []
+
+  const diningIds = selections.filter(s => s.cardType === 'dining').map(s => s.fkId)
+  const expIds    = selections.filter(s => s.cardType === 'experience').map(s => s.fkId)
+
+  const overrideQueries = []
+  if (diningIds.length > 0) {
+    overrideQueries.push(
+      supabase
+        .from('travel_immerse_trip_content_card_overrides')
+        .select(`
+          dining_venue_id, experience_id,
+          kicker_override, name_override, tagline_override, body_override,
+          bullets_heading_override, bullets_override,
+          image_src_override, image_alt_override,
+          image_credit_override, image_credit_url_override, image_license_override
+        `)
+        .eq('trip_id', engagementId)
+        .eq('is_active', true)
+        .in('dining_venue_id', diningIds)
+    )
+  }
+  if (expIds.length > 0) {
+    overrideQueries.push(
+      supabase
+        .from('travel_immerse_trip_content_card_overrides')
+        .select(`
+          dining_venue_id, experience_id,
+          kicker_override, name_override, tagline_override, body_override,
+          bullets_heading_override, bullets_override,
+          image_src_override, image_alt_override,
+          image_credit_override, image_credit_url_override, image_license_override
+        `)
+        .eq('trip_id', engagementId)
+        .eq('is_active', true)
+        .in('experience_id', expIds)
+    )
+  }
+
+  const overrideResults = await Promise.all(overrideQueries)
+
+  const overrideByDiningId = new Map<string, CardOverrideRow>()
+  const overrideByExpId    = new Map<string, CardOverrideRow>()
+  for (const res of overrideResults) {
+    for (const ov of (res.data ?? []) as CardOverrideRow[]) {
+      if (ov.dining_venue_id) overrideByDiningId.set(ov.dining_venue_id, ov)
+      if (ov.experience_id)   overrideByExpId.set(ov.experience_id, ov)
+    }
+  }
+
+  selections.sort((a, b) => a.sort_order - b.sort_order)
+
+  return selections.map(s => {
+    const ov = s.cardType === 'dining'
+      ? overrideByDiningId.get(s.fkId)
+      : overrideByExpId.get(s.fkId)
+
+    const r = s.canon
 
     const bulletsOverride = ov?.bullets_override
     const bulletsCanon    = Array.isArray(r.bullets) ? (r.bullets as string[]) : null
@@ -726,7 +806,7 @@ async function fetchContentCards(
       : bulletsCanon ?? undefined
 
     return {
-      _cardType:       r.card_type,
+      _cardType:       s.cardType,
       id:              r.id,
       kicker:          ov?.kicker_override            ?? r.kicker            ?? '',
       name:            ov?.name_override              ?? r.name              ?? '',
