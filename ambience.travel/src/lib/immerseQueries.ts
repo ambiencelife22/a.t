@@ -2,7 +2,17 @@
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
 //
-// Last updated: S30F — Added rate_suffix (canonical travel_accom_rooms) and
+// Last updated: S32B — Two changes.
+//   (1) getImmerseDestination now enforces itinerary membership: if the
+//       destination has no row in travel_immerse_trip_destination_rows for the
+//       engagement, return null (component handles 404 redirect). Anonymous
+//       reads (engagementId null) also return null — engagements are the only
+//       legitimate destination-render context.
+//   (2) fetchContentCards now reads via travel_immerse_trip_content_card_selections
+//       (inner-join). Card pool is engagement-scoped, not destination-scoped.
+//       Selection.sort_order wins over canonical sort_order. No engagement →
+//       empty array.
+// Prior: S30F — Added rate_suffix (canonical travel_accom_rooms) and
 //   rate_suffix_override (overlay travel_immerse_rooms) to fetchRoomsForHotels.
 //   Merged via standard ?? chain — override → canonical → undefined — into
 //   ImmerseRoomOption.rateSuffix. Free-text per-room suffix that replaces the
@@ -19,18 +29,6 @@
 //   EngagementDestinationOverride. Child table reads still .eq() on
 //   trip_id — child tables retain "trip" prefix because their content is
 //   journey-engagement-specific.
-// Prior: S30D — Storage URL rewriting at the read layer. Every image
-//   field returned by this module passes through rewriteImageUrl() (or
-//   rewriteImageUrls() for arrays). The Supabase project-host prefix is
-//   stripped on the way out so rendered HTML carries '/img/...' paths only.
-//   The /img/* rewrite in vercel.json proxies these to Supabase Storage at
-//   the edge. Effect: zero project-ref leakage in page source. Defensive +
-//   idempotent — see imageUrl.ts. image_credit_url is NOT rewritten because
-//   it points at brand websites, not storage.
-// Prior: S30 — fetchContentCards merges per-engagement card overrides via
-//   travel_immerse_trip_content_card_overrides; bullets_heading + override.
-//   Pricing closer, dining section, pricing notes overrides resolved via
-//   the standard ?? chain on travel_immerse_trip_destination_rows.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
@@ -55,15 +53,10 @@ export interface ImmerseDestinationMeta {
 }
 
 // ─── Engagement resolver ──────────────────────────────────────────────────────
-// Two lookup paths: canonical 11-char url_id (private + public templates both
-// use this shape, public templates carry a 'pub' visual prefix), and the
-// deprecated public_journey_slug fallback retained transitionally until that
-// column drops.
 
 async function resolveEngagementId(journeyToken: string): Promise<string | null> {
   if (!journeyToken) return null
 
-  // 11-char url_id → engagement lookup
   if (/^[A-Za-z0-9]{11}$/.test(journeyToken)) {
     const { data } = await supabase
       .from('travel_immerse_engagements')
@@ -73,7 +66,6 @@ async function resolveEngagementId(journeyToken: string): Promise<string | null>
     return data?.id ?? null
   }
 
-  // Legacy public_journey_slug fallback (deprecated, retained transitionally)
   const { data } = await supabase
     .from('travel_immerse_engagements')
     .select('id')
@@ -161,6 +153,10 @@ export async function getImmerseDestination(
   const destId = dest.id as string
   const engagementId = await resolveEngagementId(journeyToken)
 
+  // S32B: itinerary membership gate. Without an engagement, no destination
+  // render. Component handles null with a 404 redirect to overview.
+  if (!engagementId) return null
+
   const [
     overrideResult,
     hotelsShape,
@@ -172,6 +168,11 @@ export async function getImmerseDestination(
     fetchContentCards(engagementId, destId),
     fetchPricingRows(destId),
   ])
+
+  // S32B: itinerary membership gate. fetchEngagementOverride returns the
+  // trip_destination_rows row for (engagementId, destinationSlug). Null means
+  // the destination isn't on this engagement's itinerary — do not render.
+  if (!overrideResult) return null
 
   const ov = overrideResult
 
@@ -538,7 +539,6 @@ async function fetchRoomsForHotels(
     const galleryJsonb     = rewriteImageUrls(canon.room_gallery as string[] | null)
     const roomGallery      = galleryCanonical.length > 0 ? galleryCanonical : galleryJsonb
 
-    // S30F: per-room rate suffix — overlay override → canonical → undefined
     const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
 
     const hotelId = canon.hotel_id as string
@@ -635,46 +635,84 @@ async function fetchContentCards(
   engagementId: string | null,
   destId:       string,
 ): Promise<ContentCardWithType[]> {
-  const { data: rows, error } = await supabase
-    .from('travel_immerse_content_cards')
-    .select('*')
-    .eq('destination_id', destId)
-    .order('card_type', { ascending: true })
+  // S32B: card pool is engagement-scoped via trip_content_card_selections.
+  // No engagement → no selections → empty array.
+  if (!engagementId) return []
+
+  // Read selections joined to canonical cards. Selection.sort_order drives
+  // render order — lets curation re-order canonical default.
+  const { data: selRows, error } = await supabase
+    .from('travel_immerse_trip_content_card_selections')
+    .select(`
+      sort_order,
+      travel_immerse_content_cards!inner (
+        id, destination_id, card_type,
+        kicker, name, tagline, body,
+        bullets_heading, bullets,
+        image_src, image_alt, image_credit, image_credit_url, image_license,
+        sort_order
+      )
+    `)
+    .eq('trip_id', engagementId)
+    .eq('is_active', true)
+    .eq('travel_immerse_content_cards.destination_id', destId)
     .order('sort_order', { ascending: true })
 
-  if (error || !rows) return []
+  if (error || !selRows || selRows.length === 0) return []
+
+  type CanonicalCardRow = {
+    id:                string
+    destination_id:    string
+    card_type:         string
+    kicker:            string | null
+    name:              string | null
+    tagline:           string | null
+    body:              string | null
+    bullets_heading:   string | null
+    bullets:           unknown
+    image_src:         string | null
+    image_alt:         string | null
+    image_credit:      string | null
+    image_credit_url:  string | null
+    image_license:     string | null
+    sort_order:        number
+  }
+
+  const rows: CanonicalCardRow[] = selRows
+    .map(s => s.travel_immerse_content_cards as unknown as CanonicalCardRow | null)
+    .filter((c): c is CanonicalCardRow => c !== null)
+
   if (rows.length === 0) return []
 
+  // Override merge — unchanged from pre-patch.
   const overridesByCardId = new Map<string, CardOverrideRow>()
-  if (engagementId) {
-    const cardIds = rows.map(r => r.id as string)
-    const { data: ovRows } = await supabase
-      .from('travel_immerse_trip_content_card_overrides')
-      .select(`
-        card_id,
-        kicker_override,
-        name_override,
-        tagline_override,
-        body_override,
-        bullets_heading_override,
-        bullets_override,
-        image_src_override,
-        image_alt_override,
-        image_credit_override,
-        image_credit_url_override,
-        image_license_override
-      `)
-      .eq('trip_id', engagementId)
-      .eq('is_active', true)
-      .in('card_id', cardIds)
+  const cardIds = rows.map(r => r.id)
+  const { data: ovRows } = await supabase
+    .from('travel_immerse_trip_content_card_overrides')
+    .select(`
+      card_id,
+      kicker_override,
+      name_override,
+      tagline_override,
+      body_override,
+      bullets_heading_override,
+      bullets_override,
+      image_src_override,
+      image_alt_override,
+      image_credit_override,
+      image_credit_url_override,
+      image_license_override
+    `)
+    .eq('trip_id', engagementId)
+    .eq('is_active', true)
+    .in('card_id', cardIds)
 
-    for (const ov of (ovRows ?? []) as CardOverrideRow[]) {
-      overridesByCardId.set(ov.card_id, ov)
-    }
+  for (const ov of (ovRows ?? []) as CardOverrideRow[]) {
+    overridesByCardId.set(ov.card_id, ov)
   }
 
   return rows.map(r => {
-    const ov = overridesByCardId.get(r.id as string)
+    const ov = overridesByCardId.get(r.id)
 
     const bulletsOverride = ov?.bullets_override
     const bulletsCanon    = Array.isArray(r.bullets) ? (r.bullets as string[]) : null
