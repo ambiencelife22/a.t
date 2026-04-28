@@ -3,10 +3,15 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S32 — Added audience to the SELECT, EngagementRow type, and
-//   ImmerseEngagementData hydration. Default 'private' if column NULL (defensive
-//   — column is NOT NULL DEFAULT 'private' DB-side per s32_01). Powers the
-//   route dispatcher branch between private and public render paths.
+// Last updated: S32 (Add 1) — Added hero_tagline to ENGAGEMENT_SELECT_COLUMNS,
+//   EngagementRow type, and hydration. Optional field (?? undefined). Not yet
+//   rendered — preserves the route-summary copy ('Saudi → Nordic Winter → ...')
+//   that lived in the misnamed 'title' column before s32_add1_01 renamed it.
+//   The new 'title' column is now the actual experience title (Honeymoon).
+//   Earlier S32: Added audience to the SELECT, EngagementRow type, and hydration.
+//   Default 'private' if column NULL (defensive — column is NOT NULL DEFAULT
+//   'private' DB-side per s32_01). Powers the route dispatcher branch between
+//   private and public render paths.
 // Prior: S30E perf — Removed getImmerseEngagementBySlug. The slug-keyed
 //   public preview route (/immerse/honeymoon) was deleted; the only canonical
 //   immerse URL shape is now /immerse/<11-char-url_id>. By-slug lookup had no
@@ -75,6 +80,7 @@ type EngagementRow = {
   travel_itinerary_statuses:       StatusJoinRow | null
   eyebrow:                         string | null
   title:                           string | null
+  hero_tagline:                    string | null           // S32 Add 1
   subtitle:                        string | null
   hero_image_src:                  string | null
   hero_image_alt:                  string | null
@@ -161,7 +167,7 @@ const ENGAGEMENT_SELECT_COLUMNS = `
   engagement_status_id, itinerary_status_id,
   travel_engagement_statuses (id, slug, label, sort_order, is_active),
   travel_itinerary_statuses  (id, slug, label, sort_order, is_active),
-  eyebrow, title, subtitle,
+  eyebrow, title, hero_tagline, subtitle,
   hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
   hero_title_2, hero_subtitle_2, hero_pills,
   welcome_eyebrow_override, welcome_title_override, welcome_body_override,
@@ -298,6 +304,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     journeyTypes:    engagementRow.journey_types ?? [],
     clientName,
     statusLabel:     engagementRow.status_label ?? '',
+    heroTagline:     engagementRow.hero_tagline ?? undefined,    // S32 Add 1
 
     engagementStatus,
     itineraryStatus,

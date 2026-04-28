@@ -1,7 +1,15 @@
 // ImmerseHero.tsx — hero section for all /immerse/ proposal pages
 // Owns the full-bleed glass-card hero. Used by both journey overview and destination subpages.
 // Hero image is the first element — no brand strip above it.
-// Last updated: S11
+//
+// Last updated: S32 (Add 1) — Optional itinerary status line. Renders below
+//   the date+nights label as small italic dim text. Subtle marker for guests
+//   so they understand which stage of the proposal lifecycle they're seeing
+//   (e.g. 'Initial Proposal', 'Refined Proposal', 'Final Proposal'). Empty
+//   prop hides the line entirely. Consumer (ImmerseEngagementPage) passes
+//   data.itineraryStatus.label.
+// Prior: S11 — Original hero structure with guest name, titlePrefix, title
+//   word stagger, dateLabel + nightsLabel, subtitle, CTAs.
 
 import { useEffect, useRef, useState } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp } from './ImmerseComponents'
@@ -12,6 +20,7 @@ type Props = {
   titlePrefix?:    string   // renders in Cormorant Garamond italic — e.g. "Honeymoon in"
   dateLabel?:      string   // renders in gold below title — e.g. "January 2027"
   nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5–6 Nights"
+  itineraryStage?: string   // S32: small italic line — e.g. "Refined Proposal"
   // Content
   title:           string
   subtitle:        string
@@ -31,6 +40,7 @@ export default function ImmerseHero({
   titlePrefix,
   dateLabel,
   nightsLabel,
+  itineraryStage,
   title,
   subtitle,
   pills = [],
@@ -174,7 +184,7 @@ export default function ImmerseHero({
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
                   fontWeight:    700,
-                  marginBottom:  18,
+                  marginBottom:  itineraryStage ? 8 : 18,
                   ...immerseFadeUp(visible, 200),
                 }}
               >
@@ -183,6 +193,23 @@ export default function ImmerseHero({
                   <span style={{ opacity: 0.5, margin: '0 8px' }}>·</span>
                 )}
                 {nightsLabel}
+              </div>
+            )}
+
+            {/* S32: Itinerary stage indicator — italic, dim, subtle */}
+            {itineraryStage && (
+              <div
+                style={{
+                  color:         ID.dim,
+                  fontSize:      isMobile ? 11 : 12,
+                  letterSpacing: '0.06em',
+                  fontStyle:     'italic',
+                  fontWeight:    400,
+                  marginBottom:  18,
+                  ...immerseFadeUp(visible, 220),
+                }}
+              >
+                {itineraryStage}
               </div>
             )}
 
@@ -256,7 +283,6 @@ export default function ImmerseHero({
                   {diningLabel}
                 </a>
               )}
-
               <a
                 href={secondaryHref}
                 style={{

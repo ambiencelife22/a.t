@@ -39,8 +39,9 @@ export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagemen
       <ImmerseHero
         guestName={data.clientName}
         titlePrefix=''
-        title='Honeymoon'
+        title={data.title}
         dateLabel={data.statusLabel}
+        itineraryStage={data.itineraryStatus.label}
         subtitle={data.subtitle}
         pills={data.heroPills}
         heroImageSrc={data.heroImageSrc}

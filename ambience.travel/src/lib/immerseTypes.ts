@@ -2,7 +2,13 @@
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
 //
-// Last updated: S32 — Added EngagementAudience union ('private' | 'public') +
+// Last updated: S32 (Add 1) — Added optional heroTagline field on
+//   ImmerseEngagementData. Mirrors the renamed travel_immerse_engagements.hero_tagline
+//   column (was: title before s32_add1_01). Pulled into the type and query layer
+//   but not yet rendered — preserves the route-summary copy ("Saudi → Nordic Winter
+//   → ...") for future use without a separate query patch when render lands.
+//   Earlier S32 entry: Added EngagementAudience union + audience field.
+//  Prior S32 — Added EngagementAudience union ('private' | 'public') +
 //   audience field on ImmerseEngagementData. Mirrors the audience enum on
 //   travel_immerse_engagements (added s32_01). Used by the route dispatcher
 //   to branch render path between private and public surfaces. Default
@@ -22,18 +28,6 @@
 //   underlying lookup table rename (travel_trip_statuses →
 //   travel_engagement_statuses). Itinerary side unchanged — itinerary is
 //   journey-engagement-specific lifecycle, not universal.
-// Prior: S30D — Added TripStatus + ItineraryStatus interfaces and slug
-//   union types. Slug union types narrow to the canonical seed values for
-//   compile-time safety; the runtime slug field is `string` so adding a new
-//   lookup row doesn't break type-checking. statusLabel preserved —
-//   different concept (guest-facing display copy vs operator-facing lifecycle).
-// Prior: S30 — Added ImmerseWelcomeLetter + welcomeLetter on master data.
-//   Canonical table travel_immerse_welcome_letter holds a single shared
-//   proposal letter. Per-engagement overrides live as 5 nullable
-//   welcome_*_override columns on travel_immerse_engagements. Resolution:
-//   override → canonical → ''. Empty string = hide field; component hides
-//   section if all five fields empty.
-
 // ─── Engagement-level discriminators ─────────────────────────────────────────
 // engagement_type (S30E): journey | service | experience | acquisition.
 // audience (S32): private | public. Drives render path dispatch.
@@ -272,6 +266,7 @@ export type ImmerseEngagementData = {
   journeyTypes:    string[]
   clientName:      string
   statusLabel:     string                // guest-facing display copy
+  heroTagline?:    string                // S32 Add 1: route-summary copy (optional, not yet rendered)
   // status — operator-facing lifecycle, distinct from statusLabel
   engagementStatus:  EngagementStatus
   itineraryStatus:   ItineraryStatus
