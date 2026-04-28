@@ -8,7 +8,7 @@
       "has": [
         {
           "type": "host",
-          "value": "ambience.travel"
+          "value": "(www\\.)?ambience\\.travel"
         }
       ]
     },
@@ -19,7 +19,7 @@
       "has": [
         {
           "type": "host",
-          "value": "ambience.travel"
+          "value": "(www\\.)?ambience\\.travel"
         }
       ]
     },
@@ -30,7 +30,7 @@
       "has": [
         {
           "type": "host",
-          "value": "ambience.travel"
+          "value": "(www\\.)?ambience\\.travel"
         }
       ]
     }
