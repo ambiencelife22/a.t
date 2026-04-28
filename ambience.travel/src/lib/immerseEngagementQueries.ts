@@ -3,37 +3,15 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S32 (Add 1) — Added hero_tagline to ENGAGEMENT_SELECT_COLUMNS,
-//   EngagementRow type, and hydration. Optional field (?? undefined). Not yet
-//   rendered — preserves the route-summary copy ('Saudi → Nordic Winter → ...')
-//   that lived in the misnamed 'title' column before s32_add1_01 renamed it.
-//   The new 'title' column is now the actual experience title (Honeymoon).
-//   Earlier S32: Added audience to the SELECT, EngagementRow type, and hydration.
-//   Default 'private' if column NULL (defensive — column is NOT NULL DEFAULT
-//   'private' DB-side per s32_01). Powers the route dispatcher branch between
-//   private and public render paths.
-// Prior: S30E perf — Removed getImmerseEngagementBySlug. The slug-keyed
-//   public preview route (/immerse/honeymoon) was deleted; the only canonical
-//   immerse URL shape is now /immerse/<11-char-url_id>. By-slug lookup had no
-//   remaining consumers.
-// Prior: S30E — Engagement abstraction. Master table reads target
-//   travel_immerse_engagements; engagement_status_id replaces trip_status_id;
-//   nested status join targets travel_engagement_statuses. New field on output:
-//   engagementType discriminator pulled from the engagement_type column
-//   (DEFAULT 'journey'). Child table reads still .eq() on trip_id —
-//   children retain "trip" prefix because their content is journey-engagement-
-//   specific (scope-preservation).
-// Prior: S30D — Trip + itinerary status FK lookups. Hydration resolves both
-//   via Supabase nested select. Storage URL rewriting at the read layer:
-//   hero (image 1 + image 2), route stop image_src, and destination row
-//   image_src pass through rewriteImageUrl() before reaching components.
-//   The /img/* rewrite in vercel.json proxies these to Supabase Storage at
-//   the edge.
-// Prior: S30 — Welcome letter hydration. fetchCanonicalWelcomeLetter() reads
-//   the single row in travel_immerse_welcome_letter. Per-engagement 5x
-//   welcome_*_override columns on the master row resolved via the standard
-//   ?? chain. ImmerseEngagementData.welcomeLetter is always present (never
-//   optional); every field is '' when all sources are null.
+// Last updated: S32C — Phase 3 of destination FK refactor. destination_rows
+//   SELECT now reads slug via nested join to global_destinations rather than
+//   from the immerse-side destination_slug column. Slug column on
+//   trip_destination_rows is scheduled for drop in phase 4.
+// Prior: S32 (Add 1) — Added hero_tagline. Earlier S32: audience field.
+// Prior: S30E perf — Removed getImmerseEngagementBySlug.
+// Prior: S30E — Engagement abstraction.
+// Prior: S30D — Storage URL rewriting at the read layer.
+// Prior: S30 — Welcome letter hydration.
 
 import { supabaseAnon } from './supabase'
 import { rewriteImageUrl } from './imageUrl'
@@ -54,8 +32,6 @@ import type {
 
 // ── DB row types ─────────────────────────────────────────────────────────────
 
-// Nested join row shape returned by Supabase for status FKs. Identical for
-// both engagement + itinerary statuses (lookup tables share schema).
 type StatusJoinRow = {
   id:         string
   slug:       string
@@ -70,7 +46,7 @@ type EngagementRow = {
   slug:                            string
   trip_format:                     string
   engagement_type:                 string
-  audience:                        string                  // S32: 'private' | 'public'
+  audience:                        string
   journey_types:                   string[] | null
   person_id:                       string | null
   status_label:                    string | null
@@ -80,7 +56,7 @@ type EngagementRow = {
   travel_itinerary_statuses:       StatusJoinRow | null
   eyebrow:                         string | null
   title:                           string | null
-  hero_tagline:                    string | null           // S32 Add 1
+  hero_tagline:                    string | null
   subtitle:                        string | null
   hero_image_src:                  string | null
   hero_image_alt:                  string | null
@@ -110,14 +86,11 @@ type EngagementRow = {
   pricing_notes:                   string[] | null
 }
 
-// Display-name overlay row shape. trip_display table retains its name —
-// per-engagement display-name overlay, journey-specific in current usage.
 type EngagementDisplayRow = {
   first_name: string | null
   nickname:   string | null
 }
 
-// Canonical proposal welcome letter row shape.
 type WelcomeLetterRow = {
   eyebrow:      string | null
   title:        string | null
@@ -136,18 +109,23 @@ type RouteStopRow = {
   image_alt:  string | null
 }
 
+// S32C: destination_slug now derived from nested join to global_destinations.
+type GlobalDestinationJoin = {
+  slug: string | null
+}
+
 type DestinationRowRow = {
-  id:                string
-  sort_order:        number
-  number_label:      string | null
-  title:             string | null
-  mood:              string | null
-  summary:           string | null
-  stay_label:        string | null
-  image_src:         string | null
-  image_alt:         string | null
-  destination_slug:  string | null
-  subpage_status:    string | null
+  id:                  string
+  sort_order:          number
+  number_label:        string | null
+  title:               string | null
+  mood:                string | null
+  summary:             string | null
+  stay_label:          string | null
+  image_src:           string | null
+  image_alt:           string | null
+  global_destinations: GlobalDestinationJoin | null
+  subpage_status:      string | null
 }
 
 type PricingRowRow = {
@@ -190,8 +168,6 @@ export async function getImmerseEngagement(urlId: string): Promise<ImmerseEngage
   return hydrateEngagement(engagement as unknown as EngagementRow)
 }
 
-// Canonical welcome letter is a single-row table. maybeSingle() returns null
-// if the table is somehow empty; component handles "all empty" as hidden.
 async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
   const { data } = await supabaseAnon
     .from('travel_immerse_welcome_letter')
@@ -201,9 +177,6 @@ async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
   return (data ?? null) as WelcomeLetterRow | null
 }
 
-// Defensive fallback when a status join row is somehow missing. Both FK
-// columns are NOT NULL in DB so this should never fire — keeps the type
-// contract on ImmerseEngagementData (non-nullable) honest if it does.
 const EMPTY_ENGAGEMENT_STATUS: EngagementStatus = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 const EMPTY_ITINERARY_STATUS:  ItineraryStatus  = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 
@@ -223,9 +196,14 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .select('id, sort_order, title, stay_label, note, image_src, image_alt')
       .eq('trip_id', engagementId)
       .order('sort_order'),
+    // S32C: read slug via nested join to global_destinations (canon).
     supabaseAnon
       .from('travel_immerse_trip_destination_rows')
-      .select('id, sort_order, number_label, title, mood, summary, stay_label, image_src, image_alt, destination_slug, subpage_status')
+      .select(`
+        id, sort_order, number_label, title, mood, summary, stay_label,
+        image_src, image_alt, subpage_status,
+        global_destinations ( slug )
+      `)
       .eq('trip_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
@@ -280,7 +258,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     stayLabel:       r.stay_label   ?? '',
     imageSrc:        rewriteImageUrl(r.image_src),
     imageAlt:        r.image_alt    ?? '',
-    destinationSlug: r.destination_slug,
+    destinationSlug: r.global_destinations?.slug ?? null,  // S32C: from canon
     subpageStatus:   normalizeSubpageStatus(r.subpage_status),
   }))
 
@@ -297,14 +275,14 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   return {
     engagementId:    engagementRow.id,
     engagementType:  (engagementRow.engagement_type as EngagementType) ?? 'journey',
-    audience:        normalizeAudience(engagementRow.audience),  // S32
+    audience:        normalizeAudience(engagementRow.audience),
     urlId:           engagementRow.url_id,
     slug:            engagementRow.slug,
     tripFormat:      (engagementRow.trip_format as ImmerseTripFormat) ?? 'journey',
     journeyTypes:    engagementRow.journey_types ?? [],
     clientName,
     statusLabel:     engagementRow.status_label ?? '',
-    heroTagline:     engagementRow.hero_tagline ?? undefined,    // S32 Add 1
+    heroTagline:     engagementRow.hero_tagline ?? undefined,
 
     engagementStatus,
     itineraryStatus,
@@ -344,8 +322,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   }
 }
 
-// Defensive normalizer — DB has NOT NULL DEFAULT 'live' but this catches any
-// unexpected value from a legacy migration or schema drift.
 function normalizeSubpageStatus(value: string | null): ImmerseSubpageStatus {
   if (value === 'live')    return 'live'
   if (value === 'preview') return 'preview'
@@ -353,8 +329,6 @@ function normalizeSubpageStatus(value: string | null): ImmerseSubpageStatus {
   return 'live'
 }
 
-// S32: Defensive normalizer — DB has NOT NULL DEFAULT 'private' but this
-// catches any unexpected value from a legacy migration or schema drift.
 function normalizeAudience(value: string | null): EngagementAudience {
   if (value === 'private') return 'private'
   if (value === 'public')  return 'public'

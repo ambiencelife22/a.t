@@ -2,33 +2,22 @@
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
 //
-// Last updated: S32B — Two changes.
-//   (1) getImmerseDestination now enforces itinerary membership: if the
-//       destination has no row in travel_immerse_trip_destination_rows for the
-//       engagement, return null (component handles 404 redirect). Anonymous
-//       reads (engagementId null) also return null — engagements are the only
-//       legitimate destination-render context.
-//   (2) fetchContentCards now reads via travel_immerse_trip_content_card_selections
-//       (inner-join). Card pool is engagement-scoped, not destination-scoped.
-//       Selection.sort_order wins over canonical sort_order. No engagement →
-//       empty array.
-// Prior: S30F — Added rate_suffix (canonical travel_accom_rooms) and
-//   rate_suffix_override (overlay travel_immerse_rooms) to fetchRoomsForHotels.
-//   Merged via standard ?? chain — override → canonical → undefined — into
-//   ImmerseRoomOption.rateSuffix. Free-text per-room suffix that replaces the
-//   hardcoded "+ Taxes & Fees" / "+ tax" strings in RoomCategory. NULL renders
-//   nothing (no assumed-standard fallback per D direction).
-// Prior: S30E perf — Removed legacy 'honeymoon' slug branch from
-//   resolveEngagementId. The /immerse/honeymoon public-preview route was
-//   deleted; only canonical 11-char url_id and the deprecated
-//   public_journey_slug fallback remain. The deprecated branch will be
-//   removed when public_journey_slug column drops.
-// Prior: S30E stage 1 — Engagement abstraction. resolveTripId →
-//   resolveEngagementId. Master table reads target
-//   travel_immerse_engagements. TripDestinationOverride type →
-//   EngagementDestinationOverride. Child table reads still .eq() on
-//   trip_id — child tables retain "trip" prefix because their content is
-//   journey-engagement-specific.
+// Last updated: S32C — Phase 3 of destination FK refactor. All destination
+//   reads now flow through global_destination_id FK, with URL slug resolved
+//   to FK once at the top of getImmerseDestination via global_destinations
+//   lookup. fetchEngagementOverride switches from slug-keyed to FK-keyed
+//   read. The immerse table's own .id continues to anchor descendant tables
+//   (regions, content_cards, destination_pricing_rows) that still join by
+//   immerse-id; only destination identity at the URL boundary moves to
+//   global_destinations as canon.
+// Prior: S32B — fetchContentCards reads via trip_content_card_selections
+//   inner-join (engagement-scoped pool). getImmerseDestination enforces
+//   itinerary membership: returns null if no trip_destination_rows row
+//   exists for (engagement, destination). Anonymous reads also return null.
+// Prior: S30F — Added rate_suffix to fetchRoomsForHotels.
+// Prior: S30E — Engagement abstraction. resolveTripId → resolveEngagementId.
+// Prior: S30D — Storage URL rewriting at the read layer.
+// Prior: S30 — fetchContentCards merges per-engagement card overrides.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
@@ -74,7 +63,22 @@ async function resolveEngagementId(journeyToken: string): Promise<string | null>
   return data?.id ?? null
 }
 
-// ─── Per-engagement destination override ──────────────────────────────────────
+// ─── Global destination resolver (S32C) ──────────────────────────────────────
+// URL slug → global_destinations.id. The single canonical lookup that
+// converts a URL handle to FK truth. Every downstream query uses FK.
+
+async function resolveGlobalDestinationId(slug: string): Promise<string | null> {
+  if (!slug) return null
+
+  const { data } = await supabase
+    .from('global_destinations')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
+// ─── Per-engagement destination override (S32C: FK-keyed) ────────────────────
 
 type EngagementDestinationOverride = {
   hero_image_src_override:                   string | null
@@ -99,8 +103,8 @@ type EngagementDestinationOverride = {
 }
 
 async function fetchEngagementOverride(
-  engagementId: string | null,
-  destinationSlug: string,
+  engagementId:        string | null,
+  globalDestinationId: string,
 ): Promise<EngagementDestinationOverride | null> {
   if (!engagementId) return null
 
@@ -128,7 +132,7 @@ async function fetchEngagementOverride(
       pricing_closer_indicative_range_override
     `)
     .eq('trip_id', engagementId)
-    .eq('destination_slug', destinationSlug)
+    .eq('global_destination_id', globalDestinationId)
     .maybeSingle()
 
   if (error || !data) return null
@@ -138,23 +142,29 @@ async function fetchEngagementOverride(
 // ─── getImmerseDestination ────────────────────────────────────────────────────
 
 export async function getImmerseDestination(
-  journeyToken:    string,
-  destinationSlug: string,
+  journeyToken: string,
+  urlSlug:      string,
 ): Promise<ImmerseDestinationData | null> {
 
+  // S32C: Resolve URL slug → global_destinations.id (canonical FK truth).
+  // From this point forward, the function works in FK space, not slug space.
+  const globalDestinationId = await resolveGlobalDestinationId(urlSlug)
+  if (!globalDestinationId) return null
+
+  // Read immerse content row by FK to global, not by slug.
   const { data: dest, error: destErr } = await supabase
     .from('travel_immerse_destinations')
     .select('*')
-    .eq('destination_slug', destinationSlug)
+    .eq('global_destination_id', globalDestinationId)
     .single()
 
   if (destErr || !dest) return null
 
   const destId = dest.id as string
+
   const engagementId = await resolveEngagementId(journeyToken)
 
-  // S32B: itinerary membership gate. Without an engagement, no destination
-  // render. Component handles null with a 404 redirect to overview.
+  // S32B: Itinerary membership gate. No engagement → no destination render.
   if (!engagementId) return null
 
   const [
@@ -163,24 +173,24 @@ export async function getImmerseDestination(
     cardsResult,
     pricingResult,
   ] = await Promise.all([
-    fetchEngagementOverride(engagementId, destinationSlug),
+    fetchEngagementOverride(engagementId, globalDestinationId),
     fetchHotelsShape(engagementId, destId),
     fetchContentCards(engagementId, destId),
     fetchPricingRows(destId),
   ])
 
-  // S32B: itinerary membership gate. fetchEngagementOverride returns the
-  // trip_destination_rows row for (engagementId, destinationSlug). Null means
-  // the destination isn't on this engagement's itinerary — do not render.
+  // S32B: Itinerary membership gate. fetchEngagementOverride returns the
+  // trip_destination_rows row for (engagementId, globalDestinationId). Null
+  // means destination is not on this engagement's itinerary.
   if (!overrideResult) return null
 
   const ov = overrideResult
 
-  const heroSrc2Resolved  = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
+  const heroSrc2Resolved = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
 
   return {
     destinationId:   destId,
-    destinationSlug: dest.destination_slug ?? '',
+    destinationSlug: urlSlug,
     journeyId:       journeyToken,
     shorthand:       dest.shorthand ?? undefined,
 
@@ -635,12 +645,8 @@ async function fetchContentCards(
   engagementId: string | null,
   destId:       string,
 ): Promise<ContentCardWithType[]> {
-  // S32B: card pool is engagement-scoped via trip_content_card_selections.
-  // No engagement → no selections → empty array.
   if (!engagementId) return []
 
-  // Read selections joined to canonical cards. Selection.sort_order drives
-  // render order — lets curation re-order canonical default.
   const { data: selRows, error } = await supabase
     .from('travel_immerse_trip_content_card_selections')
     .select(`
@@ -684,7 +690,6 @@ async function fetchContentCards(
 
   if (rows.length === 0) return []
 
-  // Override merge — unchanged from pre-patch.
   const overridesByCardId = new Map<string, CardOverrideRow>()
   const cardIds = rows.map(r => r.id)
   const { data: ovRows } = await supabase
