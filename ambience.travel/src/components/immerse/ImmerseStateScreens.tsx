@@ -11,7 +11,7 @@
 //   text near-black on near-black — invisible on the immerse dark surface.
 //
 // Last updated: S32F — Added TravelLoadingScreen: branded full-screen loading
-//   state with emblem shimmer + "Preparing your journey" copy. Used by
+//   state with emblem shimmer + "Preparing Your Experiences" copy. Used by
 //   DestinationPage (and engagement load) where the full branded experience
 //   is wanted. Existing LoadingScreen kept as-is — minimal text fallback for
 //   contexts where chrome is undesirable. Min display time prevents flash.
@@ -43,14 +43,14 @@ export function LoadingScreen() {
         color:         ID.muted,
         letterSpacing: '0.06em',
       }}>
-        Loading your proposal…
+        Loading Your Experience
       </div>
     </div>
   )
 }
 
 // ─── Branded full-screen loader (S32F) ───────────────────────────────────────
-// Gold-shimmer emblem + "Preparing your journey".
+// Gold-shimmer emblem + "Preparing Your Experience".
 // Renders inside ImmerseLayout — caller owns chrome.
 //
 // Sequence:
@@ -70,7 +70,7 @@ interface TravelLoadingScreenProps {
 export function TravelLoadingScreen({
   ready       = false,
   minDuration = 600,
-  copy        = 'Preparing your journey',
+  copy        = 'Preparing Your Experience',
 }: TravelLoadingScreenProps) {
   const [minElapsed, setMinElapsed] = useState(false)
   const [exiting, setExiting]       = useState(false)

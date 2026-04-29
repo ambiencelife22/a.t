@@ -7,14 +7,14 @@
 //   fetch model with independent fetches for core / hotels / cards / pricing.
 //   Page reveals when core lands (hero + intro + section headings); below-
 //   fold sections render shimmer placeholders until each slice arrives.
-//   TravelLoadingScreen (branded emblem + "Preparing your journey") replaces
+//   TravelLoadingScreen (branded emblem + "Preparing Your Experience") replaces
 //   minimal text loader for the initial core fetch. Itinerary-membership
 //   gate moved to core fetch — page 404s before painting hero if engagement
 //   doesn't include this destination.
 //
 //   Why 4 streams: the previous getImmerseDestination ran ~5-6 sequential
 //   round-trips inside one Promise.all chain. User saw "Loading your
-//   proposal" for 4-6s before any paint. Now: core resolves in ~3 round-
+//   Experience" for 4-6s before any paint. Now: core resolves in ~3 round-
 //   trips and hero paints; hotels/cards/pricing fire in parallel and reveal
 //   as they arrive. Estimated user-perceived load: 4-6s → ~1s to first
 //   paint, full content within ~3-4s.
