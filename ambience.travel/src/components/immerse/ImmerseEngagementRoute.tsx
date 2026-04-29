@@ -11,7 +11,13 @@
 // Destination (with slug)             → fetches engagement, renders DestinationPage.
 // No React Router — reads window.location.pathname directly.
 //
-// Last updated: S32D — Back-button fix. `kind` is now derived synchronously
+// Last updated: S32F — Inline IMMERSE_HOST + isImmerseHost() removed. url_id
+//   regex match in resolveImmerseRoute now goes through isTripUrlId from
+//   lib/immersePath. Inline overview-URL builder at logoHref swapped for
+//   getOverviewUrl(). resolveImmerseRoute itself stays in place — different
+//   surface than App's resolveImmerseSegments (returns a discriminated union
+//   with validation, App returns raw segments). No behavioural change.
+// Prior: S32D — Back-button fix. `kind` is now derived synchronously
 //   from pathname instead of being React state set inside an async effect.
 //   On back-navigation, render decisions use the current URL on the same tick
 //   the URL changes, eliminating the stale-state window where a destination
@@ -27,12 +33,7 @@ import ImmerseEngagementPage               from './ImmerseEngagementPage'
 import DestinationPage                     from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
-
-const IMMERSE_HOST = 'immerse.ambience.travel'
-
-function isImmerseHost(): boolean {
-  return typeof window !== 'undefined' && window.location.hostname === IMMERSE_HOST
-}
+import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../lib/immersePath'
 
 // ── URL resolution ───────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
   const seg2 = parts[1]
 
   if (!seg1) return { kind: 'invalid' }
-  if (!/^[A-Za-z0-9]{11}$/.test(seg1)) return { kind: 'invalid' }
+  if (!isTripUrlId(seg1)) return { kind: 'invalid' }
 
   if (seg2) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
   return { kind: 'overview', urlId: seg1 }
@@ -66,9 +67,7 @@ export function buildImmerseNavItems(
   engagement: ImmerseEngagementData,
   currentDestinationSlug: string | null,
 ): ImmerseNavItem[] {
-  const base = isImmerseHost()
-    ? `/${engagement.urlId}`
-    : `/immerse/${engagement.urlId}`
+  const base = getOverviewUrl(engagement.urlId)
 
   const items: ImmerseNavItem[] = [
     {
@@ -157,9 +156,7 @@ export default function ImmerseEngagementRoute() {
     [engagement, currentDestinationSlug],
   )
 
-  const logoHref = engagement
-    ? (isImmerseHost() ? `/${engagement.urlId}` : `/immerse/${engagement.urlId}`)
-    : undefined
+  const logoHref = engagement ? getOverviewUrl(engagement.urlId) : undefined
 
   if (loading) {
     return (

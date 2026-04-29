@@ -3,18 +3,22 @@
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage (S32)
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S32F — 4-stream progressive reveal. Replaces blocking single-
-//   fetch model with independent fetches for core / hotels / cards / pricing.
-//   Page reveals when core lands (hero + intro + section headings); below-
-//   fold sections render shimmer placeholders until each slice arrives.
-//   TravelLoadingScreen (branded emblem + "Preparing Your Experience") replaces
-//   minimal text loader for the initial core fetch. Itinerary-membership
-//   gate moved to core fetch — page 404s before painting hero if engagement
-//   doesn't include this destination.
+// Last updated: S32F (cleanup pass) — Inline IMMERSE_HOST + isImmerseHost +
+//   getOverviewUrl removed in favour of imports from lib/immersePath. Same
+//   logic, single source of truth across App, ImmerseEngagementRoute,
+//   DestinationPage. No behavioural change.
+// Prior: S32F (progressive reveal) — 4-stream progressive reveal. Replaces
+//   blocking single-fetch model with independent fetches for core / hotels /
+//   cards / pricing. Page reveals when core lands (hero + intro + section
+//   headings); below-fold sections render shimmer placeholders until each
+//   slice arrives. TravelLoadingScreen (branded emblem + "Preparing your
+//   journey") replaces minimal text loader for the initial core fetch.
+//   Itinerary-membership gate moved to core fetch — page 404s before
+//   painting hero if engagement doesn't include this destination.
 //
 //   Why 4 streams: the previous getImmerseDestination ran ~5-6 sequential
 //   round-trips inside one Promise.all chain. User saw "Loading your
-//   Experience" for 4-6s before any paint. Now: core resolves in ~3 round-
+//   proposal" for 4-6s before any paint. Now: core resolves in ~3 round-
 //   trips and hero paints; hotels/cards/pricing fire in parallel and reveal
 //   as they arrive. Estimated user-perceived load: 4-6s → ~1s to first
 //   paint, full content within ~3-4s.
@@ -50,27 +54,17 @@ import {
 import { useToast } from '../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
+import { getOverviewUrl } from '../../lib/immersePath'
 import type {
   ImmerseDestinationData,
   ImmerseDestinationHotelsShape,
   ImmerseEngagementData,
-  ImmerseContentCard,
   ImmersePricingRow,
 } from '../../lib/immerseTypes'
 import type {
   ImmerseDestinationCore,
   ImmerseDestinationCards,
 } from '../../lib/immerseQueries'
-
-const IMMERSE_HOST = 'immerse.ambience.travel'
-
-function isImmerseHost(): boolean {
-  return typeof window !== 'undefined' && window.location.hostname === IMMERSE_HOST
-}
-
-function getOverviewUrl(urlId: string): string {
-  return isImmerseHost() ? `/${urlId}` : `/immerse/${urlId}`
-}
 
 // ── Hero derivation helpers ──────────────────────────────────────────────────
 

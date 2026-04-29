@@ -33,7 +33,11 @@
  *   - 11-char [A-Za-z0-9] hash → engagement route
  *   - anything else            → redirect to / (homepage)
  *
- * Last updated: S32 — Added immerse.ambience.travel hostname routing.
+ * Last updated: S32F — Inline IMMERSE_HOST + isImmerseHost() + isTripUrlId()
+ *   removed in favour of imports from lib/immersePath. Same logic, single
+ *   source of truth across App, ImmerseEngagementRoute, DestinationPage.
+ *   No behavioural change.
+ * Prior: S32 — Added immerse.ambience.travel hostname routing.
  *   resolveRoute() detects the new subdomain and routes any 11-char path
  *   segment to ImmerseEngagementRoute. resolveImmerseSegments() uses
  *   subdomain-aware path parsing (no /immerse/ prefix on the new subdomain).
@@ -54,6 +58,7 @@ import { getSession } from './lib/auth'
 import { getProfile } from './lib/queries'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
 import { ThemeContext } from './lib/ThemeContext'
+import { isImmerseHost, isTripUrlId } from './lib/immersePath'
 import type { Session } from '@supabase/supabase-js'
 import type { Page } from './components/Layout'
 
@@ -73,12 +78,6 @@ const SignatureExperiencePage  = lazy(() => import('./components/landing/experie
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 
 type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience' | 'immerse'
-
-const IMMERSE_HOST = 'immerse.ambience.travel'
-
-function isImmerseHost(): boolean {
-  return window.location.hostname === IMMERSE_HOST
-}
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -112,10 +111,6 @@ function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
     : pathname.replace(/^\/immerse\/?/, '').replace(/^\/+/, '')
   const parts = stripped.split('/').filter(Boolean)
   return { seg1: parts[0] ?? '', seg2: parts[1] ?? null }
-}
-
-function isTripUrlId(seg: string): boolean {
-  return /^[A-Za-z0-9]{11}$/.test(seg)
 }
 
 function resolveRoute(): Route {
