@@ -3,10 +3,13 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S32C — Phase 3 of destination FK refactor. destination_rows
-//   SELECT now reads slug via nested join to global_destinations rather than
-//   from the immerse-side destination_slug column. Slug column on
-//   trip_destination_rows is scheduled for drop in phase 4.
+// Last updated: S32D — Trip pricing rows now read destination slug via nested
+//   join to global_destinations. Legacy `destination` text-slug column was
+//   dropped in S32B Phase 4 but this file still selected it, causing 42703
+//   on every engagement load. Same nested-join pattern S32C applied to
+//   trip_destination_rows.
+// Prior: S32C — destination_rows SELECT reads slug via nested join to
+//   global_destinations rather than the immerse-side destination_slug column.
 // Prior: S32 (Add 1) — Added hero_tagline. Earlier S32: audience field.
 // Prior: S30E perf — Removed getImmerseEngagementBySlug.
 // Prior: S30E — Engagement abstraction.
@@ -109,7 +112,7 @@ type RouteStopRow = {
   image_alt:  string | null
 }
 
-// S32C: destination_slug now derived from nested join to global_destinations.
+// S32C: destination_slug derived from nested join to global_destinations.
 type GlobalDestinationJoin = {
   slug: string | null
 }
@@ -128,13 +131,15 @@ type DestinationRowRow = {
   subpage_status:      string | null
 }
 
+// S32D: slug derived from nested join to global_destinations. Legacy
+// `destination` text-slug column was dropped in S32B Phase 4.
 type PricingRowRow = {
   id:                 string
   sort_order:         number
-  destination:        string | null
   recommended_basis:  string | null
   stay_label:         string | null
   indicative_range:   string | null
+  global_destinations: GlobalDestinationJoin | null
 }
 
 // ── Public fetch ─────────────────────────────────────────────────────────────
@@ -196,7 +201,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .select('id, sort_order, title, stay_label, note, image_src, image_alt')
       .eq('trip_id', engagementId)
       .order('sort_order'),
-    // S32C: read slug via nested join to global_destinations (canon).
     supabaseAnon
       .from('travel_immerse_trip_destination_rows')
       .select(`
@@ -207,9 +211,13 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .eq('trip_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
+    // S32D: read destination slug via nested join to global_destinations.
     supabaseAnon
       .from('travel_immerse_trip_pricing_rows')
-      .select('id, sort_order, destination, recommended_basis, stay_label, indicative_range')
+      .select(`
+        id, sort_order, recommended_basis, stay_label, indicative_range,
+        global_destinations ( slug )
+      `)
       .eq('trip_id', engagementId)
       .order('sort_order'),
     fetchCanonicalWelcomeLetter(),
@@ -218,7 +226,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   const displayRow = (displayRes.data  ?? null) as EngagementDisplayRow | null
   const stopRows   = (stopsRes.data    ?? []) as RouteStopRow[]
   const destRows   = (destsRes.data    ?? []) as unknown as DestinationRowRow[]
-  const priceRows  = (pricingRes.data  ?? []) as PricingRowRow[]
+  const priceRows  = (pricingRes.data  ?? []) as unknown as PricingRowRow[]
 
   const clientName = displayRow?.nickname
     ?? displayRow?.first_name
@@ -264,7 +272,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
 
   const tripPricingRows: ImmerseTripPricingRow[] = priceRows.map(r => ({
     id:               r.id,
-    destination:      r.destination        ?? '',
+    destination:      r.global_destinations?.slug ?? '',  // S32D: from canon
     recommendedBasis: r.recommended_basis  ?? '',
     stayLabel:        r.stay_label         ?? '',
     indicativeRange:  r.indicative_range   ?? '',
