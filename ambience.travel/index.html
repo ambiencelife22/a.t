@@ -3,7 +3,11 @@
   <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Cormorant Garamond — self-hosted (S32E perf). Italic variant preloaded
+         because it's used by the LCP-critical hero title. Regular variant loads
+         on demand via @font-face in index.css. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/cormorant-garamond-latin-italic.woff2" crossorigin>
 
     <title>ambience.travel</title>
     <meta
