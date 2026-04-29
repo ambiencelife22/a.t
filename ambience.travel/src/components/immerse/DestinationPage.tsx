@@ -3,10 +3,14 @@
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage (S32)
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S32F (cleanup pass) — Inline IMMERSE_HOST + isImmerseHost +
-//   getOverviewUrl removed in favour of imports from lib/immersePath. Same
-//   logic, single source of truth across App, ImmerseEngagementRoute,
-//   DestinationPage. No behavioural change.
+// Last updated: S32F (file split) — Imports retargeted from monolithic
+//   immerseQueries to the 4 split files: immerseDestinationCore (slug cache,
+//   override, core fetcher), immerseDestinationHotels, immerseDestinationCards,
+//   immerseDestinationPricing. Type imports also retargeted. No behavioural
+//   change. Per Dev Standards §II "no barrel index.ts files" — direct
+//   imports from each source file.
+// Prior: S32F (cleanup pass) — Inline IMMERSE_HOST + isImmerseHost +
+//   getOverviewUrl removed in favour of imports from lib/immersePath.
 // Prior: S32F (progressive reveal) — 4-stream progressive reveal. Replaces
 //   blocking single-fetch model with independent fetches for core / hotels /
 //   cards / pricing. Page reveals when core lands (hero + intro + section
@@ -45,12 +49,10 @@ import {
   ImmerseDestPricing,
 } from './ImmerseDestinationComponents'
 import { HotelsShimmer, ContentGridShimmer, PricingShimmer } from './ImmerseShimmer'
-import {
-  getImmerseDestinationCore,
-  getImmerseDestinationHotels,
-  getImmerseDestinationCards,
-  getImmerseDestinationPricing,
-} from '../../lib/immerseQueries'
+import { getImmerseDestinationCore }    from '../../lib/immerseDestinationCore'
+import { getImmerseDestinationHotels }  from '../../lib/immerseDestinationHotels'
+import { getImmerseDestinationCards }   from '../../lib/immerseDestinationCards'
+import { getImmerseDestinationPricing } from '../../lib/immerseDestinationPricing'
 import { useToast } from '../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
@@ -61,10 +63,8 @@ import type {
   ImmerseEngagementData,
   ImmersePricingRow,
 } from '../../lib/immerseTypes'
-import type {
-  ImmerseDestinationCore,
-  ImmerseDestinationCards,
-} from '../../lib/immerseQueries'
+import type { ImmerseDestinationCore }  from '../../lib/immerseDestinationCore'
+import type { ImmerseDestinationCards } from '../../lib/immerseDestinationCards'
 
 // ── Hero derivation helpers ──────────────────────────────────────────────────
 
