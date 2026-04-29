@@ -26,7 +26,7 @@ import type { ImmerseEngagementData }      from '../../lib/immerseTypes'
 import ImmerseEngagementPage               from './ImmerseEngagementPage'
 import DestinationPage                     from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
-import { LoadingScreen, NotFound }         from './ImmerseStateScreens'
+import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
 
 const IMMERSE_HOST = 'immerse.ambience.travel'
 
@@ -164,7 +164,7 @@ export default function ImmerseEngagementRoute() {
   if (loading) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
-        <LoadingScreen />
+       <TravelLoadingScreen />
       </ImmerseLayout>
     )
   }

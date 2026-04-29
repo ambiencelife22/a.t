@@ -3,12 +3,30 @@
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage (S32)
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S32D — Now receives engagement + destinationSlug as props
+// Last updated: S32F — 4-stream progressive reveal. Replaces blocking single-
+//   fetch model with independent fetches for core / hotels / cards / pricing.
+//   Page reveals when core lands (hero + intro + section headings); below-
+//   fold sections render shimmer placeholders until each slice arrives.
+//   TravelLoadingScreen (branded emblem + "Preparing your journey") replaces
+//   minimal text loader for the initial core fetch. Itinerary-membership
+//   gate moved to core fetch — page 404s before painting hero if engagement
+//   doesn't include this destination.
+//
+//   Why 4 streams: the previous getImmerseDestination ran ~5-6 sequential
+//   round-trips inside one Promise.all chain. User saw "Loading your
+//   proposal" for 4-6s before any paint. Now: core resolves in ~3 round-
+//   trips and hero paints; hotels/cards/pricing fire in parallel and reveal
+//   as they arrive. Estimated user-perceived load: 4-6s → ~1s to first
+//   paint, full content within ~3-4s.
+//
+// Prior: S32E perf — getImmerseDestination called with engagement.engagementId
+//   (UUID) instead of engagement.urlId (slug). Query layer signature changed
+//   to accept engagementId directly.
+// Prior: S32D — Now receives engagement + destinationSlug as props
 //   from ImmerseEngagementRoute. Removed internal pathname tracking,
 //   popstate/pageshow listeners, getImmerseEngagement call, and synthetic
 //   popstate dispatch. Parent owns routing; this component owns destination
-//   data fetching only. Eliminates back-button blank-page bug where
-//   DestinationPage stayed mounted with stale URL state.
+//   data fetching only.
 // Prior: S30E perf — Render layout shell during load to prevent white-flash.
 
 import { useEffect, useState } from 'react'
@@ -16,15 +34,33 @@ import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import ImmerseStructuredData from './ImmerseStructuredData'
-import { ImmerseDestIntro } from './ImmerseDestinationComponents'
-import { ImmerseHotelOptions } from './ImmerseDestinationComponents'
-import { ImmerseContentGrid } from './ImmerseDestinationComponents'
-import { ImmerseDestPricing } from './ImmerseDestinationComponents'
-import { getImmerseDestination } from '../../lib/immerseQueries'
+import {
+  ImmerseDestIntro,
+  ImmerseHotelOptions,
+  ImmerseContentGrid,
+  ImmerseDestPricing,
+} from './ImmerseDestinationComponents'
+import { HotelsShimmer, ContentGridShimmer, PricingShimmer } from './ImmerseShimmer'
+import {
+  getImmerseDestinationCore,
+  getImmerseDestinationHotels,
+  getImmerseDestinationCards,
+  getImmerseDestinationPricing,
+} from '../../lib/immerseQueries'
 import { useToast } from '../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
-import { LoadingScreen, NotFound } from './ImmerseStateScreens'
-import type { ImmerseDestinationData, ImmerseEngagementData } from '../../lib/immerseTypes'
+import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
+import type {
+  ImmerseDestinationData,
+  ImmerseDestinationHotelsShape,
+  ImmerseEngagementData,
+  ImmerseContentCard,
+  ImmersePricingRow,
+} from '../../lib/immerseTypes'
+import type {
+  ImmerseDestinationCore,
+  ImmerseDestinationCards,
+} from '../../lib/immerseQueries'
 
 const IMMERSE_HOST = 'immerse.ambience.travel'
 
@@ -38,7 +74,6 @@ function getOverviewUrl(urlId: string): string {
 
 // ── Hero derivation helpers ──────────────────────────────────────────────────
 
-// Pull a "Month Year" or similar date fragment out of engagement.statusLabel.
 function deriveDateLabel(statusLabel: string | undefined): string {
   if (!statusLabel) return ''
   const m = statusLabel.match(
@@ -59,6 +94,66 @@ function deriveNightsLabel(engagement: ImmerseEngagementData, destinationSlug: s
   return row?.stayLabel ?? ''
 }
 
+// ── Compose ImmerseDestinationData from core + hotels + cards + pricing ─────
+// Section components consume the bundled ImmerseDestinationData shape. As
+// each slice lands we re-compose from current state + sensible empties for
+// any slice still loading. The shimmer-vs-real conditional render below
+// guarantees a section component never sees its own slice as empty
+// placeholder — by the time a section renders, its slice is real.
+
+function composeData(
+  core:    ImmerseDestinationCore,
+  hotels:  ImmerseDestinationHotelsShape | null,
+  cards:   ImmerseDestinationCards | null,
+  pricing: ImmersePricingRow[] | null,
+): ImmerseDestinationData {
+  return {
+    destinationId:       core.destinationId,
+    destinationSlug:     core.destinationSlug,
+    journeyId:           core.journeyId,
+    shorthand:           core.shorthand,
+
+    eyebrow:             core.eyebrow,
+    title:               core.title,
+    subtitle:            core.subtitle,
+    heroImageSrc:        core.heroImageSrc,
+    heroImageAlt:        core.heroImageAlt,
+    heroImageSrc2:       core.heroImageSrc2,
+    heroImageAlt2:       core.heroImageAlt2,
+    heroTitle2:          core.heroTitle2,
+    heroSubtitle2:       core.heroSubtitle2,
+    heroPills:           core.heroPills,
+
+    introEyebrow:        core.introEyebrow,
+    introTitle:          core.introTitle,
+    introBody:           core.introBody,
+
+    hotelsEyebrow:       core.hotelsEyebrow,
+    hotelsTitle:         core.hotelsTitle,
+    hotelsBody:          core.hotelsBody,
+    hotels:              hotels ?? { kind: 'flat', hotels: [] },
+
+    diningEyebrow:       core.diningEyebrow,
+    diningTitle:         core.diningTitle,
+    diningBody:          core.diningBody,
+    dining:              cards?.dining ?? [],
+
+    experiencesEyebrow:  core.experiencesEyebrow,
+    experiencesTitle:    core.experiencesTitle,
+    experiencesBody:     core.experiencesBody,
+    experiences:         cards?.experiences ?? [],
+
+    pricingEyebrow:      core.pricingEyebrow,
+    pricingTitle:        core.pricingTitle,
+    pricingBody:         core.pricingBody,
+    pricingRows:         pricing ?? [],
+    pricingCloser:       core.pricingCloser,
+    pricingNotesHeading: core.pricingNotesHeading,
+    pricingNotesTitle:   core.pricingNotesTitle,
+    pricingNotes:        core.pricingNotes,
+  }
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -67,60 +162,89 @@ interface Props {
 }
 
 export default function DestinationPage({ engagement, destinationSlug }: Props) {
-  const [data, setData]       = useState<ImmerseDestinationData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [errored, setErrored] = useState(false)
   const { toast } = useToast()
+
+  // 4 independent streams. Page reveals when core lands.
+  const [core,    setCore]    = useState<ImmerseDestinationCore | null>(null)
+  const [hotels,  setHotels]  = useState<ImmerseDestinationHotelsShape | null>(null)
+  const [cards,   setCards]   = useState<ImmerseDestinationCards | null>(null)
+  const [pricing, setPricing] = useState<ImmersePricingRow[] | null>(null)
+
+  const [coreLoading, setCoreLoading] = useState(true)
+  const [errored,     setErrored]     = useState(false)
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      setLoading(true)
+      // Reset state on engagement / destination change
+      setCore(null)
+      setHotels(null)
+      setCards(null)
+      setPricing(null)
+      setCoreLoading(true)
       setErrored(false)
 
       try {
-        const result = await getImmerseDestination(engagement.urlId, destinationSlug)
+        // Stage 1: core. Hero needs this. Itinerary-membership gate lives here.
+        const coreResult = await getImmerseDestinationCore(engagement.engagementId, destinationSlug)
         if (cancelled) return
 
-        if (!result) {
+        if (!coreResult) {
           toast.warning(`We couldn't find that page. Returning to the overview.`)
           window.history.replaceState(null, '', getOverviewUrl(engagement.urlId))
           window.dispatchEvent(new PopStateEvent('popstate'))
           setErrored(true)
-          setLoading(false)
+          setCoreLoading(false)
           return
         }
 
-        setData(result)
-        setLoading(false)
+        setCore(coreResult)
+        setCoreLoading(false)
+
+        // Stage 2: hotels, cards, pricing — all in parallel, each lands
+        // independently. No await on the outer Promise.all so each setState
+        // fires the moment its slice resolves.
+        getImmerseDestinationHotels(engagement.engagementId, coreResult.destinationId)
+          .then(result => { if (!cancelled) setHotels(result) })
+          .catch(err => console.error('DestinationPage: hotels fetch failed', err))
+
+        getImmerseDestinationCards(engagement.engagementId, coreResult.globalDestinationId)
+          .then(result => { if (!cancelled) setCards(result) })
+          .catch(err => console.error('DestinationPage: cards fetch failed', err))
+
+        getImmerseDestinationPricing(coreResult.destinationId)
+          .then(result => { if (!cancelled) setPricing(result) })
+          .catch(err => console.error('DestinationPage: pricing fetch failed', err))
+
       } catch (err) {
-        console.error('DestinationPage: failed to load destination', err)
+        console.error('DestinationPage: failed to load destination core', err)
         if (cancelled) return
         toast.warning('Something went wrong loading that destination. Returning to the overview.')
         window.history.replaceState(null, '', getOverviewUrl(engagement.urlId))
         window.dispatchEvent(new PopStateEvent('popstate'))
         setErrored(true)
-        setLoading(false)
+        setCoreLoading(false)
       }
     }
 
     load()
     return () => { cancelled = true }
-  }, [engagement.urlId, destinationSlug, toast])
+  }, [engagement.engagementId, destinationSlug, engagement.urlId, toast])
 
   const navItems = buildImmerseNavItems(engagement, destinationSlug)
   const logoHref = getOverviewUrl(engagement.urlId)
 
-  if (loading) {
+  // Branded loader until core lands. Errored short-circuits to NotFound.
+  if (coreLoading) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
-        <LoadingScreen />
+        <TravelLoadingScreen />
       </ImmerseLayout>
     )
   }
 
-  if (errored || !data) {
+  if (errored || !core) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
         <NotFound message='Returning to the overview…' />
@@ -128,6 +252,10 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
     )
   }
 
+  // From here, core is guaranteed present. Compose data from current slice
+  // state — sections that have data render real components; sections still
+  // loading render shimmer.
+  const data        = composeData(core, hotels, cards, pricing)
   const dateLabel   = deriveDateLabel(engagement.statusLabel)
   const titlePrefix = deriveTitlePrefix(engagement.journeyTypes)
   const nightsLabel = deriveNightsLabel(engagement, destinationSlug)
@@ -154,15 +282,20 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
       />
 
       <ImmerseDestIntro data={data} />
-      <ImmerseHotelOptions data={data} />
 
-      <ImmerseContentGrid
-        id='dining'
-        eyebrow={data.diningEyebrow}
-        title={data.diningTitle}
-        body={data.diningBody}
-        items={data.dining}
-      />
+      {hotels ? <ImmerseHotelOptions data={data} /> : <HotelsShimmer />}
+
+      {cards ? (
+        <ImmerseContentGrid
+          id='dining'
+          eyebrow={data.diningEyebrow}
+          title={data.diningTitle}
+          body={data.diningBody}
+          items={data.dining}
+        />
+      ) : (
+        <ContentGridShimmer />
+      )}
 
       {data.heroImageSrc2 && (
         <ImmerseHeroBlock
@@ -173,15 +306,19 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
         />
       )}
 
-      <ImmerseContentGrid
-        dark
-        eyebrow={data.experiencesEyebrow}
-        title={data.experiencesTitle}
-        body={data.experiencesBody}
-        items={data.experiences}
-      />
+      {cards ? (
+        <ImmerseContentGrid
+          dark
+          eyebrow={data.experiencesEyebrow}
+          title={data.experiencesTitle}
+          body={data.experiencesBody}
+          items={data.experiences}
+        />
+      ) : (
+        <ContentGridShimmer dark />
+      )}
 
-      <ImmerseDestPricing data={data} />
+      {pricing ? <ImmerseDestPricing data={data} /> : <PricingShimmer />}
     </ImmerseLayout>
   )
 }

@@ -142,3 +142,30 @@ img {
   30%  { opacity: 0.12; }
   100% { opacity: 0.38; }
 }
+
+/* === S32F — append to src/index.css === */
+
+/* Section-level shimmer — flat panel sweep, subtle */
+@keyframes immerseShimmerSweep {
+  0%   { background-position: -100% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* Emblem shimmer — gold sweep across emblem on TravelLoadingScreen */
+@keyframes immerseEmblemShimmer {
+  0%   { background-position: -150% 0; opacity: 0.65; }
+  50%  {                                opacity: 1;    }
+  100% { background-position:  250% 0; opacity: 0.65; }
+}
+
+/* Loading screen fade out */
+@keyframes immerseLoadFadeOut {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Loading screen content fade in */
+@keyframes immerseLoadFadeIn {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
