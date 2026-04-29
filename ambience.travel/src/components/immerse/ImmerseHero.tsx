@@ -2,17 +2,22 @@
 // Owns the full-bleed glass-card hero. Used by both journey overview and destination subpages.
 // Hero image is the first element — no brand strip above it.
 //
-// Last updated: S32 (Add 1) — Optional itinerary status line. Renders below
+// Last updated: S32E (Add 1 perf fix) — Path A refactor: hero image now renders as
+//   real <img> with fetchpriority="high" instead of CSS background-image stack.
+//   3 gradient layers become absolutely-positioned overlay divs sitting between
+//   image and glass card. Parallax preserved via JS transform on the <img>
+//   (PARALLAX_MAGNITUDE constant — tune as needed). Targets LCP fix from 5.3s.
+//   Visual output preserved; paint pipeline fundamentally different.
+// Prior: S32 (Add 1) — Optional itinerary status line. Renders below
 //   the date+nights label as small italic dim text. Subtle marker for guests
-//   so they understand which stage of the proposal lifecycle they're seeing
-//   (e.g. 'Initial Proposal', 'Refined Proposal', 'Final Proposal'). Empty
-//   prop hides the line entirely. Consumer (ImmerseEngagementPage) passes
-//   data.itineraryStatus.label.
-// Prior: S11 — Original hero structure with guest name, titlePrefix, title
-//   word stagger, dateLabel + nightsLabel, subtitle, CTAs.
+//   so they understand which stage of the proposal lifecycle they're seeing.
 
 import { useEffect, useRef, useState } from 'react'
 import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp } from './ImmerseComponents'
+
+// Parallax tuning 0.8 is closer to true background-attachment:fixed feel.
+// Image overscan (height 116% / top -8%) accommodates magnitudes up to 0.8.
+const PARALLAX_MAGNITUDE = 0.8
 
 type Props = {
   // Personalisation
@@ -56,27 +61,52 @@ export default function ImmerseHero({
   const { ref, visible } = useImmerseVisible(0.05)
   const isMobile         = useImmerseMobile()
   const sectionRef       = useRef<HTMLElement>(null)
+  const imgRef           = useRef<HTMLImageElement>(null)
   const [cardOpacity, setCardOpacity] = useState(1)
 
+  // Single rAF-throttled scroll listener — drives both parallax and card fade.
+  // Mobile skips parallax (matches prior backgroundAttachment: 'scroll' behavior).
   useEffect(() => {
-    function onScroll() {
+    let rafId = 0
+    let ticking = false
+
+    function update() {
       const el = sectionRef.current
-      if (!el) return
+      if (!el) {
+        ticking = false
+        return
+      }
       const { top, height } = el.getBoundingClientRect()
+
+      // Card opacity fade — unchanged from prior shape
       const progress = Math.max(0, Math.min(1, (-top) / (height * 0.7)))
       setCardOpacity(1 - progress * 0.82)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
-  // Vignette (radial) + vertical gradient + left-side gradient + image
-  const shellLayers = [
-    'radial-gradient(circle at center, rgba(0,0,0,0) 38%, rgba(0,0,0,0.44) 100%)',
-    'linear-gradient(180deg, rgba(3,6,18,0.22) 0%, rgba(2,4,12,0.52) 100%)',
-    'linear-gradient(90deg, rgba(6,6,6,0.72) 0%, rgba(6,6,6,0.40) 32%, rgba(6,6,6,0.18) 62%, rgba(6,6,6,0.28) 100%)',
-    `url('${heroImageSrc}')`,
-  ]
+      // Parallax — desktop only. Translate <img> against scroll direction.
+      // top is positive when section is below viewport, negative when scrolled past.
+      if (!isMobile && imgRef.current) {
+        const translateY = -top * PARALLAX_MAGNITUDE
+        imgRef.current.style.transform = `translate3d(0, ${translateY}px, 0)`
+      }
+
+      ticking = false
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        rafId = requestAnimationFrame(update)
+        ticking = true
+      }
+    }
+
+    // Run once on mount to set initial parallax position
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [isMobile])
 
   return (
     <section
@@ -84,20 +114,82 @@ export default function ImmerseHero({
       style={{ borderTop: 'none', padding: 0, margin: 0 }}
     >
       <div
-        aria-label={heroImageAlt}
         style={{
-          position:             'relative',
-          minHeight:            isMobile ? 640 : 820,
-          backgroundImage:      shellLayers.join(', '),
-          backgroundAttachment: isMobile ? 'scroll' : 'fixed, fixed, fixed, fixed',
-          backgroundSize:       'auto, auto, auto, cover',
-          backgroundPosition:   'center, center, center, center',
-          backgroundRepeat:     'no-repeat, no-repeat, no-repeat, no-repeat',
-          display:              'flex',
-          alignItems:           'center',
+          position:   'relative',
+          minHeight:  isMobile ? 640 : 820,
+          overflow:   'hidden',                // contain the overscanned <img>
+          display:    'flex',
+          alignItems: 'center',
         }}
       >
-        <div style={{ width: 'min(1220px, calc(100% - 36px))', margin: '0 auto', padding: '44px 0' }}>
+        {/* Hero image — real <img> for LCP prioritization. */}
+        {/* Overscanned (116% height, -8% top) so parallax translation never reveals edges. */}
+        <img
+          ref={imgRef}
+          src={heroImageSrc}
+          alt={heroImageAlt}
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          style={{
+            position:       'absolute',
+            top:            isMobile ? 0 : '-40%',
+            left:           0,
+            width:          '100%',
+            height:         isMobile ? '100%' : '180%',
+            objectFit:      'cover',
+            objectPosition: 'center',
+            zIndex:         0,
+            willChange:     isMobile ? 'auto' : 'transform',
+          }}
+        />
+
+        {/* Overlay layer 1 — radial vignette */}
+        <div
+          aria-hidden
+          style={{
+            position:   'absolute',
+            inset:      0,
+            background: 'radial-gradient(circle at center, rgba(0,0,0,0) 38%, rgba(0,0,0,0.44) 100%)',
+            zIndex:     1,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Overlay layer 2 — vertical gradient */}
+        <div
+          aria-hidden
+          style={{
+            position:   'absolute',
+            inset:      0,
+            background: 'linear-gradient(180deg, rgba(3,6,18,0.22) 0%, rgba(2,4,12,0.52) 100%)',
+            zIndex:     2,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Overlay layer 3 — side gradient (left-biased darken) */}
+        <div
+          aria-hidden
+          style={{
+            position:   'absolute',
+            inset:      0,
+            background: 'linear-gradient(90deg, rgba(6,6,6,0.72) 0%, rgba(6,6,6,0.40) 32%, rgba(6,6,6,0.18) 62%, rgba(6,6,6,0.28) 100%)',
+            zIndex:     3,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Content layer — glass card */}
+        <div
+          style={{
+            position:  'relative',
+            zIndex:    4,
+            width:     'min(1220px, calc(100% - 36px))',
+            margin:    '0 auto',
+            padding:   '44px 0',
+          }}
+        >
           <div
             ref={ref as React.RefObject<HTMLDivElement>}
             style={{
