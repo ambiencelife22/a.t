@@ -84,3 +84,46 @@ export const IMMERSE = {
   goldBorderOnLight:  'rgba(184,150,12,0.30)',
   goldTintOnLight:    'rgba(184,150,12,0.08)',
 } as const
+
+// ── Hero tokens (S32F) ───────────────────────────────────────────────────────
+// Hero-specific visual vocabulary. Lifted from inline literals in
+// ImmerseHero.tsx per Dev Standards §II "no hardcoded hex strings in
+// component files". Hero is the highest-visibility surface in the codebase —
+// its tokens are scoped to a dedicated block so future hero work stays
+// contained.
+//
+// Render order: hero <img> (z=0) → vignette (z=1) → overlayVertical (z=2)
+// → overlaySide (z=3) → glass card (z=4).
+
+export const IMMERSE_HERO = {
+  // Three overlay layers between hero <img> and glass card content.
+  vignette:        'radial-gradient(circle at center, rgba(0,0,0,0) 38%, rgba(0,0,0,0.44) 100%)',
+  overlayVertical: 'linear-gradient(180deg, rgba(3,6,18,0.22) 0%, rgba(2,4,12,0.52) 100%)',
+  overlaySide:     'linear-gradient(90deg, rgba(6,6,6,0.72) 0%, rgba(6,6,6,0.40) 32%, rgba(6,6,6,0.18) 62%, rgba(6,6,6,0.28) 100%)',
+
+  // Glass card chrome — sits on top of overlay stack, contains personalisation + CTAs.
+  glassBorder:     '1px solid rgba(255,255,255,0.20)',
+  glassBackground: 'linear-gradient(180deg, rgba(12,12,12,0.18), rgba(12,12,12,0.10))',
+  glassShadow:     '0 20px 60px rgba(0,0,0,0.22)',
+  glassBlur:       'blur(10px)',
+  glassRadius:     30,
+
+  // CTA chrome.
+  ctaPrimaryFg:        '#090909',                      // dark text on gold primary
+  ctaGhostBorder:      'rgba(255,255,255,0.10)',       // dining ghost border
+  ctaGhostBorderStrong:'rgba(255,255,255,0.14)',       // secondary ghost border (slightly stronger)
+
+  // Title word-stagger animation — title fade-in cubic-bezier
+  titleStaggerEasing: 'cubic-bezier(0.16,1,0.3,1)',
+} as const
+
+// ── Font families (S32F) ─────────────────────────────────────────────────────
+// Canonical font-family strings. Single source for serif + sans stacks across
+// the codebase. Per Dev Standards §IV: typography styling (italic, bold,
+// color) is a component concern, but font-family identity is system-wide.
+// Cormorant Garamond appears in 3+ surfaces today (ImmerseHero title +
+// titlePrefix, ContentCard name, ImmerseTitle when serif=true).
+
+export const FONTS = {
+  serif: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
+} as const

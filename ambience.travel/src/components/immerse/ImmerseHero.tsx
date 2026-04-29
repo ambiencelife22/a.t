@@ -2,7 +2,15 @@
 // Owns the full-bleed glass-card hero. Used by both journey overview and destination subpages.
 // Hero image is the first element — no brand strip above it.
 //
-// Last updated: S32E (Add 1 perf fix) — Path A refactor: hero image now renders as
+// Last updated: S32F — Token + style extraction. All hardcoded rgba/hex
+//   literals lifted to IMMERSE_HERO + FONTS tokens in landingColors.ts per
+//   Dev Standards §II "no hardcoded hex strings in component files". Layout-
+//   shape constants (heights, parallax magnitude, image overscan) consolidated
+//   into HERO_LAYOUT config block at top of file. No visual change — same
+//   hex values, sourced from tokens. Cormorant Garamond fontFamily promoted
+//   to FONTS.serif (used here + ImmerseDestComponents). PARALLAX_MAGNITUDE
+//   moved into HERO_LAYOUT alongside related layout constants.
+// Prior: S32E (Add 1 perf fix) — Path A refactor: hero image now renders as
 //   real <img> with fetchpriority="high" instead of CSS background-image stack.
 //   3 gradient layers become absolutely-positioned overlay divs sitting between
 //   image and glass card. Parallax preserved via JS transform on the <img>
@@ -13,11 +21,31 @@
 //   so they understand which stage of the proposal lifecycle they're seeing.
 
 import { useEffect, useRef, useState } from 'react'
-import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp } from './ImmerseComponents'
+import { ID, IMMERSE_HERO, FONTS } from '../../lib/landingColors'
+import { useImmerseMobile, useImmerseVisible, immerseFadeUp } from './ImmerseComponents'
 
-// Parallax tuning 0.8 is closer to true background-attachment:fixed feel.
-// Image overscan (height 116% / top -8%) accommodates magnitudes up to 0.8.
-const PARALLAX_MAGNITUDE = 0.8
+// ─── Layout config ───────────────────────────────────────────────────────────
+// All hero shape/motion constants live here. Visual chrome (colors, gradients,
+// borders) lives in IMMERSE_HERO tokens. Typography fontFamily is FONTS.serif.
+
+const HERO_LAYOUT = {
+  // Section minimum height — desktop is taller for cinematic effect.
+  minHeightMobile:   640,
+  minHeightDesktop:  820,
+
+  // Parallax tuning. 0.8 is closer to true background-attachment:fixed feel.
+  // Image overscan (height 180% / top -40%) accommodates magnitudes up to 0.8.
+  parallaxMagnitude: 0.8,
+  imageHeightDesktop: '180%',
+  imageHeightMobile:  '100%',
+  imageTopDesktop:    '-40%',
+  imageTopMobile:     0,
+
+  // Card opacity fade — progress is 0..1 over (height * fadeWindow) of scroll.
+  // fadeMax = 0.82 means card fades from 1.0 to 0.18 across the scroll window.
+  cardFadeWindow: 0.7,
+  cardFadeMax:    0.82,
+} as const
 
 type Props = {
   // Personalisation
@@ -79,13 +107,13 @@ export default function ImmerseHero({
       const { top, height } = el.getBoundingClientRect()
 
       // Card opacity fade — unchanged from prior shape
-      const progress = Math.max(0, Math.min(1, (-top) / (height * 0.7)))
-      setCardOpacity(1 - progress * 0.82)
+      const progress = Math.max(0, Math.min(1, (-top) / (height * HERO_LAYOUT.cardFadeWindow)))
+      setCardOpacity(1 - progress * HERO_LAYOUT.cardFadeMax)
 
       // Parallax — desktop only. Translate <img> against scroll direction.
       // top is positive when section is below viewport, negative when scrolled past.
       if (!isMobile && imgRef.current) {
-        const translateY = -top * PARALLAX_MAGNITUDE
+        const translateY = -top * HERO_LAYOUT.parallaxMagnitude
         imgRef.current.style.transform = `translate3d(0, ${translateY}px, 0)`
       }
 
@@ -116,14 +144,14 @@ export default function ImmerseHero({
       <div
         style={{
           position:   'relative',
-          minHeight:  isMobile ? 640 : 820,
+          minHeight:  isMobile ? HERO_LAYOUT.minHeightMobile : HERO_LAYOUT.minHeightDesktop,
           overflow:   'hidden',                // contain the overscanned <img>
           display:    'flex',
           alignItems: 'center',
         }}
       >
         {/* Hero image — real <img> for LCP prioritization. */}
-        {/* Overscanned (116% height, -8% top) so parallax translation never reveals edges. */}
+        {/* Overscanned so parallax translation never reveals edges. */}
         <img
           ref={imgRef}
           src={heroImageSrc}
@@ -133,10 +161,10 @@ export default function ImmerseHero({
           decoding="async"
           style={{
             position:       'absolute',
-            top:            isMobile ? 0 : '-40%',
+            top:            isMobile ? HERO_LAYOUT.imageTopMobile : HERO_LAYOUT.imageTopDesktop,
             left:           0,
             width:          '100%',
-            height:         isMobile ? '100%' : '180%',
+            height:         isMobile ? HERO_LAYOUT.imageHeightMobile : HERO_LAYOUT.imageHeightDesktop,
             objectFit:      'cover',
             objectPosition: 'center',
             zIndex:         0,
@@ -148,10 +176,10 @@ export default function ImmerseHero({
         <div
           aria-hidden
           style={{
-            position:   'absolute',
-            inset:      0,
-            background: 'radial-gradient(circle at center, rgba(0,0,0,0) 38%, rgba(0,0,0,0.44) 100%)',
-            zIndex:     1,
+            position:      'absolute',
+            inset:         0,
+            background:    IMMERSE_HERO.vignette,
+            zIndex:        1,
             pointerEvents: 'none',
           }}
         />
@@ -160,10 +188,10 @@ export default function ImmerseHero({
         <div
           aria-hidden
           style={{
-            position:   'absolute',
-            inset:      0,
-            background: 'linear-gradient(180deg, rgba(3,6,18,0.22) 0%, rgba(2,4,12,0.52) 100%)',
-            zIndex:     2,
+            position:      'absolute',
+            inset:         0,
+            background:    IMMERSE_HERO.overlayVertical,
+            zIndex:        2,
             pointerEvents: 'none',
           }}
         />
@@ -172,10 +200,10 @@ export default function ImmerseHero({
         <div
           aria-hidden
           style={{
-            position:   'absolute',
-            inset:      0,
-            background: 'linear-gradient(90deg, rgba(6,6,6,0.72) 0%, rgba(6,6,6,0.40) 32%, rgba(6,6,6,0.18) 62%, rgba(6,6,6,0.28) 100%)',
-            zIndex:     3,
+            position:      'absolute',
+            inset:         0,
+            background:    IMMERSE_HERO.overlaySide,
+            zIndex:        3,
             pointerEvents: 'none',
           }}
         />
@@ -195,12 +223,12 @@ export default function ImmerseHero({
             style={{
               width:                'min(760px, 100%)',
               padding:              isMobile ? 22 : 38,
-              border:               '1px solid rgba(255,255,255,0.20)',
-              borderRadius:         30,
-              background:           'linear-gradient(180deg, rgba(12,12,12,0.18), rgba(12,12,12,0.10))',
-              backdropFilter:       'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              boxShadow:            '0 20px 60px rgba(0,0,0,0.22)',
+              border:               IMMERSE_HERO.glassBorder,
+              borderRadius:         IMMERSE_HERO.glassRadius,
+              background:           IMMERSE_HERO.glassBackground,
+              backdropFilter:       IMMERSE_HERO.glassBlur,
+              WebkitBackdropFilter: IMMERSE_HERO.glassBlur,
+              boxShadow:            IMMERSE_HERO.glassShadow,
               opacity:              cardOpacity,
               transition:           'opacity 0.05s linear',
             }}
@@ -227,7 +255,7 @@ export default function ImmerseHero({
                   color:        ID.text,
                   fontSize:     isMobile ? 38 : 'clamp(42px,5vw,68px)',
                   lineHeight:   1.0,
-                  fontFamily:   '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
+                  fontFamily:   FONTS.serif,
                   fontStyle:    'italic',
                   fontWeight:   400,
                   marginBottom: 4,
@@ -245,7 +273,7 @@ export default function ImmerseHero({
                 lineHeight:    0.95,
                 letterSpacing: '-0.02em',
                 fontWeight:    400,
-                fontFamily:    '"Cormorant Garamond", "Cormorant", "Times New Roman", serif',
+                fontFamily:    FONTS.serif,
                 marginBottom:  dateLabel ? 14 : 16,
                 color:         ID.text,
               }}
@@ -258,7 +286,7 @@ export default function ImmerseHero({
                     marginRight: '0.22em',
                     opacity:    visible ? 1 : 0,
                     transform:  visible ? 'translateY(0)' : 'translateY(14px)',
-                    transition: `opacity 0.7s ease ${100 + i * 55}ms, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${100 + i * 55}ms`,
+                    transition: `opacity 0.7s ease ${100 + i * 55}ms, transform 0.7s ${IMMERSE_HERO.titleStaggerEasing} ${100 + i * 55}ms`,
                     willChange: 'opacity, transform',
                   }}
                 >
@@ -345,7 +373,7 @@ export default function ImmerseHero({
                   textTransform:  'uppercase',
                   fontWeight:     800,
                   background:     ID.gold,
-                  color:          '#090909',
+                  color:          IMMERSE_HERO.ctaPrimaryFg,
                   border:         `1px solid ${ID.gold}`,
                 }}
               >
@@ -369,7 +397,7 @@ export default function ImmerseHero({
                     fontWeight:     700,
                     background:     'transparent',
                     color:          ID.muted,
-                    border:         '1px solid rgba(255,255,255,0.10)',
+                    border:         `1px solid ${IMMERSE_HERO.ctaGhostBorder}`,
                   }}
                 >
                   {diningLabel}
@@ -391,7 +419,7 @@ export default function ImmerseHero({
                   fontWeight:     800,
                   background:     'transparent',
                   color:          ID.text,
-                  border:         '1px solid rgba(255,255,255,0.14)',
+                  border:         `1px solid ${IMMERSE_HERO.ctaGhostBorderStrong}`,
                 }}
               >
                 {secondaryLabel}
