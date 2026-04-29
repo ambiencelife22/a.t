@@ -4,10 +4,11 @@
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
 
-    <!-- Cormorant Garamond — self-hosted (S32E perf). Italic variant preloaded
-         because it's used by the LCP-critical hero title. Regular variant loads
-         on demand via @font-face in index.css. -->
-    <link rel="preload" as="font" type="font/woff2" href="/fonts/cormorant-garamond-latin-italic.woff2" crossorigin>
+    <!-- Cormorant Garamond — self-hosted (S32E perf). Both weights preloaded:
+         regular for the LCP-critical hero title, italic for titlePrefix.
+         Preload links must precede the stylesheet that references them. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/cormorant-garamond-latin.woff2" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/cormorant-garamond-latin-italic.woff2" crossorigin="anonymous">
 
     <title>ambience.travel</title>
     <meta
