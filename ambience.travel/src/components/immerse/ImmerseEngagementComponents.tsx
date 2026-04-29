@@ -2,7 +2,17 @@
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
 //
-// Last updated: S30E stage 2 — File renamed ImmerseTripComponents.tsx →
+// Last updated: S32C — Route strip linkedRow lookup changed from index-based
+//   (destinationRows[i]) to title-match. Index-based was off by one whenever
+//   the route stops included an origin (e.g. v2: Saudi Start as stops[0])
+//   because route_stops and destination_rows have different cardinalities —
+//   stops include origin/return, rows do not. Title match: stop title is
+//   tested against each destination row's title; first match wins, else
+//   anchorId stays null and the stop renders non-clickable. Origin/return
+//   stops naturally have no matching row → correctly non-clickable. Any
+//   route stop whose title matches its destination row's title scrolls
+//   correctly to that row.
+// Prior: S30E stage 2 — File renamed ImmerseTripComponents.tsx →
 //   ImmerseEngagementComponents.tsx. Component rename: ImmerseTripPricing →
 //   ImmerseEngagementPricing. ImmerseRouteStrip + ImmerseDestinationRows
 //   names preserved (engagement-agnostic concepts — route segments and
@@ -45,6 +55,26 @@ function getDestinationAnchorId(row: ImmerseDestinationRow) {
   if (row.destinationSlug) return `dest-${row.destinationSlug}`
   if (row.title) return `dest-${slugifyAnchor(row.title)}`
   return `dest-${row.id}`
+}
+
+// S32C: title-match resolver. Route stops and destination rows have
+// different cardinalities (stops include origin/return, rows do not), so
+// indexing one by the other's position drifts. Match on title instead;
+// stops without a matching row (origin/return) return null → non-clickable.
+function findDestinationRowForStop(
+  stop: ImmerseRouteStop,
+  rows: ImmerseDestinationRow[],
+): ImmerseDestinationRow | null {
+  const stopTitle = stop.title?.trim()
+  if (!stopTitle) return null
+
+  for (const row of rows) {
+    const rowTitle = row.title?.trim()
+    if (!rowTitle) continue
+    if (rowTitle === stopTitle) return row
+  }
+
+  return null
 }
 
 // Defensive — destination_slug literal text "null" was the source of the
@@ -123,7 +153,9 @@ export function ImmerseRouteStrip({ data }: { data: ImmerseEngagementData }) {
         }}
       >
         {data.routeStops.map((stop, i) => {
-          const linkedRow = data.destinationRows[i] ?? null
+          // S32C: title-match instead of index-position. Origin/return stops
+          // (no matching destination row) → anchorId null → non-clickable.
+          const linkedRow = findDestinationRowForStop(stop, data.destinationRows)
           const anchorId = linkedRow ? getDestinationAnchorId(linkedRow) : null
 
           return (
