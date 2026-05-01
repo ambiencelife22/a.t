@@ -16,11 +16,6 @@
 // Last updated: S32K — Room name read path fixed. Canon room_name added to schema;
 //   frontend now reads overlay.room_name_override ?? canon.room_name (line 293).
 //   levelLabel field in ImmerseRoomOption now correctly carries room name, not tier.
-//
-// S32F — Split from immerseQueries.ts. No logic change. Single-
-//   purpose file is the canonical home for hotel + room + gallery reads.
-//   Caller passes destinationId (resolved by core fetcher) so this file does
-//   not re-resolve from URL slug.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'

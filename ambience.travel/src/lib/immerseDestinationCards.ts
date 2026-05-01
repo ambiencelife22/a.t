@@ -12,10 +12,6 @@
 //   truth), merge per-engagement overrides via ?? chain, return dining and
 //   experiences pre-split.
 //
-// Last updated: S32F — Split from immerseQueries.ts. No logic change. Single-
-//   purpose file is the canonical home for content card reads. Caller passes
-//   globalDestinationId (resolved by core fetcher) so this file does not
-//   re-resolve from URL slug.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl } from './imageUrl'

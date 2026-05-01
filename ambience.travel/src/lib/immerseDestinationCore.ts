@@ -17,12 +17,6 @@
 //   fetchEngagementOverride returns the trip_destination_rows row for
 //   (engagementId, globalDestinationId). Null = destination not on this
 //   engagement's itinerary → core returns null → DestinationPage 404s.
-//
-// Last updated: S32F — Split from immerseQueries.ts. No logic change. Single-
-//   purpose file is the canonical home for hero + intro + section-heading
-//   reads, plus the slug→UUID cache and override row fetch. Kept the
-//   bundled getImmerseDestination wrapper here because it composes the
-//   other 3 split files via Promise.all.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl } from './imageUrl'

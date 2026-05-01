@@ -7,9 +7,6 @@
 // Per Seed Reference v7 §6: 4 rows per destination — Highlighted / Alt 1 /
 // Alt 2 / Dining-Experiences. is_total flag retained but all rows = false
 // today (S23 cleanup left the column for future use).
-//
-// Last updated: S32F — Split from immerseQueries.ts. No logic change. Single-
-//   purpose file is the canonical home for destination subpage pricing reads.
 
 import { supabase } from './supabase'
 import type { ImmersePricingRow } from './immerseTypes'
