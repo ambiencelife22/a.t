@@ -3,10 +3,12 @@
 // lookups + person/trip typeahead. Single source of truth for admin-side
 // engagement data access. Components call these — never .from() inline.
 //
-// Last updated: S33 — Added iteration_label (s33_01). List query now joins
-//   travel_trips + global_people for trip-group rendering. fetchEngagementList
-//   returns engagements with embedded trip + client display fields; the
-//   list-tab handles grouping in-memory.
+// Last updated: S33B — Added trip + person inline-edit + drag-and-drop
+//   re-parenting writes. New: updateTrip, createTrip, updatePerson,
+//   reassignEngagementTrip. Pre-flight verified shapes for travel_trips
+//   (27 cols), global_people (10 cols), engagements.trip_id (uuid nullable).
+// Prior: S33 — Added iteration_label (s33_01). List query joins
+//   travel_trips + global_people for trip-group rendering.
 
 import { supabase } from './supabase'
 
@@ -40,6 +42,9 @@ export type EngagementListRow = {
   client_first_name: string | null
   client_last_name:  string | null
   client_nickname:   string | null
+
+  // Primary client id — needed for inline-edit writes from the group header
+  client_id:         string | null
 }
 
 export type EngagementDetailRow = {
@@ -152,7 +157,12 @@ export type TripGroup = {
   trip_code:         string | null
   trip_public_title: string | null
   trip_start_date:   string | null
+  client_id:         string | null
   client_display:    string | null   // "Yazeed" or "Yazeed Last" or null
+  // Raw client name fields — needed for inline-edit writes
+  client_first_name: string | null
+  client_last_name:  string | null
+  client_nickname:   string | null
   engagements:       EngagementListRow[]
 }
 
@@ -168,9 +178,9 @@ export async function fetchEngagementList(): Promise<EngagementListRow[]> {
       engagement_status:travel_engagement_statuses(slug, label),
       itinerary_status:travel_itinerary_statuses(slug, label),
       trip:travel_trips(
-        trip_code, public_title, start_date,
+        trip_code, public_title, start_date, primary_client_id,
         primary_client:global_people!travel_trips_primary_client_id_fkey(
-          first_name, last_name, nickname
+          id, first_name, last_name, nickname
         )
       )
     `)
@@ -201,6 +211,7 @@ export async function fetchEngagementList(): Promise<EngagementListRow[]> {
     client_first_name:       r.trip?.primary_client?.first_name ?? null,
     client_last_name:        r.trip?.primary_client?.last_name  ?? null,
     client_nickname:         r.trip?.primary_client?.nickname   ?? null,
+    client_id:               r.trip?.primary_client?.id         ?? null,
   }))
 }
 
@@ -221,16 +232,19 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
       existing.engagements.push(row)
       continue
     }
-    const clientDisplay =
-      row.client_nickname
-      ?? ([row.client_first_name, row.client_last_name].filter(Boolean).join(' ') || null)
+    const joined = [row.client_first_name, row.client_last_name].filter(Boolean).join(' ')
+    const clientDisplay = row.client_nickname ?? (joined || null)
 
     groups.set(row.trip_id, {
       trip_id:           row.trip_id,
       trip_code:         row.trip_code,
       trip_public_title: row.trip_public_title,
       trip_start_date:   row.trip_start_date,
+      client_id:         row.client_id,
       client_display:    clientDisplay && clientDisplay.length > 0 ? clientDisplay : null,
+      client_first_name: row.client_first_name,
+      client_last_name:  row.client_last_name,
+      client_nickname:   row.client_nickname,
       engagements:       [row],
     })
   }
@@ -258,7 +272,11 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
       trip_code:         null,
       trip_public_title: null,
       trip_start_date:   null,
+      client_id:         null,
       client_display:    null,
+      client_first_name: null,
+      client_last_name:  null,
+      client_nickname:   null,
       engagements:       orphans,
     })
   }
@@ -479,4 +497,114 @@ export async function fetchMaxSortOrder(): Promise<number> {
     .maybeSingle()
   if (error) throw error
   return (data?.sort_order ?? -1) + 1
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// S33B additions — group header inline edit + drag-and-drop re-parenting
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Trip create (drag-to-create-new-trip flow) ───────────────────────────────
+
+export type TripCreatePayload = {
+  trip_code:       string
+  public_title:    string | null
+  start_date:      string | null   // ISO YYYY-MM-DD
+  end_date:        string | null   // ISO YYYY-MM-DD
+  currency:        string          // 'USD' default at DB layer
+  primary_client_id: string | null
+}
+
+export async function createTrip(payload: TripCreatePayload): Promise<string> {
+  // trip_code is NOT NULL — guard before hitting the DB
+  if (!payload.trip_code || !payload.trip_code.trim()) {
+    throw new Error('trip_code is required')
+  }
+  const insertPayload: Record<string, unknown> = {
+    trip_code:    payload.trip_code.trim(),
+    public_title: payload.public_title?.trim() || null,
+    start_date:   payload.start_date || null,
+    end_date:     payload.end_date || null,
+    currency:     payload.currency || 'USD',
+  }
+  if (payload.primary_client_id) {
+    insertPayload.primary_client_id = payload.primary_client_id
+  }
+
+  const { data, error } = await supabase
+    .from('travel_trips')
+    .insert(insertPayload)
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id as string
+}
+
+// ── Trip update (group-header inline edits for trip_code + public_title) ─────
+
+export type TripUpdatePayload = {
+  trip_code?:    string
+  public_title?: string | null
+}
+
+export async function updateTrip(id: string, payload: TripUpdatePayload): Promise<void> {
+  // Strip undefined keys so we never send {} or accidentally null a column
+  const clean: Record<string, unknown> = {}
+  if (payload.trip_code !== undefined) {
+    const trimmed = payload.trip_code.trim()
+    if (!trimmed) throw new Error('trip_code cannot be empty')
+    clean.trip_code = trimmed
+  }
+  if (payload.public_title !== undefined) {
+    const trimmed = payload.public_title?.trim() ?? ''
+    clean.public_title = trimmed.length > 0 ? trimmed : null
+  }
+  if (Object.keys(clean).length === 0) return
+
+  const { error } = await supabase
+    .from('travel_trips')
+    .update(clean)
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ── Person update (group-header client name edit) ────────────────────────────
+// Note: this writes to global_people which is shared across products. Edits
+// here flow through to every surface that displays this person.
+
+export type PersonUpdatePayload = {
+  first_name?: string | null
+  last_name?:  string | null
+  nickname?:   string | null
+}
+
+export async function updatePerson(id: string, payload: PersonUpdatePayload): Promise<void> {
+  const clean: Record<string, unknown> = {}
+  for (const key of ['first_name', 'last_name', 'nickname'] as const) {
+    if (payload[key] !== undefined) {
+      const trimmed = payload[key]?.trim() ?? ''
+      clean[key] = trimmed.length > 0 ? trimmed : null
+    }
+  }
+  if (Object.keys(clean).length === 0) return
+
+  const { error } = await supabase
+    .from('global_people')
+    .update(clean)
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ── Engagement re-parenting (drag-and-drop target) ────────────────────────────
+// Reassigns an engagement to a different trip (or to NULL = Unlinked).
+// trip_id NULL is valid per FK constraint (ON DELETE SET NULL).
+
+export async function reassignEngagementTrip(
+  engagementId: string,
+  newTripId:    string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('travel_immerse_engagements')
+    .update({ trip_id: newTripId })
+    .eq('id', engagementId)
+  if (error) throw error
 }

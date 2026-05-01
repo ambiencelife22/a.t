@@ -4,6 +4,7 @@
 /* fall back to the next font in the stack.                                  */
 /* size-adjust + ascent/descent overrides tune fallback metrics to reduce    */
 /* CLS during font-swap reflow.                                              */
+@import 'tailwindcss';
 
 @font-face {
   font-family: 'Cormorant Garamond';
@@ -30,8 +31,6 @@
   descent-override: 25%;
   line-gap-override: 0%;
 }
-
-@import 'tailwindcss';
 
 :root {
   --background: #faf8f6;
