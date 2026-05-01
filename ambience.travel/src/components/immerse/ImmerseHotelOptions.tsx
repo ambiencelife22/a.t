@@ -639,13 +639,13 @@ function SelectorAndCarousel<T>({
                 `${activeIdx}-${activeCarouselIdx}`,
                 true,
               )}
-              {!isMobile && !gutterArrowsAroundHero && activeCarouselIdx > 0 && (
+              {!isMobile && gutterArrowsAroundHero && activeCarouselIdx > 0 && (
                 <button
                   onClick={() => onCarouselChange(activeCarouselIdx - 1)}
                   style={desktopGutterArrowStyle('left')}
                 >‹</button>
               )}
-              {!isMobile && !gutterArrowsAroundHero && activeCarouselIdx < total - 1 && (
+              {!isMobile && gutterArrowsAroundHero && activeCarouselIdx < total - 1 && (
                 <button
                   onClick={() => onCarouselChange(activeCarouselIdx + 1)}
                   style={desktopGutterArrowStyle('right')}

@@ -2,7 +2,10 @@
 // Owns all DB reads for travel_immerse_destinations and child tables.
 // Returns data shaped to match ImmerseDestinationData.
 //
-// Last updated: S32F — Destination read split into 4 independently-callable
+// Last updated: S32K — fetchRoomsForHotels updated for room name schema refactor.
+//   Reads canon.room_name + overlay.room_name_override; emits tierLabel
+//   (engagement-specific tier) + levelLabel (room name for display).
+// Prior: S32F — Destination read split into 4 independently-callable
 //   fetchers for progressive reveal:
 //     · getImmerseDestinationCore     — destination row + override + gate
 //     · getImmerseDestinationHotels   — fetchHotelsShape + rooms + galleries
@@ -631,6 +634,10 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
+// S32K: Reads canon.room_name + overlay.room_name_override for the new room
+// name schema. Emits tierLabel (engagement-specific tier from level_label) and
+// levelLabel (room name from overlay override → canon room_name). roomBasis
+// retained for back-compat but now correctly represents meal plan basis.
 
 async function fetchRoomsForHotels(
   engagementId: string,
@@ -641,7 +648,7 @@ async function fetchRoomsForHotels(
   const { data: canonRooms } = await supabase
     .from('travel_accom_rooms')
     .select(`
-      id, hotel_id, slug, room_basis, room_benefits,
+      id, hotel_id, slug, room_name, room_basis, room_benefits,
       room_image_src, room_image_alt, room_gallery,
       floorplan_src, sqft_min, sqft_max, sqm_min, sqm_max,
       rate_suffix,
@@ -659,7 +666,7 @@ async function fetchRoomsForHotels(
   const { data: overlayRooms } = await supabase
     .from('travel_immerse_rooms')
     .select(`
-      room_id, level_label, room_basis, room_benefits, room_inclusions,
+      room_id, level_label, room_name_override, room_basis, room_benefits, room_inclusions,
       room_image_src, room_image_alt, hero_image_src_override,
       floorplan_src, floorplan_src_override,
       public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
@@ -713,11 +720,16 @@ async function fetchRoomsForHotels(
 
     const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
 
+    // S32K: room name read path — overlay override → canon room_name
+    const roomName  = o.room_name_override ?? canon.room_name ?? ''
+    const tierLabel = o.level_label ?? ''
+
     const hotelId = canon.hotel_id as string
     if (!grouped[hotelId]) grouped[hotelId] = []
 
     grouped[hotelId].push({
-      levelLabel:               o.level_label                  ?? '',
+      tierLabel:                tierLabel,
+      levelLabel:               roomName,
       roomBasis:                o.room_basis                   ?? canon.room_basis ?? '',
       roomBenefits:             roomBenefits,
       roomImageSrc:             roomImageSrc,
