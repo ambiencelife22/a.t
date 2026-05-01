@@ -4,11 +4,12 @@
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
+ *   ambience.travel/#admin                               → AmbienceAdmin (S33)
  *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
- *   programme.ambience.travel/#admin                     → ProgrammeAdmin
+ *   programme.ambience.travel/#admin                     → ProgrammeAdmin (existing, untouched)
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
  *   programme.ambience.travel/journeys/:id               → Auth → full-page ProgrammeRoute
@@ -17,39 +18,31 @@
  * Local dev routes:
  *   localhost:5173/                                      → Landing
  *   localhost:5173/?signup=1                             → Auth signup
- *   localhost:5173/programme/#admin                      → ProgrammeAdmin
+ *   localhost:5173/#admin                                → AmbienceAdmin (new shell, S33)
+ *   localhost:5173/programme/#admin                      → ProgrammeAdmin (existing)
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
  *
- * Immerse subdomain (S32): immerse.ambience.travel is the canonical immerse host.
- *   On that host, the URL shape is /<url_id> (no /immerse/ prefix). The
- *   ambience.travel/immerse/* path-prefix shape continues to work in parallel
- *   until verified, after which it 301s to the new subdomain.
+ * Admin routing (S33): hash === '#admin' is hostname-disambiguated.
+ *   - programme.ambience.travel/#admin OR localhost:5173/programme/#admin
+ *     → ProgrammeAdmin (existing, side-by-side, untouched)
+ *   - any other host with #admin (incl. ambience.travel, localhost root)
+ *     → AmbienceAdmin (new unified admin)
+ *   The route resolver also supports any /admin/* hash sub-paths
+ *   (#admin/immerse/engagements/<url_id>, etc) via the same 'admin' route —
+ *   the inner shell parses the hash itself.
  *
- * Immerse disambiguator: first immerse path segment is shape-tested.
- *   - 11-char [A-Za-z0-9] hash → engagement route
- *   - anything else            → redirect to / (homepage)
- *
- * Last updated: S32F — Inline IMMERSE_HOST + isImmerseHost() + isTripUrlId()
- *   removed in favour of imports from lib/immersePath. Same logic, single
- *   source of truth across App, ImmerseEngagementRoute, DestinationPage.
- *   No behavioural change.
+ * Last updated: S33 — Added 'admin-new' route for AmbienceAdmin.
+ *   Hash matching changed from === '#admin' to startsWith('#admin') to
+ *   support sub-paths. Hostname disambiguator distinguishes the existing
+ *   programme admin from the new shell.
+ * Prior: S32F — Inline IMMERSE_HOST + isImmerseHost() + isTripUrlId()
+ *   removed in favour of imports from lib/immersePath.
  * Prior: S32 — Added immerse.ambience.travel hostname routing.
- *   resolveRoute() detects the new subdomain and routes any 11-char path
- *   segment to ImmerseEngagementRoute. resolveImmerseSegments() uses
- *   subdomain-aware path parsing (no /immerse/ prefix on the new subdomain).
- *   Both URL shapes (subdomain + path-prefix) work simultaneously during
- *   transition. Path-prefix → subdomain 301 redirect deferred until both
- *   shapes are verified rendering identically on prod.
  * Prior: S30E perf — Route-level code splitting via React.lazy() + Suspense.
- *   Every route component lazy-loaded so /immerse/<url_id> cold load no
- *   longer downloads ProgrammeAdmin / GuestLinker / SignatureExperience /
- *   etc. Slug-based public preview replaced by url_id with the 'pub' visual
- *   prefix convention (e.g. pubMuirRzSW). Bad immerse paths redirect to /
- *   via window.location.replace.
  */
 
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'
@@ -63,12 +56,11 @@ import type { Session } from '@supabase/supabase-js'
 import type { Page } from './components/Layout'
 
 // ── Lazy route components ────────────────────────────────────────────────────
-// Every route boundary is a code-split point. Each component below becomes its
-// own Vite chunk at build time, downloaded only when the route resolves to it.
 
 const LandingLayout            = lazy(() => import('./components/layouts/LandingLayout'))
 const ProgrammeRoute           = lazy(() => import('./components/programme/ProgrammeRoute'))
 const ProgrammeAdmin           = lazy(() => import('./components/admin/ProgrammeAdmin'))
+const AmbienceAdmin            = lazy(() => import('./components/AmbienceAdmin'))
 const Layout                   = lazy(() => import('./components/Layout'))
 const Dashboard                = lazy(() => import('./components/Dashboard'))
 const ProgrammeList            = lazy(() => import('./components/ProgrammeList'))
@@ -77,7 +69,15 @@ const Auth                     = lazy(() => import('./components/Auth'))
 const SignatureExperiencePage  = lazy(() => import('./components/landing/experiences/SignatureExperiencePage'))
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 
-type Route = 'landing' | 'admin' | 'app' | 'programme-detail' | 'signup' | 'experience' | 'immerse'
+type Route =
+  | 'landing'
+  | 'admin-programme'
+  | 'admin-ambience'
+  | 'app'
+  | 'programme-detail'
+  | 'signup'
+  | 'experience'
+  | 'immerse'
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -94,16 +94,11 @@ function isExperienceRoute(): boolean {
   return window.location.pathname.startsWith('/experiences/')
 }
 
-// S32: immerse routes match either ambience.travel/immerse/* OR any path on
-// immerse.ambience.travel.
 function isImmerseRoute(): boolean {
   if (isImmerseHost()) return true
   return window.location.pathname.startsWith('/immerse/')
 }
 
-// S32: subdomain-aware segment resolution.
-// On immerse.ambience.travel the URL is /<url_id>[/<destination>].
-// On ambience.travel (and localhost) the URL is /immerse/<url_id>[/<destination>].
 function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
   const pathname = window.location.pathname.replace(/\/$/, '')
   const stripped = isImmerseHost()
@@ -113,6 +108,23 @@ function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
   return { seg1: parts[0] ?? '', seg2: parts[1] ?? null }
 }
 
+// S33 — admin route disambiguator.
+// programme.ambience.travel/#admin and localhost:5173/programme/#admin route
+// to the existing ProgrammeAdmin (untouched). Anything else with #admin routes
+// to the new unified AmbienceAdmin shell.
+function isProgrammeAdminContext(): boolean {
+  const hostname = window.location.hostname
+  const pathname = window.location.pathname
+  if (hostname === 'programme.ambience.travel') return true
+  if (
+    (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost')) &&
+    pathname.startsWith('/programme')
+  ) {
+    return true
+  }
+  return false
+}
+
 function resolveRoute(): Route {
   const hostname = window.location.hostname
   const pathname = window.location.pathname
@@ -120,7 +132,11 @@ function resolveRoute(): Route {
   const params   = new URLSearchParams(window.location.search)
 
   if (params.get('signup') === '1') return 'signup'
-  if (hash === '#admin')            return 'admin'
+
+  // S33 — hash sub-paths supported (#admin/immerse/engagements/<url_id>, etc)
+  if (hash.startsWith('#admin')) {
+    return isProgrammeAdminContext() ? 'admin-programme' : 'admin-ambience'
+  }
 
   // S32: immerse.ambience.travel → always immerse route.
   if (isImmerseHost()) return 'immerse'
@@ -173,7 +189,6 @@ export default function App() {
   if (route === 'immerse') {
     const { seg1 } = resolveImmerseSegments()
 
-    // Shape-based disambiguator: 11-char alphanumeric → engagement route.
     if (isTripUrlId(seg1)) {
       return (
         <Suspense fallback={<RouteLoading />}>
@@ -182,10 +197,6 @@ export default function App() {
       )
     }
 
-    // Anything else under the immerse surface — bad path, slug-based legacy
-    // URL, or empty — redirect to homepage. window.location.replace avoids a
-    // history entry pointing at the dead route. On the new subdomain we
-    // redirect to the marketing site root, not the immerse subdomain root.
     const homeUrl = isImmerseHost() ? 'https://ambience.travel/' : '/'
     window.location.replace(homeUrl)
     return <RouteLoading />
@@ -199,10 +210,20 @@ export default function App() {
     )
   }
 
-  if (route === 'admin') {
+  // S33 — programme admin (existing, untouched)
+  if (route === 'admin-programme') {
     return (
       <Suspense fallback={<RouteLoading />}>
         <ProgrammeAdmin />
+      </Suspense>
+    )
+  }
+
+  // S33 — new unified ambience admin
+  if (route === 'admin-ambience') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <AmbienceAdmin />
       </Suspense>
     )
   }
@@ -229,8 +250,6 @@ function ProgrammeGate({ full = false }: { full?: boolean }) {
     getSession().then(s => setSession(s ?? null))
   }, [])
 
-  // Always render ProgrammeRoute for detail pages — it handles
-  // public/private branching internally via supabaseAnon
   if (full) return <ProgrammeRoute />
 
   if (session === undefined) return null

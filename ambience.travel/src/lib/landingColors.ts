@@ -55,6 +55,13 @@ export const IMMERSE = {
   pillBg:         'rgba(255,255,255,0.02)',
   panelGradient:  'linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01))',
 
+  // ── Status tokens (S33) ──────────────────────────────────────────────────
+  // Used by AmbienceAdmin for danger/positive states (delete buttons,
+  // success toasts, active toggles). Single source so admin colors stay
+  // aligned with rest of immerse surface as theme evolves.
+  danger:         '#ef4444',
+  positive:       '#4ade80',
+
   // ── Shadow / depth tokens (S19) ──────────────────────────────────────────
   // Lighter than ID.shadow — used on brick-style cards inside immerse sections
   brickDepth:        '0 8px 24px rgba(15,18,22,0.045)',

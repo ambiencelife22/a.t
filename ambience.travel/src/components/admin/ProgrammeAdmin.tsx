@@ -5,7 +5,13 @@
  * Dark theme throughout — matches ProgrammeLayout shell.
  * No external dependencies beyond supabase client and landingTypes tokens.
  *
- * Last updated: S23 — Full surgical rename pass to align with travel_programme_*
+ * Last updated: S33 — Six tab function declarations gained the `export`
+ *   keyword (ProgrammesTab, WelcomeLettersTab, ListingsTab, PropertySectionsTab,
+ *   PropertiesTab, AccessDeniedPageTab) so they can be imported by the new
+ *   AmbienceAdmin shell at ambience.travel/#admin without forking. Default
+ *   export and all internal usage unchanged. The existing
+ *   programme.ambience.travel/#admin route is bit-for-bit identical.
+ * Prior: S23 — Full surgical rename pass to align with travel_programme_*
  *   table convention shipped in S17. Old table names (programmes, properties,
  *   property_sections, property_listings, programme_sections, programme_guests)
  *   were dropped during S12-S20 refactor and admin queries silently failed.
@@ -299,7 +305,7 @@ type Section = {
 
 // ── Tab: Programmes ───────────────────────────────────────────────────────────
 
-function ProgrammesTab() {
+export function ProgrammesTab() {
   const [programmes, setProgrammes] = useState<Programme[]>([])
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading]       = useState(true)
@@ -980,7 +986,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
 
 // ── Tab: Welcome Letters ──────────────────────────────────────────────────────
 
-function WelcomeLettersTab() {
+export function WelcomeLettersTab() {
   const [programmes, setProgrammes] = useState<Programme[]>([])
   const [selected, setSelected]     = useState<Programme | null>(null)
   const [letter, setLetter]         = useState('')
@@ -1125,7 +1131,7 @@ function WelcomeLettersTab() {
 
 const LISTING_CATEGORIES: ListingCategory[] = ['lunch', 'dinner', 'takeaway', 'experience', 'shopping']
 
-function ListingsTab() {
+export function ListingsTab() {
   const [properties, setProperties] = useState<Property[]>([])
   const [selectedProp, setSelectedProp] = useState<string>('')
   const [listings, setListings]     = useState<Listing[]>([])
@@ -1395,7 +1401,7 @@ function ListingsTab() {
 
 // ── Tab: Property Sections ────────────────────────────────────────────────────
 
-function PropertySectionsTab() {
+export function PropertySectionsTab() {
   const [properties, setProperties] = useState<Property[]>([])
   const [selectedProp, setSelectedProp] = useState<string>('')
   const [sections, setSections]     = useState<Section[]>([])
@@ -1798,7 +1804,7 @@ type FullProperty = {
   active:             boolean
 }
 
-function PropertiesTab() {
+export function PropertiesTab() {
   const [properties, setProperties] = useState<FullProperty[]>([])
   const [loading, setLoading]       = useState(true)
   const [editing, setEditing]       = useState<FullProperty | null>(null)
@@ -2087,7 +2093,7 @@ function PropertiesTab() {
 
 // ── Tab: Access Denied Page ───────────────────────────────────────────────────
 
-function AccessDeniedPageTab() {
+export function AccessDeniedPageTab() {
   const [showFallback, setShowFallback] = useState(false)
 
   const mockEmail    = 'guest@ambience.travel'

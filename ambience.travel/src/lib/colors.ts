@@ -116,31 +116,3 @@ export const STATUS_COLORS: Record<string, string> = {
 export function statusColor(status: string): string {
   return STATUS_COLORS[status] ?? C.muted
 }
-
-// ── Transaction Type ──────────────────────────────────────────────────────────
-// Maps to theme values at runtime so they respect light/dark mode.
-
-export function transactionTypeColor(type: string): string {
-  switch (type) {
-    case 'deposit':
-    case 'adjustment_positive':
-    case 'reconciliation_adjustment_plus':
-      return C.positive
-    case 'withdrawal':
-    case 'adjustment_negative':
-    case 'reconciliation_adjustment_minus':
-      return C.negative
-    case 'signup_bonus':
-    case 'reload_bonus':
-    case 'activity_bonus':
-    case 'cash_bonus':
-    case 'casino_cash':
-      return C.gold
-    case 'bonus_bet_added':
-      return C.blue
-    case 'bonus_bet_withdrawn':
-      return C.muted
-    default:
-      return C.muted
-  }
-}
