@@ -16,6 +16,11 @@
 // Last updated: S32K — Room name read path fixed. Canon room_name added to schema;
 //   frontend now reads overlay.room_name_override ?? canon.room_name (line 293).
 //   levelLabel field in ImmerseRoomOption now correctly carries room name, not tier.
+//
+// S32F — Split from immerseQueries.ts. No logic change. Single-
+//   purpose file is the canonical home for hotel + room + gallery reads.
+//   Caller passes destinationId (resolved by core fetcher) so this file does
+//   not re-resolve from URL slug.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
@@ -291,8 +296,8 @@ async function fetchRoomsForHotels(
     .from('travel_immerse_rooms')
     .select(`
       room_id, level_label, room_name_override, room_basis, room_benefits, room_inclusions,
-      room_image_src, room_image_alt, hero_image_src_override,
-      floorplan_src, floorplan_src_override,
+      hero_image_src_override,
+      floorplan_src_override,
       public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
       tax_inclusive,
       rate_suffix_override,
@@ -318,9 +323,8 @@ async function fetchRoomsForHotels(
     const roomImageSrc = rewriteImageUrl(
       o.hero_image_src_override
         ?? canon.room_image_src
-        ?? o.room_image_src
     )
-    const roomImageAlt = canon.room_image_alt ?? o.room_image_alt ?? ''
+    const roomImageAlt = canon.room_image_alt ?? ''
 
     const sqftMin = o.sqft_min_override ?? canon.sqft_min ?? o.sqft_min ?? undefined
     const sqftMax = o.sqft_max_override ?? canon.sqft_max ?? o.sqft_max ?? undefined
@@ -330,7 +334,6 @@ async function fetchRoomsForHotels(
     const floorplanResolved = rewriteImageUrl(
       o.floorplan_src_override
         ?? canon.floorplan_src
-        ?? o.floorplan_src
     )
     const floorplanSrc = floorplanResolved || undefined
 
