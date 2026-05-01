@@ -5,35 +5,13 @@
 // Does not own: RoomCategory (ImmerseRoomCategory.tsx), NavRow + arrow styles
 //   (ImmerseCarouselNav.tsx), keyframes (src/index.css)
 //
-// Last updated: S32 — LightboxOverlay rendered via React Portal into
-//   document.body. Earned: lightbox image was rendering size-correct but
-//   positioned outside the viewport on desktop (visible only at the bottom
-//   of the screen) because position:fixed was being trapped by a transformed
-//   ancestor. The carousel container's transform-based animations
-//   (immerseKenBurns + immerseFadeOnly + carousel slide transforms) create
-//   new containing blocks for descendants per the CSS spec, which makes
-//   position:fixed anchor to the transformed ancestor rather than the
-//   viewport. Portal-rendering escapes the DOM subtree entirely; the
-//   lightbox now mounts as a direct child of <body> so position:fixed
-//   correctly anchors to the viewport.
-// Prior: S31 — Regioned room-switch desktop arrows centered in the flow row
-//   (was: justify-content space-between pushing to row edges). Now side-by-side
-//   in the middle with 64px gap.
-// Prior: S31 — Hotel transition animation swapped from immerseFadeIn
-//   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Two surfaces:
-//   HotelWithRooms outer (carousel item swap) + SelectorAndCarousel upper
-//   HotelDetailPanel (top selector button click). Staggered child cascades
-//   (gallery thumbs, bullet pills) keep the original slide-up — they read
-//   as entrance choreography, not transitions.
-// Prior: S31 — Regioned destinations: room-switch desktop arrows
-//   relocated to a flow row between RoomCategory and the gallery (was: gutter
-//   arrows flanking the RoomCategory at left/right -20). Disabled state stays
-//   in layout via low opacity so the row doesn't shift on first/last room.
-// Prior: S31 — Regioned destinations: hotel-switch desktop arrows
-//   relocated to flank the bullets row inside HotelDetailPanel.
-// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
-//   <style> keyframe block removed (now global in src/index.css). NavRow +
-//   arrow styles now imported from ImmerseCarouselNav.
+// Last updated: S32K — Desktop flow arrows added to SelectorAndCarousel for flat
+//   destinations. Matches HotelWithRooms pattern (centered, 64px gap, flow-style).
+//   Renders between carousel and NavRow dots, only when !gutterArrowsAroundHero.
+//
+// S32 — LightboxOverlay rendered via React Portal into document.body.
+// Prior: S31 — Regioned room-switch desktop arrows centered in the flow row.
+// Prior: S31 — Hotel transition animation swapped to immerseFadeOnly.
 
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -52,7 +30,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
   return <RegionedHotelOptions data={data} regions={data.hotels.regions} />
 }
 
-// ─── Flat (NYC, St-Barths) ────────────────────────────────────────────────────
+// ─── Flat (NYC, St-Barths, Miami) ────────────────────────────────────────────
 
 function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hotels: ImmerseHotelOption[] }) {
   const [activeHotel, setActiveHotel] = useState(0)
@@ -115,11 +93,11 @@ function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hote
       )}
       activeRoomGallery={hotel.rooms[activeRoom]?.roomGallery}
       activeRoomImageSrc={hotel.rooms[activeRoom]?.roomImageSrc}
-      activeRoomBasis={hotel.rooms[activeRoom]?.roomBasis}
+      activeRoomBasis={hotel.rooms[activeRoom]?.levelLabel}
       roomLightboxIdx={roomLightboxIdx}
       setRoomLightboxIdx={setRoomLightboxIdx}
       lightboxLabel={hotel.name}
-      roomLightboxLabel={hotel.rooms[activeRoom] ? `${hotel.name} · ${hotel.rooms[activeRoom].roomBasis}` : hotel.name}
+      roomLightboxLabel={hotel.rooms[activeRoom] ? `${hotel.name} · ${hotel.rooms[activeRoom].levelLabel}` : hotel.name}
       detailHotelArrowsAndDots={null}
     />
   )
@@ -284,7 +262,7 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots, hotelD
   }, [activeRoom, total])
 
   const roomLightboxLabel = activeRoomData
-    ? `${hotel.name} · ${activeRoomData.roomBasis}`
+    ? `${hotel.name} · ${activeRoomData.levelLabel}`
     : hotel.name
 
   return (
@@ -403,7 +381,7 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots, hotelD
                   >
                     <img
                       src={src}
-                      alt={`${activeRoomData.roomBasis} ${i + 1}`}
+                      alt={`${activeRoomData.levelLabel} ${i + 1}`}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     />
                   </div>
@@ -674,6 +652,31 @@ function SelectorAndCarousel<T>({
                 >›</button>
               )}
             </div>
+
+            {!isMobile && !gutterArrowsAroundHero && total > 1 && (
+              <div
+                style={{
+                  marginTop: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 64,
+                }}
+              >
+                <button
+                  onClick={() => activeCarouselIdx > 0 && onCarouselChange(activeCarouselIdx - 1)}
+                  disabled={activeCarouselIdx === 0}
+                  style={desktopFlowArrowStyle(activeCarouselIdx === 0)}
+                  aria-label='Previous room'
+                >‹</button>
+                <button
+                  onClick={() => activeCarouselIdx < total - 1 && onCarouselChange(activeCarouselIdx + 1)}
+                  disabled={activeCarouselIdx === total - 1}
+                  style={desktopFlowArrowStyle(activeCarouselIdx === total - 1)}
+                  aria-label='Next room'
+                >›</button>
+              </div>
+            )}
 
             {!isMobile && total > 1 && (
               <NavRow
@@ -948,12 +951,6 @@ function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots, hotelDesktopArrows
 }
 
 // ─── Lightbox overlay ─────────────────────────────────────────────────────────
-// Rendered via React Portal into document.body so position:fixed correctly
-// anchors to the viewport. Without the portal, the lightbox is rendered
-// inside the carousel subtree, where transform-based animations on
-// ancestors (Ken Burns, fade-only, slide transforms) create new containing
-// blocks per the CSS spec — which traps position:fixed and produces the
-// "image lives at the bottom of the screen" bug seen on desktop.
 
 function LightboxOverlay({ images, index, hotelName, onClose, onPrev, onNext }: {
   images: string[]

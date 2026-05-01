@@ -3,7 +3,12 @@
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
 //
-// Last updated: S32 — Three rendering fixes on the chip row:
+// Last updated: S32K — Room name rendering fixed. Eyebrow now shows tierLabel
+//   (engagement-specific tier: "Highlighted", "Alternative 1"), title shows
+//   levelLabel (room name: "Oceanfront One Bedroom Suite", "Corner Suite").
+//   Prior bug: was rendering roomBasis ("Room Only") as title.
+//
+// S32 — Three rendering fixes on the chip row:
 //   (1) Square footage range collapses when min === max (was: '678–678 SQ FT'
 //       now: '678 SQ FT'). Same for sqm. Was caused by sqftMax being truthy
 //       even when equal to sqftMin.
@@ -85,7 +90,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
       }}
     >
       <div>
-        <ImmerseEyebrow>{room.levelLabel}</ImmerseEyebrow>
+        <ImmerseEyebrow>{room.tierLabel}</ImmerseEyebrow>
         <div
           style={{
             fontSize: isMobile ? 28 : 40,
@@ -97,7 +102,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
             marginBottom: 16,
           }}
         >
-          {room.roomBasis}
+          {room.levelLabel}
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

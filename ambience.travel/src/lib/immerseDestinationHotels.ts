@@ -13,7 +13,11 @@
 // Largest of the 4 split files — owns the carousel data shape feeding
 // ImmerseHotelOptions + RoomCategory render.
 //
-// Last updated: S32F — Split from immerseQueries.ts. No logic change. Single-
+// Last updated: S32K — Room name read path fixed. Canon room_name added to schema;
+//   frontend now reads overlay.room_name_override ?? canon.room_name (line 293).
+//   levelLabel field in ImmerseRoomOption now correctly carries room name, not tier.
+//
+// S32F — Split from immerseQueries.ts. No logic change. Single-
 //   purpose file is the canonical home for hotel + room + gallery reads.
 //   Caller passes destinationId (resolved by core fetcher) so this file does
 //   not re-resolve from URL slug.
@@ -273,7 +277,7 @@ async function fetchRoomsForHotels(
   const { data: canonRooms } = await supabase
     .from('travel_accom_rooms')
     .select(`
-      id, hotel_id, slug, room_basis, room_benefits,
+      id, hotel_id, slug, room_name, room_basis, room_benefits,
       room_image_src, room_image_alt, room_gallery,
       floorplan_src, sqft_min, sqft_max, sqm_min, sqm_max,
       rate_suffix,
@@ -291,7 +295,7 @@ async function fetchRoomsForHotels(
   const { data: overlayRooms } = await supabase
     .from('travel_immerse_rooms')
     .select(`
-      room_id, level_label, room_basis, room_benefits, room_inclusions,
+      room_id, level_label, room_name_override, room_basis, room_benefits, room_inclusions,
       room_image_src, room_image_alt, hero_image_src_override,
       floorplan_src, floorplan_src_override,
       public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
@@ -345,11 +349,18 @@ async function fetchRoomsForHotels(
 
     const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
 
+    // Room name: overlay room_name_override takes precedence, fallback to canon room_name
+    const roomName = o.room_name_override ?? canon.room_name ?? ''
+    
+    // Tier label: from overlay level_label (engagement-specific tier)
+    const tierLabel = o.level_label ?? ''
+
     const hotelId = canon.hotel_id as string
     if (!grouped[hotelId]) grouped[hotelId] = []
 
     grouped[hotelId].push({
-      levelLabel:               o.level_label                  ?? '',
+      tierLabel:                tierLabel,
+      levelLabel:               roomName,
       roomBasis:                o.room_basis                   ?? canon.room_basis ?? '',
       roomBenefits:             roomBenefits,
       roomImageSrc:             roomImageSrc,

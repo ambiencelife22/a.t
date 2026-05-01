@@ -93,6 +93,7 @@ export interface ItineraryStatus {
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 export type ImmerseRoomOption = {
+  tierLabel:                  string
   levelLabel:                 string
   roomBasis:                  string
   roomBenefits:               string[]
