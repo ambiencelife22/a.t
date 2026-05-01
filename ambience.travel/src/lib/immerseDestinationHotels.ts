@@ -277,7 +277,7 @@ async function fetchRoomsForHotels(
   const { data: canonRooms } = await supabase
     .from('travel_accom_rooms')
     .select(`
-      id, hotel_id, slug, room_name, room_basis, room_benefits,
+      id, hotel_id, slug, room_name, room_benefits,
       room_image_src, room_image_alt, room_gallery,
       floorplan_src, sqft_min, sqft_max, sqm_min, sqm_max,
       rate_suffix,
@@ -361,7 +361,7 @@ async function fetchRoomsForHotels(
     grouped[hotelId].push({
       tierLabel:                tierLabel,
       levelLabel:               roomName,
-      roomBasis:                o.room_basis                   ?? canon.room_basis ?? '',
+      roomBasis:                o.room_basis                   ?? '',
       roomBenefits:             roomBenefits,
       roomImageSrc:             roomImageSrc,
       roomImageAlt:             roomImageAlt,
