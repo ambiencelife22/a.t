@@ -36,9 +36,9 @@ const HERO_LAYOUT = {
   // Parallax tuning. 0.8 is closer to true background-attachment:fixed feel.
   // Image overscan (height 180% / top -40%) accommodates magnitudes up to 0.8.
   parallaxMagnitude: 0.8,
-  imageHeightDesktop: '180%',
+  imageHeightDesktop: '110%',
   imageHeightMobile:  '100%',
-  imageTopDesktop:    '-40%',
+  imageTopDesktop:    '-10%',
   imageTopMobile:     0,
 
   // Card opacity fade — progress is 0..1 over (height * fadeWindow) of scroll.
@@ -165,8 +165,7 @@ export default function ImmerseHero({
             left:           0,
             width:          '100%',
             height:         isMobile ? HERO_LAYOUT.imageHeightMobile : HERO_LAYOUT.imageHeightDesktop,
-            objectFit:      'cover',
-            objectPosition: 'center',
+            objectPosition: 'center 30%',  // or 'center top', or 'center 40%'
             zIndex:         0,
             willChange:     isMobile ? 'auto' : 'transform',
           }}
