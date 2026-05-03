@@ -5,6 +5,14 @@
 //   Also owns: slug→UUID cache, fetchEngagementOverride, ImmerseDestinationCore type.
 // Does not own: hotels (immerseDestinationHotels), cards (Cards), pricing (Pricing).
 //
+// Last updated: S32K — Pricing now engagement-scoped. fetchEngagementOverride
+//   now returns the override row's own id (tripDestinationRowId) so that
+//   getImmerseDestinationPricing can read pricing rows by it. ImmerseDestinationCore
+//   gains a tripDestinationRowId field. Pricing fetch in getImmerseDestination
+//   now passes core.tripDestinationRowId instead of core.destinationId.
+// Prior: S32E — Image URL rewrite hook in core fetcher (rewriteImageUrl on hero src).
+// Prior: S32C — FK-keyed engagement override (eq trip_id + global_destination_id).
+//
 // Dependency direction: this file imports from the other 3 split files.
 // They do not import from each other. Core sits at the top of the dependency
 // graph because the bundled wrapper composes them.
@@ -34,6 +42,7 @@ export interface ImmerseDestinationCore {
   // IDs — passed to subsequent fetchers
   destinationId:        string
   globalDestinationId:  string
+  tripDestinationRowId: string
 
   // Destination identity
   destinationSlug:      string
@@ -114,8 +123,12 @@ async function resolveGlobalDestinationId(slug: string): Promise<string | null> 
 }
 
 // ─── Per-engagement destination override (S32C: FK-keyed) ────────────────────
+// Returns the override row's own id (tripDestinationRowId) plus all override
+// fields. The id is needed by getImmerseDestinationPricing to read engagement-
+// scoped pricing rows.
 
 type EngagementDestinationOverride = {
+  id:                                        string
   hero_image_src_override:                   string | null
   hero_image_alt_override:                   string | null
   hero_image_src_2_override:                 string | null
@@ -145,6 +158,7 @@ async function fetchEngagementOverride(
   const { data, error } = await supabase
     .from('travel_immerse_trip_destination_rows')
     .select(`
+      id,
       hero_image_src_override,
       hero_image_alt_override,
       hero_image_src_2_override,
@@ -175,9 +189,10 @@ async function fetchEngagementOverride(
 
 // ─── getImmerseDestinationCore ────────────────────────────────────────────────
 // Returns hero + intro + section headings + pricing closer/notes. Plus IDs
-// (destinationId, globalDestinationId) for downstream fetchers. Carries the
-// itinerary-membership gate — returns null if no override row, which means
-// the destination is not on this engagement's itinerary.
+// (destinationId, globalDestinationId, tripDestinationRowId) for downstream
+// fetchers. Carries the itinerary-membership gate — returns null if no
+// override row, which means the destination is not on this engagement's
+// itinerary.
 
 export async function getImmerseDestinationCore(
   engagementId: string,
@@ -208,11 +223,12 @@ export async function getImmerseDestinationCore(
   const heroSrc2Resolved = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
 
   return {
-    destinationId:       destId,
+    destinationId:        destId,
     globalDestinationId,
-    destinationSlug:     urlSlug,
-    journeyId:           engagementId,
-    shorthand:           dest.shorthand ?? undefined,
+    tripDestinationRowId: ov.id,
+    destinationSlug:      urlSlug,
+    journeyId:            engagementId,
+    shorthand:            dest.shorthand ?? undefined,
 
     eyebrow:        dest.eyebrow                        ?? '',
     title:          dest.title                          ?? '',
@@ -276,7 +292,7 @@ export async function getImmerseDestination(
   const [hotels, cards, pricingRows] = await Promise.all([
     getImmerseDestinationHotels(engagementId, core.destinationId),
     getImmerseDestinationCards(engagementId, core.globalDestinationId),
-    getImmerseDestinationPricing(core.destinationId),
+    getImmerseDestinationPricing(core.tripDestinationRowId),
   ])
 
   return {
