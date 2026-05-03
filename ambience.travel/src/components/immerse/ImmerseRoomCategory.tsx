@@ -12,7 +12,9 @@
 //   (engagement-specific tier: "Highlighted", "Alternative 1"), title shows
 //   levelLabel (room name: "Oceanfront One Bedroom Suite", "Corner Suite").
 //   Prior bug: was rendering roomBasis ("Room Only") as title.
-//
+// S32: detect numeric rate strings ($1,200 / €420 / EURO 5,400 / GBP 800 / 1500).
+// Anything else (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD')
+// is treated as informational copy and rendered without the cadence suffix.
 // S32 — Three rendering fixes on the chip row:
 //   (1) Square footage range collapses when min === max (was: '678–678 SQ FT'
 //       now: '678 SQ FT'). Same for sqm. Was caused by sqftMax being truthy
@@ -43,7 +45,7 @@ import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/immerseTyp
 // (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is
 // treated as informational copy and rendered without the cadence suffix.
 function isNumericRate(rate: string): boolean {
-  return /^[$€£¥]?\s*\d/.test(rate.trim())
+  return /^([$€£¥]|EURO|USD|GBP|JPY|CHF|AED|SAR)?\s*\d/i.test(rate.trim())
 }
 
 // S32: collapse degenerate ranges (678-678 → 678). Both bounds optional.
