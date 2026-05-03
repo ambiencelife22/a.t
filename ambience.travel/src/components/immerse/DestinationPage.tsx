@@ -3,7 +3,11 @@
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage (S32)
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S32F (file split) — Imports retargeted from monolithic
+// Last updated: S32K — Pricing now engagement-scoped. getImmerseDestinationPricing
+//   now receives core.tripDestinationRowId (the per-engagement destination row id)
+//   instead of core.destinationId (canon). Required after migration s32k_71 fanned
+//   out the canon pricing rows and re-keyed them by trip_destination_row_id.
+// Prior: S32F (file split) — Imports retargeted from monolithic
 //   immerseQueries to the 4 split files: immerseDestinationCore (slug cache,
 //   override, core fetcher), immerseDestinationHotels, immerseDestinationCards,
 //   immerseDestinationPricing. Type imports also retargeted. No behavioural
@@ -207,7 +211,7 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
           .then(result => { if (!cancelled) setCards(result) })
           .catch(err => console.error('DestinationPage: cards fetch failed', err))
 
-        getImmerseDestinationPricing(coreResult.destinationId)
+        getImmerseDestinationPricing(coreResult.tripDestinationRowId)
           .then(result => { if (!cancelled) setPricing(result) })
           .catch(err => console.error('DestinationPage: pricing fetch failed', err))
 
