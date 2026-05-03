@@ -92,7 +92,7 @@ function MomentCard({
         willChange:   'transform, opacity',
       }}
     >
-      <p
+      {/* <p
         style={{
           fontSize:      11,
           letterSpacing: '0.22em',
@@ -101,8 +101,8 @@ function MomentCard({
           marginBottom:  14,
         }}
       >
-        Journey moment
-      </p>
+        A To Z
+      </p> */}
       <h3
         style={{
           fontSize:      22,
@@ -164,7 +164,7 @@ export default function JourneyMomentsSection() {
               ...fadeUp(visible, 0),
             }}
           >
-            The journey is felt in the details
+            Experience Exceptional.
           </p>
           <h2
             style={{
@@ -178,7 +178,7 @@ export default function JourneyMomentsSection() {
           >
             Well-designed travel starts long before arrival.
           </h2>
-          <p
+          {/* <p
             style={{
               fontSize:   16,
               lineHeight: 1.8,
@@ -186,8 +186,8 @@ export default function JourneyMomentsSection() {
               ...fadeUp(visible, 200),
             }}
           >
-            The best journeys do not need to announce themselves. They feel calm, supported, and well-judged from the very beginning.
-          </p>
+            The details matter. 
+          </p> */}
         </div>
 
         <div

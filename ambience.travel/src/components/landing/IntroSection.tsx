@@ -420,7 +420,7 @@ export default function IntroSection({ heroVis }: { heroVis: boolean }) {
             margin:     '0 auto 48px',
           }}
         >
-          Private travel design and discreet coordination for journeys shaped with taste, rhythm, and care.
+          Design and discreet coordination for experiences and travel shaped with taste, rhythm, and care.
         </p>
 
         {/* Scroll indicator */}

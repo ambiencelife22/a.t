@@ -41,7 +41,7 @@ export default function DarkCTASection() {
               </div>
 
               <h2 style={{ fontSize: 'clamp(26px,4.5vw,54px)', fontWeight: 600, letterSpacing: '-0.04em', marginBottom: 18, color: DARK.text, ...fadeUp(visible, 100) }}>
-                Give your next journey a proper home.
+                Give your next getaway the care it deserves.
               </h2>
 
               <p style={{ fontSize: 'clamp(15px,1.4vw,18px)', lineHeight: 1.8, color: DARK.body, marginBottom: 28, ...fadeUp(visible, 220) }}>
@@ -76,7 +76,7 @@ export default function DarkCTASection() {
                 </p>
                 <ul style={{ margin: 0, paddingLeft: 18, color: DARK.body, lineHeight: 1.8, fontSize: 14 }}>
                   <li>Travel shaped around personal preferences and pace</li>
-                  <li>Calm, discreet support before and during the journey</li>
+                  <li>Calm, discreet support before and during travel</li>
                   <li>Recommendations guided by taste, fit, and discernment</li>
                 </ul>
               </div>

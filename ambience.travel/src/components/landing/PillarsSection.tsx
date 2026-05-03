@@ -155,7 +155,7 @@ export default function PillarsSection() {
               ...fadeUp(visible, 200),
             }}
           >
-            Designed for guests who want more than access alone: taste, discretion, ease, and a level of service that feels quietly assured throughout.
+            For guests who want more than access alone: taste, discretion, ease, and a level of service that feels quietly assured throughout.
           </p>
         </div>
 

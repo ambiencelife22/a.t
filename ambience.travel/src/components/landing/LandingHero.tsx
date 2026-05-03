@@ -65,7 +65,7 @@ export default function LandingHero() {
     }
   }, [isMobile])
 
-  const title = 'Private Travel. Designed Well.'
+  const title = 'Private Travel. Well Designed.'
 
   return (
     <section ref={sectionRef} style={{ borderTop: 'none', padding: 0, margin: 0 }}>
@@ -181,7 +181,7 @@ export default function LandingHero() {
                 ...immerseFadeUp(visible, 240),
               }}
             >
-              Journeys shaped around how you want to travel, not what&apos;s easiest to book.
+                Shaped for how you live, not for how things sell.
             </p>
           </div>
         </div>

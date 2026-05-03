@@ -28,7 +28,7 @@ const cards = [
   },
   {
     title:    'Wellness & Restorative Travel',
-    subtitle: 'Time away designed to feel calm and balancing, with space for rest, privacy, and a more grounded pace.',
+    subtitle: 'Time away that feels calm and balanced, with space for rest, privacy, and a slower pace.',
     image:    'https://www.thedoldergrand.com/app/uploads/2020/08/HIBR_D_00198529_send_web.jpg',
   },
 ]
@@ -151,7 +151,7 @@ export default function EditorialSection() {
               ...fadeUp(visible, 200),
             }}
           >
-            A private standard of travel shaped around comfort, discretion, and the details that make a journey feel effortless.
+            A standard of design shaped around how you want to travel, in a way that feels effortless.
           </p>
         </div>
 

@@ -1,3 +1,21 @@
+// LandingLayout.tsx — top-level shell for the travel landing page
+// Owns the page wrapper (background, font, overflow), fixed nav, back-to-top button,
+// and the section render order. Sections are intentionally flat children — no router,
+// no conditional rendering — this page is one continuous scroll.
+//
+// Last updated: S32K addendum — Always-on nav. Removed the IntersectionObserver-driven
+//   navVisible reveal logic. Nav and back-to-top now render unconditionally on every
+//   landing page state. Rationale: the new LandingHero is a strong visual entry point;
+//   delaying nav reveal no longer adds anything, and a missing nav at page load felt
+//   inconsistent with the rest of the product. The #intro-section anchor is preserved
+//   for any future scroll-linked behavior.
+// Prior: S32K — Inserted LandingHero above IntroSection. Mirrors immerse-page hero
+//   pattern (parallax <img>, three overlay layers, glass card), scoped down (no guest
+//   name, no CTAs). First image is Soneva Jani Maldives.
+// Prior: SPORTS app layout imports/types stripped — file is travel-only now. Kept
+//   commented-out blocks in place as a marker for the SPORTS layout pattern that
+//   was here before, in case any of it needs to be re-added selectively.
+
 import React, { useEffect, useState } from 'react'
 
 // SPORTS app layout imports — not used for travel landing right now
@@ -200,18 +218,20 @@ export default function LandingLayout({ children: _children }: LayoutProps) {
       )}
 
       <LandingHero />
-      
+
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
-
-      <HeroSection />
-      <EditorialSection />
-      <VideoIntroSection />
-      <JourneyMomentsSection />
-      <PillarsSection />
       <ExperienceTypesSection />
+      <JourneyMomentsSection />
+      <EditorialSection />
+
+      <VideoIntroSection />
+     
+      <PillarsSection />
+      
       {/* <HospitalitySection /> */}
+      {/* <HeroSection /> */}
       <DarkCTASection />
     </div>
   )

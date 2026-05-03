@@ -15,11 +15,11 @@ import { fadeUp, useScrollProgress, useVisible } from './LandingComponents'
 const items = [
   {
     title: 'Private Family Travel',
-    text:  'Well-considered journeys for families who value space, ease, privacy, and a smoother rhythm from start to finish.',
+    text:  'Well-considered experiences for families who value space, ease, privacy, and a smoother rhythm from start to finish.',
     image: 'https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-welcome-to-the-maldives-29354:Wide-Hor?wid=1100&fit=constrain',
   },
   {
-    title: 'Extended Private Journeys',
+    title: 'Extended Private Travel',
     text:  'Multi-stop itineraries requiring careful coordination, strong judgement, and consistency across every stage.',
     image: 'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-156,2500-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/SBT/SBT_407_original.jpg',
   },
@@ -40,7 +40,7 @@ const items = [
   },
   {
     title: 'Couples & Celebrations',
-    text:  'Anniversaries, milestone escapes, and romantic journeys designed with taste, atmosphere, and discretion.',
+    text:  'Anniversaries, milestone escapes, and romantic getaways tailored to your every preference.',
     image: 'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-312,5000-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/KOH/KOH_1422_original.jpg',
   },
 ]
@@ -168,7 +168,7 @@ export default function ExperienceTypesSection() {
               ...fadeUp(visible, 0),
             }}
           >
-            How guests may travel
+            Travel Your Way
           </p>
           <h2
             style={{
@@ -180,7 +180,7 @@ export default function ExperienceTypesSection() {
               ...fadeUp(visible, 100),
             }}
           >
-            Different journeys, one consistent standard.
+            Different experiences, one consistent standard.
           </h2>
           <p
             style={{
@@ -190,7 +190,7 @@ export default function ExperienceTypesSection() {
               ...fadeUp(visible, 200),
             }}
           >
-            From refined family travel and milestone escapes to wellness-led stays and complex private itineraries, every journey is shaped around the guest rather than a formula.
+            From refined family travel and milestone escapes to wellness-led stays and complex private itineraries, every experience is shaped around the guest rather than a formula.
           </p>
         </div>
 
