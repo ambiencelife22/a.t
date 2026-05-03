@@ -2,7 +2,13 @@
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
 //
-// Last updated: S32C — Route strip linkedRow lookup changed from index-based
+// Last updated: S32K — ImmerseEngagementPricing now renders a 3-column table
+//   when all rows share a destination (Basis, Stay, Range) — drops the
+//   redundant Item column rather than repeating the destination name on
+//   every row. Multi-destination engagements still render the 4-column
+//   layout. The table headers and Td col indices are computed from a
+//   `singleDestination` flag derived from the row data.
+// Prior: S32C — Route strip linkedRow lookup changed from index-based
 //   (destinationRows[i]) to title-match. Index-based was off by one whenever
 //   the route stops included an origin (e.g. v2: Saudi Start as stops[0])
 //   because route_stops and destination_rows have different cardinalities —
@@ -606,10 +612,19 @@ function CornerBadge({ isLive, isPreview }: { isLive: boolean; isPreview: boolea
 }
 
 // ─── Engagement pricing ───────────────────────────────────────────────────────
+// S32K: when all rows share a destination, drops the redundant Item column.
+// Single-destination engagements render Basis · Stay · Range. Multi-destination
+// renders Item · Basis · Stay · Range exactly as before.
 
 export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile = useImmerseMobile()
+
+  // Detect single-destination engagement: every pricing row points at the
+  // same destination name. When true, drop the Item column entirely — it
+  // would just repeat the destination name on every row.
+  const uniqueDestinations = new Set(data.pricingRows.map(r => r.destination))
+  const singleDestination  = uniqueDestinations.size <= 1
 
   return (
     <ImmerseSectionWrap
@@ -642,17 +657,17 @@ export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData
           <ImmerseBody style={{ marginBottom: 14, color: ID.muted }}>
             {data.pricingBody}
           </ImmerseBody>
-          <PricingTable>
+          <PricingTable hideItem={singleDestination}>
             {data.pricingRows.map(row => (
               <tr key={row.id}>
-                <Td col={1}>{row.destination}</Td>
+                {!singleDestination && <Td col={1}>{row.destination}</Td>}
                 <Td col={2}>{row.recommendedBasis}</Td>
                 <Td col={3}>{row.stayLabel}</Td>
                 <Td col={4}>{row.indicativeRange}</Td>
               </tr>
             ))}
             <tr>
-              <TotalTd col={1}>{data.pricingTotalLabel}</TotalTd>
+              <TotalTd col={singleDestination ? 2 : 1}>{data.pricingTotalLabel}</TotalTd>
               <TotalTd col={3}></TotalTd>
               <TotalTd col={4}>{data.pricingTotalValue}</TotalTd>
             </tr>
@@ -678,13 +693,23 @@ export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData
 }
 
 // ─── Shared table helpers ─────────────────────────────────────────────────────
+// S32K: PricingTable now accepts hideItem to suppress the Item column header
+// when the engagement has a single destination. The Td/TotalTd helpers remain
+// stable; rendering caller is responsible for conditionally including the
+// col=1 Td when hideItem is true.
 
-export function PricingTable({ children }: { children: React.ReactNode }) {
+export function PricingTable({ children, hideItem = false }: { children: React.ReactNode; hideItem?: boolean }) {
   const isMobile = window.innerWidth < 768
 
-  const headers = isMobile
+  const baseHeaders = isMobile
     ? ['Item', 'Indicative range']
     : ['Item', 'Basis', 'Stay', 'Indicative range']
+
+  // hideItem only takes effect on desktop. On mobile only Item + Range render
+  // already; suppressing Item there would hide the entire labeling.
+  const headers = (hideItem && !isMobile)
+    ? baseHeaders.slice(1)   // drop 'Item', keep 'Basis', 'Stay', 'Indicative range'
+    : baseHeaders
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginTop: 8 }}>

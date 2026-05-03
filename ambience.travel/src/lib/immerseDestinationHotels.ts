@@ -13,7 +13,11 @@
 // Largest of the 4 split files — owns the carousel data shape feeding
 // ImmerseHotelOptions + RoomCategory render.
 //
-// Last updated: S32K — Room name read path fixed. Canon room_name added to schema;
+// Last updated: S32K — Rooms now JOIN travel_immerse_rate_cadences via
+//   rate_cadence_id and expose rateCadence (e.g. "Per Night") to render.
+//   Replaces the hardcoded "/ night" suffix in RoomCategory. Cadence is
+//   overlay-only (canon never carries pricing per architectural rule).
+// Prior: S32K — Room name read path fixed. Canon room_name added to schema;
 //   frontend now reads overlay.room_name_override ?? canon.room_name (line 293).
 //   levelLabel field in ImmerseRoomOption now correctly carries room name, not tier.
 //
@@ -267,6 +271,9 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
+// S32K: overlay JOINs travel_immerse_rate_cadences via rate_cadence_id to
+// expose the cadence label (e.g. "Per Night") for render. Cadence is overlay-
+// only — canon (travel_accom_rooms) never carries pricing-related fields.
 
 async function fetchRoomsForHotels(
   engagementId: string,
@@ -301,6 +308,8 @@ async function fetchRoomsForHotels(
       public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
       tax_inclusive,
       rate_suffix_override,
+      rate_cadence_id,
+      travel_immerse_rate_cadences ( label ),
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
       sort_order
@@ -347,9 +356,13 @@ async function fetchRoomsForHotels(
 
     const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
 
+    // S32K: rate cadence from JOIN against travel_immerse_rate_cadences
+    const cadenceJoin = o.travel_immerse_rate_cadences as unknown as { label: string | null } | null
+    const rateCadence = cadenceJoin?.label ?? undefined
+
     // Room name: overlay room_name_override takes precedence, fallback to canon room_name
     const roomName = o.room_name_override ?? canon.room_name ?? ''
-    
+
     // Tier label: from overlay level_label (engagement-specific tier)
     const tierLabel = o.level_label ?? ''
 
@@ -370,6 +383,7 @@ async function fetchRoomsForHotels(
       ambienceNightlyRate:      o.ambience_nightly_rate        ?? undefined,
       taxInclusive:             o.tax_inclusive                ?? false,
       rateSuffix:               rateSuffix,
+      rateCadence:              rateCadence,
       sqftMin, sqftMax, sqmMin, sqmMax,
     })
   }

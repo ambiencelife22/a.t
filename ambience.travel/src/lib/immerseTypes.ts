@@ -2,7 +2,12 @@
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
 //
-// Last updated: S32 (Add 1) — Added optional heroTagline field on
+// Last updated: S32K — Added rateCadence to ImmerseRoomOption. Reads from
+//   travel_immerse_rooms.rate_cadence_id JOIN against travel_immerse_rate_cadences.
+//   Replaces hardcoded "/ night" suffix in RoomCategory render. Cadence values
+//   come from a reference table (Per Night, Per Stay, Per Week, Per Month);
+//   admin can extend without code changes.
+// Prior: S32 (Add 1) — Added optional heroTagline field on
 //   ImmerseEngagementData. Mirrors the renamed travel_immerse_engagements.hero_tagline
 //   column (was: title before s32_add1_01). Pulled into the type and query layer
 //   but not yet rendered — preserves the route-summary copy ("Saudi → Nordic Winter
@@ -109,6 +114,10 @@ export type ImmerseRoomOption = {
   // Free-text per-room rate suffix rendered after both rate chips.
   // Resolved override → canonical → undefined. NULL renders nothing.
   rateSuffix?:                string
+  // S32K: rate cadence label (e.g. "Per Night", "Per Stay", "Per Week", "Per Month").
+  // Sourced from travel_immerse_rate_cadences via FK. Pulled by query layer; rendered
+  // beside numeric rate chips in place of the prior hardcoded "/ night" suffix.
+  rateCadence?:               string
   sqftMin?:                   number
   sqftMax?:                   number
   sqmMin?:                    number

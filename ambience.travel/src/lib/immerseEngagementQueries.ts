@@ -3,7 +3,12 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see immerseQueries.ts).
 //
-// Last updated: S32D — Trip pricing rows now read destination slug via nested
+// Last updated: S32K — Pricing rows + destination rows now select destination
+//   NAME (title case) from global_destinations, not slug. The slug column was
+//   leaking into the rendered Item label as lowercase ("seychelles", "newyork").
+//   destination_slug retained on destination rows because routing/anchors need
+//   it; pricing rows drop slug entirely since they only render the human label.
+// Prior: S32D — Trip pricing rows now read destination slug via nested
 //   join to global_destinations. Legacy `destination` text-slug column was
 //   dropped in S32B Phase 4 but this file still selected it, causing 42703
 //   on every engagement load. Same nested-join pattern S32C applied to
@@ -112,9 +117,11 @@ type RouteStopRow = {
   image_alt:  string | null
 }
 
-// S32C: destination_slug derived from nested join to global_destinations.
-type GlobalDestinationJoin = {
+// S32C/S32K: destination rows pull both slug (for routing/anchors) and name
+// (title case, for display).
+type GlobalDestinationDisplayJoin = {
   slug: string | null
+  name: string | null
 }
 
 type DestinationRowRow = {
@@ -127,19 +134,19 @@ type DestinationRowRow = {
   stay_label:          string | null
   image_src:           string | null
   image_alt:           string | null
-  global_destinations: GlobalDestinationJoin | null
+  global_destinations: GlobalDestinationDisplayJoin | null
   subpage_status:      string | null
 }
 
-// S32D: slug derived from nested join to global_destinations. Legacy
-// `destination` text-slug column was dropped in S32B Phase 4.
+// S32K: pricing rows pull destination NAME only (no slug). Item column
+// renders the proper-case "Seychelles" / "New York City", never the slug.
 type PricingRowRow = {
   id:                 string
   sort_order:         number
   recommended_basis:  string | null
   stay_label:         string | null
   indicative_range:   string | null
-  global_destinations: GlobalDestinationJoin | null
+  global_destinations: GlobalDestinationDisplayJoin | null
 }
 
 // ── Public fetch ─────────────────────────────────────────────────────────────
@@ -206,17 +213,17 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .select(`
         id, sort_order, number_label, title, mood, summary, stay_label,
         image_src, image_alt, subpage_status,
-        global_destinations ( slug )
+        global_destinations ( slug, name )
       `)
       .eq('trip_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
-    // S32D: read destination slug via nested join to global_destinations.
+    // S32K: pricing rows read destination NAME (title case) for display.
     supabaseAnon
       .from('travel_immerse_trip_pricing_rows')
       .select(`
         id, sort_order, recommended_basis, stay_label, indicative_range,
-        global_destinations ( slug )
+        global_destinations ( slug, name )
       `)
       .eq('trip_id', engagementId)
       .order('sort_order'),
@@ -266,13 +273,14 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     stayLabel:       r.stay_label   ?? '',
     imageSrc:        rewriteImageUrl(r.image_src),
     imageAlt:        r.image_alt    ?? '',
-    destinationSlug: r.global_destinations?.slug ?? null,  // S32C: from canon
+    destinationSlug: r.global_destinations?.slug ?? null,  // routing/anchor
     subpageStatus:   normalizeSubpageStatus(r.subpage_status),
   }))
 
+  // S32K: pricing rows render destination NAME, not slug.
   const tripPricingRows: ImmerseTripPricingRow[] = priceRows.map(r => ({
     id:               r.id,
-    destination:      r.global_destinations?.slug ?? '',  // S32D: from canon
+    destination:      r.global_destinations?.name ?? '',
     recommendedBasis: r.recommended_basis  ?? '',
     stayLabel:        r.stay_label         ?? '',
     indicativeRange:  r.indicative_range   ?? '',

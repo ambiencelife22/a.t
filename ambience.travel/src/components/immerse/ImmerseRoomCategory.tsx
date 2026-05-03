@@ -3,7 +3,12 @@
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
 //
-// Last updated: S32K — Room name rendering fixed. Eyebrow now shows tierLabel
+// Last updated: S32K — Replaced hardcoded "/ night" rate suffix with data-
+//   driven room.rateCadence. Cadence comes from travel_immerse_rate_cadences
+//   reference table (Per Night, Per Stay, Per Week, Per Month — extensible).
+//   No hardcoded cadence text in this component anymore. The leading slash
+//   was dropped because cadence labels are self-contained ("Per Night").
+// Prior: S32K — Room name rendering fixed. Eyebrow now shows tierLabel
 //   (engagement-specific tier: "Highlighted", "Alternative 1"), title shows
 //   levelLabel (room name: "Oceanfront One Bedroom Suite", "Corner Suite").
 //   Prior bug: was rendering roomBasis ("Room Only") as title.
@@ -36,7 +41,7 @@ import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/immerseTyp
 
 // S32: detect numeric rate strings ($1,200 / €420 / 1500). Anything else
 // (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is
-// treated as informational copy and rendered without the '/ night' suffix.
+// treated as informational copy and rendered without the cadence suffix.
 function isNumericRate(rate: string): boolean {
   return /^[$€£¥]?\s*\d/.test(rate.trim())
 }
@@ -141,8 +146,8 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: nonNegIsNumeric ? 'nowrap' : 'wrap' }}>
                 <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: ID.dim }}>Non-Negotiated</span>
                 <span>{room.nonNegotiatedNightlyRate}</span>
-                {nonNegIsNumeric && (
-                  <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                {nonNegIsNumeric && room.rateCadence && (
+                  <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{room.rateCadence}</span>
                 )}
               </div>
               {showRateSuffix && nonNegIsNumeric && (
@@ -175,8 +180,8 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: ambienceIsNumeric ? 'nowrap' : 'wrap' }}>
                 <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }}>Ambience</span>
                 <span>{room.ambienceNightlyRate}</span>
-                {ambienceIsNumeric && (
-                  <span style={{ fontSize: 10, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>/ night</span>
+                {ambienceIsNumeric && room.rateCadence && (
+                  <span style={{ fontSize: 10, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{room.rateCadence}</span>
                 )}
               </div>
               {showRateSuffix && ambienceIsNumeric && (
