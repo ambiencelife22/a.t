@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react'
 
 import AmbienceLogo from '../AmbienceLogo'
 
+import LandingHero from '../landing/LandingHero'
 import VideoIntroSection from '../landing/VideoIntroSection'
 import IntroSection from '../landing/IntroSection'
 import HeroSection from '../landing/HeroSection'
@@ -198,6 +199,8 @@ export default function LandingLayout({ children: _children }: LayoutProps) {
         </button>
       )}
 
+      <LandingHero />
+      
       <div id='intro-section'>
         <IntroSection heroVis={heroVis} />
       </div>
