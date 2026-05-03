@@ -65,7 +65,8 @@ export default function LandingHero() {
     }
   }, [isMobile])
 
-  const title = 'Private Travel. Well Designed.'
+    const titleLine1 = 'Private Travel.'
+    const titleLine2 = 'Well Designed.'
 
   return (
     <section ref={sectionRef} style={{ borderTop: 'none', padding: 0, margin: 0 }}>
@@ -153,21 +154,46 @@ export default function LandingHero() {
                 color:         ID.text,
               }}
             >
-              {title.split(' ').map((word, i) => (
-                <span
-                  key={i}
-                  style={{
-                    display:     'inline-block',
-                    marginRight: '0.22em',
-                    opacity:     visible ? 1 : 0,
-                    transform:   visible ? 'translateY(0)' : 'translateY(14px)',
-                    transition:  `opacity 0.7s ease ${100 + i * 55}ms, transform 0.7s ${IMMERSE_HERO.titleStaggerEasing} ${100 + i * 55}ms`,
-                    willChange:  'opacity, transform',
-                  }}
-                >
-                  {word}
-                </span>
-              ))}
+              {/* Line 1 — Private Travel. */}
+                <div>
+                    {titleLine1.split(' ').map((word, i) => (
+                    <span
+                        key={`l1-${i}`}
+                        style={{
+                        display:     'inline-block',
+                        marginRight: '0.22em',
+                        opacity:     visible ? 1 : 0,
+                        transform:   visible ? 'translateY(0)' : 'translateY(14px)',
+                        transition:  `opacity 0.7s ease ${100 + i * 55}ms, transform 0.7s ${IMMERSE_HERO.titleStaggerEasing} ${100 + i * 55}ms`,
+                        willChange:  'opacity, transform',
+                        }}
+                    >
+                        {word}
+                    </span>
+                    ))}
+                </div>
+
+                {/* Line 2 — Well Designed. (continues stagger from line 1) */}
+                <div>
+                    {titleLine2.split(' ').map((word, i) => {
+                    const delay = 100 + (titleLine1.split(' ').length + i) * 55
+                    return (
+                        <span
+                        key={`l2-${i}`}
+                        style={{
+                            display:     'inline-block',
+                            marginRight: '0.22em',
+                            opacity:     visible ? 1 : 0,
+                            transform:   visible ? 'translateY(0)' : 'translateY(14px)',
+                            transition:  `opacity 0.7s ease ${delay}ms, transform 0.7s ${IMMERSE_HERO.titleStaggerEasing} ${delay}ms`,
+                            willChange:  'opacity, transform',
+                        }}
+                        >
+                        {word}
+                        </span>
+                    )
+                    })}
+                </div>
             </div>
 
             {/* Subheadline */}
