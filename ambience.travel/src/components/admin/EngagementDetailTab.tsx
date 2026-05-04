@@ -4,10 +4,16 @@
  * Person/Trip linkage via typeahead. Welcome letter overrides surface
  * canonical placeholder. Danger zone delete with CASCADE warning.
  *
- * Out of scope (read-only summary only): card selections, pricing rows, rooms.
+ * Out of scope (read-only summary only): pricing rows, rooms, hotels.
  *
- * Last updated: S334 — Mount CardOverridesEditor between DestinationRows and
- *   Pricing Section. Drop card_overrides from ChildCountsSummary.
+ * Last updated: S334 — Replace window.confirm-based handleDelete with
+ *   DeleteEngagementModal (4-step destructive confirmation, mirrors SPORTS
+ *   DeleteSystemSection pattern). Engagement title type-to-confirm gate.
+ * Prior: S334 — Replace CardOverridesEditor with CardsEditor.
+ *   Selections-primary architecture: CardsEditor mounts the curation table
+ *   (which cards render, sort_order per kind, is_active visibility) with
+ *   override-on-demand inside each card's Customise modal. Drop both
+ *   card_selections and card_overrides from ChildCountsSummary.
  * Prior: S334 — Mount RouteStopsEditor under Route Section. Drop route_stops
  *   from ChildCountsSummary.
  * Prior: S33C — Mount DestinationRowsEditor between Destination Section
@@ -44,7 +50,8 @@ import { A } from '../../lib/adminTokens'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import DestinationRowsEditor from './DestinationRowsEditor'
 import RouteStopsEditor from './RouteStopsEditor'
-import CardOverridesEditor from './CardOverridesEditor'
+import CardsEditor from './CardsEditor'
+import DeleteEngagementModal from './DeleteEngagementModal'
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -470,7 +477,8 @@ function WelcomeOverrideField({
 // ── Child counts summary ─────────────────────────────────────────────────────
 // S33C: destination_rows removed — now editable inline via DestinationRowsEditor.
 // S334: route_stops removed — now editable inline via RouteStopsEditor.
-// S334: card_overrides removed — now editable inline via CardOverridesEditor.
+// S334: card_selections + card_overrides removed — now both editable inline via
+//       CardsEditor (selections-primary, override-on-demand).
 
 function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; urlId: string }) {
   if (!counts) return null
@@ -479,7 +487,6 @@ function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; url
     { label: 'Pricing rows',          n: counts.pricing_rows },
     { label: 'Destination hotels',    n: counts.destination_hotels },
     { label: 'Region hotels',         n: counts.region_hotels },
-    { label: 'Card selections',       n: counts.card_selections },
     { label: 'Rooms (overlay)',       n: counts.rooms },
   ]
 
@@ -527,6 +534,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
   const [loading, setLoading]                      = useState(true)
   const [saving, setSaving]                        = useState(false)
   const [showLegacy, setShowLegacy]                = useState(false)
+  const [deleteOpen, setDeleteOpen]                = useState(false)
   const { toast, showToast }                       = useToast()
 
   async function load() {
@@ -587,25 +595,24 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
     setSaving(false)
   }
 
-  async function handleDelete() {
-    if (!row) return
-    const confirmed = window.confirm(
-      `Delete engagement "${row.title || row.url_id}"?\n\n` +
-      `This CASCADES through 10 child tables:\n` +
-      `• route_stops · trip_destination_rows · trip_pricing_rows\n` +
-      `• trip_regions · trip_region_hotels · trip_destination_hotels\n` +
-      `• trip_content_card_selections · trip_content_card_overrides\n` +
-      `• trip_display · immerse_rooms\n\n` +
-      `This cannot be undone. Are you sure?`,
-    )
-    if (!confirmed) return
-    try {
-      await deleteEngagement(row.id)
-      showToast('Engagement deleted.', 'success')
+  async function handleDeleteConfirm() {
+    if (!row) throw new Error('No engagement loaded.')
+    await deleteEngagement(row.id)
+    // Success: do NOT redirect here — modal shows success state and the
+    // user clicks "Back to engagements" which closes the modal and triggers
+    // the navigation via handleDeleteClose below.
+  }
+
+  function handleDeleteClose() {
+    setDeleteOpen(false)
+    // If row is gone after a successful delete, navigate away
+    fetchEngagementDetail(urlId).then(detail => {
+      if (!detail) {
+        navigateAdmin({ product: 'immerse', tab: 'engagements', urlId: null })
+      }
+    }).catch(() => {
       navigateAdmin({ product: 'immerse', tab: 'engagements', urlId: null })
-    } catch (e: any) {
-      showToast(`Failed to delete: ${e.message ?? 'unknown error'}`, 'error')
-    }
+    })
   }
 
   if (loading) {
@@ -873,9 +880,9 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         <DestinationRowsEditor engagementId={row.id} showToast={showToast} />
       )}
 
-      {/* S334: Card overrides editor (dining + experiences per-engagement copy/image) */}
+      {/* S334: Cards editor (selections-primary, override-on-demand, dining + experiences) */}
       {row.id && (
-        <CardOverridesEditor engagementId={row.id} showToast={showToast} />
+        <CardsEditor engagementId={row.id} showToast={showToast} />
       )}
 
       {/* Pricing */}
@@ -945,7 +952,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         />
       </Section>
 
-      {/* Child counts (without destination_rows, route_stops, or card_overrides) */}
+      {/* Child counts (without destination_rows, route_stops, card_selections, or card_overrides) */}
       {row.url_id && <ChildCountsSummary counts={counts} urlId={row.url_id} />}
 
       {/* Save bar (sticky bottom) */}
@@ -967,9 +974,20 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       <Section title='Danger Zone'>
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
           Deletion cascades through 10 child tables. There is no undo.
+          You will be asked to confirm in three steps before anything is deleted.
         </div>
-        <button onClick={handleDelete} style={btnDanger}>Delete Engagement</button>
+        <button onClick={() => setDeleteOpen(true)} style={btnDanger}>Delete Engagement</button>
       </Section>
+
+      {/* S334: 4-step delete confirmation modal */}
+      {deleteOpen && row && (
+        <DeleteEngagementModal
+          title={row.title ?? row.url_id ?? '(untitled)'}
+          urlId={row.url_id ?? ''}
+          onClose={handleDeleteClose}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
     </div>
   )
 }
