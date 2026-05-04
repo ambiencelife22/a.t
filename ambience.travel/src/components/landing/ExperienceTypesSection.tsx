@@ -19,9 +19,9 @@ const items = [
     image: 'https://cache.marriott.com/is/image/marriotts7prod/rz-mlera-welcome-to-the-maldives-29354:Wide-Hor?wid=1100&fit=constrain',
   },
   {
-    title: 'Extended Immersion Travel',
-    text:  'Multi-stop itineraries requiring careful coordination, strong judgement, and consistency across every stage.',
-    image: 'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-156,2500-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/SBT/SBT_407_original.jpg',
+    title: 'Couples & Celebrations',
+    text:  'Anniversaries, milestone escapes, and romantic getaways tailored to your every preference.',
+    image: 'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-312,5000-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/KOH/KOH_1422_original.jpg',
   },
   {
     title: 'Wellness-Led Escapes',
@@ -29,9 +29,9 @@ const items = [
     image: 'https://burgenstockresort.com/uploads/media/2880x1800-cover-page/00/1430-Alpine%20Spa_Exterior_Infinity%20Edge%20Pool%203_web.jpg?v=2-5',
   },
   {
-    title: 'Suites, Villas, & Residential-Style Stays',
-    text:  'Accommodations chosen for how they live and feel, not just how they appear on paper.',
-    image: 'https://images.prismic.io/lvmh-chevalblanc/Z-vdqXdAxsiBwLEY_WebRGB-ChevalBlancParis_SuiteEiffel_VincentLeroux.jpg?auto=format%2Ccompress&fit=max&w=1100',
+    title: 'Extended Immersion Travel',
+    text:  'Multi-stop itineraries requiring careful coordination, strong judgement, and consistency across every stage.',
+    image: 'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-156,2500-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/SBT/SBT_407_original.jpg',
   },
   {
     title: 'Signature City Stays',
@@ -39,9 +39,9 @@ const items = [
     image: 'https://symphony.cdn.tambourine.com/the-setai-miami-beach/media/the-setai-miami-beach-penthouse-bedroom-62ad0d35f1eac.jpg',
   },
   {
-    title: 'Couples & Celebrations',
-    text:  'Anniversaries, milestone escapes, and romantic getaways tailored to your every preference.',
-    image: 'https://www.fourseasons.com/alt/img-opt/~80.1860.0,0000-312,5000-3000,0000-1687,5000/publish/content/dam/fourseasons/images/web/KOH/KOH_1422_original.jpg',
+    title: 'Suites, Villas, & Residential-Style Stays',
+    text:  'Accommodations chosen for how they live and feel, not just how they appear on paper.',
+    image: 'https://images.prismic.io/lvmh-chevalblanc/Z-vdqXdAxsiBwLEY_WebRGB-ChevalBlancParis_SuiteEiffel_VincentLeroux.jpg?auto=format%2Ccompress&fit=max&w=1100',
   },
 ]
 
