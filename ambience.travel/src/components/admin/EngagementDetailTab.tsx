@@ -7,8 +7,10 @@
  * Out of scope v0 (read-only summary only): destination rows, card
  * selections, route stops, pricing rows, rooms.
  *
- * Last updated: S33 — Added iteration_label field to Identity section
- *   (column added in s33_01).
+ * Last updated: S33B (re-ship 04 May) — ImageFieldWithUploader swapped in
+ *   for the two hero image_src fields. Alt fields remain plain text inputs.
+ *   Re-shipped after the prior S33B file landed but was reverted.
+ * Prior: S33 — Added iteration_label field to Identity section.
  */
 
 import { useEffect, useState } from 'react'
@@ -36,6 +38,7 @@ import {
   navigateAdmin,
 } from '../../lib/adminPath'
 import { A } from '../../lib/adminTokens'
+import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -789,13 +792,18 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
             <input style={inputStyle} value={draft.subtitle ?? ''} onChange={e => patch('subtitle', e.target.value || null)} />
           </Field>
           <div />
-          <Field label='Hero Image Src'>
-            <input style={inputStyle} value={draft.hero_image_src ?? ''} onChange={e => patch('hero_image_src', e.target.value || null)} />
-          </Field>
-          <Field label='Hero Image Alt'>
-            <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
-          </Field>
         </div>
+
+        <Field label='Hero Image Src'>
+          <ImageFieldWithUploader
+            value={draft.hero_image_src}
+            onChange={v => patch('hero_image_src', v)}
+          />
+        </Field>
+        <Field label='Hero Image Alt'>
+          <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
+        </Field>
+
         <Field label='Hero Pills (jsonb)'>
           <JsonField value={draft.hero_pills} onChange={v => patch('hero_pills', v)} />
         </Field>
@@ -810,13 +818,17 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <Field label='Subtitle 2'>
             <input style={inputStyle} value={draft.hero_subtitle_2 ?? ''} onChange={e => patch('hero_subtitle_2', e.target.value || null)} />
           </Field>
-          <Field label='Image Src 2'>
-            <input style={inputStyle} value={draft.hero_image_src_2 ?? ''} onChange={e => patch('hero_image_src_2', e.target.value || null)} />
-          </Field>
-          <Field label='Image Alt 2'>
-            <input style={inputStyle} value={draft.hero_image_alt_2 ?? ''} onChange={e => patch('hero_image_alt_2', e.target.value || null)} />
-          </Field>
         </div>
+
+        <Field label='Image Src 2'>
+          <ImageFieldWithUploader
+            value={draft.hero_image_src_2}
+            onChange={v => patch('hero_image_src_2', v)}
+          />
+        </Field>
+        <Field label='Image Alt 2'>
+          <input style={inputStyle} value={draft.hero_image_alt_2 ?? ''} onChange={e => patch('hero_image_alt_2', e.target.value || null)} />
+        </Field>
       </Section>
 
       {/* Route */}
