@@ -114,6 +114,7 @@ export async function getDiningVenuesByDestination(
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)
+    .order('is_supplementary', { ascending: true })
     .order('name', { ascending: true })
 
   if (error) {
