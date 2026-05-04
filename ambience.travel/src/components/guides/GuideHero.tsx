@@ -1,42 +1,63 @@
-// GuideHero.tsx — two-column hero for guide pages
-// What it owns: eyebrow, h1, intro copy, image panel + overlay caption.
-// What it does not own: page chrome, filters, grid, variant-specific data,
-//   image source resolution (caller passes the resolved URL or null).
+// GuideHero.tsx — full-bleed hero for guide pages
+// Mirrors the LandingHero + ImmerseHero pattern: parallax <img>, three
+// overlay layers (vignette, overlayVertical, overlaySide), glass card
+// with eyebrow + headline + intro.
 //
-// Shared across all guide variants (dining, experiences, hotels). The hero
-// chrome — gold eyebrow, serif h1, intro paragraph, paneled overlay — is
-// identical across variants; only the copy + image change. Each route
-// passes variant-specific strings + image as props.
+// What it owns: hero chrome, parallax + scroll fade behavior, glass card.
+// What it does not own: image source resolution, copy resolution, page chrome.
+//   Caller (DiningGuidePage) passes resolved values; it does the overlay
+//   override → frontend default ?? chain.
+//
+// Shared across all guide variants (dining, experiences, hotels). Variant-
+// specific copy + image come in as props; the hero shape is identical.
+//
+// Layout: hero is rendered as a top-level sibling of the page's constrained
+// content (mirrors ImmerseEngagementPage). Owns its own width via
+// width: 100% — no negative-margin viewport escape required.
 //
 // Image rendering:
-//   - imageSrc populated → renders <img> with overlay caption on top
-//   - imageSrc null → renders the gradient panel fallback (decorative, no <img>)
+//   - imageSrc populated → renders <img> with parallax + overlay stack
+//   - imageSrc null → renders solid-color hero with glass card on top
 //
-// Last updated: S35 — Added imageSrc + imageAlt props for overlay-driven
-//   hero image. NULL imageSrc preserves the original gradient panel render.
+// Glass card position: lower-third aligned. Guide pages are utilitarian
+// content; the hero should set tone without dominating.
+//
+// Last updated: S36 — Removed negative-margin escape (marginLeft/Right:
+//   calc(50% - 50vw)). Hero now expects to be rendered as a sibling of
+//   the constrained content container, not inside it. Caller updated.
+// Prior: S35 — Refactored from two-column gradient-panel layout to
+//   full-bleed parallax pattern. Removed panel_title/panel_body props
+//   entirely (no overlay-caption block in this iteration). Mirrors hero
+//   conventions established by LandingHero (S32K) + ImmerseHero (S32F).
 
-import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
+import { useEffect, useRef, useState } from 'react'
+import { ID, IMMERSE_HERO, FONTS } from '../../lib/landingColors'
+import { useImmerseMobile, useImmerseVisible, immerseFadeUp } from '../immerse/ImmerseComponents'
+
+const HERO_LAYOUT = {
+  minHeightMobile:    520,
+  minHeightDesktop:   640,
+  parallaxMagnitude:  0.6,
+  imageHeightDesktop: '110%',
+  imageHeightMobile:  '100%',
+  imageTopDesktop:    '-10%',
+  imageTopMobile:     0,
+  cardFadeWindow:     0.7,
+  cardFadeMax:        0.82,
+} as const
 
 interface GuideHeroProps {
-  /** Gold eyebrow above the headline. e.g. "Curated dining" / "Curated experiences" */
+  /** Gold eyebrow above the headline. e.g. "Curated dining" */
   eyebrow: string
-  /** Serif h1. e.g. "New York City, Curated Dining" — page knows the destination. */
+  /** Serif h1. e.g. "New York City, Curated Dining" */
   headline: string
   /** Body paragraph below the headline. */
   intro: string
-  /** Right-panel hero image URL. null = render gradient fallback panel. */
+  /** Hero image URL. null = render solid-color hero (no <img>). */
   imageSrc?: string | null
   /** Alt text for the hero image. Falls back to headline if not provided. */
   imageAlt?: string | null
-  /** Right-panel overlay title. Optional — defaults to a guide-neutral phrase. */
-  panelTitle?: string
-  /** Right-panel overlay body. Optional — defaults to a guide-neutral phrase. */
-  panelBody?: string
 }
-
-const DEFAULT_PANEL_TITLE = 'Considered for you.'
-const DEFAULT_PANEL_BODY  = 'Curated by ambience for clients who travel deliberately. Reservations and on-trip concierge handled by your travel designer.'
 
 export function GuideHero({
   eyebrow,
@@ -44,150 +65,162 @@ export function GuideHero({
   intro,
   imageSrc,
   imageAlt,
-  panelTitle = DEFAULT_PANEL_TITLE,
-  panelBody  = DEFAULT_PANEL_BODY,
 }: GuideHeroProps) {
+  const { ref, visible } = useImmerseVisible(0.05)
+  const isMobile = useImmerseMobile()
+  const sectionRef = useRef<HTMLElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [cardOpacity, setCardOpacity] = useState(1)
+
   const hasImage = !!imageSrc && imageSrc.trim().length > 0
 
-  return (
-    <section style={heroStyle}>
-      <div style={heroCopyStyle}>
-        <div style={labelStyle}>
-          <span style={labelDashStyle} />
-          {eyebrow}
-        </div>
-        <h1 style={heroTitleStyle}>{headline}</h1>
-        <p style={introStyle}>{intro}</p>
-      </div>
+  useEffect(() => {
+    let rafId = 0
+    let ticking = false
 
-      <div style={heroPanelStyle}>
+    function update() {
+      const el = sectionRef.current
+      if (!el) { ticking = false; return }
+      const { top, height } = el.getBoundingClientRect()
+
+      const progress = Math.max(0, Math.min(1, (-top) / (height * HERO_LAYOUT.cardFadeWindow)))
+      setCardOpacity(1 - progress * HERO_LAYOUT.cardFadeMax)
+
+      if (!isMobile && imgRef.current) {
+        const translateY = -top * HERO_LAYOUT.parallaxMagnitude
+        imgRef.current.style.transform = `translate3d(0, ${translateY}px, 0)`
+      }
+      ticking = false
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        rafId = requestAnimationFrame(update)
+        ticking = true
+      }
+    }
+
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [isMobile])
+
+  return (
+    <section
+      ref={sectionRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        marginBottom: 34,
+      }}
+    >
+      <div
+        style={{
+          position:   'relative',
+          minHeight:  isMobile ? HERO_LAYOUT.minHeightMobile : HERO_LAYOUT.minHeightDesktop,
+          overflow:   'hidden',
+          display:    'flex',
+          alignItems: 'flex-end',
+          background: hasImage ? 'transparent' : ID.panel2,
+        }}
+      >
         {hasImage && (
-          <>
-            <img
-              src={imageSrc!}
-              alt={imageAlt ?? headline}
-              style={heroImageStyle}
-              loading="eager"
-            />
-            <div style={heroImageOverlayStyle} />
-          </>
+          <img
+            ref={imgRef}
+            src={imageSrc!}
+            alt={imageAlt ?? headline}
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            style={{
+              position:       'absolute',
+              top:            isMobile ? HERO_LAYOUT.imageTopMobile : HERO_LAYOUT.imageTopDesktop,
+              left:           0,
+              width:          '100%',
+              height:         isMobile ? HERO_LAYOUT.imageHeightMobile : HERO_LAYOUT.imageHeightDesktop,
+              objectFit:      'cover',
+              objectPosition: 'center 40%',
+              zIndex:         0,
+              willChange:     isMobile ? 'auto' : 'transform',
+            }}
+          />
         )}
-        <div style={heroPanelOverlayStyle}>
-          <h2 style={heroPanelTitleStyle}>{panelTitle}</h2>
-          <p style={heroPanelTextStyle}>{panelBody}</p>
+
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: IMMERSE_HERO.vignette,        zIndex: 1, pointerEvents: 'none' }} />
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: IMMERSE_HERO.overlayVertical, zIndex: 2, pointerEvents: 'none' }} />
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: IMMERSE_HERO.overlaySide,     zIndex: 3, pointerEvents: 'none' }} />
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex:   4,
+            width:    'min(1220px, calc(100% - 36px))',
+            margin:   '0 auto',
+            padding:  isMobile ? '0 0 32px' : '0 0 56px',
+          }}
+        >
+          <div
+            ref={ref as React.RefObject<HTMLDivElement>}
+            style={{
+              width:                'min(720px, 100%)',
+              padding:              isMobile ? 22 : 38,
+              border:               IMMERSE_HERO.glassBorder,
+              borderRadius:         IMMERSE_HERO.glassRadius,
+              background:           IMMERSE_HERO.glassBackground,
+              backdropFilter:       IMMERSE_HERO.glassBlur,
+              WebkitBackdropFilter: IMMERSE_HERO.glassBlur,
+              boxShadow:            IMMERSE_HERO.glassShadow,
+              opacity:              cardOpacity,
+              transition:           'opacity 0.05s linear',
+            }}
+          >
+            <div
+              style={{
+                color:         ID.gold,
+                fontSize:      isMobile ? 12 : 13,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                fontWeight:    700,
+                marginBottom:  18,
+                ...immerseFadeUp(visible, 0),
+              }}
+            >
+              {eyebrow}
+            </div>
+
+            <h1
+              style={{
+                fontSize:      isMobile ? 38 : 'clamp(46px, 5.4vw, 72px)',
+                lineHeight:    1.0,
+                letterSpacing: '-0.02em',
+                fontWeight:    400,
+                fontFamily:    FONTS.serif,
+                margin:        '0 0 20px',
+                color:         ID.text,
+                ...immerseFadeUp(visible, 120),
+              }}
+            >
+              {headline}
+            </h1>
+
+            <p
+              style={{
+                color:      ID.muted,
+                fontSize:   isMobile ? 15 : 17,
+                lineHeight: 1.7,
+                maxWidth:   600,
+                margin:     0,
+                ...immerseFadeUp(visible, 240),
+              }}
+            >
+              {intro}
+            </p>
+          </div>
         </div>
       </div>
     </section>
   )
-}
-
-const heroStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '0.95fr 1.05fr',
-  gap: 34,
-  alignItems: 'stretch',
-  marginBottom: 34,
-}
-
-const heroCopyStyle: React.CSSProperties = {
-  padding: '46px 44px',
-  border: `1px solid ${IMMERSE.tableBorder}`,
-  borderRadius: 34,
-  background: 'linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))',
-  boxShadow: '0 24px 100px rgba(0,0,0,0.28)',
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  gap: 10,
-  alignItems: 'center',
-  color: ID.gold,
-  fontSize: 12,
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  marginBottom: 22,
-}
-
-const labelDashStyle: React.CSSProperties = {
-  display: 'inline-block',
-  width: 28,
-  height: 1,
-  background: ID.gold,
-  opacity: 0.75,
-}
-
-const heroTitleStyle: React.CSSProperties = {
-  fontFamily: FONTS.serif,
-  fontSize: 'clamp(52px, 7vw, 100px)',
-  lineHeight: 0.92,
-  letterSpacing: '-0.06em',
-  margin: '0 0 24px',
-  fontWeight: 400,
-  color: ID.text,
-}
-
-const introStyle: React.CSSProperties = {
-  maxWidth: 650,
-  color: '#d8d0c0',
-  fontSize: 18,
-  lineHeight: 1.65,
-  margin: 0,
-}
-
-const heroPanelStyle: React.CSSProperties = {
-  borderRadius: 34,
-  minHeight: 475,
-  position: 'relative',
-  overflow: 'hidden',
-  border: `1px solid ${IMMERSE.tableBorder}`,
-  background: `linear-gradient(135deg, ${IMMERSE.goldTint}, rgba(154,169,120,0.12)), ${ID.panel2}`,
-}
-
-const heroImageStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  display: 'block',
-}
-
-const heroImageOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  background: IMMERSE.imageOverlayStrong,
-  pointerEvents: 'none',
-}
-
-const heroPanelOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: 24,
-  right: 24,
-  bottom: 24,
-  padding: 24,
-  borderRadius: 24,
-  background: 'rgba(17,19,15,0.72)',
-  backdropFilter: 'blur(18px)',
-  WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(247,241,231,0.13)',
-  zIndex: 2,
-}
-
-const heroPanelTitleStyle: React.CSSProperties = {
-  margin: '0 0 8px',
-  fontFamily: FONTS.serif,
-  fontWeight: 400,
-  fontSize: 32,
-  letterSpacing: '-0.04em',
-  color: ID.text,
-}
-
-const heroPanelTextStyle: React.CSSProperties = {
-  margin: 0,
-  color: ID.muted,
-  lineHeight: 1.55,
-  fontSize: 15,
 }

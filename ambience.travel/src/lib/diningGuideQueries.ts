@@ -8,7 +8,16 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S35 — Added GuideOverlay shape + getGuideDestination() now
+// Last updated: S36 — Fixed overlay unwrap. Supabase PostgREST detects the
+//   UNIQUE constraint on travel_dining_guides.global_destination_id and
+//   returns the nested-select join as a single object (not an array).
+//   Previous Array.isArray unwrap silently resolved every overlay to null;
+//   defaults flowed through on every page load. Now reads as object|null
+//   direct.
+// Prior: S35 — Dropped panel_title_override + panel_body_override
+//   from DiningGuideOverlay shape + nested SELECT. Panel block removed
+//   from GuideHero entirely. Schema cleanup in s35_06.
+// Prior: S35 — Added GuideOverlay shape + getGuideDestination() now
 //   returns overlay fields via LEFT JOIN against travel_dining_guides. NULL
 //   overlay fields = frontend defaults flow through (standard ?? chain).
 
@@ -49,8 +58,6 @@ export interface DiningGuideOverlay {
   headline_override: string | null
   intro_override: string | null
   eyebrow_override: string | null
-  panel_title_override: string | null
-  panel_body_override: string | null
 }
 
 export interface GuideDestination {
@@ -130,9 +137,7 @@ export async function getGuideDestination(
         hero_image_alt,
         headline_override,
         intro_override,
-        eyebrow_override,
-        panel_title_override,
-        panel_body_override
+        eyebrow_override
       )
     `)
     .eq('slug', destinationSlug)
@@ -144,11 +149,11 @@ export async function getGuideDestination(
   }
   if (!data) return null
 
-  // Supabase nested-select returns array even for 1:1 join via UNIQUE constraint.
-  // Unwrap to single overlay or null.
-  const overlayArray = (data as unknown as { overlay: DiningGuideOverlay[] | null }).overlay
-  const overlay: DiningGuideOverlay | null =
-    Array.isArray(overlayArray) && overlayArray.length > 0 ? overlayArray[0] : null
+  // Supabase returns overlay as a single object (not array) when the FK
+  // column carries a UNIQUE constraint — PostgREST detects 1:1 and unwraps
+  // automatically. travel_dining_guides has UNIQUE on global_destination_id,
+  // so the nested select returns either the overlay row or null.
+  const overlay = (data as unknown as { overlay: DiningGuideOverlay | null }).overlay ?? null
 
   return {
     id:   (data as { id: string }).id,

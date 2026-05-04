@@ -16,11 +16,19 @@
 // destination are nullable — page resolves each via ?? against frontend
 // defaults (Variant 1 column-based override per Seed Reference v8 §5).
 //
-// v1: ungated — every venue with ambience_take populated renders in full.
-// Gating ships in S36 with the dining_guide_for_user view + dining_guide_grants
-// table.
+// Layout pattern: hero is rendered as a sibling of the constrained content,
+// not inside it. Mirrors ImmerseEngagementPage — hero owns its own width;
+// filters + grid live inside a max-1480px container. No negative-margin
+// escape tricks.
 //
-// Last updated: S35 — Hero copy now overlay-driven via ?? chain. headline,
+// Last updated: S36 — Hero lifted to sibling of <main>. Removed negative-
+//   margin viewport-escape pattern from GuideHero call site. Pattern now
+//   matches ImmerseEngagementPage (hero outside constrained content).
+// Prior: S35 — GuideHero refactored to full-bleed parallax pattern.
+//   Panel title/body block dropped entirely (no overlay caption). Page now
+//   resolves only eyebrow/headline/intro/image via the ?? chain — panel
+//   resolution lines + DEFAULT_PANEL_TITLE/BODY constants removed.
+// Prior: S35 — Hero copy now overlay-driven via ?? chain. headline,
 //   intro, eyebrow, panel title/body each fall through:
 //     overlay field → frontend default
 //   Hero image flows direct from overlay.hero_image_src (null = gradient
@@ -48,16 +56,14 @@ interface DiningGuidePageProps {
 // ── Frontend default copy ───────────────────────────────────────────────────
 // Overlay fields fall through to these defaults when NULL.
 
-const DEFAULT_EYEBROW = 'Curated dining'
-const DEFAULT_PANEL_TITLE = 'Dining that feels intentional.'
-const DEFAULT_PANEL_BODY = 'Curated by ambience for clients who travel deliberately. Reservations and on-trip concierge handled by your travel designer.'
+const DEFAULT_EYEBROW = 'Curated Dining'
 
 function defaultHeadline(destinationName: string): string {
-  return `${destinationName}, considered well.`
+  return `${destinationName} Dining`
 }
 
 function defaultIntro(destinationName: string): string {
-  return `A calm, selective dining guide for ${destinationName}, shaped for guests who care about atmosphere, quality, provenance, and a sense of place. Each recommendation is framed around why it belongs in the trip.`
+  return `A selective dining guide for ${destinationName}`
 }
 
 // ── URL filter state sync ────────────────────────────────────────────────────
@@ -99,13 +105,11 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
 
   // Resolve hero copy via overlay → default chain (?? not || per architecture)
   const overlay = destination.overlay
-  const heroEyebrow    = overlay?.eyebrow_override     ?? DEFAULT_EYEBROW
-  const heroHeadline   = overlay?.headline_override    ?? defaultHeadline(destination.name)
-  const heroIntro      = overlay?.intro_override       ?? defaultIntro(destination.name)
-  const heroPanelTitle = overlay?.panel_title_override ?? DEFAULT_PANEL_TITLE
-  const heroPanelBody  = overlay?.panel_body_override  ?? DEFAULT_PANEL_BODY
-  const heroImageSrc   = overlay?.hero_image_src       ?? null
-  const heroImageAlt   = overlay?.hero_image_alt       ?? null
+  const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
+  const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
+  const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
+  const heroImageSrc = overlay?.hero_image_src    ?? null
+  const heroImageAlt = overlay?.hero_image_alt    ?? null
 
   // Fetch venues for the resolved destination
   useEffect(() => {
@@ -182,63 +186,63 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
 
   if (loading) {
     return (
-      <main style={pageStyle}>
+      <>
         <GuideHero
           eyebrow={heroEyebrow}
           headline={heroHeadline}
           intro={heroIntro}
           imageSrc={heroImageSrc}
           imageAlt={heroImageAlt}
-          panelTitle={heroPanelTitle}
-          panelBody={heroPanelBody}
         />
-        <LoadingState />
-      </main>
+        <main style={pageStyle}>
+          <LoadingState />
+        </main>
+      </>
     )
   }
 
   return (
-    <main style={pageStyle}>
+    <>
       <GuideHero
         eyebrow={heroEyebrow}
         headline={heroHeadline}
         intro={heroIntro}
         imageSrc={heroImageSrc}
         imageAlt={heroImageAlt}
-        panelTitle={heroPanelTitle}
-        panelBody={heroPanelBody}
       />
 
-      <DiningGuideFilters
-        state={filterState}
-        onChange={setFilterState}
-        availableCuisines={availableCuisines}
-        availableNeighborhoods={availableNeighborhoods}
-        hasMichelinItems={hasMichelinItems}
-      />
+      <main style={pageStyle}>
+        <DiningGuideFilters
+          state={filterState}
+          onChange={setFilterState}
+          availableCuisines={availableCuisines}
+          availableNeighborhoods={availableNeighborhoods}
+          hasMichelinItems={hasMichelinItems}
+        />
 
-      <div style={sectionTitleStyle}>
-        <h2 style={sectionTitleH2Style}>Selected tables</h2>
-        <p style={sectionTitleCountStyle}>
-          {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
-        </p>
-      </div>
+        <div style={sectionTitleStyle}>
+          <h2 style={sectionTitleH2Style}>Selected tables</h2>
+          <p style={sectionTitleCountStyle}>
+            {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
+          </p>
+        </div>
 
-      {filteredVenues.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <section style={gridStyle}>
-          {filteredVenues.map((v) => (
-            <DiningCard
-              key={v.id}
-              venue={v}
-              hasFullAccess={true}
-              destinationName={destination.name}
-            />
-          ))}
-        </section>
-      )}
-    </main>
+        {filteredVenues.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <section style={gridStyle}>
+            {filteredVenues.map((v) => (
+              <DiningCard
+                key={v.id}
+                venue={v}
+                hasFullAccess={true}
+                destinationName={destination.name}
+              />
+            ))}
+          </section>
+        )}
+      </main>
+    </>
   )
 }
 
