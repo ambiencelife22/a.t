@@ -1,7 +1,12 @@
 // DiningCard.tsx — single dining venue card for the guide page
-// What it owns: card chrome, image grid, meta-row, name, ambience_take, why-block, tags, address.
+// What it owns: card chrome, image grid, meta-row, name, body, tags, address.
 // What it does not own: gating logic (consumes hasFullAccess prop), filter state, layout.
-// Last updated: S35
+// Last updated: S36 — Collapsed two-register canon. Reads venue.body
+//   (was venue.ambience_take). Why-block removed entirely (why_recommend
+//   column dropped in s36_01). Override layer for per-engagement tailoring
+//   of body lives on travel_immerse_trip_content_card_overrides.body_override
+//   for the proposal-card surface; guide page reads canon direct.
+// Prior: S35 — Initial ship with ambience_take + why_recommend render.
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
@@ -129,14 +134,8 @@ function FullBody({ venue }: { venue: DiningVenue }) {
 
   return (
     <>
-      {venue.ambience_take && (
-        <p style={descriptionStyle}>{venue.ambience_take}</p>
-      )}
-      {venue.why_recommend && (
-        <p style={whyStyle}>
-          <strong style={whyStrongStyle}>Why ambience recommends it: </strong>
-          {venue.why_recommend}
-        </p>
+      {venue.body && (
+        <p style={descriptionStyle}>{venue.body}</p>
       )}
       {venue.tags && venue.tags.length > 0 && (
         <div style={tagsStyle}>
@@ -283,22 +282,6 @@ const descriptionStyle: React.CSSProperties = {
   lineHeight: 1.62,
   fontSize: 15.5,
   margin: '0 0 18px',
-}
-
-const whyStyle: React.CSSProperties = {
-  color: ID.muted,
-  lineHeight: 1.55,
-  fontSize: 14,
-  margin: '0 0 20px',
-  padding: 16,
-  borderRadius: 18,
-  background: 'rgba(247,241,231,0.045)',
-  border: '1px solid rgba(247,241,231,0.08)',
-}
-
-const whyStrongStyle: React.CSSProperties = {
-  color: ID.text,
-  fontWeight: 600,
 }
 
 const tagsStyle: React.CSSProperties = {

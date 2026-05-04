@@ -1,25 +1,23 @@
 // diningGuideQueries.ts — read path for the dining guide page
 // What it owns: fetch dining venues + per-destination guide overlay row.
-// What it does not own: gating logic (will move to dining_guide_for_user view in S36).
+// What it does not own: gating logic (will move to dining_guide_for_user view).
 //
 // v1 reads directly from travel_dining_venues + travel_dining_guides.
-// When the dining_guide_for_user view ships (S36 Migration 4 + grants table
+// When the dining_guide_for_user view ships (Migration 4 + grants table
 // Migration 3), swap the venues .from() target to 'dining_guide_for_user' —
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S36 — Fixed overlay unwrap. Supabase PostgREST detects the
-//   UNIQUE constraint on travel_dining_guides.global_destination_id and
-//   returns the nested-select join as a single object (not an array).
-//   Previous Array.isArray unwrap silently resolved every overlay to null;
-//   defaults flowed through on every page load. Now reads as object|null
-//   direct.
+// Last updated: S36 — Collapsed two-register canon. ambience_take +
+//   why_recommend dropped from SELECT + DiningVenue type per s36_01.
+//   Filter on ambience_take removed (was hiding 31 of 34 venues).
+//   Order changed from sort_order → name ascending — frontend ordering
+//   is resilient to future inserts without manual renumber.
 // Prior: S35 — Dropped panel_title_override + panel_body_override
 //   from DiningGuideOverlay shape + nested SELECT. Panel block removed
 //   from GuideHero entirely. Schema cleanup in s35_06.
 // Prior: S35 — Added GuideOverlay shape + getGuideDestination() now
-//   returns overlay fields via LEFT JOIN against travel_dining_guides. NULL
-//   overlay fields = frontend defaults flow through (standard ?? chain).
+//   returns overlay fields via LEFT JOIN against travel_dining_guides.
 
 import { supabase } from './supabase'
 
@@ -32,8 +30,9 @@ export interface DiningVenue {
   address: string | null
   maps_url: string | null
   website: string | null
-  ambience_take: string | null
-  why_recommend: string | null
+  body: string | null
+  bullets: string[] | null
+  bullets_heading: string | null
   neighborhood: string | null
   price_band: string | null
   public_preview_rank: number | null
@@ -75,8 +74,9 @@ export interface GuideDestination {
 
 /**
  * Fetches all active dining venues for a given destination slug.
- * Filters by is_active = true and only returns venues with ambience_take populated
- * (excludes proposal-only canonical rows that lack guide-register content).
+ * Filters by is_active = true. Orders by name ascending — frontend ordering
+ * is the source of truth for guide-page render; canonical sort_order column
+ * is a sensible default for other readers (admin lists, CSV exports).
  */
 export async function getDiningVenuesByDestination(
   destinationSlug: string,
@@ -100,7 +100,7 @@ export async function getDiningVenuesByDestination(
     .select(`
       id, slug, name, cuisine_subcategory, michelin,
       address, maps_url, website,
-      ambience_take, why_recommend,
+      body, bullets, bullets_heading,
       neighborhood, price_band, public_preview_rank, tags,
       image_src, image_alt, image_2_src, image_2_alt,
       image_credit, image_credit_url,
@@ -108,7 +108,7 @@ export async function getDiningVenuesByDestination(
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)
-    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true })
 
   if (error) {
     throw new Error(`Failed to fetch dining venues: ${error.message}`)
@@ -148,11 +148,11 @@ export async function getGuideDestination(
   }
   if (!data) return null
 
-  // Supabase returns overlay as a single object (not array) when the FK
-  // column carries a UNIQUE constraint — PostgREST detects 1:1 and unwraps
-  // automatically. travel_dining_guides has UNIQUE on global_destination_id,
-  // so the nested select returns either the overlay row or null.
-  const overlay = (data as unknown as { overlay: DiningGuideOverlay | null }).overlay ?? null
+  // Supabase nested-select returns array even for 1:1 join via UNIQUE constraint.
+  // Unwrap to single overlay or null.
+  const overlayArray = (data as unknown as { overlay: DiningGuideOverlay[] | null }).overlay
+  const overlay: DiningGuideOverlay | null =
+    Array.isArray(overlayArray) && overlayArray.length > 0 ? overlayArray[0] : null
 
   return {
     id:   (data as { id: string }).id,
