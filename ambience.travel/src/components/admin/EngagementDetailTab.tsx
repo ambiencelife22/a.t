@@ -6,8 +6,10 @@
  *
  * Out of scope (read-only summary only): card selections, pricing rows, rooms.
  *
- * Last updated: S334 — Mount RouteStopsEditor under Route Section.
- *   Drop route_stops from ChildCountsSummary (now editable in-line via S33D).
+ * Last updated: S334 — Mount CardOverridesEditor between DestinationRows and
+ *   Pricing Section. Drop card_overrides from ChildCountsSummary.
+ * Prior: S334 — Mount RouteStopsEditor under Route Section. Drop route_stops
+ *   from ChildCountsSummary.
  * Prior: S33C — Mount DestinationRowsEditor between Destination Section
  *   and Pricing Section. Remove destination_rows from ChildCountsSummary.
  * Prior: S33B (re-ship 04 May) — ImageFieldWithUploader for hero image
@@ -42,6 +44,7 @@ import { A } from '../../lib/adminTokens'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import DestinationRowsEditor from './DestinationRowsEditor'
 import RouteStopsEditor from './RouteStopsEditor'
+import CardOverridesEditor from './CardOverridesEditor'
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -467,6 +470,7 @@ function WelcomeOverrideField({
 // ── Child counts summary ─────────────────────────────────────────────────────
 // S33C: destination_rows removed — now editable inline via DestinationRowsEditor.
 // S334: route_stops removed — now editable inline via RouteStopsEditor.
+// S334: card_overrides removed — now editable inline via CardOverridesEditor.
 
 function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; urlId: string }) {
   if (!counts) return null
@@ -476,7 +480,6 @@ function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; url
     { label: 'Destination hotels',    n: counts.destination_hotels },
     { label: 'Region hotels',         n: counts.region_hotels },
     { label: 'Card selections',       n: counts.card_selections },
-    { label: 'Card overrides',        n: counts.card_overrides },
     { label: 'Rooms (overlay)',       n: counts.rooms },
   ]
 
@@ -870,6 +873,11 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         <DestinationRowsEditor engagementId={row.id} showToast={showToast} />
       )}
 
+      {/* S334: Card overrides editor (dining + experiences per-engagement copy/image) */}
+      {row.id && (
+        <CardOverridesEditor engagementId={row.id} showToast={showToast} />
+      )}
+
       {/* Pricing */}
       <Section title='Pricing Section'>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -937,7 +945,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         />
       </Section>
 
-      {/* Child counts (without destination_rows or route_stops) */}
+      {/* Child counts (without destination_rows, route_stops, or card_overrides) */}
       {row.url_id && <ChildCountsSummary counts={counts} urlId={row.url_id} />}
 
       {/* Save bar (sticky bottom) */}
