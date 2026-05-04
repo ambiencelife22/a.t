@@ -4,15 +4,14 @@
  * Person/Trip linkage via typeahead. Welcome letter overrides surface
  * canonical placeholder. Danger zone delete with CASCADE warning.
  *
- * Out of scope (read-only summary only): card selections, route stops,
- * pricing rows, rooms.
+ * Out of scope (read-only summary only): card selections, pricing rows, rooms.
  *
- * Last updated: S33C — Mount DestinationRowsEditor between Destination
- *   Section and Pricing Section. Remove destination_rows from
- *   ChildCountsSummary (now editable in-line).
+ * Last updated: S334 — Mount RouteStopsEditor under Route Section.
+ *   Drop route_stops from ChildCountsSummary (now editable in-line via S33D).
+ * Prior: S33C — Mount DestinationRowsEditor between Destination Section
+ *   and Pricing Section. Remove destination_rows from ChildCountsSummary.
  * Prior: S33B (re-ship 04 May) — ImageFieldWithUploader for hero image
  *   src fields.
- * Prior: S33 — Added iteration_label field to Identity section.
  */
 
 import { useEffect, useState } from 'react'
@@ -42,6 +41,7 @@ import {
 import { A } from '../../lib/adminTokens'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import DestinationRowsEditor from './DestinationRowsEditor'
+import RouteStopsEditor from './RouteStopsEditor'
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -466,6 +466,7 @@ function WelcomeOverrideField({
 
 // ── Child counts summary ─────────────────────────────────────────────────────
 // S33C: destination_rows removed — now editable inline via DestinationRowsEditor.
+// S334: route_stops removed — now editable inline via RouteStopsEditor.
 
 function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; urlId: string }) {
   if (!counts) return null
@@ -474,7 +475,6 @@ function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; url
     { label: 'Pricing rows',          n: counts.pricing_rows },
     { label: 'Destination hotels',    n: counts.destination_hotels },
     { label: 'Region hotels',         n: counts.region_hotels },
-    { label: 'Route stops',           n: counts.route_stops },
     { label: 'Card selections',       n: counts.card_selections },
     { label: 'Card overrides',        n: counts.card_overrides },
     { label: 'Rooms (overlay)',       n: counts.rooms },
@@ -834,7 +834,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </Field>
       </Section>
 
-      {/* Route */}
+      {/* Route — engagement-level copy */}
       <Section title='Route Section'>
         <Field label='Route Eyebrow'>
           <input style={inputStyle} value={draft.route_eyebrow ?? ''} onChange={e => patch('route_eyebrow', e.target.value || null)} />
@@ -846,6 +846,11 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <textarea style={textareaStyle} value={draft.route_body ?? ''} onChange={e => patch('route_body', e.target.value || null)} />
         </Field>
       </Section>
+
+      {/* S33D: Route stops editor (drag-reorder + per-stop modal editor) */}
+      {row.id && (
+        <RouteStopsEditor engagementId={row.id} showToast={showToast} />
+      )}
 
       {/* Destination Section copy (engagement-level intro to destinations) */}
       <Section title='Destination Section'>
@@ -932,7 +937,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         />
       </Section>
 
-      {/* Child counts (now without destination_rows) */}
+      {/* Child counts (without destination_rows or route_stops) */}
       {row.url_id && <ChildCountsSummary counts={counts} urlId={row.url_id} />}
 
       {/* Save bar (sticky bottom) */}
