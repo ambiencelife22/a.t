@@ -1,10 +1,11 @@
 /* AdminSidebar.tsx
- * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Programme).
- * Future products (LIFE, MONEY) shown disabled.
+ * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Guides,
+ * Library, Programme). Future products (LIFE, MONEY) shown disabled.
  *
- * Mobile variant: same items, rendered as a top dropdown selector.
- *
- * Last updated: S33
+ * Last updated: S36 — Library/dining link now passes destinationId: null
+ *   (unscoped landing — drill-in scoping happens from Guides tab).
+ * Prior: S36 — Added Guides + Library groups (Dining tab in each).
+ * Prior: S33
  */
 
 import {
@@ -17,6 +18,8 @@ import { A } from '../../lib/adminTokens'
 type SidebarLink =
   | { kind: 'immerse-engagements' }
   | { kind: 'immerse-showcases' }
+  | { kind: 'guides-dining' }
+  | { kind: 'library-dining' }
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
@@ -29,6 +32,14 @@ type SidebarItem = {
 const IMMERSE_ITEMS: SidebarItem[] = [
   { key: 'immerse-engagements', label: 'Engagements', link: { kind: 'immerse-engagements' } },
   { key: 'immerse-showcases',   label: 'Showcases',   link: { kind: 'immerse-showcases' } },
+]
+
+const GUIDES_ITEMS: SidebarItem[] = [
+  { key: 'guides-dining', label: 'Dining', link: { kind: 'guides-dining' } },
+]
+
+const LIBRARY_ITEMS: SidebarItem[] = [
+  { key: 'library-dining', label: 'Dining', link: { kind: 'library-dining' } },
 ]
 
 const PROGRAMME_ITEMS: SidebarItem[] = [
@@ -53,6 +64,12 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   if (item.link.kind === 'immerse-showcases') {
     return current.product === 'immerse' && current.tab === 'showcases'
   }
+  if (item.link.kind === 'guides-dining') {
+    return current.product === 'guides' && current.tab === 'dining'
+  }
+  if (item.link.kind === 'library-dining') {
+    return current.product === 'library' && current.tab === 'dining'
+  }
   return current.product === 'programme' && current.tab === item.link.tab
 }
 
@@ -63,10 +80,14 @@ function hashFor(item: SidebarItem): string {
   if (item.link.kind === 'immerse-showcases') {
     return buildAdminHash({ product: 'immerse', tab: 'showcases' })
   }
+  if (item.link.kind === 'guides-dining') {
+    return buildAdminHash({ product: 'guides', tab: 'dining' })
+  }
+  if (item.link.kind === 'library-dining') {
+    return buildAdminHash({ product: 'library', tab: 'dining', destinationId: null })
+  }
   return buildAdminHash({ product: 'programme', tab: item.link.tab })
 }
-
-// ── Desktop sidebar ──────────────────────────────────────────────────────────
 
 function GroupHeader({ label }: { label: string }) {
   return (
@@ -129,6 +150,16 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
         <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
       ))}
 
+      <GroupHeader label='Guides' />
+      {GUIDES_ITEMS.map(item => (
+        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
+      ))}
+
+      <GroupHeader label='Library' />
+      {LIBRARY_ITEMS.map(item => (
+        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
+      ))}
+
       <GroupHeader label='Programme' />
       {PROGRAMME_ITEMS.map(item => (
         <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
@@ -143,10 +174,13 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
   )
 }
 
-// ── Mobile dropdown ──────────────────────────────────────────────────────────
-
 function MobileSelector({ tab }: { tab: AdminTab }) {
-  const all: SidebarItem[] = [...IMMERSE_ITEMS, ...PROGRAMME_ITEMS]
+  const all: SidebarItem[] = [
+    ...IMMERSE_ITEMS,
+    ...GUIDES_ITEMS,
+    ...LIBRARY_ITEMS,
+    ...PROGRAMME_ITEMS,
+  ]
 
   function currentValue(): string {
     const found = all.find(i => isActive(i, tab))
@@ -181,6 +215,12 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         <optgroup label='Immerse'>
           {IMMERSE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
+        <optgroup label='Guides'>
+          {GUIDES_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+        </optgroup>
+        <optgroup label='Library'>
+          {LIBRARY_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+        </optgroup>
         <optgroup label='Programme'>
           {PROGRAMME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
@@ -188,8 +228,6 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     </div>
   )
 }
-
-// ── Public component ─────────────────────────────────────────────────────────
 
 export default function AdminSidebar({
   tab,

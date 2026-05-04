@@ -6,7 +6,14 @@
 //   - 'image'     — converts to webp via canvas, quality 0.85
 //   - 'floorplan' — PDF passthrough, no conversion
 //
-// Last updated: S33B
+// presetPath mode (S36):
+//   When presetPath is provided, GeoCascade is hidden and uploads go
+//   directly to that path. Used by destination-scoped flows (Library /
+//   Dining for a specific destination).
+//
+// Last updated: S36 — Added presetPath prop. When set, GeoCascade is
+//   hidden and the resolved path is used directly.
+// Prior: S33B
 
 import { useEffect, useState } from 'react'
 import {
@@ -18,8 +25,6 @@ import {
 } from '../../lib/adminAssetQueries'
 import GeoCascade, { type GeoCascadeValue } from './GeoCascade'
 import { A } from '../../lib/adminTokens'
-
-// ── Toast ────────────────────────────────────────────────────────────────────
 
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return (
@@ -36,8 +41,6 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     </div>
   )
 }
-
-// ── Styles ───────────────────────────────────────────────────────────────────
 
 const labelStyle: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
@@ -76,15 +79,18 @@ const btnDanger: React.CSSProperties = {
   borderColor: 'rgba(239,68,68,0.3)',
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
-
 export type AssetUploaderProps = {
-  mode:       'image' | 'floorplan'
-  onClose:    () => void
-  onUploaded: (result: UploadResult) => void
+  mode:        'image' | 'floorplan'
+  onClose:     () => void
+  onUploaded:  (result: UploadResult) => void
+  /**
+   * If provided, the GeoCascade picker is hidden and uploads target this
+   * path directly. The path is shown read-only above the file picker.
+   */
+  presetPath?: string
 }
 
-export default function AssetUploader({ mode, onClose, onUploaded }: AssetUploaderProps) {
+export default function AssetUploader({ mode, onClose, onUploaded, presetPath }: AssetUploaderProps) {
   const [geo, setGeo]                       = useState<GeoCascadeValue>({ resolvedPath: null })
   const [file, setFile]                     = useState<File | null>(null)
   const [previewUrl, setPreviewUrl]         = useState<string | null>(null)
@@ -94,16 +100,17 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
   const [uploading, setUploading]           = useState(false)
   const [toast, setToast]                   = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
+  // Resolved path: presetPath (if provided) wins; otherwise from GeoCascade.
+  const resolvedPath = presetPath ?? geo.resolvedPath
+
   function showToast(message: string, type: 'success' | 'error') {
     setToast({ message, type })
     setTimeout(() => setToast(null), 5000)
   }
 
-  // ── File picker change ────────────────────────────────────────────────
   function handleFile(f: File | null) {
     setFile(f)
 
-    // Tear down old preview URL
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
@@ -111,35 +118,30 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
 
     if (!f) return
 
-    // Image preview
     if (mode === 'image') {
       setPreviewUrl(URL.createObjectURL(f))
     }
 
-    // Default filename = source name minus extension
     const base = f.name.replace(/\.[^.]+$/, '')
     setFilename(base)
   }
 
-  // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
 
-  // ── Folder contents fetch (for collision detection) ──────────────────
   useEffect(() => {
-    if (!geo.resolvedPath) {
+    if (!resolvedPath) {
       setFolderContents([])
       return
     }
-    listFolderContents(geo.resolvedPath)
+    listFolderContents(resolvedPath)
       .then(setFolderContents)
       .catch(() => setFolderContents([]))
-  }, [geo.resolvedPath])
+  }, [resolvedPath])
 
-  // ── Collision detection ──────────────────────────────────────────────
   useEffect(() => {
     if (!filename) {
       setCollision({ status: 'ok', nextNumberedFilename: '' })
@@ -149,18 +151,15 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
     setCollision(detectCollision(filename, folderContents, ext))
   }, [filename, folderContents, mode])
 
-  // ── Upload handler ───────────────────────────────────────────────────
   async function doUpload(opts: { upsert: boolean }) {
     if (!file)             { showToast('Select a file first.',  'error'); return }
-    if (!geo.resolvedPath) { showToast('Pick a folder first.',  'error'); return }
+    if (!resolvedPath)     { showToast('Pick a folder first.',  'error'); return }
     if (!filename.trim())  { showToast('Filename is required.', 'error'); return }
 
-    // Floorplan mode: enforce PDF mime
     if (mode === 'floorplan' && file.type !== 'application/pdf') {
       showToast('Floorplan upload requires a PDF.', 'error')
       return
     }
-    // Image mode: enforce image mime
     if (mode === 'image' && !file.type.startsWith('image/')) {
       showToast('Image upload requires an image file.', 'error')
       return
@@ -170,10 +169,10 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
     try {
       let result: UploadResult
       if (mode === 'image') {
-        result = await uploadImageAsWebp(file, geo.resolvedPath, filename.trim(), { upsert: opts.upsert })
+        result = await uploadImageAsWebp(file, resolvedPath, filename.trim(), { upsert: opts.upsert })
       }
       if (mode === 'floorplan') {
-        result = await uploadPdf(file, geo.resolvedPath, filename.trim(), { upsert: opts.upsert })
+        result = await uploadPdf(file, resolvedPath, filename.trim(), { upsert: opts.upsert })
       }
       // @ts-expect-error — one of the branches always assigns
       onUploaded(result)
@@ -186,7 +185,6 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
     setUploading(false)
   }
 
-  // ── Render ───────────────────────────────────────────────────────────
   const acceptAttr = mode === 'image' ? 'image/*' : 'application/pdf'
   const titleEyebrow = mode === 'image' ? 'Upload Image (WebP)' : 'Upload Floorplan (PDF)'
   const ext = mode === 'image' ? 'webp' : 'pdf'
@@ -204,7 +202,6 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
         padding: 28, width: '100%', maxWidth: 720,
         display: 'flex', flexDirection: 'column', gap: 18,
       }}>
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, fontWeight: 700, marginBottom: 4 }}>
@@ -217,22 +214,34 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
         </div>
 
-        {/* Folder picker */}
-        <div>
-          <div style={{ ...labelStyle, marginBottom: 10 }}>Folder</div>
-          <GeoCascade onChange={setGeo} />
-          {geo.resolvedPath && (
+        {/* Folder: GeoCascade if no preset, read-only chip if preset */}
+        {presetPath ? (
+          <div>
+            <div style={{ ...labelStyle, marginBottom: 10 }}>Folder</div>
             <div style={{
-              marginTop: 10, padding: '8px 12px', borderRadius: 8,
+              padding: '10px 14px', borderRadius: 10,
               background: A.bgInput, border: `1px solid ${A.border}`,
               fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.muted,
             }}>
-              {geo.resolvedPath}
+              {presetPath}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ ...labelStyle, marginBottom: 10 }}>Folder</div>
+            <GeoCascade onChange={setGeo} />
+            {geo.resolvedPath && (
+              <div style={{
+                marginTop: 10, padding: '8px 12px', borderRadius: 8,
+                background: A.bgInput, border: `1px solid ${A.border}`,
+                fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.muted,
+              }}>
+                {geo.resolvedPath}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* File picker */}
         <div>
           <label style={labelStyle}>{mode === 'image' ? 'Image file' : 'PDF file'}</label>
           <input
@@ -243,7 +252,6 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
           />
         </div>
 
-        {/* Image preview */}
         {mode === 'image' && previewUrl && (
           <div>
             <label style={labelStyle}>Preview (will convert to webp)</label>
@@ -260,7 +268,6 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
           </div>
         )}
 
-        {/* Filename editor */}
         <div>
           <label style={labelStyle}>Filename</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -281,7 +288,6 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
           )}
         </div>
 
-        {/* Action bar */}
         <div style={{
           display: 'flex', gap: 10, paddingTop: 8,
           borderTop: `1px solid ${A.border}`, flexWrap: 'wrap',
@@ -289,7 +295,7 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
           {collision.status === 'ok' && (
             <button
               onClick={() => doUpload({ upsert: false })}
-              disabled={uploading || !file || !geo.resolvedPath || !filename.trim()}
+              disabled={uploading || !file || !resolvedPath || !filename.trim()}
               style={{ ...btnPrimary, opacity: uploading ? 0.5 : 1 }}
             >
               {uploading ? 'Uploading…' : 'Upload'}
@@ -306,7 +312,7 @@ export default function AssetUploader({ mode, onClose, onUploaded }: AssetUpload
               </button>
               <button
                 onClick={() => doUpload({ upsert: true })}
-                disabled={uploading || !file || !geo.resolvedPath}
+                disabled={uploading || !file || !resolvedPath}
                 style={{ ...btnDanger, opacity: uploading ? 0.5 : 1 }}
               >
                 {uploading ? 'Uploading…' : 'Overwrite existing'}

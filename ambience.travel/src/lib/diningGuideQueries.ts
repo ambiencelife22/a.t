@@ -108,7 +108,6 @@ export async function getDiningVenuesByDestination(
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)
-    .not('ambience_take', 'is', null)
     .order('sort_order', { ascending: true })
 
   if (error) {

@@ -4,7 +4,11 @@
 // (the input is editable directly); the "Upload" button opens AssetUploader
 // for the alternative path.
 //
-// Last updated: S33B
+// Last updated: S36 — Added optional presetPath prop. When provided,
+//   AssetUploader hides GeoCascade and uploads directly to the resolved
+//   destination folder (e.g. immerse/na/usa/ny/nyc/dining for NYC dining).
+//   When omitted, AssetUploader behaves as before (full GeoCascade picker).
+// Prior: S33B
 
 import { useState } from 'react'
 import AssetUploader from './AssetUploader'
@@ -44,21 +48,29 @@ export default function ImageFieldWithUploader({
   onChange,
   mode = 'image',
   showPreview = true,
+  presetPath = null,
 }: {
   value:        string | null
   onChange:     (next: string | null) => void
   mode?:        'image' | 'floorplan'
   showPreview?: boolean
+  /**
+   * If provided, AssetUploader uploads directly to this path with no
+   * GeoCascade picker. Pass null when path can't be resolved (destination
+   * has no storage_path) — the upload button is disabled with a hint.
+   */
+  presetPath?: string | null
 }) {
   const [uploaderOpen, setUploaderOpen] = useState(false)
+  const presetMode = presetPath !== undefined && presetPath !== null
+  const presetMissing = presetPath === null && uploaderOpen === false && false
+  // presetPath === null while parent expects scope → uploader disabled
+  // presetPath === undefined → legacy free-cascade mode
 
   function handleUploaded(result: { path: string; publicUrl: string }) {
-    // We store the relative path (no bucket prefix) — matches existing data.
     onChange(result.path)
   }
 
-  // Build a preview URL: if value already looks like an absolute URL, use as-is;
-  // otherwise treat as relative path under ambience-assets and prefix.
   const previewSrc = (() => {
     if (!value) return null
     if (value.startsWith('http://') || value.startsWith('https://')) return value
@@ -66,6 +78,10 @@ export default function ImageFieldWithUploader({
   })()
 
   const isImage = mode === 'image'
+
+  // Upload button is disabled when caller passed presetPath=null explicitly
+  // (destination has no storage_path configured yet).
+  const uploadDisabled = presetPath === null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -76,10 +92,21 @@ export default function ImageFieldWithUploader({
           onChange={e => onChange(e.target.value || null)}
           placeholder={isImage ? 'immerse/.../<file>.webp' : 'immerse/.../<file>.pdf'}
         />
-        <button onClick={() => setUploaderOpen(true)} style={btnGhost}>
+        <button
+          onClick={() => { if (!uploadDisabled) setUploaderOpen(true) }}
+          style={{ ...btnGhost, opacity: uploadDisabled ? 0.4 : 1, cursor: uploadDisabled ? 'not-allowed' : 'pointer' }}
+          title={uploadDisabled ? 'Destination not loaded yet — paste a URL or set storage_path on the destination first' : ''}
+          disabled={uploadDisabled}
+        >
           {isImage ? '↑ Upload' : '↑ Upload PDF'}
         </button>
       </div>
+
+      {uploadDisabled && (
+        <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
+          Destination not loaded yet — upload disabled. Paste a URL above instead.
+        </div>
+      )}
 
       {showPreview && isImage && previewSrc && (
         <div style={{
@@ -123,6 +150,7 @@ export default function ImageFieldWithUploader({
       {uploaderOpen && (
         <AssetUploader
           mode={mode}
+          presetPath={presetMode ? presetPath : undefined}
           onClose={() => setUploaderOpen(false)}
           onUploaded={handleUploaded}
         />

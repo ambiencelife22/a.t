@@ -7,7 +7,9 @@
  *
  * Auth gate: same pattern as ProgrammeAdmin — getSession() + global_profiles.is_admin.
  *
- * Last updated: S33 — initial ship.
+ * Last updated: S36 — Wired Library + Guides product groups (Dining tab in each).
+ *   Library tab passes destinationId from URL hash for destination-scoped views.
+ * Prior: S33
  */
 
 import { useEffect, useState } from 'react'
@@ -20,12 +22,9 @@ import AdminSidebar      from './admin/AdminSidebar'
 import EngagementsListTab    from './admin/EngagementsListTab'
 import EngagementDetailTab from './admin/EngagementDetailTab'
 import ShowcasesListTab  from './admin/ShowcasesListTab'
+import LibraryDiningTab from './admin/LibraryDiningTab'
+import GuidesDiningTab  from './admin/GuidesDiningTab'
 
-// Existing programme tabs — wrapped from ProgrammeAdmin without modification.
-// We import the named tab functions; ProgrammeAdmin currently keeps them
-// internal (default export only). For now, the cleanest path is to re-mount
-// ProgrammeAdmin's existing internal tab content via a stub import.
-// If those tab functions aren't exported yet, see §note at bottom.
 import {
   ProgrammesTab,
   WelcomeLettersTab,
@@ -36,7 +35,7 @@ import {
 } from './admin/ProgrammeAdminTabs'
 import ClientProfilePage from './admin/ClientProfilePage'
 
-// ── Access denied (shared with ProgrammeAdmin pattern) ───────────────────────
+// ── Access denied ────────────────────────────────────────────────────────────
 
 function AccessDenied() {
   return (
@@ -63,7 +62,6 @@ function AdminShell() {
   const [tab, setTab] = useState<AdminTab>(() => parseAdminHash(window.location.hash))
   const [isMobile, setIsMobile] = useState(false)
 
-  // Hash sync — admin tab state is derived from window.location.hash
   useEffect(() => {
     function sync() { setTab(parseAdminHash(window.location.hash)) }
     window.addEventListener('hashchange', sync)
@@ -83,7 +81,6 @@ function AdminShell() {
 
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
-      {/* Topbar */}
       <div style={{
         position:     'sticky',
         top:          0,
@@ -107,7 +104,6 @@ function AdminShell() {
         </a>
       </div>
 
-      {/* Sidebar + content */}
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 52px)' }}>
         {!isMobile && <AdminSidebar tab={tab} />}
 
@@ -136,6 +132,14 @@ function TabContent({ tab }: { tab: AdminTab }) {
       return <EngagementsListTab />
     }
     if (tab.tab === 'showcases') return <ShowcasesListTab />
+  }
+
+  if (tab.product === 'guides') {
+    if (tab.tab === 'dining') return <GuidesDiningTab />
+  }
+
+  if (tab.product === 'library') {
+    if (tab.tab === 'dining') return <LibraryDiningTab destinationId={tab.destinationId} />
   }
 
   if (tab.product === 'programme') {
@@ -197,18 +201,3 @@ export default function AmbienceAdmin() {
 
   return <AdminShell />
 }
-
-/*
- * §note on ProgrammeAdminTabs import:
- *
- * ProgrammeAdmin.tsx currently keeps ProgrammesTab / WelcomeLettersTab /
- * ListingsTab / PropertySectionsTab / PropertiesTab / AccessDeniedPageTab as
- * INTERNAL function declarations (not exported). To re-mount them from
- * AmbienceAdmin without forking, we need a tiny shim file that re-exports
- * the named tab functions. The shim is the load-bearing change to
- * ProgrammeAdmin.tsx — see ProgrammeAdmin.tsx surgical edit notes in the
- * S33 ship summary.
- *
- * ClientProfilePage is already a default export from its own file and
- * imports cleanly from the existing path.
- */
