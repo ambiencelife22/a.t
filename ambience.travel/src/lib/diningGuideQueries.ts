@@ -8,11 +8,17 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S36 — Collapsed two-register canon. ambience_take +
-//   why_recommend dropped from SELECT + DiningVenue type per s36_01.
-//   Filter on ambience_take removed (was hiding 31 of 34 venues).
-//   Order changed from sort_order → name ascending — frontend ordering
-//   is resilient to future inserts without manual renumber.
+// Last updated: S36 — Overlay unwrap now defensive against both response
+//   shapes. Supabase nested-select returns a single object (not array) when
+//   a UNIQUE constraint makes the relationship 1:1 — which is our case via
+//   UNIQUE(global_destination_id) on travel_dining_guides. The S35 unwrap
+//   assumed array form and silently fell to null, causing the hero to
+//   render the dark fallback panel with no image. Fix handles both shapes.
+// Prior: S36 — Collapsed two-register canon. ambience_take + why_recommend
+//   dropped from SELECT + DiningVenue type per s36_01. Filter on
+//   ambience_take removed (was hiding 31 of 34 venues). Order changed
+//   from sort_order → name ascending — frontend ordering is resilient
+//   to future inserts without manual renumber.
 // Prior: S35 — Dropped panel_title_override + panel_body_override
 //   from DiningGuideOverlay shape + nested SELECT. Panel block removed
 //   from GuideHero entirely. Schema cleanup in s35_06.
@@ -148,11 +154,16 @@ export async function getGuideDestination(
   }
   if (!data) return null
 
-  // Supabase nested-select returns array even for 1:1 join via UNIQUE constraint.
-  // Unwrap to single overlay or null.
-  const overlayArray = (data as unknown as { overlay: DiningGuideOverlay[] | null }).overlay
+  // Supabase nested-select returns:
+  //   - array form when the relationship isn't 1:1
+  //   - single object when a UNIQUE constraint makes it 1:1 (our case:
+  //     UNIQUE(global_destination_id) on travel_dining_guides)
+  // Handle both shapes defensively.
+  const raw = (data as unknown as { overlay: DiningGuideOverlay | DiningGuideOverlay[] | null }).overlay
   const overlay: DiningGuideOverlay | null =
-    Array.isArray(overlayArray) && overlayArray.length > 0 ? overlayArray[0] : null
+    Array.isArray(raw)
+      ? (raw.length > 0 ? raw[0] : null)
+      : (raw ?? null)
 
   return {
     id:   (data as { id: string }).id,

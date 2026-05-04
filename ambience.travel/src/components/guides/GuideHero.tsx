@@ -11,10 +11,6 @@
 // Shared across all guide variants (dining, experiences, hotels). Variant-
 // specific copy + image come in as props; the hero shape is identical.
 //
-// Layout: hero is rendered as a top-level sibling of the page's constrained
-// content (mirrors ImmerseEngagementPage). Owns its own width via
-// width: 100% — no negative-margin viewport escape required.
-//
 // Image rendering:
 //   - imageSrc populated → renders <img> with parallax + overlay stack
 //   - imageSrc null → renders solid-color hero with glass card on top
@@ -22,13 +18,13 @@
 // Glass card position: lower-third aligned. Guide pages are utilitarian
 // content; the hero should set tone without dominating.
 //
-// Last updated: S36 — Removed negative-margin escape (marginLeft/Right:
-//   calc(50% - 50vw)). Hero now expects to be rendered as a sibling of
-//   the constrained content container, not inside it. Caller updated.
-// Prior: S35 — Refactored from two-column gradient-panel layout to
-//   full-bleed parallax pattern. Removed panel_title/panel_body props
-//   entirely (no overlay-caption block in this iteration). Mirrors hero
-//   conventions established by LandingHero (S32K) + ImmerseHero (S32F).
+// Last updated: S36 — Removed negative-margin viewport escape (marginLeft/Right:
+//   calc(50% - 50vw)). DiningGuidePage now renders this hero outside its
+//   constrained <main> container, so the hero is naturally full-width to its
+//   parent (GuideLayout > children). The S35 escape trick assumed a
+//   full-width parent that wasn't there. Hero now plays nice as a sibling.
+// Prior: S35 — Refactored from two-column gradient-panel layout to full-bleed
+//   parallax pattern.
 
 import { useEffect, useRef, useState } from 'react'
 import { ID, IMMERSE_HERO, FONTS } from '../../lib/landingColors'
@@ -47,15 +43,10 @@ const HERO_LAYOUT = {
 } as const
 
 interface GuideHeroProps {
-  /** Gold eyebrow above the headline. e.g. "Curated dining" */
   eyebrow: string
-  /** Serif h1. e.g. "New York City, Curated Dining" */
   headline: string
-  /** Body paragraph below the headline. */
   intro: string
-  /** Hero image URL. null = render solid-color hero (no <img>). */
   imageSrc?: string | null
-  /** Alt text for the hero image. Falls back to headline if not provided. */
   imageAlt?: string | null
 }
 
@@ -113,7 +104,6 @@ export function GuideHero({
       ref={sectionRef}
       style={{
         position: 'relative',
-        width: '100%',
         marginBottom: 34,
       }}
     >

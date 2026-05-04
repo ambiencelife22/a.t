@@ -16,26 +16,13 @@
 // destination are nullable — page resolves each via ?? against frontend
 // defaults (Variant 1 column-based override per Seed Reference v8 §5).
 //
-// Layout pattern: hero is rendered as a sibling of the constrained content,
-// not inside it. Mirrors ImmerseEngagementPage — hero owns its own width;
-// filters + grid live inside a max-1480px container. No negative-margin
-// escape tricks.
-//
-// Last updated: S36 — Hero lifted to sibling of <main>. Removed negative-
-//   margin viewport-escape pattern from GuideHero call site. Pattern now
-//   matches ImmerseEngagementPage (hero outside constrained content).
+// Last updated: S36 — Hero hoisted out of the constrained pageStyle container.
+//   Hero now sibling of <main>, full-width to viewport. The previous structure
+//   wrapped GuideHero inside <main style={pageStyle}> which capped width at
+//   1480px and added 34px padding — the hero's negative-margin escape failed
+//   on viewports ≤1480px. Mirrors immerse pattern (hero outside content,
+//   filters/grid inside).
 // Prior: S35 — GuideHero refactored to full-bleed parallax pattern.
-//   Panel title/body block dropped entirely (no overlay caption). Page now
-//   resolves only eyebrow/headline/intro/image via the ?? chain — panel
-//   resolution lines + DEFAULT_PANEL_TITLE/BODY constants removed.
-// Prior: S35 — Hero copy now overlay-driven via ?? chain. headline,
-//   intro, eyebrow, panel title/body each fall through:
-//     overlay field → frontend default
-//   Hero image flows direct from overlay.hero_image_src (null = gradient
-//   fallback in GuideHero).
-// Prior: S35 — Refactored to prop-driven (slug parsing moved upstream).
-//   Renamed imports: DiningGuideHero → GuideHero, GuideFilters →
-//   DiningGuideFilters.
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
@@ -54,7 +41,6 @@ interface DiningGuidePageProps {
 }
 
 // ── Frontend default copy ───────────────────────────────────────────────────
-// Overlay fields fall through to these defaults when NULL.
 
 const DEFAULT_EYEBROW = 'Curated Dining'
 
@@ -65,6 +51,7 @@ function defaultHeadline(destinationName: string): string {
 function defaultIntro(destinationName: string): string {
   return `A selective dining guide for ${destinationName}`
 }
+
 
 // ── URL filter state sync ────────────────────────────────────────────────────
 
@@ -103,7 +90,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   const [loading, setLoading] = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
 
-  // Resolve hero copy via overlay → default chain (?? not || per architecture)
   const overlay = destination.overlay
   const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
   const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
@@ -111,7 +97,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   const heroImageSrc = overlay?.hero_image_src    ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? null
 
-  // Fetch venues for the resolved destination
   useEffect(() => {
     let cancelled = false
 
@@ -135,12 +120,10 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     return () => { cancelled = true }
   }, [destination.slug, toast])
 
-  // Sync filter state to URL whenever it changes
   useEffect(() => {
     writeFilterStateToUrl(filterState)
   }, [filterState])
 
-  // Derived filter options
   const availableCuisines = useMemo(() => {
     const set = new Set<string>()
     venues.forEach((v) => {
@@ -162,7 +145,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     [venues],
   )
 
-  // Filter logic
   const filteredVenues = useMemo(() => {
     return venues.filter((v) => {
       if (filterState.cuisines.size > 0) {
@@ -182,24 +164,9 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     })
   }, [venues, filterState])
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  console.log('hero props:', { heroImageSrc, heroHeadline, overlay: destination.overlay })
 
-  if (loading) {
-    return (
-      <>
-        <GuideHero
-          eyebrow={heroEyebrow}
-          headline={heroHeadline}
-          intro={heroIntro}
-          imageSrc={heroImageSrc}
-          imageAlt={heroImageAlt}
-        />
-        <main style={pageStyle}>
-          <LoadingState />
-        </main>
-      </>
-    )
-  }
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -212,34 +179,40 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
       />
 
       <main style={pageStyle}>
-        <DiningGuideFilters
-          state={filterState}
-          onChange={setFilterState}
-          availableCuisines={availableCuisines}
-          availableNeighborhoods={availableNeighborhoods}
-          hasMichelinItems={hasMichelinItems}
-        />
-
-        <div style={sectionTitleStyle}>
-          <h2 style={sectionTitleH2Style}>Selected tables</h2>
-          <p style={sectionTitleCountStyle}>
-            {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
-          </p>
-        </div>
-
-        {filteredVenues.length === 0 ? (
-          <EmptyState />
+        {loading ? (
+          <LoadingState />
         ) : (
-          <section style={gridStyle}>
-            {filteredVenues.map((v) => (
-              <DiningCard
-                key={v.id}
-                venue={v}
-                hasFullAccess={true}
-                destinationName={destination.name}
-              />
-            ))}
-          </section>
+          <>
+            <DiningGuideFilters
+              state={filterState}
+              onChange={setFilterState}
+              availableCuisines={availableCuisines}
+              availableNeighborhoods={availableNeighborhoods}
+              hasMichelinItems={hasMichelinItems}
+            />
+
+            <div style={sectionTitleStyle}>
+              <h2 style={sectionTitleH2Style}>Selected tables</h2>
+              <p style={sectionTitleCountStyle}>
+                {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
+              </p>
+            </div>
+
+            {filteredVenues.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <section style={gridStyle}>
+                {filteredVenues.map((v) => (
+                  <DiningCard
+                    key={v.id}
+                    venue={v}
+                    hasFullAccess={true}
+                    destinationName={destination.name}
+                  />
+                ))}
+              </section>
+            )}
+          </>
         )}
       </main>
     </>
