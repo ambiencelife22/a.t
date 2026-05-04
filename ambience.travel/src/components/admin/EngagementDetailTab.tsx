@@ -4,12 +4,14 @@
  * Person/Trip linkage via typeahead. Welcome letter overrides surface
  * canonical placeholder. Danger zone delete with CASCADE warning.
  *
- * Out of scope v0 (read-only summary only): destination rows, card
- * selections, route stops, pricing rows, rooms.
+ * Out of scope (read-only summary only): card selections, route stops,
+ * pricing rows, rooms.
  *
- * Last updated: S33B (re-ship 04 May) — ImageFieldWithUploader swapped in
- *   for the two hero image_src fields. Alt fields remain plain text inputs.
- *   Re-shipped after the prior S33B file landed but was reverted.
+ * Last updated: S33C — Mount DestinationRowsEditor between Destination
+ *   Section and Pricing Section. Remove destination_rows from
+ *   ChildCountsSummary (now editable in-line).
+ * Prior: S33B (re-ship 04 May) — ImageFieldWithUploader for hero image
+ *   src fields.
  * Prior: S33 — Added iteration_label field to Identity section.
  */
 
@@ -39,6 +41,7 @@ import {
 } from '../../lib/adminPath'
 import { A } from '../../lib/adminTokens'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
+import DestinationRowsEditor from './DestinationRowsEditor'
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -462,12 +465,12 @@ function WelcomeOverrideField({
 }
 
 // ── Child counts summary ─────────────────────────────────────────────────────
+// S33C: destination_rows removed — now editable inline via DestinationRowsEditor.
 
 function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; urlId: string }) {
   if (!counts) return null
 
   const items = [
-    { label: 'Destination rows',      n: counts.destination_rows },
     { label: 'Pricing rows',          n: counts.pricing_rows },
     { label: 'Destination hotels',    n: counts.destination_hotels },
     { label: 'Region hotels',         n: counts.region_hotels },
@@ -478,9 +481,9 @@ function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; url
   ]
 
   return (
-    <Section title='Child Content (read-only · v0)'>
+    <Section title='Child Content (read-only)'>
       <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
-        These tables aren't editable in admin v0. Edit via SQL or migrations. View live to verify render.
+        These tables aren't yet editable in admin. Edit via SQL or migrations. View live to verify render.
       </div>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8,
@@ -844,7 +847,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </Field>
       </Section>
 
-      {/* Destination */}
+      {/* Destination Section copy (engagement-level intro to destinations) */}
       <Section title='Destination Section'>
         <Field label='Destination Heading'>
           <input style={inputStyle} value={draft.destination_heading ?? ''} onChange={e => patch('destination_heading', e.target.value || null)} />
@@ -856,6 +859,11 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <textarea style={textareaStyle} value={draft.destination_body ?? ''} onChange={e => patch('destination_body', e.target.value || null)} />
         </Field>
       </Section>
+
+      {/* S33C: Destination rows editor (drag-reorder + per-row modal editor) */}
+      {row.id && (
+        <DestinationRowsEditor engagementId={row.id} showToast={showToast} />
+      )}
 
       {/* Pricing */}
       <Section title='Pricing Section'>
@@ -924,7 +932,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         />
       </Section>
 
-      {/* Child counts */}
+      {/* Child counts (now without destination_rows) */}
       {row.url_id && <ChildCountsSummary counts={counts} urlId={row.url_id} />}
 
       {/* Save bar (sticky bottom) */}
