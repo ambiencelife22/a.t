@@ -223,13 +223,13 @@ export default function LandingLayout({ children: _children }: LayoutProps) {
         <IntroSection heroVis={heroVis} />
       </div>
       <ExperienceTypesSection />
-      <JourneyMomentsSection />
-      <EditorialSection />
+      
+      {/* <EditorialSection /> */}
 
       <VideoIntroSection />
      
       <PillarsSection />
-      
+      <JourneyMomentsSection />
       {/* <HospitalitySection /> */}
       {/* <HeroSection /> */}
       <DarkCTASection />
