@@ -8,9 +8,11 @@
  *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
  *   ambience.travel/guides/:destination/dining           → DiningGuideRoute (S35)
+ *   ambience.travel/guides/:destination/hotels           → HotelGuideRoute (S37)
  *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
  *   guides.ambience.travel/:destination/dining           → DiningGuideRoute (S35)
+ *   guides.ambience.travel/:destination/hotels           → HotelGuideRoute (S37)
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin (existing, untouched)
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -28,6 +30,7 @@
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
  *   localhost:5173/guides/:destination/dining            → DiningGuideRoute (S35)
+ *   localhost:5173/guides/:destination/hotels            → HotelGuideRoute (S37)
  *
  * Admin routing (S33): hash === '#admin' is hostname-disambiguated.
  *   - programme.ambience.travel/#admin OR localhost:5173/programme/#admin
@@ -38,7 +41,10 @@
  *   (#admin/immerse/engagements/<url_id>, etc) via the same 'admin' route —
  *   the inner shell parses the hash itself.
  *
- * Last updated: S35 — Added 'guides-dining' route for guides.ambience.travel
+ * Last updated: S37 — Added 'guides-hotels' route. resolveGuidePath() now
+ *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
+ *   on surface. New lazy import HotelGuideRoute. Mirrors S35 dining shape.
+ * Prior: S35 — Added 'guides-dining' route for guides.ambience.travel
  *   and ambience.travel/guides/<dest>/dining. Hostname-based + path-based
  *   disambiguator mirrors the immerse pattern (isImmerseHost + isImmerseRoute).
  *   New helpers: isGuidesHost() + resolveGuidePath(). New lazy import
@@ -77,6 +83,7 @@ const Auth                     = lazy(() => import('./components/Auth'))
 const SignatureExperiencePage  = lazy(() => import('./components/landing/experiences/SignatureExperiencePage'))
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 const DiningGuideRoute         = lazy(() => import('./components/guides/DiningGuideRoute'))
+const HotelGuideRoute          = lazy(() => import('./components/guides/HotelGuideRoute'))
 
 type Route =
   | 'landing'
@@ -88,6 +95,7 @@ type Route =
   | 'experience'
   | 'immerse'
   | 'guides-dining'
+  | 'guides-hotels'
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -119,17 +127,18 @@ function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
 }
 
 // S35 — guides subdomain detection.
-// guides.ambience.travel hosts the destination guide pages (dining first, then
-// activities and hotels). Mirrors isImmerseHost() pattern.
+// guides.ambience.travel hosts the destination guide pages (dining first,
+// hotels in S37, activities later). Mirrors isImmerseHost() pattern.
 function isGuidesHost(): boolean {
   return window.location.hostname === 'guides.ambience.travel'
 }
 
 // S35 — resolve guide path segments.
-// On guides subdomain: /<dest>/dining
-// On main domain: /guides/<dest>/dining
+// S37 — extended to include 'hotels' surface.
+// On guides subdomain: /<dest>/<surface>
+// On main domain: /guides/<dest>/<surface>
 // Returns { destinationSlug, surface } when matched, null otherwise.
-function resolveGuidePath(): { destinationSlug: string; surface: 'dining' } | null {
+function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hotels' } | null {
   const pathname = window.location.pathname.replace(/\/+$/, '')
   let stripped: string
 
@@ -141,8 +150,8 @@ function resolveGuidePath(): { destinationSlug: string; surface: 'dining' } | nu
   }
 
   const parts = stripped.split('/').filter(Boolean)
-  if (parts.length === 2 && parts[1] === 'dining') {
-    return { destinationSlug: parts[0], surface: 'dining' }
+  if (parts.length === 2 && (parts[1] === 'dining' || parts[1] === 'hotels')) {
+    return { destinationSlug: parts[0], surface: parts[1] as 'dining' | 'hotels' }
   }
   return null
 }
@@ -180,8 +189,13 @@ function resolveRoute(): Route {
   // S35: guides subdomain → always guides route. On main domain, /guides/
   // path prefix routes the same way. Resolved before immerse host check
   // because guides has its own hostname.
+  // S37: surface-based dispatch (dining vs hotels).
   if (isGuidesHost() || pathname.startsWith('/guides/')) {
-    if (resolveGuidePath()) return 'guides-dining'
+    const guidePath = resolveGuidePath()
+    if (guidePath) {
+      if (guidePath.surface === 'hotels') return 'guides-hotels'
+      return 'guides-dining'
+    }
     // On guides subdomain with no valid path, redirect to ambience.travel root.
     if (isGuidesHost()) {
       window.location.replace('https://ambience.travel/')
@@ -257,6 +271,14 @@ export default function App() {
     return (
       <Suspense fallback={<RouteLoading />}>
         <DiningGuideRoute />
+      </Suspense>
+    )
+  }
+
+  if (route === 'guides-hotels') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <HotelGuideRoute />
       </Suspense>
     )
   }
