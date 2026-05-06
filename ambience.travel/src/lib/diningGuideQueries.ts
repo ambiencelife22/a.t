@@ -8,24 +8,25 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S36 — Overlay unwrap now defensive against both response
-//   shapes. Supabase nested-select returns a single object (not array) when
-//   a UNIQUE constraint makes the relationship 1:1 — which is our case via
-//   UNIQUE(global_destination_id) on travel_dining_guides. The S35 unwrap
-//   assumed array form and silently fell to null, causing the hero to
-//   render the dark fallback panel with no image. Fix handles both shapes.
+// Last updated: S37 — Added is_supplementary + venue_status to DiningVenue
+//   type + SELECT. venue_status is enum-as-CHECK on the DB ('operational',
+//   'temporarily_closed', 'permanently_closed', 'seasonal_closure').
+//   Default 'operational' renders no banner; other states render a status
+//   banner above the body in DiningCard.
+// Prior: S36 — Overlay unwrap defensive against both response shapes.
+//   Supabase nested-select returns single object (not array) when UNIQUE
+//   constraint makes relationship 1:1.
 // Prior: S36 — Collapsed two-register canon. ambience_take + why_recommend
 //   dropped from SELECT + DiningVenue type per s36_01. Filter on
-//   ambience_take removed (was hiding 31 of 34 venues). Order changed
-//   from sort_order → name ascending — frontend ordering is resilient
-//   to future inserts without manual renumber.
-// Prior: S35 — Dropped panel_title_override + panel_body_override
-//   from DiningGuideOverlay shape + nested SELECT. Panel block removed
-//   from GuideHero entirely. Schema cleanup in s35_06.
-// Prior: S35 — Added GuideOverlay shape + getGuideDestination() now
-//   returns overlay fields via LEFT JOIN against travel_dining_guides.
+//   ambience_take removed. Order changed sort_order → name ascending.
+// Prior: S35 — Dropped panel_title_override + panel_body_override from
+//   DiningGuideOverlay shape + nested SELECT. Schema cleanup in s35_06.
+// Prior: S35 — Added GuideOverlay shape + getGuideDestination() returns
+//   overlay fields via LEFT JOIN against travel_dining_guides.
 
 import { supabase } from './supabase'
+
+export type VenueStatus = 'operational' | 'temporarily_closed' | 'permanently_closed' | 'seasonal_closure'
 
 export interface DiningVenue {
   id: string
@@ -50,6 +51,8 @@ export interface DiningVenue {
   image_credit: string | null
   image_credit_url: string | null
   sort_order: number
+  is_supplementary: boolean
+  venue_status: VenueStatus
 }
 
 /**
@@ -80,9 +83,8 @@ export interface GuideDestination {
 
 /**
  * Fetches all active dining venues for a given destination slug.
- * Filters by is_active = true. Orders by name ascending — frontend ordering
- * is the source of truth for guide-page render; canonical sort_order column
- * is a sensible default for other readers (admin lists, CSV exports).
+ * Filters by is_active = true. Orders by is_supplementary ascending then
+ * name ascending — supplementary entries fall to bottom regardless of name.
  */
 export async function getDiningVenuesByDestination(
   destinationSlug: string,
@@ -110,7 +112,7 @@ export async function getDiningVenuesByDestination(
       neighborhood, price_band, public_preview_rank, tags,
       image_src, image_alt, image_2_src, image_2_alt,
       image_credit, image_credit_url,
-      sort_order
+      sort_order, is_supplementary, venue_status
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)

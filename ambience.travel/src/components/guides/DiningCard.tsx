@@ -1,22 +1,34 @@
 // DiningCard.tsx — single dining venue card for the guide page
-// What it owns: card chrome, image grid, meta-row, name, body, tags, address.
+// What it owns: card chrome, image grid, status banner, meta-row, name, body, tags, address.
 // What it does not own: gating logic (consumes hasFullAccess prop), filter state, layout.
-// Last updated: S36 — Collapsed two-register canon. Reads venue.body
-//   (was venue.ambience_take). Why-block removed entirely (why_recommend
-//   column dropped in s36_01). Override layer for per-engagement tailoring
-//   of body lives on travel_immerse_trip_content_card_overrides.body_override
-//   for the proposal-card surface; guide page reads canon direct.
+// Last updated: S37 — Added status banner. Reads venue.venue_status. When
+//   value != 'operational', renders a thin amber-toned banner above the meta
+//   row. Copy keyed to enum value via STATUS_LABELS map. Operational state
+//   renders nothing (default).
+// Prior: S36 — Collapsed two-register canon. Reads venue.body (was
+//   venue.ambience_take). Why-block removed entirely.
 // Prior: S35 — Initial ship with ambience_take + why_recommend render.
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
 import { resolveMapsUrl } from '../../lib/mapsUrl'
-import type { DiningVenue } from '../../lib/diningGuideQueries'
+import type { DiningVenue, VenueStatus } from '../../lib/diningGuideQueries'
 
 interface DiningCardProps {
   venue: DiningVenue
   hasFullAccess: boolean
   destinationName: string
+}
+
+// ── Status copy map ──────────────────────────────────────────────────────────
+// Frontend owns the user-facing copy for each status enum value.
+// To add a new state: add to VenueStatus union in queries, ALTER CHECK in DB,
+// add to STATUS_LABELS here.
+
+const STATUS_LABELS: Record<Exclude<VenueStatus, 'operational'>, string> = {
+  temporarily_closed: 'Temporarily Closed',
+  permanently_closed: 'Permanently Closed',
+  seasonal_closure:   'Closed for the Season',
 }
 
 export function DiningCard({ venue, hasFullAccess, destinationName }: DiningCardProps) {
@@ -26,12 +38,26 @@ export function DiningCard({ venue, hasFullAccess, destinationName }: DiningCard
     <article style={cardStyle}>
       <ImageGrid venue={venue} isTeaser={isTeaser} />
       <div style={cardBodyStyle}>
+        <StatusBanner status={venue.venue_status} />
         <MetaRow venue={venue} />
         <h3 style={nameStyle}>{venue.name}</h3>
         {isTeaser && <TeaserBody destinationName={destinationName} />}
         {!isTeaser && <FullBody venue={venue} />}
       </div>
     </article>
+  )
+}
+
+// ── Status Banner ────────────────────────────────────────────────────────────
+
+function StatusBanner({ status }: { status: VenueStatus }) {
+  if (status === 'operational') return null
+  const label = STATUS_LABELS[status]
+  return (
+    <div style={statusBannerStyle}>
+      <span style={statusBannerDotStyle} aria-hidden />
+      <span style={statusBannerTextStyle}>{label}</span>
+    </div>
   )
 }
 
@@ -237,6 +263,33 @@ const cardBodyStyle: React.CSSProperties = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
+}
+
+const statusBannerStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '10px 14px',
+  marginBottom: 16,
+  borderRadius: 12,
+  border: '1px solid rgba(216, 155, 122, 0.35)',
+  background: 'rgba(216, 155, 122, 0.08)',
+}
+
+const statusBannerDotStyle: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: '#D89B7A',
+  flexShrink: 0,
+}
+
+const statusBannerTextStyle: React.CSSProperties = {
+  color: '#D89B7A',
+  fontSize: 12,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  fontWeight: 600,
 }
 
 const metaRowStyle: React.CSSProperties = {
