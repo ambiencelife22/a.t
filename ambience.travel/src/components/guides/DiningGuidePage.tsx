@@ -4,6 +4,7 @@
 //   - Filter state + URL param sync (cuisine, michelin, neighborhood)
 //   - Frontend default copy + ?? resolution against overlay overrides
 //   - Grid layout, error+empty states for the data load
+//   - PDF download trigger (loads jsPDF libs, calls exportGuidePdf)
 //
 // What it does not own:
 //   - Path parsing (DiningGuideRoute resolves slug → destination)
@@ -11,20 +12,20 @@
 //   - Error redirects with toast (DiningGuideRoute handles bad-slug cases)
 //   - Page chrome (GuideLayout — fixed nav, drawer, back-to-top)
 //   - Card rendering (DiningCard), filter chips (DiningGuideFilters), hero (GuideHero)
+//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
 //
 // Receives destination as a guaranteed-non-null prop. Overlay fields on the
 // destination are nullable — page resolves each via ?? against frontend
 // defaults (Variant 1 column-based override per Seed Reference v8 §5).
 //
-// Last updated: S36 — Hero hoisted out of the constrained pageStyle container.
-//   Hero now sibling of <main>, full-width to viewport. The previous structure
-//   wrapped GuideHero inside <main style={pageStyle}> which capped width at
-//   1480px and added 34px padding — the hero's negative-margin escape failed
-//   on viewports ≤1480px. Mirrors immerse pattern (hero outside content,
-//   filters/grid inside).
-// Prior: S35 — GuideHero refactored to full-bleed parallax pattern.
+// Last updated: S37 — Added PDF download button (top-right, near hero).
+//   Loads jsPDF + autoTable from CDN on mount (mirrors sports-side loader pattern).
+//   Loads emblem base64 once. Calls exportGuidePdf() with full venue set
+//   (PDF ignores active filters — captures the curated guide as a whole).
+// Prior: S36 — Hero hoisted out of the constrained pageStyle container.
+//   Hero now sibling of <main>, full-width to viewport.
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
 import { useToast } from '../../lib/ToastContext'
 import {
@@ -32,6 +33,7 @@ import {
   type DiningVenue,
   type GuideDestination,
 } from '../../lib/diningGuideQueries'
+import { exportGuidePdf } from '../../lib/guidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
@@ -51,7 +53,6 @@ function defaultHeadline(destinationName: string): string {
 function defaultIntro(destinationName: string): string {
   return `A selective dining guide for ${destinationName}`
 }
-
 
 // ── URL filter state sync ────────────────────────────────────────────────────
 
@@ -86,9 +87,63 @@ function writeFilterStateToUrl(state: FilterState) {
 
 export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   const { toast } = useToast()
+  const toastRef = useRef(toast)
+  useEffect(() => { toastRef.current = toast }, [toast])
+
   const [venues, setVenues] = useState<DiningVenue[]>([])
   const [loading, setLoading] = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
+
+  // ── PDF library loader ─────────────────────────────────────────────────────
+  // Loads jsPDF + autoTable from CDN once, mounts emblem image. Mirrors the
+  // sports-side pattern (App.tsx loader). Idempotent — reuses existing script
+  // tags if already present.
+  const [pdfReady, setPdfReady] = useState(false)
+  const [pdfDownloading, setPdfDownloading] = useState(false)
+  const emblemImgRef = useRef<HTMLImageElement | null>(null)
+
+  useEffect(() => {
+    const w = window as any
+    if (w.jspdf?.jsPDF && w.autoTable) { setPdfReady(true); return }
+
+    function loadScript(src: string): Promise<void> {
+      return new Promise((resolve, reject) => {
+        const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
+        if (existing) {
+          if ((window as any).jspdf?.jsPDF) { resolve(); return }
+          existing.addEventListener('load', () => resolve())
+          existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)))
+          return
+        }
+        const s = document.createElement('script')
+        s.src = src
+        s.onload  = () => resolve()
+        s.onerror = () => reject(new Error(`Failed to load ${src}`))
+        document.head.appendChild(s)
+      })
+    }
+
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+      .then(() => {
+        const w = window as any
+        if (w.jspdf?.jsPDF && !w.jsPDF) { w.jsPDF = w.jspdf.jsPDF }
+      })
+      .then(() => loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'))
+      .then(() => {
+        // Emblem preload — best-effort; if it fails, PDF renders without emblem.
+        // Path matches public/ root assets.
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload  = () => { emblemImgRef.current = img; setPdfReady(true) }
+        img.onerror = () => { setPdfReady(true) }
+        img.src = '/ambience-emblem.png'
+      })
+      .catch((err) => {
+        console.error('PDF library load error:', err)
+      })
+  }, [])
+
+  // ── Resolved hero copy ─────────────────────────────────────────────────────
 
   const overlay = destination.overlay
   const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
@@ -96,6 +151,8 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
   const heroImageSrc = overlay?.hero_image_src    ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? null
+
+  // ── Venue fetch ────────────────────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false
@@ -111,18 +168,20 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
         if (cancelled) return
         console.error('DiningGuidePage: failed to load venues', err)
         const msg = err instanceof Error ? err.message : 'Unknown error'
-        toast.error(`Couldn't load dining venues — ${msg}`)
+        toastRef.current.error(`Couldn't load dining venues — ${msg}`)
         setVenues([])
         setLoading(false)
       }
     }
     load()
     return () => { cancelled = true }
-  }, [destination.slug, toast])
+  }, [destination.slug])
 
   useEffect(() => {
     writeFilterStateToUrl(filterState)
   }, [filterState])
+
+  // ── Derived filter inputs ──────────────────────────────────────────────────
 
   const availableCuisines = useMemo(() => {
     const set = new Set<string>()
@@ -164,7 +223,41 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     })
   }, [venues, filterState])
 
-  console.log('hero props:', { heroImageSrc, heroHeadline, overlay: destination.overlay })
+  // ── PDF download handler ───────────────────────────────────────────────────
+  // PDF captures the full curated guide — ignores active filters by design.
+  // Filters are exploration UI; the PDF is the artifact.
+
+  async function handleDownloadPdf() {
+    if (!pdfReady) {
+      toastRef.current.info('PDF library is still loading. Try again in a moment.')
+      return
+    }
+    if (venues.length === 0) {
+      toastRef.current.info('No venues to export yet.')
+      return
+    }
+    setPdfDownloading(true)
+    try {
+      await exportGuidePdf({
+        variant: 'dining',
+        destination,
+        venues,
+        emblemImg: emblemImgRef.current,
+        copy: {
+          eyebrow:  heroEyebrow,
+          headline: `${destination.name} Dining Guide`,
+          intro:    heroIntro,
+        },
+        heroImageSrc,
+      })
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      toastRef.current.error(`PDF export failed — ${msg}`)
+    } finally {
+      setPdfDownloading(false)
+    }
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -192,10 +285,25 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
             />
 
             <div style={sectionTitleStyle}>
-              <h2 style={sectionTitleH2Style}>Selected tables</h2>
-              <p style={sectionTitleCountStyle}>
-                {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
-              </p>
+              <div>
+                <h2 style={sectionTitleH2Style}>Selected tables</h2>
+                <p style={sectionTitleCountStyle}>
+                  {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={!pdfReady || pdfDownloading || venues.length === 0}
+                style={{
+                  ...downloadBtnStyle,
+                  ...(pdfReady && !pdfDownloading ? {} : downloadBtnDisabledStyle),
+                }}
+                title={pdfReady ? 'Download this guide as a PDF' : 'PDF library loading…'}
+              >
+                <span aria-hidden style={downloadIconStyle}>↓</span>
+                {pdfDownloading ? 'Preparing…' : 'Download PDF'}
+              </button>
             </div>
 
             {filteredVenues.length === 0 ? (
@@ -265,9 +373,37 @@ const sectionTitleH2Style: React.CSSProperties = {
 }
 
 const sectionTitleCountStyle: React.CSSProperties = {
-  margin: 0,
+  margin: '4px 0 0',
   color: ID.muted,
   fontSize: 14,
+}
+
+const downloadBtnStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '12px 18px',
+  border: `1px solid ${IMMERSE.goldBorder}`,
+  borderRadius: 999,
+  background: IMMERSE.goldTint,
+  color: ID.gold,
+  fontFamily: 'inherit',
+  fontSize: 13,
+  fontWeight: 600,
+  letterSpacing: '0.04em',
+  cursor: 'pointer',
+  transition: 'background 180ms ease, border-color 180ms ease',
+  whiteSpace: 'nowrap',
+}
+
+const downloadBtnDisabledStyle: React.CSSProperties = {
+  opacity: 0.5,
+  cursor: 'not-allowed',
+}
+
+const downloadIconStyle: React.CSSProperties = {
+  fontSize: 14,
+  lineHeight: 1,
 }
 
 const gridStyle: React.CSSProperties = {
