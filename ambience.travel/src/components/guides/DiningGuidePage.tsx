@@ -3,27 +3,24 @@
 //   - Venue data fetch
 //   - Filter state + URL param sync (cuisine, michelin, neighborhood)
 //   - Frontend default copy + ?? resolution against overlay overrides
+//   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error+empty states for the data load
-//   - PDF download trigger (loads jsPDF libs, calls exportGuidePdf)
+//   - PDF download trigger (loads jsPDF, calls exportGuidePdf)
 //
 // What it does not own:
-//   - Path parsing (DiningGuideRoute resolves slug → destination)
-//   - Destination validation (DiningGuideRoute validates upstream)
-//   - Error redirects with toast (DiningGuideRoute handles bad-slug cases)
-//   - Page chrome (GuideLayout — fixed nav, drawer, back-to-top)
+//   - Path parsing (DiningGuideRoute)
+//   - Destination validation (DiningGuideRoute)
+//   - Page chrome (GuideLayout)
 //   - Card rendering (DiningCard), filter chips (DiningGuideFilters), hero (GuideHero)
-//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
+//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle, including
+//     loading /emblem.png + /ambience_travel.svg)
 //
-// Receives destination as a guaranteed-non-null prop. Overlay fields on the
-// destination are nullable — page resolves each via ?? against frontend
-// defaults (Variant 1 column-based override per Seed Reference v8 §5).
-//
-// Last updated: S37 — Added PDF download button (top-right, near hero).
-//   Loads jsPDF + autoTable from CDN on mount (mirrors sports-side loader pattern).
-//   Loads emblem base64 once. Calls exportGuidePdf() with full venue set
-//   (PDF ignores active filters — captures the curated guide as a whole).
-// Prior: S36 — Hero hoisted out of the constrained pageStyle container.
-//   Hero now sibling of <main>, full-width to viewport.
+// Last updated: S37 — Widened Michelin filter chip to match both stars and
+//   Bib Gourmand (was stars-only). Bib counts as Michelin recognition; one
+//   chip captures both tiers.
+// Prior: S37 — Added RecognitionKeyStrip above filters. Migrated Michelin
+//   filter chip to read michelin_award='star' instead of legacy boolean.
+// Prior: S37 — Year + version pulled from overlay with render-time defaults.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
@@ -37,6 +34,7 @@ import { exportGuidePdf } from '../../lib/guidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
+import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
 
 interface DiningGuidePageProps {
   destination: GuideDestination
@@ -52,6 +50,22 @@ function defaultHeadline(destinationName: string): string {
 
 function defaultIntro(destinationName: string): string {
   return `A selective dining guide for ${destinationName}`
+}
+
+// ── PDF year + version defaults (S37) ────────────────────────────────────────
+// NULL on either column → render-time default. Live page does not surface
+// these today; they exist solely for the PDF cover.
+
+const DEFAULT_GUIDE_VERSION = '1.0'
+
+function resolveGuideYear(overlayYear: number | null | undefined): number {
+  if (overlayYear != null) return overlayYear
+  return new Date().getFullYear()
+}
+
+function resolveGuideVersion(overlayVersion: string | null | undefined): string {
+  if (overlayVersion != null && overlayVersion.trim().length > 0) return overlayVersion
+  return DEFAULT_GUIDE_VERSION
 }
 
 // ── URL filter state sync ────────────────────────────────────────────────────
@@ -95,16 +109,14 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
 
   // ── PDF library loader ─────────────────────────────────────────────────────
-  // Loads jsPDF + autoTable from CDN once, mounts emblem image. Mirrors the
-  // sports-side pattern (App.tsx loader). Idempotent — reuses existing script
-  // tags if already present.
+  // Loads jsPDF only — we use canvas for SVG rasterisation, no autoTable.
+  // Idempotent: reuses existing script tag if mounted by another page.
   const [pdfReady, setPdfReady] = useState(false)
   const [pdfDownloading, setPdfDownloading] = useState(false)
-  const emblemImgRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
     const w = window as any
-    if (w.jspdf?.jsPDF && w.autoTable) { setPdfReady(true); return }
+    if (w.jspdf?.jsPDF) { setPdfReady(true); return }
 
     function loadScript(src: string): Promise<void> {
       return new Promise((resolve, reject) => {
@@ -124,23 +136,8 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     }
 
     loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-      .then(() => {
-        const w = window as any
-        if (w.jspdf?.jsPDF && !w.jsPDF) { w.jsPDF = w.jspdf.jsPDF }
-      })
-      .then(() => loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'))
-      .then(() => {
-        // Emblem preload — best-effort; if it fails, PDF renders without emblem.
-        // Path matches public/ root assets.
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload  = () => { emblemImgRef.current = img; setPdfReady(true) }
-        img.onerror = () => { setPdfReady(true) }
-        img.src = '/ambience-emblem.png'
-      })
-      .catch((err) => {
-        console.error('PDF library load error:', err)
-      })
+      .then(() => setPdfReady(true))
+      .catch((err) => { console.error('PDF library load error:', err) })
   }, [])
 
   // ── Resolved hero copy ─────────────────────────────────────────────────────
@@ -200,7 +197,15 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   }, [venues])
 
   const hasMichelinItems = useMemo(
-    () => venues.some((v) => v.michelin),
+    () => venues.some((v) => v.michelin_award === 'star' || v.michelin_award === 'bib_gourmand'),
+    [venues],
+  )
+
+  // Recognition kinds present in the *full* venue list — drives the page-top
+  // key strip. Computed against `venues` not `filteredVenues` so the legend
+  // doesn't disappear/reappear as filters narrow the view.
+  const presentRecognitionKinds = useMemo(
+    () => deriveRecognitionKindsFromVenues(venues),
     [venues],
   )
 
@@ -211,7 +216,7 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
           return false
         }
       }
-      if (filterState.michelinOnly && !v.michelin) {
+      if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') {
         return false
       }
       if (filterState.neighborhoods.size > 0) {
@@ -224,8 +229,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   }, [venues, filterState])
 
   // ── PDF download handler ───────────────────────────────────────────────────
-  // PDF captures the full curated guide — ignores active filters by design.
-  // Filters are exploration UI; the PDF is the artifact.
 
   async function handleDownloadPdf() {
     if (!pdfReady) {
@@ -238,17 +241,21 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     }
     setPdfDownloading(true)
     try {
+      const guideYear    = resolveGuideYear(overlay?.guide_year)
+      const guideVersion = resolveGuideVersion(overlay?.guide_version)
+
       await exportGuidePdf({
         variant: 'dining',
         destination,
         venues,
-        emblemImg: emblemImgRef.current,
         copy: {
           eyebrow:  heroEyebrow,
-          headline: `${destination.name} Dining Guide`,
+          headline: heroHeadline,
           intro:    heroIntro,
         },
         heroImageSrc,
+        guideYear,
+        guideVersion,
       })
     } catch (err) {
       console.error('PDF export failed:', err)
@@ -276,6 +283,8 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
           <LoadingState />
         ) : (
           <>
+            <RecognitionKeyStrip presentKinds={presentRecognitionKinds} />
+
             <DiningGuideFilters
               state={filterState}
               onChange={setFilterState}

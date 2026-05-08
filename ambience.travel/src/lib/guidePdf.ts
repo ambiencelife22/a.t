@@ -1,12 +1,13 @@
 // guidePdf.ts — PDF export for guide pages (dining v1, hotels/experiences later)
 // What it owns:
 //   - jsPDF lifecycle (load libs, register fonts, page chrome, save)
-//   - Cover page (full-bleed hero, serif title, gold rule, intro, tagline footer)
+//   - Cover page (full-bleed hero image, big title with year + version, emblem)
 //   - Welcome page (welcome copy + at-a-glance bullets)
 //   - Contents page (auto-generated from sections present)
 //   - Card list section (manual layout, page-break-aware)
-//   - Closing chrome (footer rule + AMBIENCE.COM mark per page)
+//   - Closing chrome (logo + restriction notice + copyright per page)
 //   - Filename construction
+//   - Asset loading: /public/emblem.png + /public/ambience_travel.svg
 //
 // What it does not own:
 //   - Library loading (caller passes pdfReady boolean — DiningGuidePage owns the
@@ -14,39 +15,56 @@
 //   - Hotel/experience guide shape (variant: 'dining' for now — extend later)
 //   - Filter state (PDF renders the full unfiltered venue set; filters live in UI)
 //
-// Design canon:
-//   - Light theme: cream cover bg (#F6F1E8), white content pages, gold (#d8b56a) accents
-//   - Cormorant Garamond for headlines + venue names; Helvetica for body
-//   - A4 portrait, 14mm side margins (matches sports)
-//   - Cards never split across pages — explicit pre-flight height check before each
-//   - DB is canon: renders only fields present on DiningVenue
+// Asset canon:
+//   - Emblem: /public/emblem.png             → loaded as PNG, used on cover top
+//   - Logo:   /public/ambience_travel.svg    → rasterised to PNG via canvas at print scale
+//   No invented brand chrome. All text in the PDF that references "ambience"
+//   either comes from the logo asset itself or is the literal restriction
+//   notice provided by D.
 //
-// Last updated: S37 — Initial ship.
+// Title format on cover (S37):
+//   {Destination} | {Variant} Guide | {Year}
+//   v{Version}
+//   Year + version pulled from travel_dining_guides.guide_year / guide_version
+//   with NULL → current year / '1.0' default at call site (DiningGuidePage).
+//
+// Footer (S37):
+//   [Logo, hyperlinked to ambience.travel]   This guide is for ambience and its guests only.   © {Year}
+//
+// Last updated: S37 — Stars now drawn as vector polygons (drawStar /
+//   drawStarRow helpers). Previous attempt switched the font to Cormorant
+//   hoping its U+2605 glyph would render — but Google Fonts ships Cormorant
+//   sub-setted to Latin only, so U+2605 isn't in the TTF either. Vector
+//   drawing removes the font dependency entirely and renders identically
+//   regardless of which TTFs are registered.
+// Prior: S37 — Switched star renders to Cormorant (didn't work, see above).
+// Prior: S37 — Added 50 Best as fourth recognition tier + discreet
+//   recognition key beneath At a Glance panel.
+// Prior: S37 — Layout polish + Michelin recognition marks (★/BIB/Green ★).
+// Prior: S37 — MICHELIN pill width fix (compensate for charSpace), eyebrow/name
+//   overlap fix.
+// Prior: S37 — Logo + emblem stacked at top of cover. Card images switched to
+//   landscape 48×32mm. Footer copyright = "© YYYY ambience.travel".
+// Prior: S37 — Fixed fabricated brand chrome. Logo + emblem loaded from public/.
+//   Year + version added via guide_year + guide_version overlay columns.
+// Prior: S37 — Initial ship.
 
 import type { DiningVenue, GuideDestination } from './diningGuideQueries'
 import { loadGuideFonts, registerGuideFonts, PDF_FONTS } from './guidePdfFonts'
 
 // ── Theme ────────────────────────────────────────────────────────────────────
-// Light, print-grade. Mirrors mock-up.
 
 const THEME = {
-  // Backgrounds
-  cream:    [246, 241, 232] as RGB,  // cover bg + welcome bg (#F6F1E8 → IMMERSE.lightSurface)
-  white:    [255, 255, 255] as RGB,  // content page bg
-  paper:    [252, 250, 244] as RGB,  // very subtle alt — cards, soft panels
-
-  // Ink
-  ink:      [26,  29,  26]  as RGB,  // primary text — IMMERSE.textOnLight (#1A1D1A)
-  inkSoft:  [60,  66,  60]  as RGB,  // body copy slightly relaxed
-  muted:    [90,  106, 90]  as RGB,  // IMMERSE.mutedOnLight (#5A6A5A)
-  faint:    [140, 140, 140] as RGB,  // page numbers, footer
-
-  // Brand
-  gold:     [216, 181, 106] as RGB,  // ID.gold (#d8b56a)
-  goldSoft: [184, 150, 12]  as RGB,  // for thin rules
-  rule:     [220, 215, 205] as RGB,  // hairline borders
-
-  // Image fallback
+  cream:    [246, 241, 232] as RGB,
+  white:    [255, 255, 255] as RGB,
+  paper:    [252, 250, 244] as RGB,
+  ink:      [26,  29,  26]  as RGB,
+  inkSoft:  [60,  66,  60]  as RGB,
+  muted:    [90,  106, 90]  as RGB,
+  faint:    [140, 140, 140] as RGB,
+  gold:     [216, 181, 106] as RGB,
+  goldSoft: [184, 150, 12]  as RGB,
+  rule:     [220, 215, 205] as RGB,
   fallbackBg: [240, 233, 218] as RGB,
 } as const
 
@@ -55,37 +73,46 @@ type RGB = [number, number, number]
 // ── Layout ───────────────────────────────────────────────────────────────────
 
 const PAGE = {
-  width:      210,    // A4
+  width:      210,
   height:     297,
   margin:     16,
-  topChrome:  22,     // eyebrow strip occupies y=0..22
-  bodyTop:    32,     // first usable y for content
-  footerY:    284,    // footer rule at this y
-  footerText: 289,    // footer text at this y
+  topChrome:  22,
+  bodyTop:    32,
+  footerY:    280,
+  footerText: 285,
 } as const
+
+const ASSET_PATHS = {
+  emblem:   '/emblem.png',
+  logoSvg:  '/ambience_travel.svg',
+} as const
+
+const AMBIENCE_URL = 'https://ambience.travel'
+const RESTRICTION_NOTICE = 'This guide is for ambience and its guests only.'
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export interface ExportGuidePdfOptions {
   destination: GuideDestination
   venues: DiningVenue[]
-  variant: 'dining'  // future: 'hotels' | 'experiences'
-  /** Optional emblem image; if provided, used in chrome. Falls back to text wordmark. */
-  emblemImg?: HTMLImageElement | null
-  /** Eyebrow + headline + intro from the page (already resolved against overlay). */
+  variant: 'dining'
   copy: {
     eyebrow:  string
     headline: string
     intro:    string
   }
-  /** Optional hero image src (already resolved from overlay). */
   heroImageSrc?: string | null
+  /**
+   * Year + version sourced from travel_dining_guides overlay (with defaults
+   * applied at call site). Required — caller resolves NULL to defaults.
+   */
+  guideYear: number
+  guideVersion: string
 }
 
 /**
  * Generates and downloads the guide PDF.
- * Caller must ensure jsPDF + autoTable are loaded (window.jspdf.jsPDF + window.autoTable
- * or doc.autoTable). Mirrors the sports-side pdfReady gate.
+ * Caller must ensure jsPDF is loaded (window.jspdf.jsPDF).
  */
 export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void> {
   const w = window as any
@@ -94,40 +121,41 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
     throw new Error('jsPDF not loaded — ensure pdfReady before calling exportGuidePdf')
   }
 
-  // Load + register Cormorant.
   const fontData = await loadGuideFonts()
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   registerGuideFonts(doc, fontData)
+
+  // Pre-load shared chrome assets once. Best-effort — null falls through to
+  // text-free rendering (per spec — no fabricated wordmark, just empty space
+  // if the asset is missing).
+  const [emblemDataUrl, logoDataUrl] = await Promise.all([
+    loadImageAsDataUrl(ASSET_PATHS.emblem),
+    rasterizeSvgAsDataUrl(ASSET_PATHS.logoSvg, 800),
+  ])
 
   const ctx: RenderCtx = {
     doc,
     destination: opts.destination,
     variant: opts.variant,
-    emblemImg: opts.emblemImg ?? null,
     copy: opts.copy,
     heroImageSrc: opts.heroImageSrc ?? null,
+    guideYear: opts.guideYear,
+    guideVersion: opts.guideVersion,
+    emblem: emblemDataUrl,
+    logo: logoDataUrl,
     sections: buildSections(opts),
+    venues: opts.venues,
   }
 
-  // ── Render flow ───────────────────────────────────────────────────────────
   await renderCoverPage(ctx)
+  doc.addPage(); renderWelcomePage(ctx)
+  doc.addPage(); renderContentsPage(ctx)
+  doc.addPage(); await renderCardsSection(ctx, opts.venues)
+  doc.addPage(); renderClosingPage(ctx)
 
-  doc.addPage()
-  renderWelcomePage(ctx)
-
-  doc.addPage()
-  renderContentsPage(ctx)
-
-  doc.addPage()
-  await renderCardsSection(ctx, opts.venues)
-
-  doc.addPage()
-  renderClosingPage(ctx)
-
-  // Stamp page numbers + repeating chrome (skip cover, page 1).
   stampPageChrome(ctx)
 
-  doc.save(buildFilename(opts.destination, opts.variant))
+  doc.save(buildFilename(opts.destination, opts.variant, opts.guideYear, opts.guideVersion))
 }
 
 // ── Render context ───────────────────────────────────────────────────────────
@@ -136,28 +164,32 @@ interface RenderCtx {
   doc: any
   destination: GuideDestination
   variant: 'dining'
-  emblemImg: HTMLImageElement | null
   copy: { eyebrow: string; headline: string; intro: string }
   heroImageSrc: string | null
+  guideYear: number
+  guideVersion: string
+  emblem: ImageData | null
+  logo: ImageData | null
   sections: ContentsSection[]
+  /** Full venue list — used by welcome page to derive which recognition
+   *  marks to legend, and by cards section. */
+  venues: DiningVenue[]
 }
 
 interface ContentsSection {
-  page: number   // populated post-render
+  page: number
   title: string
   blurb: string
 }
 
 function buildSections(opts: ExportGuidePdfOptions): ContentsSection[] {
-  // Sections rendered in fixed order — page numbers stamped during a final pass.
-  // Page 1 = cover (not in contents). Welcome = 2. Contents = 3. Cards = 4+. Closing = last.
   const items: ContentsSection[] = [
-    { page: 2, title: `Welcome to ${opts.destination.name}`, blurb: opts.copy.intro },
+    { page: 2, title: `Welcome to ${opts.destination.name}`, blurb: 'A note on the city and our selection' },
     { page: 4, title: `${capitalize(opts.variant)} Highlights`, blurb: 'Our curated selection of standout tables' },
   ]
   if (opts.venues.length > 0) {
     items.push({
-      page: -1, // computed at render time — see renderClosingPage stamp
+      page: -1,
       title: 'Plan Your Visit',
       blurb: 'Insider tips for a seamless experience',
     })
@@ -171,95 +203,92 @@ function capitalize(s: string): string {
 
 // ── Filename ─────────────────────────────────────────────────────────────────
 
-function buildFilename(destination: GuideDestination, variant: string): string {
+function buildFilename(destination: GuideDestination, variant: string, year: number, version: string): string {
   const today = new Date()
   const dd   = String(today.getDate()).padStart(2, '0')
   const mm   = String(today.getMonth() + 1).padStart(2, '0')
   const yyyy = today.getFullYear()
-  return `ambienceTRAVEL-${destination.slug}-${variant}-guide-${dd}${mm}${yyyy}.pdf`
+  const safeVersion = version.replace(/[^a-zA-Z0-9.]/g, '')
+  return `ambienceTRAVEL-${destination.slug}-${variant}-guide-${year}-v${safeVersion}-${dd}${mm}${yyyy}.pdf`
 }
 
 // ── Cover page ───────────────────────────────────────────────────────────────
 
 async function renderCoverPage(ctx: RenderCtx) {
-  const { doc, copy, heroImageSrc, emblemImg } = ctx
+  const { doc, destination, copy, heroImageSrc, emblem, logo, guideYear, guideVersion } = ctx
 
-  // Cream background — full page.
   doc.setFillColor(...THEME.cream)
   doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
 
-  // Top emblem + wordmark, centered.
-  const wordmarkY = 22
-  if (emblemImg) {
-    drawClippedEmblem(doc, emblemImg, PAGE.width / 2 - 5, 12, 10)
+  // Brand stack at top: emblem above logo wordmark, both centered.
+  // Layout: emblem (14mm sq) → 4mm gap → logo (~36mm wide × 12mm tall, aspect-respecting).
+  if (emblem) {
+    const size = 14
+    doc.addImage(emblem.data, emblem.format, PAGE.width / 2 - size / 2, 18, size, size, undefined, 'FAST')
   }
-  setSerif(doc, 'normal', 14)
-  doc.setTextColor(...THEME.ink)
-  doc.text('ambience', PAGE.width / 2, wordmarkY + 6, { align: 'center' })
+  if (logo) {
+    const logoH = 12
+    const logoW = logoH * 3.0  // assumed wordmark aspect; verified post-ship if asset proportions differ
+    doc.addImage(logo.data, logo.format, PAGE.width / 2 - logoW / 2, 36, logoW, logoH, undefined, 'FAST')
+  }
 
-  setSans(doc, 'normal', 7)
-  doc.setTextColor(...THEME.gold)
-  doc.text('CURATED TRAVEL', PAGE.width / 2, wordmarkY + 11, { align: 'center', charSpace: 0.6 })
-
-  // Massive serif headline — wraps if long.
-  const titleY = 70
-  setSerif(doc, 'normal', 48)
+  // Title block — words breathe naturally without separators.
+  // Long names will wrap via splitTextToSize.
+  const titleY = 74
+  setSerif(doc, 'normal', 42)
   doc.setTextColor(...THEME.ink)
-  const titleLines = doc.splitTextToSize(copy.headline, PAGE.width - PAGE.margin * 2 - 8)
-  // Cap at 3 lines visually; serif at 48pt with 1.0 lineHeight ≈ 17mm/line.
+  const titleText = `${destination.name} ${capitalize(ctx.variant)} Guide ${guideYear}`
+  const titleLines = doc.splitTextToSize(titleText, PAGE.width - PAGE.margin * 2 - 8)
   let yCursor = titleY
   for (let i = 0; i < Math.min(titleLines.length, 3); i++) {
     doc.text(titleLines[i], PAGE.margin + 4, yCursor)
-    yCursor += 17
+    yCursor += 15
   }
 
-  // Gold rule under title — short, centered-left under the headline block.
+  // Version eyebrow — small, gold, tracked uppercase.
+  setSans(doc, 'normal', 9)
+  doc.setTextColor(...THEME.gold)
+  doc.text(`V${guideVersion.toUpperCase()}`, PAGE.margin + 4, yCursor + 2, { charSpace: 0.6 })
+
+  // Gold rule.
   doc.setDrawColor(...THEME.gold)
   doc.setLineWidth(0.6)
-  doc.line(PAGE.margin + 4, yCursor + 2, PAGE.margin + 28, yCursor + 2)
+  doc.line(PAGE.margin + 4, yCursor + 8, PAGE.margin + 28, yCursor + 8)
 
-  // Intro copy — sans, muted ink.
+  // Intro copy.
   setSans(doc, 'normal', 10.5)
   doc.setTextColor(...THEME.muted)
   const introLines = doc.splitTextToSize(copy.intro, PAGE.width - PAGE.margin * 2 - 60)
-  let introY = yCursor + 12
+  let introY = yCursor + 18
   for (const line of introLines) {
     doc.text(line, PAGE.margin + 4, introY)
     introY += 5.5
   }
 
-  // Hero image — full-bleed, lower portion of the page.
-  // Bottom 50% of the page is the hero.
+  // Hero image — full-bleed lower portion.
   const heroTop    = 162
   const heroBottom = 270
   if (heroImageSrc) {
     try {
       const imgData = await loadImageAsDataUrl(heroImageSrc)
       if (imgData) {
-        // Full-bleed: x=0, width=full, height=heroBottom-heroTop.
         doc.addImage(imgData.data, imgData.format, 0, heroTop, PAGE.width, heroBottom - heroTop, undefined, 'FAST')
+      } else {
+        drawHeroFallback(doc, heroTop, heroBottom)
       }
     } catch {
-      // Silent fallback — render gold gradient panel.
       drawHeroFallback(doc, heroTop, heroBottom)
     }
   } else {
     drawHeroFallback(doc, heroTop, heroBottom)
   }
 
-  // Bottom tagline — gold, tracked uppercase.
-  setSans(doc, 'normal', 8)
-  doc.setTextColor(...THEME.gold)
-  doc.text('CURATED LOCALLY  ·  EXPERIENCED BEAUTIFULLY', PAGE.width / 2, PAGE.height - 12, {
-    align: 'center',
-    charSpace: 0.6,
-  })
+  // Footer is stamped by stampPageChrome — same on every page including cover.
 }
 
 function drawHeroFallback(doc: any, top: number, bottom: number) {
   doc.setFillColor(...THEME.fallbackBg)
   doc.rect(0, top, PAGE.width, bottom - top, 'F')
-  // Subtle gold rule mid-band.
   doc.setDrawColor(...THEME.gold)
   doc.setLineWidth(0.4)
   doc.line(PAGE.width / 2 - 12, (top + bottom) / 2, PAGE.width / 2 + 12, (top + bottom) / 2)
@@ -268,21 +297,18 @@ function drawHeroFallback(doc: any, top: number, bottom: number) {
 // ── Welcome page ─────────────────────────────────────────────────────────────
 
 function renderWelcomePage(ctx: RenderCtx) {
-  const { doc, destination, copy } = ctx
+  const { doc, destination, copy, venues } = ctx
 
-  // White bg.
   doc.setFillColor(...THEME.white)
   doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
 
   let y = PAGE.bodyTop + 12
 
-  // Headline.
   setSerif(doc, 'normal', 28)
   doc.setTextColor(...THEME.ink)
   doc.text(`Welcome to ${destination.name}`, PAGE.margin, y)
   y += 14
 
-  // Intro copy — sans, full width.
   setSans(doc, 'normal', 10.5)
   doc.setTextColor(...THEME.inkSoft)
   const introLines = doc.splitTextToSize(copy.intro, PAGE.width - PAGE.margin * 2)
@@ -292,13 +318,11 @@ function renderWelcomePage(ctx: RenderCtx) {
   }
   y += 8
 
-  // Gold rule.
   doc.setDrawColor(...THEME.gold)
   doc.setLineWidth(0.4)
   doc.line(PAGE.margin, y, PAGE.margin + 24, y)
   y += 14
 
-  // "At a Glance" panel.
   const panelTop = y
   const panelHeight = 60
   doc.setFillColor(...THEME.cream)
@@ -308,7 +332,6 @@ function renderWelcomePage(ctx: RenderCtx) {
   doc.setTextColor(...THEME.ink)
   doc.text('At a Glance', PAGE.margin + 8, panelTop + 12)
 
-  // Bullets — populate generically; later we'll pull from a structured source.
   const bullets = [
     'A curated selection of standout tables',
     'Reserved for guests on a curated journey',
@@ -318,10 +341,128 @@ function renderWelcomePage(ctx: RenderCtx) {
   doc.setTextColor(...THEME.muted)
   let bulletY = panelTop + 22
   for (const b of bullets) {
-    doc.text('·', PAGE.margin + 8, bulletY)
+    doc.text('\u00b7', PAGE.margin + 8, bulletY)
     doc.text(b, PAGE.margin + 13, bulletY)
     bulletY += 6
   }
+
+  // ── Recognition key (discreet) ───────────────────────────────────────────
+  // Sits below At a Glance panel. Renders only when at least one venue
+  // carries any recognition tier — otherwise the legend has nothing to
+  // explain. Quiet single-line legend, gold eyebrow + glyph + label pairs.
+  y = panelTop + panelHeight + 14
+  renderRecognitionKey(doc, venues, y)
+}
+
+/**
+ * Quiet single-line recognition key. Used on welcome page beneath At a Glance.
+ * Renders only marks present in the venue set.
+ */
+function renderRecognitionKey(doc: any, venues: DiningVenue[], y: number): void {
+  const present = derivePresentKinds(venues)
+  if (present.size === 0) return
+
+  // Eyebrow label.
+  setSans(doc, 'normal', 7.5)
+  doc.setTextColor(...THEME.gold)
+  doc.text('RECOGNITION', PAGE.margin, y, { charSpace: 0.5 })
+
+  // Hairline rule beneath label.
+  doc.setDrawColor(...THEME.rule)
+  doc.setLineWidth(0.15)
+  doc.line(PAGE.margin, y + 2, PAGE.width - PAGE.margin, y + 2)
+
+  // Items row, 6mm below rule.
+  const itemY = y + 8
+  let x = PAGE.margin
+
+  // Stable order: stars, bib, green, fifty.
+  const items: Array<{ kind: string; render: () => number; label: string }> = []
+  if (present.has('stars')) {
+    items.push({
+      kind: 'stars',
+      label: 'Michelin Stars',
+      render: () => {
+        const r = 1.5
+        drawStar(doc, x + r, itemY - 1.5, r, THEME.gold)
+        return r * 2
+      },
+    })
+  }
+  if (present.has('bib')) {
+    items.push({
+      kind: 'bib',
+      label: 'Bib Gourmand',
+      render: () => {
+        const t = 'BIB'; const cs = 0.5; const px = 3
+        setSans(doc, 'bold', 6.5)
+        doc.setTextColor(...THEME.gold)
+        const baseW = doc.getTextWidth(t)
+        const trackW = cs * (t.length - 1)
+        const pillW = baseW + trackW + px * 2
+        doc.setDrawColor(...THEME.gold)
+        doc.setLineWidth(0.25)
+        doc.roundedRect(x, itemY - 2.8, pillW, 4, 1, 1)
+        doc.text(t, x + px, itemY - 0.1, { charSpace: cs })
+        return pillW
+      },
+    })
+  }
+  if (present.has('green')) {
+    items.push({
+      kind: 'green',
+      label: 'Green Star',
+      render: () => {
+        const r = 1.5
+        drawStar(doc, x + r, itemY - 1.5, r, [58, 165, 90])
+        return r * 2
+      },
+    })
+  }
+  if (present.has('fifty_best')) {
+    items.push({
+      kind: 'fifty_best',
+      label: 'World\u2019s 50 Best',
+      render: () => {
+        const t = '50 BEST'; const cs = 0.4; const px = 3
+        setSans(doc, 'bold', 6.5)
+        doc.setTextColor(...THEME.ink)
+        const baseW = doc.getTextWidth(t)
+        const trackW = cs * (t.length - 1)
+        const pillW = baseW + trackW + px * 2
+        doc.setDrawColor(...THEME.rule)
+        doc.setLineWidth(0.25)
+        doc.roundedRect(x, itemY - 2.8, pillW, 4, 1, 1)
+        doc.text(t, x + px, itemY - 0.1, { charSpace: cs })
+        return pillW
+      },
+    })
+  }
+
+  // Render each item: glyph + 3mm gap + label + 10mm gap before next item.
+  for (const item of items) {
+    const glyphW = item.render()
+    setSans(doc, 'normal', 8.5)
+    doc.setTextColor(...THEME.muted)
+    doc.text(item.label, x + glyphW + 3, itemY)
+    x += glyphW + 3 + doc.getTextWidth(item.label) + 10
+  }
+}
+
+/**
+ * Derive which recognition kinds appear in a venue list.
+ * Mirrors deriveRecognitionKindsFromVenues in RecognitionKey.tsx — kept
+ * inline here so guidePdf doesn't pull a React component into its imports.
+ */
+function derivePresentKinds(venues: DiningVenue[]): Set<string> {
+  const set = new Set<string>()
+  for (const v of venues) {
+    if (v.michelin_award === 'star' && v.michelin_stars) set.add('stars')
+    if (v.michelin_award === 'bib_gourmand') set.add('bib')
+    if (v.michelin_green_star) set.add('green')
+    if (v.worlds_50_best) set.add('fifty_best')
+  }
+  return set
 }
 
 // ── Contents page ────────────────────────────────────────────────────────────
@@ -339,9 +480,8 @@ function renderContentsPage(ctx: RenderCtx) {
   doc.text('Contents', PAGE.margin, y)
   y += 16
 
-  // Two-column layout: page no. (small, gold) | title (medium, ink) | blurb (small, muted, right)
   for (const section of sections) {
-    const pageStr = String(section.page).padStart(2, '0')
+    const pageStr = section.page > 0 ? String(section.page).padStart(2, '0') : '··'
 
     setSans(doc, 'normal', 10)
     doc.setTextColor(...THEME.gold)
@@ -356,7 +496,6 @@ function renderContentsPage(ctx: RenderCtx) {
     doc.text(section.blurb, PAGE.width - PAGE.margin, y, { align: 'right' })
 
     y += 4
-    // Hairline separator.
     doc.setDrawColor(...THEME.rule)
     doc.setLineWidth(0.15)
     doc.line(PAGE.margin, y, PAGE.width - PAGE.margin, y)
@@ -365,12 +504,16 @@ function renderContentsPage(ctx: RenderCtx) {
 }
 
 // ── Cards section ────────────────────────────────────────────────────────────
+// Image is landscape 3:2 — restaurant photography is typically wider than tall;
+// square crops cut faces / plating awkwardly. 48×32mm at 3:2 gives a generous
+// thumbnail while leaving room for body copy beside it.
 
 const CARD = {
-  imageSize:    36,    // square thumb, mm
-  rowGap:       6,     // between cards
-  rowMinHeight: 38,    // min mm per row
-  rowPadding:   4,     // top/bottom inside card
+  imageWidth:   48,
+  imageHeight:  32,
+  rowGap:       6,
+  rowMinHeight: 38,
+  rowPadding:   4,
 } as const
 
 async function renderCardsSection(ctx: RenderCtx, venues: DiningVenue[]) {
@@ -381,7 +524,6 @@ async function renderCardsSection(ctx: RenderCtx, venues: DiningVenue[]) {
 
   let y = PAGE.bodyTop + 12
 
-  // Section heading.
   setSerif(doc, 'normal', 26)
   doc.setTextColor(...THEME.ink)
   doc.text(`${capitalize(ctx.variant)} Highlights`, PAGE.margin, y)
@@ -399,10 +541,9 @@ async function renderCardsSection(ctx: RenderCtx, venues: DiningVenue[]) {
     return
   }
 
-  // Render each venue as a card. Page-break before any card that won't fit.
   for (const venue of venues) {
     const cardHeight = computeCardHeight(doc, venue)
-    if (y + cardHeight > PAGE.footerY - 8) {
+    if (y + cardHeight > PAGE.footerY - 10) {
       doc.addPage()
       doc.setFillColor(...THEME.white)
       doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
@@ -415,13 +556,22 @@ async function renderCardsSection(ctx: RenderCtx, venues: DiningVenue[]) {
 }
 
 function computeCardHeight(doc: any, venue: DiningVenue): number {
-  // Card height = max(image side, text block height) + padding.
-  const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageSize - 8
+  const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight = 0
 
-  // Cuisine eyebrow (~3.5mm) + name (~7mm) + body lines + tags row + address row.
-  textHeight += 4   // cuisine
-  textHeight += 8   // name
+  textHeight += 6   // cuisine eyebrow
+  textHeight += 6   // name advance (matches renderCard equal rhythm)
+
+  // Recognition marks row — present when venue holds any tier.
+  const hasRecognition =
+    (venue.michelin_award === 'star' && venue.michelin_stars) ||
+    venue.michelin_award === 'bib_gourmand' ||
+    venue.michelin_green_star ||
+    venue.worlds_50_best
+  if (hasRecognition) textHeight += 6
+
+  if (venue.neighborhood) textHeight += 5
+
   if (venue.body) {
     setSans(doc, 'normal', 9.5)
     const bodyLines = doc.splitTextToSize(venue.body, textWidth)
@@ -433,27 +583,25 @@ function computeCardHeight(doc: any, venue: DiningVenue): number {
     const addrLines = doc.splitTextToSize(venue.address, textWidth)
     textHeight += addrLines.length * 4 + 2
   }
-  return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageSize, CARD.rowMinHeight)
+  return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
 }
 
 async function renderCard(doc: any, venue: DiningVenue, top: number) {
   const cardHeight = computeCardHeight(doc, venue)
   const cardWidth  = PAGE.width - PAGE.margin * 2
 
-  // Card frame — soft hairline.
   doc.setDrawColor(...THEME.rule)
   doc.setLineWidth(0.15)
   doc.line(PAGE.margin, top + cardHeight + CARD.rowGap / 2,
            PAGE.width - PAGE.margin, top + cardHeight + CARD.rowGap / 2)
 
-  // Image (left) — square at top-left of card row.
   const imgX = PAGE.margin
   const imgY = top + CARD.rowPadding
   if (venue.image_src) {
     try {
       const imgData = await loadImageAsDataUrl(venue.image_src)
       if (imgData) {
-        doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageSize, CARD.imageSize, undefined, 'FAST')
+        doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
       } else {
         drawImageFallback(doc, imgX, imgY, venue.name)
       }
@@ -464,49 +612,94 @@ async function renderCard(doc: any, venue: DiningVenue, top: number) {
     drawImageFallback(doc, imgX, imgY, venue.name)
   }
 
-  // Text block (right of image).
-  const textX = imgX + CARD.imageSize + 8
-  const textWidth = cardWidth - CARD.imageSize - 8
+  const textX = imgX + CARD.imageWidth + 8
+  const textWidth = cardWidth - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  // Cuisine eyebrow — gold, tracked uppercase.
+  // Cuisine eyebrow.
   if (venue.cuisine_subcategory) {
     setSans(doc, 'normal', 7.5)
     doc.setTextColor(...THEME.gold)
     doc.text(venue.cuisine_subcategory.toUpperCase(), textX, ty, { charSpace: 0.4 })
-    ty += 4
+    ty += 6  // equal rhythm — eyebrow → name
   }
 
-  // Name — Cormorant, ink.
+  // Name (Cormorant serif, 18pt).
   setSerif(doc, 'normal', 18)
   doc.setTextColor(...THEME.ink)
   doc.text(venue.name, textX, ty)
-  ty += 7
+  ty += 6  // equal rhythm — name → recognition marks (was 7)
 
-  // Neighborhood + Michelin chip on same row.
-  if (venue.neighborhood || venue.michelin) {
-    setSans(doc, 'normal', 8.5)
-    doc.setTextColor(...THEME.muted)
-    let metaX = textX
-    if (venue.neighborhood) {
-      doc.text(venue.neighborhood, metaX, ty)
-      metaX += doc.getTextWidth(venue.neighborhood) + 4
+  // Recognition marks row: ★★★ stars / BIB pill / Green ★ / 50 BEST, in that order.
+  // Renders only when at least one tier is set. Neighborhood gets its own
+  // line beneath, separated for clarity.
+  const hasStars = venue.michelin_award === 'star' && venue.michelin_stars
+  const hasBib   = venue.michelin_award === 'bib_gourmand'
+  const hasGreen = venue.michelin_green_star
+  const hasFifty = venue.worlds_50_best
+
+  if (hasStars || hasBib || hasGreen || hasFifty) {
+    let markX = textX
+
+    // Stars — gold filled five-pointed stars, drawn as vector polygons.
+    // Font-independent: doesn't rely on U+2605 being in any registered font.
+    if (hasStars) {
+      const starRadius = 1.7  // ~3.4mm tall — matches BIB pill height visually
+      const rowW = drawStarRow(doc, markX, ty - 1.7, venue.michelin_stars!, starRadius, THEME.gold)
+      markX += rowW + 6
     }
-    if (venue.michelin) {
-      // Michelin pill — gold border + gold text.
-      const pillText = 'MICHELIN'
+
+    // Bib Gourmand pill.
+    if (hasBib) {
+      const pillText = 'BIB'
+      const pillCharSpace = 0.5
+      const pillPaddingX = 3.5
       setSans(doc, 'bold', 7)
       doc.setTextColor(...THEME.gold)
-      const pillW = doc.getTextWidth(pillText) + 4
+      const baseW = doc.getTextWidth(pillText)
+      const trackW = pillCharSpace * (pillText.length - 1)
+      const pillW = baseW + trackW + pillPaddingX * 2
       doc.setDrawColor(...THEME.gold)
       doc.setLineWidth(0.3)
-      doc.roundedRect(metaX, ty - 3.2, pillW, 4.4, 1, 1)
-      doc.text(pillText, metaX + 2, ty + 0.2, { charSpace: 0.4 })
+      doc.roundedRect(markX, ty - 3.2, pillW, 4.4, 1, 1)
+      doc.text(pillText, markX + pillPaddingX, ty + 0.2, { charSpace: pillCharSpace })
+      markX += pillW + 6
     }
+
+    // Green Star — sustainability award. Single filled green star, vector-drawn.
+    if (hasGreen) {
+      const starRadius = 1.7
+      drawStar(doc, markX + starRadius, ty - 1.7, starRadius, [58, 165, 90])
+      markX += starRadius * 2 + 6
+    }
+
+    // 50 Best pill — neutral ink chrome, distinguished from gold Michelin marks.
+    if (hasFifty) {
+      const pillText = '50 BEST'
+      const pillCharSpace = 0.4
+      const pillPaddingX = 3.5
+      setSans(doc, 'bold', 7)
+      doc.setTextColor(...THEME.ink)
+      const baseW = doc.getTextWidth(pillText)
+      const trackW = pillCharSpace * (pillText.length - 1)
+      const pillW = baseW + trackW + pillPaddingX * 2
+      doc.setDrawColor(...THEME.rule)
+      doc.setLineWidth(0.3)
+      doc.roundedRect(markX, ty - 3.2, pillW, 4.4, 1, 1)
+      doc.text(pillText, markX + pillPaddingX, ty + 0.2, { charSpace: pillCharSpace })
+    }
+
+    ty += 6  // equal rhythm — recognition → neighborhood/body
+  }
+
+  // Neighborhood — its own line, muted.
+  if (venue.neighborhood) {
+    setSans(doc, 'normal', 8.5)
+    doc.setTextColor(...THEME.muted)
+    doc.text(venue.neighborhood, textX, ty)
     ty += 5
   }
 
-  // Body.
   if (venue.body) {
     setSans(doc, 'normal', 9.5)
     doc.setTextColor(...THEME.inkSoft)
@@ -518,24 +711,23 @@ async function renderCard(doc: any, venue: DiningVenue, top: number) {
     ty += 1
   }
 
-  // Tags — small pills.
   if (venue.tags && venue.tags.length > 0) {
     setSans(doc, 'normal', 7.5)
     doc.setTextColor(...THEME.muted)
     let tagX = textX
+    const tagPaddingX = 3
     for (const tag of venue.tags) {
-      const w = doc.getTextWidth(tag) + 4
-      if (tagX + w > textX + textWidth) break  // single row only in PDF
+      const w = doc.getTextWidth(tag) + tagPaddingX * 2
+      if (tagX + w > textX + textWidth) break
       doc.setDrawColor(...THEME.rule)
       doc.setLineWidth(0.15)
       doc.roundedRect(tagX, ty - 2.8, w, 4.2, 1, 1)
-      doc.text(tag, tagX + 2, ty + 0.2)
+      doc.text(tag, tagX + tagPaddingX, ty + 0.2)
       tagX += w + 2
     }
     ty += 5
   }
 
-  // Address.
   if (venue.address) {
     setSans(doc, 'normal', 8.5)
     doc.setTextColor(...THEME.faint)
@@ -549,12 +741,11 @@ async function renderCard(doc: any, venue: DiningVenue, top: number) {
 
 function drawImageFallback(doc: any, x: number, y: number, name: string) {
   doc.setFillColor(...THEME.fallbackBg)
-  doc.rect(x, y, CARD.imageSize, CARD.imageSize, 'F')
+  doc.rect(x, y, CARD.imageWidth, CARD.imageHeight, 'F')
   setSerif(doc, 'italic', 12)
   doc.setTextColor(...THEME.muted)
-  // Show first letter of name centered.
   const letter = (name?.[0] ?? '·').toUpperCase()
-  doc.text(letter, x + CARD.imageSize / 2, y + CARD.imageSize / 2 + 3, { align: 'center' })
+  doc.text(letter, x + CARD.imageWidth / 2, y + CARD.imageHeight / 2 + 3, { align: 'center' })
 }
 
 // ── Closing page ─────────────────────────────────────────────────────────────
@@ -597,38 +788,62 @@ function renderClosingPage(ctx: RenderCtx) {
 }
 
 // ── Page chrome ──────────────────────────────────────────────────────────────
-// Stamps eyebrow + page number on every page except the cover, plus footer.
+// Stamps top eyebrow + page number on every content page (skips cover).
+// Stamps footer on every page (including cover).
+//
+// Footer (per S37 spec):
+//   [Logo asset, hyperlinked to https://ambience.travel] | This guide is for ambience and its guests only. | © {Year}
 
 function stampPageChrome(ctx: RenderCtx) {
-  const { doc, destination, variant } = ctx
+  const { doc, destination, variant, logo, guideYear } = ctx
   const pageCount = doc.getNumberOfPages()
 
-  for (let i = 2; i <= pageCount; i++) {
+  for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i)
 
-    // Top eyebrow strip — destination + variant on left, page number right.
-    const eyebrowText = `${destination.name.toUpperCase()} ${variant.toUpperCase()} GUIDE`
-    setSans(doc, 'normal', 7.5)
-    doc.setTextColor(...THEME.gold)
-    doc.text(eyebrowText, PAGE.margin, 14, { charSpace: 0.5 })
+    // ── Top eyebrow (skip cover) ──────────────────────────────────────────
+    if (i > 1) {
+      const eyebrowText = `${destination.name.toUpperCase()} ${variant.toUpperCase()} GUIDE`
+      setSans(doc, 'normal', 7.5)
+      doc.setTextColor(...THEME.gold)
+      doc.text(eyebrowText, PAGE.margin, 14, { charSpace: 0.5 })
 
-    const pageStr = String(i).padStart(2, '0')
-    doc.text(pageStr, PAGE.width - PAGE.margin, 14, { align: 'right' })
+      const pageStr = String(i).padStart(2, '0')
+      doc.text(pageStr, PAGE.width - PAGE.margin, 14, { align: 'right' })
 
-    // Thin gold rule under eyebrow.
-    doc.setDrawColor(...THEME.gold)
-    doc.setLineWidth(0.2)
-    doc.line(PAGE.margin, 18, PAGE.width - PAGE.margin, 18)
+      doc.setDrawColor(...THEME.gold)
+      doc.setLineWidth(0.2)
+      doc.line(PAGE.margin, 18, PAGE.width - PAGE.margin, 18)
+    }
 
-    // Footer rule + AMBIENCE.COM right.
+    // ── Footer ────────────────────────────────────────────────────────────
     doc.setDrawColor(...THEME.rule)
     doc.setLineWidth(0.15)
     doc.line(PAGE.margin, PAGE.footerY, PAGE.width - PAGE.margin, PAGE.footerY)
 
-    setSans(doc, 'normal', 7)
-    doc.setTextColor(...THEME.gold)
-    doc.text('AMBIENCE CURATED TRAVEL', PAGE.margin, PAGE.footerText, { charSpace: 0.5 })
-    doc.text('AMBIENCE.COM', PAGE.width - PAGE.margin, PAGE.footerText, { align: 'right', charSpace: 0.5 })
+    // Logo (left) — hyperlinked to ambience.travel.
+    // Sits cleanly below the rule with breathing room — was previously
+    // crossing through the rule (logo top y=279, rule y=280).
+    if (logo) {
+      const logoH = 7
+      const logoW = logoH * 3.0  // approx wordmark aspect; refine if asset proportions differ
+      const logoX = PAGE.margin
+      const logoY = PAGE.footerY + 3  // 3mm below the rule
+      doc.addImage(logo.data, logo.format, logoX, logoY, logoW, logoH, undefined, 'FAST')
+      try {
+        doc.link(logoX, logoY, logoW, logoH, { url: AMBIENCE_URL })
+      } catch {}
+    }
+
+    // Restriction notice (center) — vertically aligned with logo's mid-line.
+    setSans(doc, 'italic', 7.5)
+    doc.setTextColor(...THEME.muted)
+    doc.text(RESTRICTION_NOTICE, PAGE.width / 2, PAGE.footerY + 7.5, { align: 'center' })
+
+    // Copyright (right) — same baseline as restriction notice.
+    setSans(doc, 'normal', 7.5)
+    doc.setTextColor(...THEME.faint)
+    doc.text(`© ${guideYear} ambience.travel`, PAGE.width - PAGE.margin, PAGE.footerY + 7.5, { align: 'right' })
   }
 }
 
@@ -645,16 +860,58 @@ function setSans(doc: any, style: 'normal' | 'bold' | 'italic', size: number) {
 }
 
 interface ImageData {
-  data: string  // base64 data URL or raw base64
+  data: string
   format: 'JPEG' | 'PNG' | 'WEBP'
 }
 
 /**
- * Loads an image src (URL or data URL) as a base64 data URL via canvas.
- * Returns null on failure (caller renders fallback).
+ * Draws a filled five-pointed star centered at (cx, cy) with the given outer
+ * radius (mm). Uses jsPDF's polygon primitive — no font dependency, renders
+ * identically regardless of which TTFs are registered.
  *
- * Why canvas: jsPDF's addImage works best with JPEG/PNG. WebP is supported in
- * modern jsPDF but rendering varies; canvas → JPEG normalises for consistency.
+ * Why: jsPDF's built-in Helvetica doesn't include U+2605, and Cormorant
+ * Garamond as shipped from Google Fonts is sub-setted to Latin only — also
+ * no U+2605. Switching font wasn't enough; we draw the geometry directly.
+ */
+function drawStar(doc: any, cx: number, cy: number, radius: number, rgb: RGB) {
+  const inner = radius * 0.382  // standard 5-point star inner ratio (1 / phi^2)
+  const points: Array<[number, number]> = []
+  for (let i = 0; i < 10; i++) {
+    const r = (i % 2 === 0) ? radius : inner
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5  // start with point up
+    points.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)])
+  }
+  // jsPDF's `lines` takes deltas relative to the previous point + a starting (x, y).
+  const start = points[0]
+  const deltas: Array<[number, number]> = []
+  for (let i = 1; i < points.length; i++) {
+    deltas.push([points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]])
+  }
+  // Close back to start.
+  deltas.push([start[0] - points[points.length - 1][0], start[1] - points[points.length - 1][1]])
+
+  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+  doc.setDrawColor(rgb[0], rgb[1], rgb[2])
+  doc.setLineWidth(0.05)
+  doc.lines(deltas, start[0], start[1], [1, 1], 'F', true)
+}
+
+/**
+ * Draws N stars in a horizontal row sharing the same y-baseline.
+ * Returns the total width consumed in mm so callers can advance their cursor.
+ */
+function drawStarRow(doc: any, x: number, y: number, count: number, radius: number, rgb: RGB, gap: number = 0.6): number {
+  const stride = radius * 2 + gap
+  for (let i = 0; i < count; i++) {
+    drawStar(doc, x + radius + i * stride, y, radius, rgb)
+  }
+  return stride * count - gap
+}
+
+/**
+ * Loads an image src as a base64 data URL via canvas.
+ * PNG inputs preserve transparency; non-PNG flatten to white-background JPEG.
+ * Returns null on failure (caller handles fallback).
  */
 async function loadImageAsDataUrl(src: string): Promise<ImageData | null> {
   return new Promise((resolve) => {
@@ -663,16 +920,21 @@ async function loadImageAsDataUrl(src: string): Promise<ImageData | null> {
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas')
-        canvas.width  = img.naturalWidth
-        canvas.height = img.naturalHeight
+        canvas.width  = img.naturalWidth || 1
+        canvas.height = img.naturalHeight || 1
         const ctx = canvas.getContext('2d')
         if (!ctx) { resolve(null); return }
-        // White background flush — handles WebP transparency cleanly.
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        const isPng = /\.png(\?|$)/i.test(src)
+        if (!isPng) {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
         ctx.drawImage(img, 0, 0)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.86)
-        resolve({ data: dataUrl, format: 'JPEG' })
+        if (isPng) {
+          resolve({ data: canvas.toDataURL('image/png'), format: 'PNG' })
+        } else {
+          resolve({ data: canvas.toDataURL('image/jpeg', 0.86), format: 'JPEG' })
+        }
       } catch {
         resolve(null)
       }
@@ -683,25 +945,46 @@ async function loadImageAsDataUrl(src: string): Promise<ImageData | null> {
 }
 
 /**
- * Draws an emblem image clipped to a circle on white background.
- * Mirrors the sports-side pattern — strips dark outer ring, prints clean.
+ * Rasterises an SVG file to a PNG data URL via canvas at a target pixel width.
+ * jsPDF doesn't render SVG natively — this is the canonical workaround that
+ * keeps wordmarks crisp at print scale without an SVG plugin dependency.
+ *
+ * `targetPxWidth` controls output resolution. 800px is roughly 200dpi for a
+ * 4cm-wide footer logo; bump higher for cover-scale renders if needed.
  */
-function drawClippedEmblem(doc: any, img: HTMLImageElement, x: number, y: number, size: number) {
+async function rasterizeSvgAsDataUrl(src: string, targetPxWidth: number): Promise<ImageData | null> {
   try {
-    const px = 120
-    const canvas = document.createElement('canvas')
-    canvas.width = px; canvas.height = px
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.fillStyle = '#F6F1E8'  // cream — matches cover bg
-    ctx.fillRect(0, 0, px, px)
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(px / 2, px / 2, px / 2 - 2, 0, Math.PI * 2)
-    ctx.clip()
-    ctx.drawImage(img, 0, 0, px, px)
-    ctx.restore()
-    const composited = canvas.toDataURL('image/jpeg', 1.0)
-    doc.addImage(composited, 'JPEG', x, y, size, size)
-  } catch {}
+    const res = await fetch(src)
+    if (!res.ok) return null
+    const svgText = await res.text()
+
+    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' })
+    const blobUrl = URL.createObjectURL(blob)
+
+    return await new Promise<ImageData | null>((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const naturalW = img.naturalWidth  || targetPxWidth
+          const naturalH = img.naturalHeight || (targetPxWidth / 3)
+          const scale = targetPxWidth / naturalW
+          const canvas = document.createElement('canvas')
+          canvas.width  = Math.round(naturalW * scale)
+          canvas.height = Math.round(naturalH * scale)
+          const ctx = canvas.getContext('2d')
+          if (!ctx) { URL.revokeObjectURL(blobUrl); resolve(null); return }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          URL.revokeObjectURL(blobUrl)
+          resolve({ data: canvas.toDataURL('image/png'), format: 'PNG' })
+        } catch {
+          URL.revokeObjectURL(blobUrl)
+          resolve(null)
+        }
+      }
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null) }
+      img.src = blobUrl
+    })
+  } catch {
+    return null
+  }
 }

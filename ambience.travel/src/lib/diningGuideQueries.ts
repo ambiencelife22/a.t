@@ -8,32 +8,43 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S37 — Added is_supplementary + venue_status to DiningVenue
-//   type + SELECT. venue_status is enum-as-CHECK on the DB ('operational',
-//   'temporarily_closed', 'permanently_closed', 'seasonal_closure').
-//   Default 'operational' renders no banner; other states render a status
-//   banner above the body in DiningCard.
+// Last updated: S37 — Added worlds_50_best boolean (s37_12). Renders as a
+//   fourth recognition pill alongside Michelin tiers + Green Star.
+// Prior: S37 — Added Michelin recognition model (michelin_award, michelin_stars,
+//   michelin_green_star). Legacy `michelin` boolean still in SELECT for
+//   transition window — drops in s37_10.
+// Prior: S37 — Added guide_year + guide_version to DiningGuideOverlay.
+// Prior: S37 — Added is_supplementary + venue_status to DiningVenue.
 // Prior: S36 — Overlay unwrap defensive against both response shapes.
-//   Supabase nested-select returns single object (not array) when UNIQUE
-//   constraint makes relationship 1:1.
-// Prior: S36 — Collapsed two-register canon. ambience_take + why_recommend
-//   dropped from SELECT + DiningVenue type per s36_01. Filter on
-//   ambience_take removed. Order changed sort_order → name ascending.
-// Prior: S35 — Dropped panel_title_override + panel_body_override from
-//   DiningGuideOverlay shape + nested SELECT. Schema cleanup in s35_06.
-// Prior: S35 — Added GuideOverlay shape + getGuideDestination() returns
-//   overlay fields via LEFT JOIN against travel_dining_guides.
+// Prior: S36 — Collapsed two-register canon (ambience_take + why_recommend dropped).
+// Prior: S35 — Added GuideOverlay shape + getGuideDestination().
 
 import { supabase } from './supabase'
 
 export type VenueStatus = 'operational' | 'temporarily_closed' | 'permanently_closed' | 'seasonal_closure'
+
+export type MichelinAward = 'star' | 'bib_gourmand'
 
 export interface DiningVenue {
   id: string
   slug: string
   name: string
   cuisine_subcategory: string | null
+  /**
+   * Legacy boolean — true when venue holds any Michelin star recognition.
+   * Read-time only during the s37_09 → s37_10 transition window.
+   * Once s37_10 ships (DROP COLUMN), this field will be removed from the
+   * type + SELECT in the same change.
+   */
   michelin: boolean
+  /** New (S37 s37_09): recognition tier. NULL = no Michelin recognition. */
+  michelin_award: MichelinAward | null
+  /** New (S37 s37_09): 1-3 when award='star', NULL otherwise (CHECK enforced). */
+  michelin_stars: number | null
+  /** New (S37 s37_09): orthogonal sustainability award. */
+  michelin_green_star: boolean
+  /** New (S37 s37_12): listed on The World's 50 Best Restaurants guide. */
+  worlds_50_best: boolean
   address: string | null
   maps_url: string | null
   website: string | null
@@ -59,6 +70,9 @@ export interface DiningVenue {
  * Per-destination overlay for the dining guide page.
  * NULL on any field = frontend default flows through.
  * Resolution: override → frontend default → '' (standard ?? chain)
+ *
+ * guide_year + guide_version added S37 for PDF cover. NULL = current year / '1.0'
+ * applied at PDF render time (not on the live page).
  */
 export interface DiningGuideOverlay {
   hero_image_src: string | null
@@ -66,6 +80,8 @@ export interface DiningGuideOverlay {
   headline_override: string | null
   intro_override: string | null
   eyebrow_override: string | null
+  guide_year: number | null
+  guide_version: string | null
 }
 
 export interface GuideDestination {
@@ -73,8 +89,7 @@ export interface GuideDestination {
   slug: string
   name: string
   /**
-   * Per-guide overlay row. null when no row exists for this destination
-   * (e.g. destinations without a dining guide configured yet).
+   * Per-guide overlay row. null when no row exists for this destination.
    * When non-null, individual fields may still be NULL — caller should ??
    * each one against frontend defaults.
    */
@@ -89,7 +104,6 @@ export interface GuideDestination {
 export async function getDiningVenuesByDestination(
   destinationSlug: string,
 ): Promise<DiningVenue[]> {
-  // Resolve destination UUID first — never join on slug per architecture canon.
   const { data: dest, error: destError } = await supabase
     .from('global_destinations')
     .select('id')
@@ -106,7 +120,9 @@ export async function getDiningVenuesByDestination(
   const { data, error } = await supabase
     .from('travel_dining_venues')
     .select(`
-      id, slug, name, cuisine_subcategory, michelin,
+      id, slug, name, cuisine_subcategory,
+      michelin, michelin_award, michelin_stars, michelin_green_star,
+      worlds_50_best,
       address, maps_url, website,
       body, bullets, bullets_heading,
       neighborhood, price_band, public_preview_rank, tags,
@@ -129,9 +145,6 @@ export async function getDiningVenuesByDestination(
 /**
  * Resolves destination metadata + dining guide overlay for header rendering.
  * Returns null if the destination doesn't exist.
- *
- * Overlay row may be missing (destinations without a configured guide) —
- * callers should ?? each overlay field against frontend defaults.
  */
 export async function getGuideDestination(
   destinationSlug: string,
@@ -145,7 +158,9 @@ export async function getGuideDestination(
         hero_image_alt,
         headline_override,
         intro_override,
-        eyebrow_override
+        eyebrow_override,
+        guide_year,
+        guide_version
       )
     `)
     .eq('slug', destinationSlug)
@@ -157,11 +172,6 @@ export async function getGuideDestination(
   }
   if (!data) return null
 
-  // Supabase nested-select returns:
-  //   - array form when the relationship isn't 1:1
-  //   - single object when a UNIQUE constraint makes it 1:1 (our case:
-  //     UNIQUE(global_destination_id) on travel_dining_guides)
-  // Handle both shapes defensively.
   const raw = (data as unknown as { overlay: DiningGuideOverlay | DiningGuideOverlay[] | null }).overlay
   const overlay: DiningGuideOverlay | null =
     Array.isArray(raw)
