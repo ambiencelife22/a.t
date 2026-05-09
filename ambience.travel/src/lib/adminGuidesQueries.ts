@@ -12,13 +12,13 @@
 //   Caller-side rendering of destination name for display lives in the
 //   tab component, not on these query types.
 //
-// Last updated: S39 — Synced AdminDiningVenue to actual DB schema.
-//   ambience_take → body. Added kicker, tagline, bullets_heading, bullets,
+// Last updated: S39 — Dropped legacy michelin boolean (s37_10 ran).
+//   Added michelin_award, michelin_stars, michelin_green_star, worlds_50_best
+//   to AdminDiningVenue type, fetchAllDiningVenues SELECT, and ingestDiningJson.
+// Prior: S39 — Synced AdminDiningVenue to actual DB schema. ambience_take
+//   replaced by body. Added kicker, tagline, bullets_heading, bullets,
 //   image_credit, image_credit_url, image_license. Removed why_recommend.
-//   fetchAllDiningVenues SELECT and ingestDiningJson insert updated to match.
-// Prior: S38 — Removed slug from AdminDiningVenue type, SELECT, and
-//   ingest. Collision guard now uses name (case-insensitive) within
-//   destination UUID. slugifyVenueName helper removed.
+// Prior: S38 — Removed slug from AdminDiningVenue type, SELECT, and ingest.
 
 import { supabase } from './supabase'
 
@@ -36,6 +36,8 @@ export interface DestinationWithDiningCounts {
   has_overlay:  boolean
 }
 
+export type MichelinAward = 'star' | 'bib_gourmand'
+
 export interface AdminDiningVenue {
   id:                    string
   global_destination_id: string
@@ -46,7 +48,10 @@ export interface AdminDiningVenue {
   body:                  string | null
   bullets_heading:       string | null
   bullets:               string[] | null
-  michelin:              boolean
+  michelin_award:        MichelinAward | null
+  michelin_stars:        number | null
+  michelin_green_star:   boolean
+  worlds_50_best:        boolean
   address:               string | null
   maps_url:              string | null
   website:               string | null
@@ -127,7 +132,8 @@ export async function fetchAllDiningVenues(
     .select(`
       id, global_destination_id, name,
       cuisine_subcategory, kicker, tagline, body, bullets_heading, bullets,
-      michelin, address, maps_url, website,
+      michelin_award, michelin_stars, michelin_green_star, worlds_50_best,
+      address, maps_url, website,
       neighborhood, price_band, public_preview_rank, tags,
       image_src, image_alt, image_credit, image_credit_url, image_license,
       image_2_src, image_2_alt,
@@ -214,13 +220,12 @@ export async function deleteDiningGuide(id: string): Promise<void> {
 // ── JSON ingest ──────────────────────────────────────────────────────────────
 //
 // Collision guard: name (case-insensitive) within destination UUID.
-// Slug dropped S38. why_recommend dropped S39.
-// body is the single long-form copy field (mapped from r.description in ingest).
+// Slug dropped S38. michelin boolean dropped S39 (s37_10).
+// body is the single long-form copy field (mapped from r.description).
 
 export interface IngestVenueRecord {
   name:         string
   subCategory?: string
-  michelin?:    boolean
   address?:     string
   website?:     string
   description?: string
@@ -282,7 +287,6 @@ export async function ingestDiningJson(
       sort_order:            nextSort++,
       is_active:             true,
       cuisine_subcategory:   r.subCategory ?? null,
-      michelin:              r.michelin ?? false,
       address:               r.address ?? null,
       website:               r.website ?? null,
       body:                  r.description ?? null,

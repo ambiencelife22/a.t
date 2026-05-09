@@ -15,10 +15,13 @@
  * resolved via destinationsById Map at render time, never carried on
  * query types or used as a key.
  *
- * Last updated: S39 — Synced to new AdminDiningVenue shape. ambience_take
+ * Last updated: S39 — Removed legacy michelin boolean from edit modal,
+ *   handleSave fields array, and venue row display. Replaced with
+ *   michelin_award, michelin_stars, michelin_green_star, worlds_50_best
+ *   recognition fields. Row display now shows award tier pill.
+ * Prior: S39 — Synced to new AdminDiningVenue shape. ambience_take
  *   replaced by body. Added kicker, tagline, bullets_heading, bullets,
- *   image_credit, image_credit_url, image_license fields to edit modal
- *   and handleSave fields array. why_recommend removed.
+ *   image_credit, image_credit_url, image_license. why_recommend removed.
  * Prior: S38 — Removed slug from search filter, venue row display,
  *   edit modal header, import modal skipped list.
  */
@@ -107,6 +110,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+// ── Recognition label helper ─────────────────────────────────────────────────
+
+function recognitionLabel(v: AdminDiningVenue): string {
+  const parts: string[] = []
+  if (v.michelin_award === 'star') {
+    const stars = v.michelin_stars ?? 1
+    parts.push('★'.repeat(stars))
+  }
+  if (v.michelin_award === 'bib_gourmand') parts.push('Bib')
+  if (v.michelin_green_star) parts.push('Green ★')
+  if (v.worlds_50_best) parts.push('50 Best')
+  return parts.join(' · ')
+}
+
 // ── Edit Modal ───────────────────────────────────────────────────────────────
 
 function EditVenueModal({
@@ -149,7 +166,8 @@ function EditVenueModal({
     try {
       const payload: DiningVenuePatch = {}
       const fields: (keyof DiningVenuePatch)[] = [
-        'name', 'cuisine_subcategory', 'michelin',
+        'name', 'cuisine_subcategory',
+        'michelin_award', 'michelin_stars', 'michelin_green_star', 'worlds_50_best',
         'kicker', 'tagline', 'body', 'bullets_heading', 'bullets',
         'address', 'maps_url', 'website',
         'neighborhood', 'price_band', 'public_preview_rank', 'tags',
@@ -214,18 +232,13 @@ function EditVenueModal({
           <button onClick={onClose} style={btnGhost}>Close</button>
         </div>
 
+        {/* ── Identity ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Name'>
             <input style={inputStyle} value={draft.name} onChange={e => patch('name', e.target.value)} />
           </Field>
           <Field label='Cuisine Subcategory'>
             <input style={inputStyle} value={draft.cuisine_subcategory ?? ''} onChange={e => patch('cuisine_subcategory', e.target.value || null)} />
-          </Field>
-          <Field label='Michelin'>
-            <select style={inputStyle} value={String(draft.michelin)} onChange={e => patch('michelin', e.target.value === 'true')}>
-              <option value='false'>No</option>
-              <option value='true'>Yes</option>
-            </select>
           </Field>
           <Field label='Neighborhood'>
             <input style={inputStyle} value={draft.neighborhood ?? ''} onChange={e => patch('neighborhood', e.target.value || null)} />
@@ -251,6 +264,60 @@ function EditVenueModal({
           </Field>
         </div>
 
+        {/* ── Recognition ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <Field label='Michelin Award'>
+            <select
+              style={inputStyle}
+              value={draft.michelin_award ?? ''}
+              onChange={e => {
+                const v = e.target.value
+                if (v === '') {
+                  patch('michelin_award', null)
+                  patch('michelin_stars', null)
+                  return
+                }
+                patch('michelin_award', v as 'star' | 'bib_gourmand')
+                if (v === 'bib_gourmand') patch('michelin_stars', null)
+              }}
+            >
+              <option value=''>None</option>
+              <option value='star'>Star</option>
+              <option value='bib_gourmand'>Bib Gourmand</option>
+            </select>
+          </Field>
+          <Field label='Michelin Stars (1-3, when award = Star)'>
+            <input
+              style={inputStyle}
+              type='number'
+              min={1}
+              max={3}
+              disabled={draft.michelin_award !== 'star'}
+              value={draft.michelin_stars ?? ''}
+              onChange={e => {
+                const v = e.target.value
+                if (v === '') { patch('michelin_stars', null); return }
+                const n = parseInt(v, 10)
+                if (Number.isNaN(n)) return
+                patch('michelin_stars', n)
+              }}
+            />
+          </Field>
+          <Field label='Michelin Green Star'>
+            <select style={inputStyle} value={String(draft.michelin_green_star ?? false)} onChange={e => patch('michelin_green_star', e.target.value === 'true')}>
+              <option value='false'>No</option>
+              <option value='true'>Yes</option>
+            </select>
+          </Field>
+          <Field label="World's 50 Best">
+            <select style={inputStyle} value={String(draft.worlds_50_best ?? false)} onChange={e => patch('worlds_50_best', e.target.value === 'true')}>
+              <option value='false'>No</option>
+              <option value='true'>Yes</option>
+            </select>
+          </Field>
+        </div>
+
+        {/* ── Copy ── */}
         <Field label='Kicker'>
           <input style={inputStyle} value={draft.kicker ?? ''} onChange={e => patch('kicker', e.target.value || null)} />
         </Field>
@@ -278,6 +345,7 @@ function EditVenueModal({
           />
         </Field>
 
+        {/* ── Contact ── */}
         <Field label='Address'>
           <input style={inputStyle} value={draft.address ?? ''} onChange={e => patch('address', e.target.value || null)} />
         </Field>
@@ -291,6 +359,7 @@ function EditVenueModal({
           </Field>
         </div>
 
+        {/* ── Tags ── */}
         <Field label='Tags'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minHeight: 24 }}>
@@ -320,6 +389,7 @@ function EditVenueModal({
           </div>
         </Field>
 
+        {/* ── Images ── */}
         <Field label='Image 1 Src'>
           <ImageFieldWithUploader
             value={draft.image_src}
@@ -351,6 +421,7 @@ function EditVenueModal({
           <input style={inputStyle} value={draft.image_2_alt ?? ''} onChange={e => patch('image_2_alt', e.target.value || null)} />
         </Field>
 
+        {/* ── Admin ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Active'>
             <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
@@ -649,13 +720,14 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {filtered.map(v => {
             const dest = destinationsById.get(v.global_destination_id)
+            const recog = recognitionLabel(v)
             return (
               <div
                 key={v.id}
                 onClick={() => setEditingVenue(v)}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr 80px 80px',
+                  gridTemplateColumns: '1fr 1fr 1fr 120px 80px',
                   gap: 12,
                   padding: '10px 14px',
                   background: A.bgCard,
@@ -674,8 +746,8 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
                 <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
                   {v.cuisine_subcategory ?? <span style={{ color: A.faint }}>—</span>}
                 </div>
-                <div style={{ fontSize: 11, color: v.michelin ? A.gold : A.faint, fontFamily: A.font, fontWeight: 600 }}>
-                  {v.michelin ? '★ Michelin' : ''}
+                <div style={{ fontSize: 11, color: recog ? A.gold : A.faint, fontFamily: A.font, fontWeight: 600 }}>
+                  {recog || ''}
                 </div>
                 <div style={{ fontSize: 11, color: v.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
                   {v.is_active ? 'Active' : 'Hidden'}

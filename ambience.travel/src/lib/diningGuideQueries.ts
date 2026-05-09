@@ -42,7 +42,6 @@ export interface DiningVenue {
    * Legacy boolean — true when venue holds any Michelin recognition.
    * Drops in s37_10 — remove from type + SELECT at that point.
    */
-  michelin: boolean
   michelin_award: MichelinAward | null
   michelin_stars: number | null
   michelin_green_star: boolean
@@ -127,7 +126,7 @@ export async function getDiningVenuesByDestination(
     .select(`
       id, name, cuisine_subcategory,
       kicker, tagline, body, bullets_heading, bullets,
-      michelin, michelin_award, michelin_stars, michelin_green_star,
+      michelin_award, michelin_stars, michelin_green_star,
       worlds_50_best,
       address, maps_url, website,
       neighborhood, price_band, public_preview_rank, tags,
