@@ -1,19 +1,10 @@
 /* adminCardSelectionQueries.ts
- * Query layer for travel_immerse_trip_content_card_selections — the curation
- * table that drives which cards render on the engagement page.
+ * Query layer for travel_immerse_trip_content_card_selections.
  *
- * Selection is the primary surface. Override is a secondary, lazy companion
- * row created only when the user customises a field. Resolution order:
- *   override field → canonical field → ''.
- *
- * Architecture (Dev Standards §IV variant 3 + 2 combined):
- *   - SELECTIONS = curation: which canonical cards appear, in what order,
- *     active or hidden. Has sort_order. Drag-to-reorder within type.
- *   - OVERRIDES  = customisation: optional per-engagement copy/image tweaks.
- *     Created lazily when the first field is customised. Empty rows possible
- *     (legacy) but no longer the default pattern.
- *
- * Last updated: S334
+ * Last updated: S38 — Removed slug from CardCanonicalOption, CanonicalRow,
+ *   CardSelection (canonical_slug dropped), and all SELECTs against
+ *   travel_dining_venues + travel_experiences. UUID-only throughout.
+ * Prior: S334
  */
 
 import { supabase } from './supabase'
@@ -22,25 +13,15 @@ import { supabase } from './supabase'
 
 export type CardKind = 'dining' | 'experience'
 
-/**
- * A single curated card on the engagement page. Selection-primary;
- * override fields lazily attached when present.
- */
 export interface CardSelection {
-  // Selection row identity
   id:                          string
   trip_id:                     string
   sort_order:                  number
   is_active:                   boolean
   dining_venue_id:             string | null
   experience_id:               string | null
-
-  // Derived
   kind:                        CardKind
-
-  // Canonical content (joined for display + override fallback)
   canonical_name:              string | null
-  canonical_slug:              string | null
   canonical_kicker:            string | null
   canonical_tagline:           string | null
   canonical_body:              string | null
@@ -52,8 +33,6 @@ export interface CardSelection {
   canonical_image_credit_url:  string | null
   canonical_image_license:     string | null
   canonical_global_dest_slug:  string | null
-
-  // Override row (may not exist — null when no customisations yet)
   override_id:                 string | null
   kicker_override:             string | null
   name_override:               string | null
@@ -69,19 +48,17 @@ export interface CardSelection {
 }
 
 export interface CardCanonicalOption {
-  id:                       string
-  kind:                     CardKind
-  name:                     string
-  slug:                     string
-  image_src:                string | null
-  global_destination_slug:  string | null
+  id:                      string
+  kind:                    CardKind
+  name:                    string
+  image_src:               string | null
+  global_destination_slug: string | null
 }
 
-// ── Internal canon row shape (Supabase nested select) ────────────────────────
+// ── Internal canon row shape ──────────────────────────────────────────────────
 
 interface CanonicalRow {
   name:              string | null
-  slug:              string | null
   kicker:            string | null
   tagline:           string | null
   body:              string | null
@@ -136,7 +113,6 @@ function shapeRow(
     experience_id:   s.experience_id,
     kind:       isDining ? 'dining' : 'experience',
     canonical_name:             canon?.name ?? null,
-    canonical_slug:             canon?.slug ?? null,
     canonical_kicker:           canon?.kicker ?? null,
     canonical_tagline:          canon?.tagline ?? null,
     canonical_body:             canon?.body ?? null,
@@ -164,7 +140,7 @@ function shapeRow(
 }
 
 const CANONICAL_FIELDS = `
-  name, slug, kicker, tagline, body, bullets_heading, bullets,
+  name, kicker, tagline, body, bullets_heading, bullets,
   image_src, image_alt, image_credit, image_credit_url, image_license,
   global_destinations:global_destination_id ( slug )
 `
@@ -172,7 +148,6 @@ const CANONICAL_FIELDS = `
 // ── Fetch ────────────────────────────────────────────────────────────────────
 
 export async function fetchCardSelections(engagementId: string): Promise<CardSelection[]> {
-  // Fetch selections + canonical join + override rows in parallel
   const [selectionRes, overrideRes] = await Promise.all([
     supabase
       .from('travel_immerse_trip_content_card_selections')
@@ -204,7 +179,6 @@ export async function fetchCardSelections(engagementId: string): Promise<CardSel
     experience_id:   string | null
   })[]
 
-  // Index overrides by (kind, canonical_id) — selections look up their override here
   const overrideByKey = new Map<string, OverrideRow>()
   overrides.forEach(o => {
     if (o.dining_venue_id) overrideByKey.set(`dining:${o.dining_venue_id}`, o)
@@ -215,8 +189,7 @@ export async function fetchCardSelections(engagementId: string): Promise<CardSel
     const key = s.dining_venue_id
       ? `dining:${s.dining_venue_id}`
       : `experience:${s.experience_id}`
-    const ov = overrideByKey.get(key) ?? null
-    return shapeRow(s, ov)
+    return shapeRow(s, overrideByKey.get(key) ?? null)
   })
 }
 
@@ -265,12 +238,7 @@ export async function deleteSelection(id: string): Promise<void> {
   if (error) throw error
 }
 
-/**
- * Reorders selections within a single kind. The argument is the post-drop
- * id list for that kind only, in render order; sort_order is rewritten 1..N.
- */
 export async function reorderSelections(orderedIds: string[]): Promise<void> {
-  // Sequential updates — sort_order is per-row, no bulk-update path
   for (let i = 0; i < orderedIds.length; i += 1) {
     const { error } = await supabase
       .from('travel_immerse_trip_content_card_selections')
@@ -280,12 +248,8 @@ export async function reorderSelections(orderedIds: string[]): Promise<void> {
   }
 }
 
-// ── Override mutations (lazy — created on first customisation) ───────────────
+// ── Override mutations ───────────────────────────────────────────────────────
 
-/**
- * Upserts the override row for a selection. Creates the override row if it
- * does not yet exist (lazy). Returns the override row id.
- */
 export async function upsertOverride(args: {
   trip_id:        string
   kind:           CardKind
@@ -314,7 +278,6 @@ export async function upsertOverride(args: {
     return args.override_id
   }
 
-  // Create new override row
   const insertRow: Record<string, unknown> = {
     trip_id:   args.trip_id,
     is_active: true,
@@ -333,9 +296,6 @@ export async function upsertOverride(args: {
   return data.id as string
 }
 
-/**
- * Deletes the override row entirely (reset all customisations to canonical).
- */
 export async function deleteOverride(overrideId: string): Promise<void> {
   const { error } = await supabase
     .from('travel_immerse_trip_content_card_overrides')
@@ -344,7 +304,7 @@ export async function deleteOverride(overrideId: string): Promise<void> {
   if (error) throw error
 }
 
-// ── Canonical pool search (for picker) ───────────────────────────────────────
+// ── Canonical pool search ────────────────────────────────────────────────────
 
 export async function searchCanonicalCards(query: string): Promise<CardCanonicalOption[]> {
   const trimmed = query.trim()
@@ -353,13 +313,13 @@ export async function searchCanonicalCards(query: string): Promise<CardCanonical
   const [diningRes, expRes] = await Promise.all([
     supabase
       .from('travel_dining_venues')
-      .select(`id, name, slug, image_src, global_destinations:global_destination_id ( slug )`)
+      .select(`id, name, image_src, global_destinations:global_destination_id ( slug )`)
       .ilike('name', ilikeFilter)
       .order('name', { ascending: true })
       .limit(40),
     supabase
       .from('travel_experiences')
-      .select(`id, name, slug, image_src, global_destinations:global_destination_id ( slug )`)
+      .select(`id, name, image_src, global_destinations:global_destination_id ( slug )`)
       .ilike('name', ilikeFilter)
       .order('name', { ascending: true })
       .limit(40),
@@ -369,7 +329,7 @@ export async function searchCanonicalCards(query: string): Promise<CardCanonical
   if (expRes.error)    throw expRes.error
 
   type CanonRow = {
-    id: string; name: string; slug: string; image_src: string | null;
+    id: string; name: string; image_src: string | null;
     global_destinations: { slug: string | null } | null;
   }
 
@@ -378,12 +338,14 @@ export async function searchCanonicalCards(query: string): Promise<CardCanonical
 
   const result: CardCanonicalOption[] = [
     ...dining.map(d => ({
-      id: d.id, kind: 'dining' as const, name: d.name, slug: d.slug,
-      image_src: d.image_src, global_destination_slug: d.global_destinations?.slug ?? null,
+      id: d.id, kind: 'dining' as const, name: d.name,
+      image_src: d.image_src,
+      global_destination_slug: d.global_destinations?.slug ?? null,
     })),
     ...exps.map(e => ({
-      id: e.id, kind: 'experience' as const, name: e.name, slug: e.slug,
-      image_src: e.image_src, global_destination_slug: e.global_destinations?.slug ?? null,
+      id: e.id, kind: 'experience' as const, name: e.name,
+      image_src: e.image_src,
+      global_destination_slug: e.global_destinations?.slug ?? null,
     })),
   ]
 
@@ -397,33 +359,24 @@ export async function searchCanonicalCards(query: string): Promise<CardCanonical
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Resolves what actually renders for a given override field.
- *   - null         → canonical flows through
- *   - '' (empty)   → field hidden on render
- *   - non-empty    → override value used
- */
 export function resolveText(override: string | null, canonical: string | null): {
   state:    'default' | 'customised' | 'hidden'
   rendered: string
 } {
   if (override === null) return { state: 'default',    rendered: canonical ?? '' }
   if (override === '')   return { state: 'hidden',     rendered: '' }
-  return                          { state: 'customised', rendered: override }
+  return                        { state: 'customised', rendered: override }
 }
 
 export function resolveBullets(override: string[] | null, canonical: string[] | null): {
   state:    'default' | 'customised' | 'hidden'
   rendered: string[]
 } {
-  if (override === null)        return { state: 'default',    rendered: canonical ?? [] }
-  if (override.length === 0)    return { state: 'hidden',     rendered: [] }
-  return                                 { state: 'customised', rendered: override }
+  if (override === null)     return { state: 'default',    rendered: canonical ?? [] }
+  if (override.length === 0) return { state: 'hidden',     rendered: [] }
+  return                             { state: 'customised', rendered: override }
 }
 
-/**
- * Computes the next sort_order for a new selection within a kind.
- */
 export function nextSortOrder(existing: CardSelection[], kind: CardKind): number {
   const inKind = existing.filter(s => s.kind === kind)
   if (inKind.length === 0) return 1

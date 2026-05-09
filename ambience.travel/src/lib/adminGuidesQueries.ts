@@ -5,15 +5,18 @@
 //   - Listing all dining venues (UUID-keyed)
 //   - CRUD on travel_dining_venues (canonical pool) — by UUID
 //   - CRUD on travel_dining_guides (per-destination overlay) — by UUID
-//   - JSON ingest with collision-by-slug guard (slug used only for venue
-//     identity within a destination, never as a destination key)
+//   - JSON ingest with name+destination collision guard (slug removed S38)
 //
 // UUID-only standing rule (S35 canon):
 //   All FKs and lookups resolved via UUID. Slugs are for URL routing only.
-//   Caller-side rendering of destination name/slug for display lives in the
+//   Caller-side rendering of destination name for display lives in the
 //   tab component, not on these query types.
 //
-// Last updated: S36
+// Last updated: S38 — Removed slug from AdminDiningVenue type, SELECT, and
+//   ingest. Collision guard now uses name (case-insensitive) within
+//   destination UUID. slugifyVenueName helper removed. ingestDiningJson
+//   signature simplified (no destinationSlugFallback arg).
+// Prior: S36
 
 import { supabase } from './supabase'
 
@@ -34,7 +37,6 @@ export interface DestinationWithDiningCounts {
 export interface AdminDiningVenue {
   id:                    string
   global_destination_id: string
-  slug:                  string
   name:                  string
   cuisine_subcategory:   string | null
   michelin:              boolean
@@ -115,7 +117,7 @@ export async function fetchAllDiningVenues(
   let q = supabase
     .from('travel_dining_venues')
     .select(`
-      id, global_destination_id, slug, name,
+      id, global_destination_id, name,
       cuisine_subcategory, michelin, address, maps_url, website,
       ambience_take, why_recommend, neighborhood, price_band,
       public_preview_rank, tags,
@@ -202,13 +204,10 @@ export async function deleteDiningGuide(id: string): Promise<void> {
 
 // ── JSON ingest ──────────────────────────────────────────────────────────────
 //
-// Caller passes globalDestinationId (UUID, the operative key) plus
-// destinationSlugForVenueSlugFallback — used ONLY when JSON entries lack their
-// own `id` field, to construct a per-venue slug (e.g. "newyork-eleven-madison").
-// The destination slug never identifies the destination itself.
+// Collision guard: name (case-insensitive) within destination UUID.
+// Slug column dropped S38 — no slug involved anywhere in this path.
 
 export interface IngestVenueRecord {
-  id?:             string
   name:            string
   subCategory?:    string
   michelin?:       boolean
@@ -227,21 +226,21 @@ export interface IngestPayload {
 
 export interface IngestResult {
   inserted: number
-  skipped:  Array<{ slug: string; reason: string }>
+  skipped:  Array<{ name: string; reason: string }>
 }
 
 export async function ingestDiningJson(
-  globalDestinationId:               string,
-  payload:                           IngestPayload,
-  destinationSlugForVenueSlugFallback: string,
+  globalDestinationId: string,
+  payload:             IngestPayload,
 ): Promise<IngestResult> {
   const existing = await supabase
     .from('travel_dining_venues')
-    .select('slug')
+    .select('name')
     .eq('global_destination_id', globalDestinationId)
   if (existing.error) throw new Error(`pre-flight failed: ${existing.error.message}`)
-  const existingSlugs = new Set(
-    (existing.data ?? []).map(r => (r as { slug: string }).slug)
+
+  const existingNames = new Set(
+    (existing.data ?? []).map(r => (r as { name: string }).name.toLowerCase().trim())
   )
 
   const maxSortRes = await supabase
@@ -258,18 +257,17 @@ export async function ingestDiningJson(
 
   for (const r of payload.restaurants) {
     if (!r.name || r.name.trim().length === 0) {
-      skipped.push({ slug: r.id ?? '(no slug)', reason: 'missing name' })
+      skipped.push({ name: '(missing)', reason: 'missing name' })
       continue
     }
-    const slug = r.id ?? slugifyVenueName(r.name, destinationSlugForVenueSlugFallback)
-    if (existingSlugs.has(slug)) {
-      skipped.push({ slug, reason: 'slug already exists' })
+    const normalised = r.name.toLowerCase().trim()
+    if (existingNames.has(normalised)) {
+      skipped.push({ name: r.name, reason: 'name already exists for this destination' })
       continue
     }
-    existingSlugs.add(slug)
+    existingNames.add(normalised)
 
     inserts.push({
-      slug,
       name:                  r.name,
       global_destination_id: globalDestinationId,
       sort_order:            nextSort++,
@@ -292,13 +290,4 @@ export async function ingestDiningJson(
   if (error) throw new Error(`Insert failed: ${error.message}`)
 
   return { inserted: inserts.length, skipped }
-}
-
-function slugifyVenueName(name: string, destSlug: string): string {
-  const cleaned = name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-  return `${destSlug}-${cleaned}`
 }
