@@ -539,12 +539,7 @@ function computeCardHeight(doc: any, venue: DiningVenue): number {
     const bodyLines = doc.splitTextToSize(venue.body, textWidth)
     textHeight += bodyLines.length * 4.4 + 2
   }
-
-  if (venue.address) {
-    setSans(doc, 'normal', 8.5)
-    const addrLines = doc.splitTextToSize(venue.address, textWidth)
-    textHeight += addrLines.length * 4 + 2
-  }
+  
   return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
 }
 
@@ -666,9 +661,17 @@ async function renderCard(doc: any, venue: DiningVenue, top: number) {
     setSans(doc, 'normal', 8.5)
     doc.setTextColor(...THEME.faint)
     const addrLines = doc.splitTextToSize(venue.address, textWidth)
+    const addrStartY = ty
     for (const line of addrLines) {
       doc.text(line, textX, ty)
       ty += 4
+    }
+    if (venue.maps_url) {
+      const linkH = ty - addrStartY
+      const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
+      try {
+        doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: venue.maps_url })
+      } catch {}
     }
   }
 }
