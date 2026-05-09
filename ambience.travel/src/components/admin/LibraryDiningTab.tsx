@@ -15,7 +15,10 @@
  * resolved via destinationsById Map at render time, never carried on
  * query types or used as a key.
  *
- * Last updated: S36 — destinationId prop wired through hash. Image uploads
+ * Last updated: S38 — Removed slug from search filter, venue row display,
+ *   edit modal header, import modal skipped list. ingestDiningJson call
+ *   updated to 2 args. IngestResult.skipped keyed by name.
+ * Prior: S36 — destinationId prop wired through hash. Image uploads
  *   scoped to destination's dining folder via presetPath.
  */
 
@@ -25,7 +28,6 @@ import { buildAdminHash } from '../../lib/adminPath'
 import { resolveStoragePath } from '../../lib/storagePath'
 import {
   fetchAllDiningVenues,
-  fetchDestinationOptions,
   updateDiningVenue,
   deleteDiningVenue,
   ingestDiningJson,
@@ -205,7 +207,6 @@ function EditVenueModal({
               Edit Venue · {destinationName}
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>{venue.name}</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 4 }}>{venue.slug}</div>
           </div>
           <button onClick={onClose} style={btnGhost}>Close</button>
         </div>
@@ -380,10 +381,7 @@ function ImportJsonModal({
       if (!payload.restaurants || !Array.isArray(payload.restaurants)) {
         throw new Error('JSON must have a "restaurants" array')
       }
-      const dest = destinations.find(d => d.id === destId)
-      if (!dest) throw new Error('Destination not found')
-
-      const r = await ingestDiningJson(destId, payload, dest.slug)
+      const r = await ingestDiningJson(destId, payload)
       setResult(r)
       showToast(`Inserted ${r.inserted} venues, skipped ${r.skipped.length}.`, 'success')
       onImported()
@@ -411,7 +409,7 @@ function ImportJsonModal({
               Import Dining JSON
             </div>
             <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
-              Slugs that already exist for this destination are skipped (DB is canon).
+              Venues with matching names for this destination are skipped.
             </div>
           </div>
           <button onClick={onClose} style={btnGhost}>Close</button>
@@ -451,8 +449,8 @@ function ImportJsonModal({
               <div>
                 <div style={{ color: A.faint, fontWeight: 700, marginBottom: 4 }}>Skipped ({result.skipped.length}):</div>
                 {result.skipped.map(s => (
-                  <div key={s.slug} style={{ fontFamily: 'DM Mono, monospace', fontSize: 11 }}>
-                    {s.slug} — {s.reason}
+                  <div key={s.name} style={{ fontFamily: 'DM Mono, monospace', fontSize: 11 }}>
+                    {s.name} — {s.reason}
                   </div>
                 ))}
               </div>
@@ -490,8 +488,6 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
   const [importOpen, setImportOpen] = useState(false)
   const { toast, showToast } = useToast()
 
-  // Effective filter is from URL (destinationId), not local state — Library
-  // is always either fully scoped (URL has UUID) or fully unscoped (no UUID).
   const effectiveFilter = destinationId ?? ''
 
   const destinationsById = useMemo(() => {
@@ -502,9 +498,6 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
 
   const scopedDest = destinationId ? destinationsById.get(destinationId) ?? null : null
 
-  // Storage path for image uploads — only resolves when we have a scoped
-  // destination AND it has a storage_path configured. Null means uploader
-  // falls back to its default (full GeoCascade picker).
   const uploadPresetPath = useMemo(() => {
     if (!scopedDest || !scopedDest.storage_path) return null
     return resolveStoragePath({
@@ -547,7 +540,6 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
     if (!q) return venues
     return venues.filter(v =>
       v.name.toLowerCase().includes(q) ||
-      v.slug.toLowerCase().includes(q) ||
       (v.cuisine_subcategory ?? '').toLowerCase().includes(q) ||
       (v.neighborhood ?? '').toLowerCase().includes(q)
     )
@@ -592,7 +584,6 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
           value={effectiveFilter}
           disabled={!!scopedDest}
           onChange={e => {
-            // Unscoped mode — change filter via URL
             const next = e.target.value
             window.location.hash = buildAdminHash({
               product: 'library', tab: 'dining',
@@ -607,7 +598,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
         </select>
         <input
           style={{ ...inputStyle, flex: 1, minWidth: 200 }}
-          placeholder='Search by name, slug, cuisine, neighborhood…'
+          placeholder='Search by name, cuisine, neighborhood…'
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -643,9 +634,8 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
                   alignItems: 'center',
                 }}
               >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{v.name}</div>
-                  <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>{v.slug}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>
+                  {v.name}
                 </div>
                 <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
                   {dest?.name ?? <span style={{ color: A.faint }}>(unknown)</span>}
@@ -670,9 +660,6 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
           venue={editingVenue}
           destinationName={destinationsById.get(editingVenue.global_destination_id)?.name ?? '(unknown)'}
           uploadPresetPath={
-            // Per-row preset path: resolves from the venue's destination,
-            // not the scoped one (so unscoped library can still upload to
-            // the right folder when editing a single venue).
             (() => {
               const d = destinationsById.get(editingVenue.global_destination_id)
               if (!d || !d.storage_path) return null
