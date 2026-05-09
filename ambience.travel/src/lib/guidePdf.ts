@@ -31,15 +31,13 @@
 // Footer (S37):
 //   [Logo, hyperlinked to ambience.travel]   This guide is for ambience and its guests only.   © {Year}
 //
-// Last updated: S37 — Stars now drawn as vector polygons (drawStar /
-//   drawStarRow helpers). Previous attempt switched the font to Cormorant
-//   hoping its U+2605 glyph would render — but Google Fonts ships Cormorant
-//   sub-setted to Latin only, so U+2605 isn't in the TTF either. Vector
-//   drawing removes the font dependency entirely and renders identically
-//   regardless of which TTFs are registered.
-// Prior: S37 — Switched star renders to Cormorant (didn't work, see above).
-// Prior: S37 — Added 50 Best as fourth recognition tier + discreet
-//   recognition key beneath At a Glance panel.
+// Last updated: S37. Welcome + Contents merged onto one page (both had
+//   heavy bottom whitespace; merging gives the page real density). Cards
+//   section now starts on page 3 (was 4). Bullet dots in At a Glance and
+//   Plan Your Visit rendered in gold + 14pt bold for confident visual mass
+//   against the cream panel — the muted 10.5pt dots were rendering as
+//   ghosts. Body sans size lifted from 10.5 to 11 across all renderers.
+// Prior: S37. Body sans switched to Source Sans 3 Light + LightItalic.
 // Prior: S37 — Layout polish + Michelin recognition marks (★/BIB/Green ★).
 // Prior: S37 — MICHELIN pill width fix (compensate for charSpace), eyebrow/name
 //   overlap fix.
@@ -50,7 +48,7 @@
 // Prior: S37 — Initial ship.
 
 import type { DiningVenue, GuideDestination } from './diningGuideQueries'
-import { loadGuideFonts, registerGuideFonts, PDF_FONTS } from './guidePdfFonts'
+import { loadGuideFonts, registerGuideFonts, PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './guidePdfFonts'
 
 // ── Theme ────────────────────────────────────────────────────────────────────
 
@@ -118,7 +116,7 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   const w = window as any
   const jsPDF = w.jspdf?.jsPDF
   if (!jsPDF) {
-    throw new Error('jsPDF not loaded — ensure pdfReady before calling exportGuidePdf')
+    throw new Error('jsPDF not loaded. Ensure pdfReady before calling exportGuidePdf')
   }
 
   const fontData = await loadGuideFonts()
@@ -149,13 +147,32 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
 
   await renderCoverPage(ctx)
   doc.addPage(); renderWelcomePage(ctx)
-  doc.addPage(); renderContentsPage(ctx)
+  // Contents render onto the same page as Welcome — both pages had heavy
+  // bottom whitespace, the merge gives the page real density.
   doc.addPage(); await renderCardsSection(ctx, opts.venues)
-  doc.addPage(); renderClosingPage(ctx)
+
+  // Plan Your Visit — render only when overlay has populated content.
+  // No fallback paragraphs; section disappears entirely otherwise.
+  if (planYourVisitHasContent(opts.destination.overlay)) {
+    doc.addPage()
+    renderClosingPage(ctx)
+  }
 
   stampPageChrome(ctx)
 
   doc.save(buildFilename(opts.destination, opts.variant, opts.guideYear, opts.guideVersion))
+}
+
+/**
+ * Returns true if the destination overlay has any Plan Your Visit copy.
+ * If false, the section is omitted from the PDF entirely (no closing page,
+ * no contents entry).
+ */
+function planYourVisitHasContent(overlay: GuideDestination['overlay']): boolean {
+  if (!overlay) return false
+  const hasIntro = !!(overlay.plan_your_visit_intro && overlay.plan_your_visit_intro.trim())
+  const hasBullets = !!(overlay.plan_your_visit_bullets && overlay.plan_your_visit_bullets.length > 0)
+  return hasIntro || hasBullets
 }
 
 // ── Render context ───────────────────────────────────────────────────────────
@@ -185,12 +202,16 @@ interface ContentsSection {
 function buildSections(opts: ExportGuidePdfOptions): ContentsSection[] {
   const items: ContentsSection[] = [
     { page: 2, title: `Welcome to ${opts.destination.name}`, blurb: 'A note on the city and our selection' },
-    { page: 4, title: `${capitalize(opts.variant)} Highlights`, blurb: 'Our curated selection of standout tables' },
+    { page: 3, title: `${capitalize(opts.variant)} Highlights`, blurb: 'Our curated selection of standout tables' },
   ]
-  if (opts.venues.length > 0) {
+  // Plan Your Visit appears in the contents only when the destination overlay
+  // has populated copy. No copy → section omitted from PDF → omitted here too.
+  // Page-numbers shift up by 1 naturally (closing page never gets created).
+  if (planYourVisitHasContent(opts.destination.overlay)) {
+    const heading = opts.destination.overlay?.plan_your_visit_heading?.trim() || 'Plan Your Visit'
     items.push({
-      page: -1,
-      title: 'Plan Your Visit',
+      page: -1,  // computed at chrome stamp time
+      title: heading,
       blurb: 'Insider tips for a seamless experience',
     })
   }
@@ -256,7 +277,7 @@ async function renderCoverPage(ctx: RenderCtx) {
   doc.line(PAGE.margin + 4, yCursor + 8, PAGE.margin + 28, yCursor + 8)
 
   // Intro copy.
-  setSans(doc, 'normal', 10.5)
+  setSans(doc, 'normal', 11)
   doc.setTextColor(...THEME.muted)
   const introLines = doc.splitTextToSize(copy.intro, PAGE.width - PAGE.margin * 2 - 60)
   let introY = yCursor + 18
@@ -309,7 +330,7 @@ function renderWelcomePage(ctx: RenderCtx) {
   doc.text(`Welcome to ${destination.name}`, PAGE.margin, y)
   y += 14
 
-  setSans(doc, 'normal', 10.5)
+  setSans(doc, 'normal', 11)
   doc.setTextColor(...THEME.inkSoft)
   const introLines = doc.splitTextToSize(copy.intro, PAGE.width - PAGE.margin * 2)
   for (const line of introLines) {
@@ -337,11 +358,15 @@ function renderWelcomePage(ctx: RenderCtx) {
     'Reserved for guests on a curated journey',
     'Reservation guidance included where helpful',
   ]
-  setSans(doc, 'normal', 10)
-  doc.setTextColor(...THEME.muted)
   let bulletY = panelTop + 22
   for (const b of bullets) {
+    // Gold dot, slightly oversized for confident visual mass against the
+    // cream panel. Reset to muted body color for the bullet text itself.
+    setSans(doc, 'bold', 14)
+    doc.setTextColor(...THEME.gold)
     doc.text('\u00b7', PAGE.margin + 8, bulletY)
+    setSans(doc, 'normal', 10)
+    doc.setTextColor(...THEME.muted)
     doc.text(b, PAGE.margin + 13, bulletY)
     bulletY += 6
   }
@@ -351,16 +376,30 @@ function renderWelcomePage(ctx: RenderCtx) {
   // carries any recognition tier — otherwise the legend has nothing to
   // explain. Quiet single-line legend, gold eyebrow + glyph + label pairs.
   y = panelTop + panelHeight + 14
-  renderRecognitionKey(doc, venues, y)
+  y = renderRecognitionKey(doc, venues, y)
+
+  // ── Contents block ──────────────────────────────────────────────────────
+  // Welcome and Contents share a page (s37 polish — both pages had heavy
+  // bottom whitespace). Visual separator: short gold rule with breathing room.
+  y += 14
+  doc.setDrawColor(...THEME.gold)
+  doc.setLineWidth(0.4)
+  doc.line(PAGE.margin, y, PAGE.margin + 24, y)
+  y += 16
+
+  renderContentsBlock(ctx, y)
 }
 
 /**
  * Quiet single-line recognition key. Used on welcome page beneath At a Glance.
  * Renders only marks present in the venue set.
+ * Returns the y-coordinate where it finished rendering, so callers can
+ * append further content beneath. Returns the input y unchanged when no
+ * recognition kinds are present (nothing rendered).
  */
-function renderRecognitionKey(doc: any, venues: DiningVenue[], y: number): void {
+function renderRecognitionKey(doc: any, venues: DiningVenue[], y: number): number {
   const present = derivePresentKinds(venues)
-  if (present.size === 0) return
+  if (present.size === 0) return y
 
   // Eyebrow label.
   setSans(doc, 'normal', 7.5)
@@ -447,6 +486,9 @@ function renderRecognitionKey(doc: any, venues: DiningVenue[], y: number): void 
     doc.text(item.label, x + glyphW + 3, itemY)
     x += glyphW + 3 + doc.getTextWidth(item.label) + 10
   }
+
+  // Return the y just below the items row so callers can append.
+  return itemY + 4
 }
 
 /**
@@ -465,20 +507,24 @@ function derivePresentKinds(venues: DiningVenue[]): Set<string> {
   return set
 }
 
-// ── Contents page ────────────────────────────────────────────────────────────
+// ── Contents block ───────────────────────────────────────────────────────────
+// Renders inline at a given y-coordinate. Used by Welcome page after the
+// Recognition key — Contents and Welcome share a page so neither runs short.
+//
+// Caller is responsible for clearing the page background (Welcome page does
+// this once at its top).
 
-function renderContentsPage(ctx: RenderCtx) {
+function renderContentsBlock(ctx: RenderCtx, startY: number): number {
   const { doc, sections } = ctx
 
-  doc.setFillColor(...THEME.white)
-  doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+  let y = startY
 
-  let y = PAGE.bodyTop + 12
-
-  setSerif(doc, 'normal', 28)
+  // Sub-headline — smaller than the main Welcome serif, gold to differentiate
+  // from the main Welcome heading on the same page.
+  setSerif(doc, 'normal', 22)
   doc.setTextColor(...THEME.gold)
   doc.text('Contents', PAGE.margin, y)
-  y += 16
+  y += 12
 
   for (const section of sections) {
     const pageStr = section.page > 0 ? String(section.page).padStart(2, '0') : '··'
@@ -501,6 +547,8 @@ function renderContentsPage(ctx: RenderCtx) {
     doc.line(PAGE.margin, y, PAGE.width - PAGE.margin, y)
     y += 8
   }
+
+  return y
 }
 
 // ── Cards section ────────────────────────────────────────────────────────────
@@ -752,6 +800,15 @@ function drawImageFallback(doc: any, x: number, y: number, name: string) {
 
 function renderClosingPage(ctx: RenderCtx) {
   const { doc, destination } = ctx
+  const overlay = destination.overlay
+
+  // Caller (exportGuidePdf) only invokes this when planYourVisitHasContent
+  // returned true, so at least one of intro / bullets is populated.
+  // Heading falls back to "Plan Your Visit" if overlay heading is null —
+  // it's just a label, not authored content.
+  const heading = overlay?.plan_your_visit_heading?.trim() || 'Plan Your Visit'
+  const intro   = overlay?.plan_your_visit_intro?.trim() ?? ''
+  const bullets = overlay?.plan_your_visit_bullets ?? []
 
   doc.setFillColor(...THEME.white)
   doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
@@ -760,7 +817,7 @@ function renderClosingPage(ctx: RenderCtx) {
 
   setSerif(doc, 'normal', 26)
   doc.setTextColor(...THEME.ink)
-  doc.text('Plan Your Visit', PAGE.margin, y)
+  doc.text(heading, PAGE.margin, y)
   y += 5
 
   setSans(doc, 'normal', 8.5)
@@ -768,21 +825,42 @@ function renderClosingPage(ctx: RenderCtx) {
   doc.text('INSIDER TIPS FOR A SEAMLESS EXPERIENCE', PAGE.margin, y, { charSpace: 0.4 })
   y += 14
 
-  setSans(doc, 'normal', 10.5)
-  doc.setTextColor(...THEME.inkSoft)
-  const lines = [
-    `For the standout tables in ${destination.name}, reservations are essential — and often required several weeks ahead.`,
-    '',
-    'Our concierge team is available to coordinate timings, dietary needs, and any preferences that make the experience feel effortless.',
-    '',
-    'For the most current detail, refer to the live guide on ambience.travel.',
-  ]
-  for (const line of lines) {
-    if (line === '') { y += 4; continue }
-    const wrapped = doc.splitTextToSize(line, PAGE.width - PAGE.margin * 2)
-    for (const w of wrapped) {
-      doc.text(w, PAGE.margin, y)
+  // Intro paragraph — only render when populated.
+  if (intro) {
+    setSans(doc, 'normal', 11)
+    doc.setTextColor(...THEME.inkSoft)
+    const wrapped = doc.splitTextToSize(intro, PAGE.width - PAGE.margin * 2)
+    for (const line of wrapped) {
+      doc.text(line, PAGE.margin, y)
       y += 5.5
+    }
+    y += 4
+  }
+
+  // Bullets — only render when populated.
+  if (bullets.length > 0) {
+    setSans(doc, 'normal', 11)
+    doc.setTextColor(...THEME.inkSoft)
+    const bulletWidth = PAGE.width - PAGE.margin * 2 - 8
+
+    for (const bullet of bullets) {
+      const trimmed = bullet?.trim()
+      if (!trimmed) continue
+      const wrapped = doc.splitTextToSize(trimmed, bulletWidth)
+      // Gold dot, oversized + bold for confident visual mass.
+      // Matches At a Glance bullet treatment.
+      setSans(doc, 'bold', 14)
+      doc.setTextColor(...THEME.gold)
+      doc.text('\u00b7', PAGE.margin, y)
+      // Reset to body type for the bullet text itself.
+      setSans(doc, 'normal', 11)
+      doc.setTextColor(...THEME.inkSoft)
+      // First line indents past the bullet; wrap continues at the same indent.
+      for (let i = 0; i < wrapped.length; i++) {
+        doc.text(wrapped[i], PAGE.margin + 6, y)
+        y += 5.5
+      }
+      y += 2  // breathing room between bullets
     }
   }
 }
@@ -854,8 +932,15 @@ function setSerif(doc: any, style: 'normal' | 'italic', size: number) {
   doc.setFontSize(size)
 }
 
-function setSans(doc: any, style: 'normal' | 'bold' | 'italic', size: number) {
-  doc.setFont(PDF_FONTS.sans, style)
+function setSans(doc: any, style: 'normal' | 'bold' | 'italic' | 'medium', size: number) {
+  // Source Sans 3 medium is registered under a separate family alias
+  // (PDF_FONTS_SANS_MEDIUM_FAMILY). jsPDF doesn't have a 'medium' weight
+  // string, so we resolve the alias and use 'normal' weight on it.
+  if (style === 'medium') {
+    doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal')
+  } else {
+    doc.setFont(PDF_FONTS.sans, style)
+  }
   doc.setFontSize(size)
 }
 

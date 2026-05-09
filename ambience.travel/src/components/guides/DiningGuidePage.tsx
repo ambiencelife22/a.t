@@ -165,7 +165,7 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
         if (cancelled) return
         console.error('DiningGuidePage: failed to load venues', err)
         const msg = err instanceof Error ? err.message : 'Unknown error'
-        toastRef.current.error(`Couldn't load dining venues — ${msg}`)
+        toastRef.current.error(`Couldn't load dining venues: ${msg}`)
         setVenues([])
         setLoading(false)
       }
@@ -260,7 +260,7 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     } catch (err) {
       console.error('PDF export failed:', err)
       const msg = err instanceof Error ? err.message : 'Unknown error'
-      toastRef.current.error(`PDF export failed — ${msg}`)
+      toastRef.current.error(`PDF export failed: ${msg}`)
     } finally {
       setPdfDownloading(false)
     }

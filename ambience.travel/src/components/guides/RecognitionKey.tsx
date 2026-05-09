@@ -65,7 +65,7 @@ interface RecognitionMarkProps {
 
 export function RecognitionMark({ kind, starCount }: RecognitionMarkProps) {
   const def = RECOGNITION_DEFS[kind]
-  const tooltipText = `${def.shortLabel} \u2014 ${def.description}`
+  const tooltipText = `${def.shortLabel}: ${def.description}`
 
   return (
     <span style={markWrapperStyle} title={tooltipText} aria-label={tooltipText}>
@@ -86,7 +86,7 @@ function MarkGlyph({ kind, starCount }: { kind: RecognitionKind; starCount?: num
     return <span style={greenStarGlyphStyle}>{'\u2605'}</span>
   }
   if (kind === 'fifty_best') {
-    return <span style={fiftyPillStyle}>50 Best</span>
+    return <span style={fiftyPillStyle}>50 BEST</span>
   }
   return null
 }

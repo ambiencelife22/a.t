@@ -8,7 +8,11 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S37 — Added worlds_50_best boolean (s37_12). Renders as a
+// Last updated: S37 — Added Plan Your Visit override fields to overlay
+//   (s37_13): plan_your_visit_heading, plan_your_visit_intro,
+//   plan_your_visit_bullets[]. All nullable; section is omitted from PDF
+//   entirely when all three are NULL (no fallback paragraphs).
+// Prior: S37 — Added worlds_50_best boolean (s37_12). Renders as a
 //   fourth recognition pill alongside Michelin tiers + Green Star.
 // Prior: S37 — Added Michelin recognition model (michelin_award, michelin_stars,
 //   michelin_green_star). Legacy `michelin` boolean still in SELECT for
@@ -82,6 +86,11 @@ export interface DiningGuideOverlay {
   eyebrow_override: string | null
   guide_year: number | null
   guide_version: string | null
+  /** S37 s37_13 — Plan Your Visit closing-page override.
+   *  All three nullable; section omitted from PDF entirely when all NULL. */
+  plan_your_visit_heading: string | null
+  plan_your_visit_intro:   string | null
+  plan_your_visit_bullets: string[] | null
 }
 
 export interface GuideDestination {
@@ -160,7 +169,10 @@ export async function getGuideDestination(
         intro_override,
         eyebrow_override,
         guide_year,
-        guide_version
+        guide_version,
+        plan_your_visit_heading,
+        plan_your_visit_intro,
+        plan_your_visit_bullets
       )
     `)
     .eq('slug', destinationSlug)
