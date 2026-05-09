@@ -5,14 +5,17 @@
  *   - Active guides (destinations with travel_dining_guides row)
  *   - Destinations without overlay (offers "Create guide" action)
  *
- * Click an active guide row → modal edits the overlay (hero, eyebrow, headline, intro).
+ * Click an active guide row → modal edits the overlay (hero, eyebrow,
+ * headline, intro, accuracy_date).
  *
  * UUID-keyed throughout. Destination name + slug for display only —
  * resolved via destinationsById Map at render time, never carried on
  * query types or used as a key. Slug used only for buildGuideUrl (URL
  * routing, the one allowed slug surface).
  *
- * Last updated: S36 — initial ship.
+ * Last updated: S39 — Added accuracy_date field to edit modal and
+ *   handleSave fields array.
+ * Prior: S36 — initial ship.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -129,7 +132,7 @@ function EditGuideModal({
       const fields: (keyof DiningGuidePatch)[] = [
         'hero_image_src', 'hero_image_alt',
         'eyebrow_override', 'headline_override', 'intro_override',
-        'is_active',
+        'is_active', 'accuracy_date',
       ]
       for (const f of fields) {
         if (JSON.stringify(draft[f]) !== JSON.stringify(guide[f])) {
@@ -209,6 +212,15 @@ function EditGuideModal({
         </Field>
         <Field label='Intro override (NULL = default intro paragraph)'>
           <textarea style={textareaStyle} value={draft.intro_override ?? ''} onChange={e => patch('intro_override', e.target.value || null)} />
+        </Field>
+
+        <Field label='Accuracy Date (e.g. "May 2026" — leave empty to hide disclaimer)'>
+          <input
+            style={inputStyle}
+            value={draft.accuracy_date ?? ''}
+            onChange={e => patch('accuracy_date', e.target.value || null)}
+            placeholder='e.g. May 2026'
+          />
         </Field>
 
         <Field label='Active'>
@@ -298,7 +310,7 @@ export default function GuidesDiningTab() {
           Dining Guides
         </div>
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-          Per-destination overlay (hero, eyebrow, headline, intro). Venues themselves live in Library.
+          Per-destination overlay (hero, eyebrow, headline, intro, accuracy date). Venues themselves live in Library.
         </div>
       </div>
 
@@ -323,7 +335,7 @@ export default function GuidesDiningTab() {
                       onClick={() => setEditing(g)}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 2fr 100px 80px',
+                        gridTemplateColumns: '1fr 2fr 100px 100px 80px',
                         gap: 12, padding: '12px 14px',
                         background: A.bgCard, border: `1px solid ${A.border}`,
                         borderRadius: 10, cursor: 'pointer', alignItems: 'center',
@@ -342,6 +354,9 @@ export default function GuidesDiningTab() {
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
                         {venueCount} {venueCount === 1 ? 'venue' : 'venues'}
+                      </div>
+                      <div style={{ fontSize: 11, color: g.accuracy_date ? A.gold : A.faint, fontFamily: A.font }}>
+                        {g.accuracy_date ?? 'No date set'}
                       </div>
                       <div style={{ fontSize: 11, color: g.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
                         {g.is_active ? 'Active' : 'Hidden'}

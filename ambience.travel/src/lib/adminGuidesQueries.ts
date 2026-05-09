@@ -7,18 +7,12 @@
 //   - CRUD on travel_dining_guides (per-destination overlay) — by UUID
 //   - JSON ingest with name+destination collision guard (slug removed S38)
 //
-// UUID-only standing rule (S35 canon):
-//   All FKs and lookups resolved via UUID. Slugs are for URL routing only.
-//   Caller-side rendering of destination name for display lives in the
-//   tab component, not on these query types.
-//
-// Last updated: S39 — Dropped legacy michelin boolean (s37_10 ran).
-//   Added michelin_award, michelin_stars, michelin_green_star, worlds_50_best
-//   to AdminDiningVenue type, fetchAllDiningVenues SELECT, and ingestDiningJson.
-// Prior: S39 — Synced AdminDiningVenue to actual DB schema. ambience_take
-//   replaced by body. Added kicker, tagline, bullets_heading, bullets,
-//   image_credit, image_credit_url, image_license. Removed why_recommend.
-// Prior: S38 — Removed slug from AdminDiningVenue type, SELECT, and ingest.
+// Last updated: S39 — Added accuracy_date to AdminDiningGuide type and
+//   fetchDiningGuides SELECT. NULL = disclaimer omitted on both surfaces.
+// Prior: S39 — Dropped legacy michelin boolean (s37_10 ran). Added
+//   michelin_award, michelin_stars, michelin_green_star, worlds_50_best.
+//   Synced to actual DB schema: body, kicker, tagline, bullets_heading,
+//   bullets, image_credit, image_credit_url, image_license.
 
 import { supabase } from './supabase'
 
@@ -79,6 +73,7 @@ export interface AdminDiningGuide {
   headline_override:     string | null
   intro_override:        string | null
   is_active:             boolean
+  accuracy_date:         string | null
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────────
@@ -157,7 +152,7 @@ export async function fetchDiningGuides(): Promise<AdminDiningGuide[]> {
       id, global_destination_id,
       hero_image_src, hero_image_alt,
       eyebrow_override, headline_override, intro_override,
-      is_active
+      is_active, accuracy_date
     `)
 
   if (error) throw new Error(`Failed to fetch guides: ${error.message}`)
@@ -218,10 +213,6 @@ export async function deleteDiningGuide(id: string): Promise<void> {
 }
 
 // ── JSON ingest ──────────────────────────────────────────────────────────────
-//
-// Collision guard: name (case-insensitive) within destination UUID.
-// Slug dropped S38. michelin boolean dropped S39 (s37_10).
-// body is the single long-form copy field (mapped from r.description).
 
 export interface IngestVenueRecord {
   name:         string

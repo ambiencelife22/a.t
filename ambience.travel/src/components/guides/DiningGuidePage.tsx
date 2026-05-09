@@ -6,21 +6,20 @@
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error+empty states for the data load
 //   - PDF download trigger (loads jsPDF, calls exportGuidePdf)
+//   - Accuracy disclaimer block (gated on overlay.accuracy_date non-null)
 //
 // What it does not own:
 //   - Path parsing (DiningGuideRoute)
 //   - Destination validation (DiningGuideRoute)
 //   - Page chrome (GuideLayout)
 //   - Card rendering (DiningCard), filter chips (DiningGuideFilters), hero (GuideHero)
-//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle, including
-//     loading /emblem.png + /ambience_travel.svg)
+//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
 //
-// Last updated: S37 — Widened Michelin filter chip to match both stars and
-//   Bib Gourmand (was stars-only). Bib counts as Michelin recognition; one
-//   chip captures both tiers.
-// Prior: S37 — Added RecognitionKeyStrip above filters. Migrated Michelin
-//   filter chip to read michelin_award='star' instead of legacy boolean.
-// Prior: S37 — Year + version pulled from overlay with render-time defaults.
+// Last updated: S39 — Added accuracy disclaimer block below venue grid.
+//   Gated on overlay.accuracy_date non-null. Passed accuracyDate through
+//   to exportGuidePdf.
+// Prior: S37 — Widened Michelin filter chip to match both stars and Bib.
+//   Added RecognitionKeyStrip above filters. Year + version from overlay.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
@@ -52,9 +51,7 @@ function defaultIntro(destinationName: string): string {
   return `A selective dining guide for ${destinationName}`
 }
 
-// ── PDF year + version defaults (S37) ────────────────────────────────────────
-// NULL on either column → render-time default. Live page does not surface
-// these today; they exist solely for the PDF cover.
+// ── PDF year + version defaults ──────────────────────────────────────────────
 
 const DEFAULT_GUIDE_VERSION = '1.0'
 
@@ -108,9 +105,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   const [loading, setLoading] = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
 
-  // ── PDF library loader ─────────────────────────────────────────────────────
-  // Loads jsPDF only — we use canvas for SVG rasterisation, no autoTable.
-  // Idempotent: reuses existing script tag if mounted by another page.
   const [pdfReady, setPdfReady] = useState(false)
   const [pdfDownloading, setPdfDownloading] = useState(false)
 
@@ -201,9 +195,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     [venues],
   )
 
-  // Recognition kinds present in the *full* venue list — drives the page-top
-  // key strip. Computed against `venues` not `filteredVenues` so the legend
-  // doesn't disappear/reappear as filters narrow the view.
   const presentRecognitionKinds = useMemo(
     () => deriveRecognitionKindsFromVenues(venues),
     [venues],
@@ -256,6 +247,7 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
         heroImageSrc,
         guideYear,
         guideVersion,
+        accuracyDate: overlay?.accuracy_date ?? null,
       })
     } catch (err) {
       console.error('PDF export failed:', err)
@@ -328,6 +320,14 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
                   />
                 ))}
               </section>
+            )}
+
+            {overlay?.accuracy_date && (
+              <div style={disclaimerStyle}>
+                <p style={disclaimerTextStyle}>
+                  The venues and recognition listed in this guide reflect our knowledge as of {overlay.accuracy_date}. The dining industry evolves continuously — restaurants close, chefs move, and accolades are reassigned. ambience.TRAVEL makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.
+                </p>
+              </div>
             )}
           </>
         )}
@@ -419,6 +419,21 @@ const gridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))',
   gap: 22,
+}
+
+const disclaimerStyle: React.CSSProperties = {
+  marginTop: 48,
+  paddingTop: 24,
+  borderTop: `1px solid ${IMMERSE.tableBorder}`,
+}
+
+const disclaimerTextStyle: React.CSSProperties = {
+  margin: 0,
+  color: ID.muted,
+  fontSize: 12,
+  lineHeight: 1.7,
+  fontStyle: 'italic',
+  maxWidth: 720,
 }
 
 const messageBlockStyle: React.CSSProperties = {

@@ -8,20 +8,13 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S39 — Removed slug (dropped S38). Replaced ambience_take
-//   with body; added kicker, tagline, bullets_heading, bullets,
-//   image_credit, image_credit_url, image_license to match actual DB schema.
-// Prior: S37 — Added Plan Your Visit override fields to overlay
-//   (s37_13): plan_your_visit_heading, plan_your_visit_intro,
-//   plan_your_visit_bullets[]. All nullable; section is omitted from PDF
-//   entirely when all three are NULL (no fallback paragraphs).
-// Prior: S37 — Added worlds_50_best boolean (s37_12).
-// Prior: S37 — Added Michelin recognition model (michelin_award, michelin_stars,
-//   michelin_green_star). Legacy michelin boolean still in SELECT — drops in s37_10.
-// Prior: S37 — Added guide_year + guide_version to DiningGuideOverlay.
-// Prior: S37 — Added is_supplementary + venue_status to DiningVenue.
-// Prior: S36 — Overlay unwrap defensive against both response shapes.
-// Prior: S35 — Added GuideOverlay shape + getGuideDestination().
+// Last updated: S39 — Added accuracy_date to DiningGuideOverlay type and
+//   getGuideDestination SELECT. NULL = disclaimer omitted on both surfaces.
+// Prior: S39 — Removed slug (dropped S38). Replaced ambience_take with body;
+//   added kicker, tagline, bullets_heading, bullets, image_credit,
+//   image_credit_url, image_license. Removed michelin boolean (s37_10).
+// Prior: S37 — Added Plan Your Visit override fields, worlds_50_best,
+//   Michelin recognition model, guide_year + guide_version.
 
 import { supabase } from './supabase'
 
@@ -38,10 +31,6 @@ export interface DiningVenue {
   body: string | null
   bullets_heading: string | null
   bullets: string[] | null
-  /**
-   * Legacy boolean — true when venue holds any Michelin recognition.
-   * Drops in s37_10 — remove from type + SELECT at that point.
-   */
   michelin_award: MichelinAward | null
   michelin_stars: number | null
   michelin_green_star: boolean
@@ -72,6 +61,8 @@ export interface DiningVenue {
  *
  * guide_year + guide_version added S37 for PDF cover. NULL = current year / '1.0'
  * applied at PDF render time (not on the live page).
+ *
+ * accuracy_date added S39. NULL = disclaimer omitted on both live page and PDF.
  */
 export interface DiningGuideOverlay {
   hero_image_src: string | null
@@ -81,30 +72,19 @@ export interface DiningGuideOverlay {
   eyebrow_override: string | null
   guide_year: number | null
   guide_version: string | null
-  /** S37 s37_13 — Plan Your Visit closing-page override.
-   *  All three nullable; section omitted from PDF entirely when all NULL. */
   plan_your_visit_heading: string | null
   plan_your_visit_intro:   string | null
   plan_your_visit_bullets: string[] | null
+  accuracy_date: string | null
 }
 
 export interface GuideDestination {
   id: string
   slug: string
   name: string
-  /**
-   * Per-guide overlay row. null when no row exists for this destination.
-   * When non-null, individual fields may still be NULL — caller should ??
-   * each one against frontend defaults.
-   */
   overlay: DiningGuideOverlay | null
 }
 
-/**
- * Fetches all active dining venues for a given destination slug.
- * Filters by is_active = true. Orders by is_supplementary ascending then
- * name ascending — supplementary entries fall to bottom regardless of name.
- */
 export async function getDiningVenuesByDestination(
   destinationSlug: string,
 ): Promise<DiningVenue[]> {
@@ -146,10 +126,6 @@ export async function getDiningVenuesByDestination(
   return (data ?? []) as DiningVenue[]
 }
 
-/**
- * Resolves destination metadata + dining guide overlay for header rendering.
- * Returns null if the destination doesn't exist.
- */
 export async function getGuideDestination(
   destinationSlug: string,
 ): Promise<GuideDestination | null> {
@@ -167,7 +143,8 @@ export async function getGuideDestination(
         guide_version,
         plan_your_visit_heading,
         plan_your_visit_intro,
-        plan_your_visit_bullets
+        plan_your_visit_bullets,
+        accuracy_date
       )
     `)
     .eq('slug', destinationSlug)
