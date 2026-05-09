@@ -15,11 +15,12 @@
  * resolved via destinationsById Map at render time, never carried on
  * query types or used as a key.
  *
- * Last updated: S38 — Removed slug from search filter, venue row display,
- *   edit modal header, import modal skipped list. ingestDiningJson call
- *   updated to 2 args. IngestResult.skipped keyed by name.
- * Prior: S36 — destinationId prop wired through hash. Image uploads
- *   scoped to destination's dining folder via presetPath.
+ * Last updated: S39 — Synced to new AdminDiningVenue shape. ambience_take
+ *   replaced by body. Added kicker, tagline, bullets_heading, bullets,
+ *   image_credit, image_credit_url, image_license fields to edit modal
+ *   and handleSave fields array. why_recommend removed.
+ * Prior: S38 — Removed slug from search filter, venue row display,
+ *   edit modal header, import modal skipped list.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -148,10 +149,12 @@ function EditVenueModal({
     try {
       const payload: DiningVenuePatch = {}
       const fields: (keyof DiningVenuePatch)[] = [
-        'name', 'cuisine_subcategory', 'michelin', 'address', 'maps_url', 'website',
-        'ambience_take', 'why_recommend', 'neighborhood', 'price_band',
-        'public_preview_rank', 'tags',
-        'image_src', 'image_alt', 'image_2_src', 'image_2_alt',
+        'name', 'cuisine_subcategory', 'michelin',
+        'kicker', 'tagline', 'body', 'bullets_heading', 'bullets',
+        'address', 'maps_url', 'website',
+        'neighborhood', 'price_band', 'public_preview_rank', 'tags',
+        'image_src', 'image_alt', 'image_credit', 'image_credit_url', 'image_license',
+        'image_2_src', 'image_2_alt',
         'is_active', 'sort_order',
       ]
       for (const f of fields) {
@@ -248,6 +251,33 @@ function EditVenueModal({
           </Field>
         </div>
 
+        <Field label='Kicker'>
+          <input style={inputStyle} value={draft.kicker ?? ''} onChange={e => patch('kicker', e.target.value || null)} />
+        </Field>
+
+        <Field label='Tagline'>
+          <input style={inputStyle} value={draft.tagline ?? ''} onChange={e => patch('tagline', e.target.value || null)} />
+        </Field>
+
+        <Field label='Body'>
+          <textarea style={textareaStyle} value={draft.body ?? ''} onChange={e => patch('body', e.target.value || null)} />
+        </Field>
+
+        <Field label='Bullets Heading'>
+          <input style={inputStyle} value={draft.bullets_heading ?? ''} onChange={e => patch('bullets_heading', e.target.value || null)} />
+        </Field>
+
+        <Field label='Bullets (one per line)'>
+          <textarea
+            style={{ ...textareaStyle, minHeight: 100 }}
+            value={(draft.bullets ?? []).join('\n')}
+            onChange={e => {
+              const lines = e.target.value.split('\n').map(l => l.trimEnd()).filter(Boolean)
+              patch('bullets', lines.length > 0 ? lines : null)
+            }}
+          />
+        </Field>
+
         <Field label='Address'>
           <input style={inputStyle} value={draft.address ?? ''} onChange={e => patch('address', e.target.value || null)} />
         </Field>
@@ -260,14 +290,6 @@ function EditVenueModal({
             <input style={inputStyle} value={draft.website ?? ''} onChange={e => patch('website', e.target.value || null)} />
           </Field>
         </div>
-
-        <Field label='Ambience Take (guide page body)'>
-          <textarea style={textareaStyle} value={draft.ambience_take ?? ''} onChange={e => patch('ambience_take', e.target.value || null)} />
-        </Field>
-
-        <Field label='Why Recommend (advisor framing)'>
-          <textarea style={textareaStyle} value={draft.why_recommend ?? ''} onChange={e => patch('why_recommend', e.target.value || null)} />
-        </Field>
 
         <Field label='Tags'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -307,6 +329,15 @@ function EditVenueModal({
         </Field>
         <Field label='Image 1 Alt'>
           <input style={inputStyle} value={draft.image_alt ?? ''} onChange={e => patch('image_alt', e.target.value || null)} />
+        </Field>
+        <Field label='Image 1 Credit'>
+          <input style={inputStyle} value={draft.image_credit ?? ''} onChange={e => patch('image_credit', e.target.value || null)} />
+        </Field>
+        <Field label='Image 1 Credit URL'>
+          <input style={inputStyle} value={draft.image_credit_url ?? ''} onChange={e => patch('image_credit_url', e.target.value || null)} />
+        </Field>
+        <Field label='Image 1 License'>
+          <input style={inputStyle} value={draft.image_license ?? ''} onChange={e => patch('image_license', e.target.value || null)} />
         </Field>
 
         <Field label='Image 2 Src'>

@@ -12,11 +12,13 @@
 //   Caller-side rendering of destination name for display lives in the
 //   tab component, not on these query types.
 //
-// Last updated: S38 — Removed slug from AdminDiningVenue type, SELECT, and
+// Last updated: S39 — Synced AdminDiningVenue to actual DB schema.
+//   ambience_take → body. Added kicker, tagline, bullets_heading, bullets,
+//   image_credit, image_credit_url, image_license. Removed why_recommend.
+//   fetchAllDiningVenues SELECT and ingestDiningJson insert updated to match.
+// Prior: S38 — Removed slug from AdminDiningVenue type, SELECT, and
 //   ingest. Collision guard now uses name (case-insensitive) within
-//   destination UUID. slugifyVenueName helper removed. ingestDiningJson
-//   signature simplified (no destinationSlugFallback arg).
-// Prior: S36
+//   destination UUID. slugifyVenueName helper removed.
 
 import { supabase } from './supabase'
 
@@ -39,18 +41,24 @@ export interface AdminDiningVenue {
   global_destination_id: string
   name:                  string
   cuisine_subcategory:   string | null
+  kicker:                string | null
+  tagline:               string | null
+  body:                  string | null
+  bullets_heading:       string | null
+  bullets:               string[] | null
   michelin:              boolean
   address:               string | null
   maps_url:              string | null
   website:               string | null
-  ambience_take:         string | null
-  why_recommend:         string | null
   neighborhood:          string | null
   price_band:            string | null
   public_preview_rank:   number | null
   tags:                  string[] | null
   image_src:             string | null
   image_alt:             string | null
+  image_credit:          string | null
+  image_credit_url:      string | null
+  image_license:         string | null
   image_2_src:           string | null
   image_2_alt:           string | null
   is_active:             boolean
@@ -118,10 +126,11 @@ export async function fetchAllDiningVenues(
     .from('travel_dining_venues')
     .select(`
       id, global_destination_id, name,
-      cuisine_subcategory, michelin, address, maps_url, website,
-      ambience_take, why_recommend, neighborhood, price_band,
-      public_preview_rank, tags,
-      image_src, image_alt, image_2_src, image_2_alt,
+      cuisine_subcategory, kicker, tagline, body, bullets_heading, bullets,
+      michelin, address, maps_url, website,
+      neighborhood, price_band, public_preview_rank, tags,
+      image_src, image_alt, image_credit, image_credit_url, image_license,
+      image_2_src, image_2_alt,
       is_active, sort_order
     `)
     .order('sort_order', { ascending: true })
@@ -205,17 +214,17 @@ export async function deleteDiningGuide(id: string): Promise<void> {
 // ── JSON ingest ──────────────────────────────────────────────────────────────
 //
 // Collision guard: name (case-insensitive) within destination UUID.
-// Slug column dropped S38 — no slug involved anywhere in this path.
+// Slug dropped S38. why_recommend dropped S39.
+// body is the single long-form copy field (mapped from r.description in ingest).
 
 export interface IngestVenueRecord {
-  name:            string
-  subCategory?:    string
-  michelin?:       boolean
-  address?:        string
-  website?:        string
-  description?:    string
-  whyRecommended?: string
-  tags?:           string[]
+  name:         string
+  subCategory?: string
+  michelin?:    boolean
+  address?:     string
+  website?:     string
+  description?: string
+  tags?:        string[]
 }
 
 export interface IngestPayload {
@@ -276,8 +285,7 @@ export async function ingestDiningJson(
       michelin:              r.michelin ?? false,
       address:               r.address ?? null,
       website:               r.website ?? null,
-      ambience_take:         r.description ?? null,
-      why_recommend:         r.whyRecommended ?? null,
+      body:                  r.description ?? null,
       tags:                  r.tags && r.tags.length > 0 ? r.tags : null,
     })
   }

@@ -8,19 +8,19 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S37 — Added Plan Your Visit override fields to overlay
+// Last updated: S39 — Removed slug (dropped S38). Replaced ambience_take
+//   with body; added kicker, tagline, bullets_heading, bullets,
+//   image_credit, image_credit_url, image_license to match actual DB schema.
+// Prior: S37 — Added Plan Your Visit override fields to overlay
 //   (s37_13): plan_your_visit_heading, plan_your_visit_intro,
 //   plan_your_visit_bullets[]. All nullable; section is omitted from PDF
 //   entirely when all three are NULL (no fallback paragraphs).
-// Prior: S37 — Added worlds_50_best boolean (s37_12). Renders as a
-//   fourth recognition pill alongside Michelin tiers + Green Star.
+// Prior: S37 — Added worlds_50_best boolean (s37_12).
 // Prior: S37 — Added Michelin recognition model (michelin_award, michelin_stars,
-//   michelin_green_star). Legacy `michelin` boolean still in SELECT for
-//   transition window — drops in s37_10.
+//   michelin_green_star). Legacy michelin boolean still in SELECT — drops in s37_10.
 // Prior: S37 — Added guide_year + guide_version to DiningGuideOverlay.
 // Prior: S37 — Added is_supplementary + venue_status to DiningVenue.
 // Prior: S36 — Overlay unwrap defensive against both response shapes.
-// Prior: S36 — Collapsed two-register canon (ambience_take + why_recommend dropped).
 // Prior: S35 — Added GuideOverlay shape + getGuideDestination().
 
 import { supabase } from './supabase'
@@ -31,40 +31,36 @@ export type MichelinAward = 'star' | 'bib_gourmand'
 
 export interface DiningVenue {
   id: string
-  slug: string
   name: string
   cuisine_subcategory: string | null
+  kicker: string | null
+  tagline: string | null
+  body: string | null
+  bullets_heading: string | null
+  bullets: string[] | null
   /**
-   * Legacy boolean — true when venue holds any Michelin star recognition.
-   * Read-time only during the s37_09 → s37_10 transition window.
-   * Once s37_10 ships (DROP COLUMN), this field will be removed from the
-   * type + SELECT in the same change.
+   * Legacy boolean — true when venue holds any Michelin recognition.
+   * Drops in s37_10 — remove from type + SELECT at that point.
    */
   michelin: boolean
-  /** New (S37 s37_09): recognition tier. NULL = no Michelin recognition. */
   michelin_award: MichelinAward | null
-  /** New (S37 s37_09): 1-3 when award='star', NULL otherwise (CHECK enforced). */
   michelin_stars: number | null
-  /** New (S37 s37_09): orthogonal sustainability award. */
   michelin_green_star: boolean
-  /** New (S37 s37_12): listed on The World's 50 Best Restaurants guide. */
   worlds_50_best: boolean
   address: string | null
   maps_url: string | null
   website: string | null
-  body: string | null
-  bullets: string[] | null
-  bullets_heading: string | null
   neighborhood: string | null
   price_band: string | null
   public_preview_rank: number | null
   tags: string[] | null
   image_src: string | null
   image_alt: string | null
-  image_2_src: string | null
-  image_2_alt: string | null
   image_credit: string | null
   image_credit_url: string | null
+  image_license: string | null
+  image_2_src: string | null
+  image_2_alt: string | null
   sort_order: number
   is_supplementary: boolean
   venue_status: VenueStatus
@@ -129,14 +125,14 @@ export async function getDiningVenuesByDestination(
   const { data, error } = await supabase
     .from('travel_dining_venues')
     .select(`
-      id, slug, name, cuisine_subcategory,
+      id, name, cuisine_subcategory,
+      kicker, tagline, body, bullets_heading, bullets,
       michelin, michelin_award, michelin_stars, michelin_green_star,
       worlds_50_best,
       address, maps_url, website,
-      body, bullets, bullets_heading,
       neighborhood, price_band, public_preview_rank, tags,
-      image_src, image_alt, image_2_src, image_2_alt,
-      image_credit, image_credit_url,
+      image_src, image_alt, image_credit, image_credit_url, image_license,
+      image_2_src, image_2_alt,
       sort_order, is_supplementary, venue_status
     `)
     .eq('global_destination_id', dest.id)

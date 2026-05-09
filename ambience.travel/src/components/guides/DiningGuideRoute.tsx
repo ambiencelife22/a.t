@@ -24,9 +24,11 @@
 //     { label: 'Hotels', href: `/${dest}/hotels`, isActive: false, isPreview: true },
 //   ]
 //
-// Last updated: S35
+// Last updated: S39 — Fixed toast loop. toastRef pattern: stable effect
+//   dep array, toast object kept current via sync effect.
+// Prior: S35
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import DiningGuidePage from './DiningGuidePage'
 import RouteLoading from '../RouteLoading'
@@ -62,8 +64,14 @@ function resolveDestinationSlug(): string | null {
 
 export default function DiningGuideRoute() {
   const { toast } = useToast()
+  const toastRef = useRef(toast)
   const [destination, setDestination] = useState<GuideDestination | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Keep ref current without making it a load effect dep
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
 
   useEffect(() => {
     let cancelled = false
@@ -73,7 +81,7 @@ export default function DiningGuideRoute() {
 
       if (!slug) {
         if (cancelled) return
-        toast.warning(`We couldn't find that page. Returning home.`)
+        toastRef.current.warning(`We couldn't find that page. Returning home.`)
         window.history.replaceState(null, '', HOME_URL)
         window.dispatchEvent(new PopStateEvent('popstate'))
         setLoading(false)
@@ -85,7 +93,7 @@ export default function DiningGuideRoute() {
         if (cancelled) return
 
         if (!dest) {
-          toast.warning(`We couldn't find that destination. Returning home.`)
+          toastRef.current.warning(`We couldn't find that destination. Returning home.`)
           window.history.replaceState(null, '', HOME_URL)
           window.dispatchEvent(new PopStateEvent('popstate'))
           setLoading(false)
@@ -97,7 +105,7 @@ export default function DiningGuideRoute() {
       } catch (err) {
         console.error('DiningGuideRoute: failed to load destination', err)
         if (cancelled) return
-        toast.warning('Something went wrong loading that guide. Returning home.')
+        toastRef.current.warning('Something went wrong loading that guide. Returning home.')
         window.history.replaceState(null, '', HOME_URL)
         window.dispatchEvent(new PopStateEvent('popstate'))
         setLoading(false)
@@ -106,15 +114,13 @@ export default function DiningGuideRoute() {
 
     load()
     return () => { cancelled = true }
-  }, [toast])
+  }, [])
 
   if (loading) {
     return <RouteLoading />
   }
 
   if (!destination) {
-    // Toast already fired and redirect dispatched. Render nothing while
-    // the route resolver re-evaluates against the new URL.
     return null
   }
 
