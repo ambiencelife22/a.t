@@ -6,6 +6,7 @@
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error+empty states for the data load
 //   - PDF download trigger (loads jsPDF, calls exportGuidePdf)
+//   - Plan Your Visit block (always renders — fallback copy when overlay null)
 //   - Accuracy disclaimer block (gated on overlay.accuracy_date non-null)
 //
 // What it does not own:
@@ -14,15 +15,17 @@
 //   - Page chrome (GuideLayout)
 //   - Card rendering (DiningCard), filter chips (DiningGuideFilters), hero (GuideHero)
 //   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
+//   - Style objects (lib/guidePageStyles.ts)
+//   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
 //
-// Last updated: S39 — Added accuracy disclaimer block below venue grid.
-//   Gated on overlay.accuracy_date non-null. Passed accuracyDate through
-//   to exportGuidePdf.
-// Prior: S37 — Widened Michelin filter chip to match both stars and Bib.
-//   Added RecognitionKeyStrip above filters. Year + version from overlay.
+// Last updated: S40 — PlanYourVisit extracted to PlanYourVisit.tsx.
+//   Gate removed — PYV always renders using fallback copy when overlay null.
+//   Unused pyv* style imports removed from guidePageStyles import.
+// Prior: S40 — extracted inline styles to lib/guidePageStyles.ts
+// Prior: S39 Add 1 — Added Plan Your Visit block below venue grid.
+// Prior: S39 — Added accuracy disclaimer block. accuracyDate passed to exportGuidePdf.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
 import { useToast } from '../../lib/ToastContext'
 import {
   getDiningVenuesByDestination,
@@ -34,6 +37,23 @@ import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
 import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
+import { PlanYourVisit } from './PlanYourVisit'
+import {
+  pageStyle,
+  sectionTitleStyle,
+  sectionTitleH2Style,
+  sectionTitleCountStyle,
+  downloadBtnStyle,
+  downloadBtnDisabledStyle,
+  downloadIconStyle,
+  gridStyle,
+  disclaimerStyle,
+  disclaimerTextStyle,
+  messageBlockStyle,
+  messageTextStyle,
+  emptyStateStyle,
+  emptyStateTextStyle,
+} from '../../lib/guidePageStyles'
 
 interface DiningGuidePageProps {
   destination: GuideDestination
@@ -322,6 +342,8 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
               </section>
             )}
 
+            <PlanYourVisit overlay={overlay} variant="dining" />
+
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
@@ -336,7 +358,7 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   )
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+// ── Loading + Empty States ───────────────────────────────────────────────────
 
 function LoadingState() {
   return (
@@ -354,116 +376,4 @@ function EmptyState() {
       </p>
     </div>
   )
-}
-
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-const pageStyle: React.CSSProperties = {
-  width: 'min(1480px, 100%)',
-  margin: '0 auto',
-  padding: '42px 34px 64px',
-}
-
-const sectionTitleStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-end',
-  justifyContent: 'space-between',
-  gap: 20,
-  margin: '34px 4px 22px',
-}
-
-const sectionTitleH2Style: React.CSSProperties = {
-  margin: 0,
-  fontFamily: FONTS.serif,
-  fontSize: 38,
-  fontWeight: 400,
-  letterSpacing: '-0.04em',
-  color: ID.text,
-}
-
-const sectionTitleCountStyle: React.CSSProperties = {
-  margin: '4px 0 0',
-  color: ID.muted,
-  fontSize: 14,
-}
-
-const downloadBtnStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '12px 18px',
-  border: `1px solid ${IMMERSE.goldBorder}`,
-  borderRadius: 999,
-  background: IMMERSE.goldTint,
-  color: ID.gold,
-  fontFamily: 'inherit',
-  fontSize: 13,
-  fontWeight: 600,
-  letterSpacing: '0.04em',
-  cursor: 'pointer',
-  transition: 'background 180ms ease, border-color 180ms ease',
-  whiteSpace: 'nowrap',
-}
-
-const downloadBtnDisabledStyle: React.CSSProperties = {
-  opacity: 0.5,
-  cursor: 'not-allowed',
-}
-
-const downloadIconStyle: React.CSSProperties = {
-  fontSize: 14,
-  lineHeight: 1,
-}
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))',
-  gap: 22,
-}
-
-const disclaimerStyle: React.CSSProperties = {
-  marginTop: 48,
-  paddingTop: 24,
-  borderTop: `1px solid ${IMMERSE.tableBorder}`,
-}
-
-const disclaimerTextStyle: React.CSSProperties = {
-  margin: 0,
-  color: ID.muted,
-  fontSize: 12,
-  lineHeight: 1.7,
-  fontStyle: 'italic',
-  maxWidth: 720,
-}
-
-const messageBlockStyle: React.CSSProperties = {
-  padding: '120px 24px',
-  textAlign: 'center',
-  border: `1px solid ${IMMERSE.tableBorder}`,
-  borderRadius: 30,
-  background: 'rgba(255,255,255,0.025)',
-}
-
-const messageTextStyle: React.CSSProperties = {
-  margin: 0,
-  color: ID.muted,
-  fontSize: 15,
-  lineHeight: 1.55,
-  fontStyle: 'italic',
-}
-
-const emptyStateStyle: React.CSSProperties = {
-  padding: '80px 24px',
-  textAlign: 'center',
-  border: `1px solid ${IMMERSE.tableBorder}`,
-  borderRadius: 30,
-  background: 'rgba(255,255,255,0.025)',
-}
-
-const emptyStateTextStyle: React.CSSProperties = {
-  margin: 0,
-  color: ID.muted,
-  fontSize: 16,
-  lineHeight: 1.55,
-  fontStyle: 'italic',
 }

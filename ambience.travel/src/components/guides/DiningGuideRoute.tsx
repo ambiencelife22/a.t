@@ -5,7 +5,7 @@
 //   - Error handling (toast + replaceState + popstate redirect on bad slug)
 //   - Layout/page composition (mount GuideLayout wrapping DiningGuidePage)
 // What it does not own: page chrome (GuideLayout), data fetch (DiningGuidePage),
-//   filter state, card rendering.
+//   filter state, card rendering, 404 chrome (NotFoundPage).
 //
 // Pattern: mirrors ImmerseEngagementRoute. Route component resolves the
 // canonical entity from the URL, validates it exists, redirects on miss
@@ -24,19 +24,22 @@
 //     { label: 'Hotels', href: `/${dest}/hotels`, isActive: false, isPreview: true },
 //   ]
 //
-// Last updated: S39 — Fixed toast loop. toastRef pattern: stable effect
-//   dep array, toast object kept current via sync effect.
+// Last updated: S40 — NotFoundPage replaces null return on failed destination
+//   load. Gives users a branded 404 screen instead of a blank page.
+// Prior: S39 — Fixed toast loop. toastRef pattern: stable effect dep array,
+//   toast object kept current via sync effect.
 // Prior: S35
 
 import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import DiningGuidePage from './DiningGuidePage'
 import RouteLoading from '../RouteLoading'
+import NotFoundPage from '../NotFoundPage'
 import { useToast } from '../../lib/ToastContext'
 import { getGuideDestination, type GuideDestination } from '../../lib/diningGuideQueries'
 
 const GUIDES_HOST = 'guides.ambience.travel'
-const HOME_URL = 'https://ambience.travel/'
+const HOME_URL    = 'https://ambience.travel/'
 
 /**
  * Extracts destination slug from current path.
@@ -44,7 +47,7 @@ const HOME_URL = 'https://ambience.travel/'
  * /guides/ prefix on main domain (path = /guides/<dest>/dining).
  */
 function resolveDestinationSlug(): string | null {
-  const pathname = window.location.pathname.replace(/\/+$/, '')
+  const pathname    = window.location.pathname.replace(/\/+$/, '')
   const isGuidesHost = window.location.hostname === GUIDES_HOST
 
   let stripped: string
@@ -62,16 +65,17 @@ function resolveDestinationSlug(): string | null {
   return null
 }
 
-export default function DiningGuideRoute() {
-  const { toast } = useToast()
-  const toastRef = useRef(toast)
-  const [destination, setDestination] = useState<GuideDestination | null>(null)
-  const [loading, setLoading] = useState(true)
+type RouteState =
+  | { phase: 'loading' }
+  | { phase: 'ready';    destination: GuideDestination }
+  | { phase: 'notFound'; message: string }
 
-  // Keep ref current without making it a load effect dep
-  useEffect(() => {
-    toastRef.current = toast
-  }, [toast])
+export default function DiningGuideRoute() {
+  const { toast }   = useToast()
+  const toastRef    = useRef(toast)
+  const [state, setState] = useState<RouteState>({ phase: 'loading' })
+
+  useEffect(() => { toastRef.current = toast }, [toast])
 
   useEffect(() => {
     let cancelled = false
@@ -81,10 +85,7 @@ export default function DiningGuideRoute() {
 
       if (!slug) {
         if (cancelled) return
-        toastRef.current.warning(`We couldn't find that page. Returning home.`)
-        window.history.replaceState(null, '', HOME_URL)
-        window.dispatchEvent(new PopStateEvent('popstate'))
-        setLoading(false)
+        setState({ phase: 'notFound', message: "We couldn't find that page." })
         return
       }
 
@@ -93,22 +94,17 @@ export default function DiningGuideRoute() {
         if (cancelled) return
 
         if (!dest) {
-          toastRef.current.warning(`We couldn't find that destination. Returning home.`)
-          window.history.replaceState(null, '', HOME_URL)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-          setLoading(false)
+          toastRef.current.warning(`We couldn't find that destination.`)
+          setState({ phase: 'notFound', message: "We couldn't find that destination." })
           return
         }
 
-        setDestination(dest)
-        setLoading(false)
+        setState({ phase: 'ready', destination: dest })
       } catch (err) {
         console.error('DiningGuideRoute: failed to load destination', err)
         if (cancelled) return
-        toastRef.current.warning('Something went wrong loading that guide. Returning home.')
-        window.history.replaceState(null, '', HOME_URL)
-        window.dispatchEvent(new PopStateEvent('popstate'))
-        setLoading(false)
+        toastRef.current.warning('Something went wrong loading that guide.')
+        setState({ phase: 'notFound', message: 'Something went wrong. Please try again.' })
       }
     }
 
@@ -116,17 +112,17 @@ export default function DiningGuideRoute() {
     return () => { cancelled = true }
   }, [])
 
-  if (loading) {
+  if (state.phase === 'loading') {
     return <RouteLoading />
   }
 
-  if (!destination) {
-    return null
+  if (state.phase === 'notFound') {
+    return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
   }
 
   return (
     <GuideLayout>
-      <DiningGuidePage destination={destination} />
+      <DiningGuidePage destination={state.destination} />
     </GuideLayout>
   )
 }
