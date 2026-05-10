@@ -2,7 +2,9 @@
 // What it owns: card chrome, image grid, status banner, meta-row, name, body, tags, address, recognition marks.
 // What it does not own: gating logic (consumes hasFullAccess prop), filter state, layout.
 //
-// Last updated: S37 — Added 50 Best as fourth recognition tier. Replaced
+// Last updated: S39 — FullBody address block now renders when maps_url is set
+//   even without an address. Falls back to "View on map" link text.
+// Prior: S37 — Added 50 Best as fourth recognition tier. Replaced
 //   inline glyph rendering with shared RecognitionMark component (lives in
 //   RecognitionKey.tsx) — same definitions reused by the page-top key strip.
 //   Each pill carries a hover tooltip describing what it means.
@@ -194,11 +196,11 @@ function FullBody({ venue }: { venue: DiningVenue }) {
           ))}
         </div>
       )}
-      {venue.address && (
+      {(venue.address ?? mapsUrl) && (
         <div style={addressStyle}>
           {mapsUrl ? (
             <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={addressLinkStyle}>
-              {venue.address} <span style={addressArrowStyle}>↗</span>
+              {venue.address ?? 'View on map'} <span style={addressArrowStyle}>↗</span>
             </a>
           ) : (
             venue.address
