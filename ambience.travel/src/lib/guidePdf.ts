@@ -760,7 +760,7 @@ function renderDisclaimer(doc: any, accuracyDate: string, startY: number) {
   const disclaimerText =
     `The venues and recognition listed in this guide reflect our knowledge as of ${accuracyDate}. ` +
     `The dining industry evolves continuously. Restaurants close, chefs move, and accolades are reassigned. ` +
-    `ambience.TRAVEL makes every effort to keep this information current but cannot guarantee its accuracy ` +
+    `ambience makes every effort to keep this information current but cannot guarantee its accuracy ` +
     `at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.`
 
   setSans(doc, 'italic', 7.5)
