@@ -2,52 +2,41 @@
 // What it owns:
 //   - Path parsing (extract destinationSlug from window.location)
 //   - Destination validation (look up against global_destinations)
-//   - Error handling (toast + replaceState + popstate redirect on bad slug)
-//   - Layout/page composition (mount GuideLayout wrapping DiningGuidePage)
+//   - Grant check (dining_guide_for_user view via checkGuideGrant)
+//   - Error handling (toast + NotFoundPage on bad slug)
+//   - Layout/page composition (GuideLayout wrapping DiningGuidePage)
 // What it does not own: page chrome (GuideLayout), data fetch (DiningGuidePage),
 //   filter state, card rendering, 404 chrome (NotFoundPage).
 //
-// Pattern: mirrors ImmerseEngagementRoute. Route component resolves the
-// canonical entity from the URL, validates it exists, redirects on miss
-// with global toast feedback. Page receives the validated destination as
-// a guaranteed-non-null prop.
+// Grant states:
+//   no_session  → GuideLockedPage (sign in prompt)
+//   no_grant    → GuideLockedPage (access request prompt)
+//   granted     → DiningGuidePage (full access)
 //
-// Path shape:
-//   guides.ambience.travel/<dest>/dining           (production subdomain)
-//   ambience.travel/guides/<dest>/dining           (main domain fallback)
-//   localhost:5173/guides/<dest>/dining            (local dev)
-//
-// Future: when Activities + Hotels guides ship, add tab nav items here:
-//   const navItems = [
-//     { label: 'Dining', href: `/${dest}/dining`, isActive: true },
-//     { label: 'Activities', href: `/${dest}/activities`, isActive: false },
-//     { label: 'Hotels', href: `/${dest}/hotels`, isActive: false, isPreview: true },
-//   ]
-//
-// Last updated: S40 — NotFoundPage replaces null return on failed destination
-//   load. Gives users a branded 404 screen instead of a blank page.
-// Prior: S39 — Fixed toast loop. toastRef pattern: stable effect dep array,
-//   toast object kept current via sync effect.
-// Prior: S35
+// Last updated: S40C — Grant check added. checkGuideGrant() runs after
+//   destination resolves. RouteState gains 'locked' phase with GrantStatus.
+// Prior: S40 — NotFoundPage replaces null return on failed destination load.
+// Prior: S39 — Fixed toast loop via toastRef pattern.
 
 import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import DiningGuidePage from './DiningGuidePage'
+import GuideLockedPage from './GuideLockedPage'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
 import { useToast } from '../../lib/ToastContext'
-import { getGuideDestination, type GuideDestination } from '../../lib/diningGuideQueries'
+import {
+  getGuideDestination,
+  checkGuideGrant,
+  type GuideDestination,
+  type GrantStatus,
+} from '../../lib/diningGuideQueries'
 
 const GUIDES_HOST = 'guides.ambience.travel'
 const HOME_URL    = 'https://ambience.travel/'
 
-/**
- * Extracts destination slug from current path.
- * Handles both the guides subdomain (path = /<dest>/dining) and the
- * /guides/ prefix on main domain (path = /guides/<dest>/dining).
- */
 function resolveDestinationSlug(): string | null {
-  const pathname    = window.location.pathname.replace(/\/+$/, '')
+  const pathname     = window.location.pathname.replace(/\/+$/, '')
   const isGuidesHost = window.location.hostname === GUIDES_HOST
 
   let stripped: string
@@ -68,11 +57,12 @@ function resolveDestinationSlug(): string | null {
 type RouteState =
   | { phase: 'loading' }
   | { phase: 'ready';    destination: GuideDestination }
+  | { phase: 'locked';   destination: GuideDestination; grantStatus: GrantStatus }
   | { phase: 'notFound'; message: string }
 
 export default function DiningGuideRoute() {
-  const { toast }   = useToast()
-  const toastRef    = useRef(toast)
+  const { toast }         = useToast()
+  const toastRef          = useRef(toast)
   const [state, setState] = useState<RouteState>({ phase: 'loading' })
 
   useEffect(() => { toastRef.current = toast }, [toast])
@@ -99,9 +89,17 @@ export default function DiningGuideRoute() {
           return
         }
 
-        setState({ phase: 'ready', destination: dest })
+        const grant = await checkGuideGrant(slug)
+        if (cancelled) return
+
+        if (grant.status === 'granted') {
+          setState({ phase: 'ready', destination: dest })
+          return
+        }
+
+        setState({ phase: 'locked', destination: dest, grantStatus: grant })
       } catch (err) {
-        console.error('DiningGuideRoute: failed to load destination', err)
+        console.error('DiningGuideRoute: failed to load', err)
         if (cancelled) return
         toastRef.current.warning('Something went wrong loading that guide.')
         setState({ phase: 'notFound', message: 'Something went wrong. Please try again.' })
@@ -112,12 +110,21 @@ export default function DiningGuideRoute() {
     return () => { cancelled = true }
   }, [])
 
-  if (state.phase === 'loading') {
-    return <RouteLoading />
-  }
+  if (state.phase === 'loading') return <RouteLoading />
 
   if (state.phase === 'notFound') {
     return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
+  }
+
+  if (state.phase === 'locked') {
+    return (
+      <GuideLayout>
+        <GuideLockedPage
+          destination={state.destination}
+          grantStatus={state.grantStatus}
+        />
+      </GuideLayout>
+    )
   }
 
   return (

@@ -5,14 +5,17 @@
 //   - Listing all dining venues (UUID-keyed)
 //   - CRUD on travel_dining_venues (canonical pool) — by UUID
 //   - CRUD on travel_dining_guides (per-destination overlay) — by UUID
+//   - CRUD on dining_guide_grants — by UUID
 //   - JSON ingest with name+destination collision guard (slug removed S38)
 //
-// Last updated: S39 — Added accuracy_date to AdminDiningGuide type and
+// Last updated: S40C — Added grant types + fetchGrantsForDestination,
+//   fetchAllPeople, fetchProfileByPersonId, createGrant, deleteGrant.
+//   global_profiles.person_id → global_people join for display only.
+//   Grant keys are always UUIDs — email/name are display-only.
+// Prior: S39 — Added accuracy_date to AdminDiningGuide type and
 //   fetchDiningGuides SELECT. NULL = disclaimer omitted on both surfaces.
-// Prior: S39 — Dropped legacy michelin boolean (s37_10 ran). Added
-//   michelin_award, michelin_stars, michelin_green_star, worlds_50_best.
-//   Synced to actual DB schema: body, kicker, tagline, bullets_heading,
-//   bullets, image_credit, image_credit_url, image_license.
+// Prior: S39 — Dropped legacy michelin boolean. Added michelin_award,
+//   michelin_stars, michelin_green_star, worlds_50_best.
 
 import { supabase } from './supabase'
 
@@ -25,9 +28,9 @@ export interface DestinationOption {
 }
 
 export interface DestinationWithDiningCounts {
-  id:           string
-  venue_count:  number
-  has_overlay:  boolean
+  id:          string
+  venue_count: number
+  has_overlay: boolean
 }
 
 export type MichelinAward = 'star' | 'bib_gourmand'
@@ -74,6 +77,23 @@ export interface AdminDiningGuide {
   intro_override:        string | null
   is_active:             boolean
   accuracy_date:         string | null
+}
+
+export interface GlobalPerson {
+  id:         string
+  first_name: string | null
+  last_name:  string | null
+  email:      string | null
+  nickname:   string | null
+}
+
+export interface AdminGrant {
+  id:                    string
+  user_id:               string
+  global_destination_id: string
+  granted_at:            string
+  person:                GlobalPerson | null  // null = profile not linked to a person
+  display_name:          string | null        // from global_profiles directly
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────────
@@ -159,6 +179,92 @@ export async function fetchDiningGuides(): Promise<AdminDiningGuide[]> {
   return (data ?? []) as AdminDiningGuide[]
 }
 
+export async function fetchGrantsForDestination(
+  globalDestinationId: string,
+): Promise<AdminGrant[]> {
+  const { data, error } = await supabase
+    .from('dining_guide_grants')
+    .select(`
+      id, user_id, global_destination_id, granted_at,
+      profile:global_profiles!user_id (
+        display_name,
+        person_id
+      )
+    `)
+    .eq('global_destination_id', globalDestinationId)
+    .order('granted_at', { ascending: true })
+
+  if (error) throw new Error(`Failed to fetch grants: ${error.message}`)
+
+  const rows = (data ?? []) as unknown as Array<{
+    id:                    string
+    user_id:               string
+    global_destination_id: string
+    granted_at:            string
+    profile: Array<{
+      display_name: string | null
+      person_id:    string | null
+    }>
+  }>
+
+  // Collect person_ids to batch-fetch from global_people
+  const personIds = rows
+    .map(r => r.profile[0]?.person_id)
+    .filter((id): id is string => id != null)
+
+  const peopleById = new Map<string, GlobalPerson>()
+  if (personIds.length > 0) {
+    const { data: people, error: peopleError } = await supabase
+      .from('global_people')
+      .select('id, first_name, last_name, email, nickname')
+      .in('id', personIds)
+    if (peopleError) throw new Error(`Failed to fetch people: ${peopleError.message}`)
+    for (const p of people ?? []) {
+      peopleById.set((p as GlobalPerson).id, p as GlobalPerson)
+    }
+  }
+
+  return rows.map(r => {
+    const profile = r.profile[0] ?? null
+    return {
+      id:                    r.id,
+      user_id:               r.user_id,
+      global_destination_id: r.global_destination_id,
+      granted_at:            r.granted_at,
+      display_name:          profile?.display_name ?? null,
+      person:                profile?.person_id
+        ? (peopleById.get(profile.person_id) ?? null)
+        : null,
+    }
+  })
+}
+
+// Fetch all global_people for the assign picker
+export async function fetchAllPeople(): Promise<GlobalPerson[]> {
+  const { data, error } = await supabase
+    .from('global_people')
+    .select('id, first_name, last_name, email, nickname')
+    .order('first_name', { ascending: true })
+
+  if (error) throw new Error(`Failed to fetch people: ${error.message}`)
+  return (data ?? []) as GlobalPerson[]
+}
+
+// Given a global_people UUID, find the linked global_profiles row
+export async function fetchProfileByPersonId(
+  personId: string,
+): Promise<{ id: string; display_name: string | null } | null> {
+  const { data, error } = await supabase
+    .from('global_profiles')
+    .select('id, display_name')
+    .eq('person_id', personId)
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to fetch profile: ${error.message}`)
+  if (!data) return null
+  return data as { id: string; display_name: string | null }
+}
+
 // ── Writes — venues (UUID-keyed) ─────────────────────────────────────────────
 
 export type DiningVenuePatch = Partial<Omit<AdminDiningVenue, 'id'>>
@@ -210,6 +316,26 @@ export async function deleteDiningGuide(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   if (error) throw new Error(`Failed to delete guide: ${error.message}`)
+}
+
+// ── Writes — grants (UUID-keyed) ─────────────────────────────────────────────
+
+export async function createGrant(
+  userId:               string,
+  globalDestinationId:  string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('dining_guide_grants')
+    .insert({ user_id: userId, global_destination_id: globalDestinationId })
+  if (error) throw new Error(`Failed to create grant: ${error.message}`)
+}
+
+export async function deleteGrant(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('dining_guide_grants')
+    .delete()
+    .eq('id', id)
+  if (error) throw new Error(`Failed to delete grant: ${error.message}`)
 }
 
 // ── JSON ingest ──────────────────────────────────────────────────────────────

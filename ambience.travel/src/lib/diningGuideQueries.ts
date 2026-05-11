@@ -1,25 +1,14 @@
 // diningGuideQueries.ts — read path for the dining guide page
-// What it owns: fetch dining venues + per-destination guide overlay row.
-// What it does not own: gating logic (will move to dining_guide_for_user view).
+// What it owns: fetch dining venues + per-destination guide overlay row +
+//   grant check via dining_guide_for_user view.
+// What it does not own: gating UI, admin grant management.
 //
-// v1 reads directly from travel_dining_venues + travel_dining_guides.
-// When the dining_guide_for_user view ships (Migration 4 + grants table
-// Migration 3), swap the venues .from() target to 'dining_guide_for_user' —
-// no other changes needed; the view projects identical column shape with
-// NULL on gated fields.
-//
-// Last updated: S40 — Canon hero resolution. hero_image_src + hero_image_alt
-//   added to global_destinations as canonical fields (migration s40_01).
-//   GuideDestination now carries heroImageSrc + heroImageAlt from canon.
-//   DiningGuideOverlay.hero_image_src is now override only — null = use canon.
-//   getGuideDestination selects canon hero from global_destinations directly.
-// Prior: S39 — Added accuracy_date to DiningGuideOverlay type and
-//   getGuideDestination SELECT. NULL = disclaimer omitted on both surfaces.
-// Prior: S39 — Removed slug (dropped S38). Replaced ambience_take with body;
-//   added kicker, tagline, bullets_heading, bullets, image_credit,
-//   image_credit_url, image_license. Removed michelin boolean (s37_10).
-// Prior: S37 — Added Plan Your Visit override fields, worlds_50_best,
-//   Michelin recognition model, guide_year + guide_version.
+// Last updated: S40C — Added checkGuideGrant(). Queries dining_guide_for_user
+//   view (SECURITY INVOKER) to determine whether the current auth user has
+//   been granted access to a specific destination's guide.
+// Prior: S40 — Canon hero resolution. hero_image_src + hero_image_alt added
+//   to global_destinations as canonical fields (migration s40_01).
+// Prior: S39 — Added accuracy_date. Removed slug (dropped S38).
 
 import { supabase } from './supabase'
 
@@ -59,19 +48,6 @@ export interface DiningVenue {
   venue_status: VenueStatus
 }
 
-/**
- * Per-destination overlay for the dining guide page.
- * NULL on any field = canon or frontend default flows through.
- * Resolution: overlay → canon → frontend default (standard ?? chain)
- *
- * hero_image_src / hero_image_alt — override only. NULL = canon from
- *   global_destinations flows through in DiningGuidePage.
- *
- * guide_year + guide_version added S37 for PDF cover. NULL = current year / '1.0'
- *   applied at PDF render time (not on the live page).
- *
- * accuracy_date added S39. NULL = disclaimer omitted on both live page and PDF.
- */
 export interface DiningGuideOverlay {
   hero_image_src: string | null
   hero_image_alt: string | null
@@ -90,11 +66,31 @@ export interface GuideDestination {
   id: string
   slug: string
   name: string
-  // Canon hero — from global_destinations. Always populated when the destination
-  // has a hero image seeded. Overlay may override these fields.
   heroImageSrc: string | null
   heroImageAlt: string | null
   overlay: DiningGuideOverlay | null
+}
+
+export type GrantStatus =
+  | { status: 'granted' }
+  | { status: 'no_grant' }
+  | { status: 'no_session' }
+
+export async function checkGuideGrant(
+  destinationSlug: string,
+): Promise<GrantStatus> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (!sessionData.session) return { status: 'no_session' }
+
+  const { data, error } = await supabase
+    .from('dining_guide_for_user')
+    .select('global_destination_id')
+    .eq('destination_slug', destinationSlug)
+    .maybeSingle()
+
+  if (error) throw new Error(`Grant check failed: ${error.message}`)
+  if (!data) return { status: 'no_grant' }
+  return { status: 'granted' }
 }
 
 export async function getDiningVenuesByDestination(
