@@ -1,17 +1,19 @@
 // ImmerseComponents.tsx - shared primitives for all /immerse/ proposal components
-// Owns: ID palette, useImmerseMobile, immerseFadeUp, useImmerseVisible, shared UI atoms
-// Does not own page-level components or data.
-// Last updated: S30 — ImmerseWelcomeLetter flipped to left-align + cream light surface.
+// Owns: ID palette, useImmerseMobile, shared UI atoms
+// Does not own page-level components, data, or animation primitives.
+// Last updated: S40B — useImmerseVisible + immerseFadeUp removed; retargeted
+//   to useVisible + fadeUp from lib/animations per S40 standing rule.
+// Prior: S30 — ImmerseWelcomeLetter flipped to left-align + cream light surface.
 //   All text tokens inside the welcome block use *OnLight variants
 //   (textOnLight, mutedOnLight) per the light-surface token rule earned in
 //   S29 Addendum 2 via the ImmerseStayBox muddy-text bug. Section background
 //   is IMMERSE.lightSurface. ImmerseTitle received an optional lightSurface
 //   prop to swap its default ID.text → IMMERSE.textOnLight.
-// Prior: S30 — Added ImmerseWelcomeLetter (initial centered/dark version).
 // Prior: S12 — original primitives shipped.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ID, IMMERSE } from '../../lib/landingColors'
+import { useVisible, fadeUp } from '../../lib/animations'
 export { ID } from '../../lib/landingColors'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -25,33 +27,6 @@ export function useImmerseMobile(breakpoint = 768): boolean {
     return () => window.removeEventListener('resize', check)
   }, [breakpoint])
   return isMobile
-}
-
-export function useImmerseVisible(threshold = 0.10) {
-  const ref = useRef<HTMLElement>(null)
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setVisible(true) },
-      { threshold }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
-  return { ref, visible }
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-export function immerseFadeUp(visible: boolean, delayMs = 0): CSSProperties {
-  return {
-    opacity: visible ? 1 : 0,
-    transform: visible ? 'translateY(0)' : 'translateY(18px)',
-    transition: `opacity 0.75s ease ${delayMs}ms, transform 0.75s ease ${delayMs}ms`,
-    willChange: 'opacity, transform',
-  }
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -126,10 +101,6 @@ export function ImmerseEyebrow({ children, style, shimmer = true }: { children: 
   )
 }
 
-// S30: lightSurface prop — when rendering on IMMERSE.lightSurface (cream),
-// use textOnLight instead of ID.text to avoid the light-on-light muddy-text bug
-// earned via S29 Addendum 2 (ImmerseStayBox). Default remains ID.text for
-// dark-surface parents (the original use case).
 export function ImmerseTitle({
   children, style, serif = false, lightSurface = false,
 }: {
@@ -223,9 +194,6 @@ export function ImmersePanel({ children, style }: { children: ReactNode; style?:
 }
 
 // ─── Stay box ────────────────────────────────────────────────────────────────
-// Used on the cream destination-rows section only. All text tokens are *OnLight
-// variants — using ID.text / ID.dim here was the S29 muddy-text bug on Nordic +
-// NYC stay bricks (dark-theme text on cream surface).
 
 export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightlyRange?: string }) {
   return (
@@ -282,12 +250,6 @@ export function ImmerseStayBox({ label, nightlyRange }: { label: string; nightly
 }
 
 // ─── Welcome letter (S30) ─────────────────────────────────────────────────────
-// Renders between Hero 1 and Route Strip on the trip overview page.
-// Cream light surface, left-aligned. All text tokens are *OnLight variants.
-// Body supports paragraph breaks (split on \n\n).
-// Empty-string-means-hide applies at both section and field level:
-//   - All 5 fields empty  → entire section hides
-//   - Any single field '' → that field hides, others render
 
 export function ImmerseWelcomeLetter({
   eyebrow,
@@ -302,7 +264,7 @@ export function ImmerseWelcomeLetter({
   signoffBody: string
   signoffName: string
 }) {
-  const { ref, visible } = useImmerseVisible()
+  const { ref, visible } = useVisible()
 
   if (!eyebrow && !title && !body && !signoffBody && !signoffName) return null
 
@@ -312,7 +274,7 @@ export function ImmerseWelcomeLetter({
 
   return (
     <ImmerseSectionWrap
-      refProp={ref as React.RefObject<HTMLElement>}
+      refProp={ref as unknown as React.RefObject<HTMLElement>}
       style={{ background: IMMERSE.lightSurface, borderTop: 'none' }}
     >
       <div
@@ -320,7 +282,7 @@ export function ImmerseWelcomeLetter({
           maxWidth: 720,
           margin: '0',
           textAlign: 'left',
-          ...immerseFadeUp(visible),
+          ...fadeUp(visible),
         }}
       >
         {eyebrow && <ImmerseEyebrow>{eyebrow}</ImmerseEyebrow>}

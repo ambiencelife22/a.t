@@ -18,7 +18,9 @@
 // Glass card position: lower-third aligned. Guide pages are utilitarian
 // content; the hero should set tone without dominating.
 //
-// Last updated: S36 — Removed negative-margin viewport escape (marginLeft/Right:
+// Last updated: S40B — useImmerseVisible + immerseFadeUp retargeted to
+//   useVisible + fadeUp from lib/animations per S40 standing rule.
+// Prior: S36 — Removed negative-margin viewport escape (marginLeft/Right:
 //   calc(50% - 50vw)). DiningGuidePage now renders this hero outside its
 //   constrained <main> container, so the hero is naturally full-width to its
 //   parent (GuideLayout > children). The S35 escape trick assumed a
@@ -28,7 +30,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ID, IMMERSE_HERO, FONTS } from '../../lib/landingColors'
-import { useImmerseMobile, useImmerseVisible, immerseFadeUp } from '../immerse/ImmerseComponents'
+import { useImmerseMobile } from '../immerse/ImmerseComponents'
+import { useVisible, fadeUp } from '../../lib/animations'
 
 const HERO_LAYOUT = {
   minHeightMobile:    520,
@@ -57,7 +60,7 @@ export function GuideHero({
   imageSrc,
   imageAlt,
 }: GuideHeroProps) {
-  const { ref, visible } = useImmerseVisible(0.05)
+  const { ref, visible } = useVisible(0.05)
   const isMobile = useImmerseMobile()
   const sectionRef = useRef<HTMLElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -153,7 +156,7 @@ export function GuideHero({
           }}
         >
           <div
-            ref={ref as React.RefObject<HTMLDivElement>}
+            ref={ref as unknown as React.RefObject<HTMLDivElement>}
             style={{
               width:                'min(720px, 100%)',
               padding:              isMobile ? 22 : 38,
@@ -175,7 +178,7 @@ export function GuideHero({
                 textTransform: 'uppercase',
                 fontWeight:    700,
                 marginBottom:  18,
-                ...immerseFadeUp(visible, 0),
+                ...fadeUp(visible, 0),
               }}
             >
               {eyebrow}
@@ -190,7 +193,7 @@ export function GuideHero({
                 fontFamily:    FONTS.serif,
                 margin:        '0 0 20px',
                 color:         ID.text,
-                ...immerseFadeUp(visible, 120),
+                ...fadeUp(visible, 120),
               }}
             >
               {headline}
@@ -203,7 +206,7 @@ export function GuideHero({
                 lineHeight: 1.7,
                 maxWidth:   600,
                 margin:     0,
-                ...immerseFadeUp(visible, 240),
+                ...fadeUp(visible, 240),
               }}
             >
               {intro}
