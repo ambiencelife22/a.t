@@ -1,20 +1,21 @@
 /* GuidesDiningTab.tsx
- * Per-destination dining guide overlay editor.
+ * Per-destination dining guide overlay editor + access management.
  *
  * Shows two sections:
  *   - Active guides (destinations with travel_dining_guides row)
  *   - Destinations without overlay (offers "Create guide" action)
  *
- * Click an active guide row → modal edits the overlay (hero, eyebrow,
- * headline, intro, accuracy_date).
+ * Click an active guide row → modal with two tabs:
+ *   - Overlay: edits hero, eyebrow, headline, intro, accuracy_date, is_active
+ *   - Access: shows current grantees, assign new via people picker, revoke
  *
- * UUID-keyed throughout. Destination name + slug for display only —
- * resolved via destinationsById Map at render time, never carried on
- * query types or used as a key. Slug used only for buildGuideUrl (URL
- * routing, the one allowed slug surface).
+ * UUID-keyed throughout. Destination name + slug for display only.
+ * Slug used only for buildGuideUrl (URL routing, the one allowed slug surface).
  *
- * Last updated: S39 — Added accuracy_date field to edit modal and
- *   handleSave fields array.
+ * Last updated: S40C — Access tab added. Grant assign/revoke via
+ *   fetchGrantsForDestination, fetchAllPeople, fetchProfileByPersonId,
+ *   createGrant, deleteGrant. People with no linked profile shown greyed out.
+ * Prior: S39 — Added accuracy_date field to edit modal and handleSave.
  * Prior: S36 — initial ship.
  */
 
@@ -28,10 +29,17 @@ import {
   updateDiningGuide,
   createDiningGuide,
   deleteDiningGuide,
+  fetchGrantsForDestination,
+  fetchAllPeople,
+  fetchProfileByPersonId,
+  createGrant,
+  deleteGrant,
   type AdminDiningGuide,
   type DestinationWithDiningCounts,
   type DestinationOption,
   type DiningGuidePatch,
+  type AdminGrant,
+  type GlobalPerson,
 } from '../../lib/adminGuidesQueries'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
@@ -101,7 +109,240 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function personDisplayName(person: GlobalPerson): string {
+  const parts = [person.first_name, person.last_name].filter(Boolean)
+  if (parts.length > 0) return parts.join(' ')
+  return person.nickname ?? person.email ?? '(unnamed)'
+}
+
+function grantDisplayName(grant: AdminGrant): string {
+  if (grant.person) return personDisplayName(grant.person)
+  if (grant.display_name) return grant.display_name
+  return '(unknown user)'
+}
+
+// ── Access Tab ───────────────────────────────────────────────────────────────
+
+function AccessTab({
+  globalDestinationId,
+  showToast,
+}: {
+  globalDestinationId: string
+  showToast: (m: string, t: 'success' | 'error') => void
+}) {
+  const [grants, setGrants]   = useState<AdminGrant[]>([])
+  const [people, setPeople]   = useState<GlobalPerson[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch]   = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [revoking, setRevoking]   = useState<string | null>(null)
+
+  // person_id → profile_id cache built on demand
+  const [profileCache, setProfileCache] = useState<Map<string, string | null>>(new Map())
+
+  async function load() {
+    setLoading(true)
+    try {
+      const [g, p] = await Promise.all([
+        fetchGrantsForDestination(globalDestinationId),
+        fetchAllPeople(),
+      ])
+      setGrants(g)
+      setPeople(p)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error'
+      showToast(`Failed to load access: ${msg}`, 'error')
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [globalDestinationId])
+
+  const grantedUserIds = useMemo(() => new Set(grants.map(g => g.user_id)), [grants])
+
+  // People already granted — keyed by person_id for quick lookup
+  const grantedPersonIds = useMemo(
+    () => new Set(grants.map(g => g.person?.id).filter(Boolean)),
+    [grants],
+  )
+
+  const filteredPeople = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    if (!q) return people
+    return people.filter(p => {
+      const name = personDisplayName(p).toLowerCase()
+      const email = (p.email ?? '').toLowerCase()
+      return name.includes(q) || email.includes(q)
+    })
+  }, [people, search])
+
+  async function handleAssign(person: GlobalPerson) {
+    setAssigning(true)
+    try {
+      // Resolve profile_id — check cache first
+      let profileId = profileCache.get(person.id)
+      if (profileId === undefined) {
+        const profile = await fetchProfileByPersonId(person.id)
+        profileId = profile?.id ?? null
+        setProfileCache(prev => new Map(prev).set(person.id, profileId ?? null))
+      }
+
+      if (!profileId) {
+        showToast(`${personDisplayName(person)} has no login yet. They must create an account first.`, 'error')
+        setAssigning(false)
+        return
+      }
+
+      if (grantedUserIds.has(profileId)) {
+        showToast('Already granted.', 'error')
+        setAssigning(false)
+        return
+      }
+
+      await createGrant(profileId, globalDestinationId)
+      showToast(`Access granted to ${personDisplayName(person)}.`, 'success')
+      setSearch('')
+      await load()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error'
+      showToast(`Failed: ${msg}`, 'error')
+    }
+    setAssigning(false)
+  }
+
+  async function handleRevoke(grant: AdminGrant) {
+    setRevoking(grant.id)
+    try {
+      await deleteGrant(grant.id)
+      showToast(`Access revoked.`, 'success')
+      await load()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error'
+      showToast(`Failed: ${msg}`, 'error')
+    }
+    setRevoking(null)
+  }
+
+  if (loading) {
+    return <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Current grantees */}
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 10 }}>
+          Current Access ({grants.length})
+        </div>
+        {grants.length === 0 ? (
+          <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
+            No one has been granted access yet.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {grants.map(g => (
+              <div
+                key={g.id}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', background: A.bgCard,
+                  border: `1px solid ${A.border}`, borderRadius: 10, gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
+                    {grantDisplayName(g)}
+                  </div>
+                  {g.person?.email && (
+                    <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                      {g.person.email}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2 }}>
+                    Granted {new Date(g.granted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRevoke(g)}
+                  style={{ ...btnDanger, opacity: revoking === g.id ? 0.5 : 1, flexShrink: 0 }}
+                  disabled={revoking === g.id}
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Assign picker */}
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 10 }}>
+          Assign Access
+        </div>
+        <input
+          style={{ ...inputStyle, marginBottom: 10 }}
+          placeholder='Search by name or email…'
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {search.trim().length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
+            {filteredPeople.length === 0 && (
+              <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic', padding: '8px 0' }}>
+                No matches.
+              </div>
+            )}
+            {filteredPeople.map(p => {
+              const alreadyGranted = grantedPersonIds.has(p.id)
+              const noLogin        = profileCache.get(p.id) === null
+              const isDisabled     = alreadyGranted || noLogin || assigning
+
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '9px 12px', background: A.bgCard,
+                    border: `1px solid ${A.border}`, borderRadius: 8, gap: 12,
+                    opacity: (alreadyGranted || noLogin) ? 0.45 : 1,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
+                      {personDisplayName(p)}
+                    </div>
+                    <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                      {p.email ?? '(no email)'}
+                      {alreadyGranted && <span style={{ marginLeft: 8, color: A.positive }}>· granted</span>}
+                      {noLogin && <span style={{ marginLeft: 8, color: A.danger }}>· no login</span>}
+                    </div>
+                  </div>
+                  {!alreadyGranted && (
+                    <button
+                      onClick={() => handleAssign(p)}
+                      style={{ ...btnPrimary, opacity: isDisabled ? 0.4 : 1, flexShrink: 0 }}
+                      disabled={isDisabled}
+                    >
+                      Grant
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Edit Modal ───────────────────────────────────────────────────────────────
+
+type ModalTab = 'overlay' | 'access'
 
 function EditGuideModal({
   guide,
@@ -118,8 +359,9 @@ function EditGuideModal({
   onSaved:         () => void
   showToast:       (m: string, t: 'success' | 'error') => void
 }) {
-  const [draft, setDraft] = useState<AdminDiningGuide>(guide)
-  const [saving, setSaving] = useState(false)
+  const [draft, setDraft]     = useState<AdminDiningGuide>(guide)
+  const [saving, setSaving]   = useState(false)
+  const [modalTab, setModalTab] = useState<ModalTab>('overlay')
 
   function patch<K extends keyof AdminDiningGuide>(k: K, v: AdminDiningGuide[K]) {
     setDraft(prev => ({ ...prev, [k]: v }))
@@ -170,6 +412,15 @@ function EditGuideModal({
     setSaving(false)
   }
 
+  const tabBtn = (t: ModalTab, label: string): React.CSSProperties => ({
+    padding: '6px 16px',
+    background:  modalTab === t ? 'rgba(216,181,106,0.12)' : 'transparent',
+    color:       modalTab === t ? A.gold : A.muted,
+    border:      modalTab === t ? '1px solid rgba(216,181,106,0.30)' : `1px solid ${A.border}`,
+    borderRadius: 8, fontSize: 12, fontWeight: 700,
+    fontFamily: A.font, cursor: 'pointer', letterSpacing: '0.04em',
+  })
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
@@ -181,6 +432,8 @@ function EditGuideModal({
         width: 'min(800px, 100%)', background: A.bg, border: `1px solid ${A.border}`,
         borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 16,
       }}>
+
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
@@ -197,48 +450,63 @@ function EditGuideModal({
           </div>
         </div>
 
-        <Field label='Hero Image Src'>
-          <ImageFieldWithUploader value={draft.hero_image_src} onChange={v => patch('hero_image_src', v)} />
-        </Field>
-        <Field label='Hero Image Alt'>
-          <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
-        </Field>
-
-        <Field label='Eyebrow override (NULL = "Curated dining" default)'>
-          <input style={inputStyle} value={draft.eyebrow_override ?? ''} onChange={e => patch('eyebrow_override', e.target.value || null)} />
-        </Field>
-        <Field label='Headline override (NULL = default)'>
-          <input style={inputStyle} value={draft.headline_override ?? ''} onChange={e => patch('headline_override', e.target.value || null)} />
-        </Field>
-        <Field label='Intro override (NULL = default intro paragraph)'>
-          <textarea style={textareaStyle} value={draft.intro_override ?? ''} onChange={e => patch('intro_override', e.target.value || null)} />
-        </Field>
-
-        <Field label='Accuracy Date (e.g. "May 2026" — leave empty to hide disclaimer)'>
-          <input
-            style={inputStyle}
-            value={draft.accuracy_date ?? ''}
-            onChange={e => patch('accuracy_date', e.target.value || null)}
-            placeholder='e.g. May 2026'
-          />
-        </Field>
-
-        <Field label='Active'>
-          <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
-            <option value='true'>Yes</option>
-            <option value='false'>No</option>
-          </select>
-        </Field>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 16, borderTop: `1px solid ${A.border}` }}>
-          <button onClick={handleDelete} style={btnDanger} disabled={saving}>Delete overlay</button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} style={btnGhost} disabled={saving}>Cancel</button>
-            <button onClick={handleSave} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }} disabled={saving}>
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 8, paddingBottom: 4, borderBottom: `1px solid ${A.border}` }}>
+          <button onClick={() => setModalTab('overlay')} style={tabBtn('overlay', 'Overlay')}>Overlay</button>
+          <button onClick={() => setModalTab('access')}  style={tabBtn('access',  'Access')}>Access</button>
         </div>
+
+        {/* Overlay tab */}
+        {modalTab === 'overlay' && (
+          <>
+            <Field label='Hero Image Src'>
+              <ImageFieldWithUploader value={draft.hero_image_src} onChange={v => patch('hero_image_src', v)} />
+            </Field>
+            <Field label='Hero Image Alt'>
+              <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
+            </Field>
+            <Field label='Eyebrow override (NULL = "Curated dining" default)'>
+              <input style={inputStyle} value={draft.eyebrow_override ?? ''} onChange={e => patch('eyebrow_override', e.target.value || null)} />
+            </Field>
+            <Field label='Headline override (NULL = default)'>
+              <input style={inputStyle} value={draft.headline_override ?? ''} onChange={e => patch('headline_override', e.target.value || null)} />
+            </Field>
+            <Field label='Intro override (NULL = default intro paragraph)'>
+              <textarea style={textareaStyle} value={draft.intro_override ?? ''} onChange={e => patch('intro_override', e.target.value || null)} />
+            </Field>
+            <Field label='Accuracy Date (e.g. "May 2026" — leave empty to hide disclaimer)'>
+              <input
+                style={inputStyle}
+                value={draft.accuracy_date ?? ''}
+                onChange={e => patch('accuracy_date', e.target.value || null)}
+                placeholder='e.g. May 2026'
+              />
+            </Field>
+            <Field label='Active'>
+              <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
+                <option value='true'>Yes</option>
+                <option value='false'>No</option>
+              </select>
+            </Field>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 16, borderTop: `1px solid ${A.border}` }}>
+              <button onClick={handleDelete} style={btnDanger} disabled={saving}>Delete overlay</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={onClose} style={btnGhost} disabled={saving}>Cancel</button>
+                <button onClick={handleSave} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Access tab */}
+        {modalTab === 'access' && (
+          <AccessTab
+            globalDestinationId={guide.global_destination_id}
+            showToast={showToast}
+          />
+        )}
       </div>
     </div>
   )
@@ -310,7 +578,7 @@ export default function GuidesDiningTab() {
           Dining Guides
         </div>
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-          Per-destination overlay (hero, eyebrow, headline, intro, accuracy date). Venues themselves live in Library.
+          Per-destination overlay (hero, eyebrow, headline, intro, accuracy date) and access management.
         </div>
       </div>
 
@@ -327,7 +595,7 @@ export default function GuidesDiningTab() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {guides.map(g => {
-                  const dest = destinationsById.get(g.global_destination_id)
+                  const dest       = destinationsById.get(g.global_destination_id)
                   const venueCount = destinationsWithCounts.find(d => d.id === g.global_destination_id)?.venue_count ?? 0
                   return (
                     <div
