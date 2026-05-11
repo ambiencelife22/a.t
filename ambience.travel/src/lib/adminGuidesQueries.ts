@@ -8,7 +8,12 @@
 //   - CRUD on dining_guide_grants — by UUID
 //   - JSON ingest with name+destination collision guard (slug removed S38)
 //
-// Last updated: S40C — Added grant types + fetchGrantsForDestination,
+// Last updated: S40D — Fixed fetchGrantsForDestination profile join shape.
+//   dining_guide_grants.user_id → global_profiles.id is many-to-one (child → parent).
+//   PostgREST returns this as a single object, not an array. Prior code cast
+//   profile as Array<{...}> and indexed r.profile[0] — always undefined, causing
+//   all grantees to display as (unknown user) and grantedPersonIds dedup to fail.
+// Prior: S40C — Added grant types + fetchGrantsForDestination,
 //   fetchAllPeople, fetchProfileByPersonId, createGrant, deleteGrant.
 //   global_profiles.person_id → global_people join for display only.
 //   Grant keys are always UUIDs — email/name are display-only.
@@ -196,20 +201,22 @@ export async function fetchGrantsForDestination(
 
   if (error) throw new Error(`Failed to fetch grants: ${error.message}`)
 
+  // dining_guide_grants.user_id → global_profiles.id is many-to-one (child → parent).
+  // PostgREST returns this join as a single object, not an array.
   const rows = (data ?? []) as unknown as Array<{
     id:                    string
     user_id:               string
     global_destination_id: string
     granted_at:            string
-    profile: Array<{
+    profile: {
       display_name: string | null
       person_id:    string | null
-    }>
+    } | null
   }>
 
   // Collect person_ids to batch-fetch from global_people
   const personIds = rows
-    .map(r => r.profile[0]?.person_id)
+    .map(r => r.profile?.person_id)
     .filter((id): id is string => id != null)
 
   const peopleById = new Map<string, GlobalPerson>()
@@ -224,19 +231,16 @@ export async function fetchGrantsForDestination(
     }
   }
 
-  return rows.map(r => {
-    const profile = r.profile[0] ?? null
-    return {
-      id:                    r.id,
-      user_id:               r.user_id,
-      global_destination_id: r.global_destination_id,
-      granted_at:            r.granted_at,
-      display_name:          profile?.display_name ?? null,
-      person:                profile?.person_id
-        ? (peopleById.get(profile.person_id) ?? null)
-        : null,
-    }
-  })
+  return rows.map(r => ({
+    id:                    r.id,
+    user_id:               r.user_id,
+    global_destination_id: r.global_destination_id,
+    granted_at:            r.granted_at,
+    display_name:          r.profile?.display_name ?? null,
+    person:                r.profile?.person_id
+      ? (peopleById.get(r.profile.person_id) ?? null)
+      : null,
+  }))
 }
 
 // Fetch all global_people for the assign picker
