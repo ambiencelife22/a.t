@@ -9,13 +9,15 @@
 //   filter state, card rendering, 404 chrome (NotFoundPage).
 //
 // Grant states:
-//   no_session  → redirect to /programme (travel client login)
-//   no_grant    → DiningGuidePage hasFullAccess={false} (teaser + editorial strip)
-//   granted     → DiningGuidePage hasFullAccess={true} (full access)
+//   no_session  → hasFullAccess=false (teaser + editorial strip)
+//   no_grant    → hasFullAccess=false (teaser + editorial strip)
+//   granted     → hasFullAccess=true (full access)
 //
-// Last updated: S40C — Grant check added. no_session redirects to /programme.
-//   no_grant renders teaser via DiningGuidePage hasFullAccess={false}.
-//   GuideLockedPage removed.
+// Grant check failures default to teaser — never block page render.
+//
+// Last updated: S40C — Grant check added. All non-granted states render
+//   teaser via DiningGuidePage hasFullAccess={false}. Grant check errors
+//   isolated — fall back to teaser, never notFound.
 // Prior: S40 — NotFoundPage replaces null return on failed destination load.
 // Prior: S39 — Fixed toast loop via toastRef pattern.
 
@@ -87,23 +89,23 @@ export default function DiningGuideRoute() {
           return
         }
 
-        const grant = await checkGuideGrant(slug)
-        if (cancelled) return
-
-        if (grant.status === 'no_session') {
-          // Travel client login — preserve return path in query param
-          const returnPath = encodeURIComponent(window.location.pathname + window.location.search)
-          window.location.replace(`/programme?return=${returnPath}`)
-          return
+        let hasFullAccess = false
+        try {
+          const grant = await checkGuideGrant(slug)
+          hasFullAccess = grant.status === 'granted'
+        } catch (grantErr) {
+          console.warn('DiningGuideRoute: grant check failed, defaulting to teaser', grantErr)
+          hasFullAccess = false
         }
+        if (cancelled) return
 
         setState({
           phase:         'ready',
           destination:   dest,
-          hasFullAccess: grant.status === 'granted',
+          hasFullAccess,
         })
       } catch (err) {
-        console.error('DiningGuideRoute: failed to load', err)
+        console.error('DiningGuideRoute: failed to load destination', err)
         if (cancelled) return
         toastRef.current.warning('Something went wrong loading that guide.')
         setState({ phase: 'notFound', message: 'Something went wrong. Please try again.' })

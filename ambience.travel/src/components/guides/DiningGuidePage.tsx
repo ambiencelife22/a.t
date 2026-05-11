@@ -8,6 +8,7 @@
 //   - PDF download trigger (loads jsPDF, calls exportGuidePdf)
 //   - Plan Your Visit block (always renders — fallback copy when overlay null)
 //   - Accuracy disclaimer block (gated on overlay.accuracy_date non-null)
+//   - Editorial prompt (hasFullAccess=false — teaser state, below grid)
 //
 // What it does not own:
 //   - Path parsing (DiningGuideRoute)
@@ -27,8 +28,10 @@
 //   A subtle divider renders above the first supplementary venue in the grid.
 //   public_preview_rank is a gating mechanism only — no sort influence.
 //
-// Last updated: S40 — Neighborhoods removed entirely from FilterState, URL sync,
-//   filter logic, and DiningGuideFilters prop. Cuisine + Michelin only.
+// Last updated: S40C — hasFullAccess prop added. Ungated users see venues
+//   where public_preview_rank IS NOT NULL (teaser cards). Editorial prompt
+//   renders below grid when hasFullAccess=false.
+// Prior: S40 — Neighborhoods removed from FilterState, URL sync, filter logic.
 // Prior: S40 — Supplementary-last sort. Divider above first supplementary venue.
 // Prior: S40 — Always alphabetical sort.
 // Prior: S40 — Canon hero resolution via destination.heroImageSrc.
@@ -50,6 +53,7 @@ import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
 import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
 import { PlanYourVisit } from './PlanYourVisit'
+import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
 import {
   pageStyle,
   sectionTitleStyle,
@@ -69,14 +73,12 @@ import {
   emptyStateTextStyle,
 } from '../../lib/guidePageStyles'
 
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
-
 interface DiningGuidePageProps {
   destination:   GuideDestination
   hasFullAccess: boolean
 }
 
-// ── Frontend default copy ───────────────────────────────────────────────────
+// ── Frontend default copy ────────────────────────────────────────────────────
 
 const DEFAULT_EYEBROW = 'Curated Dining'
 
@@ -133,11 +135,10 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   const toastRef = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
-  const [venues, setVenues] = useState<DiningVenue[]>([])
-  const [loading, setLoading] = useState(true)
+  const [venues, setVenues]           = useState<DiningVenue[]>([])
+  const [loading, setLoading]         = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
-
-  const [pdfReady, setPdfReady] = useState(false)
+  const [pdfReady, setPdfReady]       = useState(false)
   const [pdfDownloading, setPdfDownloading] = useState(false)
 
   useEffect(() => {
@@ -166,16 +167,16 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
       .catch((err) => { console.error('PDF library load error:', err) })
   }, [])
 
-  // ── Resolved hero copy ─────────────────────────────────────────────────────
+  // ── Resolved hero copy ───────────────────────────────────────────────────
 
-  const overlay = destination.overlay
+  const overlay      = destination.overlay
   const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
   const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
   const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
   const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
 
-  // ── Venue fetch ────────────────────────────────────────────────────────────
+  // ── Venue fetch ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false
@@ -204,7 +205,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
     writeFilterStateToUrl(filterState)
   }, [filterState])
 
-  // ── Derived filter inputs ──────────────────────────────────────────────────
+  // ── Derived filter inputs ────────────────────────────────────────────────
 
   const availableCuisines = useMemo(() => {
     const set = new Set<string>()
@@ -224,7 +225,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
     [venues],
   )
 
-const filteredVenues = useMemo(() => {
+  const filteredVenues = useMemo(() => {
     const visible = hasFullAccess
       ? venues
       : venues.filter(v => v.public_preview_rank != null)
@@ -249,13 +250,12 @@ const filteredVenues = useMemo(() => {
     })
   }, [venues, filterState, hasFullAccess])
 
-  // Index of first supplementary venue in filtered list — drives divider render.
   const firstSupplementaryIndex = useMemo(
     () => filteredVenues.findIndex((v) => v.is_supplementary),
     [filteredVenues],
   )
 
-  // ── PDF download handler ───────────────────────────────────────────────────
+  // ── PDF download handler ─────────────────────────────────────────────────
 
   async function handleDownloadPdf() {
     if (!pdfReady) {
@@ -294,7 +294,7 @@ const filteredVenues = useMemo(() => {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -324,7 +324,8 @@ const filteredVenues = useMemo(() => {
               <div>
                 <h2 style={sectionTitleH2Style}>Selected tables</h2>
                 <p style={sectionTitleCountStyle}>
-                  {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'}
+                  {hasFullAccess ? filteredVenues.length : venues.length}{' '}
+                  {(hasFullAccess ? filteredVenues.length : venues.length) === 1 ? 'restaurant' : 'restaurants'}
                 </p>
               </div>
               <button
@@ -345,10 +346,6 @@ const filteredVenues = useMemo(() => {
             {filteredVenues.length === 0 ? (
               <EmptyState />
             ) : (
-              <section style={gridStyle}>
-                {filteredVenues.length === 0 ? (
-              <EmptyState />
-            ) : (
               <>
                 <section style={gridStyle}>
                   {filteredVenues.map((v, i) => (
@@ -366,10 +363,11 @@ const filteredVenues = useMemo(() => {
                     </React.Fragment>
                   ))}
                 </section>
-                {!hasFullAccess && <EditorialPrompt destinationName={destination.name} />}
+
+                {!hasFullAccess && (
+                  <EditorialPrompt destinationName={destination.name} />
+                )}
               </>
-            )}
-              </section>
             )}
 
             <PlanYourVisit overlay={overlay} variant="dining" />
@@ -388,10 +386,12 @@ const filteredVenues = useMemo(() => {
   )
 }
 
+// ── Editorial Prompt ─────────────────────────────────────────────────────────
+
 function EditorialPrompt({ destinationName }: { destinationName: string }) {
   return (
     <div style={{
-      margin:        '48px 0 0',
+      marginTop:     48,
       padding:       'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
       borderTop:     `1px solid ${IMMERSE.tableBorder}`,
       borderBottom:  `1px solid ${IMMERSE.tableBorder}`,
@@ -407,7 +407,6 @@ function EditorialPrompt({ destinationName }: { destinationName: string }) {
         letterSpacing: '0.2em',
         textTransform: 'uppercase',
         color:         ID.gold,
-        fontFamily:    FONTS.serif,
       }}>
         {destinationName} · Dining Guide
       </div>
@@ -431,7 +430,7 @@ function EditorialPrompt({ destinationName }: { destinationName: string }) {
         maxWidth:   400,
       }}>
         The full {destinationName} dining guide is available to invited guests.
-        Contact your ambience advisor to request access.
+        Contact your ambience team member to request access.
       </p>
     </div>
   )
