@@ -1,15 +1,20 @@
 /* HouseTab.tsx
  * ambience.HOUSE — private client intelligence platform.
  *
- * Last updated: S40D — (1) Client summary block at top of detail — manually
- *   entered freeform briefing note, editable inline. (2) Overview preference
- *   category cards are now expandable — collapsed to 2 rows with "Show all"
- *   toggle. (3) Sidebar preference snapshots removed — navigation + people
- *   only. Dining avoids retained as operational flag.
- * Prior: S40D — PPD API updated to a_ppd_people namespace.
- * Prior: S40D — display_name edit, PersonModal, overview dossier upgrade.
- * Prior: S40D (refactor) — shared adminStyles, adminUi, ToastContext.
- * Prior: S40D — initial ship.
+ * Mobile-responsive: useWindowWidth hook drives layout decisions.
+ *   < 768px (mobile):
+ *     - Two-panel collapses to single column
+ *     - Sidebar nav becomes horizontal scrollable pill bar
+ *     - People + dining avoids render inline above section content
+ *     - All grid forms collapse to single column
+ *     - Preference rows stack vertically
+ *     - Category tabs scroll horizontally
+ *     - Person modal uses full-screen treatment
+ *   >= 768px (desktop): unchanged two-panel layout
+ *
+ * Last updated: S40D — mobile-responsive layout pass.
+ * Prior: S40D — client summary block, expandable overview categories,
+ *   sidebar pref snapshots removed.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -21,28 +26,32 @@ import {
 } from '../../lib/adminStyles'
 import { Field, SectionLabel, CopyButton } from './adminUi'
 import {
-  fetchHouses,
-  fetchHouseById,
-  fetchPeopleForHouse,
-  fetchPreferencesForHouse,
-  fetchDiningHistoryForHouse,
-  fetchPPDForHouse,
-  fetchProfileForPerson,
-  updateHouse,
+  fetchHouses, fetchHouseById,
+  fetchPeopleForHouse, fetchPreferencesForHouse,
+  fetchDiningHistoryForHouse, fetchPPDForHouse,
+  fetchProfileForPerson, updateHouse,
   createPerson, updatePerson, deletePerson,
   createPreference, updatePreference, deletePreference,
   createDiningEntry, updateDiningEntry, deleteDiningEntry,
   createPPDPeopleEntry, deletePPDPeopleEntry,
-  type House,
-  type HousePerson,
-  type HousePreference,
-  type HouseDiningEntry,
-  type PPDPeopleEntry,
-  type HousePersonProfile,
-  type PrefCategory,
-  type PrefConfidence,
-  type DiningStatus,
+  type House, type HousePerson, type HousePreference,
+  type HouseDiningEntry, type PPDPeopleEntry, type HousePersonProfile,
+  type PrefCategory, type PrefConfidence, type DiningStatus,
 } from '../../lib/adminHouseQueries'
+
+// ── Responsive hook ───────────────────────────────────────────────────────────
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1024
+  )
+  useEffect(() => {
+    function handle() { setWidth(window.innerWidth) }
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
+  return width
+}
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -69,53 +78,14 @@ const PREF_CATEGORIES: PrefCategory[] = [
 ]
 
 const PREF_KEYS: Record<string, string[]> = {
-  Dining: [
-    'Preferred Cuisine', 'Avoid Cuisine', 'Dining Style', 'Preferred Meal Time',
-    'Tasting Menus', 'Private Chef', 'Food Delivery', 'Lunch Preference',
-    'Dinner Preference', 'Family Dining Note', 'Couple Dining Note',
-    'Restaurant Atmosphere', 'Price Level', 'Dietary Note',
-  ],
-  Accommodation: [
-    'Preferred Brand', 'Avoid Brand', 'Room Configuration', 'Room Size',
-    'Bed Type', 'Bath Preference', 'Floor Preference', 'View Preference',
-    'Early Check-in', 'Late Check-out', 'Welcome Amenity', 'In-Room Amenity',
-    'Eco Preference', 'Resort Style', 'City Property Style',
-    'Family Property Note', 'Couple Property Note', 'Avoid Property',
-  ],
-  Experiences: [
-    'Sport', 'Fitness', 'Spa Treatment', 'Wellness Retreat', 'Yoga / Pilates',
-    'Watersports', 'Tennis', 'Swimming', 'Snorkeling', 'Skiing',
-    'Art Interest', 'Show / Performance', 'Cultural Interest',
-    'Children Activity', 'Family Activity', 'Adventure Level',
-    'Health Treatment', 'Medical Concierge Note',
-  ],
-  Flight: [
-    'Preferred Class', 'Seat Preference', 'Preferred Airline', 'Avoided Airline',
-    'Preferred Airport', 'Private Aviation', 'PJ Provider Preference',
-    'PJ Catering Note', 'Meal Code', 'Lounge Access',
-    'Max Layover', 'Routing Note', 'Frequent Flyer Program',
-    'Known Traveller Number', 'Global Entry', 'TSA PreCheck',
-  ],
-  Beverage: [
-    'Water Preference', 'Coffee', 'Tea', 'Wine',
-    'Champagne', 'Cocktails', 'Spirits', 'Non-Alcoholic',
-    'Minibar Note', 'Private Jet Beverage', 'Cellar Note',
-  ],
-  Allergies: [
-    'Nut Allergy', 'Shellfish Allergy', 'Dairy Intolerance', 'Gluten Intolerance',
-    'Egg Allergy', 'Soy Allergy', 'Fish Allergy', 'Wheat Allergy',
-    'Sesame Allergy', 'Sulphite Sensitivity', 'Medical Dietary Requirement',
-    'Epipen', 'Allergy Severity Note',
-  ],
-  Service: [
-    'Salutation', 'Communication Style', 'Response Time Expectation',
-    'Point of Contact', 'Privacy Level', 'Photography Policy',
-    'Media Policy', 'Security Note', 'Gift Preference',
-    'Flowers', 'Home Scent', 'Fragrance Sensitivity',
-    'Anniversary', 'Occasion Note', 'VIP Protocol Note',
-    'Do Not Repeat', 'Staff Note',
-  ],
-  Misc: ['General Note', 'To Confirm', 'Open Item'],
+  Dining:        ['Preferred Cuisine', 'Avoid Cuisine', 'Dining Style', 'Preferred Meal Time', 'Tasting Menus', 'Private Chef', 'Food Delivery', 'Lunch Preference', 'Dinner Preference', 'Family Dining Note', 'Couple Dining Note', 'Restaurant Atmosphere', 'Price Level', 'Dietary Note'],
+  Accommodation: ['Preferred Brand', 'Avoid Brand', 'Room Configuration', 'Room Size', 'Bed Type', 'Bath Preference', 'Floor Preference', 'View Preference', 'Early Check-in', 'Late Check-out', 'Welcome Amenity', 'In-Room Amenity', 'Eco Preference', 'Resort Style', 'City Property Style', 'Family Property Note', 'Couple Property Note', 'Avoid Property'],
+  Experiences:   ['Sport', 'Fitness', 'Spa Treatment', 'Wellness Retreat', 'Yoga / Pilates', 'Watersports', 'Tennis', 'Swimming', 'Snorkeling', 'Skiing', 'Art Interest', 'Show / Performance', 'Cultural Interest', 'Children Activity', 'Family Activity', 'Adventure Level', 'Health Treatment', 'Medical Concierge Note'],
+  Flight:        ['Preferred Class', 'Seat Preference', 'Preferred Airline', 'Avoided Airline', 'Preferred Airport', 'Private Aviation', 'PJ Provider Preference', 'PJ Catering Note', 'Meal Code', 'Lounge Access', 'Max Layover', 'Routing Note', 'Frequent Flyer Program', 'Known Traveller Number', 'Global Entry', 'TSA PreCheck'],
+  Beverage:      ['Water Preference', 'Coffee', 'Tea', 'Wine', 'Champagne', 'Cocktails', 'Spirits', 'Non-Alcoholic', 'Minibar Note', 'Private Jet Beverage', 'Cellar Note'],
+  Allergies:     ['Nut Allergy', 'Shellfish Allergy', 'Dairy Intolerance', 'Gluten Intolerance', 'Egg Allergy', 'Soy Allergy', 'Fish Allergy', 'Wheat Allergy', 'Sesame Allergy', 'Sulphite Sensitivity', 'Medical Dietary Requirement', 'Epipen', 'Allergy Severity Note'],
+  Service:       ['Salutation', 'Communication Style', 'Response Time Expectation', 'Point of Contact', 'Privacy Level', 'Photography Policy', 'Media Policy', 'Security Note', 'Gift Preference', 'Flowers', 'Home Scent', 'Fragrance Sensitivity', 'Anniversary', 'Occasion Note', 'VIP Protocol Note', 'Do Not Repeat', 'Staff Note'],
+  Misc:          ['General Note', 'To Confirm', 'Open Item'],
 }
 
 const PPD_KEYS = [
@@ -130,17 +100,34 @@ const PPD_KEYS = [
 
 const ROLES = ['principal', 'spouse', 'child', 'staff', 'advisor', 'guest']
 
+const SOURCE_OPTIONS = [
+  { value: 'direct',          label: 'Direct' },
+  { value: 'inferred',        label: 'Inferred' },
+  { value: 'staff_note',      label: 'Staff Note' },
+  { value: 'profile_summary', label: 'Profile Summary' },
+  { value: 'trip',            label: 'Trip' },
+  { value: 'observation',     label: 'Observation' },
+]
+
+// ── Shared mini components ────────────────────────────────────────────────────
+
+function SourceSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <select style={inputStyle} value={value} onChange={e => onChange(e.target.value)}>
+      {SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  )
+}
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
-function PersonModal({
-  person, houseId, allPreferences, allPPD, onClose, onReload,
-}: {
+function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReload }: {
   person: HousePerson; houseId: string
   allPreferences: HousePreference[]; allPPD: PPDPeopleEntry[]
   onClose: () => void; onReload: () => void
 }) {
-  const { toast }     = useToast()
+  const { toast }   = useToast()
+  const mobile      = useWindowWidth() < 768
   const [tab, setTab] = useState<'identity' | 'preferences' | 'sensitive' | 'profile'>('identity')
 
   const [identityDraft, setIdentityDraft]   = useState({ member_ref: person.member_ref, role: person.role, notes: person.notes ?? '' })
@@ -187,7 +174,7 @@ function PersonModal({
     if (!prefDraft.pref_key.trim() || !prefDraft.pref_value.trim()) return
     setPrefSaving(true)
     try {
-      await createPreference(houseId, person.id, prefCat, prefDraft.pref_key.trim(), prefDraft.pref_value.trim(), null, prefDraft.source || 'direct', prefDraft.confidence)
+      await createPreference(houseId, person.id, prefCat, prefDraft.pref_key.trim(), prefDraft.pref_value.trim(), null, prefDraft.source, prefDraft.confidence)
       toast.success('Added.'); setAddingPref(false); setPrefDraft({ pref_key: '', pref_value: '', source: 'direct', confidence: 'confirmed' }); await onReload()
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
     setPrefSaving(false)
@@ -220,17 +207,31 @@ function PersonModal({
   }
 
   const tabStyle = (t: typeof tab): React.CSSProperties => ({
-    padding: '7px 14px',
+    padding: mobile ? '8px 12px' : '7px 14px', whiteSpace: 'nowrap',
     background: tab === t ? 'rgba(216,181,106,0.10)' : 'transparent',
     color:      tab === t ? A.gold : A.muted,
     border:     tab === t ? '1px solid rgba(216,181,106,0.28)' : `1px solid ${A.border}`,
     borderRadius: 8, fontSize: 11, fontWeight: tab === t ? 700 : 500,
-    fontFamily: A.font, cursor: 'pointer',
+    fontFamily: A.font, cursor: 'pointer', flexShrink: 0,
   })
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 24px', overflowY: 'auto' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(680px, 100%)', background: A.bg, border: `1px solid ${A.border}`, borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.80)', display: 'flex', alignItems: mobile ? 'flex-end' : 'flex-start', justifyContent: 'center', padding: mobile ? 0 : '32px 24px', overflowY: mobile ? 'hidden' : 'auto' }} onClick={onClose}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: mobile ? '100%' : 'min(680px, 100%)',
+          maxHeight: mobile ? '92vh' : 'none',
+          background: A.bg, border: `1px solid ${A.border}`,
+          borderRadius: mobile ? '14px 14px 0 0' : 14,
+          padding: mobile ? '20px 16px' : 24,
+          display: 'flex', flexDirection: 'column', gap: 14,
+          overflowY: 'auto',
+        }}
+      >
+        {/* Handle bar on mobile */}
+        {mobile && <div style={{ width: 36, height: 4, borderRadius: 2, background: A.border, margin: '-8px auto 0' }} />}
+
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 4 }}>Member</div>
@@ -240,7 +241,8 @@ function PersonModal({
           <button onClick={onClose} style={btnG}>Close</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, paddingBottom: 12, borderBottom: `1px solid ${A.border}` }}>
+        {/* Tab bar — scrollable on mobile */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, borderBottom: `1px solid ${A.border}`, scrollbarWidth: 'none' }}>
           <button onClick={() => setTab('identity')}    style={tabStyle('identity')}>Identity</button>
           <button onClick={() => setTab('preferences')} style={tabStyle('preferences')}>Preferences {personPrefs.length > 0 && <span style={{ opacity: 0.6 }}>({personPrefs.length})</span>}</button>
           <button onClick={() => setTab('sensitive')}   style={tabStyle('sensitive')}>Sensitive {personPPD.length > 0 && <span style={{ opacity: 0.6 }}>({personPPD.length})</span>}</button>
@@ -249,7 +251,7 @@ function PersonModal({
 
         {tab === 'identity' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
               <Field label='Reference Code'><input style={inputStyle} value={identityDraft.member_ref} onChange={e => setIdentityDraft(d => ({ ...d, member_ref: e.target.value }))} /></Field>
               <Field label='Role'>
                 <select style={inputStyle} value={identityDraft.role} onChange={e => setIdentityDraft(d => ({ ...d, role: e.target.value }))}>
@@ -258,7 +260,7 @@ function PersonModal({
               </Field>
             </div>
             <Field label='Notes (internal)'><textarea style={{ ...textareaStyle, minHeight: 72 }} value={identityDraft.notes} onChange={e => setIdentityDraft(d => ({ ...d, notes: e.target.value }))} placeholder='Any notes about this person…' /></Field>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: `1px solid ${A.border}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: `1px solid ${A.border}`, flexWrap: 'wrap', gap: 8 }}>
               <button onClick={deleteSelf} style={{ ...btnD, border: '1px solid rgba(248,113,113,0.3)', padding: '5px 12px' }}>Remove from household</button>
               <button onClick={saveIdentity} style={{ ...btnP, opacity: identitySaving ? 0.5 : 1 }} disabled={identitySaving}>{identitySaving ? 'Saving…' : 'Save'}</button>
             </div>
@@ -267,27 +269,25 @@ function PersonModal({
 
         {tab === 'preferences' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>Preferences assigned to {person.member_ref} specifically.</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>Preferences for {person.member_ref} specifically.</div>
               {!addingPref && <button onClick={() => setAddingPref(true)} style={btnP}>+ Add</button>}
             </div>
             {addingPref && (
               <div style={{ padding: '12px 14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label='Category'>
-                    <select style={inputStyle} value={prefCat} onChange={e => { setPrefCat(e.target.value as PrefCategory); setPrefDraft(d => ({ ...d, pref_key: '' })) }}>
-                      {PREF_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </Field>
-                  <Field label='Key'>
-                    <select style={inputStyle} value={prefDraft.pref_key} onChange={e => setPrefDraft(d => ({ ...d, pref_key: e.target.value }))}>
-                      <option value=''>Select…</option>
-                      {(PREF_KEYS[prefCat] ?? []).map(k => <option key={k} value={k}>{k}</option>)}
-                    </select>
-                  </Field>
-                </div>
+                <Field label='Category'>
+                  <select style={inputStyle} value={prefCat} onChange={e => { setPrefCat(e.target.value as PrefCategory); setPrefDraft(d => ({ ...d, pref_key: '' })) }}>
+                    {PREF_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+                <Field label='Key'>
+                  <select style={inputStyle} value={prefDraft.pref_key} onChange={e => setPrefDraft(d => ({ ...d, pref_key: e.target.value }))}>
+                    <option value=''>Select…</option>
+                    {(PREF_KEYS[prefCat] ?? []).map(k => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                </Field>
                 <Field label='Value'><input style={inputStyle} placeholder='Value…' value={prefDraft.pref_value} onChange={e => setPrefDraft(d => ({ ...d, pref_value: e.target.value }))} autoFocus /></Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
                   <Field label='Confidence'>
                     <select style={inputStyle} value={prefDraft.confidence} onChange={e => setPrefDraft(d => ({ ...d, confidence: e.target.value as PrefConfidence }))}>
                       <option value='confirmed'>Confirmed</option>
@@ -295,16 +295,7 @@ function PersonModal({
                       <option value='outdated'>Outdated</option>
                     </select>
                   </Field>
-                  <Field label='Source'>
-                    <select style={inputStyle} value={prefDraft.source} onChange={e => setPrefDraft(d => ({ ...d, source: e.target.value }))}>
-                      <option value='direct'>Direct</option>
-                      <option value='inferred'>Inferred</option>
-                      <option value='staff_note'>Staff Note</option>
-                      <option value='profile_summary'>Profile Summary</option>
-                      <option value='trip'>Trip</option>
-                      <option value='observation'>Observation</option>
-                    </select>
-                  </Field>
+                  <Field label='Source'><SourceSelect value={prefDraft.source} onChange={v => setPrefDraft(d => ({ ...d, source: v }))} /></Field>
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => setAddingPref(false)} style={btnG}>Cancel</button>
@@ -317,14 +308,13 @@ function PersonModal({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {personPrefs.map(p => (
-                  <div key={p.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${CONF_COLOR[p.confidence]}`, borderRadius: 8, display: 'grid', gridTemplateColumns: '150px 1fr auto', gap: 10, alignItems: 'center', opacity: p.confidence === 'outdated' ? 0.55 : 1 }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category}</div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.pref_key}</div>
+                  <div key={p.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${CONF_COLOR[p.confidence]}`, borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start', opacity: p.confidence === 'outdated' ? 0.55 : 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.pref_key}</div>
+                      <div style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 2 }}>{p.pref_value}</div>
                     </div>
-                    <div style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{p.pref_value}</div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {p.confidence !== 'confirmed' && <button onClick={() => confirmPref(p)} style={{ ...btnG, padding: '3px 7px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>Confirm</button>}
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {p.confidence !== 'confirmed' && <button onClick={() => confirmPref(p)} style={{ ...btnG, padding: '3px 7px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>✓</button>}
                       <button onClick={() => removePref(p.id)} style={btnD}>×</button>
                     </div>
                   </div>
@@ -337,8 +327,8 @@ function PersonModal({
         {tab === 'sensitive' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ padding: '8px 12px', background: '#f8717108', border: '1px solid #f8717125', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11 }}>🔒</span>
-              <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Sensitive personal data. Strict discretion required.</span>
+              <span>🔒</span>
+              <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Sensitive data. Strict discretion required.</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               {!addingPPD && <button onClick={() => setAddingPPD(true)} style={btnP}>+ Add Record</button>}
@@ -364,11 +354,11 @@ function PersonModal({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {personPPD.map(entry => (
-                  <div key={entry.id} style={{ display: 'grid', gridTemplateColumns: '150px 1fr auto auto', gap: 10, alignItems: 'center', padding: '10px 14px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.12)', borderRadius: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.data_key}</div>
-                    <div>
-                      <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600 }}>{entry.data_value}</div>
-                      {entry.access_note && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 1, fontStyle: 'italic' }}>{entry.access_note}</div>}
+                  <div key={entry.id} style={{ padding: '10px 14px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.12)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.data_key}</div>
+                      <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>{entry.data_value}</div>
+                      {entry.access_note && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{entry.access_note}</div>}
                     </div>
                     <CopyButton value={entry.data_value} />
                     <button onClick={() => removePPD(entry.id)} style={btnD}>×</button>
@@ -386,7 +376,7 @@ function PersonModal({
             ) : profile === null ? (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: A.faint, flexShrink: 0 }} />
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: A.faint }} />
                   <span style={{ fontSize: 13, color: A.muted, fontFamily: A.font }}>No linked account</span>
                 </div>
                 <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, lineHeight: 1.6 }}>
@@ -394,23 +384,21 @@ function PersonModal({
                 </div>
               </div>
             ) : (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80' }} />
                   <span style={{ fontSize: 13, color: '#4ade80', fontFamily: A.font, fontWeight: 600 }}>Account linked</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ padding: '12px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8 }}>
-                    <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>Display name</div>
-                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{profile.display_name ?? '(not set)'}</div>
+                <div style={{ padding: '12px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>Display name</div>
+                  <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{profile.display_name ?? '(not set)'}</div>
+                </div>
+                <div style={{ padding: '12px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>Profile UUID</div>
+                    <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', wordBreak: 'break-all' }}>{profile.id}</div>
                   </div>
-                  <div style={{ padding: '12px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>Profile UUID</div>
-                      <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{profile.id}</div>
-                    </div>
-                    <CopyButton value={profile.id} />
-                  </div>
+                  <CopyButton value={profile.id} />
                 </div>
               </div>
             )}
@@ -430,7 +418,7 @@ function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
   const { toast }             = useToast()
 
   useEffect(() => {
-    fetchHouses().then(setHouses).catch(e => toast.error(e instanceof Error ? e.message : 'Failed to load')).finally(() => setLoading(false))
+    fetchHouses().then(setHouses).catch(e => toast.error(e instanceof Error ? e.message : 'Failed')).finally(() => setLoading(false))
   }, [])
 
   const filtered = useMemo(() => {
@@ -440,25 +428,24 @@ function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
       h.display_name.toLowerCase().includes(q) ||
       h.a_house_id.toLowerCase().includes(q) ||
       (h.summary ?? '').toLowerCase().includes(q) ||
-      (h.service_style_notes ?? '').toLowerCase().includes(q) ||
-      (h.avoid_notes ?? '').toLowerCase().includes(q)
+      (h.service_style_notes ?? '').toLowerCase().includes(q)
     )
   }, [houses, search])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 720 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 6 }}>ambience · HOUSE</div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', marginBottom: 3 }}>Client Households</div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', marginBottom: 3 }}>Client Households</div>
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>{houses.length} household{houses.length !== 1 ? 's' : ''}</div>
       </div>
-      <input style={{ ...inputStyle, fontSize: 13, padding: '11px 14px' }} placeholder='Search…' value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+      <input style={{ ...inputStyle, fontSize: 14, padding: '12px 14px' }} placeholder='Search…' value={search} onChange={e => setSearch(e.target.value)} autoFocus />
       {loading ? (
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading…</div>
       ) : filtered.length === 0 ? (
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No results.</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map(h => <HouseCard key={h.id} house={h} onClick={() => onSelect(h)} />)}
         </div>
       )}
@@ -473,31 +460,21 @@ function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ padding: '18px 22px 14px', background: hov ? '#1a1f1c' : A.bgCard, border: `1px solid ${hov ? A.gold + '50' : A.border}`, borderRadius: 12, cursor: 'pointer', transition: 'all 0.12s ease', display: 'flex', flexDirection: 'column', gap: 8 }}
+      style={{ padding: '16px 18px 14px', background: hov ? '#1a1f1c' : A.bgCard, border: `1px solid ${hov ? A.gold + '50' : A.border}`, borderRadius: 12, cursor: 'pointer', transition: 'all 0.12s ease', display: 'flex', flexDirection: 'column', gap: 8 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.display_name}</span>
           {house.designation && (
             <span style={{ padding: '1px 7px', borderRadius: 5, background: (DESIG_COLOR[house.designation] ?? A.gold) + '18', border: `1px solid ${(DESIG_COLOR[house.designation] ?? A.gold)}35`, color: DESIG_COLOR[house.designation] ?? A.gold, fontSize: 9, fontWeight: 700, fontFamily: A.font, letterSpacing: '0.1em' }}>{house.designation}</span>
           )}
           <span style={{ fontSize: 9, color: house.status === 'active' ? '#4ade80' : A.faint, fontFamily: A.font, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{house.status}</span>
         </div>
-        <span style={{ color: A.gold, opacity: hov ? 0.9 : 0.2, transition: 'opacity 0.12s', fontSize: 14 }}>→</span>
+        <span style={{ color: A.gold, opacity: hov ? 0.9 : 0.25, transition: 'opacity 0.12s', fontSize: 14, flexShrink: 0 }}>→</span>
       </div>
-      {house.summary ? (
+      {(house.summary || house.service_style_notes) && (
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.5, borderLeft: `2px solid ${A.gold}35`, paddingLeft: 10 }}>
-          {house.summary.length > 140 ? house.summary.slice(0, 140) + '…' : house.summary}
-        </div>
-      ) : house.service_style_notes ? (
-        <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, fontStyle: 'italic', lineHeight: 1.5, borderLeft: `2px solid ${A.gold}35`, paddingLeft: 10 }}>
-          {house.service_style_notes.length > 130 ? house.service_style_notes.slice(0, 130) + '…' : house.service_style_notes}
-        </div>
-      ) : null}
-      {house.avoid_notes && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#f87171', fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', paddingTop: 1, whiteSpace: 'nowrap' }}>Avoid</span>
-          <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font, opacity: 0.8, lineHeight: 1.5 }}>{house.avoid_notes.length > 90 ? house.avoid_notes.slice(0, 90) + '…' : house.avoid_notes}</span>
+          {(house.summary || house.service_style_notes)!.slice(0, 140)}{((house.summary || house.service_style_notes)!.length > 140) ? '…' : ''}
         </div>
       )}
       <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{house.a_house_id}</div>
@@ -517,17 +494,17 @@ interface AllData {
 }
 
 function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void }) {
-  const [house, setHouse]             = useState<House>(init)
-  const [section, setSection]         = useState<Section>('overview')
-  const [q, setQ]                     = useState('')
-  const [data, setData]               = useState<AllData>({ people: [], preferences: [], dining: [], ppd: [] })
-  const [loading, setLoading]         = useState(true)
+  const mobile                    = useWindowWidth() < 768
+  const [house, setHouse]         = useState<House>(init)
+  const [section, setSection]     = useState<Section>('overview')
+  const [q, setQ]                 = useState('')
+  const [data, setData]           = useState<AllData>({ people: [], preferences: [], dining: [], ppd: [] })
+  const [loading, setLoading]     = useState(true)
   const [modalPerson, setModalPerson] = useState<HousePerson | null>(null)
-  const { toast }                     = useToast()
-  const searchRef                     = useRef<HTMLInputElement>(null)
-
+  const { toast }                 = useToast()
+  const searchRef                 = useRef<HTMLInputElement>(null)
   const [addingPerson, setAddingPerson] = useState(false)
-  const [pd, setPd]       = useState({ member_ref: '', role: 'principal' })
+  const [pd, setPd]               = useState({ member_ref: '', role: 'principal' })
   const [addSaving, setAddSaving] = useState(false)
 
   async function loadAll() {
@@ -567,8 +544,8 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     const query = q.toLowerCase().trim()
     if (!query) return null
     return {
-      preferences: data.preferences.filter(p => p.pref_key.toLowerCase().includes(query) || p.pref_value.toLowerCase().includes(query) || (p.notes ?? '').toLowerCase().includes(query)),
-      dining:      data.dining.filter(d => d.restaurant_name.toLowerCase().includes(query) || (d.city ?? '').toLowerCase().includes(query) || (d.notes ?? '').toLowerCase().includes(query)),
+      preferences: data.preferences.filter(p => p.pref_key.toLowerCase().includes(query) || p.pref_value.toLowerCase().includes(query)),
+      dining:      data.dining.filter(d => d.restaurant_name.toLowerCase().includes(query) || (d.city ?? '').toLowerCase().includes(query)),
       ppd:         data.ppd.filter(p => p.data_key.toLowerCase().includes(query) || p.data_value.toLowerCase().includes(query)),
     }
   }, [q, data])
@@ -593,6 +570,53 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     { id: 'notes',       label: 'Notes' },
   ]
 
+  // ── People block (used inline on mobile, in sidebar on desktop) ──────────
+  const PeopleBlock = (
+    <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <SectionLabel label='Household' />
+        {!addingPerson && <button onClick={() => setAddingPerson(true)} style={{ ...btnG, padding: '2px 8px', fontSize: 10, marginTop: -6 }}>+</button>}
+      </div>
+      {data.people.length === 0 && !addingPerson && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No members yet.</div>}
+      {data.people.map(p => (
+        <div key={p.id} onClick={() => setModalPerson(p)} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, cursor: 'pointer', padding: '4px 0' }} title='Click to view / edit'>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${A.gold}18`, border: `1px solid ${A.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: A.gold, fontFamily: A.font, flexShrink: 0 }}>
+            {p.member_ref.slice(0, 1).toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{p.member_ref}</div>
+            <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{p.role}</div>
+          </div>
+          <span style={{ fontSize: 12, color: A.faint, opacity: 0.5 }}>›</span>
+        </div>
+      ))}
+      {addingPerson && (
+        <div style={{ marginTop: 6, padding: '10px', background: A.bgInput, borderRadius: 8, border: `1px solid ${A.gold}40`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} placeholder='J, K, Child 1…' value={pd.member_ref} onChange={e => setPd(d => ({ ...d, member_ref: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') addPerson() }} />
+          <select style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} value={pd.role} onChange={e => setPd(d => ({ ...d, role: e.target.value }))}>
+            {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+          </select>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'principal' }) }} style={btnG}>Cancel</button>
+            <button onClick={addPerson} style={{ ...btnP, opacity: addSaving ? 0.5 : 1 }} disabled={addSaving}>Add</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // ── Avoid dining block ───────────────────────────────────────────────────
+  const AvoidBlock = avoidDining.length > 0 ? (
+    <div style={{ background: '#2a161630', border: '1px solid #f8717125', borderRadius: 10, padding: '12px 14px' }}>
+      <SectionLabel label='Dining Avoids' color='#f87171' />
+      {avoidDining.map(d => (
+        <div key={d.id} style={{ fontSize: 11, color: '#f87171', fontFamily: A.font, marginBottom: 4, opacity: 0.85 }}>
+          {d.restaurant_name}{d.city && <span style={{ opacity: 0.6 }}> · {d.city}</span>}
+        </div>
+      ))}
+    </div>
+  ) : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
@@ -605,108 +629,98 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
       )}
 
       {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={onBack} style={{ ...btnG, padding: '5px 10px', fontSize: 11 }}>← All</button>
-          <span style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{house.display_name}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button onClick={onBack} style={{ ...btnG, padding: '5px 10px', fontSize: 11, flexShrink: 0 }}>← All</button>
+          <span style={{ fontSize: mobile ? 18 : 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{house.display_name}</span>
           {house.designation && (
-            <span style={{ padding: '2px 8px', borderRadius: 5, background: (DESIG_COLOR[house.designation] ?? A.gold) + '18', border: `1px solid ${(DESIG_COLOR[house.designation] ?? A.gold)}35`, color: DESIG_COLOR[house.designation] ?? A.gold, fontSize: 9, fontWeight: 700, fontFamily: A.font, letterSpacing: '0.1em' }}>{house.designation}</span>
+            <span style={{ padding: '2px 7px', borderRadius: 5, background: (DESIG_COLOR[house.designation] ?? A.gold) + '18', border: `1px solid ${(DESIG_COLOR[house.designation] ?? A.gold)}35`, color: DESIG_COLOR[house.designation] ?? A.gold, fontSize: 9, fontWeight: 700, fontFamily: A.font, letterSpacing: '0.1em', flexShrink: 0 }}>{house.designation}</span>
           )}
         </div>
-        <div style={{ position: 'relative' }}>
-          <input ref={searchRef} style={{ ...inputStyle, width: 230, paddingRight: 30 }} placeholder='Search everything… (/)' value={q} onChange={e => setQ(e.target.value)} />
+        <div style={{ position: 'relative', flexShrink: 0, width: mobile ? '100%' : 'auto' }}>
+          <input ref={searchRef} style={{ ...inputStyle, width: mobile ? '100%' : 220, paddingRight: 30, boxSizing: 'border-box' }} placeholder='Search… (/)' value={q} onChange={e => setQ(e.target.value)} />
           {q && <button onClick={() => setQ('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: A.faint, cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>}
         </div>
       </div>
 
+      {/* Section nav — horizontal scroll on mobile, sidebar on desktop */}
+      {mobile && (
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, marginBottom: 12, scrollbarWidth: 'none' }}>
+          {NAV.map(n => (
+            <button key={n.id} onClick={() => setSection(n.id)} style={{
+              padding: '8px 14px', whiteSpace: 'nowrap', flexShrink: 0,
+              background: section === n.id ? 'rgba(216,181,106,0.10)' : 'transparent',
+              color:      section === n.id ? A.gold : A.muted,
+              border:     section === n.id ? '1px solid rgba(216,181,106,0.28)' : `1px solid ${A.border}`,
+              borderRadius: 20, fontSize: 12, fontWeight: section === n.id ? 700 : 500,
+              fontFamily: A.font, cursor: 'pointer',
+            }}>
+              {n.label}{n.count ? ` ${n.count}` : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
       {searchResults && <SearchResults results={searchResults} personRef={personRef} onClose={() => setQ('')} />}
 
       {!searchResults && (
-        <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
-
-          {/* Sidebar — nav + people + dining avoids only */}
-          <div style={{ width: 210, flexShrink: 0, position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-            {/* Nav */}
-            <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, overflow: 'hidden' }}>
-              {NAV.map((n, i) => (
-                <button key={n.id} onClick={() => setSection(n.id)} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '10px 14px', textAlign: 'left',
-                  background: section === n.id ? 'rgba(216,181,106,0.08)' : 'transparent',
-                  borderLeft: section === n.id ? `2px solid ${A.gold}` : '2px solid transparent',
-                  border: 'none', borderBottom: i < NAV.length - 1 ? `1px solid ${A.border}` : 'none',
-                  color: section === n.id ? A.gold : A.muted,
-                  fontSize: 12, fontWeight: section === n.id ? 700 : 500,
-                  fontFamily: A.font, cursor: 'pointer',
-                }}>
-                  <span>{n.label}</span>
-                  {n.count !== undefined && n.count > 0 && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{n.count}</span>}
-                </button>
-              ))}
-            </div>
-
-            {/* People */}
-            <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <SectionLabel label='Household' />
-                {!addingPerson && <button onClick={() => setAddingPerson(true)} style={{ ...btnG, padding: '2px 8px', fontSize: 10, marginTop: -6 }}>+</button>}
-              </div>
-              {data.people.length === 0 && !addingPerson && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No members yet.</div>}
-              {data.people.map(p => (
-                <div key={p.id} onClick={() => setModalPerson(p)} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, cursor: 'pointer', borderRadius: 6, padding: '3px 0' }} title='Click to view / edit'>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: `${A.gold}18`, border: `1px solid ${A.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: A.gold, fontFamily: A.font, flexShrink: 0 }}>
-                    {p.member_ref.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{p.member_ref}</div>
-                    <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{p.role}</div>
-                  </div>
-                  <span style={{ fontSize: 10, color: A.faint, opacity: 0.5 }}>›</span>
-                </div>
-              ))}
-              {addingPerson && (
-                <div style={{ marginTop: 6, padding: '8px 10px', background: A.bgInput, borderRadius: 8, border: `1px solid ${A.gold}40` }}>
-                  <input style={{ ...inputStyle, fontSize: 11, padding: '5px 8px', marginBottom: 5 }} placeholder='J, K, Child 1…' value={pd.member_ref} onChange={e => setPd(d => ({ ...d, member_ref: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') addPerson() }} />
-                  <select style={{ ...inputStyle, fontSize: 11, padding: '5px 8px', marginBottom: 6 }} value={pd.role} onChange={e => setPd(d => ({ ...d, role: e.target.value }))}>
-                    {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                  </select>
-                  <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                    <button onClick={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'principal' }) }} style={{ ...btnG, padding: '3px 8px', fontSize: 10 }}>Cancel</button>
-                    <button onClick={addPerson} style={{ ...btnP, padding: '3px 8px', fontSize: 10, opacity: addSaving ? 0.5 : 1 }} disabled={addSaving}>Add</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Dining avoids — operational flag only */}
-            {avoidDining.length > 0 && (
-              <div style={{ background: '#2a161630', border: '1px solid #f8717125', borderRadius: 10, padding: '12px 14px' }}>
-                <SectionLabel label='Dining Avoids' color='#f87171' />
-                {avoidDining.map(d => (
-                  <div key={d.id} style={{ fontSize: 11, color: '#f87171', fontFamily: A.font, marginBottom: 4, opacity: 0.85 }}>
-                    {d.restaurant_name}{d.city && <span style={{ opacity: 0.6 }}> · {d.city}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Content */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+        mobile ? (
+          // ── Mobile: single column ────────────────────────────────────────
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? (
               <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading…</div>
             ) : (
               <>
-                {section === 'overview'    && <OverviewSection    house={house} data={data} onSaved={reloadHouse} onReload={loadAll} />}
-                {section === 'preferences' && <PreferencesSection data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
-                {section === 'dining'      && <DiningSection      data={data}   houseId={house.id} onReload={loadAll} />}
+                {PeopleBlock}
+                {AvoidBlock}
+                {section === 'overview'    && <OverviewSection    house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={true} />}
+                {section === 'preferences' && <PreferencesSection data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={true} />}
+                {section === 'dining'      && <DiningSection      data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
                 {section === 'sensitive'   && <SensitiveSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
                 {section === 'notes'       && <NotesSection       house={house} onSaved={reloadHouse} />}
               </>
             )}
           </div>
-        </div>
+        ) : (
+          // ── Desktop: two-panel ───────────────────────────────────────────
+          <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+            <div style={{ width: 210, flexShrink: 0, position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Nav */}
+              <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                {NAV.map((n, i) => (
+                  <button key={n.id} onClick={() => setSection(n.id)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '10px 14px', textAlign: 'left',
+                    background: section === n.id ? 'rgba(216,181,106,0.08)' : 'transparent',
+                    borderLeft: section === n.id ? `2px solid ${A.gold}` : '2px solid transparent',
+                    border: 'none', borderBottom: i < NAV.length - 1 ? `1px solid ${A.border}` : 'none',
+                    color: section === n.id ? A.gold : A.muted,
+                    fontSize: 12, fontWeight: section === n.id ? 700 : 500,
+                    fontFamily: A.font, cursor: 'pointer',
+                  }}>
+                    <span>{n.label}</span>
+                    {n.count !== undefined && n.count > 0 && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{n.count}</span>}
+                  </button>
+                ))}
+              </div>
+              {PeopleBlock}
+              {AvoidBlock}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {loading ? (
+                <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading…</div>
+              ) : (
+                <>
+                  {section === 'overview'    && <OverviewSection    house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={false} />}
+                  {section === 'preferences' && <PreferencesSection data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={false} />}
+                  {section === 'dining'      && <DiningSection      data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
+                  {section === 'sensitive'   && <SensitiveSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
+                  {section === 'notes'       && <NotesSection       house={house} onSaved={reloadHouse} />}
+                </>
+              )}
+            </div>
+          </div>
+        )
       )}
     </div>
   )
@@ -721,7 +735,7 @@ function SearchResults({ results, personRef, onClose }: {
 }) {
   const total = results.preferences.length + results.dining.length + results.ppd.length
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{total} result{total !== 1 ? 's' : ''}</span>
         <button onClick={onClose} style={{ ...btnG, padding: '4px 10px', fontSize: 11 }}>Clear</button>
@@ -731,11 +745,9 @@ function SearchResults({ results, personRef, onClose }: {
           <SectionLabel label='Preferences' />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {results.preferences.map(p => (
-              <div key={p.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${CONF_COLOR[p.confidence]}`, borderRadius: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.pref_key}{personRef(p.person_id) ? ` · ${personRef(p.person_id)}` : ''}</div>
-                  <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{p.pref_value}</div>
-                </div>
+              <div key={p.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${CONF_COLOR[p.confidence]}`, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.pref_key}{personRef(p.person_id) ? ` · ${personRef(p.person_id)}` : ''}</div>
+                <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 2 }}>{p.pref_value}</div>
               </div>
             ))}
           </div>
@@ -746,12 +758,12 @@ function SearchResults({ results, personRef, onClose }: {
           <SectionLabel label='Dining' />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {results.dining.map(d => (
-              <div key={d.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${STATUS[d.status].text}`, borderRadius: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div key={d.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${STATUS[d.status].text}`, borderRadius: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{d.restaurant_name}</div>
                   <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[d.city, d.country].filter(Boolean).join(', ')}</div>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: STATUS[d.status].text, fontFamily: A.font, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{STATUS[d.status].label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: STATUS[d.status].text, fontFamily: A.font, textTransform: 'uppercase' }}>{STATUS[d.status].label}</span>
               </div>
             ))}
           </div>
@@ -762,10 +774,10 @@ function SearchResults({ results, personRef, onClose }: {
           <SectionLabel label='Sensitive' color='#f87171' />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {results.ppd.map(p => (
-              <div key={p.id} style={{ padding: '10px 14px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
+              <div key={p.id} style={{ padding: '10px 14px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.data_key}</div>
-                  <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600 }}>{p.data_value}</div>
+                  <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, wordBreak: 'break-all' }}>{p.data_value}</div>
                 </div>
                 <CopyButton value={p.data_value} />
               </div>
@@ -780,8 +792,9 @@ function SearchResults({ results, personRef, onClose }: {
 
 // ── Overview section ──────────────────────────────────────────────────────────
 
-function OverviewSection({ house, data, onSaved, onReload }: {
-  house: House; data: AllData; onSaved: () => void; onReload: () => void
+function OverviewSection({ house, data, onSaved, onReload, mobile }: {
+  house: House; data: AllData; mobile: boolean
+  onSaved: () => void; onReload: () => void
 }) {
   const [editingName, setEditingName]       = useState(false)
   const [nameDraft, setNameDraft]           = useState(house.display_name)
@@ -793,12 +806,7 @@ function OverviewSection({ house, data, onSaved, onReload }: {
   const { toast }                           = useToast()
 
   function toggleCat(cat: string) {
-    setExpandedCats(prev => {
-      const next = new Set(prev)
-      if (next.has(cat)) next.delete(cat)
-      else next.add(cat)
-      return next
-    })
+    setExpandedCats(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n })
   }
 
   async function saveName() {
@@ -811,19 +819,14 @@ function OverviewSection({ house, data, onSaved, onReload }: {
 
   async function saveSummary() {
     setSummarySaving(true)
-    try { await updateHouse(house.id, { summary: summaryDraft.trim() || null }); toast.success('Summary saved.'); setEditingSummary(false); await onSaved() }
+    try { await updateHouse(house.id, { summary: summaryDraft.trim() || null }); toast.success('Saved.'); setEditingSummary(false); await onSaved() }
     catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
     setSummarySaving(false)
   }
 
   const prefsByCategory = useMemo(() => {
     const confirmed = data.preferences.filter(p => p.confidence === 'confirmed')
-    const out: Array<{ cat: PrefCategory; prefs: HousePreference[] }> = []
-    for (const cat of PREF_CATEGORIES) {
-      const items = confirmed.filter(p => p.category === cat)
-      if (items.length) out.push({ cat, prefs: items })
-    }
-    return out
+    return PREF_CATEGORIES.map(cat => ({ cat, prefs: confirmed.filter(p => p.category === cat) })).filter(x => x.prefs.length > 0)
   }, [data.preferences])
 
   const favs   = data.dining.filter(d => d.status === 'favorite')
@@ -831,49 +834,37 @@ function OverviewSection({ house, data, onSaved, onReload }: {
 
   const hardDietaryAvoids = data.preferences.filter(p =>
     p.confidence === 'confirmed' &&
-    (p.category === 'Allergies' ||
-      (p.category === 'Dining' && ['No Alcohol', 'No Pork', 'Halal', 'Kosher', 'Vegan', 'Vegetarian'].includes(p.pref_key))
-    )
+    (p.category === 'Allergies' || (p.category === 'Dining' && ['No Alcohol','No Pork','Halal','Kosher','Vegan','Vegetarian'].includes(p.pref_key)))
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Editable display name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Name edit */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {editingName ? (
           <>
-            <input style={{ ...inputStyle, fontSize: 18, fontWeight: 700, padding: '6px 12px', width: 260 }} value={nameDraft} onChange={e => setNameDraft(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditingName(false); setNameDraft(house.display_name) } }} />
+            <input style={{ ...inputStyle, fontSize: 16, fontWeight: 700, padding: '7px 12px', flex: 1, minWidth: 160 }} value={nameDraft} onChange={e => setNameDraft(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditingName(false); setNameDraft(house.display_name) } }} />
             <button onClick={saveName} style={{ ...btnP, opacity: nameSaving ? 0.5 : 1 }} disabled={nameSaving}>Save</button>
             <button onClick={() => { setEditingName(false); setNameDraft(house.display_name) }} style={btnG}>Cancel</button>
           </>
         ) : (
           <>
-            <span style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.display_name}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.display_name}</span>
             <button onClick={() => setEditingName(true)} style={{ ...btnG, padding: '3px 10px', fontSize: 10 }}>Edit name</button>
           </>
         )}
       </div>
 
-      {/* Client summary block */}
-      <div style={{ padding: '16px 18px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editingSummary ? 10 : (house.summary ? 10 : 0) }}>
+      {/* Summary */}
+      <div style={{ padding: '14px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: house.summary || editingSummary ? 10 : 0 }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Client Summary</div>
-          {!editingSummary && (
-            <button onClick={() => { setEditingSummary(true); setSummaryDraft(house.summary ?? '') }} style={{ ...btnG, padding: '3px 10px', fontSize: 10 }}>
-              {house.summary ? 'Edit' : '+ Add summary'}
-            </button>
-          )}
+          {!editingSummary && <button onClick={() => { setEditingSummary(true); setSummaryDraft(house.summary ?? '') }} style={{ ...btnG, padding: '3px 10px', fontSize: 10 }}>{house.summary ? 'Edit' : '+ Add'}</button>}
         </div>
         {editingSummary ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <textarea
-              style={{ ...textareaStyle, minHeight: 120, lineHeight: 1.8 }}
-              value={summaryDraft}
-              onChange={e => setSummaryDraft(e.target.value)}
-              placeholder='A concise briefing note — who this client is, how they travel, what matters to them. Written for quick reference mid-call or before a trip.'
-              autoFocus
-            />
+            <textarea style={{ ...textareaStyle, minHeight: 110, lineHeight: 1.8 }} value={summaryDraft} onChange={e => setSummaryDraft(e.target.value)} placeholder='A concise briefing note…' autoFocus />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setEditingSummary(false); setSummaryDraft(house.summary ?? '') }} style={btnG}>Cancel</button>
               <button onClick={saveSummary} style={{ ...btnP, opacity: summarySaving ? 0.5 : 1 }} disabled={summarySaving}>{summarySaving ? 'Saving…' : 'Save'}</button>
@@ -882,49 +873,44 @@ function OverviewSection({ house, data, onSaved, onReload }: {
         ) : house.summary ? (
           <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{house.summary}</div>
         ) : (
-          <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No summary yet. Add one for quick reference.</div>
+          <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No summary yet.</div>
         )}
       </div>
 
       {/* Dietary avoid strip */}
       {hardDietaryAvoids.length > 0 && (
-        <div style={{ padding: '10px 16px', background: '#f8717108', border: '1px solid #f8717130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ padding: '10px 14px', background: '#f8717108', border: '1px solid #f8717130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f87171', fontFamily: A.font, whiteSpace: 'nowrap' }}>Dietary</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {hardDietaryAvoids.map(p => (
-              <span key={p.id} style={{ padding: '2px 9px', borderRadius: 20, background: '#f8717120', border: '1px solid #f8717140', color: '#f87171', fontSize: 11, fontWeight: 600, fontFamily: A.font }}>
-                {p.pref_key}
-              </span>
+              <span key={p.id} style={{ padding: '2px 9px', borderRadius: 20, background: '#f8717120', border: '1px solid #f8717140', color: '#f87171', fontSize: 11, fontWeight: 600, fontFamily: A.font }}>{p.pref_key}</span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Expandable preference category cards */}
+      {/* Expandable preference categories */}
       {prefsByCategory.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {prefsByCategory.map(({ cat, prefs }) => {
             const expanded = expandedCats.has(cat)
             return (
               <div key={cat} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, overflow: 'hidden' }}>
-                <div
-                  onClick={() => toggleCat(cat)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', cursor: 'pointer', borderBottom: expanded ? `1px solid ${A.border}` : 'none', userSelect: 'none' }}
-                >
+                <div onClick={() => toggleCat(cat)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer', borderBottom: expanded ? `1px solid ${A.border}` : 'none', userSelect: 'none' }}>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>{cat}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{prefs.length}</span>
-                    <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{expanded ? '↑' : '↓'}</span>
+                    <span style={{ fontSize: 11, color: A.faint }}>{expanded ? '↑' : '↓'}</span>
                   </div>
                 </div>
                 {expanded && (
-                  <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+                  <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {prefs.map(p => (
                       <div key={p.id} style={{ borderLeft: `2px solid ${CONF_COLOR[p.confidence]}40`, paddingLeft: 10 }}>
                         <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 2 }}>
                           {p.pref_key}{p.person_id ? <span style={{ color: A.faint }}> · {data.people.find(pe => pe.id === p.person_id)?.member_ref}</span> : null}
                         </div>
-                        <div style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600, lineHeight: 1.4 }}>{p.pref_value}</div>
+                        <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, lineHeight: 1.4 }}>{p.pref_value}</div>
                       </div>
                     ))}
                   </div>
@@ -935,11 +921,11 @@ function OverviewSection({ house, data, onSaved, onReload }: {
         </div>
       )}
 
-      {/* Dining favourites + avoids */}
+      {/* Dining */}
       {(favs.length > 0 || avoids.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: favs.length && avoids.length ? '1fr 1fr' : '1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: !mobile && favs.length && avoids.length ? '1fr 1fr' : '1fr', gap: 10 }}>
           {favs.length > 0 && (
-            <div style={{ padding: '14px 16px', background: '#D8B56A08', border: '1px solid #D8B56A25', borderRadius: 10 }}>
+            <div style={{ padding: '12px 14px', background: '#D8B56A08', border: '1px solid #D8B56A25', borderRadius: 10 }}>
               <SectionLabel label='Favourite Restaurants' color={A.gold} />
               {favs.slice(0, 6).map(d => (
                 <div key={d.id} style={{ fontSize: 12, color: A.text, fontFamily: A.font, marginBottom: 5 }}>
@@ -950,7 +936,7 @@ function OverviewSection({ house, data, onSaved, onReload }: {
             </div>
           )}
           {avoids.length > 0 && (
-            <div style={{ padding: '14px 16px', background: '#f8717108', border: '1px solid #f8717125', borderRadius: 10 }}>
+            <div style={{ padding: '12px 14px', background: '#f8717108', border: '1px solid #f8717125', borderRadius: 10 }}>
               <SectionLabel label='Dining Avoids' color='#f87171' />
               {avoids.map(d => (
                 <div key={d.id} style={{ fontSize: 12, color: '#f87171', fontFamily: A.font, marginBottom: 5, opacity: 0.85 }}>
@@ -962,7 +948,7 @@ function OverviewSection({ house, data, onSaved, onReload }: {
         </div>
       )}
 
-      {prefsByCategory.length === 0 && !hardDietaryAvoids.length && favs.length === 0 && avoids.length === 0 && (
+      {prefsByCategory.length === 0 && !hardDietaryAvoids.length && favs.length === 0 && avoids.length === 0 && !house.summary && (
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No confirmed preferences recorded yet.</div>
       )}
     </div>
@@ -971,8 +957,8 @@ function OverviewSection({ house, data, onSaved, onReload }: {
 
 // ── Preferences section ───────────────────────────────────────────────────────
 
-function PreferencesSection({ data, houseId, onReload, personRef }: {
-  data: AllData; houseId: string
+function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
+  data: AllData; houseId: string; mobile: boolean
   onReload: () => void
   personRef: (id: string | null) => string | null
 }) {
@@ -996,7 +982,7 @@ function PreferencesSection({ data, houseId, onReload, personRef }: {
     if (!draft.pref_key.trim() || !draft.pref_value.trim()) return
     setSaving(true)
     try {
-      await createPreference(houseId, draft.person_id || null, cat, draft.pref_key.trim(), draft.pref_value.trim(), draft.notes.trim() || null, draft.source || 'direct', draft.confidence)
+      await createPreference(houseId, draft.person_id || null, cat, draft.pref_key.trim(), draft.pref_value.trim(), draft.notes.trim() || null, draft.source, draft.confidence)
       toast.success('Added.'); setAdding(false); setDraft({ pref_key: '', pref_value: '', notes: '', source: 'direct', confidence: 'confirmed', person_id: '' }); await onReload()
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1014,10 +1000,12 @@ function PreferencesSection({ data, houseId, onReload, personRef }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+
+      {/* Category tabs — horizontal scroll on mobile */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
         {PREF_CATEGORIES.map(c => (
           <button key={c} onClick={() => { setCat(c); setAdding(false) }} style={{
-            padding: '6px 13px',
+            padding: '7px 13px', whiteSpace: 'nowrap', flexShrink: 0,
             background: cat === c ? 'rgba(216,181,106,0.10)' : 'transparent',
             color:      cat === c ? A.gold : A.muted,
             border:     cat === c ? '1px solid rgba(216,181,106,0.28)' : `1px solid ${A.border}`,
@@ -1026,19 +1014,24 @@ function PreferencesSection({ data, houseId, onReload, personRef }: {
             {c} {catCount(c) > 0 && <span style={{ opacity: 0.55 }}>({catCount(c)})</span>}
           </button>
         ))}
-        <input style={{ ...inputStyle, width: 140, marginLeft: 'auto' }} placeholder='Filter…' value={filter} onChange={e => setFilter(e.target.value)} />
-        {!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add</button>}
+      </div>
+
+      {/* Filter + add */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input style={{ ...inputStyle, flex: 1 }} placeholder='Filter…' value={filter} onChange={e => setFilter(e.target.value)} />
+        {!adding && <button onClick={() => setAdding(true)} style={{ ...btnP, flexShrink: 0 }}>+ Add</button>}
       </div>
 
       {adding && (
-        <div style={{ padding: '14px 16px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            <Field label='Key'>
-              <select style={inputStyle} value={draft.pref_key} onChange={e => setDraft(d => ({ ...d, pref_key: e.target.value }))}>
-                <option value=''>Select…</option>
-                {(PREF_KEYS[cat] ?? []).map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-            </Field>
+        <div style={{ padding: '14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Field label='Key'>
+            <select style={inputStyle} value={draft.pref_key} onChange={e => setDraft(d => ({ ...d, pref_key: e.target.value }))}>
+              <option value=''>Select…</option>
+              {(PREF_KEYS[cat] ?? []).map(k => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </Field>
+          <Field label='Value'><input style={inputStyle} placeholder='Value…' value={draft.pref_value} onChange={e => setDraft(d => ({ ...d, pref_value: e.target.value }))} autoFocus /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Person'>
               <select style={inputStyle} value={draft.person_id} onChange={e => setDraft(d => ({ ...d, person_id: e.target.value }))}>
                 <option value=''>Household</option>
@@ -1053,18 +1046,8 @@ function PreferencesSection({ data, houseId, onReload, personRef }: {
               </select>
             </Field>
           </div>
-          <Field label='Value'><input style={inputStyle} placeholder='e.g. Halal only, Window seat always…' value={draft.pref_value} onChange={e => setDraft(d => ({ ...d, pref_value: e.target.value }))} autoFocus /></Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label='Source'>
-              <select style={inputStyle} value={draft.source} onChange={e => setDraft(d => ({ ...d, source: e.target.value }))}>
-                <option value='direct'>Direct</option>
-                <option value='inferred'>Inferred</option>
-                <option value='staff_note'>Staff Note</option>
-                <option value='profile_summary'>Profile Summary</option>
-                <option value='trip'>Trip</option>
-                <option value='observation'>Observation</option>
-              </select>
-            </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <Field label='Source'><SourceSelect value={draft.source} onChange={v => setDraft(d => ({ ...d, source: v }))} /></Field>
             <Field label='Notes'><input style={inputStyle} placeholder='Context…' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1079,18 +1062,23 @@ function PreferencesSection({ data, houseId, onReload, personRef }: {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {catPrefs.map(p => (
-            <div key={p.id} style={{ padding: '11px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${CONF_COLOR[p.confidence]}`, borderRadius: 8, display: 'grid', gridTemplateColumns: '170px 1fr auto', gap: 12, alignItems: 'center', opacity: p.confidence === 'outdated' ? 0.55 : 1 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{p.pref_key}</div>
-                {personRef(p.person_id) && <div style={{ fontSize: 9, color: A.faint, fontFamily: A.font, marginTop: 1 }}>{personRef(p.person_id)}</div>}
-                <div style={{ fontSize: 9, color: A.faint, fontFamily: A.font, marginTop: 1 }}>{p.source}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{p.pref_value}</div>
+            <div key={p.id} style={{
+              padding: '11px 14px', background: A.bgCard,
+              border: `1px solid ${A.border}`, borderLeft: `3px solid ${CONF_COLOR[p.confidence]}`,
+              borderRadius: 8, display: 'flex', gap: 10, alignItems: 'flex-start',
+              opacity: p.confidence === 'outdated' ? 0.55 : 1,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>
+                  {p.pref_key}
+                  {personRef(p.person_id) && <span style={{ fontWeight: 400, color: A.faint }}> · {personRef(p.person_id)}</span>}
+                </div>
+                <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 3, lineHeight: 1.4 }}>{p.pref_value}</div>
                 {p.notes && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{p.notes}</div>}
+                <div style={{ fontSize: 9, color: A.faint, fontFamily: A.font, marginTop: 3 }}>{p.source}</div>
               </div>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                {p.confidence !== 'confirmed' && <button onClick={() => confirm(p)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>Confirm</button>}
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0, paddingTop: 2 }}>
+                {p.confidence !== 'confirmed' && <button onClick={() => confirm(p)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>✓</button>}
                 <button onClick={() => remove(p.id)} style={btnD}>×</button>
               </div>
             </div>
@@ -1103,8 +1091,8 @@ function PreferencesSection({ data, houseId, onReload, personRef }: {
 
 // ── Dining section ────────────────────────────────────────────────────────────
 
-function DiningSection({ data, houseId, onReload }: {
-  data: AllData; houseId: string; onReload: () => void
+function DiningSection({ data, houseId, onReload, mobile }: {
+  data: AllData; houseId: string; onReload: () => void; mobile: boolean
 }) {
   const [filter, setFilter] = useState<DiningStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
@@ -1149,61 +1137,71 @@ function DiningSection({ data, houseId, onReload }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      {/* Filter tabs — horizontal scroll */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
         {(['all', ...STATUSES] as const).map(s => {
           const count = counts[s] ?? 0
           const active = filter === s
           const color = s === 'all' ? A.gold : STATUS[s as DiningStatus].text
           return (
-            <button key={s} onClick={() => setFilter(s as typeof filter)} style={{ padding: '5px 12px', background: active ? color + '12' : 'transparent', color: active ? color : A.muted, border: active ? `1px solid ${color}30` : `1px solid ${A.border}`, borderRadius: 8, fontSize: 11, fontWeight: 600, fontFamily: A.font, cursor: 'pointer' }}>
+            <button key={s} onClick={() => setFilter(s as typeof filter)} style={{ padding: '7px 13px', whiteSpace: 'nowrap', flexShrink: 0, background: active ? color + '12' : 'transparent', color: active ? color : A.muted, border: active ? `1px solid ${color}30` : `1px solid ${A.border}`, borderRadius: 8, fontSize: 11, fontWeight: 600, fontFamily: A.font, cursor: 'pointer' }}>
               {s === 'all' ? 'All' : s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}
               {count > 0 && <span style={{ marginLeft: 4, opacity: 0.55 }}>({count})</span>}
             </button>
           )
         })}
-        <div style={{ marginLeft: 'auto' }}>{!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add</button>}</div>
+        <div style={{ flexShrink: 0, marginLeft: 4 }}>{!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add</button>}</div>
       </div>
+
       {adding && (
-        <div style={{ padding: '14px 16px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 10 }}>
-            <Field label='Restaurant'><input style={inputStyle} placeholder='Name…' value={draft.restaurant_name} onChange={e => setDraft(d => ({ ...d, restaurant_name: e.target.value }))} autoFocus /></Field>
+        <div style={{ padding: '14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Field label='Restaurant'><input style={inputStyle} placeholder='Name…' value={draft.restaurant_name} onChange={e => setDraft(d => ({ ...d, restaurant_name: e.target.value }))} autoFocus /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
             <Field label='City'><input style={inputStyle} placeholder='City…' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
             <Field label='Country'><input style={inputStyle} placeholder='Country…' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>
-            <Field label='Status'><select style={inputStyle} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as DiningStatus }))}>{STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}</select></Field>
+            <Field label='Status' >
+              <select style={inputStyle} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as DiningStatus }))}>
+                {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+              </select>
+            </Field>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visit_date} onChange={e => setDraft(d => ({ ...d, visit_date: e.target.value }))} /></Field>
             <Field label='Trip Ref'><input style={inputStyle} placeholder='YAZ-2027-HM…' value={draft.trip_ref} onChange={e => setDraft(d => ({ ...d, trip_ref: e.target.value }))} /></Field>
-            <Field label='Notes'><input style={inputStyle} placeholder='What they thought…' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           </div>
+          <Field label='Notes'><input style={inputStyle} placeholder='What they thought…' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => setAdding(false)} style={btnG}>Cancel</button>
             <button onClick={handleAdd} style={{ ...btnP, opacity: saving ? 0.5 : 1 }} disabled={saving}>Add</button>
           </div>
         </div>
       )}
+
       {grouped.length === 0 ? (
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No entries yet.</div>
       ) : (
         grouped.map(({ status, entries }) => (
           <div key={status}>
             <SectionLabel label={`${STATUS[status].label} · ${entries.length}`} color={STATUS[status].text} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {entries.map(e => (
-                <div key={e.id} style={{ padding: '11px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${STATUS[status].text}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{e.restaurant_name}</div>
-                    <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
-                      {(e.city || e.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[e.city, e.country].filter(Boolean).join(', ')}</span>}
-                      {e.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{new Date(e.visit_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>}
-                      {e.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{e.trip_ref}</span>}
+                <div key={e.id} style={{ padding: '12px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${STATUS[status].text}`, borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{e.restaurant_name}</div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                        {(e.city || e.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[e.city, e.country].filter(Boolean).join(', ')}</span>}
+                        {e.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{new Date(e.visit_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>}
+                        {e.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{e.trip_ref}</span>}
+                      </div>
+                      {e.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
                     </div>
-                    {e.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 3, fontStyle: 'italic' }}>{e.notes}</div>}
+                    <button onClick={() => remove(e.id)} style={btnD}>×</button>
                   </div>
-                  <select value={e.status} onChange={ev => changeStatus(e, ev.target.value as DiningStatus)} style={{ ...inputStyle, width: 'auto', padding: '5px 8px', fontSize: 11, flexShrink: 0 }}>
+                  {/* Status change — full width on mobile */}
+                  <select value={e.status} onChange={ev => changeStatus(e, ev.target.value as DiningStatus)} style={{ ...inputStyle, width: '100%', marginTop: 8, padding: '6px 10px', fontSize: 11 }}>
                     {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                   </select>
-                  <button onClick={() => remove(e.id)} style={btnD}>×</button>
                 </div>
               ))}
             </div>
@@ -1254,28 +1252,26 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ padding: '9px 14px', background: '#f8717108', border: '1px solid #f8717125', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 12 }}>🔒</span>
+        <span>🔒</span>
         <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Sensitive personal data. Handle with strict discretion.</span>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         {!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add Record</button>}
       </div>
       {adding && (
-        <div style={{ padding: '14px 16px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.25)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label='Person'>
-              <select style={inputStyle} value={draft.person_id} onChange={e => setDraft(d => ({ ...d, person_id: e.target.value }))}>
-                <option value=''>Household</option>
-                {data.people.map(p => <option key={p.id} value={p.id}>{p.member_ref} ({p.role})</option>)}
-              </select>
-            </Field>
-            <Field label='Field'>
-              <select style={inputStyle} value={draft.data_key} onChange={e => setDraft(d => ({ ...d, data_key: e.target.value }))}>
-                <option value=''>Select…</option>
-                {PPD_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-            </Field>
-          </div>
+        <div style={{ padding: '14px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.25)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Field label='Person'>
+            <select style={inputStyle} value={draft.person_id} onChange={e => setDraft(d => ({ ...d, person_id: e.target.value }))}>
+              <option value=''>Household</option>
+              {data.people.map(p => <option key={p.id} value={p.id}>{p.member_ref} ({p.role})</option>)}
+            </select>
+          </Field>
+          <Field label='Field'>
+            <select style={inputStyle} value={draft.data_key} onChange={e => setDraft(d => ({ ...d, data_key: e.target.value }))}>
+              <option value=''>Select…</option>
+              {PPD_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </Field>
           <Field label='Value'><input style={inputStyle} placeholder='Enter value…' value={draft.data_value} onChange={e => setDraft(d => ({ ...d, data_value: e.target.value }))} autoComplete='off' autoFocus /></Field>
           <Field label='Access Note (optional)'><input style={inputStyle} placeholder='Who has access…' value={draft.access_note} onChange={e => setDraft(d => ({ ...d, access_note: e.target.value }))} /></Field>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1292,11 +1288,11 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
             <SectionLabel label={key === '__household__' ? 'Household' : personRef(rows[0].person_id) ?? 'Unknown'} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {rows.map(entry => (
-                <div key={entry.id} style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto auto', gap: 12, alignItems: 'center', padding: '10px 16px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.12)', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.data_key}</div>
-                  <div>
-                    <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, letterSpacing: '0.02em' }}>{entry.data_value}</div>
-                    {entry.access_note && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 1, fontStyle: 'italic' }}>{entry.access_note}</div>}
+                <div key={entry.id} style={{ padding: '10px 14px', background: A.bgCard, border: '1px solid rgba(248,113,113,0.12)', borderRadius: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.data_key}</div>
+                    <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>{entry.data_value}</div>
+                    {entry.access_note && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{entry.access_note}</div>}
                   </div>
                   <CopyButton value={entry.data_value} />
                   <button onClick={() => remove(entry.id)} style={btnD}>×</button>
@@ -1356,7 +1352,7 @@ function NotesSection({ house, onSaved }: { house: House; onSaved: () => void })
             {editing ? (
               <textarea style={{ ...textareaStyle, borderColor: danger ? '#f8717130' : A.border, minHeight: 88 }} value={(draft[key] as string) ?? ''} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value || null }))} placeholder={placeholder} />
             ) : val ? (
-              <div style={{ padding: '12px 16px', background: A.bgCard, border: `1px solid ${danger ? '#f8717125' : A.border}`, borderRadius: 8, fontSize: 13, color: danger ? '#f87171' : A.text, fontFamily: A.font, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{val}</div>
+              <div style={{ padding: '12px 14px', background: A.bgCard, border: `1px solid ${danger ? '#f8717125' : A.border}`, borderRadius: 8, fontSize: 13, color: danger ? '#f87171' : A.text, fontFamily: A.font, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{val}</div>
             ) : (
               <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>Not recorded — click Edit to add.</div>
             )}
