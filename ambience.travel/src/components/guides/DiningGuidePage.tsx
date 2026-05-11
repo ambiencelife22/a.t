@@ -18,13 +18,18 @@
 //   - Style objects (lib/guidePageStyles.ts)
 //   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
 //
-// Last updated: S40 — Preview rank sort added to filteredVenues. Ranked venues
-//   (public_preview_rank 1, 2, 3) surface first; remaining venues sort by
-//   sort_order. hasFullAccess remains true for all — gating layer wires in later.
-// Prior: S40 — PlanYourVisit extracted to PlanYourVisit.tsx. Gate removed.
-// Prior: S40 — extracted inline styles to lib/guidePageStyles.ts
-// Prior: S39 Add 1 — Added Plan Your Visit block below venue grid.
-// Prior: S39 — Added accuracy disclaimer block. accuracyDate passed to exportGuidePdf.
+// Hero resolution (S40):
+//   overlay?.hero_image_src ?? destination.heroImageSrc ?? null
+//   overlay?.hero_image_alt ?? destination.heroImageAlt ?? null
+//   Canon hero lives on global_destinations. Overlay overrides only when set.
+//
+// Last updated: S40 — Canon hero resolution. heroImageSrc/Alt read from
+//   destination canon (global_destinations) with overlay override via ?? chain.
+// Prior: S40 — Preview rank sort added to filteredVenues.
+// Prior: S40 — PlanYourVisit extracted. Gate removed.
+// Prior: S40 — Inline styles extracted to lib/guidePageStyles.ts.
+// Prior: S39 Add 1 — Added Plan Your Visit block.
+// Prior: S39 — Added accuracy disclaimer block.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../../lib/ToastContext'
@@ -156,13 +161,14 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   }, [])
 
   // ── Resolved hero copy ─────────────────────────────────────────────────────
+  // Canon hero from global_destinations. Overlay overrides when set.
 
   const overlay = destination.overlay
   const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
   const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
   const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
-  const heroImageSrc = overlay?.hero_image_src    ?? null
-  const heroImageAlt = overlay?.hero_image_alt    ?? null
+  const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
+  const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
 
   // ── Venue fetch ────────────────────────────────────────────────────────────
 

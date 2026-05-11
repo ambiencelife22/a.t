@@ -8,7 +8,12 @@
 // no other changes needed; the view projects identical column shape with
 // NULL on gated fields.
 //
-// Last updated: S39 — Added accuracy_date to DiningGuideOverlay type and
+// Last updated: S40 — Canon hero resolution. hero_image_src + hero_image_alt
+//   added to global_destinations as canonical fields (migration s40_01).
+//   GuideDestination now carries heroImageSrc + heroImageAlt from canon.
+//   DiningGuideOverlay.hero_image_src is now override only — null = use canon.
+//   getGuideDestination selects canon hero from global_destinations directly.
+// Prior: S39 — Added accuracy_date to DiningGuideOverlay type and
 //   getGuideDestination SELECT. NULL = disclaimer omitted on both surfaces.
 // Prior: S39 — Removed slug (dropped S38). Replaced ambience_take with body;
 //   added kicker, tagline, bullets_heading, bullets, image_credit,
@@ -56,11 +61,14 @@ export interface DiningVenue {
 
 /**
  * Per-destination overlay for the dining guide page.
- * NULL on any field = frontend default flows through.
- * Resolution: override → frontend default → '' (standard ?? chain)
+ * NULL on any field = canon or frontend default flows through.
+ * Resolution: overlay → canon → frontend default (standard ?? chain)
+ *
+ * hero_image_src / hero_image_alt — override only. NULL = canon from
+ *   global_destinations flows through in DiningGuidePage.
  *
  * guide_year + guide_version added S37 for PDF cover. NULL = current year / '1.0'
- * applied at PDF render time (not on the live page).
+ *   applied at PDF render time (not on the live page).
  *
  * accuracy_date added S39. NULL = disclaimer omitted on both live page and PDF.
  */
@@ -82,6 +90,10 @@ export interface GuideDestination {
   id: string
   slug: string
   name: string
+  // Canon hero — from global_destinations. Always populated when the destination
+  // has a hero image seeded. Overlay may override these fields.
+  heroImageSrc: string | null
+  heroImageAlt: string | null
   overlay: DiningGuideOverlay | null
 }
 
@@ -133,6 +145,8 @@ export async function getGuideDestination(
     .from('global_destinations')
     .select(`
       id, slug, name,
+      hero_image_src,
+      hero_image_alt,
       overlay:travel_dining_guides(
         hero_image_src,
         hero_image_alt,
@@ -162,10 +176,20 @@ export async function getGuideDestination(
       ? (raw.length > 0 ? raw[0] : null)
       : (raw ?? null)
 
+  const d = data as unknown as {
+    id: string
+    slug: string
+    name: string
+    hero_image_src: string | null
+    hero_image_alt: string | null
+  }
+
   return {
-    id:   (data as { id: string }).id,
-    slug: (data as { slug: string }).slug,
-    name: (data as { name: string }).name,
+    id:           d.id,
+    slug:         d.slug,
+    name:         d.name,
+    heroImageSrc: d.hero_image_src,
+    heroImageAlt: d.hero_image_alt,
     overlay,
   }
 }
