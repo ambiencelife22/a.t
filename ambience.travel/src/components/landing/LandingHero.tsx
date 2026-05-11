@@ -7,7 +7,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ID, IMMERSE_HERO, FONTS } from '../../lib/landingColors'
-import { useImmerseMobile, useImmerseVisible, immerseFadeUp } from '../immerse/ImmerseComponents'
+import { useImmerseMobile } from '../immerse/ImmerseComponents'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
 
 const HERO_LAYOUT = {
   minHeightMobile:    640,

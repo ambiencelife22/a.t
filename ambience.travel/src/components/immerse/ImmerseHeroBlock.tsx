@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp } from './ImmerseComponents'
+import { ID, useImmerseMobile } from './ImmerseComponents'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
 
 export function ImmerseHeroBlock({
   imageSrc,
