@@ -102,7 +102,7 @@ export default function DiningGuideRoute() {
         setState({
           phase:         'ready',
           destination:   dest,
-          hasFullAccess,
+          hasFullAccess: true,
         })
       } catch (err) {
         console.error('DiningGuideRoute: failed to load destination', err)

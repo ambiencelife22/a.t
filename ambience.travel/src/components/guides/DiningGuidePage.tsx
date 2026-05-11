@@ -370,7 +370,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
               </>
             )}
 
-            <PlanYourVisit overlay={overlay} variant="dining" />
+            {hasFullAccess && <PlanYourVisit overlay={overlay} variant="dining" />}
 
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
@@ -391,15 +391,17 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 function EditorialPrompt({ destinationName }: { destinationName: string }) {
   return (
     <div style={{
-      marginTop:     48,
-      padding:       'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
-      borderTop:     `1px solid ${IMMERSE.tableBorder}`,
-      borderBottom:  `1px solid ${IMMERSE.tableBorder}`,
-      textAlign:     'center',
-      display:       'flex',
-      flexDirection: 'column',
-      alignItems:    'center',
-      gap:           20,
+      marginTop:       48,
+      padding:         'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
+      textAlign:       'center',
+      display:         'flex',
+      flexDirection:   'column',
+      alignItems:      'center',
+      gap:             20,
+      background:      ID.panel,
+      borderTop:       `1px solid ${IMMERSE.tableBorder}`,
+      borderBottom:    `1px solid ${IMMERSE.tableBorder}`,
+      borderRadius:    24,
     }}>
       <div style={{
         fontSize:      11,

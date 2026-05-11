@@ -2,7 +2,9 @@
 // What it owns: card chrome, image grid, status banner, meta-row, name, body, tags, address, recognition marks.
 // What it does not own: gating logic (consumes hasFullAccess prop), filter state, layout.
 //
-// Last updated: S39 — FullBody address block now renders when maps_url is set
+// Last updated: S40C — AddressBlock extracted from FullBody. Address now renders
+//   on both teaser and full access cards. TeaserBody renders above AddressBlock.
+// Prior: S39 — FullBody address block now renders when maps_url is set
 //   even without an address. Falls back to "View on map" link text.
 // Prior: S37 — Added 50 Best as fourth recognition tier. Replaced
 //   inline glyph rendering with shared RecognitionMark component (lives in
@@ -45,6 +47,7 @@ export function DiningCard({ venue, hasFullAccess, destinationName }: DiningCard
         <RecognitionMarks venue={venue} />
         {isTeaser && <TeaserBody destinationName={destinationName} />}
         {!isTeaser && <FullBody venue={venue} />}
+        <AddressBlock venue={venue} />
       </div>
     </article>
   )
@@ -64,10 +67,6 @@ function StatusBanner({ status }: { status: VenueStatus }) {
 }
 
 // ── Recognition Marks ────────────────────────────────────────────────────────
-// Renders the venue's recognition tiers in a fixed visual order.
-// Each pill carries a hover tooltip via RecognitionMark (shared definitions).
-// A venue may carry any combination — stars only, Bib only, Green only,
-// 50 Best alone, or any combination thereof.
 
 function RecognitionMarks({ venue }: { venue: DiningVenue }) {
   const hasStar  = venue.michelin_award === 'star' && venue.michelin_stars
@@ -182,8 +181,6 @@ function MetaRow({ venue }: { venue: DiningVenue }) {
 // ── Full Body ────────────────────────────────────────────────────────────────
 
 function FullBody({ venue }: { venue: DiningVenue }) {
-  const mapsUrl = resolveMapsUrl(venue.maps_url, venue.address)
-
   return (
     <>
       {venue.body && (
@@ -194,17 +191,6 @@ function FullBody({ venue }: { venue: DiningVenue }) {
           {venue.tags.map((tag) => (
             <span key={tag} style={tagPillStyle}>{tag}</span>
           ))}
-        </div>
-      )}
-      {(venue.address ?? mapsUrl) && (
-        <div style={addressStyle}>
-          {mapsUrl ? (
-            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={addressLinkStyle}>
-              {venue.address ?? 'View on map'} <span style={addressArrowStyle}>↗</span>
-            </a>
-          ) : (
-            venue.address
-          )}
         </div>
       )}
     </>
@@ -218,6 +204,25 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
     <p style={teaserStyle}>
       Reserved for guests on a {destinationName} journey.
     </p>
+  )
+}
+
+// ── Address Block ────────────────────────────────────────────────────────────
+// Renders on both teaser and full access cards.
+
+function AddressBlock({ venue }: { venue: DiningVenue }) {
+  const mapsUrl = resolveMapsUrl(venue.maps_url, venue.address)
+  if (!venue.address && !mapsUrl) return null
+  return (
+    <div style={addressStyle}>
+      {mapsUrl ? (
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={addressLinkStyle}>
+          {venue.address ?? 'View on map'} <span style={addressArrowStyle}>↗</span>
+        </a>
+      ) : (
+        venue.address
+      )}
+    </div>
   )
 }
 
@@ -351,8 +356,6 @@ const nameStyle: React.CSSProperties = {
   color: ID.text,
 }
 
-// Recognition row: stars + Bib + Green Star + 50 Best, side by side.
-// Glyph styles live in RecognitionKey.tsx — single source of truth.
 const recognitionRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -412,6 +415,6 @@ const teaserStyle: React.CSSProperties = {
   color: ID.dim,
   fontSize: 14,
   fontStyle: 'italic',
-  margin: '0 0 0',
+  margin: '0 0 16px',
   lineHeight: 1.55,
 }
