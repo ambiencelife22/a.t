@@ -9,19 +9,19 @@
 //   filter state, card rendering, 404 chrome (NotFoundPage).
 //
 // Grant states:
-//   no_session  → GuideLockedPage (sign in prompt)
-//   no_grant    → GuideLockedPage (access request prompt)
-//   granted     → DiningGuidePage (full access)
+//   no_session  → redirect to /programme (travel client login)
+//   no_grant    → DiningGuidePage hasFullAccess={false} (teaser + editorial strip)
+//   granted     → DiningGuidePage hasFullAccess={true} (full access)
 //
-// Last updated: S40C — Grant check added. checkGuideGrant() runs after
-//   destination resolves. RouteState gains 'locked' phase with GrantStatus.
+// Last updated: S40C — Grant check added. no_session redirects to /programme.
+//   no_grant renders teaser via DiningGuidePage hasFullAccess={false}.
+//   GuideLockedPage removed.
 // Prior: S40 — NotFoundPage replaces null return on failed destination load.
 // Prior: S39 — Fixed toast loop via toastRef pattern.
 
 import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import DiningGuidePage from './DiningGuidePage'
-import GuideLockedPage from './GuideLockedPage'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
 import { useToast } from '../../lib/ToastContext'
@@ -29,7 +29,6 @@ import {
   getGuideDestination,
   checkGuideGrant,
   type GuideDestination,
-  type GrantStatus,
 } from '../../lib/diningGuideQueries'
 
 const GUIDES_HOST = 'guides.ambience.travel'
@@ -56,8 +55,7 @@ function resolveDestinationSlug(): string | null {
 
 type RouteState =
   | { phase: 'loading' }
-  | { phase: 'ready';    destination: GuideDestination }
-  | { phase: 'locked';   destination: GuideDestination; grantStatus: GrantStatus }
+  | { phase: 'ready';    destination: GuideDestination; hasFullAccess: boolean }
   | { phase: 'notFound'; message: string }
 
 export default function DiningGuideRoute() {
@@ -92,12 +90,18 @@ export default function DiningGuideRoute() {
         const grant = await checkGuideGrant(slug)
         if (cancelled) return
 
-        if (grant.status === 'granted') {
-          setState({ phase: 'ready', destination: dest })
+        if (grant.status === 'no_session') {
+          // Travel client login — preserve return path in query param
+          const returnPath = encodeURIComponent(window.location.pathname + window.location.search)
+          window.location.replace(`/programme?return=${returnPath}`)
           return
         }
 
-        setState({ phase: 'locked', destination: dest, grantStatus: grant })
+        setState({
+          phase:         'ready',
+          destination:   dest,
+          hasFullAccess: grant.status === 'granted',
+        })
       } catch (err) {
         console.error('DiningGuideRoute: failed to load', err)
         if (cancelled) return
@@ -116,20 +120,12 @@ export default function DiningGuideRoute() {
     return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
   }
 
-  if (state.phase === 'locked') {
-    return (
-      <GuideLayout>
-        <GuideLockedPage
-          destination={state.destination}
-          grantStatus={state.grantStatus}
-        />
-      </GuideLayout>
-    )
-  }
-
   return (
     <GuideLayout>
-      <DiningGuidePage destination={state.destination} />
+      <DiningGuidePage
+        destination={state.destination}
+        hasFullAccess={state.hasFullAccess}
+      />
     </GuideLayout>
   )
 }

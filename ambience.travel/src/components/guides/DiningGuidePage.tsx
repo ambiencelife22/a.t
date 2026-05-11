@@ -69,8 +69,11 @@ import {
   emptyStateTextStyle,
 } from '../../lib/guidePageStyles'
 
+import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
+
 interface DiningGuidePageProps {
-  destination: GuideDestination
+  destination:   GuideDestination
+  hasFullAccess: boolean
 }
 
 // ── Frontend default copy ───────────────────────────────────────────────────
@@ -125,7 +128,7 @@ function writeFilterStateToUrl(state: FilterState) {
 
 // ── Page Component ───────────────────────────────────────────────────────────
 
-export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
+export default function DiningGuidePage({ destination, hasFullAccess }: DiningGuidePageProps) {
   const { toast } = useToast()
   const toastRef = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
@@ -221,8 +224,12 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     [venues],
   )
 
-  const filteredVenues = useMemo(() => {
-    const filtered = venues.filter((v) => {
+const filteredVenues = useMemo(() => {
+    const visible = hasFullAccess
+      ? venues
+      : venues.filter(v => v.public_preview_rank != null)
+
+    const filtered = visible.filter((v) => {
       if (filterState.cuisines.size > 0) {
         if (!v.cuisine_subcategory || !filterState.cuisines.has(v.cuisine_subcategory)) {
           return false
@@ -234,15 +241,13 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
       return true
     })
 
-    // Non-supplementary alphabetical first, supplementary alphabetical last.
-    // public_preview_rank is a gating mechanism only — no sort influence.
     return filtered.sort((a, b) => {
       if (a.is_supplementary !== b.is_supplementary) {
         return a.is_supplementary ? 1 : -1
       }
       return a.name.localeCompare(b.name)
     })
-  }, [venues, filterState])
+  }, [venues, filterState, hasFullAccess])
 
   // Index of first supplementary venue in filtered list — drives divider render.
   const firstSupplementaryIndex = useMemo(
@@ -341,20 +346,29 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
               <EmptyState />
             ) : (
               <section style={gridStyle}>
-                {filteredVenues.map((v, i) => (
-                  <React.Fragment key={v.id}>
-                    {i === firstSupplementaryIndex && firstSupplementaryIndex > 0 && (
-                      <div style={supplementaryDividerStyle}>
-                        <span style={supplementaryLabelStyle}>Also nearby</span>
-                      </div>
-                    )}
-                    <DiningCard
-                      venue={v}
-                      hasFullAccess={true}
-                      destinationName={destination.name}
-                    />
-                  </React.Fragment>
-                ))}
+                {filteredVenues.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <>
+                <section style={gridStyle}>
+                  {filteredVenues.map((v, i) => (
+                    <React.Fragment key={v.id}>
+                      {i === firstSupplementaryIndex && firstSupplementaryIndex > 0 && (
+                        <div style={supplementaryDividerStyle}>
+                          <span style={supplementaryLabelStyle}>Also nearby</span>
+                        </div>
+                      )}
+                      <DiningCard
+                        venue={v}
+                        hasFullAccess={hasFullAccess}
+                        destinationName={destination.name}
+                      />
+                    </React.Fragment>
+                  ))}
+                </section>
+                {!hasFullAccess && <EditorialPrompt destinationName={destination.name} />}
+              </>
+            )}
               </section>
             )}
 
@@ -371,6 +385,55 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
         )}
       </main>
     </>
+  )
+}
+
+function EditorialPrompt({ destinationName }: { destinationName: string }) {
+  return (
+    <div style={{
+      margin:        '48px 0 0',
+      padding:       'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
+      borderTop:     `1px solid ${IMMERSE.tableBorder}`,
+      borderBottom:  `1px solid ${IMMERSE.tableBorder}`,
+      textAlign:     'center',
+      display:       'flex',
+      flexDirection: 'column',
+      alignItems:    'center',
+      gap:           20,
+    }}>
+      <div style={{
+        fontSize:      11,
+        fontWeight:    700,
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        color:         ID.gold,
+        fontFamily:    FONTS.serif,
+      }}>
+        {destinationName} · Dining Guide
+      </div>
+      <p style={{
+        fontSize:   'clamp(22px, 3.5vw, 32px)',
+        fontWeight: 400,
+        fontFamily: FONTS.serif,
+        color:      ID.text,
+        lineHeight: 1.2,
+        margin:     0,
+        maxWidth:   480,
+        fontStyle:  'italic',
+      }}>
+        There is more to this table.
+      </p>
+      <p style={{
+        fontSize:   14,
+        color:      ID.muted,
+        lineHeight: 1.6,
+        margin:     0,
+        maxWidth:   400,
+      }}>
+        The full {destinationName} dining guide is available to invited guests.
+        Contact your ambience advisor to request access.
+      </p>
+    </div>
   )
 }
 
