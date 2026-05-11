@@ -23,9 +23,11 @@
 //   overlay?.hero_image_alt ?? destination.heroImageAlt ?? null
 //   Canon hero lives on global_destinations. Overlay overrides only when set.
 //
-// Last updated: S40 — Canon hero resolution. heroImageSrc/Alt read from
-//   destination canon (global_destinations) with overlay override via ?? chain.
-// Prior: S40 — Preview rank sort added to filteredVenues.
+// Last updated: S40 — Sort changed to always alphabetical. public_preview_rank
+//   is a gating mechanism only — determines hasFullAccess when gating ships,
+//   not display order.
+// Prior: S40 — Canon hero resolution via destination.heroImageSrc.
+// Prior: S40 — Preview rank sort (replaced this session).
 // Prior: S40 — PlanYourVisit extracted. Gate removed.
 // Prior: S40 — Inline styles extracted to lib/guidePageStyles.ts.
 // Prior: S39 Add 1 — Added Plan Your Visit block.
@@ -245,15 +247,9 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
       return true
     })
 
-    // Preview-ranked venues surface first (rank 1, 2, 3), then sort_order for the rest.
-    // When gating ships, ranked venues will also be the only ones with hasFullAccess=true
-    // for ungated users. Sort preserved here so gating layer can slice cleanly.
-    return filtered.sort((a, b) => {
-      const aRank = a.public_preview_rank ?? Infinity
-      const bRank = b.public_preview_rank ?? Infinity
-      if (aRank !== bRank) return aRank - bRank
-      return a.sort_order - b.sort_order
-    })
+    // Always alphabetical. public_preview_rank is a gating mechanism only —
+    // determines hasFullAccess when gating ships, not display order.
+    return filtered.sort((a, b) => a.name.localeCompare(b.name))
   }, [venues, filterState])
 
   // ── PDF download handler ───────────────────────────────────────────────────
