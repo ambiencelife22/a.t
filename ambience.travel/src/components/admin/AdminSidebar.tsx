@@ -1,9 +1,9 @@
 /* AdminSidebar.tsx
  * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Guides,
- * Library, Programme). Future products (LIFE, MONEY) shown disabled.
+ * Library, House, Programme). Future products (LIFE, MONEY) shown disabled.
  *
- * Last updated: S36 — Library/dining link now passes destinationId: null
- *   (unscoped landing — drill-in scoping happens from Guides tab).
+ * Last updated: S40D — Added HOUSE group (ambience.HOUSE CRM).
+ * Prior: S36 — Library/dining link now passes destinationId: null.
  * Prior: S36 — Added Guides + Library groups (Dining tab in each).
  * Prior: S33
  */
@@ -20,6 +20,7 @@ type SidebarLink =
   | { kind: 'immerse-showcases' }
   | { kind: 'guides-dining' }
   | { kind: 'library-dining' }
+  | { kind: 'house-households' }
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
@@ -40,6 +41,10 @@ const GUIDES_ITEMS: SidebarItem[] = [
 
 const LIBRARY_ITEMS: SidebarItem[] = [
   { key: 'library-dining', label: 'Dining', link: { kind: 'library-dining' } },
+]
+
+const HOUSE_ITEMS: SidebarItem[] = [
+  { key: 'house-households', label: 'Households', link: { kind: 'house-households' } },
 ]
 
 const PROGRAMME_ITEMS: SidebarItem[] = [
@@ -70,7 +75,10 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   if (item.link.kind === 'library-dining') {
     return current.product === 'library' && current.tab === 'dining'
   }
-  return current.product === 'programme' && current.tab === item.link.tab
+  if (item.link.kind === 'house-households') {
+    return current.product === 'house'
+  }
+  return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
 }
 
 function hashFor(item: SidebarItem): string {
@@ -86,7 +94,10 @@ function hashFor(item: SidebarItem): string {
   if (item.link.kind === 'library-dining') {
     return buildAdminHash({ product: 'library', tab: 'dining', destinationId: null })
   }
-  return buildAdminHash({ product: 'programme', tab: item.link.tab })
+  if (item.link.kind === 'house-households') {
+    return buildAdminHash({ product: 'house', tab: 'households' })
+  }
+  return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
 }
 
 function GroupHeader({ label }: { label: string }) {
@@ -160,6 +171,11 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
         <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
       ))}
 
+      <GroupHeader label='House' />
+      {HOUSE_ITEMS.map(item => (
+        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
+      ))}
+
       <GroupHeader label='Programme' />
       {PROGRAMME_ITEMS.map(item => (
         <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
@@ -179,6 +195,7 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     ...IMMERSE_ITEMS,
     ...GUIDES_ITEMS,
     ...LIBRARY_ITEMS,
+    ...HOUSE_ITEMS,
     ...PROGRAMME_ITEMS,
   ]
 
@@ -220,6 +237,9 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         </optgroup>
         <optgroup label='Library'>
           {LIBRARY_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+        </optgroup>
+        <optgroup label='House'>
+          {HOUSE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
         <optgroup label='Programme'>
           {PROGRAMME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}

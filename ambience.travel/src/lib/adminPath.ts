@@ -9,6 +9,7 @@
 //   #admin/guides/dining                         → dining guides overlay list
 //   #admin/library/dining                        → all dining venues
 //   #admin/library/dining/<dest-uuid>            → dining venues scoped to destination
+//   #admin/house                                 → household list
 //   #admin/programme/programmes                  → wrapped existing tab
 //   #admin/programme/letters                     → wrapped existing tab
 //   #admin/programme/listings                    → wrapped existing tab
@@ -17,20 +18,22 @@
 //   #admin/programme/access-denied               → wrapped existing tab
 //   #admin/programme/client-profile              → wrapped existing tab
 //
-// Last updated: S36 — Library/dining accepts optional <dest-uuid> segment for
+// Last updated: S40D — Added 'house' product (ambience.HOUSE CRM).
+// Prior: S36 — Library/dining accepts optional <dest-uuid> segment for
 //   destination-scoped venue editing (drill-in from Guides tab).
 // Prior: S36 — Added 'guides' + 'library' products with 'dining' tab each.
 // Prior: S33
 
 import { isTripUrlId } from './immersePath'
 
-export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library'
+export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house'
 
 export type AdminTab =
   | { product: 'immerse';   tab: 'engagements'; urlId: string | null }
   | { product: 'immerse';   tab: 'showcases' }
   | { product: 'guides';    tab: 'dining' }
   | { product: 'library';   tab: 'dining'; destinationId: string | null }
+  | { product: 'house';     tab: 'households' }
   | { product: 'programme'; tab: ProgrammeTabId }
 
 export type ProgrammeTabId =
@@ -86,6 +89,10 @@ export function parseAdminHash(hash: string): AdminTab {
     return DEFAULT_TAB
   }
 
+  if (product === 'house') {
+    return { product: 'house', tab: 'households' }
+  }
+
   if (product === 'programme') {
     if (PROGRAMME_TABS.includes(tab as ProgrammeTabId)) {
       return { product: 'programme', tab: tab as ProgrammeTabId }
@@ -112,6 +119,9 @@ export function buildAdminHash(target: AdminTab): string {
     return target.destinationId
       ? `#admin/library/dining/${target.destinationId}`
       : '#admin/library/dining'
+  }
+  if (target.product === 'house') {
+    return '#admin/house'
   }
   return `#admin/programme/${target.tab}`
 }

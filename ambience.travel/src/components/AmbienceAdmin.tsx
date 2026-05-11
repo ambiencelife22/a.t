@@ -7,7 +7,8 @@
  *
  * Auth gate: same pattern as ProgrammeAdmin — getSession() + global_profiles.is_admin.
  *
- * Last updated: S36 — Wired Library + Guides product groups (Dining tab in each).
+ * Last updated: S40D — Added House product group (HouseTab).
+ * Prior: S36 — Wired Library + Guides product groups (Dining tab in each).
  *   Library tab passes destinationId from URL hash for destination-scoped views.
  * Prior: S33
  */
@@ -18,12 +19,13 @@ import { getSession } from '../lib/auth'
 import { parseAdminHash, type AdminTab } from '../lib/adminPath'
 import { A } from '../lib/adminTokens'
 
-import AdminSidebar      from './admin/AdminSidebar'
-import EngagementsListTab    from './admin/EngagementsListTab'
+import AdminSidebar        from './admin/AdminSidebar'
+import EngagementsListTab  from './admin/EngagementsListTab'
 import EngagementDetailTab from './admin/EngagementDetailTab'
-import ShowcasesListTab  from './admin/ShowcasesListTab'
-import LibraryDiningTab from './admin/LibraryDiningTab'
-import GuidesDiningTab  from './admin/GuidesDiningTab'
+import ShowcasesListTab    from './admin/ShowcasesListTab'
+import LibraryDiningTab    from './admin/LibraryDiningTab'
+import GuidesDiningTab     from './admin/GuidesDiningTab'
+import HouseTab            from './admin/HouseTab'
 
 import {
   ProgrammesTab,
@@ -140,6 +142,10 @@ function TabContent({ tab }: { tab: AdminTab }) {
 
   if (tab.product === 'library') {
     if (tab.tab === 'dining') return <LibraryDiningTab destinationId={tab.destinationId} />
+  }
+
+  if (tab.product === 'house') {
+    return <HouseTab />
   }
 
   if (tab.product === 'programme') {

@@ -4,6 +4,7 @@
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
+ *   ambience.travel/login                                → Auth (admin login, S40D)
  *   ambience.travel/#admin                               → AmbienceAdmin (S33)
  *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
@@ -21,6 +22,7 @@
  *
  * Local dev routes:
  *   localhost:5173/                                      → Landing
+ *   localhost:5173/login                                 → Auth (admin login, S40D)
  *   localhost:5173/?signup=1                             → Auth signup
  *   localhost:5173/#admin                                → AmbienceAdmin (new shell, S33)
  *   localhost:5173/programme/#admin                      → ProgrammeAdmin (existing)
@@ -41,7 +43,13 @@
  *   (#admin/immerse/engagements/<url_id>, etc) via the same 'admin' route —
  *   the inner shell parses the hash itself.
  *
- * Last updated: S37 — Added 'guides-hotels' route. resolveGuidePath() now
+ * Login route (S40D): ambience.travel/login renders Auth in login mode.
+ *   On successful auth, redirects to #admin. Allows admin access without
+ *   depending on programme.ambience.travel for session establishment.
+ *   Signup mode (?signup=1) is unaffected — remains programme-context only.
+ *
+ * Last updated: S40D — Added 'login' route at /login for admin auth.
+ * Prior: S37 — Added 'guides-hotels' route. resolveGuidePath() now
  *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
  *   on surface. New lazy import HotelGuideRoute. Mirrors S35 dining shape.
  * Prior: S35 — Added 'guides-dining' route for guides.ambience.travel
@@ -87,6 +95,7 @@ const HotelGuideRoute          = lazy(() => import('./components/guides/HotelGui
 
 type Route =
   | 'landing'
+  | 'login'
   | 'admin-programme'
   | 'admin-ambience'
   | 'app'
@@ -112,6 +121,11 @@ function isExperienceRoute(): boolean {
   return window.location.pathname.startsWith('/experiences/')
 }
 
+function isLoginRoute(): boolean {
+  const pathname = window.location.pathname.replace(/\/+$/, '')
+  return pathname === '/login'
+}
+
 function isImmerseRoute(): boolean {
   if (isImmerseHost()) return true
   return window.location.pathname.startsWith('/immerse/')
@@ -127,17 +141,11 @@ function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
 }
 
 // S35 — guides subdomain detection.
-// guides.ambience.travel hosts the destination guide pages (dining first,
-// hotels in S37, activities later). Mirrors isImmerseHost() pattern.
 function isGuidesHost(): boolean {
   return window.location.hostname === 'guides.ambience.travel'
 }
 
-// S35 — resolve guide path segments.
-// S37 — extended to include 'hotels' surface.
-// On guides subdomain: /<dest>/<surface>
-// On main domain: /guides/<dest>/<surface>
-// Returns { destinationSlug, surface } when matched, null otherwise.
+// S35/S37 — resolve guide path segments.
 function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hotels' } | null {
   const pathname = window.location.pathname.replace(/\/+$/, '')
   let stripped: string
@@ -157,9 +165,6 @@ function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hot
 }
 
 // S33 — admin route disambiguator.
-// programme.ambience.travel/#admin and localhost:5173/programme/#admin route
-// to the existing ProgrammeAdmin (untouched). Anything else with #admin routes
-// to the new unified AmbienceAdmin shell.
 function isProgrammeAdminContext(): boolean {
   const hostname = window.location.hostname
   const pathname = window.location.pathname
@@ -181,29 +186,27 @@ function resolveRoute(): Route {
 
   if (params.get('signup') === '1') return 'signup'
 
+  // S40D — /login route for admin auth. Checked before #admin hash so that
+  // ambience.travel/login works regardless of hash state.
+  // Not active on programme subdomain — signup flow there is separate.
+  if (isLoginRoute() && !isProgrammeAdminContext()) return 'login'
+
   // S33 — hash sub-paths supported (#admin/immerse/engagements/<url_id>, etc)
   if (hash.startsWith('#admin')) {
     return isProgrammeAdminContext() ? 'admin-programme' : 'admin-ambience'
   }
 
-  // S35: guides subdomain → always guides route. On main domain, /guides/
-  // path prefix routes the same way. Resolved before immerse host check
-  // because guides has its own hostname.
-  // S37: surface-based dispatch (dining vs hotels).
   if (isGuidesHost() || pathname.startsWith('/guides/')) {
     const guidePath = resolveGuidePath()
     if (guidePath) {
       if (guidePath.surface === 'hotels') return 'guides-hotels'
       return 'guides-dining'
     }
-    // On guides subdomain with no valid path, redirect to ambience.travel root.
     if (isGuidesHost()) {
       window.location.replace('https://ambience.travel/')
     }
-    // On main domain at /guides/ with no valid path, fall through to landing.
   }
 
-  // S32: immerse.ambience.travel → always immerse route.
   if (isImmerseHost()) return 'immerse'
 
   if (hostname === 'programme.ambience.travel') {
@@ -247,6 +250,18 @@ export default function App() {
     return (
       <Suspense fallback={<RouteLoading />}>
         <SignatureExperiencePage />
+      </Suspense>
+    )
+  }
+
+  // S40D — admin login. On success, push to #admin.
+  if (route === 'login') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <Auth
+          onAuth={() => { window.location.href = '/#admin' }}
+          initialMode='login'
+        />
       </Suspense>
     )
   }

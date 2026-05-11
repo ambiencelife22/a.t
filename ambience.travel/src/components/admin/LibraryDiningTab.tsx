@@ -15,19 +15,25 @@
  * resolved via destinationsById Map at render time, never carried on
  * query types or used as a key.
  *
- * Last updated: S39 — Removed legacy michelin boolean from edit modal,
- *   handleSave fields array, and venue row display. Replaced with
- *   michelin_award, michelin_stars, michelin_green_star, worlds_50_best
- *   recognition fields. Row display now shows award tier pill.
- * Prior: S39 — Synced to new AdminDiningVenue shape. ambience_take
- *   replaced by body. Added kicker, tagline, bullets_heading, bullets,
- *   image_credit, image_credit_url, image_license. why_recommend removed.
- * Prior: S38 — Removed slug from search filter, venue row display,
- *   edit modal header, import modal skipped list.
+ * Toast: useToast() from ToastContext — ToastContainer mounted in main.tsx.
+ * Styles: canonical shared objects from adminStyles.ts.
+ * UI atoms: Field from adminUi.tsx.
+ *
+ * Last updated: S40D (refactor) — extracted local Toast/useToast, style objects,
+ *   Field to shared modules. No functional changes.
+ * Prior: S39 — Removed legacy michelin boolean. Added recognition fields.
+ * Prior: S39 — Synced to new AdminDiningVenue shape.
+ * Prior: S38 — Removed slug.
  */
 
 import { useEffect, useMemo, useState } from 'react'
 import { A } from '../../lib/adminTokens'
+import { useToast } from '../../lib/ToastContext'
+import {
+  inputStyle, textareaStyle,
+  btnPrimary, btnGhost, btnDanger,
+} from '../../lib/adminStyles'
+import { Field } from './adminUi'
 import { buildAdminHash } from '../../lib/adminPath'
 import { resolveStoragePath } from '../../lib/storagePath'
 import {
@@ -44,73 +50,7 @@ import {
 import { supabase } from '../../lib/supabase'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
-// ── Toast ────────────────────────────────────────────────────────────────────
-
-function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div style={{
-      position: 'fixed', bottom: 32, right: 32, zIndex: 9999,
-      padding: '12px 20px', borderRadius: 12,
-      background:   type === 'success' ? '#1a2e1a' : '#2e1a1a',
-      border:       `1px solid ${type === 'success' ? A.positive + '50' : A.danger + '50'}`,
-      color:        type === 'success' ? A.positive : A.danger,
-      fontSize: 13, fontFamily: A.font, fontWeight: 600,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-    }}>{message}</div>
-  )
-}
-
-function useToast() {
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  function showToast(message: string, type: 'success' | 'error') {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 5000)
-  }
-  return { toast, showToast }
-}
-
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: A.bgInput, border: `1px solid ${A.border}`,
-  borderRadius: 10, padding: '10px 14px', fontSize: 13,
-  color: A.text, fontFamily: A.font, outline: 'none', boxSizing: 'border-box',
-}
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle, resize: 'vertical', lineHeight: 1.7, minHeight: 90,
-}
-const labelStyle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: A.faint, fontFamily: A.font,
-  marginBottom: 6, display: 'block',
-}
-const btnPrimary: React.CSSProperties = {
-  padding: '8px 18px', background: 'rgba(216,181,106,0.12)', color: A.gold,
-  border: '1px solid rgba(216,181,106,0.30)', borderRadius: 10,
-  fontSize: 12, fontWeight: 700, fontFamily: A.font, cursor: 'pointer',
-  letterSpacing: '0.04em',
-}
-const btnGhost: React.CSSProperties = {
-  padding: '7px 16px', background: 'transparent', color: A.muted,
-  border: `1px solid ${A.border}`, borderRadius: 10,
-  fontSize: 12, fontWeight: 600, fontFamily: A.font, cursor: 'pointer',
-}
-const btnDanger: React.CSSProperties = {
-  padding: '7px 14px', background: 'transparent', color: A.danger,
-  border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8,
-  fontSize: 11, fontWeight: 600, fontFamily: A.font, cursor: 'pointer',
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={labelStyle}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
-// ── Recognition label helper ─────────────────────────────────────────────────
+// ── Recognition label helper ──────────────────────────────────────────────────
 
 function recognitionLabel(v: AdminDiningVenue): string {
   const parts: string[] = []
@@ -124,7 +64,7 @@ function recognitionLabel(v: AdminDiningVenue): string {
   return parts.join(' · ')
 }
 
-// ── Edit Modal ───────────────────────────────────────────────────────────────
+// ── Edit Modal ────────────────────────────────────────────────────────────────
 
 function EditVenueModal({
   venue,
@@ -132,18 +72,17 @@ function EditVenueModal({
   uploadPresetPath,
   onClose,
   onSaved,
-  showToast,
 }: {
   venue:            AdminDiningVenue
   destinationName:  string
   uploadPresetPath: string | null
   onClose:          () => void
   onSaved:          () => void
-  showToast:        (m: string, t: 'success' | 'error') => void
 }) {
-  const [draft, setDraft] = useState<AdminDiningVenue>(venue)
-  const [saving, setSaving] = useState(false)
+  const [draft, setDraft]     = useState<AdminDiningVenue>(venue)
+  const [saving, setSaving]   = useState(false)
   const [tagDraft, setTagDraft] = useState('')
+  const { toast }             = useToast()
 
   function patch<K extends keyof AdminDiningVenue>(k: K, v: AdminDiningVenue[K]) {
     setDraft(prev => ({ ...prev, [k]: v }))
@@ -181,17 +120,16 @@ function EditVenueModal({
         }
       }
       if (Object.keys(payload).length === 0) {
-        showToast('No changes.', 'success')
+        toast.success('No changes.')
         setSaving(false)
         return
       }
       await updateDiningVenue(venue.id, payload)
-      showToast(`Saved ${Object.keys(payload).length} field(s).`, 'success')
+      toast.success(`Saved ${Object.keys(payload).length} field(s).`)
       onSaved()
       onClose()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(e instanceof Error ? e.message : 'Failed')
     }
     setSaving(false)
   }
@@ -201,12 +139,11 @@ function EditVenueModal({
     setSaving(true)
     try {
       await deleteDiningVenue(venue.id)
-      showToast('Venue deleted.', 'success')
+      toast.success('Venue deleted.')
       onSaved()
       onClose()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(e instanceof Error ? e.message : 'Failed')
     }
     setSaving(false)
   }
@@ -232,7 +169,7 @@ function EditVenueModal({
           <button onClick={onClose} style={btnGhost}>Close</button>
         </div>
 
-        {/* ── Identity ── */}
+        {/* Identity */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Name'>
             <input style={inputStyle} value={draft.name} onChange={e => patch('name', e.target.value)} />
@@ -246,12 +183,9 @@ function EditVenueModal({
           <Field label='Price Band'>
             <input style={inputStyle} value={draft.price_band ?? ''} onChange={e => patch('price_band', e.target.value || null)} />
           </Field>
-          <Field label='Public Preview Rank (1-3 or empty)'>
+          <Field label='Public Preview Rank (1-4 or empty)'>
             <input
-              style={inputStyle}
-              type='number'
-              min={1}
-              max={3}
+              style={inputStyle} type='number' min={1} max={4}
               value={draft.public_preview_rank ?? ''}
               onChange={e => {
                 const v = e.target.value
@@ -264,7 +198,7 @@ function EditVenueModal({
           </Field>
         </div>
 
-        {/* ── Recognition ── */}
+        {/* Recognition */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Michelin Award'>
             <select
@@ -272,11 +206,7 @@ function EditVenueModal({
               value={draft.michelin_award ?? ''}
               onChange={e => {
                 const v = e.target.value
-                if (v === '') {
-                  patch('michelin_award', null)
-                  patch('michelin_stars', null)
-                  return
-                }
+                if (v === '') { patch('michelin_award', null); patch('michelin_stars', null); return }
                 patch('michelin_award', v as 'star' | 'bib_gourmand')
                 if (v === 'bib_gourmand') patch('michelin_stars', null)
               }}
@@ -288,10 +218,7 @@ function EditVenueModal({
           </Field>
           <Field label='Michelin Stars (1-3, when award = Star)'>
             <input
-              style={inputStyle}
-              type='number'
-              min={1}
-              max={3}
+              style={inputStyle} type='number' min={1} max={3}
               disabled={draft.michelin_award !== 'star'}
               value={draft.michelin_stars ?? ''}
               onChange={e => {
@@ -317,23 +244,19 @@ function EditVenueModal({
           </Field>
         </div>
 
-        {/* ── Copy ── */}
+        {/* Copy */}
         <Field label='Kicker'>
           <input style={inputStyle} value={draft.kicker ?? ''} onChange={e => patch('kicker', e.target.value || null)} />
         </Field>
-
         <Field label='Tagline'>
           <input style={inputStyle} value={draft.tagline ?? ''} onChange={e => patch('tagline', e.target.value || null)} />
         </Field>
-
         <Field label='Body'>
           <textarea style={textareaStyle} value={draft.body ?? ''} onChange={e => patch('body', e.target.value || null)} />
         </Field>
-
         <Field label='Bullets Heading'>
           <input style={inputStyle} value={draft.bullets_heading ?? ''} onChange={e => patch('bullets_heading', e.target.value || null)} />
         </Field>
-
         <Field label='Bullets (one per line)'>
           <textarea
             style={{ ...textareaStyle, minHeight: 100 }}
@@ -345,11 +268,10 @@ function EditVenueModal({
           />
         </Field>
 
-        {/* ── Contact ── */}
+        {/* Contact */}
         <Field label='Address'>
           <input style={inputStyle} value={draft.address ?? ''} onChange={e => patch('address', e.target.value || null)} />
         </Field>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Maps URL'>
             <input style={inputStyle} value={draft.maps_url ?? ''} onChange={e => patch('maps_url', e.target.value || null)} />
@@ -359,7 +281,7 @@ function EditVenueModal({
           </Field>
         </div>
 
-        {/* ── Tags ── */}
+        {/* Tags */}
         <Field label='Tags'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minHeight: 24 }}>
@@ -389,13 +311,9 @@ function EditVenueModal({
           </div>
         </Field>
 
-        {/* ── Images ── */}
+        {/* Images */}
         <Field label='Image 1 Src'>
-          <ImageFieldWithUploader
-            value={draft.image_src}
-            onChange={v => patch('image_src', v)}
-            presetPath={uploadPresetPath ?? undefined}
-          />
+          <ImageFieldWithUploader value={draft.image_src} onChange={v => patch('image_src', v)} presetPath={uploadPresetPath ?? undefined} />
         </Field>
         <Field label='Image 1 Alt'>
           <input style={inputStyle} value={draft.image_alt ?? ''} onChange={e => patch('image_alt', e.target.value || null)} />
@@ -409,19 +327,14 @@ function EditVenueModal({
         <Field label='Image 1 License'>
           <input style={inputStyle} value={draft.image_license ?? ''} onChange={e => patch('image_license', e.target.value || null)} />
         </Field>
-
         <Field label='Image 2 Src'>
-          <ImageFieldWithUploader
-            value={draft.image_2_src}
-            onChange={v => patch('image_2_src', v)}
-            presetPath={uploadPresetPath ?? undefined}
-          />
+          <ImageFieldWithUploader value={draft.image_2_src} onChange={v => patch('image_2_src', v)} presetPath={uploadPresetPath ?? undefined} />
         </Field>
         <Field label='Image 2 Alt'>
           <input style={inputStyle} value={draft.image_2_alt ?? ''} onChange={e => patch('image_2_alt', e.target.value || null)} />
         </Field>
 
-        {/* ── Admin ── */}
+        {/* Admin */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Active'>
             <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
@@ -430,12 +343,7 @@ function EditVenueModal({
             </select>
           </Field>
           <Field label='Sort Order'>
-            <input
-              style={inputStyle}
-              type='number'
-              value={draft.sort_order}
-              onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)}
-            />
+            <input style={inputStyle} type='number' value={draft.sort_order} onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)} />
           </Field>
         </div>
 
@@ -453,29 +361,28 @@ function EditVenueModal({
   )
 }
 
-// ── Import JSON Modal ────────────────────────────────────────────────────────
+// ── Import JSON Modal ─────────────────────────────────────────────────────────
 
 function ImportJsonModal({
   destinations,
   scopedDestinationId,
   onClose,
   onImported,
-  showToast,
 }: {
   destinations:        DestinationOption[]
   scopedDestinationId: string | null
   onClose:             () => void
   onImported:          () => void
-  showToast:           (m: string, t: 'success' | 'error') => void
 }) {
   const [destId, setDestId] = useState(scopedDestinationId ?? '')
   const [jsonText, setJsonText] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy]     = useState(false)
   const [result, setResult] = useState<IngestResult | null>(null)
+  const { toast }           = useToast()
 
   async function handleImport() {
-    if (!destId) { showToast('Pick a destination.', 'error'); return }
-    if (!jsonText.trim()) { showToast('Paste JSON content.', 'error'); return }
+    if (!destId) { toast.error('Pick a destination.'); return }
+    if (!jsonText.trim()) { toast.error('Paste JSON content.'); return }
 
     setBusy(true)
     try {
@@ -485,11 +392,10 @@ function ImportJsonModal({
       }
       const r = await ingestDiningJson(destId, payload)
       setResult(r)
-      showToast(`Inserted ${r.inserted} venues, skipped ${r.skipped.length}.`, 'success')
+      toast.success(`Inserted ${r.inserted} venues, skipped ${r.skipped.length}.`)
       onImported()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Import failed: ${msg}`, 'error')
+      toast.error(e instanceof Error ? e.message : 'Import failed')
     }
     setBusy(false)
   }
@@ -518,16 +424,9 @@ function ImportJsonModal({
         </div>
 
         <Field label='Destination'>
-          <select
-            style={inputStyle}
-            value={destId}
-            onChange={e => setDestId(e.target.value)}
-            disabled={!!scopedDestinationId}
-          >
+          <select style={inputStyle} value={destId} onChange={e => setDestId(e.target.value)} disabled={!!scopedDestinationId}>
             <option value=''>— Select destination —</option>
-            {destinations.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
+            {destinations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </Field>
 
@@ -571,7 +470,7 @@ function ImportJsonModal({
   )
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 interface LibraryDiningTabProps {
   destinationId: string | null
@@ -582,13 +481,13 @@ interface DestinationFull extends DestinationOption {
 }
 
 export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProps) {
-  const [venues, setVenues] = useState<AdminDiningVenue[]>([])
+  const [venues, setVenues]           = useState<AdminDiningVenue[]>([])
   const [destinations, setDestinations] = useState<DestinationFull[]>([])
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [search, setSearch]           = useState('')
+  const [loading, setLoading]         = useState(true)
   const [editingVenue, setEditingVenue] = useState<AdminDiningVenue | null>(null)
-  const [importOpen, setImportOpen] = useState(false)
-  const { toast, showToast } = useToast()
+  const [importOpen, setImportOpen]   = useState(false)
+  const { toast }                     = useToast()
 
   const effectiveFilter = destinationId ?? ''
 
@@ -598,14 +497,10 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
     return m
   }, [destinations])
 
-  const scopedDest = destinationId ? destinationsById.get(destinationId) ?? null : null
-
+  const scopedDest     = destinationId ? destinationsById.get(destinationId) ?? null : null
   const uploadPresetPath = useMemo(() => {
     if (!scopedDest || !scopedDest.storage_path) return null
-    return resolveStoragePath({
-      destinationStoragePath: scopedDest.storage_path,
-      category: 'dining',
-    })
+    return resolveStoragePath({ destinationStoragePath: scopedDest.storage_path, category: 'dining' })
   }, [scopedDest])
 
   async function loadDestinations() {
@@ -626,8 +521,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
       ])
       setVenues(v)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed to load: ${msg}`, 'error')
+      toast.error(e instanceof Error ? e.message : 'Failed to load')
     }
     setLoading(false)
   }
@@ -649,13 +543,10 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {toast && <Toast message={toast.message} type={toast.type} />}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
-            Library
-          </div>
+          <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>Library</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>
             {scopedDest ? `${scopedDest.name} · Dining` : 'Dining Venues'}
           </div>
@@ -667,11 +558,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
           {scopedDest && (
             <a
               href={buildAdminHash({ product: 'library', tab: 'dining', destinationId: null })}
-              style={{
-                display: 'inline-block', marginTop: 10,
-                fontSize: 11, color: A.gold, textDecoration: 'none',
-                fontFamily: A.font, letterSpacing: '0.04em',
-              }}
+              style={{ display: 'inline-block', marginTop: 10, fontSize: 11, color: A.gold, textDecoration: 'none', fontFamily: A.font, letterSpacing: '0.04em' }}
             >
               ← All destinations
             </a>
@@ -687,16 +574,11 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
           disabled={!!scopedDest}
           onChange={e => {
             const next = e.target.value
-            window.location.hash = buildAdminHash({
-              product: 'library', tab: 'dining',
-              destinationId: next || null,
-            })
+            window.location.hash = buildAdminHash({ product: 'library', tab: 'dining', destinationId: next || null })
           }}
         >
           <option value=''>All destinations ({venues.length} venues)</option>
-          {destinations.map(d => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
+          {destinations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
         <input
           style={{ ...inputStyle, flex: 1, minWidth: 200 }}
@@ -709,49 +591,30 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
       {loading ? (
         <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>
       ) : filtered.length === 0 ? (
-        <div style={{
-          padding: 40, textAlign: 'center', borderRadius: 12,
-          background: A.bgCard, border: `1px solid ${A.border}`,
-          color: A.faint, fontSize: 13, fontFamily: A.font,
-        }}>
+        <div style={{ padding: 40, textAlign: 'center', borderRadius: 12, background: A.bgCard, border: `1px solid ${A.border}`, color: A.faint, fontSize: 13, fontFamily: A.font }}>
           No venues match those filters.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {filtered.map(v => {
-            const dest = destinationsById.get(v.global_destination_id)
+            const dest  = destinationsById.get(v.global_destination_id)
             const recog = recognitionLabel(v)
             return (
               <div
                 key={v.id}
                 onClick={() => setEditingVenue(v)}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr 120px 80px',
-                  gap: 12,
-                  padding: '10px 14px',
-                  background: A.bgCard,
-                  border: `1px solid ${A.border}`,
-                  borderRadius: 10,
-                  cursor: 'pointer',
-                  alignItems: 'center',
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 120px 80px',
+                  gap: 12, padding: '10px 14px',
+                  background: A.bgCard, border: `1px solid ${A.border}`,
+                  borderRadius: 10, cursor: 'pointer', alignItems: 'center',
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>
-                  {v.name}
-                </div>
-                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
-                  {dest?.name ?? <span style={{ color: A.faint }}>(unknown)</span>}
-                </div>
-                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
-                  {v.cuisine_subcategory ?? <span style={{ color: A.faint }}>—</span>}
-                </div>
-                <div style={{ fontSize: 11, color: recog ? A.gold : A.faint, fontFamily: A.font, fontWeight: 600 }}>
-                  {recog || ''}
-                </div>
-                <div style={{ fontSize: 11, color: v.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
-                  {v.is_active ? 'Active' : 'Hidden'}
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{v.name}</div>
+                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{dest?.name ?? <span style={{ color: A.faint }}>(unknown)</span>}</div>
+                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{v.cuisine_subcategory ?? <span style={{ color: A.faint }}>—</span>}</div>
+                <div style={{ fontSize: 11, color: recog ? A.gold : A.faint, fontFamily: A.font, fontWeight: 600 }}>{recog || ''}</div>
+                <div style={{ fontSize: 11, color: v.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>{v.is_active ? 'Active' : 'Hidden'}</div>
               </div>
             )
           })}
@@ -762,19 +625,13 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
         <EditVenueModal
           venue={editingVenue}
           destinationName={destinationsById.get(editingVenue.global_destination_id)?.name ?? '(unknown)'}
-          uploadPresetPath={
-            (() => {
-              const d = destinationsById.get(editingVenue.global_destination_id)
-              if (!d || !d.storage_path) return null
-              return resolveStoragePath({
-                destinationStoragePath: d.storage_path,
-                category: 'dining',
-              })
-            })()
-          }
+          uploadPresetPath={(() => {
+            const d = destinationsById.get(editingVenue.global_destination_id)
+            if (!d || !d.storage_path) return null
+            return resolveStoragePath({ destinationStoragePath: d.storage_path, category: 'dining' })
+          })()}
           onClose={() => setEditingVenue(null)}
           onSaved={load}
-          showToast={showToast}
         />
       )}
 
@@ -784,7 +641,6 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
           scopedDestinationId={destinationId}
           onClose={() => setImportOpen(false)}
           onImported={load}
-          showToast={showToast}
         />
       )}
     </div>
