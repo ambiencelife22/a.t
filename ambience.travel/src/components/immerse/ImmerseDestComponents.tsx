@@ -13,7 +13,8 @@
 //   ImmerseDestPricing.
 
 import { useState } from 'react'
-import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
+import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
 import { C } from '../../lib/landingTypes'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseEngagementComponents'
 import type { ImmerseDestinationData, ImmerseContentCard } from '../../lib/immerseTypes'

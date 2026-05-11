@@ -13,7 +13,9 @@
 // Largest of the 4 split files — owns the carousel data shape feeding
 // ImmerseHotelOptions + RoomCategory render.
 //
-// Last updated: S32K — Rooms now JOIN travel_immerse_rate_cadences via
+// Last updated: S40B — slug removed from travel_accom_hotels SELECT and type
+//   casts (flat + regioned). hotelSlug fallback chain simplified to short_slug only.
+// Prior: S32K — Rooms now JOIN travel_immerse_rate_cadences via
 //   rate_cadence_id and expose rateCadence (e.g. "Per Night") to render.
 //   Replaces the hardcoded "/ night" suffix in RoomCategory. Cadence is
 //   overlay-only (canon never carries pricing per architectural rule).
@@ -82,7 +84,7 @@ async function fetchFlatHotels(
       id, hotel_id, rank, rank_label, bullets,
       stay_label, sort_order,
       travel_accom_hotels (
-        id, slug, name, short_slug,
+        id, name, short_slug,
         hero_image_src, hero_image_alt, image_credit
       )
     `)
@@ -107,31 +109,30 @@ async function fetchFlatHotels(
 
   return data.map(r => {
     const h = r.travel_accom_hotels as unknown as {
-      id:              string
-      slug:            string
-      name:            string
-      short_slug:      string
-      hero_image_src:  string | null
-      hero_image_alt:  string | null
-      image_credit:    string | null
+      id:             string
+      name:           string
+      short_slug:     string
+      hero_image_src: string | null
+      hero_image_alt: string | null
+      image_credit:   string | null
     } | null
     const hotelId   = h?.id ?? r.hotel_id
-    const hotelSlug = h?.short_slug ?? h?.slug ?? ''
+    const hotelSlug = h?.short_slug ?? ''
     const hotelName = h?.name ?? ''
 
     return {
-      id:              hotelId,
-      storageSlug:     hotelSlug,
-      rank:            (r.rank as 'primary' | 'secondary') ?? 'primary',
-      rankLabel:       r.rank_label     ?? '',
-      name:            hotelName,
-      bullets:         Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
-      imageSrc:        rewriteImageUrl(h?.hero_image_src),
-      imageAlt:        h?.hero_image_alt ?? '',
-      imageCredit:     h?.image_credit   ?? undefined,
-      stayLabel:       r.stay_label     ?? '',
-      rooms:           roomsByHotel[hotelId]   ?? [],
-      gallery:         galleryByHotel[hotelId] ?? [],
+      id:          hotelId,
+      storageSlug: hotelSlug,
+      rank:        (r.rank as 'primary' | 'secondary') ?? 'primary',
+      rankLabel:   r.rank_label  ?? '',
+      name:        hotelName,
+      bullets:     Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
+      imageSrc:    rewriteImageUrl(h?.hero_image_src),
+      imageAlt:    h?.hero_image_alt ?? '',
+      imageCredit: h?.image_credit   ?? undefined,
+      stayLabel:   r.stay_label  ?? '',
+      rooms:       roomsByHotel[hotelId]   ?? [],
+      gallery:     galleryByHotel[hotelId] ?? [],
     }
   })
 }
@@ -139,18 +140,18 @@ async function fetchFlatHotels(
 // ─── Regioned hotels ──────────────────────────────────────────────────────────
 
 type RegionRow = {
-  id:              string
-  slug:            string
-  title:           string | null
-  shorthand:       string | null
-  hero_image_src:  string | null
-  hero_image_alt:  string | null
-  region_gallery:  string[] | null
+  id:             string
+  slug:           string
+  title:          string | null
+  shorthand:      string | null
+  hero_image_src: string | null
+  hero_image_alt: string | null
+  region_gallery: string[] | null
 }
 
 async function fetchRegionGroups(
-  engagementId:  string,
-  regions:       RegionRow[],
+  engagementId: string,
+  regions:      RegionRow[],
 ): Promise<ImmerseRegionGroup[]> {
   if (!engagementId || regions.length === 0) return []
 
@@ -169,7 +170,7 @@ async function fetchRegionGroups(
         id, region_id, hotel_id, rank, rank_label, bullets,
         stay_label, sort_order,
         travel_accom_hotels (
-          id, slug, name, short_slug,
+          id, name, short_slug,
           hero_image_src, hero_image_alt, image_credit
         )
       `)
@@ -180,11 +181,11 @@ async function fetchRegionGroups(
   ])
 
   const tripRegionByRegionId = new Map<string, {
-    rank:       'primary' | 'secondary'
-    rankLabel:  string
-    bullets:    string[]
-    stayLabel:  string
-    sortOrder:  number
+    rank:      'primary' | 'secondary'
+    rankLabel: string
+    bullets:   string[]
+    stayLabel: string
+    sortOrder: number
   }>()
   for (const tr of (tripRegionsRes.data ?? [])) {
     tripRegionByRegionId.set(tr.region_id as string, {
@@ -210,31 +211,30 @@ async function fetchRegionGroups(
   const hotelsByRegionId = new Map<string, ImmerseHotelOption[]>()
   for (const r of hotelRows) {
     const h = r.travel_accom_hotels as unknown as {
-      id:              string
-      slug:            string
-      name:            string
-      short_slug:      string
-      hero_image_src:  string | null
-      hero_image_alt:  string | null
-      image_credit:    string | null
+      id:             string
+      name:           string
+      short_slug:     string
+      hero_image_src: string | null
+      hero_image_alt: string | null
+      image_credit:   string | null
     } | null
     const hotelId   = h?.id ?? r.hotel_id
-    const hotelSlug = h?.short_slug ?? h?.slug ?? ''
+    const hotelSlug = h?.short_slug ?? ''
     const hotelName = h?.name ?? ''
 
     const option: ImmerseHotelOption = {
-      id:              hotelId,
-      storageSlug:     hotelSlug,
-      rank:            (r.rank as 'primary' | 'secondary') ?? 'primary',
-      rankLabel:       r.rank_label    ?? '',
-      name:            hotelName,
-      bullets:         Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
-      imageSrc:        rewriteImageUrl(h?.hero_image_src),
-      imageAlt:        h?.hero_image_alt ?? '',
-      imageCredit:     h?.image_credit   ?? undefined,
-      stayLabel:       r.stay_label    ?? '',
-      rooms:           roomsByHotel[hotelId]   ?? [],
-      gallery:         galleryByHotel[hotelId] ?? [],
+      id:          hotelId,
+      storageSlug: hotelSlug,
+      rank:        (r.rank as 'primary' | 'secondary') ?? 'primary',
+      rankLabel:   r.rank_label  ?? '',
+      name:        hotelName,
+      bullets:     Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
+      imageSrc:    rewriteImageUrl(h?.hero_image_src),
+      imageAlt:    h?.hero_image_alt ?? '',
+      imageCredit: h?.image_credit   ?? undefined,
+      stayLabel:   r.stay_label  ?? '',
+      rooms:       roomsByHotel[hotelId]   ?? [],
+      gallery:     galleryByHotel[hotelId] ?? [],
     }
 
     const bucket = hotelsByRegionId.get(r.region_id as string) ?? []
@@ -271,9 +271,6 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
-// S32K: overlay JOINs travel_immerse_rate_cadences via rate_cadence_id to
-// expose the cadence label (e.g. "Per Night") for render. Cadence is overlay-
-// only — canon (travel_accom_rooms) never carries pricing-related fields.
 
 async function fetchRoomsForHotels(
   engagementId: string,
@@ -295,8 +292,8 @@ async function fetchRoomsForHotels(
 
   if (!canonRooms || canonRooms.length === 0) return {}
 
-  const canonIds    = canonRooms.map(r => r.id as string)
-  const canonById   = new Map<string, typeof canonRooms[number]>()
+  const canonIds  = canonRooms.map(r => r.id as string)
+  const canonById = new Map<string, typeof canonRooms[number]>()
   for (const c of canonRooms) canonById.set(c.id as string, c)
 
   const { data: overlayRooms } = await supabase
@@ -330,8 +327,7 @@ async function fetchRoomsForHotels(
     if (!canon) continue
 
     const roomImageSrc = rewriteImageUrl(
-      o.hero_image_src_override
-        ?? canon.room_image_src
+      o.hero_image_src_override ?? canon.room_image_src
     )
     const roomImageAlt = canon.room_image_alt ?? ''
 
@@ -341,8 +337,7 @@ async function fetchRoomsForHotels(
     const sqmMax  = o.sqm_max_override  ?? canon.sqm_max  ?? o.sqm_max  ?? undefined
 
     const floorplanResolved = rewriteImageUrl(
-      o.floorplan_src_override
-        ?? canon.floorplan_src
+      o.floorplan_src_override ?? canon.floorplan_src
     )
     const floorplanSrc = floorplanResolved || undefined
 
@@ -356,34 +351,30 @@ async function fetchRoomsForHotels(
 
     const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
 
-    // S32K: rate cadence from JOIN against travel_immerse_rate_cadences
     const cadenceJoin = o.travel_immerse_rate_cadences as unknown as { label: string | null } | null
     const rateCadence = cadenceJoin?.label ?? undefined
 
-    // Room name: overlay room_name_override takes precedence, fallback to canon room_name
-    const roomName = o.room_name_override ?? canon.room_name ?? ''
-
-    // Tier label: from overlay level_label (engagement-specific tier)
+    const roomName  = o.room_name_override ?? canon.room_name ?? ''
     const tierLabel = o.level_label ?? ''
 
     const hotelId = canon.hotel_id as string
     if (!grouped[hotelId]) grouped[hotelId] = []
 
     grouped[hotelId].push({
-      tierLabel:                tierLabel,
+      tierLabel,
       levelLabel:               roomName,
-      roomBasis:                o.room_basis                   ?? '',
+      roomBasis:                o.room_basis                  ?? '',
       roomBenefits:             roomBenefits,
-      roomImageSrc:             roomImageSrc,
-      roomImageAlt:             roomImageAlt,
-      roomGallery:              roomGallery,
-      floorplanSrc:             floorplanSrc,
-      publicNightlyRate:        o.public_nightly_rate          ?? undefined,
-      nonNegotiatedNightlyRate: o.non_negotiated_nightly_rate  ?? undefined,
-      ambienceNightlyRate:      o.ambience_nightly_rate        ?? undefined,
-      taxInclusive:             o.tax_inclusive                ?? false,
-      rateSuffix:               rateSuffix,
-      rateCadence:              rateCadence,
+      roomImageSrc,
+      roomImageAlt,
+      roomGallery,
+      floorplanSrc,
+      publicNightlyRate:        o.public_nightly_rate         ?? undefined,
+      nonNegotiatedNightlyRate: o.non_negotiated_nightly_rate ?? undefined,
+      ambienceNightlyRate:      o.ambience_nightly_rate       ?? undefined,
+      taxInclusive:             o.tax_inclusive               ?? false,
+      rateSuffix,
+      rateCadence,
       sqftMin, sqftMax, sqmMin, sqmMax,
     })
   }

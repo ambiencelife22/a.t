@@ -15,7 +15,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { ID, useImmerseMobile, useImmerseVisible, immerseFadeUp, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
+import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
 import { C } from '../../lib/landingTypes'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
