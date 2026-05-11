@@ -1,7 +1,7 @@
 // DiningGuidePage.tsx — public dining guide for a destination
 // What it owns:
 //   - Venue data fetch
-//   - Filter state + URL param sync (cuisine, michelin, neighborhood)
+//   - Filter state + URL param sync (cuisine, michelin)
 //   - Frontend default copy + ?? resolution against overlay overrides
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error+empty states for the data load
@@ -20,14 +20,18 @@
 //
 // Hero resolution (S40):
 //   overlay?.hero_image_src ?? destination.heroImageSrc ?? null
-//   overlay?.hero_image_alt ?? destination.heroImageAlt ?? null
 //   Canon hero lives on global_destinations. Overlay overrides only when set.
 //
-// Last updated: S40 — Sort changed to always alphabetical. public_preview_rank
-//   is a gating mechanism only — determines hasFullAccess when gating ships,
-//   not display order.
+// Sort (S40):
+//   Non-supplementary venues alphabetical first, supplementary alphabetical last.
+//   A subtle divider renders above the first supplementary venue in the grid.
+//   public_preview_rank is a gating mechanism only — no sort influence.
+//
+// Last updated: S40 — Neighborhoods removed entirely from FilterState, URL sync,
+//   filter logic, and DiningGuideFilters prop. Cuisine + Michelin only.
+// Prior: S40 — Supplementary-last sort. Divider above first supplementary venue.
+// Prior: S40 — Always alphabetical sort.
 // Prior: S40 — Canon hero resolution via destination.heroImageSrc.
-// Prior: S40 — Preview rank sort (replaced this session).
 // Prior: S40 — PlanYourVisit extracted. Gate removed.
 // Prior: S40 — Inline styles extracted to lib/guidePageStyles.ts.
 // Prior: S39 Add 1 — Added Plan Your Visit block.
@@ -55,6 +59,8 @@ import {
   downloadBtnDisabledStyle,
   downloadIconStyle,
   gridStyle,
+  supplementaryDividerStyle,
+  supplementaryLabelStyle,
   disclaimerStyle,
   disclaimerTextStyle,
   messageBlockStyle,
@@ -98,11 +104,9 @@ function resolveGuideVersion(overlayVersion: string | null | undefined): string 
 function readFilterStateFromUrl(): FilterState {
   const params = new URLSearchParams(window.location.search)
   const cuisinesParam = params.get('cuisine')
-  const neighborhoodsParam = params.get('neighborhood')
   return {
     cuisines: new Set(cuisinesParam ? cuisinesParam.split(',').filter(Boolean) : []),
     michelinOnly: params.get('michelin') === '1',
-    neighborhoods: new Set(neighborhoodsParam ? neighborhoodsParam.split(',').filter(Boolean) : []),
   }
 }
 
@@ -113,9 +117,6 @@ function writeFilterStateToUrl(state: FilterState) {
   }
   if (state.michelinOnly) {
     params.set('michelin', '1')
-  }
-  if (state.neighborhoods.size > 0) {
-    params.set('neighborhood', Array.from(state.neighborhoods).join(','))
   }
   const qs = params.toString()
   const next = `${window.location.pathname}${qs ? '?' + qs : ''}`
@@ -163,7 +164,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   }, [])
 
   // ── Resolved hero copy ─────────────────────────────────────────────────────
-  // Canon hero from global_destinations. Overlay overrides when set.
 
   const overlay = destination.overlay
   const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
@@ -211,14 +211,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
     return Array.from(set).sort()
   }, [venues])
 
-  const availableNeighborhoods = useMemo(() => {
-    const set = new Set<string>()
-    venues.forEach((v) => {
-      if (v.neighborhood) set.add(v.neighborhood)
-    })
-    return Array.from(set).sort()
-  }, [venues])
-
   const hasMichelinItems = useMemo(
     () => venues.some((v) => v.michelin_award === 'star' || v.michelin_award === 'bib_gourmand'),
     [venues],
@@ -239,18 +231,24 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
       if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') {
         return false
       }
-      if (filterState.neighborhoods.size > 0) {
-        if (!v.neighborhood || !filterState.neighborhoods.has(v.neighborhood)) {
-          return false
-        }
-      }
       return true
     })
 
-    // Always alphabetical. public_preview_rank is a gating mechanism only —
-    // determines hasFullAccess when gating ships, not display order.
-    return filtered.sort((a, b) => a.name.localeCompare(b.name))
+    // Non-supplementary alphabetical first, supplementary alphabetical last.
+    // public_preview_rank is a gating mechanism only — no sort influence.
+    return filtered.sort((a, b) => {
+      if (a.is_supplementary !== b.is_supplementary) {
+        return a.is_supplementary ? 1 : -1
+      }
+      return a.name.localeCompare(b.name)
+    })
   }, [venues, filterState])
+
+  // Index of first supplementary venue in filtered list — drives divider render.
+  const firstSupplementaryIndex = useMemo(
+    () => filteredVenues.findIndex((v) => v.is_supplementary),
+    [filteredVenues],
+  )
 
   // ── PDF download handler ───────────────────────────────────────────────────
 
@@ -314,7 +312,6 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
               state={filterState}
               onChange={setFilterState}
               availableCuisines={availableCuisines}
-              availableNeighborhoods={availableNeighborhoods}
               hasMichelinItems={hasMichelinItems}
             />
 
@@ -344,13 +341,19 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
               <EmptyState />
             ) : (
               <section style={gridStyle}>
-                {filteredVenues.map((v) => (
-                  <DiningCard
-                    key={v.id}
-                    venue={v}
-                    hasFullAccess={true}
-                    destinationName={destination.name}
-                  />
+                {filteredVenues.map((v, i) => (
+                  <React.Fragment key={v.id}>
+                    {i === firstSupplementaryIndex && firstSupplementaryIndex > 0 && (
+                      <div style={supplementaryDividerStyle}>
+                        <span style={supplementaryLabelStyle}>Also nearby</span>
+                      </div>
+                    )}
+                    <DiningCard
+                      venue={v}
+                      hasFullAccess={true}
+                      destinationName={destination.name}
+                    />
+                  </React.Fragment>
                 ))}
               </section>
             )}

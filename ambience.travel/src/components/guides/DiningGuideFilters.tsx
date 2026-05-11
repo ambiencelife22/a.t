@@ -1,7 +1,10 @@
-// GuideFilters.tsx — pill row of filter chips for the dining guide
-// What it owns: chip rendering, multi-select state, URL param sync.
+// DiningGuideFilters.tsx — pill row of filter chips for the dining guide
+// What it owns: chip rendering, multi-select cuisine state, Michelin toggle.
 // What it does not own: filtered-result computation (parent owns that).
-// Last updated: S35
+//
+// Last updated: S40 — Neighborhoods removed entirely from FilterState and
+//   render. Cuisine + Michelin only.
+// Prior: S35 — Initial ship.
 
 import React from 'react'
 import { ID, IMMERSE } from '../../lib/landingColors'
@@ -9,14 +12,12 @@ import { ID, IMMERSE } from '../../lib/landingColors'
 export interface FilterState {
   cuisines: Set<string>
   michelinOnly: boolean
-  neighborhoods: Set<string>
 }
 
 export interface FilterChipsProps {
   state: FilterState
   onChange: (next: FilterState) => void
   availableCuisines: string[]
-  availableNeighborhoods: string[]
   hasMichelinItems: boolean
 }
 
@@ -24,28 +25,19 @@ export function DiningGuideFilters({
   state,
   onChange,
   availableCuisines,
-  availableNeighborhoods,
   hasMichelinItems,
 }: FilterChipsProps) {
-  const isAllActive =
-    state.cuisines.size === 0 &&
-    !state.michelinOnly &&
-    state.neighborhoods.size === 0
+  const isAllActive = state.cuisines.size === 0 && !state.michelinOnly
 
   function handleAll() {
-    onChange({
-      cuisines: new Set(),
-      michelinOnly: false,
-      neighborhoods: new Set(),
-    })
+    onChange({ cuisines: new Set(), michelinOnly: false })
   }
 
   function toggleCuisine(c: string) {
     const next = new Set(state.cuisines)
     if (next.has(c)) {
       next.delete(c)
-    }
-    if (!state.cuisines.has(c)) {
+    } else {
       next.add(c)
     }
     onChange({ ...state, cuisines: next })
@@ -53,17 +45,6 @@ export function DiningGuideFilters({
 
   function toggleMichelin() {
     onChange({ ...state, michelinOnly: !state.michelinOnly })
-  }
-
-  function toggleNeighborhood(n: string) {
-    const next = new Set(state.neighborhoods)
-    if (next.has(n)) {
-      next.delete(n)
-    }
-    if (!state.neighborhoods.has(n)) {
-      next.add(n)
-    }
-    onChange({ ...state, neighborhoods: next })
   }
 
   return (
@@ -83,15 +64,6 @@ export function DiningGuideFilters({
           Michelin
         </Chip>
       )}
-      {availableNeighborhoods.map((n) => (
-        <Chip
-          key={n}
-          active={state.neighborhoods.has(n)}
-          onClick={() => toggleNeighborhood(n)}
-        >
-          {n}
-        </Chip>
-      ))}
     </nav>
   )
 }

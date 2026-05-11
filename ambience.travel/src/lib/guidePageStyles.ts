@@ -8,6 +8,7 @@
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from './landingColors'
+import { C } from '../lib/theme'
 
 // ── DiningGuidePage ───────────────────────────────────────────────────────────
 
@@ -225,4 +226,27 @@ export const pyvItemTextStyle: React.CSSProperties = {
   color: ID.muted,
   fontSize: 15,
   lineHeight: 1.65,
+}
+
+// ── Supplementary divider ─────────────────────────────────────────────────────
+// Spans full grid width via gridColumn 1/-1. Renders above first supplementary
+// venue. Subtle rule with a muted label — signals a section break without weight.
+
+export const supplementaryDividerStyle: React.CSSProperties = {
+  gridColumn: '1 / -1',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  paddingTop: 12,
+  marginTop: 10,
+  borderTop: `1px solid rgba(216,181,106,0.12)`,
+}
+
+export const supplementaryLabelStyle: React.CSSProperties = {
+  color: C.muted,
+  fontSize: 11,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
 }
