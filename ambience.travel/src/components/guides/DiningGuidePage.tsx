@@ -18,9 +18,10 @@
 //   - Style objects (lib/guidePageStyles.ts)
 //   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
 //
-// Last updated: S40 — PlanYourVisit extracted to PlanYourVisit.tsx.
-//   Gate removed — PYV always renders using fallback copy when overlay null.
-//   Unused pyv* style imports removed from guidePageStyles import.
+// Last updated: S40 — Preview rank sort added to filteredVenues. Ranked venues
+//   (public_preview_rank 1, 2, 3) surface first; remaining venues sort by
+//   sort_order. hasFullAccess remains true for all — gating layer wires in later.
+// Prior: S40 — PlanYourVisit extracted to PlanYourVisit.tsx. Gate removed.
 // Prior: S40 — extracted inline styles to lib/guidePageStyles.ts
 // Prior: S39 Add 1 — Added Plan Your Visit block below venue grid.
 // Prior: S39 — Added accuracy disclaimer block. accuracyDate passed to exportGuidePdf.
@@ -221,7 +222,7 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
   )
 
   const filteredVenues = useMemo(() => {
-    return venues.filter((v) => {
+    const filtered = venues.filter((v) => {
       if (filterState.cuisines.size > 0) {
         if (!v.cuisine_subcategory || !filterState.cuisines.has(v.cuisine_subcategory)) {
           return false
@@ -236,6 +237,16 @@ export default function DiningGuidePage({ destination }: DiningGuidePageProps) {
         }
       }
       return true
+    })
+
+    // Preview-ranked venues surface first (rank 1, 2, 3), then sort_order for the rest.
+    // When gating ships, ranked venues will also be the only ones with hasFullAccess=true
+    // for ungated users. Sort preserved here so gating layer can slice cleanly.
+    return filtered.sort((a, b) => {
+      const aRank = a.public_preview_rank ?? Infinity
+      const bRank = b.public_preview_rank ?? Infinity
+      if (aRank !== bRank) return aRank - bRank
+      return a.sort_order - b.sort_order
     })
   }, [venues, filterState])
 
