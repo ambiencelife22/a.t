@@ -14,6 +14,12 @@
 //   variant slugs. Prevents cross-match when two rows share global_destination_id.
 //   destinationUrlSlug added to ImmerseDestinationCore — passed to
 //   getImmerseDestinationCards so variant pages get their own card selections.
+// Last updated: S37 — experiences_*_override columns added to
+//   travel_immerse_trip_destination_rows. Read path now uses same
+//   override-chain pattern as dining (override ?? catalog ?? '').
+//   Was a parity gap: catalog had experiences_* but override table didn't.
+//   Mirrors the dining pattern exactly.
+// Prior: S40B — url_slug variant routing. ...  [existing text continues]
 // Prior: S32K — Pricing now engagement-scoped. fetchEngagementOverride
 //   now returns the override row's own id (tripDestinationRowId) so that
 //   getImmerseDestinationPricing can read pricing rows by it. ImmerseDestinationCore
@@ -154,6 +160,9 @@ type EngagementDestinationOverride = {
   dining_eyebrow_override:                   string | null
   dining_title_override:                     string | null
   dining_body_override:                      string | null
+  experiences_eyebrow_override:              string | null
+  experiences_title_override:                string | null
+  experiences_body_override:                 string | null
   pricing_body_override:                     string | null
   pricing_notes_heading_override:            string | null
   pricing_notes_title_override:              string | null
@@ -185,6 +194,9 @@ async function fetchEngagementOverride(
       dining_eyebrow_override,
       dining_title_override,
       dining_body_override,
+      experiences_eyebrow_override,
+      experiences_title_override,
+      experiences_body_override,
       pricing_body_override,
       pricing_notes_heading_override,
       pricing_notes_title_override,
@@ -289,9 +301,9 @@ export async function getImmerseDestinationCore(
     diningTitle:   ov?.dining_title_override   ?? (dest.dining_title   as string | null) ?? '',
     diningBody:    ov?.dining_body_override    ?? (dest.dining_body    as string | null) ?? '',
 
-    experiencesEyebrow: (dest.experiences_eyebrow as string | null) ?? '',
-    experiencesTitle:   (dest.experiences_title   as string | null) ?? '',
-    experiencesBody:    (dest.experiences_body    as string | null) ?? '',
+    experiencesEyebrow: ov?.experiences_eyebrow_override ?? (dest.experiences_eyebrow as string | null) ?? '',
+    experiencesTitle:   ov?.experiences_title_override   ?? (dest.experiences_title   as string | null) ?? '',
+    experiencesBody:    ov?.experiences_body_override    ?? (dest.experiences_body    as string | null) ?? '',
 
     pricingEyebrow: (dest.pricing_eyebrow as string | null) ?? '',
     pricingTitle:   (dest.pricing_title   as string | null) ?? '',

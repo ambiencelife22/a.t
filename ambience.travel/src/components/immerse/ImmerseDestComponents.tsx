@@ -5,12 +5,14 @@
 // Does not own: hotel options carousel (ImmerseHotelOptions.tsx), room render
 //   (ImmerseRoomCategory.tsx), nav helpers (ImmerseCarouselNav.tsx), keyframes
 //   (src/index.css)
-// Last updated: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
-//   <style> keyframe block removed (now global in src/index.css). No
-//   behaviour change.
+// Last updated: S37 — ImmerseContentGrid body now conditionally renders.
+//   Empty string or null body no longer creates an empty <ImmerseBody>
+//   element with its margins. Pattern: {body && <ImmerseBody>...}.
+//   Same pattern should apply to other section bodies as a follow-up audit.
+// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
+//   <style> keyframe block removed (now global in src/index.css).
 // Prior: S23 addendum — bullets_heading render added in ContentCard.
-// Prior: S23 — Added PRICING_CLOSER_DEFAULT constant + closer render row in
-//   ImmerseDestPricing.
+// Prior: S23 — Added PRICING_CLOSER_DEFAULT constant + closer render row.
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
@@ -125,7 +127,7 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
             {title}
           </ImmerseTitle>
         </div>
-        <ImmerseBody style={{ color: bodyColor }}>{body}</ImmerseBody>
+        {body && <ImmerseBody style={{ color: bodyColor }}>{body}</ImmerseBody>}
       </div>
 
       <div
