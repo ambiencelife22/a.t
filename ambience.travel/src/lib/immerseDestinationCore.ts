@@ -5,7 +5,16 @@
 //   Also owns: slug→UUID cache, fetchEngagementOverride, ImmerseDestinationCore type.
 // Does not own: hotels (immerseDestinationHotels), cards (Cards), pricing (Pricing).
 //
-// Last updated: S32K — Pricing now engagement-scoped. fetchEngagementOverride
+// Last updated: S40B — url_slug variant routing. travel_immerse_destinations
+//   gains url_slug column (nullable). resolveSlug checks url_slug first —
+//   when matched, returns the immerse destination row directly (newyork2 etc).
+//   Falls back to global_destinations slug lookup for standard routes.
+//   fetchEngagementOverride now accepts variantSlug — filters by
+//   destination_url_slug IS NULL for canonical slugs, IS variantSlug for
+//   variant slugs. Prevents cross-match when two rows share global_destination_id.
+//   destinationUrlSlug added to ImmerseDestinationCore — passed to
+//   getImmerseDestinationCards so variant pages get their own card selections.
+// Prior: S32K — Pricing now engagement-scoped. fetchEngagementOverride
 //   now returns the override row's own id (tripDestinationRowId) so that
 //   getImmerseDestinationPricing can read pricing rows by it. ImmerseDestinationCore
 //   gains a tripDestinationRowId field. Pricing fetch in getImmerseDestination
@@ -35,21 +44,14 @@ import type { ImmerseDestinationData }   from './immerseTypes'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
-// Result shape for getImmerseDestinationCore. Carries everything needed to
-// paint the hero + intro + section headings, plus the IDs that the other 3
-// fetchers need so they don't re-resolve.
 export interface ImmerseDestinationCore {
-  // IDs — passed to subsequent fetchers
   destinationId:        string
   globalDestinationId:  string
   tripDestinationRowId: string
-
-  // Destination identity
   destinationSlug:      string
+  destinationUrlSlug:   string | null  // null for canonical, non-null for variants
   journeyId:            string
   shorthand?:           string
-
-  // Hero
   eyebrow:              string
   title:                string
   subtitle:             string
@@ -60,29 +62,21 @@ export interface ImmerseDestinationCore {
   heroTitle2?:          string
   heroSubtitle2?:       string
   heroPills:            string[]
-
-  // Intro
   introEyebrow:         string
   introTitle:           string
   introBody:            string
-
-  // Section eyebrows / titles / bodies (cheap fields from dest + override)
   hotelsEyebrow:        string
   hotelsTitle:          string
   hotelsBody:           string
-
   diningEyebrow:        string
   diningTitle:          string
   diningBody:           string
-
   experiencesEyebrow:   string
   experiencesTitle:     string
   experiencesBody:      string
-
   pricingEyebrow:       string
   pricingTitle:         string
   pricingBody:          string
-
   pricingCloser: {
     item:            string | null
     basis:           string | null
@@ -94,38 +88,58 @@ export interface ImmerseDestinationCore {
   pricingNotes:         string[]
 }
 
-// ─── Global destination resolver (S32C, cache added S32E) ────────────────────
-// URL slug → global_destinations.id. The single canonical lookup that
-// converts a URL handle to FK truth. Every downstream query uses FK.
-//
-// Module-scope cache. First call per slug hits DB; subsequent calls within
-// the same session return instantly. Cache is process-scoped (lost on full
-// page reload) which is the correct lifetime — slug→UUID is stable as long
-// as the destination row exists.
+// ─── Slug resolution result ───────────────────────────────────────────────────
 
-const globalDestinationIdCache = new Map<string, string>()
+type SlugResolution =
+  | { kind: 'variant';   destRow: Record<string, unknown>; globalDestinationId: string }
+  | { kind: 'canonical'; globalDestinationId: string }
 
-async function resolveGlobalDestinationId(slug: string): Promise<string | null> {
+// ─── Slug resolver ────────────────────────────────────────────────────────────
+
+const slugResolutionCache = new Map<string, SlugResolution>()
+
+async function resolveSlug(slug: string): Promise<SlugResolution | null> {
   if (!slug) return null
 
-  const cached = globalDestinationIdCache.get(slug)
+  const cached = slugResolutionCache.get(slug)
   if (cached) return cached
 
-  const { data } = await supabase
+  // Step 1: check travel_immerse_destinations.url_slug
+  const { data: variantRow } = await supabase
+    .from('travel_immerse_destinations')
+    .select('*')
+    .eq('url_slug', slug)
+    .maybeSingle()
+
+  if (variantRow) {
+    const resolution: SlugResolution = {
+      kind:                'variant',
+      destRow:             variantRow as Record<string, unknown>,
+      globalDestinationId: variantRow.global_destination_id as string,
+    }
+    slugResolutionCache.set(slug, resolution)
+    return resolution
+  }
+
+  // Step 2: fall back to global_destinations.slug
+  const { data: globalRow } = await supabase
     .from('global_destinations')
     .select('id')
     .eq('slug', slug)
     .maybeSingle()
 
-  const id = data?.id ?? null
-  if (id) globalDestinationIdCache.set(slug, id)
-  return id
+  const globalDestinationId = globalRow?.id ?? null
+  if (!globalDestinationId) return null
+
+  const resolution: SlugResolution = {
+    kind: 'canonical',
+    globalDestinationId,
+  }
+  slugResolutionCache.set(slug, resolution)
+  return resolution
 }
 
-// ─── Per-engagement destination override (S32C: FK-keyed) ────────────────────
-// Returns the override row's own id (tripDestinationRowId) plus all override
-// fields. The id is needed by getImmerseDestinationPricing to read engagement-
-// scoped pricing rows.
+// ─── Per-engagement destination override ─────────────────────────────────────
 
 type EngagementDestinationOverride = {
   id:                                        string
@@ -153,9 +167,10 @@ type EngagementDestinationOverride = {
 async function fetchEngagementOverride(
   engagementId:        string,
   globalDestinationId: string,
+  variantSlug:         string | null = null,
 ): Promise<EngagementDestinationOverride | null> {
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('travel_immerse_trip_destination_rows')
     .select(`
       id,
@@ -181,18 +196,19 @@ async function fetchEngagementOverride(
     `)
     .eq('trip_id', engagementId)
     .eq('global_destination_id', globalDestinationId)
-    .maybeSingle()
 
+  if (variantSlug) {
+    query = query.eq('destination_url_slug', variantSlug)
+  } else {
+    query = query.is('destination_url_slug', null)
+  }
+
+  const { data, error } = await query.maybeSingle()
   if (error || !data) return null
   return data as EngagementDestinationOverride
 }
 
 // ─── getImmerseDestinationCore ────────────────────────────────────────────────
-// Returns hero + intro + section headings + pricing closer/notes. Plus IDs
-// (destinationId, globalDestinationId, tripDestinationRowId) for downstream
-// fetchers. Carries the itinerary-membership gate — returns null if no
-// override row, which means the destination is not on this engagement's
-// itinerary.
 
 export async function getImmerseDestinationCore(
   engagementId: string,
@@ -201,65 +217,85 @@ export async function getImmerseDestinationCore(
 
   if (!engagementId) return null
 
-  const globalDestinationId = await resolveGlobalDestinationId(urlSlug)
-  if (!globalDestinationId) return null
+  const resolution = await resolveSlug(urlSlug)
+  if (!resolution) return null
 
-  const [destResult, overrideResult] = await Promise.all([
-    supabase
+  const { globalDestinationId } = resolution
+
+  let dest: Record<string, unknown>
+
+  if (resolution.kind === 'variant') {
+    dest = resolution.destRow
+  } else {
+    const { data, error } = await supabase
       .from('travel_immerse_destinations')
       .select('*')
       .eq('global_destination_id', globalDestinationId)
-      .single(),
-    fetchEngagementOverride(engagementId, globalDestinationId),
-  ])
+      .is('url_slug', null)
+      .maybeSingle()
+    if (error || !data) return null
+    dest = data as Record<string, unknown>
+  }
 
-  if (destResult.error || !destResult.data) return null
-  if (!overrideResult) return null   // S32B itinerary membership gate
+  const overrideResult = await fetchEngagementOverride(
+    engagementId,
+    globalDestinationId,
+    resolution.kind === 'variant' ? urlSlug : null,
+  )
+  if (!overrideResult) return null
 
-  const dest = destResult.data
-  const ov   = overrideResult
+  const ov     = overrideResult
   const destId = dest.id as string
 
-  const heroSrc2Resolved = rewriteImageUrl(ov?.hero_image_src_2_override ?? dest.hero_image_src_2)
+  const heroSrc2Resolved = rewriteImageUrl(
+    (ov?.hero_image_src_2_override ?? dest.hero_image_src_2) as string | null
+  )
 
   return {
     destinationId:        destId,
     globalDestinationId,
     tripDestinationRowId: ov.id,
     destinationSlug:      urlSlug,
+    destinationUrlSlug:   resolution.kind === 'variant' ? urlSlug : null,
     journeyId:            engagementId,
-    shorthand:            dest.shorthand ?? undefined,
+    shorthand:            (dest.shorthand as string | null) ?? undefined,
 
-    eyebrow:        dest.eyebrow                        ?? '',
-    title:          dest.title                          ?? '',
-    subtitle:       dest.subtitle                       ?? '',
-    heroImageSrc:   rewriteImageUrl(ov?.hero_image_src_override ?? dest.hero_image_src),
-    heroImageAlt:   ov?.hero_image_alt_override         ?? dest.hero_image_alt   ?? '',
-    heroImageSrc2:  heroSrc2Resolved || undefined,
-    heroImageAlt2:  ov?.hero_image_alt_2_override       ?? dest.hero_image_alt_2 ?? undefined,
-    heroTitle2:     ov?.hero_title_2_override           ?? dest.hero_title_2     ?? undefined,
-    heroSubtitle2:  ov?.hero_subtitle_2_override        ?? dest.hero_subtitle_2  ?? undefined,
-    heroPills:      (dest.hero_pills as string[])       ?? [],
+    eyebrow:      (dest.eyebrow   as string | null) ?? '',
+    title:        (dest.title     as string | null) ?? '',
+    subtitle:     (dest.subtitle  as string | null) ?? '',
+    heroImageSrc: rewriteImageUrl(
+                    (ov?.hero_image_src_override ?? dest.hero_image_src) as string | null
+                  ),
+    heroImageAlt:  ov?.hero_image_alt_override
+                     ?? (dest.hero_image_alt  as string | null) ?? '',
+    heroImageSrc2: heroSrc2Resolved || undefined,
+    heroImageAlt2: ov?.hero_image_alt_2_override
+                     ?? (dest.hero_image_alt_2 as string | null) ?? undefined,
+    heroTitle2:    ov?.hero_title_2_override
+                     ?? (dest.hero_title_2    as string | null) ?? undefined,
+    heroSubtitle2: ov?.hero_subtitle_2_override
+                     ?? (dest.hero_subtitle_2 as string | null) ?? undefined,
+    heroPills:     (dest.hero_pills as string[] | null) ?? [],
 
-    introEyebrow:   dest.intro_eyebrow                  ?? '',
-    introTitle:     ov?.intro_title_override            ?? dest.intro_title ?? '',
-    introBody:      ov?.intro_body_override             ?? dest.intro_body  ?? '',
+    introEyebrow: (dest.intro_eyebrow as string | null) ?? '',
+    introTitle:   ov?.intro_title_override ?? (dest.intro_title as string | null) ?? '',
+    introBody:    ov?.intro_body_override  ?? (dest.intro_body  as string | null) ?? '',
 
-    hotelsEyebrow:  dest.hotels_eyebrow ?? '',
-    hotelsTitle:    dest.hotels_title   ?? '',
-    hotelsBody:     dest.hotels_body    ?? '',
+    hotelsEyebrow: (dest.hotels_eyebrow as string | null) ?? '',
+    hotelsTitle:   (dest.hotels_title   as string | null) ?? '',
+    hotelsBody:    (dest.hotels_body    as string | null) ?? '',
 
-    diningEyebrow:  ov?.dining_eyebrow_override        ?? dest.dining_eyebrow ?? '',
-    diningTitle:    ov?.dining_title_override          ?? dest.dining_title   ?? '',
-    diningBody:     ov?.dining_body_override           ?? dest.dining_body    ?? '',
+    diningEyebrow: ov?.dining_eyebrow_override ?? (dest.dining_eyebrow as string | null) ?? '',
+    diningTitle:   ov?.dining_title_override   ?? (dest.dining_title   as string | null) ?? '',
+    diningBody:    ov?.dining_body_override    ?? (dest.dining_body    as string | null) ?? '',
 
-    experiencesEyebrow: dest.experiences_eyebrow ?? '',
-    experiencesTitle:   dest.experiences_title   ?? '',
-    experiencesBody:    dest.experiences_body    ?? '',
+    experiencesEyebrow: (dest.experiences_eyebrow as string | null) ?? '',
+    experiencesTitle:   (dest.experiences_title   as string | null) ?? '',
+    experiencesBody:    (dest.experiences_body    as string | null) ?? '',
 
-    pricingEyebrow:     dest.pricing_eyebrow       ?? '',
-    pricingTitle:       dest.pricing_title         ?? '',
-    pricingBody:        ov?.pricing_body_override  ?? dest.pricing_body ?? '',
+    pricingEyebrow: (dest.pricing_eyebrow as string | null) ?? '',
+    pricingTitle:   (dest.pricing_title   as string | null) ?? '',
+    pricingBody:    ov?.pricing_body_override ?? (dest.pricing_body as string | null) ?? '',
 
     pricingCloser: {
       item:            ov?.pricing_closer_item_override             ?? null,
@@ -267,19 +303,17 @@ export async function getImmerseDestinationCore(
       stay:            ov?.pricing_closer_stay_override             ?? null,
       indicativeRange: ov?.pricing_closer_indicative_range_override ?? null,
     },
-    pricingNotesHeading: ov?.pricing_notes_heading_override ?? dest.pricing_notes_heading ?? '',
-    pricingNotesTitle:   ov?.pricing_notes_title_override   ?? dest.pricing_notes_title   ?? '',
+    pricingNotesHeading: ov?.pricing_notes_heading_override
+                           ?? (dest.pricing_notes_heading as string | null) ?? '',
+    pricingNotesTitle:   ov?.pricing_notes_title_override
+                           ?? (dest.pricing_notes_title   as string | null) ?? '',
     pricingNotes:        (ov?.pricing_notes_override as string[] | null)
-                          ?? (dest.pricing_notes as string[] | null)
-                          ?? [],
+                           ?? (dest.pricing_notes as string[] | null)
+                           ?? [],
   }
 }
 
 // ─── getImmerseDestination — back-compat parallel wrapper ────────────────────
-// Preserved for any caller still using the bundled signature. Calls the 4
-// fetchers concurrently and reassembles into the original ImmerseDestinationData
-// shape. Pure forwarder — no logic changes. Lives in core because it
-// composes the other 3 split files.
 
 export async function getImmerseDestination(
   engagementId: string,
@@ -289,9 +323,11 @@ export async function getImmerseDestination(
   const core = await getImmerseDestinationCore(engagementId, urlSlug)
   if (!core) return null
 
+  console.log('[getImmerseDestination] destinationSlug:', core.destinationSlug, 'destinationUrlSlug:', core.destinationUrlSlug)
+
   const [hotels, cards, pricingRows] = await Promise.all([
     getImmerseDestinationHotels(engagementId, core.destinationId),
-    getImmerseDestinationCards(engagementId, core.globalDestinationId),
+    getImmerseDestinationCards(engagementId, core.globalDestinationId, core.destinationUrlSlug),
     getImmerseDestinationPricing(core.tripDestinationRowId),
   ])
 

@@ -125,17 +125,18 @@ type GlobalDestinationDisplayJoin = {
 }
 
 type DestinationRowRow = {
-  id:                  string
-  sort_order:          number
-  number_label:        string | null
-  title:               string | null
-  mood:                string | null
-  summary:             string | null
-  stay_label:          string | null
-  image_src:           string | null
-  image_alt:           string | null
-  global_destinations: GlobalDestinationDisplayJoin | null
-  subpage_status:      string | null
+  id:                   string
+  sort_order:           number
+  number_label:         string | null
+  title:                string | null
+  mood:                 string | null
+  summary:              string | null
+  stay_label:           string | null
+  image_src:            string | null
+  image_alt:            string | null
+  global_destinations:  GlobalDestinationDisplayJoin | null
+  subpage_status:       string | null
+  destination_url_slug: string | null
 }
 
 // S32K: pricing rows pull destination NAME only (no slug). Item column
@@ -212,7 +213,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .from('travel_immerse_trip_destination_rows')
       .select(`
         id, sort_order, number_label, title, mood, summary, stay_label,
-        image_src, image_alt, subpage_status,
+        image_src, image_alt, subpage_status, destination_url_slug,
         global_destinations ( slug, name )
       `)
       .eq('trip_id', engagementId)
@@ -273,8 +274,9 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     stayLabel:       r.stay_label   ?? '',
     imageSrc:        rewriteImageUrl(r.image_src),
     imageAlt:        r.image_alt    ?? '',
-    destinationSlug: r.global_destinations?.slug ?? null,  // routing/anchor
-    subpageStatus:   normalizeSubpageStatus(r.subpage_status),
+    destinationSlug:    r.global_destinations?.slug    ?? null,
+    destinationUrlSlug: r.destination_url_slug         ?? null,
+    subpageStatus:      normalizeSubpageStatus(r.subpage_status),
   }))
 
   // S32K: pricing rows render destination NAME, not slug.

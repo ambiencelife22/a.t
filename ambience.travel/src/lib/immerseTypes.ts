@@ -7,36 +7,6 @@
 //   Replaces hardcoded "/ night" suffix in RoomCategory render. Cadence values
 //   come from a reference table (Per Night, Per Stay, Per Week, Per Month);
 //   admin can extend without code changes.
-// Prior: S32 (Add 1) — Added optional heroTagline field on
-//   ImmerseEngagementData. Mirrors the renamed travel_immerse_engagements.hero_tagline
-//   column (was: title before s32_add1_01). Pulled into the type and query layer
-//   but not yet rendered — preserves the route-summary copy ("Saudi → Nordic Winter
-//   → ...") for future use without a separate query patch when render lands.
-//   Earlier S32 entry: Added EngagementAudience union + audience field.
-//  Prior S32 — Added EngagementAudience union ('private' | 'public') +
-//   audience field on ImmerseEngagementData. Mirrors the audience enum on
-//   travel_immerse_engagements (added s32_01). Used by the route dispatcher
-//   to branch render path between private and public surfaces. Default
-//   value 'private' on existing engagements; pubMuirRzSW (Template) flipped
-//   to 'public' in s32_01b.
-// Prior: S30F — Added rateSuffix to ImmerseRoomOption. Free-text per-room
-//   suffix rendered after both nonNegotiated and ambience rate chips. Resolved
-//   override (travel_immerse_rooms.rate_suffix_override) → canonical
-//   (travel_accom_rooms.rate_suffix) → undefined in immerseQueries.ts via the
-//   standard ?? chain. Replaces hardcoded "+ Taxes & Fees" / "+ tax" in
-//   RoomCategory. NULL renders nothing.
-// Prior: S30E — Engagement abstraction. Master data type renamed
-//   ImmerseTripData → ImmerseEngagementData and now carries an engagementType
-//   discriminator ('journey' | 'service' | 'experience' | 'acquisition'),
-//   defaulted to 'journey' DB-side. Status types renamed TripStatus →
-//   EngagementStatus + TripStatusSlug → EngagementStatusSlug to mirror the
-//   underlying lookup table rename (travel_trip_statuses →
-//   travel_engagement_statuses). Itinerary side unchanged — itinerary is
-//   journey-engagement-specific lifecycle, not universal.
-// ─── Engagement-level discriminators ─────────────────────────────────────────
-// engagement_type (S30E): journey | service | experience | acquisition.
-// audience (S32): private | public. Drives render path dispatch.
-// Both are extensible enums DB-side and union types here.
 
 export type EngagementType =
   | 'journey'
@@ -253,10 +223,10 @@ export type ImmerseDestinationRow = {
   imageAlt: string
   stayLabel: string
   destinationSlug?: string | null
+  destinationUrlSlug?: string | null  // S40B: variant slug override (newyork2 etc). ?? destinationSlug in href
   anchorId?: string
-  subpageStatus: ImmerseSubpageStatus  // render state — live | preview | hidden
+  subpageStatus: ImmerseSubpageStatus
 }
-
 export type ImmerseTripPricingRow = {
   id:               string
   destination:      string

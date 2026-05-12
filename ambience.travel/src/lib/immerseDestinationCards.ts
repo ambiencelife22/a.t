@@ -12,6 +12,10 @@
 //   truth), merge per-engagement overrides via ?? chain, return dining and
 //   experiences pre-split.
 //
+// Last updated: S40B — destination_url_slug variant scoping added to card
+//   selections. NULL = canonical destination cards. Non-null = variant-only
+//   cards (e.g. newyork2). getImmerseDestinationCards accepts destinationUrlSlug
+//   param; fetchContentCards filters accordingly.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl } from './imageUrl'
@@ -19,8 +23,6 @@ import type { ImmerseContentCard } from './immerseTypes'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
-// S32F: Cards fetcher returns dining + experiences pre-split, since they
-// always render in two separate sections. Saves the consumer from filtering.
 export interface ImmerseDestinationCards {
   dining:      ImmerseContentCard[]
   experiences: ImmerseContentCard[]
@@ -66,8 +68,10 @@ type CanonicalCardRow = {
 export async function getImmerseDestinationCards(
   engagementId:        string,
   globalDestinationId: string,
+  destinationUrlSlug:  string | null = null,
 ): Promise<ImmerseDestinationCards> {
-  const cards = await fetchContentCards(engagementId, globalDestinationId)
+  
+  const cards = await fetchContentCards(engagementId, globalDestinationId, destinationUrlSlug)
   return {
     dining:      cards.filter(c => c._cardType === 'dining').map(stripCardType),
     experiences: cards.filter(c => c._cardType === 'experience').map(stripCardType),
@@ -79,44 +83,59 @@ export async function getImmerseDestinationCards(
 async function fetchContentCards(
   engagementId:        string,
   globalDestinationId: string,
+  destinationUrlSlug:  string | null,
 ): Promise<ContentCardWithType[]> {
+  console.log('[cards] engagementId:', engagementId, 'globalDestId:', globalDestinationId, 'urlSlug:', destinationUrlSlug)
   if (!engagementId) return []
 
+  // Build base queries — filter by destination_url_slug for variants,
+  // IS NULL for canonical destinations.
+  const slugFilter = <T>(q: T): T => {
+    if (destinationUrlSlug) {
+      return (q as any).eq('destination_url_slug', destinationUrlSlug)
+    }
+    return (q as any).is('destination_url_slug', null)
+  }
+
   const [diningRes, expRes] = await Promise.all([
-    supabase
-      .from('travel_immerse_trip_content_card_selections')
-      .select(`
-        sort_order,
-        dining_venue_id,
-        travel_dining_venues!inner (
-          id, global_destination_id,
-          kicker, name, tagline, body,
-          bullets_heading, bullets,
-          image_src, image_alt, image_credit, image_credit_url, image_license
-        )
-      `)
-      .eq('trip_id', engagementId)
-      .eq('is_active', true)
-      .not('dining_venue_id', 'is', null)
-      .eq('travel_dining_venues.global_destination_id', globalDestinationId)
-      .order('sort_order', { ascending: true }),
-    supabase
-      .from('travel_immerse_trip_content_card_selections')
-      .select(`
-        sort_order,
-        experience_id,
-        travel_experiences!inner (
-          id, global_destination_id,
-          kicker, name, tagline, body,
-          bullets_heading, bullets,
-          image_src, image_alt, image_credit, image_credit_url, image_license
-        )
-      `)
-      .eq('trip_id', engagementId)
-      .eq('is_active', true)
-      .not('experience_id', 'is', null)
-      .eq('travel_experiences.global_destination_id', globalDestinationId)
-      .order('sort_order', { ascending: true }),
+    slugFilter(
+      supabase
+        .from('travel_immerse_trip_content_card_selections')
+        .select(`
+          sort_order,
+          dining_venue_id,
+          travel_dining_venues!inner (
+            id, global_destination_id,
+            kicker, name, tagline, body,
+            bullets_heading, bullets,
+            image_src, image_alt, image_credit, image_credit_url, image_license
+          )
+        `)
+        .eq('trip_id', engagementId)
+        .eq('is_active', true)
+        .not('dining_venue_id', 'is', null)
+        .eq('travel_dining_venues.global_destination_id', globalDestinationId)
+        .order('sort_order', { ascending: true })
+    ),
+    slugFilter(
+      supabase
+        .from('travel_immerse_trip_content_card_selections')
+        .select(`
+          sort_order,
+          experience_id,
+          travel_experiences!inner (
+            id, global_destination_id,
+            kicker, name, tagline, body,
+            bullets_heading, bullets,
+            image_src, image_alt, image_credit, image_credit_url, image_license
+          )
+        `)
+        .eq('trip_id', engagementId)
+        .eq('is_active', true)
+        .not('experience_id', 'is', null)
+        .eq('travel_experiences.global_destination_id', globalDestinationId)
+        .order('sort_order', { ascending: true })
+    ),
   ])
 
   if (diningRes.error && expRes.error) return []
@@ -224,7 +243,7 @@ async function fetchContentCards(
       tagline:         ov?.tagline_override           ?? r.tagline           ?? '',
       body:            ov?.body_override              ?? r.body              ?? '',
       bulletsHeading:  ov?.bullets_heading_override   ?? r.bullets_heading   ?? '',
-      bullets:         bullets,
+      bullets,
       imageSrc:        rewriteImageUrl(ov?.image_src_override ?? r.image_src),
       imageAlt:        ov?.image_alt_override         ?? r.image_alt         ?? '',
       imageCredit:     ov?.image_credit_override      ?? r.image_credit      ?? undefined,

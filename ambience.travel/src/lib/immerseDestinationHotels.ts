@@ -13,7 +13,12 @@
 // Largest of the 4 split files — owns the carousel data shape feeding
 // ImmerseHotelOptions + RoomCategory render.
 //
-// Last updated: S40B — slug removed from travel_accom_hotels SELECT and type
+// Last updated: S40B — Three-state hotel bullets pattern. NULL overlay → canon
+//   flows through. [] overlay → hide (render nothing). Non-empty overlay → override.
+//   travel_immerse_trip_destination_hotels.bullets: NOT NULL dropped, default
+//   changed to NULL. All prior [] rows migrated to NULL. bullets added to
+//   travel_accom_hotels SELECT in both flat + regioned fetchers.
+// Prior: S40B — slug removed from travel_accom_hotels SELECT and type
 //   casts (flat + regioned). hotelSlug fallback chain simplified to short_slug only.
 // Prior: S32K — Rooms now JOIN travel_immerse_rate_cadences via
 //   rate_cadence_id and expose rateCadence (e.g. "Per Night") to render.
@@ -85,7 +90,8 @@ async function fetchFlatHotels(
       stay_label, sort_order,
       travel_accom_hotels (
         id, name, short_slug,
-        hero_image_src, hero_image_alt, image_credit
+        hero_image_src, hero_image_alt, image_credit,
+        bullets
       )
     `)
     .eq('trip_id', engagementId)
@@ -115,10 +121,16 @@ async function fetchFlatHotels(
       hero_image_src: string | null
       hero_image_alt: string | null
       image_credit:   string | null
+      bullets:        string[] | null
     } | null
-    const hotelId   = h?.id ?? r.hotel_id
-    const hotelSlug = h?.short_slug ?? ''
-    const hotelName = h?.name ?? ''
+    const hotelId        = h?.id ?? r.hotel_id
+    const hotelSlug      = h?.short_slug ?? ''
+    const hotelName      = h?.name ?? ''
+    const overlayBullets  = r.bullets as string[] | null
+    const canonBullets    = Array.isArray(h?.bullets) ? (h.bullets as string[]) : []
+    const resolvedBullets = overlayBullets === null
+      ? canonBullets
+      : overlayBullets
 
     return {
       id:          hotelId,
@@ -126,7 +138,7 @@ async function fetchFlatHotels(
       rank:        (r.rank as 'primary' | 'secondary') ?? 'primary',
       rankLabel:   r.rank_label  ?? '',
       name:        hotelName,
-      bullets:     Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
+      bullets:     resolvedBullets,
       imageSrc:    rewriteImageUrl(h?.hero_image_src),
       imageAlt:    h?.hero_image_alt ?? '',
       imageCredit: h?.image_credit   ?? undefined,
@@ -171,7 +183,8 @@ async function fetchRegionGroups(
         stay_label, sort_order,
         travel_accom_hotels (
           id, name, short_slug,
-          hero_image_src, hero_image_alt, image_credit
+          hero_image_src, hero_image_alt, image_credit,
+          bullets
         )
       `)
       .eq('trip_id', engagementId)
@@ -217,10 +230,16 @@ async function fetchRegionGroups(
       hero_image_src: string | null
       hero_image_alt: string | null
       image_credit:   string | null
+      bullets:        string[] | null
     } | null
-    const hotelId   = h?.id ?? r.hotel_id
-    const hotelSlug = h?.short_slug ?? ''
-    const hotelName = h?.name ?? ''
+    const hotelId         = h?.id ?? r.hotel_id
+    const hotelSlug       = h?.short_slug ?? ''
+    const hotelName       = h?.name ?? ''
+    const overlayBullets  = r.bullets as string[] | null
+    const canonBullets    = Array.isArray(h?.bullets) ? (h.bullets as string[]) : []
+    const resolvedBullets = overlayBullets === null
+      ? canonBullets
+      : overlayBullets
 
     const option: ImmerseHotelOption = {
       id:          hotelId,
@@ -228,7 +247,7 @@ async function fetchRegionGroups(
       rank:        (r.rank as 'primary' | 'secondary') ?? 'primary',
       rankLabel:   r.rank_label  ?? '',
       name:        hotelName,
-      bullets:     Array.isArray(r.bullets) ? (r.bullets as string[]) : [],
+      bullets:     resolvedBullets,
       imageSrc:    rewriteImageUrl(h?.hero_image_src),
       imageAlt:    h?.hero_image_alt ?? '',
       imageCredit: h?.image_credit   ?? undefined,

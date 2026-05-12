@@ -98,7 +98,8 @@ function getDestinationPageHref(row: ImmerseDestinationRow, urlId: string) {
   const base = window.location.hostname === 'immerse.ambience.travel'
     ? `/${urlId}`
     : `/immerse/${urlId}`
-  return `${base}/${row.destinationSlug}`
+  const slug = row.destinationUrlSlug ?? row.destinationSlug
+  return `${base}/${slug}`
 }
 
 function scrollToDestination(anchorId: string) {

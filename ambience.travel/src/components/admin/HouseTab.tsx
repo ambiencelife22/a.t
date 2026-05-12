@@ -109,13 +109,50 @@ const SOURCE_OPTIONS = [
   { value: 'observation',     label: 'Observation' },
 ]
 
-// ── Shared mini components ────────────────────────────────────────────────────
-
 function SourceSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select style={inputStyle} value={value} onChange={e => onChange(e.target.value)}>
-      {SOURCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      <option value='direct'>Direct</option>
+      <option value='inferred'>Inferred</option>
+      <option value='staff_note'>Staff Note</option>
+      <option value='profile_summary'>Profile Summary</option>
+      <option value='trip'>Trip</option>
+      <option value='observation'>Observation</option>
     </select>
+  )
+}
+
+// Format ISO date string (YYYY-MM-DD) → DD MON YYYY
+function formatDOB(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00')
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+}
+
+// Value input for PPD — date picker for DOB, plain text otherwise
+function PPDValueInput({ dataKey, value, onChange }: { dataKey: string; value: string; onChange: (v: string) => void }) {
+  if (dataKey === 'Date of Birth') {
+    // Convert stored DD MON YYYY back to YYYY-MM-DD for the input
+    const toISO = (stored: string): string => {
+      if (!stored) return ''
+      if (/^\d{4}-\d{2}-\d{2}$/.test(stored)) return stored
+      const d = new Date(stored)
+      if (isNaN(d.getTime())) return ''
+      return d.toISOString().slice(0, 10)
+    }
+    return (
+      <input
+        type='date'
+        style={{ ...inputStyle, colorScheme: 'dark' }}
+        value={toISO(value)}
+        onChange={e => onChange(e.target.value ? formatDOB(e.target.value) : '')}
+        autoFocus
+      />
+    )
+  }
+  return (
+    <input style={inputStyle} placeholder='Enter value…' value={value} onChange={e => onChange(e.target.value)} autoComplete='off' autoFocus />
   )
 }
 
@@ -295,7 +332,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
                       <option value='outdated'>Outdated</option>
                     </select>
                   </Field>
-                  <Field label='Source'><SourceSelect value={prefDraft.source} onChange={v => setPrefDraft(d => ({ ...d, source: v }))} /></Field>
+                  <Field label='Source'><SourceSelect value={prefDraft.source} onChange={(v: string) => setPrefDraft(d => ({ ...d, source: v }))} /></Field>
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => setAddingPref(false)} style={btnG}>Cancel</button>
@@ -341,7 +378,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
                     {PPD_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </Field>
-                <Field label='Value'><input style={inputStyle} placeholder='Enter value…' value={ppdDraft.data_value} onChange={e => setPpdDraft(d => ({ ...d, data_value: e.target.value }))} autoComplete='off' autoFocus /></Field>
+                <Field label='Value'><PPDValueInput dataKey={ppdDraft.data_key} value={ppdDraft.data_value} onChange={v => setPpdDraft(d => ({ ...d, data_value: v }))} /></Field>
                 <Field label='Access Note (optional)'><input style={inputStyle} placeholder='Who has access…' value={ppdDraft.access_note} onChange={e => setPpdDraft(d => ({ ...d, access_note: e.target.value }))} /></Field>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => setAddingPPD(false)} style={btnG}>Cancel</button>
@@ -1047,7 +1084,7 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <Field label='Source'><SourceSelect value={draft.source} onChange={v => setDraft(d => ({ ...d, source: v }))} /></Field>
+            <Field label='Source'><SourceSelect value={draft.source} onChange={(v: string) => setDraft(d => ({ ...d, source: v }))} /></Field>
             <Field label='Notes'><input style={inputStyle} placeholder='Context…' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1272,7 +1309,7 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
               {PPD_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
             </select>
           </Field>
-          <Field label='Value'><input style={inputStyle} placeholder='Enter value…' value={draft.data_value} onChange={e => setDraft(d => ({ ...d, data_value: e.target.value }))} autoComplete='off' autoFocus /></Field>
+          <Field label='Value'><PPDValueInput dataKey={draft.data_key} value={draft.data_value} onChange={v => setDraft(d => ({ ...d, data_value: v }))} /></Field>
           <Field label='Access Note (optional)'><input style={inputStyle} placeholder='Who has access…' value={draft.access_note} onChange={e => setDraft(d => ({ ...d, access_note: e.target.value }))} /></Field>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => setAdding(false)} style={btnG}>Cancel</button>

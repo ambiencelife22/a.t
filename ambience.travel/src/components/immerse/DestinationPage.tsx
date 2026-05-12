@@ -207,7 +207,7 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
           .then(result => { if (!cancelled) setHotels(result) })
           .catch(err => console.error('DestinationPage: hotels fetch failed', err))
 
-        getImmerseDestinationCards(engagement.engagementId, coreResult.globalDestinationId)
+        getImmerseDestinationCards(engagement.engagementId, coreResult.globalDestinationId, coreResult.destinationUrlSlug)
           .then(result => { if (!cancelled) setCards(result) })
           .catch(err => console.error('DestinationPage: cards fetch failed', err))
 
