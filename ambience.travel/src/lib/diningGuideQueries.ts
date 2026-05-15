@@ -45,6 +45,7 @@ export interface DiningVenue {
   image_2_alt: string | null
   sort_order: number
   is_supplementary: boolean
+  is_highlighted: boolean
   venue_status: VenueStatus
 }
 
@@ -120,7 +121,7 @@ export async function getDiningVenuesByDestination(
       neighborhood, price_band, public_preview_rank, tags,
       image_src, image_alt, image_credit, image_credit_url, image_license,
       image_2_src, image_2_alt,
-      sort_order, is_supplementary, venue_status
+      sort_order, is_supplementary, is_highlighted, venue_status
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)

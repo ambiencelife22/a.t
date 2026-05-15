@@ -110,8 +110,9 @@ function readFilterStateFromUrl(): FilterState {
   const params = new URLSearchParams(window.location.search)
   const cuisinesParam = params.get('cuisine')
   return {
-    cuisines: new Set(cuisinesParam ? cuisinesParam.split(',').filter(Boolean) : []),
-    michelinOnly: params.get('michelin') === '1',
+    cuisines:        new Set(cuisinesParam ? cuisinesParam.split(',').filter(Boolean) : []),
+    michelinOnly:    params.get('michelin') === '1',
+    highlightedOnly: params.get('highlighted') === '1',
   }
 }
 
@@ -122,6 +123,9 @@ function writeFilterStateToUrl(state: FilterState) {
   }
   if (state.michelinOnly) {
     params.set('michelin', '1')
+  }
+  if (state.highlightedOnly) {
+    params.set('highlighted', '1')
   }
   const qs = params.toString()
   const next = `${window.location.pathname}${qs ? '?' + qs : ''}`
@@ -138,6 +142,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   const [venues, setVenues]           = useState<DiningVenue[]>([])
   const [loading, setLoading]         = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
+  const hasHighlightedItems = useMemo(() => venues.some((v) => v.is_highlighted), [venues])
   const [pdfReady, setPdfReady]       = useState(false)
   const [pdfDownloading, setPdfDownloading] = useState(false)
 
@@ -239,6 +244,9 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
       if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') {
         return false
       }
+      if (filterState.highlightedOnly && !v.is_highlighted) {
+        return false
+      }
       return true
     })
 
@@ -318,6 +326,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
               onChange={setFilterState}
               availableCuisines={availableCuisines}
               hasMichelinItems={hasMichelinItems}
+              hasHighlightedItems={hasHighlightedItems}
             />
 
             <div style={sectionTitleStyle}>

@@ -69,19 +69,21 @@ function StatusBanner({ status }: { status: VenueStatus }) {
 // ── Recognition Marks ────────────────────────────────────────────────────────
 
 function RecognitionMarks({ venue }: { venue: DiningVenue }) {
-  const hasStar  = venue.michelin_award === 'star' && venue.michelin_stars
-  const hasBib   = venue.michelin_award === 'bib_gourmand'
-  const hasGreen = venue.michelin_green_star
-  const hasFifty = venue.worlds_50_best
+  const hasHighlight = venue.is_highlighted
+  const hasStar      = venue.michelin_award === 'star' && venue.michelin_stars
+  const hasBib       = venue.michelin_award === 'bib_gourmand'
+  const hasGreen     = venue.michelin_green_star
+  const hasFifty     = venue.worlds_50_best
 
-  if (!hasStar && !hasBib && !hasGreen && !hasFifty) return null
+  if (!hasHighlight && !hasStar && !hasBib && !hasGreen && !hasFifty) return null
 
   return (
     <div style={recognitionRowStyle}>
-      {hasStar  && <RecognitionMark kind="stars" starCount={venue.michelin_stars!} />}
-      {hasBib   && <RecognitionMark kind="bib" />}
-      {hasGreen && <RecognitionMark kind="green" />}
-      {hasFifty && <RecognitionMark kind="fifty_best" />}
+      {hasHighlight && <RecognitionMark kind="highlighted" />}
+      {hasStar      && <RecognitionMark kind="stars" starCount={venue.michelin_stars!} />}
+      {hasBib       && <RecognitionMark kind="bib" />}
+      {hasGreen     && <RecognitionMark kind="green" />}
+      {hasFifty     && <RecognitionMark kind="fifty_best" />}
     </div>
   )
 }
