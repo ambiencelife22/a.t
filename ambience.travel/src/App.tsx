@@ -92,6 +92,7 @@ const SignatureExperiencePage  = lazy(() => import('./components/landing/experie
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 const DiningGuideRoute         = lazy(() => import('./components/guides/DiningGuideRoute'))
 const HotelGuideRoute          = lazy(() => import('./components/guides/HotelGuideRoute'))
+const ExperiencesGuideRoute    = lazy(() => import('./components/guides/ExperiencesGuideRoute'))
 
 type Route =
   | 'landing'
@@ -105,6 +106,8 @@ type Route =
   | 'immerse'
   | 'guides-dining'
   | 'guides-hotels'
+  | 'guides-experiences'
+
 
 function hasUrlId(): boolean {
   const hostname = window.location.hostname
@@ -146,7 +149,7 @@ function isGuidesHost(): boolean {
 }
 
 // S35/S37 — resolve guide path segments.
-function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hotels' } | null {
+function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hotels' | 'experiences' } | null {
   const pathname = window.location.pathname.replace(/\/+$/, '')
   let stripped: string
 
@@ -158,8 +161,8 @@ function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hot
   }
 
   const parts = stripped.split('/').filter(Boolean)
-  if (parts.length === 2 && (parts[1] === 'dining' || parts[1] === 'hotels')) {
-    return { destinationSlug: parts[0], surface: parts[1] as 'dining' | 'hotels' }
+  if (parts.length === 2 && (parts[1] === 'dining' || parts[1] === 'hotels' || parts[1] === 'experiences')) {
+    return { destinationSlug: parts[0], surface: parts[1] as 'dining' | 'hotels' | 'experiences' }
   }
   return null
 }
@@ -199,7 +202,8 @@ function resolveRoute(): Route {
   if (isGuidesHost() || pathname.startsWith('/guides/')) {
     const guidePath = resolveGuidePath()
     if (guidePath) {
-      if (guidePath.surface === 'hotels') return 'guides-hotels'
+      if (guidePath.surface === 'hotels')      return 'guides-hotels'
+      if (guidePath.surface === 'experiences') return 'guides-experiences'
       return 'guides-dining'
     }
     if (isGuidesHost()) {
@@ -294,6 +298,14 @@ export default function App() {
     return (
       <Suspense fallback={<RouteLoading />}>
         <HotelGuideRoute />
+      </Suspense>
+    )
+  }
+
+  if (route === 'guides-experiences') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <ExperiencesGuideRoute />
       </Suspense>
     )
   }
