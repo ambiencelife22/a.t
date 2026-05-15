@@ -322,6 +322,213 @@ export async function deleteDiningGuide(id: string): Promise<void> {
   if (error) throw new Error(`Failed to delete guide: ${error.message}`)
 }
 
+// ── Experiences guide types ──────────────────────────────────────────────────
+
+export interface AdminExperienceVenue {
+  id:                    string
+  global_destination_id: string
+  name:                  string
+  experience_category:   string | null
+  kicker:                string | null
+  tagline:               string | null
+  body:                  string | null
+  bullets_heading:       string | null
+  bullets:               string[] | null
+  address:               string | null
+  maps_url:              string | null
+  image_src:             string | null
+  image_alt:             string | null
+  image_credit:          string | null
+  image_credit_url:      string | null
+  image_license:         string | null
+  is_active:             boolean
+  sort_order:            number
+}
+
+export interface AdminExperiencesGuide {
+  id:                      string
+  global_destination_id:   string
+  hero_image_src:          string | null
+  hero_image_alt:          string | null
+  eyebrow_override:        string | null
+  headline_override:       string | null
+  intro_override:          string | null
+  is_active:               boolean
+  accuracy_date:           string | null
+  at_a_glance_bullets:     string[] | null
+}
+
+export interface AdminExperiencesGrant {
+  id:                    string
+  user_id:               string
+  global_destination_id: string
+  granted_at:            string
+  person:                GlobalPerson | null
+  display_name:          string | null
+}
+
+export interface DestinationWithExperiencesCounts {
+  id:          string
+  venue_count: number
+  has_overlay: boolean
+}
+
+// ── Experiences reads ────────────────────────────────────────────────────────
+
+export async function fetchDestinationsWithExperiences(): Promise<DestinationWithExperiencesCounts[]> {
+  const [venuesRes, guidesRes] = await Promise.all([
+    supabase
+      .from('travel_experiences')
+      .select('global_destination_id')
+      .eq('is_active', true),
+    supabase
+      .from('travel_experiences_guides')
+      .select('global_destination_id'),
+  ])
+
+  if (venuesRes.error) throw new Error(`venues: ${venuesRes.error.message}`)
+  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
+
+  const venueCountByDest = new Map<string, number>()
+  for (const v of venuesRes.data ?? []) {
+    const id = (v as { global_destination_id: string }).global_destination_id
+    venueCountByDest.set(id, (venueCountByDest.get(id) ?? 0) + 1)
+  }
+
+  const overlaySet = new Set<string>(
+    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
+  )
+
+  const out: DestinationWithExperiencesCounts[] = []
+  for (const [id, count] of venueCountByDest.entries()) {
+    out.push({ id, venue_count: count, has_overlay: overlaySet.has(id) })
+  }
+  return out
+}
+
+export async function fetchExperiencesGuides(): Promise<AdminExperiencesGuide[]> {
+  const { data, error } = await supabase
+    .from('travel_experiences_guides')
+    .select(`
+      id, global_destination_id,
+      hero_image_src, hero_image_alt,
+      eyebrow_override, headline_override, intro_override,
+      is_active, accuracy_date, at_a_glance_bullets
+    `)
+
+  if (error) throw new Error(`Failed to fetch experiences guides: ${error.message}`)
+  return (data ?? []) as AdminExperiencesGuide[]
+}
+
+export async function fetchExperiencesGrantsForDestination(
+  globalDestinationId: string,
+): Promise<AdminExperiencesGrant[]> {
+  const { data, error } = await supabase
+    .from('experiences_guide_grants')
+    .select(`
+      id, user_id, global_destination_id, granted_at,
+      profile:global_profiles!user_id (
+        display_name,
+        person_id
+      )
+    `)
+    .eq('global_destination_id', globalDestinationId)
+    .order('granted_at', { ascending: true })
+
+  if (error) throw new Error(`Failed to fetch grants: ${error.message}`)
+
+  const rows = (data ?? []) as unknown as Array<{
+    id:                    string
+    user_id:               string
+    global_destination_id: string
+    granted_at:            string
+    profile: {
+      display_name: string | null
+      person_id:    string | null
+    } | null
+  }>
+
+  const personIds = rows
+    .map(r => r.profile?.person_id)
+    .filter((id): id is string => id != null)
+
+  const peopleById = new Map<string, GlobalPerson>()
+  if (personIds.length > 0) {
+    const { data: people, error: peopleError } = await supabase
+      .from('global_people')
+      .select('id, first_name, last_name, email, nickname')
+      .in('id', personIds)
+    if (peopleError) throw new Error(`Failed to fetch people: ${peopleError.message}`)
+    for (const p of people ?? []) {
+      peopleById.set((p as GlobalPerson).id, p as GlobalPerson)
+    }
+  }
+
+  return rows.map(r => ({
+    id:                    r.id,
+    user_id:               r.user_id,
+    global_destination_id: r.global_destination_id,
+    granted_at:            r.granted_at,
+    display_name:          r.profile?.display_name ?? null,
+    person:                r.profile?.person_id
+      ? (peopleById.get(r.profile.person_id) ?? null)
+      : null,
+  }))
+}
+
+// ── Experiences writes — guides ───────────────────────────────────────────────
+
+export type ExperiencesGuidePatch = Partial<Omit<AdminExperiencesGuide, 'id' | 'global_destination_id'>>
+
+export async function updateExperiencesGuide(id: string, patch: ExperiencesGuidePatch): Promise<void> {
+  const { error } = await supabase
+    .from('travel_experiences_guides')
+    .update(patch)
+    .eq('id', id)
+  if (error) throw new Error(`Failed to update experiences guide: ${error.message}`)
+}
+
+export async function createExperiencesGuide(globalDestinationId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('travel_experiences_guides')
+    .insert({
+      global_destination_id: globalDestinationId,
+      is_active: true,
+    })
+    .select('id')
+    .single()
+  if (error) throw new Error(`Failed to create experiences guide: ${error.message}`)
+  return (data as { id: string }).id
+}
+
+export async function deleteExperiencesGuide(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('travel_experiences_guides')
+    .delete()
+    .eq('id', id)
+  if (error) throw new Error(`Failed to delete experiences guide: ${error.message}`)
+}
+
+// ── Experiences writes — grants ───────────────────────────────────────────────
+
+export async function createExperiencesGrant(
+  userId:              string,
+  globalDestinationId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('experiences_guide_grants')
+    .insert({ user_id: userId, global_destination_id: globalDestinationId })
+  if (error) throw new Error(`Failed to create experiences grant: ${error.message}`)
+}
+
+export async function deleteExperiencesGrant(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('experiences_guide_grants')
+    .delete()
+    .eq('id', id)
+  if (error) throw new Error(`Failed to delete experiences grant: ${error.message}`)
+}
+
 // ── Writes — grants (UUID-keyed) ─────────────────────────────────────────────
 
 export async function createGrant(

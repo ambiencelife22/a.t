@@ -7,6 +7,7 @@
 //   #admin/immerse/engagements/<url_id>          → engagement detail
 //   #admin/immerse/showcases                     → showcases (skeleton)
 //   #admin/guides/dining                         → dining guides overlay list
+//   #admin/guides/experiences                    → experiences guides overlay list
 //   #admin/library/dining                        → all dining venues
 //   #admin/library/dining/<dest-uuid>            → dining venues scoped to destination
 //   #admin/house                                 → household list
@@ -18,7 +19,10 @@
 //   #admin/programme/access-denied               → wrapped existing tab
 //   #admin/programme/client-profile              → wrapped existing tab
 //
-// Last updated: S40D — Added 'house' product (ambience.HOUSE CRM).
+// Last updated: S41 — Added 'experiences' guide tab. buildGuideUrl now
+//   accepts optional surface param ('dining' | 'experiences'), defaults
+//   to 'dining' for backward compatibility.
+// Prior: S40D — Added 'house' product (ambience.HOUSE CRM).
 // Prior: S36 — Library/dining accepts optional <dest-uuid> segment for
 //   destination-scoped venue editing (drill-in from Guides tab).
 // Prior: S36 — Added 'guides' + 'library' products with 'dining' tab each.
@@ -32,6 +36,7 @@ export type AdminTab =
   | { product: 'immerse';   tab: 'engagements'; urlId: string | null }
   | { product: 'immerse';   tab: 'showcases' }
   | { product: 'guides';    tab: 'dining' }
+  | { product: 'guides';    tab: 'experiences' }
   | { product: 'library';   tab: 'dining'; destinationId: string | null }
   | { product: 'house';     tab: 'households' }
   | { product: 'programme'; tab: ProgrammeTabId }
@@ -74,7 +79,8 @@ export function parseAdminHash(hash: string): AdminTab {
   }
 
   if (product === 'guides') {
-    if (tab === 'dining') return { product: 'guides', tab: 'dining' }
+    if (tab === 'dining')      return { product: 'guides', tab: 'dining' }
+    if (tab === 'experiences') return { product: 'guides', tab: 'experiences' }
     return DEFAULT_TAB
   }
 
@@ -113,6 +119,7 @@ export function buildAdminHash(target: AdminTab): string {
     return '#admin/immerse/showcases'
   }
   if (target.product === 'guides') {
+    if (target.tab === 'experiences') return '#admin/guides/experiences'
     return '#admin/guides/dining'
   }
   if (target.product === 'library') {
@@ -148,18 +155,21 @@ export function buildEngagementUrl(urlId: string): string {
 
 const GUIDES_HOST = 'guides.ambience.travel'
 
-export function buildGuideUrl(destinationSlug: string): string {
+export function buildGuideUrl(
+  destinationSlug: string,
+  surface: 'dining' | 'experiences' = 'dining',
+): string {
   if (typeof window === 'undefined') {
-    return `https://${GUIDES_HOST}/${destinationSlug}/dining`
+    return `https://${GUIDES_HOST}/${destinationSlug}/${surface}`
   }
   const host = window.location.hostname
   if (host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1') {
-    return `${window.location.origin}/guides/${destinationSlug}/dining`
+    return `${window.location.origin}/guides/${destinationSlug}/${surface}`
   }
   if (host === GUIDES_HOST) {
-    return `${window.location.origin}/${destinationSlug}/dining`
+    return `${window.location.origin}/${destinationSlug}/${surface}`
   }
-  return `https://${GUIDES_HOST}/${destinationSlug}/dining`
+  return `https://${GUIDES_HOST}/${destinationSlug}/${surface}`
 }
 
 export function generateUrlId(): string {
