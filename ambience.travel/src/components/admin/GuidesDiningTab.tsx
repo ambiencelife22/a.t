@@ -12,7 +12,10 @@
  * UUID-keyed throughout. Destination name + slug for display only.
  * Slug used only for buildGuideUrl (URL routing, the one allowed slug surface).
  *
- * Last updated: S40C — Access tab added. Grant assign/revoke via
+ * Last updated: S41 — Refactored to shared adminStyles + adminUi. Removed
+ *   local Toast, useToast, inputStyle, textareaStyle, labelStyle, btnPrimary,
+ *   btnGhost, btnDanger, Field definitions. Now imported from canonical sources.
+ * Prior: S40C — Access tab added. Grant assign/revoke via
  *   fetchGrantsForDestination, fetchAllPeople, fetchProfileByPersonId,
  *   createGrant, deleteGrant. People with no linked profile shown greyed out.
  * Prior: S39 — Added accuracy_date field to edit modal and handleSave.
@@ -21,6 +24,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { A } from '../../lib/adminTokens'
+import { useToast } from '../../lib/ToastContext'
+import {
+  inputStyle, textareaStyle,
+  btnPrimary, btnGhost, btnDanger,
+} from '../../lib/adminStyles'
+import { Field } from './adminUi'
 import { buildGuideUrl } from '../../lib/adminPath'
 import {
   fetchDiningGuides,
@@ -43,72 +52,6 @@ import {
 } from '../../lib/adminGuidesQueries'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
-// ── Toast ────────────────────────────────────────────────────────────────────
-
-function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div style={{
-      position: 'fixed', bottom: 32, right: 32, zIndex: 9999,
-      padding: '12px 20px', borderRadius: 12,
-      background:   type === 'success' ? '#1a2e1a' : '#2e1a1a',
-      border:       `1px solid ${type === 'success' ? A.positive + '50' : A.danger + '50'}`,
-      color:        type === 'success' ? A.positive : A.danger,
-      fontSize: 13, fontFamily: A.font, fontWeight: 600,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-    }}>{message}</div>
-  )
-}
-
-function useToast() {
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  function showToast(message: string, type: 'success' | 'error') {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 5000)
-  }
-  return { toast, showToast }
-}
-
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', background: A.bgInput, border: `1px solid ${A.border}`,
-  borderRadius: 10, padding: '10px 14px', fontSize: 13,
-  color: A.text, fontFamily: A.font, outline: 'none', boxSizing: 'border-box',
-}
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle, resize: 'vertical', lineHeight: 1.7, minHeight: 90,
-}
-const labelStyle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-  textTransform: 'uppercase', color: A.faint, fontFamily: A.font,
-  marginBottom: 6, display: 'block',
-}
-const btnPrimary: React.CSSProperties = {
-  padding: '8px 18px', background: 'rgba(216,181,106,0.12)', color: A.gold,
-  border: '1px solid rgba(216,181,106,0.30)', borderRadius: 10,
-  fontSize: 12, fontWeight: 700, fontFamily: A.font, cursor: 'pointer',
-  letterSpacing: '0.04em',
-}
-const btnGhost: React.CSSProperties = {
-  padding: '7px 16px', background: 'transparent', color: A.muted,
-  border: `1px solid ${A.border}`, borderRadius: 10,
-  fontSize: 12, fontWeight: 600, fontFamily: A.font, cursor: 'pointer',
-}
-const btnDanger: React.CSSProperties = {
-  padding: '7px 14px', background: 'transparent', color: A.danger,
-  border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8,
-  fontSize: 11, fontWeight: 600, fontFamily: A.font, cursor: 'pointer',
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={labelStyle}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function personDisplayName(person: GlobalPerson): string {
@@ -127,11 +70,10 @@ function grantDisplayName(grant: AdminGrant): string {
 
 function AccessTab({
   globalDestinationId,
-  showToast,
 }: {
   globalDestinationId: string
-  showToast: (m: string, t: 'success' | 'error') => void
 }) {
+  const { toast } = useToast()
   const [grants, setGrants]   = useState<AdminGrant[]>([])
   const [people, setPeople]   = useState<GlobalPerson[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,7 +81,6 @@ function AccessTab({
   const [assigning, setAssigning] = useState(false)
   const [revoking, setRevoking]   = useState<string | null>(null)
 
-  // person_id → profile_id cache built on demand
   const [profileCache, setProfileCache] = useState<Map<string, string | null>>(new Map())
 
   async function load() {
@@ -153,7 +94,7 @@ function AccessTab({
       setPeople(p)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed to load access: ${msg}`, 'error')
+      toast.error(`Failed to load access: ${msg}`)
     }
     setLoading(false)
   }
@@ -162,7 +103,6 @@ function AccessTab({
 
   const grantedUserIds = useMemo(() => new Set(grants.map(g => g.user_id)), [grants])
 
-  // People already granted — keyed by person_id for quick lookup
   const grantedPersonIds = useMemo(
     () => new Set(grants.map(g => g.person?.id).filter(Boolean)),
     [grants],
@@ -172,7 +112,7 @@ function AccessTab({
     const q = search.toLowerCase().trim()
     if (!q) return people
     return people.filter(p => {
-      const name = personDisplayName(p).toLowerCase()
+      const name  = personDisplayName(p).toLowerCase()
       const email = (p.email ?? '').toLowerCase()
       return name.includes(q) || email.includes(q)
     })
@@ -181,7 +121,6 @@ function AccessTab({
   async function handleAssign(person: GlobalPerson) {
     setAssigning(true)
     try {
-      // Resolve profile_id — check cache first
       let profileId = profileCache.get(person.id)
       if (profileId === undefined) {
         const profile = await fetchProfileByPersonId(person.id)
@@ -190,24 +129,24 @@ function AccessTab({
       }
 
       if (!profileId) {
-        showToast(`${personDisplayName(person)} has no login yet. They must create an account first.`, 'error')
+        toast.error(`${personDisplayName(person)} has no login yet. They must create an account first.`)
         setAssigning(false)
         return
       }
 
       if (grantedUserIds.has(profileId)) {
-        showToast('Already granted.', 'error')
+        toast.error('Already granted.')
         setAssigning(false)
         return
       }
 
       await createGrant(profileId, globalDestinationId)
-      showToast(`Access granted to ${personDisplayName(person)}.`, 'success')
+      toast.success(`Access granted to ${personDisplayName(person)}.`)
       setSearch('')
       await load()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(`Failed: ${msg}`)
     }
     setAssigning(false)
   }
@@ -216,11 +155,11 @@ function AccessTab({
     setRevoking(grant.id)
     try {
       await deleteGrant(grant.id)
-      showToast(`Access revoked.`, 'success')
+      toast.success('Access revoked.')
       await load()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(`Failed: ${msg}`)
     }
     setRevoking(null)
   }
@@ -318,7 +257,7 @@ function AccessTab({
                     <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
                       {p.email ?? '(no email)'}
                       {alreadyGranted && <span style={{ marginLeft: 8, color: A.positive }}>· granted</span>}
-                      {noLogin && <span style={{ marginLeft: 8, color: A.danger }}>· no login</span>}
+                      {noLogin        && <span style={{ marginLeft: 8, color: A.danger  }}>· no login</span>}
                     </div>
                   </div>
                   {!alreadyGranted && (
@@ -350,17 +289,16 @@ function EditGuideModal({
   destinationSlug,
   onClose,
   onSaved,
-  showToast,
 }: {
   guide:           AdminDiningGuide
   destinationName: string
   destinationSlug: string
   onClose:         () => void
   onSaved:         () => void
-  showToast:       (m: string, t: 'success' | 'error') => void
 }) {
-  const [draft, setDraft]     = useState<AdminDiningGuide>(guide)
-  const [saving, setSaving]   = useState(false)
+  const { toast } = useToast()
+  const [draft, setDraft]       = useState<AdminDiningGuide>(guide)
+  const [saving, setSaving]     = useState(false)
   const [modalTab, setModalTab] = useState<ModalTab>('overlay')
 
   function patch<K extends keyof AdminDiningGuide>(k: K, v: AdminDiningGuide[K]) {
@@ -382,17 +320,17 @@ function EditGuideModal({
         }
       }
       if (Object.keys(payload).length === 0) {
-        showToast('No changes.', 'success')
+        toast.success('No changes.')
         setSaving(false)
         return
       }
       await updateDiningGuide(guide.id, payload)
-      showToast(`Saved ${Object.keys(payload).length} field(s).`, 'success')
+      toast.success(`Saved ${Object.keys(payload).length} field(s).`)
       onSaved()
       onClose()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(`Failed: ${msg}`)
     }
     setSaving(false)
   }
@@ -402,23 +340,27 @@ function EditGuideModal({
     setSaving(true)
     try {
       await deleteDiningGuide(guide.id)
-      showToast('Overlay deleted.', 'success')
+      toast.success('Overlay deleted.')
       onSaved()
       onClose()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(`Failed: ${msg}`)
     }
     setSaving(false)
   }
 
-  const tabBtn = (t: ModalTab, label: string): React.CSSProperties => ({
-    padding: '6px 16px',
-    background:  modalTab === t ? 'rgba(216,181,106,0.12)' : 'transparent',
-    color:       modalTab === t ? A.gold : A.muted,
-    border:      modalTab === t ? '1px solid rgba(216,181,106,0.30)' : `1px solid ${A.border}`,
-    borderRadius: 8, fontSize: 12, fontWeight: 700,
-    fontFamily: A.font, cursor: 'pointer', letterSpacing: '0.04em',
+  const tabBtn = (t: ModalTab): React.CSSProperties => ({
+    padding:      '6px 16px',
+    background:   modalTab === t ? 'rgba(216,181,106,0.12)' : 'transparent',
+    color:        modalTab === t ? A.gold : A.muted,
+    border:       modalTab === t ? '1px solid rgba(216,181,106,0.30)' : `1px solid ${A.border}`,
+    borderRadius: 8,
+    fontSize:     12,
+    fontWeight:   700,
+    fontFamily:   A.font,
+    cursor:       'pointer',
+    letterSpacing: '0.04em',
   })
 
   return (
@@ -443,7 +385,12 @@ function EditGuideModal({
             <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 4 }}>{destinationSlug}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <a href={buildGuideUrl(destinationSlug)} target='_blank' rel='noopener noreferrer' style={{ ...btnGhost, color: A.gold, borderColor: A.borderGold, textDecoration: 'none' }}>
+            <a
+              href={buildGuideUrl(destinationSlug)}
+              target='_blank'
+              rel='noopener noreferrer'
+              style={{ ...btnGhost, color: A.gold, borderColor: A.borderGold, textDecoration: 'none' }}
+            >
               View ↗
             </a>
             <button onClick={onClose} style={btnGhost}>Close</button>
@@ -452,8 +399,8 @@ function EditGuideModal({
 
         {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 8, paddingBottom: 4, borderBottom: `1px solid ${A.border}` }}>
-          <button onClick={() => setModalTab('overlay')} style={tabBtn('overlay', 'Overlay')}>Overlay</button>
-          <button onClick={() => setModalTab('access')}  style={tabBtn('access',  'Access')}>Access</button>
+          <button onClick={() => setModalTab('overlay')} style={tabBtn('overlay')}>Overlay</button>
+          <button onClick={() => setModalTab('access')}  style={tabBtn('access')}>Access</button>
         </div>
 
         {/* Overlay tab */}
@@ -502,10 +449,7 @@ function EditGuideModal({
 
         {/* Access tab */}
         {modalTab === 'access' && (
-          <AccessTab
-            globalDestinationId={guide.global_destination_id}
-            showToast={showToast}
-          />
+          <AccessTab globalDestinationId={guide.global_destination_id} />
         )}
       </div>
     </div>
@@ -515,13 +459,13 @@ function EditGuideModal({
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export default function GuidesDiningTab() {
-  const [guides, setGuides] = useState<AdminDiningGuide[]>([])
+  const { toast } = useToast()
+  const [guides, setGuides]                           = useState<AdminDiningGuide[]>([])
   const [destinationsWithCounts, setDestinationsWithCounts] = useState<DestinationWithDiningCounts[]>([])
-  const [destinationOptions, setDestinationOptions] = useState<DestinationOption[]>([])
-  const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<AdminDiningGuide | null>(null)
-  const [creating, setCreating] = useState(false)
-  const { toast, showToast } = useToast()
+  const [destinationOptions, setDestinationOptions]   = useState<DestinationOption[]>([])
+  const [loading, setLoading]                         = useState(true)
+  const [editing, setEditing]                         = useState<AdminDiningGuide | null>(null)
+  const [creating, setCreating]                       = useState(false)
 
   const destinationsById = useMemo(() => {
     const m = new Map<string, DestinationOption>()
@@ -542,7 +486,7 @@ export default function GuidesDiningTab() {
       setDestinationOptions(opts)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed to load: ${msg}`, 'error')
+      toast.error(`Failed to load: ${msg}`)
     }
     setLoading(false)
   }
@@ -554,21 +498,20 @@ export default function GuidesDiningTab() {
     try {
       await createDiningGuide(destId)
       const name = destinationsById.get(destId)?.name ?? '(destination)'
-      showToast(`Guide created for ${name}. Click to edit.`, 'success')
+      toast.success(`Guide created for ${name}. Click to edit.`)
       await load()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown error'
-      showToast(`Failed: ${msg}`, 'error')
+      toast.error(`Failed: ${msg}`)
     }
     setCreating(false)
   }
 
-  const guideByDestId = new Map(guides.map(g => [g.global_destination_id, g]))
+  const guideByDestId              = new Map(guides.map(g => [g.global_destination_id, g]))
   const destinationsWithoutOverlay = destinationsWithCounts.filter(d => !guideByDestId.has(d.id))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {toast && <Toast message={toast.message} type={toast.type} />}
 
       <div>
         <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
@@ -687,7 +630,6 @@ export default function GuidesDiningTab() {
           destinationSlug={destinationsById.get(editing.global_destination_id)?.slug ?? ''}
           onClose={() => setEditing(null)}
           onSaved={load}
-          showToast={showToast}
         />
       )}
     </div>
