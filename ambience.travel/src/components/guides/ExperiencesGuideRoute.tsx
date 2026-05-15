@@ -20,6 +20,7 @@ import NotFoundPage from '../NotFoundPage'
 import { useToast } from '../../lib/ToastContext'
 import {
   getExperiencesGuideDestination,
+  // checkExperiencesGuideGrant,
   type ExperiencesGuideDestination,
 } from '../../lib/experiencesGuideQueries'
 
@@ -80,7 +81,21 @@ export default function ExperiencesGuideRoute() {
         }
 
         if (cancelled) return
+        // let hasFullAccess = false
+        // try {
+        //   const grant = await checkExperiencesGuideGrant(slug)
+        //   hasFullAccess = grant.status === 'granted'
+        // } catch (grantErr) {
+        //   console.warn('ExperiencesGuideRoute: grant check failed, defaulting to teaser', grantErr)
+        //   hasFullAccess = false
+        // }
+        // if (cancelled) return
 
+        // setState({
+        //   phase:         'ready',
+        //   destination:   dest,
+        //   hasFullAccess,
+        // })
         setState({
           phase:         'ready',
           destination:   dest,

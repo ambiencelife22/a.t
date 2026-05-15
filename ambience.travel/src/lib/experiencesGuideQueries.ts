@@ -1,31 +1,36 @@
 // experiencesGuideQueries.ts — read path for the experiences guide page
 // Mirrors diningGuideQueries.ts shape exactly.
-// What it owns: fetch experience venues + per-destination guide overlay row.
+// What it owns: fetch experience venues + per-destination guide overlay row
+//   + grant check via experiences_guide_for_user view.
 // What it does not own: gating UI, admin grant management.
 //
-// Grant gating: no dining_guide_for_user equivalent exists yet for experiences.
-// hasFullAccess defaults to true at route level until that view ships.
+// Grant gating: experiences_guide_for_user view live (S41). Grant check
+//   wired but hasFullAccess hardcoded true in ExperiencesGuideRoute until
+//   gating is enabled. Remove hardcode when ready to gate.
 //
-// Last updated: S41 — initial build. Mirrors dining guide query architecture.
+// Last updated: S41 — checkExperiencesGuideGrant() added. experiences_guide_grants
+//   table + experiences_guide_for_user view (SECURITY INVOKER) live.
+// Prior: S40B — experience_category added to ExperienceVenue type + SELECT.
+// Prior: S41 — initial build. Mirrors dining guide query architecture.
 
 import { supabase } from './supabase'
 
 export interface ExperienceVenue {
-  id:               string
-  name:             string
-  kicker:           string | null
-  tagline:          string | null
-  body:             string | null
-  bullets_heading:  string | null
-  bullets:          string[] | null
-  address:          string | null
-  maps_url:         string | null
-  image_src:        string | null
-  image_alt:        string | null
-  image_credit:     string | null
-  image_credit_url: string | null
-  image_license:    string | null
-  sort_order:       number
+  id:                  string
+  name:                string
+  kicker:              string | null
+  tagline:             string | null
+  body:                string | null
+  bullets_heading:     string | null
+  bullets:             string[] | null
+  address:             string | null
+  maps_url:            string | null
+  image_src:           string | null
+  image_alt:           string | null
+  image_credit:        string | null
+  image_credit_url:    string | null
+  image_license:       string | null
+  sort_order:          number
   experience_category: string | null
 }
 
@@ -51,6 +56,28 @@ export interface ExperiencesGuideDestination {
   heroImageSrc: string | null
   heroImageAlt: string | null
   overlay:      ExperiencesGuideOverlay | null
+}
+
+export type GrantStatus =
+  | { status: 'granted' }
+  | { status: 'no_grant' }
+  | { status: 'no_session' }
+
+export async function checkExperiencesGuideGrant(
+  destinationSlug: string,
+): Promise<GrantStatus> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (!sessionData.session) return { status: 'no_session' }
+
+  const { data, error } = await supabase
+    .from('experiences_guide_for_user')
+    .select('global_destination_id')
+    .eq('destination_slug', destinationSlug)
+    .maybeSingle()
+
+  if (error) throw new Error(`Grant check failed: ${error.message}`)
+  if (!data) return { status: 'no_grant' }
+  return { status: 'granted' }
 }
 
 export async function getExperienceVenuesByDestination(
@@ -131,9 +158,9 @@ export async function getExperiencesGuideDestination(
     : (raw ?? null)
 
   const d = data as unknown as {
-    id:            string
-    slug:          string
-    name:          string
+    id:             string
+    slug:           string
+    name:           string
     hero_image_src: string | null
     hero_image_alt: string | null
   }
