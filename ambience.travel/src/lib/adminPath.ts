@@ -37,7 +37,9 @@ export type AdminTab =
   | { product: 'immerse';   tab: 'showcases' }
   | { product: 'guides';    tab: 'dining' }
   | { product: 'guides';    tab: 'experiences' }
+  | { product: 'guides';    tab: 'hotels' }
   | { product: 'library';   tab: 'dining'; destinationId: string | null }
+  | { product: 'library';   tab: 'hotels'; destinationId: string | null }
   | { product: 'house';     tab: 'households' }
   | { product: 'programme'; tab: ProgrammeTabId }
 
@@ -81,16 +83,17 @@ export function parseAdminHash(hash: string): AdminTab {
   if (product === 'guides') {
     if (tab === 'dining')      return { product: 'guides', tab: 'dining' }
     if (tab === 'experiences') return { product: 'guides', tab: 'experiences' }
+    if (tab === 'hotels')      return { product: 'guides', tab: 'hotels' }
     return DEFAULT_TAB
   }
 
   if (product === 'library') {
-    if (tab === 'dining') {
+    if (tab === 'dining' || tab === 'hotels') {
       const destinationId = rest[0] ?? null
       if (destinationId && !UUID_RE.test(destinationId)) {
-        return { product: 'library', tab: 'dining', destinationId: null }
+        return { product: 'library', tab: tab as 'dining' | 'hotels', destinationId: null }
       }
-      return { product: 'library', tab: 'dining', destinationId }
+      return { product: 'library', tab: tab as 'dining' | 'hotels', destinationId }
     }
     return DEFAULT_TAB
   }
@@ -120,12 +123,14 @@ export function buildAdminHash(target: AdminTab): string {
   }
   if (target.product === 'guides') {
     if (target.tab === 'experiences') return '#admin/guides/experiences'
+    if (target.tab === 'hotels')      return '#admin/guides/hotels'
     return '#admin/guides/dining'
   }
   if (target.product === 'library') {
+    const surface = target.tab
     return target.destinationId
-      ? `#admin/library/dining/${target.destinationId}`
-      : '#admin/library/dining'
+      ? `#admin/library/${surface}/${target.destinationId}`
+      : `#admin/library/${surface}`
   }
   if (target.product === 'house') {
     return '#admin/house'
@@ -157,7 +162,7 @@ const GUIDES_HOST = 'guides.ambience.travel'
 
 export function buildGuideUrl(
   destinationSlug: string,
-  surface: 'dining' | 'experiences' = 'dining',
+  surface: 'dining' | 'experiences' | 'hotels' = 'dining',
 ): string {
   if (typeof window === 'undefined') {
     return `https://${GUIDES_HOST}/${destinationSlug}/${surface}`

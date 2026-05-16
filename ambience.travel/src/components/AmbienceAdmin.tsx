@@ -25,6 +25,8 @@ import EngagementDetailTab from './admin/EngagementDetailTab'
 import ShowcasesListTab    from './admin/ShowcasesListTab'
 import LibraryDiningTab    from './admin/LibraryDiningTab'
 import GuidesDiningTab        from './admin/GuidesDiningTab'
+import GuidesHotelsTab        from './admin/GuidesHotelsTab'
+import LibraryHotelsTab       from './admin/LibraryHotelsTab'
 import GuidesExperiencesTab   from './admin/GuidesExperiencesTab'
 import HouseTab            from './admin/HouseTab'
 
@@ -140,10 +142,12 @@ function TabContent({ tab }: { tab: AdminTab }) {
   if (tab.product === 'guides') {
     if (tab.tab === 'dining')      return <GuidesDiningTab />
     if (tab.tab === 'experiences') return <GuidesExperiencesTab />
+    if (tab.tab === 'hotels')      return <GuidesHotelsTab />
   }
 
-  if (tab.product === 'library') {
+   if (tab.product === 'library') {
     if (tab.tab === 'dining') return <LibraryDiningTab destinationId={tab.destinationId} />
+    if (tab.tab === 'hotels') return <LibraryHotelsTab destinationId={tab.destinationId} />
   }
 
   if (tab.product === 'house') {

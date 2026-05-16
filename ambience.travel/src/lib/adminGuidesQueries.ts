@@ -631,3 +631,185 @@ export async function ingestDiningJson(
 
   return { inserted: inserts.length, skipped }
 }
+
+// ── Hotel types ───────────────────────────────────────────────────────────────
+
+export interface AdminHotel {
+  id:                    string
+  global_destination_id: string  // via destination_id FK
+  name:                  string
+  short_slug:            string
+  hero_image_src:        string | null
+  hero_image_alt:        string | null
+  bullets:               string[] | null
+  sort_order:            number
+  is_active:             boolean
+  is_preferred_partner:  boolean
+  is_supplementary:      boolean
+  stars:                 number | null
+  michelin_keys:         number | null
+  forbes_rating:         number | null
+  description:           string | null
+  internal_notes:        string | null
+  address:               string | null
+  city:                  string | null
+  zip_code:              string | null
+  latitude:              number | null
+  longitude:             number | null
+  google_maps_url:       string | null
+  website_url:           string | null
+  phone:                 string | null
+  reservations_phone:    string | null
+  main_email:            string | null
+  reservations_email:    string | null
+  sales_email:           string | null
+  concierge_email:       string | null
+  guest_relations_email: string | null
+  front_office_email:    string | null
+  image_credit:          string | null
+  image_credit_url:      string | null
+  image_license:         string | null
+}
+
+export interface AdminHotelGuide {
+  id:                    string
+  global_destination_id: string
+  hero_image_src:        string | null
+  hero_image_alt:        string | null
+  eyebrow_override:      string | null
+  headline_override:     string | null
+  intro_override:        string | null
+  is_active:             boolean
+}
+
+export interface DestinationWithHotelCounts {
+  id:          string
+  hotel_count: number
+  has_overlay: boolean
+}
+
+export type HotelPatch      = Partial<Omit<AdminHotel, 'id'>>
+export type HotelGuidePatch = Partial<Omit<AdminHotelGuide, 'id' | 'global_destination_id'>>
+
+// ── Hotel reads ───────────────────────────────────────────────────────────────
+
+export async function fetchAllHotels(
+  destinationIdFilter?: string | null,
+): Promise<AdminHotel[]> {
+  let q = supabase
+    .from('travel_accom_hotels')
+    .select(`
+      id, destination_id, name, short_slug,
+      hero_image_src, hero_image_alt, bullets, sort_order,
+      is_active, is_preferred_partner, is_supplementary,
+      stars, michelin_keys, forbes_rating,
+      description, internal_notes,
+      address, city, zip_code, latitude, longitude,
+      google_maps_url, website_url, phone, reservations_phone,
+      main_email, reservations_email, sales_email,
+      concierge_email, guest_relations_email, front_office_email,
+      image_credit, image_credit_url, image_license
+    `)
+    .order('sort_order', { ascending: true })
+
+  if (destinationIdFilter) {
+    q = q.eq('destination_id', destinationIdFilter)
+  }
+
+  const { data, error } = await q
+  if (error) throw new Error(`Failed to fetch hotels: ${error.message}`)
+
+  // Remap destination_id → global_destination_id for consistency
+  // bullets is jsonb — cast to string[]
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...r,
+    global_destination_id: r.destination_id as string,
+    bullets: Array.isArray(r.bullets) ? (r.bullets as string[]) : null,
+  })) as AdminHotel[]
+}
+
+export async function fetchDestinationsWithHotels(): Promise<DestinationWithHotelCounts[]> {
+  const [hotelsRes, guidesRes] = await Promise.all([
+    supabase
+      .from('travel_accom_hotels')
+      .select('destination_id')
+      .eq('is_active', true),
+    supabase
+      .from('travel_hotel_guides')
+      .select('global_destination_id'),
+  ])
+
+  if (hotelsRes.error) throw new Error(`hotels: ${hotelsRes.error.message}`)
+  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
+
+  const countByDest = new Map<string, number>()
+  for (const h of hotelsRes.data ?? []) {
+    const id = (h as { destination_id: string }).destination_id
+    if (!id) continue
+    countByDest.set(id, (countByDest.get(id) ?? 0) + 1)
+  }
+
+  const overlaySet = new Set<string>(
+    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
+  )
+
+  return Array.from(countByDest.entries()).map(([id, count]) => ({
+    id,
+    hotel_count: count,
+    has_overlay: overlaySet.has(id),
+  }))
+}
+
+export async function fetchHotelGuides(): Promise<AdminHotelGuide[]> {
+  const { data, error } = await supabase
+    .from('travel_hotel_guides')
+    .select(`
+      id, global_destination_id,
+      hero_image_src, hero_image_alt,
+      eyebrow_override, headline_override, intro_override,
+      is_active
+    `)
+  if (error) throw new Error(`Failed to fetch hotel guides: ${error.message}`)
+  return (data ?? []) as AdminHotelGuide[]
+}
+
+// ── Hotel writes ──────────────────────────────────────────────────────────────
+
+export async function updateHotel(id: string, patch: HotelPatch): Promise<void> {
+  // Remap global_destination_id back to destination_id for the DB write
+  const { global_destination_id, ...rest } = patch as HotelPatch & { global_destination_id?: string }
+  const dbPatch = global_destination_id
+    ? { ...rest, destination_id: global_destination_id }
+    : rest
+  const { error } = await supabase
+    .from('travel_accom_hotels')
+    .update(dbPatch)
+    .eq('id', id)
+  if (error) throw new Error(`Failed to update hotel: ${error.message}`)
+}
+
+export async function updateHotelGuide(id: string, patch: HotelGuidePatch): Promise<void> {
+  const { error } = await supabase
+    .from('travel_hotel_guides')
+    .update(patch)
+    .eq('id', id)
+  if (error) throw new Error(`Failed to update hotel guide: ${error.message}`)
+}
+
+export async function createHotelGuide(globalDestinationId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('travel_hotel_guides')
+    .insert({ global_destination_id: globalDestinationId, is_active: true })
+    .select('id')
+    .single()
+  if (error) throw new Error(`Failed to create hotel guide: ${error.message}`)
+  return (data as { id: string }).id
+}
+
+export async function deleteHotelGuide(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('travel_hotel_guides')
+    .delete()
+    .eq('id', id)
+  if (error) throw new Error(`Failed to delete hotel guide: ${error.message}`)
+}
