@@ -12,7 +12,8 @@
  *     - Person modal uses full-screen treatment
  *   >= 768px (desktop): unchanged two-panel layout
  *
- * Last updated: S40D — mobile-responsive layout pass.
+ * Last updated: S41 — Destinations + Contacts sections added.
+ * Prior: S40D — mobile-responsive layout pass.
  * Prior: S40D — client summary block, expandable overview categories,
  *   sidebar pref snapshots removed.
  */
@@ -29,14 +30,19 @@ import {
   fetchHouses, fetchHouseById,
   fetchPeopleForHouse, fetchPreferencesForHouse,
   fetchDiningHistoryForHouse, fetchPPDForHouse,
+  fetchDestinationsForHouse, fetchContactsForHouse,
   fetchProfileForPerson, updateHouse,
   createPerson, updatePerson, deletePerson,
   createPreference, updatePreference, deletePreference,
   createDiningEntry, updateDiningEntry, deleteDiningEntry,
+  createDestination, updateDestination, deleteDestination,
+  createContact, updateContact, deleteContact,
   createPPDPeopleEntry, deletePPDPeopleEntry,
   type House, type HousePerson, type HousePreference,
-  type HouseDiningEntry, type PPDPeopleEntry, type HousePersonProfile,
+  type HouseDiningEntry, type HouseDestination, type HouseContact,
+  type PPDPeopleEntry, type HousePersonProfile,
   type PrefCategory, type PrefConfidence, type DiningStatus,
+  type DestinationStatus, type DestinationTripType, type ContactType,
 } from '../../lib/adminHouseQueries'
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
@@ -66,6 +72,18 @@ const STATUS: Record<DiningStatus, { text: string; label: string }> = {
   visited:  { text: '#4ade80', label: 'Visited'   },
   avoid:    { text: '#f87171', label: 'Avoid'      },
   to_try:   { text: '#93c5fd', label: 'To Try'     },
+}
+
+const DEST_STATUS_COLOR: Record<DestinationStatus, string> = {
+  visited: '#4ade80',
+  planned: '#93c5fd',
+  avoided: '#f87171',
+}
+
+const DEST_STATUS_LABEL: Record<DestinationStatus, string> = {
+  visited: 'Visited',
+  planned: 'Planned',
+  avoided: 'Avoided',
 }
 
 const DESIG_COLOR: Record<string, string> = {
@@ -100,14 +118,9 @@ const PPD_KEYS = [
 
 const ROLES = ['principal', 'spouse', 'child', 'staff', 'advisor', 'guest']
 
-const SOURCE_OPTIONS = [
-  { value: 'direct',          label: 'Direct' },
-  { value: 'inferred',        label: 'Inferred' },
-  { value: 'staff_note',      label: 'Staff Note' },
-  { value: 'profile_summary', label: 'Profile Summary' },
-  { value: 'trip',            label: 'Trip' },
-  { value: 'observation',     label: 'Observation' },
-]
+const DEST_STATUSES: DestinationStatus[] = ['visited', 'planned', 'avoided']
+const DEST_TRIP_TYPES: DestinationTripType[] = ['family', 'couple', 'solo', 'business', 'other']
+const CONTACT_TYPES: ContactType[] = ['pa', 'driver', 'fixer', 'medical', 'security', 'concierge', 'other']
 
 function SourceSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -122,7 +135,6 @@ function SourceSelect({ value, onChange }: { value: string; onChange: (v: string
   )
 }
 
-// Format ISO date string (YYYY-MM-DD) → DD MON YYYY
 function formatDOB(iso: string): string {
   if (!iso) return ''
   const d = new Date(iso + 'T00:00:00')
@@ -130,10 +142,8 @@ function formatDOB(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
 }
 
-// Value input for PPD — date picker for DOB, plain text otherwise
 function PPDValueInput({ dataKey, value, onChange }: { dataKey: string; value: string; onChange: (v: string) => void }) {
   if (dataKey === 'Date of Birth') {
-    // Convert stored DD MON YYYY back to YYYY-MM-DD for the input
     const toISO = (stored: string): string => {
       if (!stored) return ''
       if (/^\d{4}-\d{2}-\d{2}$/.test(stored)) return stored
@@ -155,6 +165,8 @@ function PPDValueInput({ dataKey, value, onChange }: { dataKey: string; value: s
     <input style={inputStyle} placeholder='Enter value…' value={value} onChange={e => onChange(e.target.value)} autoComplete='off' autoFocus />
   )
 }
+
+function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
@@ -266,7 +278,6 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
           overflowY: 'auto',
         }}
       >
-        {/* Handle bar on mobile */}
         {mobile && <div style={{ width: 36, height: 4, borderRadius: 2, background: A.border, margin: '-8px auto 0' }} />}
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -278,7 +289,6 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
           <button onClick={onClose} style={btnG}>Close</button>
         </div>
 
-        {/* Tab bar — scrollable on mobile */}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, borderBottom: `1px solid ${A.border}`, scrollbarWidth: 'none' }}>
           <button onClick={() => setTab('identity')}    style={tabStyle('identity')}>Identity</button>
           <button onClick={() => setTab('preferences')} style={tabStyle('preferences')}>Preferences {personPrefs.length > 0 && <span style={{ opacity: 0.6 }}>({personPrefs.length})</span>}</button>
@@ -292,7 +302,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
               <Field label='Reference Code'><input style={inputStyle} value={identityDraft.member_ref} onChange={e => setIdentityDraft(d => ({ ...d, member_ref: e.target.value }))} /></Field>
               <Field label='Role'>
                 <select style={inputStyle} value={identityDraft.role} onChange={e => setIdentityDraft(d => ({ ...d, role: e.target.value }))}>
-                  {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                  {ROLES.map(r => <option key={r} value={r}>{capitalize(r)}</option>)}
                 </select>
               </Field>
             </div>
@@ -521,13 +531,15 @@ function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
 
 // ── House detail ──────────────────────────────────────────────────────────────
 
-type Section = 'overview' | 'preferences' | 'dining' | 'sensitive' | 'notes'
+type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'sensitive' | 'notes'
 
 interface AllData {
-  people:      HousePerson[]
-  preferences: HousePreference[]
-  dining:      HouseDiningEntry[]
-  ppd:         PPDPeopleEntry[]
+  people:       HousePerson[]
+  preferences:  HousePreference[]
+  dining:       HouseDiningEntry[]
+  destinations: HouseDestination[]
+  contacts:     HouseContact[]
+  ppd:          PPDPeopleEntry[]
 }
 
 function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void }) {
@@ -535,7 +547,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   const [house, setHouse]         = useState<House>(init)
   const [section, setSection]     = useState<Section>('overview')
   const [q, setQ]                 = useState('')
-  const [data, setData]           = useState<AllData>({ people: [], preferences: [], dining: [], ppd: [] })
+  const [data, setData]           = useState<AllData>({ people: [], preferences: [], dining: [], destinations: [], contacts: [], ppd: [] })
   const [loading, setLoading]     = useState(true)
   const [modalPerson, setModalPerson] = useState<HousePerson | null>(null)
   const { toast }                 = useToast()
@@ -547,13 +559,15 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   async function loadAll() {
     setLoading(true)
     try {
-      const [people, preferences, dining, ppdResponse] = await Promise.all([
+      const [people, preferences, dining, destinations, contacts, ppdResponse] = await Promise.all([
         fetchPeopleForHouse(house.id),
         fetchPreferencesForHouse(house.id),
         fetchDiningHistoryForHouse(house.id),
+        fetchDestinationsForHouse(house.id),
+        fetchContactsForHouse(house.id),
         fetchPPDForHouse(house.id),
       ])
-      setData({ people, preferences, dining, ppd: ppdResponse.people })
+      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people })
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed to load') }
     setLoading(false)
   }
@@ -581,9 +595,11 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     const query = q.toLowerCase().trim()
     if (!query) return null
     return {
-      preferences: data.preferences.filter(p => p.pref_key.toLowerCase().includes(query) || p.pref_value.toLowerCase().includes(query)),
-      dining:      data.dining.filter(d => d.restaurant_name.toLowerCase().includes(query) || (d.city ?? '').toLowerCase().includes(query)),
-      ppd:         data.ppd.filter(p => p.data_key.toLowerCase().includes(query) || p.data_value.toLowerCase().includes(query)),
+      preferences:  data.preferences.filter(p => p.pref_key.toLowerCase().includes(query) || p.pref_value.toLowerCase().includes(query)),
+      dining:       data.dining.filter(d => d.restaurant_name.toLowerCase().includes(query) || (d.city ?? '').toLowerCase().includes(query)),
+      destinations: data.destinations.filter(d => d.destination_name.toLowerCase().includes(query) || (d.country ?? '').toLowerCase().includes(query)),
+      contacts:     data.contacts.filter(c => c.name.toLowerCase().includes(query) || (c.role ?? '').toLowerCase().includes(query)),
+      ppd:          data.ppd.filter(p => p.data_key.toLowerCase().includes(query) || p.data_value.toLowerCase().includes(query)),
     }
   }, [q, data])
 
@@ -600,14 +616,15 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   }
 
   const NAV: Array<{ id: Section; label: string; count?: number }> = [
-    { id: 'overview',    label: 'Overview' },
-    { id: 'preferences', label: 'Preferences', count: data.preferences.length },
-    { id: 'dining',      label: 'Dining',       count: data.dining.length },
-    { id: 'sensitive',   label: 'Sensitive',    count: data.ppd.length },
-    { id: 'notes',       label: 'Notes' },
+    { id: 'overview',      label: 'Overview' },
+    { id: 'preferences',   label: 'Preferences',  count: data.preferences.length },
+    { id: 'dining',        label: 'Dining',        count: data.dining.length },
+    { id: 'destinations',  label: 'Destinations',  count: data.destinations.length },
+    { id: 'contacts',      label: 'Contacts',      count: data.contacts.length },
+    { id: 'sensitive',     label: 'Sensitive',     count: data.ppd.length },
+    { id: 'notes',         label: 'Notes' },
   ]
 
-  // ── People block (used inline on mobile, in sidebar on desktop) ──────────
   const PeopleBlock = (
     <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, padding: '12px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -631,7 +648,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         <div style={{ marginTop: 6, padding: '10px', background: A.bgInput, borderRadius: 8, border: `1px solid ${A.gold}40`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} placeholder='J, K, Child 1…' value={pd.member_ref} onChange={e => setPd(d => ({ ...d, member_ref: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') addPerson() }} />
           <select style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} value={pd.role} onChange={e => setPd(d => ({ ...d, role: e.target.value }))}>
-            {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+            {ROLES.map(r => <option key={r} value={r}>{capitalize(r)}</option>)}
           </select>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button onClick={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'principal' }) }} style={btnG}>Cancel</button>
@@ -642,7 +659,6 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     </div>
   )
 
-  // ── Avoid dining block ───────────────────────────────────────────────────
   const AvoidBlock = avoidDining.length > 0 ? (
     <div style={{ background: '#2a161630', border: '1px solid #f8717125', borderRadius: 10, padding: '12px 14px' }}>
       <SectionLabel label='Dining Avoids' color='#f87171' />
@@ -680,7 +696,6 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         </div>
       </div>
 
-      {/* Section nav — horizontal scroll on mobile, sidebar on desktop */}
       {mobile && (
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, marginBottom: 12, scrollbarWidth: 'none' }}>
           {NAV.map(n => (
@@ -702,7 +717,6 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
 
       {!searchResults && (
         mobile ? (
-          // ── Mobile: single column ────────────────────────────────────────
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading ? (
               <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading…</div>
@@ -710,19 +724,19 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
               <>
                 {PeopleBlock}
                 {AvoidBlock}
-                {section === 'overview'    && <OverviewSection    house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={true} />}
-                {section === 'preferences' && <PreferencesSection data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={true} />}
-                {section === 'dining'      && <DiningSection      data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
-                {section === 'sensitive'   && <SensitiveSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
-                {section === 'notes'       && <NotesSection       house={house} onSaved={reloadHouse} />}
+                {section === 'overview'     && <OverviewSection      house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={true} />}
+                {section === 'preferences'  && <PreferencesSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={true} />}
+                {section === 'dining'       && <DiningSection        data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
+                {section === 'destinations' && <DestinationsSection  data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
+                {section === 'contacts'     && <ContactsSection      data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
+                {section === 'sensitive'    && <SensitiveSection     data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
+                {section === 'notes'        && <NotesSection         house={house} onSaved={reloadHouse} />}
               </>
             )}
           </div>
         ) : (
-          // ── Desktop: two-panel ───────────────────────────────────────────
           <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
             <div style={{ width: 210, flexShrink: 0, position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Nav */}
               <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, overflow: 'hidden' }}>
                 {NAV.map((n, i) => (
                   <button key={n.id} onClick={() => setSection(n.id)} style={{
@@ -748,11 +762,13 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
                 <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading…</div>
               ) : (
                 <>
-                  {section === 'overview'    && <OverviewSection    house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={false} />}
-                  {section === 'preferences' && <PreferencesSection data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={false} />}
-                  {section === 'dining'      && <DiningSection      data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
-                  {section === 'sensitive'   && <SensitiveSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
-                  {section === 'notes'       && <NotesSection       house={house} onSaved={reloadHouse} />}
+                  {section === 'overview'     && <OverviewSection      house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={false} />}
+                  {section === 'preferences'  && <PreferencesSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={false} />}
+                  {section === 'dining'       && <DiningSection        data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
+                  {section === 'destinations' && <DestinationsSection  data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
+                  {section === 'contacts'     && <ContactsSection      data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
+                  {section === 'sensitive'    && <SensitiveSection     data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
+                  {section === 'notes'        && <NotesSection         house={house} onSaved={reloadHouse} />}
                 </>
               )}
             </div>
@@ -766,11 +782,17 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
 // ── Search results ────────────────────────────────────────────────────────────
 
 function SearchResults({ results, personRef, onClose }: {
-  results: { preferences: HousePreference[]; dining: HouseDiningEntry[]; ppd: PPDPeopleEntry[] }
+  results: {
+    preferences:  HousePreference[]
+    dining:       HouseDiningEntry[]
+    destinations: HouseDestination[]
+    contacts:     HouseContact[]
+    ppd:          PPDPeopleEntry[]
+  }
   personRef: (id: string | null) => string | null
   onClose: () => void
 }) {
-  const total = results.preferences.length + results.dining.length + results.ppd.length
+  const total = results.preferences.length + results.dining.length + results.destinations.length + results.contacts.length + results.ppd.length
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -801,6 +823,35 @@ function SearchResults({ results, personRef, onClose }: {
                   <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[d.city, d.country].filter(Boolean).join(', ')}</div>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 700, color: STATUS[d.status].text, fontFamily: A.font, textTransform: 'uppercase' }}>{STATUS[d.status].label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {results.destinations.length > 0 && (
+        <div>
+          <SectionLabel label='Destinations' />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {results.destinations.map(d => (
+              <div key={d.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${DEST_STATUS_COLOR[d.status]}`, borderRadius: 8, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{d.destination_name}</div>
+                  <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[d.city, d.country].filter(Boolean).join(', ')}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: DEST_STATUS_COLOR[d.status], fontFamily: A.font, textTransform: 'uppercase' }}>{DEST_STATUS_LABEL[d.status]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {results.contacts.length > 0 && (
+        <div>
+          <SectionLabel label='Contacts' />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {results.contacts.map(c => (
+              <div key={c.id} style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8 }}>
+                <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{c.name}</div>
+                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{c.contact_type}{c.role ? ` · ${c.role}` : ''}</div>
               </div>
             ))}
           </div>
@@ -877,7 +928,6 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Name edit */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {editingName ? (
           <>
@@ -893,7 +943,6 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
         )}
       </div>
 
-      {/* Summary */}
       <div style={{ padding: '14px 16px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: house.summary || editingSummary ? 10 : 0 }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Client Summary</div>
@@ -914,7 +963,6 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
         )}
       </div>
 
-      {/* Dietary avoid strip */}
       {hardDietaryAvoids.length > 0 && (
         <div style={{ padding: '10px 14px', background: '#f8717108', border: '1px solid #f8717130', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f87171', fontFamily: A.font, whiteSpace: 'nowrap' }}>Dietary</span>
@@ -926,7 +974,6 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
         </div>
       )}
 
-      {/* Expandable preference categories */}
       {prefsByCategory.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {prefsByCategory.map(({ cat, prefs }) => {
@@ -958,7 +1005,6 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
         </div>
       )}
 
-      {/* Dining */}
       {(favs.length > 0 || avoids.length > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: !mobile && favs.length && avoids.length ? '1fr 1fr' : '1fr', gap: 10 }}>
           {favs.length > 0 && (
@@ -1037,8 +1083,6 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-      {/* Category tabs — horizontal scroll on mobile */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
         {PREF_CATEGORIES.map(c => (
           <button key={c} onClick={() => { setCat(c); setAdding(false) }} style={{
@@ -1052,13 +1096,10 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
           </button>
         ))}
       </div>
-
-      {/* Filter + add */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input style={{ ...inputStyle, flex: 1 }} placeholder='Filter…' value={filter} onChange={e => setFilter(e.target.value)} />
         {!adding && <button onClick={() => setAdding(true)} style={{ ...btnP, flexShrink: 0 }}>+ Add</button>}
       </div>
-
       {adding && (
         <div style={{ padding: '14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Field label='Key'>
@@ -1093,7 +1134,6 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
           </div>
         </div>
       )}
-
       {catPrefs.length === 0 ? (
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No {cat.toLowerCase()} preferences recorded.</div>
       ) : (
@@ -1174,7 +1214,6 @@ function DiningSection({ data, houseId, onReload, mobile }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Filter tabs — horizontal scroll */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
         {(['all', ...STATUSES] as const).map(s => {
           const count = counts[s] ?? 0
@@ -1182,23 +1221,22 @@ function DiningSection({ data, houseId, onReload, mobile }: {
           const color = s === 'all' ? A.gold : STATUS[s as DiningStatus].text
           return (
             <button key={s} onClick={() => setFilter(s as typeof filter)} style={{ padding: '7px 13px', whiteSpace: 'nowrap', flexShrink: 0, background: active ? color + '12' : 'transparent', color: active ? color : A.muted, border: active ? `1px solid ${color}30` : `1px solid ${A.border}`, borderRadius: 8, fontSize: 11, fontWeight: 600, fontFamily: A.font, cursor: 'pointer' }}>
-              {s === 'all' ? 'All' : s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}
+              {s === 'all' ? 'All' : s === 'to_try' ? 'To Try' : capitalize(s)}
               {count > 0 && <span style={{ marginLeft: 4, opacity: 0.55 }}>({count})</span>}
             </button>
           )
         })}
         <div style={{ flexShrink: 0, marginLeft: 4 }}>{!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add</button>}</div>
       </div>
-
       {adding && (
         <div style={{ padding: '14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Field label='Restaurant'><input style={inputStyle} placeholder='Name…' value={draft.restaurant_name} onChange={e => setDraft(d => ({ ...d, restaurant_name: e.target.value }))} autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
             <Field label='City'><input style={inputStyle} placeholder='City…' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
             <Field label='Country'><input style={inputStyle} placeholder='Country…' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>
-            <Field label='Status' >
+            <Field label='Status'>
               <select style={inputStyle} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as DiningStatus }))}>
-                {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : capitalize(s)}</option>)}
               </select>
             </Field>
           </div>
@@ -1213,7 +1251,6 @@ function DiningSection({ data, houseId, onReload, mobile }: {
           </div>
         </div>
       )}
-
       {grouped.length === 0 ? (
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No entries yet.</div>
       ) : (
@@ -1235,15 +1272,296 @@ function DiningSection({ data, houseId, onReload, mobile }: {
                     </div>
                     <button onClick={() => remove(e.id)} style={btnD}>×</button>
                   </div>
-                  {/* Status change — full width on mobile */}
                   <select value={e.status} onChange={ev => changeStatus(e, ev.target.value as DiningStatus)} style={{ ...inputStyle, width: '100%', marginTop: 8, padding: '6px 10px', fontSize: 11 }}>
-                    {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                    {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : capitalize(s)}</option>)}
                   </select>
                 </div>
               ))}
             </div>
           </div>
         ))
+      )}
+    </div>
+  )
+}
+
+// ── Destinations section ──────────────────────────────────────────────────────
+
+function DestinationsSection({ data, houseId, onReload, mobile }: {
+  data: AllData; houseId: string; onReload: () => void; mobile: boolean
+}) {
+  const [filter, setFilter] = useState<DestinationStatus | 'all'>('all')
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [draft, setDraft]   = useState({
+    destination_name: '', country: '', city: '',
+    trip_type: '' as DestinationTripType | '',
+    status: 'visited' as DestinationStatus,
+    visit_date: '', trip_ref: '', notes: '',
+  })
+  const { toast } = useToast()
+
+  const grouped = useMemo(() => {
+    const filtered = filter === 'all' ? data.destinations : data.destinations.filter(d => d.status === filter)
+    const m = new Map<DestinationStatus, HouseDestination[]>()
+    for (const s of DEST_STATUSES) m.set(s, [])
+    for (const d of filtered) m.get(d.status)!.push(d)
+    return DEST_STATUSES.map(s => ({ status: s, entries: m.get(s)! })).filter(g => g.entries.length > 0)
+  }, [data.destinations, filter])
+
+  const counts = useMemo(() => {
+    const m: Record<string, number> = { all: data.destinations.length }
+    for (const d of data.destinations) m[d.status] = (m[d.status] ?? 0) + 1
+    return m
+  }, [data.destinations])
+
+  async function handleAdd() {
+    if (!draft.destination_name.trim()) return
+    setSaving(true)
+    try {
+      await createDestination(
+        houseId,
+        draft.destination_name.trim(),
+        draft.country.trim() || null,
+        draft.city.trim() || null,
+        (draft.trip_type || null) as DestinationTripType | null,
+        draft.status,
+        draft.visit_date || null,
+        draft.trip_ref.trim() || null,
+        draft.notes.trim() || null,
+      )
+      toast.success('Added.')
+      setAdding(false)
+      setDraft({ destination_name: '', country: '', city: '', trip_type: '', status: 'visited', visit_date: '', trip_ref: '', notes: '' })
+      await onReload()
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
+    setSaving(false)
+  }
+
+  async function changeStatus(dest: HouseDestination, status: DestinationStatus) {
+    try { await updateDestination(dest.id, { status }); await onReload() }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  async function remove(id: string) {
+    try { await deleteDestination(id); toast.success('Removed.'); await onReload() }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+        {(['all', ...DEST_STATUSES] as const).map(s => {
+          const count = counts[s] ?? 0
+          const active = filter === s
+          const color = s === 'all' ? A.gold : DEST_STATUS_COLOR[s as DestinationStatus]
+          return (
+            <button key={s} onClick={() => setFilter(s as typeof filter)} style={{ padding: '7px 13px', whiteSpace: 'nowrap', flexShrink: 0, background: active ? color + '12' : 'transparent', color: active ? color : A.muted, border: active ? `1px solid ${color}30` : `1px solid ${A.border}`, borderRadius: 8, fontSize: 11, fontWeight: 600, fontFamily: A.font, cursor: 'pointer' }}>
+              {s === 'all' ? 'All' : DEST_STATUS_LABEL[s as DestinationStatus]}
+              {count > 0 && <span style={{ marginLeft: 4, opacity: 0.55 }}>({count})</span>}
+            </button>
+          )
+        })}
+        <div style={{ flexShrink: 0, marginLeft: 4 }}>{!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add</button>}</div>
+      </div>
+
+      {adding && (
+        <div style={{ padding: '14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Field label='Destination'><input style={inputStyle} placeholder='Mallorca, Lake Como…' value={draft.destination_name} onChange={e => setDraft(d => ({ ...d, destination_name: e.target.value }))} autoFocus /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <Field label='Country'><input style={inputStyle} placeholder='Italy…' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>
+            <Field label='City'><input style={inputStyle} placeholder='Como…' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <Field label='Status'>
+              <select style={inputStyle} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as DestinationStatus }))}>
+                {DEST_STATUSES.map(s => <option key={s} value={s}>{DEST_STATUS_LABEL[s]}</option>)}
+              </select>
+            </Field>
+            <Field label='Trip Type'>
+              <select style={inputStyle} value={draft.trip_type} onChange={e => setDraft(d => ({ ...d, trip_type: e.target.value as DestinationTripType | '' }))}>
+                <option value=''>Not specified</option>
+                {DEST_TRIP_TYPES.map(t => <option key={t} value={t}>{capitalize(t)}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visit_date} onChange={e => setDraft(d => ({ ...d, visit_date: e.target.value }))} /></Field>
+            <Field label='Trip Ref'><input style={inputStyle} placeholder='YAZ-2027-HM…' value={draft.trip_ref} onChange={e => setDraft(d => ({ ...d, trip_ref: e.target.value }))} /></Field>
+          </div>
+          <Field label='Notes'><input style={inputStyle} placeholder='Any notes…' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setAdding(false)} style={btnG}>Cancel</button>
+            <button onClick={handleAdd} style={{ ...btnP, opacity: saving ? 0.5 : 1 }} disabled={saving}>Add</button>
+          </div>
+        </div>
+      )}
+
+      {grouped.length === 0 ? (
+        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No destinations recorded yet.</div>
+      ) : (
+        grouped.map(({ status, entries }) => (
+          <div key={status}>
+            <SectionLabel label={`${DEST_STATUS_LABEL[status]} · ${entries.length}`} color={DEST_STATUS_COLOR[status]} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {entries.map(dest => (
+                <div key={dest.id} style={{ padding: '12px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderLeft: `3px solid ${DEST_STATUS_COLOR[status]}`, borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{dest.destination_name}</div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                        {(dest.city || dest.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[dest.city, dest.country].filter(Boolean).join(', ')}</span>}
+                        {dest.trip_type && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{dest.trip_type}</span>}
+                        {dest.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{new Date(dest.visit_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>}
+                        {dest.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{dest.trip_ref}</span>}
+                      </div>
+                      {dest.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{dest.notes}</div>}
+                    </div>
+                    <button onClick={() => remove(dest.id)} style={btnD}>×</button>
+                  </div>
+                  <select value={dest.status} onChange={ev => changeStatus(dest, ev.target.value as DestinationStatus)} style={{ ...inputStyle, width: '100%', marginTop: 8, padding: '6px 10px', fontSize: 11 }}>
+                    {DEST_STATUSES.map(s => <option key={s} value={s}>{DEST_STATUS_LABEL[s]}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+// ── Contacts section ──────────────────────────────────────────────────────────
+
+function ContactsSection({ data, houseId, onReload, mobile }: {
+  data: AllData; houseId: string; onReload: () => void; mobile: boolean
+}) {
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [draft, setDraft]   = useState({
+    contact_type: 'pa' as ContactType,
+    name: '', role: '', company: '',
+    is_primary: false, notes: '',
+  })
+  const { toast } = useToast()
+
+  const primary    = data.contacts.filter(c => c.is_primary)
+  const secondary  = data.contacts.filter(c => !c.is_primary)
+
+  async function handleAdd() {
+    if (!draft.name.trim()) return
+    setSaving(true)
+    try {
+      await createContact(
+        houseId,
+        draft.contact_type,
+        draft.name.trim(),
+        draft.role.trim() || null,
+        draft.company.trim() || null,
+        draft.is_primary,
+        draft.notes.trim() || null,
+        null,
+      )
+      toast.success('Added.')
+      setAdding(false)
+      setDraft({ contact_type: 'pa', name: '', role: '', company: '', is_primary: false, notes: '' })
+      await onReload()
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
+    setSaving(false)
+  }
+
+  async function togglePrimary(contact: HouseContact) {
+    try { await updateContact(contact.id, { is_primary: !contact.is_primary }); await onReload() }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  async function remove(id: string) {
+    if (!window.confirm('Remove this contact?')) return
+    try { await deleteContact(id); toast.success('Removed.'); await onReload() }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  function ContactCard({ contact }: { contact: HouseContact }) {
+    return (
+      <div style={{ padding: '12px 14px', background: A.bgCard, border: `1px solid ${contact.is_primary ? A.gold + '40' : A.border}`, borderLeft: `3px solid ${contact.is_primary ? A.gold : A.border}`, borderRadius: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{contact.name}</div>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, padding: '1px 6px', border: `1px solid ${A.gold}30`, borderRadius: 4 }}>{contact.contact_type}</span>
+              {contact.is_primary && <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Primary</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+              {contact.role && <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{contact.role}</span>}
+              {contact.company && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{contact.company}</span>}
+            </div>
+            {contact.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{contact.notes}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            <button onClick={() => togglePrimary(contact)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: contact.is_primary ? A.faint : '#4ade80', borderColor: contact.is_primary ? A.border : '#4ade8030' }}>
+              {contact.is_primary ? 'Unprimary' : 'Primary'}
+            </button>
+            <button onClick={() => remove(contact.id)} style={btnD}>×</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add Contact</button>}
+      </div>
+
+      {adding && (
+        <div style={{ padding: '14px', background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <Field label='Name'><input style={inputStyle} placeholder='Full name…' value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} autoFocus /></Field>
+            <Field label='Type'>
+              <select style={inputStyle} value={draft.contact_type} onChange={e => setDraft(d => ({ ...d, contact_type: e.target.value as ContactType }))}>
+                {CONTACT_TYPES.map(t => <option key={t} value={t}>{capitalize(t)}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+            <Field label='Role'><input style={inputStyle} placeholder='Personal Assistant…' value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value }))} /></Field>
+            <Field label='Company'><input style={inputStyle} placeholder='Company…' value={draft.company} onChange={e => setDraft(d => ({ ...d, company: e.target.value }))} /></Field>
+          </div>
+          <Field label='Notes'><input style={inputStyle} placeholder='Any notes…' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input type='checkbox' id='is-primary' checked={draft.is_primary} onChange={e => setDraft(d => ({ ...d, is_primary: e.target.checked }))} style={{ accentColor: A.gold }} />
+            <label htmlFor='is-primary' style={{ fontSize: 12, color: A.muted, fontFamily: A.font, cursor: 'pointer' }}>Mark as primary contact</label>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setAdding(false)} style={btnG}>Cancel</button>
+            <button onClick={handleAdd} style={{ ...btnP, opacity: saving ? 0.5 : 1 }} disabled={saving}>Add</button>
+          </div>
+        </div>
+      )}
+
+      {data.contacts.length === 0 ? (
+        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No contacts recorded yet.</div>
+      ) : (
+        <>
+          {primary.length > 0 && (
+            <div>
+              <SectionLabel label={`Primary · ${primary.length}`} color={A.gold} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {primary.map(c => <ContactCard key={c.id} contact={c} />)}
+              </div>
+            </div>
+          )}
+          {secondary.length > 0 && (
+            <div>
+              <SectionLabel label={`Other · ${secondary.length}`} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {secondary.map(c => <ContactCard key={c.id} contact={c} />)}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
