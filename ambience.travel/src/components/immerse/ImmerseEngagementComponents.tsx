@@ -357,11 +357,11 @@ export function ImmerseDestinationRows({ data }: { data: ImmerseEngagementData }
               ...immerseFadeUp(visible, 60),
             }}
           >
-            {data.destinationSubtitle ?? 'Three destinations. One continuous feeling.'}
+            {data.destinationRows.length > 1 ? (data.destinationSubtitle ?? 'Destinations at your preferences.') : (data.destinationSubtitle ?? '')}
           </ImmerseTitle>
         </div>
         <ImmerseBody style={{ fontSize: 15, color: IMMERSE.mutedOnLight, ...immerseFadeUp(visible, 120) }}>
-          {data.destinationBody ?? 'Each stop should feel distinct, highly visual, and worth entering on its own.'}
+          {data.destinationRows.length > 1 ? (data.destinationBody ?? 'Each stop should feel distinct, highly visual, and worth entering on its own.') : (data.destinationBody ?? '')}
         </ImmerseBody>
       </div>
 
