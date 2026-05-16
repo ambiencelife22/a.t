@@ -5,7 +5,7 @@
 //   - Frontend default copy + ?? resolution against overlay overrides
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error+empty states for the data load
-//   - PDF download trigger (loads jsPDF, calls exportGuidePdf)
+//   - PDF download trigger (usePdfDownload hook, calls exportGuidePdf)
 //   - Plan Your Visit block (always renders — fallback copy when overlay null)
 //   - Accuracy disclaimer block (gated on overlay.accuracy_date non-null)
 //   - Editorial prompt (hasFullAccess=false — teaser state, below grid)
@@ -16,6 +16,7 @@
 //   - Page chrome (GuideLayout)
 //   - Card rendering (DiningCard), filter chips (DiningGuideFilters), hero (GuideHero)
 //   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
+//   - PDF library loading (lib/usePdfDownload.ts owns this)
 //   - Style objects (lib/guidePageStyles.ts)
 //   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
 //
@@ -28,7 +29,9 @@
 //   A subtle divider renders above the first supplementary venue in the grid.
 //   public_preview_rank is a gating mechanism only — no sort influence.
 //
-// Last updated: S40C — hasFullAccess prop added. Ungated users see venues
+// Last updated: S41 — jsPDF load + handleDownloadPdf extracted to
+//   usePdfDownload hook. No functional changes.
+// Prior: S40C — hasFullAccess prop added. Ungated users see venues
 //   where public_preview_rank IS NOT NULL (teaser cards). Editorial prompt
 //   renders below grid when hasFullAccess=false.
 // Prior: S40 — Neighborhoods removed from FilterState, URL sync, filter logic.
@@ -47,7 +50,7 @@ import {
   type DiningVenue,
   type GuideDestination,
 } from '../../lib/diningGuideQueries'
-import { exportGuidePdf } from '../../lib/guidePdf'
+import { usePdfDownload } from '../../lib/usePdfDownload'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
@@ -118,16 +121,10 @@ function readFilterStateFromUrl(): FilterState {
 
 function writeFilterStateToUrl(state: FilterState) {
   const params = new URLSearchParams()
-  if (state.cuisines.size > 0) {
-    params.set('cuisine', Array.from(state.cuisines).join(','))
-  }
-  if (state.michelinOnly) {
-    params.set('michelin', '1')
-  }
-  if (state.highlightedOnly) {
-    params.set('highlighted', '1')
-  }
-  const qs = params.toString()
+  if (state.cuisines.size > 0) params.set('cuisine', Array.from(state.cuisines).join(','))
+  if (state.michelinOnly)      params.set('michelin', '1')
+  if (state.highlightedOnly)   params.set('highlighted', '1')
+  const qs   = params.toString()
   const next = `${window.location.pathname}${qs ? '?' + qs : ''}`
   window.history.replaceState(null, '', next)
 }
@@ -136,41 +133,16 @@ function writeFilterStateToUrl(state: FilterState) {
 
 export default function DiningGuidePage({ destination, hasFullAccess }: DiningGuidePageProps) {
   const { toast } = useToast()
-  const toastRef = useRef(toast)
+  const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
-  const [venues, setVenues]           = useState<DiningVenue[]>([])
-  const [loading, setLoading]         = useState(true)
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = usePdfDownload()
+
+  const [venues,      setVenues]      = useState<DiningVenue[]>([])
+  const [loading,     setLoading]     = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
-  const hasHighlightedItems = useMemo(() => venues.some((v) => v.is_highlighted), [venues])
-  const [pdfReady, setPdfReady]       = useState(false)
-  const [pdfDownloading, setPdfDownloading] = useState(false)
 
-  useEffect(() => {
-    const w = window as any
-    if (w.jspdf?.jsPDF) { setPdfReady(true); return }
-
-    function loadScript(src: string): Promise<void> {
-      return new Promise((resolve, reject) => {
-        const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
-        if (existing) {
-          if ((window as any).jspdf?.jsPDF) { resolve(); return }
-          existing.addEventListener('load', () => resolve())
-          existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)))
-          return
-        }
-        const s = document.createElement('script')
-        s.src = src
-        s.onload  = () => resolve()
-        s.onerror = () => reject(new Error(`Failed to load ${src}`))
-        document.head.appendChild(s)
-      })
-    }
-
-    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-      .then(() => setPdfReady(true))
-      .catch((err) => { console.error('PDF library load error:', err) })
-  }, [])
+  const hasHighlightedItems = useMemo(() => venues.some(v => v.is_highlighted), [venues])
 
   // ── Resolved hero copy ───────────────────────────────────────────────────
 
@@ -185,7 +157,6 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
   useEffect(() => {
     let cancelled = false
-
     async function load() {
       setLoading(true)
       try {
@@ -206,22 +177,18 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
     return () => { cancelled = true }
   }, [destination.slug])
 
-  useEffect(() => {
-    writeFilterStateToUrl(filterState)
-  }, [filterState])
+  useEffect(() => { writeFilterStateToUrl(filterState) }, [filterState])
 
   // ── Derived filter inputs ────────────────────────────────────────────────
 
   const availableCuisines = useMemo(() => {
     const set = new Set<string>()
-    venues.forEach((v) => {
-      if (v.cuisine_subcategory) set.add(v.cuisine_subcategory)
-    })
+    venues.forEach(v => { if (v.cuisine_subcategory) set.add(v.cuisine_subcategory) })
     return Array.from(set).sort()
   }, [venues])
 
   const hasMichelinItems = useMemo(
-    () => venues.some((v) => v.michelin_award === 'star' || v.michelin_award === 'bib_gourmand'),
+    () => venues.some(v => v.michelin_award === 'star' || v.michelin_award === 'bib_gourmand'),
     [venues],
   )
 
@@ -235,72 +202,25 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
       ? venues
       : venues.filter(v => v.public_preview_rank != null)
 
-    const filtered = visible.filter((v) => {
+    const filtered = visible.filter(v => {
       if (filterState.cuisines.size > 0) {
-        if (!v.cuisine_subcategory || !filterState.cuisines.has(v.cuisine_subcategory)) {
-          return false
-        }
+        if (!v.cuisine_subcategory || !filterState.cuisines.has(v.cuisine_subcategory)) return false
       }
-      if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') {
-        return false
-      }
-      if (filterState.highlightedOnly && !v.is_highlighted) {
-        return false
-      }
+      if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') return false
+      if (filterState.highlightedOnly && !v.is_highlighted) return false
       return true
     })
 
     return filtered.sort((a, b) => {
-      if (a.is_supplementary !== b.is_supplementary) {
-        return a.is_supplementary ? 1 : -1
-      }
+      if (a.is_supplementary !== b.is_supplementary) return a.is_supplementary ? 1 : -1
       return a.name.localeCompare(b.name)
     })
   }, [venues, filterState, hasFullAccess])
 
   const firstSupplementaryIndex = useMemo(
-    () => filteredVenues.findIndex((v) => v.is_supplementary),
+    () => filteredVenues.findIndex(v => v.is_supplementary),
     [filteredVenues],
   )
-
-  // ── PDF download handler ─────────────────────────────────────────────────
-
-  async function handleDownloadPdf() {
-    if (!pdfReady) {
-      toastRef.current.info('PDF library is still loading. Try again in a moment.')
-      return
-    }
-    if (venues.length === 0) {
-      toastRef.current.info('No venues to export yet.')
-      return
-    }
-    setPdfDownloading(true)
-    try {
-      const guideYear    = resolveGuideYear(overlay?.guide_year)
-      const guideVersion = resolveGuideVersion(overlay?.guide_version)
-
-      await exportGuidePdf({
-        variant: 'dining',
-        destination,
-        venues,
-        copy: {
-          eyebrow:  heroEyebrow,
-          headline: heroHeadline,
-          intro:    heroIntro,
-        },
-        heroImageSrc,
-        guideYear,
-        guideVersion,
-        accuracyDate: overlay?.accuracy_date ?? null,
-      })
-    } catch (err) {
-      console.error('PDF export failed:', err)
-      const msg = err instanceof Error ? err.message : 'Unknown error'
-      toastRef.current.error(`PDF export failed: ${msg}`)
-    } finally {
-      setPdfDownloading(false)
-    }
-  }
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -339,7 +259,16 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
               </div>
               <button
                 type="button"
-                onClick={handleDownloadPdf}
+                onClick={() => handleDownloadPdf({
+                  variant:      'dining',
+                  destination,
+                  venues,
+                  copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
+                  heroImageSrc,
+                  guideYear:    resolveGuideYear(overlay?.guide_year),
+                  guideVersion: resolveGuideVersion(overlay?.guide_version),
+                  accuracyDate: overlay?.accuracy_date ?? null,
+                })}
                 disabled={!pdfReady || pdfDownloading || venues.length === 0}
                 style={{
                   ...downloadBtnStyle,
@@ -400,17 +329,17 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 function EditorialPrompt({ destinationName }: { destinationName: string }) {
   return (
     <div style={{
-      marginTop:       48,
-      padding:         'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
-      textAlign:       'center',
-      display:         'flex',
-      flexDirection:   'column',
-      alignItems:      'center',
-      gap:             20,
-      background:      ID.panel,
-      borderTop:       `1px solid ${IMMERSE.tableBorder}`,
-      borderBottom:    `1px solid ${IMMERSE.tableBorder}`,
-      borderRadius:    24,
+      marginTop:     48,
+      padding:       'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
+      textAlign:     'center',
+      display:       'flex',
+      flexDirection: 'column',
+      alignItems:    'center',
+      gap:           20,
+      background:    ID.panel,
+      borderTop:     `1px solid ${IMMERSE.tableBorder}`,
+      borderBottom:  `1px solid ${IMMERSE.tableBorder}`,
+      borderRadius:  24,
     }}>
       <div style={{
         fontSize:      11,

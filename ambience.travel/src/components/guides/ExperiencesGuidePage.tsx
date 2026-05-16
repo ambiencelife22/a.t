@@ -3,12 +3,30 @@
 //   - Venue data fetch
 //   - Filter state (experience_category)
 //   - Frontend default copy + ?? resolution against overlay overrides
+//   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error + empty states
+//   - PDF download trigger (usePdfDownload hook, calls exportGuidePdf)
 //   - At-a-glance bullets block
 //   - Plan Your Visit block
 //   - Accuracy disclaimer block
 //
-// Last updated: S40B — experience_category filter added. Category chips
+// What it does not own:
+//   - Path parsing (ExperiencesGuideRoute)
+//   - Destination validation (ExperiencesGuideRoute)
+//   - Page chrome (GuideLayout)
+//   - Card rendering (ExperienceCard), hero (GuideHero)
+//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
+//   - PDF library loading (lib/usePdfDownload.ts owns this)
+//   - Style objects (lib/guidePageStyles.ts)
+//   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
+//
+// No filter state for Michelin/highlighted — travel_experiences has no
+// such columns. Category filter only.
+//
+// PDF download gated on hasFullAccess — teaser users cannot download.
+//
+// Last updated: S41 — PDF download added via usePdfDownload hook.
+// Prior: S40B — experience_category filter added. Category chips
 //   render above the grid when multiple categories are present.
 // Prior: S41 — initial build.
 
@@ -19,6 +37,7 @@ import {
   type ExperienceVenue,
   type ExperiencesGuideDestination,
 } from '../../lib/experiencesGuideQueries'
+import { usePdfDownload } from '../../lib/usePdfDownload'
 import { ExperienceCard } from './ExperienceCard'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
@@ -28,6 +47,9 @@ import {
   sectionTitleStyle,
   sectionTitleH2Style,
   sectionTitleCountStyle,
+  downloadBtnStyle,
+  downloadBtnDisabledStyle,
+  downloadIconStyle,
   gridStyle,
   disclaimerStyle,
   disclaimerTextStyle,
@@ -52,6 +74,20 @@ function defaultHeadline(destinationName: string): string {
 
 function defaultIntro(destinationName: string): string {
   return `A selective experiences guide for ${destinationName}`
+}
+
+// ── PDF year + version defaults ──────────────────────────────────────────────
+
+const DEFAULT_GUIDE_VERSION = '1.0'
+
+function resolveGuideYear(overlayYear: number | null | undefined): number {
+  if (overlayYear != null) return overlayYear
+  return new Date().getFullYear()
+}
+
+function resolveGuideVersion(overlayVersion: string | null | undefined): string {
+  if (overlayVersion != null && overlayVersion.trim().length > 0) return overlayVersion
+  return DEFAULT_GUIDE_VERSION
 }
 
 // ── At-a-glance block ────────────────────────────────────────────────────────
@@ -98,25 +134,18 @@ function AtAGlance({ bullets }: { bullets: string[] }) {
 // ── Category filters ─────────────────────────────────────────────────────────
 
 interface CategoryFiltersProps {
-  categories:       string[]
-  active:           string | null
-  onChange:         (cat: string | null) => void
+  categories: string[]
+  active:     string | null
+  onChange:   (cat: string | null) => void
 }
 
 function CategoryFilters({ categories, active, onChange }: CategoryFiltersProps) {
   if (categories.length <= 1) return null
-
   return (
     <nav style={filtersStyle} aria-label="Filter experiences by category">
       <Chip active={active === null} onClick={() => onChange(null)}>All</Chip>
       {categories.map(cat => (
-        <Chip
-          key={cat}
-          active={active === cat}
-          onClick={() => onChange(cat)}
-        >
-          {cat}
-        </Chip>
+        <Chip key={cat} active={active === cat} onClick={() => onChange(cat)}>{cat}</Chip>
       ))}
     </nav>
   )
@@ -179,9 +208,11 @@ export default function ExperiencesGuidePage({
   const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
-  const [venues,          setVenues]          = useState<ExperienceVenue[]>([])
-  const [loading,         setLoading]         = useState(true)
-  const [activeCategory,  setActiveCategory]  = useState<string | null>(null)
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = usePdfDownload()
+
+  const [venues,         setVenues]         = useState<ExperienceVenue[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   const overlay      = destination.overlay
   const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
@@ -197,7 +228,6 @@ export default function ExperiencesGuidePage({
 
   useEffect(() => {
     let cancelled = false
-
     async function load() {
       setLoading(true)
       try {
@@ -214,14 +244,12 @@ export default function ExperiencesGuidePage({
         setLoading(false)
       }
     }
-
     load()
     return () => { cancelled = true }
   }, [destination.slug])
 
-  // Derive sorted unique categories from venue data
   const availableCategories = useMemo(() => {
-    const seen = new Set<string>()
+    const seen    = new Set<string>()
     const ordered: string[] = []
     for (const v of venues) {
       if (v.experience_category && !seen.has(v.experience_category)) {
@@ -271,6 +299,30 @@ export default function ExperiencesGuidePage({
                   {visibleVenues.length === 1 ? 'experience' : 'experiences'}
                 </p>
               </div>
+              {hasFullAccess && (
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPdf({
+                    variant:      'experiences',
+                    destination,
+                    venues,
+                    copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
+                    heroImageSrc,
+                    guideYear:    resolveGuideYear(overlay?.guide_year),
+                    guideVersion: resolveGuideVersion(overlay?.guide_version),
+                    accuracyDate: overlay?.accuracy_date ?? null,
+                  })}
+                  disabled={!pdfReady || pdfDownloading || venues.length === 0}
+                  style={{
+                    ...downloadBtnStyle,
+                    ...(pdfReady && !pdfDownloading ? {} : downloadBtnDisabledStyle),
+                  }}
+                  title={pdfReady ? 'Download this guide as a PDF' : 'PDF library loading…'}
+                >
+                  <span aria-hidden style={downloadIconStyle}>↓</span>
+                  {pdfDownloading ? 'Preparing…' : 'Download PDF'}
+                </button>
+              )}
             </div>
 
             {visibleVenues.length === 0 ? (
