@@ -29,6 +29,7 @@ import GuidesHotelsTab        from './admin/GuidesHotelsTab'
 import LibraryHotelsTab       from './admin/LibraryHotelsTab'
 import GuidesExperiencesTab   from './admin/GuidesExperiencesTab'
 import HouseTab            from './admin/HouseTab'
+import { AdminToastProvider } from './admin/_adminPrimitives'
 
 import {
   ProgrammesTab,
@@ -211,5 +212,5 @@ export default function AmbienceAdmin() {
 
   if (status === 'denied') return <AccessDenied />
 
-  return <AdminShell />
+  return <AdminToastProvider><AdminShell /></AdminToastProvider>
 }

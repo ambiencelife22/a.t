@@ -14,22 +14,27 @@
  *   Benefits        — room_benefits (jsonb as newline textarea)
  *   Images          — hero_image_src_override, hero_image_alt_override, floorplan_src_override
  *
- * Last updated: S42 — initial build.
+ * Last updated: S43 — Phase 5 pass.
+ *   - useToast -> useAdminToast throughout. showToast prop dropped.
+ *   - EditRoomModal + AddRoomModal -> AdminModal primitive.
+ *   - Section headers -> AdminSection.
+ *   - Boolean <select> -> PillToggle.
+ * Prior: S42 — initial build.
  */
 
 import { useEffect, useState, useMemo } from 'react'
 import { A } from '../../lib/adminTokens'
-import { useToast } from '../../lib/ToastContext'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,
 } from '../../lib/adminStyles'
 import { Field } from './adminUi'
+import { AdminModal, AdminSection, AdminEmptyState, useAdminToast } from './_adminPrimitives'
+import { PillToggle } from './adminUi'
 import {
   fetchOverlayRooms,
   fetchCanonicalRoomsForEngagement,
   fetchRateCadences,
-  fetchMaxRoomSortOrder,
   createOverlayRoom,
   updateOverlayRoom,
   deleteOverlayRoom,
@@ -42,7 +47,7 @@ import {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function displayRoomName(room: OverlayRoom): string {
-  if (room.room_name_override) return room.room_name_override
+  if (room.room_name_override)  return room.room_name_override
   if (room.canonical_room_name) return room.canonical_room_name
   return '(unnamed room)'
 }
@@ -60,7 +65,7 @@ function textToBenefits(text: string): string[] | null {
   return lines.length > 0 ? lines : null
 }
 
-// ── Edit Modal ────────────────────────────────────────────────────────────────
+// ── Edit Room Modal ───────────────────────────────────────────────────────────
 
 interface EditRoomModalProps {
   room:           OverlayRoom
@@ -70,25 +75,18 @@ interface EditRoomModalProps {
   onSaved:        () => void
 }
 
-function EditRoomModal({
-  room,
-  canonicalRooms,
-  rateCadences,
-  onClose,
-  onSaved,
-}: EditRoomModalProps) {
-  const { toast } = useToast()
-  const [draft, setDraft]             = useState<OverlayRoom>({ ...room })
-  const [benefitsText, setBenefitsText] = useState(benefitsToText(room.room_benefits))
-  const [saving, setSaving]           = useState(false)
+function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }: EditRoomModalProps) {
+  const { success, error }                  = useAdminToast()
+  const [draft, setDraft]                   = useState<OverlayRoom>({ ...room })
+  const [benefitsText, setBenefitsText]     = useState(benefitsToText(room.room_benefits))
+  const [saving, setSaving]                 = useState(false)
 
   function patch<K extends keyof OverlayRoom>(k: K, v: OverlayRoom[K]) {
     setDraft(prev => ({ ...prev, [k]: v }))
   }
 
   function numericPatch(k: keyof OverlayRoom, v: string) {
-    const n = v === '' ? null : (parseInt(v, 10) || null)
-    patch(k, n as any)
+    patch(k, (v === '' ? null : (parseInt(v, 10) || null)) as any)
   }
 
   async function handleSave() {
@@ -119,17 +117,17 @@ function EditRoomModal({
       }
 
       if (Object.keys(payload).length === 0) {
-        toast.success('No changes.')
+        success('No changes.')
         setSaving(false)
         return
       }
 
       await updateOverlayRoom(room.id, payload)
-      toast.success(`Saved ${Object.keys(payload).length} field(s).`)
+      success(`Saved ${Object.keys(payload).length} field(s).`)
       onSaved()
       onClose()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save')
+      error(e instanceof Error ? e.message : 'Failed to save')
     }
     setSaving(false)
   }
@@ -137,96 +135,76 @@ function EditRoomModal({
   const selectedCanon = canonicalRooms.find(r => r.id === draft.room_id) ?? null
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.72)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '32px 24px', overflowY: 'auto',
-      }}
-      onClick={onClose}
+    <AdminModal
+      title={displayRoomName(room)}
+      onClose={onClose}
+      onSave={handleSave}
+      saving={saving}
+      saveLabel='Save Changes'
+      width={780}
     >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: 'min(780px, 100%)',
-          background: A.bg,
-          border: `1px solid ${A.border}`,
-          borderRadius: 16,
-          padding: 28,
-          display: 'flex', flexDirection: 'column', gap: 20,
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
-              Room Overlay
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>
-              {displayRoomName(room)}
-            </div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 2 }}>
-              {displayHotelName(room)}
-            </div>
-          </div>
-          <button onClick={onClose} style={btnGhost}>Close</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* Subheading */}
+        <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: -8 }}>
+          {displayHotelName(room)}
         </div>
 
         {/* Canonical link */}
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Canonical Room</div>
-          <Field label='Linked Room'>
-            <select
-              style={inputStyle}
-              value={draft.room_id ?? ''}
-              onChange={e => patch('room_id', e.target.value || null)}
-            >
-              <option value=''>No canonical link</option>
-              {canonicalRooms.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.hotel_name} — {r.room_name ?? r.slug ?? r.id}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {selectedCanon && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11, color: A.faint, fontFamily: A.font }}>
-              <div><span style={{ color: A.muted }}>Category</span><br />{selectedCanon.category_slug ?? '—'}</div>
-              <div><span style={{ color: A.muted }}>Size</span><br />{selectedCanon.sqm_min ?? '—'} sqm / {selectedCanon.sqft_min ?? '—'} sqft</div>
-              <div><span style={{ color: A.muted }}>Bed config</span><br />{selectedCanon.bed_config ?? '—'}</div>
-            </div>
-          )}
-        </div>
+        <AdminSection title='Canonical Room'>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Field label='Linked Room'>
+              <select
+                style={inputStyle}
+                value={draft.room_id ?? ''}
+                onChange={e => patch('room_id', e.target.value || null)}
+              >
+                <option value=''>No canonical link</option>
+                {canonicalRooms.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.hotel_name} — {r.room_name ?? r.slug ?? r.id}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {selectedCanon && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11, color: A.faint, fontFamily: A.font }}>
+                <div><span style={{ color: A.muted }}>Category</span><br />{selectedCanon.category_slug ?? '—'}</div>
+                <div><span style={{ color: A.muted }}>Size</span><br />{selectedCanon.sqm_min ?? '—'} sqm / {selectedCanon.sqft_min ?? '—'} sqft</div>
+                <div><span style={{ color: A.muted }}>Bed config</span><br />{selectedCanon.bed_config ?? '—'}</div>
+              </div>
+            )}
+          </div>
+        </AdminSection>
 
         {/* Presentation */}
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Presentation</div>
+        <AdminSection title='Presentation'>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label='Level Label'>
-              <input style={inputStyle} value={draft.level_label ?? ''} onChange={e => patch('level_label', e.target.value || null)} placeholder='Highlighted, Alternative 1…' />
+              <input style={inputStyle} value={draft.level_label ?? ''} onChange={e => patch('level_label', e.target.value || null)} placeholder='Highlighted, Alternative 1...' />
             </Field>
             <Field label='Room Name Override'>
               <input style={inputStyle} value={draft.room_name_override ?? ''} onChange={e => patch('room_name_override', e.target.value || null)} placeholder='Leave blank to use canonical name' />
             </Field>
             <Field label='Room Basis'>
-              <input style={inputStyle} value={draft.room_basis ?? ''} onChange={e => patch('room_basis', e.target.value || null)} placeholder='Bed and Breakfast, Room Only…' />
+              <input style={inputStyle} value={draft.room_basis ?? ''} onChange={e => patch('room_basis', e.target.value || null)} placeholder='Bed and Breakfast, Room Only...' />
             </Field>
             <Field label='Sort Order'>
               <input style={inputStyle} type='number' value={draft.sort_order} onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)} />
             </Field>
             <Field label='Active'>
-              <select style={inputStyle} value={String(draft.is_active ?? true)} onChange={e => patch('is_active', e.target.value === 'true')}>
-                <option value='true'>Yes</option>
-                <option value='false'>No</option>
-              </select>
+              <PillToggle
+                value={draft.is_active ?? true}
+                onChange={v => patch('is_active', v)}
+                labelTrue='Active'
+                labelFalse='Hidden'
+              />
             </Field>
           </div>
-        </div>
+        </AdminSection>
 
         {/* Rates */}
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Rates</div>
+        <AdminSection title='Rates'>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label='Ambience Rate'>
               <input style={inputStyle} value={draft.ambience_nightly_rate ?? ''} onChange={e => patch('ambience_nightly_rate', e.target.value || null)} placeholder='USD $5,550' />
@@ -249,42 +227,44 @@ function EditRoomModal({
               <input style={inputStyle} value={draft.rate_suffix_override ?? ''} onChange={e => patch('rate_suffix_override', e.target.value || null)} placeholder='++ Taxes & Fees' />
             </Field>
             <Field label='Tax Inclusive'>
-              <select style={inputStyle} value={String(draft.tax_inclusive)} onChange={e => patch('tax_inclusive', e.target.value === 'true')}>
-                <option value='false'>No</option>
-                <option value='true'>Yes</option>
-              </select>
+              <PillToggle
+                value={draft.tax_inclusive ?? false}
+                onChange={v => patch('tax_inclusive', v)}
+                labelTrue='Yes'
+                labelFalse='No'
+              />
             </Field>
           </div>
-        </div>
+        </AdminSection>
 
         {/* Room detail */}
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Room Detail</div>
-          <Field label='Bed Configuration Override'>
-            <input style={inputStyle} value={draft.bed_config_override ?? ''} onChange={e => patch('bed_config_override', e.target.value || null)} />
-          </Field>
-          <Field label='Room Inclusions'>
-            <textarea style={{ ...textareaStyle, minHeight: 72 }} value={draft.room_inclusions ?? ''} onChange={e => patch('room_inclusions', e.target.value || null)} placeholder='Two-Level Residence. Three full marble bathrooms…' />
-          </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
-            <Field label='sqm min override'>
-              <input style={inputStyle} type='number' value={draft.sqm_min_override ?? ''} onChange={e => numericPatch('sqm_min_override', e.target.value)} />
+        <AdminSection title='Room Detail'>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Field label='Bed Configuration Override'>
+              <input style={inputStyle} value={draft.bed_config_override ?? ''} onChange={e => patch('bed_config_override', e.target.value || null)} />
             </Field>
-            <Field label='sqm max override'>
-              <input style={inputStyle} type='number' value={draft.sqm_max_override ?? ''} onChange={e => numericPatch('sqm_max_override', e.target.value)} />
+            <Field label='Room Inclusions'>
+              <textarea style={{ ...textareaStyle, minHeight: 72 }} value={draft.room_inclusions ?? ''} onChange={e => patch('room_inclusions', e.target.value || null)} placeholder='Two-Level Residence. Three full marble bathrooms...' />
             </Field>
-            <Field label='sqft min override'>
-              <input style={inputStyle} type='number' value={draft.sqft_min_override ?? ''} onChange={e => numericPatch('sqft_min_override', e.target.value)} />
-            </Field>
-            <Field label='sqft max override'>
-              <input style={inputStyle} type='number' value={draft.sqft_max_override ?? ''} onChange={e => numericPatch('sqft_max_override', e.target.value)} />
-            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+              <Field label='sqm min override'>
+                <input style={inputStyle} type='number' value={draft.sqm_min_override ?? ''} onChange={e => numericPatch('sqm_min_override', e.target.value)} />
+              </Field>
+              <Field label='sqm max override'>
+                <input style={inputStyle} type='number' value={draft.sqm_max_override ?? ''} onChange={e => numericPatch('sqm_max_override', e.target.value)} />
+              </Field>
+              <Field label='sqft min override'>
+                <input style={inputStyle} type='number' value={draft.sqft_min_override ?? ''} onChange={e => numericPatch('sqft_min_override', e.target.value)} />
+              </Field>
+              <Field label='sqft max override'>
+                <input style={inputStyle} type='number' value={draft.sqft_max_override ?? ''} onChange={e => numericPatch('sqft_max_override', e.target.value)} />
+              </Field>
+            </div>
           </div>
-        </div>
+        </AdminSection>
 
         {/* Benefits */}
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Benefits</div>
+        <AdminSection title='Benefits'>
           <Field label='Room Benefits (one per line)'>
             <textarea
               style={{ ...textareaStyle, minHeight: 110, fontFamily: 'DM Mono, monospace', fontSize: 12 }}
@@ -293,31 +273,25 @@ function EditRoomModal({
               placeholder={'Bed and breakfast for up to 8 guests\nHotel and Resort Credit: USD $200 per bedroom per stay'}
             />
           </Field>
-        </div>
+        </AdminSection>
 
         {/* Images */}
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Images</div>
-          <Field label='Hero Image Src Override'>
-            <input style={inputStyle} value={draft.hero_image_src_override ?? ''} onChange={e => patch('hero_image_src_override', e.target.value || null)} />
-          </Field>
-          <Field label='Hero Image Alt Override'>
-            <input style={inputStyle} value={draft.hero_image_alt_override ?? ''} onChange={e => patch('hero_image_alt_override', e.target.value || null)} />
-          </Field>
-          <Field label='Floorplan Src Override'>
-            <input style={inputStyle} value={draft.floorplan_src_override ?? ''} onChange={e => patch('floorplan_src_override', e.target.value || null)} />
-          </Field>
-        </div>
+        <AdminSection title='Images'>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Field label='Hero Image Src Override'>
+              <input style={inputStyle} value={draft.hero_image_src_override ?? ''} onChange={e => patch('hero_image_src_override', e.target.value || null)} />
+            </Field>
+            <Field label='Hero Image Alt Override'>
+              <input style={inputStyle} value={draft.hero_image_alt_override ?? ''} onChange={e => patch('hero_image_alt_override', e.target.value || null)} />
+            </Field>
+            <Field label='Floorplan Src Override'>
+              <input style={inputStyle} value={draft.floorplan_src_override ?? ''} onChange={e => patch('floorplan_src_override', e.target.value || null)} />
+            </Field>
+          </div>
+        </AdminSection>
 
-        {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4, borderTop: `1px solid ${A.border}` }}>
-          <button onClick={onClose} style={btnGhost} disabled={saving}>Cancel</button>
-          <button onClick={handleSave} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
       </div>
-    </div>
+    </AdminModal>
   )
 }
 
@@ -331,17 +305,11 @@ interface AddRoomModalProps {
   onSaved:        () => void
 }
 
-function AddRoomModal({
-  engagementId,
-  canonicalRooms,
-  nextSortOrder,
-  onClose,
-  onSaved,
-}: AddRoomModalProps) {
-  const { toast } = useToast()
-  const [roomId, setRoomId]           = useState<string>('')
-  const [levelLabel, setLevelLabel]   = useState('')
-  const [saving, setSaving]           = useState(false)
+function AddRoomModal({ engagementId, canonicalRooms, nextSortOrder, onClose, onSaved }: AddRoomModalProps) {
+  const { success, error } = useAdminToast()
+  const [roomId, setRoomId]         = useState<string>('')
+  const [levelLabel, setLevelLabel] = useState('')
+  const [saving, setSaving]         = useState(false)
 
   async function handleAdd() {
     setSaving(true)
@@ -353,38 +321,25 @@ function AddRoomModal({
         sort_order:  nextSortOrder,
         is_active:   true,
       })
-      toast.success('Room added.')
+      success('Room added.')
       onSaved()
       onClose()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to add room')
+      error(e instanceof Error ? e.message : 'Failed to add room')
     }
     setSaving(false)
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.72)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24,
-      }}
-      onClick={onClose}
+    <AdminModal
+      title='Add Room Overlay'
+      onClose={onClose}
+      onSave={handleAdd}
+      saving={saving}
+      saveLabel='Add Room'
+      width={480}
     >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: 'min(480px, 100%)',
-          background: A.bg,
-          border: `1px solid ${A.border}`,
-          borderRadius: 16,
-          padding: 28,
-          display: 'flex', flexDirection: 'column', gap: 16,
-        }}
-      >
-        <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font }}>Add Room Overlay</div>
-
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label='Canonical Room'>
           <select style={inputStyle} value={roomId} onChange={e => setRoomId(e.target.value)}>
             <option value=''>No canonical link (manual entry)</option>
@@ -395,25 +350,17 @@ function AddRoomModal({
             ))}
           </select>
         </Field>
-
         <Field label='Level Label'>
           <input
             style={inputStyle}
             value={levelLabel}
             onChange={e => setLevelLabel(e.target.value)}
-            placeholder='Highlighted, Alternative 1, Alternative 2…'
+            placeholder='Highlighted, Alternative 1, Alternative 2...'
             autoFocus
           />
         </Field>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={btnGhost}>Cancel</button>
-          <button onClick={handleAdd} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }} disabled={saving}>
-            {saving ? 'Adding…' : 'Add Room'}
-          </button>
-        </div>
       </div>
-    </div>
+    </AdminModal>
   )
 }
 
@@ -421,10 +368,10 @@ function AddRoomModal({
 
 interface RoomsEditorProps {
   engagementId: string
-  showToast:    (message: string, type: 'success' | 'error') => void
 }
 
-export default function RoomsEditor({ engagementId, showToast }: RoomsEditorProps) {
+export default function RoomsEditor({ engagementId }: RoomsEditorProps) {
+  const { success, error }                  = useAdminToast()
   const [rooms, setRooms]                   = useState<OverlayRoom[]>([])
   const [canonicalRooms, setCanonicalRooms] = useState<CanonicalRoom[]>([])
   const [rateCadences, setRateCadences]     = useState<RateCadence[]>([])
@@ -444,7 +391,7 @@ export default function RoomsEditor({ engagementId, showToast }: RoomsEditorProp
       setCanonicalRooms(cr)
       setRateCadences(rc)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to load rooms', 'error')
+      error(e instanceof Error ? e.message : 'Failed to load rooms')
     }
     setLoading(false)
   }
@@ -455,10 +402,10 @@ export default function RoomsEditor({ engagementId, showToast }: RoomsEditorProp
     if (!window.confirm(`Remove "${displayRoomName(room)}" from this engagement?`)) return
     try {
       await deleteOverlayRoom(room.id)
-      showToast('Room removed.', 'success')
+      success('Room removed.')
       load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to remove room', 'error')
+      error(e instanceof Error ? e.message : 'Failed to remove room')
     }
   }
 
@@ -488,36 +435,34 @@ export default function RoomsEditor({ engagementId, showToast }: RoomsEditorProp
       borderRadius: 14,
       padding:      24,
     }}>
-      {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>
-          Rooms {rooms.length > 0 && <span style={{ color: A.faint, fontWeight: 400 }}>({rooms.length})</span>}
-        </div>
+        <AdminSection
+          title={`Rooms${rooms.length > 0 ? ` · ${rooms.length}` : ''}`}
+          style={{ marginBottom: 0 }}
+        />
         {!loading && (
           <button onClick={() => setAddingRoom(true)} style={btnPrimary}>+ Add Room</button>
         )}
       </div>
 
       {loading ? (
-        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading…</div>
+        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading...</div>
       ) : rooms.length === 0 ? (
-        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
-          No room overlays for this engagement.
-        </div>
+        <AdminEmptyState message='No room overlays for this engagement.' ctaLabel='+ Add Room' onCta={() => setAddingRoom(true)} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {rooms.map(room => (
             <div
               key={room.id}
               style={{
-                display: 'grid',
+                display:             'grid',
                 gridTemplateColumns: '1fr 160px 140px 80px 80px',
-                gap: 12,
-                padding: '10px 14px',
-                background: A.bgInput,
-                border: `1px solid ${A.border}`,
-                borderRadius: 10,
-                alignItems: 'center',
+                gap:                 12,
+                padding:             '10px 14px',
+                background:          A.bgInput,
+                border:              `1px solid ${A.border}`,
+                borderRadius:        10,
+                alignItems:          'center',
               }}
             >
               <div>

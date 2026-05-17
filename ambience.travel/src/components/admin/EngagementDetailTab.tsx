@@ -51,6 +51,7 @@ import ImageFieldWithUploader from './ImageFieldWithUploader'
 import DestinationRowsEditor from './DestinationRowsEditor'
 import RouteStopsEditor from './RouteStopsEditor'
 import CardsEditor from './CardsEditor'
+import RoomsEditor from './RoomsEditor'
 import DeleteEngagementModal from './DeleteEngagementModal'
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -883,6 +884,10 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       {/* S334: Cards editor (selections-primary, override-on-demand, dining + experiences) */}
       {row.id && (
         <CardsEditor engagementId={row.id} showToast={showToast} />
+      )}
+
+      {row.id && (
+        <RoomsEditor engagementId={row.id} />
       )}
 
       {/* Pricing */}
