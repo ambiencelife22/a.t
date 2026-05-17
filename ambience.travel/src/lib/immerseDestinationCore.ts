@@ -2,44 +2,11 @@
 // Owns: getImmerseDestinationCore — single canonical core fetcher.
 //   getImmerseDestination — back-compat wrapper that composes all 4 fetchers
 //   into the original bundled ImmerseDestinationData shape (parallel fan-out).
-//   Also owns: slug→UUID cache, fetchEngagementOverride, ImmerseDestinationCore type.
-// Does not own: hotels (immerseDestinationHotels), cards (Cards), pricing (Pricing).
+//   Also owns: slug resolution cache, fetchEngagementOverride, ImmerseDestinationCore type.
 //
-// Last updated: S40B — url_slug variant routing. travel_immerse_destinations
-//   gains url_slug column (nullable). resolveSlug checks url_slug first —
-//   when matched, returns the immerse destination row directly (newyork2 etc).
-//   Falls back to global_destinations slug lookup for standard routes.
-//   fetchEngagementOverride now accepts variantSlug — filters by
-//   destination_url_slug IS NULL for canonical slugs, IS variantSlug for
-//   variant slugs. Prevents cross-match when two rows share global_destination_id.
-//   destinationUrlSlug added to ImmerseDestinationCore — passed to
-//   getImmerseDestinationCards so variant pages get their own card selections.
-// Last updated: S37 — experiences_*_override columns added to
-//   travel_immerse_trip_destination_rows. Read path now uses same
-//   override-chain pattern as dining (override ?? catalog ?? '').
-//   Was a parity gap: catalog had experiences_* but override table didn't.
-//   Mirrors the dining pattern exactly.
-// Prior: S40B — url_slug variant routing. ...  [existing text continues]
-// Prior: S32K — Pricing now engagement-scoped. fetchEngagementOverride
-//   now returns the override row's own id (tripDestinationRowId) so that
-//   getImmerseDestinationPricing can read pricing rows by it. ImmerseDestinationCore
-//   gains a tripDestinationRowId field. Pricing fetch in getImmerseDestination
-//   now passes core.tripDestinationRowId instead of core.destinationId.
-// Prior: S32E — Image URL rewrite hook in core fetcher (rewriteImageUrl on hero src).
-// Prior: S32C — FK-keyed engagement override (eq trip_id + global_destination_id).
-//
-// Dependency direction: this file imports from the other 3 split files.
-// They do not import from each other. Core sits at the top of the dependency
-// graph because the bundled wrapper composes them.
-//
-// Round-trip budget for getImmerseDestinationCore:
-//   1 (slug cache) + 1 (destination row + override Promise.all) = 2 cold,
-//   1 warm (slug cached). Hero paints once this resolves.
-//
-// Itinerary-membership gate:
-//   fetchEngagementOverride returns the trip_destination_rows row for
-//   (engagementId, globalDestinationId). Null = destination not on this
-//   engagement's itinerary → core returns null → DestinationPage 404s.
+// Last updated: S42 Add 3 — getImmerseDestination back-compat wrapper now
+//   passes core.destinationUrlSlug to getImmerseDestinationHotels so variant
+//   pages scope their room overlays correctly.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl } from './imageUrl'
@@ -55,7 +22,7 @@ export interface ImmerseDestinationCore {
   globalDestinationId:  string
   tripDestinationRowId: string
   destinationSlug:      string
-  destinationUrlSlug:   string | null  // null for canonical, non-null for variants
+  destinationUrlSlug:   string | null
   journeyId:            string
   shorthand?:           string
   eyebrow:              string
@@ -94,13 +61,11 @@ export interface ImmerseDestinationCore {
   pricingNotes:         string[]
 }
 
-// ─── Slug resolution result ───────────────────────────────────────────────────
+// ─── Slug resolution ──────────────────────────────────────────────────────────
 
 type SlugResolution =
   | { kind: 'variant';   destRow: Record<string, unknown>; globalDestinationId: string }
   | { kind: 'canonical'; globalDestinationId: string }
-
-// ─── Slug resolver ────────────────────────────────────────────────────────────
 
 const slugResolutionCache = new Map<string, SlugResolution>()
 
@@ -110,7 +75,6 @@ async function resolveSlug(slug: string): Promise<SlugResolution | null> {
   const cached = slugResolutionCache.get(slug)
   if (cached) return cached
 
-  // Step 1: check travel_immerse_destinations.url_slug
   const { data: variantRow } = await supabase
     .from('travel_immerse_destinations')
     .select('*')
@@ -127,7 +91,6 @@ async function resolveSlug(slug: string): Promise<SlugResolution | null> {
     return resolution
   }
 
-  // Step 2: fall back to global_destinations.slug
   const { data: globalRow } = await supabase
     .from('global_destinations')
     .select('id')
@@ -335,10 +298,8 @@ export async function getImmerseDestination(
   const core = await getImmerseDestinationCore(engagementId, urlSlug)
   if (!core) return null
 
-  console.log('[getImmerseDestination] destinationSlug:', core.destinationSlug, 'destinationUrlSlug:', core.destinationUrlSlug)
-
   const [hotels, cards, pricingRows] = await Promise.all([
-    getImmerseDestinationHotels(engagementId, core.destinationId),
+    getImmerseDestinationHotels(engagementId, core.destinationId, core.destinationUrlSlug),
     getImmerseDestinationCards(engagementId, core.globalDestinationId, core.destinationUrlSlug),
     getImmerseDestinationPricing(core.tripDestinationRowId),
   ])

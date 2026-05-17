@@ -1,45 +1,11 @@
 // DestinationPage.tsx — Destination subpage for immerse engagement.
 // Routes:
-//   immerse.ambience.travel/<url_id>/<dest>     → subpage (S32)
+//   immerse.ambience.travel/<url_id>/<dest>     → subpage
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S32K — Pricing now engagement-scoped. getImmerseDestinationPricing
-//   now receives core.tripDestinationRowId (the per-engagement destination row id)
-//   instead of core.destinationId (canon). Required after migration s32k_71 fanned
-//   out the canon pricing rows and re-keyed them by trip_destination_row_id.
-// Prior: S32F (file split) — Imports retargeted from monolithic
-//   immerseQueries to the 4 split files: immerseDestinationCore (slug cache,
-//   override, core fetcher), immerseDestinationHotels, immerseDestinationCards,
-//   immerseDestinationPricing. Type imports also retargeted. No behavioural
-//   change. Per Dev Standards §II "no barrel index.ts files" — direct
-//   imports from each source file.
-// Prior: S32F (cleanup pass) — Inline IMMERSE_HOST + isImmerseHost +
-//   getOverviewUrl removed in favour of imports from lib/immersePath.
-// Prior: S32F (progressive reveal) — 4-stream progressive reveal. Replaces
-//   blocking single-fetch model with independent fetches for core / hotels /
-//   cards / pricing. Page reveals when core lands (hero + intro + section
-//   headings); below-fold sections render shimmer placeholders until each
-//   slice arrives. TravelLoadingScreen (branded emblem + "Preparing your
-//   journey") replaces minimal text loader for the initial core fetch.
-//   Itinerary-membership gate moved to core fetch — page 404s before
-//   painting hero if engagement doesn't include this destination.
-//
-//   Why 4 streams: the previous getImmerseDestination ran ~5-6 sequential
-//   round-trips inside one Promise.all chain. User saw "Loading your
-//   proposal" for 4-6s before any paint. Now: core resolves in ~3 round-
-//   trips and hero paints; hotels/cards/pricing fire in parallel and reveal
-//   as they arrive. Estimated user-perceived load: 4-6s → ~1s to first
-//   paint, full content within ~3-4s.
-//
-// Prior: S32E perf — getImmerseDestination called with engagement.engagementId
-//   (UUID) instead of engagement.urlId (slug). Query layer signature changed
-//   to accept engagementId directly.
-// Prior: S32D — Now receives engagement + destinationSlug as props
-//   from ImmerseEngagementRoute. Removed internal pathname tracking,
-//   popstate/pageshow listeners, getImmerseEngagement call, and synthetic
-//   popstate dispatch. Parent owns routing; this component owns destination
-//   data fetching only.
-// Prior: S30E perf — Render layout shell during load to prevent white-flash.
+// Last updated: S42 Add 3 — getImmerseDestinationHotels now receives
+//   coreResult.destinationUrlSlug so variant pages scope room overlays
+//   correctly via travel_immerse_rooms.destination_url_slug.
 
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
@@ -92,12 +58,7 @@ function deriveNightsLabel(engagement: ImmerseEngagementData, destinationSlug: s
   return row?.stayLabel ?? ''
 }
 
-// ── Compose ImmerseDestinationData from core + hotels + cards + pricing ─────
-// Section components consume the bundled ImmerseDestinationData shape. As
-// each slice lands we re-compose from current state + sensible empties for
-// any slice still loading. The shimmer-vs-real conditional render below
-// guarantees a section component never sees its own slice as empty
-// placeholder — by the time a section renders, its slice is real.
+// ── Compose ImmerseDestinationData ───────────────────────────────────────────
 
 function composeData(
   core:    ImmerseDestinationCore,
@@ -162,7 +123,6 @@ interface Props {
 export default function DestinationPage({ engagement, destinationSlug }: Props) {
   const { toast } = useToast()
 
-  // 4 independent streams. Page reveals when core lands.
   const [core,    setCore]    = useState<ImmerseDestinationCore | null>(null)
   const [hotels,  setHotels]  = useState<ImmerseDestinationHotelsShape | null>(null)
   const [cards,   setCards]   = useState<ImmerseDestinationCards | null>(null)
@@ -175,7 +135,6 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
     let cancelled = false
 
     async function load() {
-      // Reset state on engagement / destination change
       setCore(null)
       setHotels(null)
       setCards(null)
@@ -184,7 +143,6 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
       setErrored(false)
 
       try {
-        // Stage 1: core. Hero needs this. Itinerary-membership gate lives here.
         const coreResult = await getImmerseDestinationCore(engagement.engagementId, destinationSlug)
         if (cancelled) return
 
@@ -200,10 +158,11 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
         setCore(coreResult)
         setCoreLoading(false)
 
-        // Stage 2: hotels, cards, pricing — all in parallel, each lands
-        // independently. No await on the outer Promise.all so each setState
-        // fires the moment its slice resolves.
-        getImmerseDestinationHotels(engagement.engagementId, coreResult.destinationId)
+        getImmerseDestinationHotels(
+          engagement.engagementId,
+          coreResult.destinationId,
+          coreResult.destinationUrlSlug,
+        )
           .then(result => { if (!cancelled) setHotels(result) })
           .catch(err => console.error('DestinationPage: hotels fetch failed', err))
 
@@ -233,7 +192,6 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
   const navItems = buildImmerseNavItems(engagement, destinationSlug)
   const logoHref = getOverviewUrl(engagement.urlId)
 
-  // Branded loader until core lands. Errored short-circuits to NotFound.
   if (coreLoading) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
@@ -250,9 +208,6 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
     )
   }
 
-  // From here, core is guaranteed present. Compose data from current slice
-  // state — sections that have data render real components; sections still
-  // loading render shimmer.
   const data        = composeData(core, hotels, cards, pricing)
   const dateLabel   = deriveDateLabel(engagement.statusLabel)
   const titlePrefix = deriveTitlePrefix(engagement.journeyTypes)

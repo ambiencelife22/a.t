@@ -2,36 +2,13 @@
 // Owns: getImmerseDestinationHotels — single canonical hotels fetcher.
 //   Internal: fetchHotelsShape (flat-vs-regioned dispatch), fetchFlatHotels,
 //   fetchRegionGroups, fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery.
-// Does not own: canonical hotel/room registry seeding (lives in DB
-//   migrations), trip overview hotels (lives in immerseEngagementQueries).
 //
-// Flat-vs-regioned dispatch (Seed Reference v7 §1.5):
-//   Query travel_immerse_destination_regions first to determine shape.
-//   Flat destinations (NYC, St Barths, Bahamas, Miami, Paris) → trip_destination_hotels.
-//   Regioned destinations (nordic-winter, europe-finale) → trip_region_hotels.
-//
-// Largest of the 4 split files — owns the carousel data shape feeding
-// ImmerseHotelOptions + RoomCategory render.
-//
-// Last updated: S40B — Three-state hotel bullets pattern. NULL overlay → canon
-//   flows through. [] overlay → hide (render nothing). Non-empty overlay → override.
-//   travel_immerse_trip_destination_hotels.bullets: NOT NULL dropped, default
-//   changed to NULL. All prior [] rows migrated to NULL. bullets added to
-//   travel_accom_hotels SELECT in both flat + regioned fetchers.
-// Prior: S40B — slug removed from travel_accom_hotels SELECT and type
-//   casts (flat + regioned). hotelSlug fallback chain simplified to short_slug only.
-// Prior: S32K — Rooms now JOIN travel_immerse_rate_cadences via
-//   rate_cadence_id and expose rateCadence (e.g. "Per Night") to render.
-//   Replaces the hardcoded "/ night" suffix in RoomCategory. Cadence is
-//   overlay-only (canon never carries pricing per architectural rule).
-// Prior: S32K — Room name read path fixed. Canon room_name added to schema;
-//   frontend now reads overlay.room_name_override ?? canon.room_name (line 293).
-//   levelLabel field in ImmerseRoomOption now correctly carries room name, not tier.
-//
-// S32F — Split from immerseQueries.ts. No logic change. Single-
-//   purpose file is the canonical home for hotel + room + gallery reads.
-//   Caller passes destinationId (resolved by core fetcher) so this file does
-//   not re-resolve from URL slug.
+// Last updated: S42 Add 3 — destinationUrlSlug param added to
+//   getImmerseDestinationHotels, fetchHotelsShape, fetchFlatHotels,
+//   fetchRoomsForHotels. Overlay rooms filtered by destination_url_slug
+//   when non-null: rows with destination_url_slug matching the variant OR
+//   NULL (backward compat — unscoped rooms show everywhere).
+//   travel_immerse_rooms.destination_url_slug column added via migration.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
@@ -45,17 +22,19 @@ import type {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export async function getImmerseDestinationHotels(
-  engagementId:  string,
-  destinationId: string,
+  engagementId:       string,
+  destinationId:      string,
+  destinationUrlSlug: string | null = null,
 ): Promise<ImmerseDestinationHotelsShape> {
-  return fetchHotelsShape(engagementId, destinationId)
+  return fetchHotelsShape(engagementId, destinationId, destinationUrlSlug)
 }
 
 // ─── Hotels shape resolver ────────────────────────────────────────────────────
 
 async function fetchHotelsShape(
-  engagementId: string,
-  destId: string,
+  engagementId:       string,
+  destId:             string,
+  destinationUrlSlug: string | null,
 ): Promise<ImmerseDestinationHotelsShape> {
 
   const { data: regions } = await supabase
@@ -67,19 +46,20 @@ async function fetchHotelsShape(
   const isRegioned = (regions?.length ?? 0) > 0
 
   if (isRegioned) {
-    const groups = await fetchRegionGroups(engagementId, regions ?? [])
+    const groups = await fetchRegionGroups(engagementId, regions ?? [], destinationUrlSlug)
     return { kind: 'regioned', regions: groups }
   }
 
-  const hotels = await fetchFlatHotels(engagementId, destId)
+  const hotels = await fetchFlatHotels(engagementId, destId, destinationUrlSlug)
   return { kind: 'flat', hotels }
 }
 
 // ─── Flat hotels ──────────────────────────────────────────────────────────────
 
 async function fetchFlatHotels(
-  engagementId: string,
-  destId: string,
+  engagementId:       string,
+  destId:             string,
+  destinationUrlSlug: string | null,
 ): Promise<ImmerseHotelOption[]> {
   if (!engagementId) return []
 
@@ -109,7 +89,7 @@ async function fetchFlatHotels(
     .filter((x): x is string => Boolean(x))
 
   const [roomsByHotel, galleryByHotel] = await Promise.all([
-    fetchRoomsForHotels(engagementId, canonicalHotelIds),
+    fetchRoomsForHotels(engagementId, canonicalHotelIds, destinationUrlSlug),
     fetchAllGallery(canonicalHotelIds),
   ])
 
@@ -162,8 +142,9 @@ type RegionRow = {
 }
 
 async function fetchRegionGroups(
-  engagementId: string,
-  regions:      RegionRow[],
+  engagementId:       string,
+  regions:            RegionRow[],
+  destinationUrlSlug: string | null,
 ): Promise<ImmerseRegionGroup[]> {
   if (!engagementId || regions.length === 0) return []
 
@@ -217,7 +198,7 @@ async function fetchRegionGroups(
     .filter((x): x is string => Boolean(x))
 
   const [roomsByHotel, galleryByHotel] = await Promise.all([
-    fetchRoomsForHotels(engagementId, canonicalHotelIds),
+    fetchRoomsForHotels(engagementId, canonicalHotelIds, destinationUrlSlug),
     fetchAllGallery(canonicalHotelIds),
   ])
 
@@ -290,10 +271,14 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
+// destinationUrlSlug scoping: when non-null, returns overlay rows where
+// destination_url_slug matches OR is NULL (unscoped rows show everywhere).
+// NULL slug = no filtering (all overlay rows for the engagement).
 
 async function fetchRoomsForHotels(
-  engagementId: string,
-  hotelIds:     string[],
+  engagementId:       string,
+  hotelIds:           string[],
+  destinationUrlSlug: string | null = null,
 ): Promise<Record<string, ImmerseRoomOption[]>> {
   if (hotelIds.length === 0) return {}
 
@@ -315,7 +300,7 @@ async function fetchRoomsForHotels(
   const canonById = new Map<string, typeof canonRooms[number]>()
   for (const c of canonRooms) canonById.set(c.id as string, c)
 
-  const { data: overlayRooms } = await supabase
+  let overlayQuery = supabase
     .from('travel_immerse_rooms')
     .select(`
       room_id, level_label, room_name_override, room_basis, room_benefits, room_inclusions,
@@ -334,6 +319,14 @@ async function fetchRoomsForHotels(
     .eq('is_active', true)
     .in('room_id', canonIds)
     .order('sort_order', { ascending: true })
+
+  if (destinationUrlSlug) {
+    overlayQuery = overlayQuery.or(
+      `destination_url_slug.eq.${destinationUrlSlug},destination_url_slug.is.null`
+    )
+  }
+
+  const { data: overlayRooms } = await overlayQuery
 
   if (!overlayRooms || overlayRooms.length === 0) return {}
 
