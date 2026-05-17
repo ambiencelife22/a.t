@@ -9,7 +9,7 @@
  *   - Each field has 3 states: Use default · Customise · Hide on this proposal.
  *   - Canonical values shown as preview when in "default" state — user can
  *     see what flows through without opening anything.
- *   - Bullets edited as a real list (+/− buttons), never JSON.
+ *   - Bullets edited as a real list (+/- buttons), never JSON.
  *   - Drag-to-reorder works within Dining and within Experiences (independent
  *     ordering per kind, confirmed by data model + D direction).
  *   - "Show on proposal" toggle in place of is_active boolean.
