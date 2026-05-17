@@ -85,7 +85,6 @@ async function fetchContentCards(
   globalDestinationId: string,
   destinationUrlSlug:  string | null,
 ): Promise<ContentCardWithType[]> {
-  console.log('[cards] engagementId:', engagementId, 'globalDestId:', globalDestinationId, 'urlSlug:', destinationUrlSlug)
   if (!engagementId) return []
 
   // Build base queries — filter by destination_url_slug for variants,

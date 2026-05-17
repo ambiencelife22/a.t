@@ -45,7 +45,7 @@ import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/immerseTyp
 // (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is
 // treated as informational copy and rendered without the cadence suffix.
 function isNumericRate(rate: string): boolean {
-  return /^([$€£¥]|EURO|USD|GBP|JPY|CHF|AED|SAR)?\s*\d/i.test(rate.trim())
+  return /^([$€£¥]|EURO|USD|GBP|JPY|CHF|AED|SAR)?\s*[$€£¥]?\s*\d/i.test(rate.trim())
 }
 
 // S32: collapse degenerate ranges (678-678 → 678). Both bounds optional.
