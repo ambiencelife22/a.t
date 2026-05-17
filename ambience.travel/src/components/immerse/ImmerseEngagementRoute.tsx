@@ -78,7 +78,7 @@ export function buildImmerseNavItems(
   ]
 
   for (const row of engagement.destinationRows) {
-    const slug = row.destinationSlug ?? ''
+    const slug = row.destinationUrlSlug ?? row.destinationSlug ?? ''
     if (!slug) continue
     items.push({
       label:     row.title || slug,

@@ -741,18 +741,23 @@ export function PricingTable({ children, hideItem = false }: { children: React.R
 
 export function Td({ children, col }: { children: React.ReactNode; col?: number }) {
   const isMobile = window.innerWidth < 768
-  const hidden = isMobile && (col === 2 || col === 3)
-  if (hidden) return null
 
+  // On mobile, col 2 (basis) folds into col 1 as a sub-label.
+  // Col 3 (stay) is suppressed entirely on mobile.
+  if (isMobile && col === 3) return null
+  if (isMobile && col === 2) return null  // rendered inline by col 1
+
+  // Col 1 on mobile: render basis as a dim sub-line beneath the main value.
+  // This requires col 1 to know col 2's content — handled at the row level below.
   return (
     <td
       style={{
-        color: ID.text,
-        textAlign: 'left',
-        padding: '12px 8px',
-        borderBottom: `1px solid ${IMMERSE.tableBorderSoft}`,
-        verticalAlign: 'top',
-        fontSize: 13,
+        color:          ID.text,
+        textAlign:      'left',
+        padding:        '12px 8px',
+        borderBottom:   `1px solid ${IMMERSE.tableBorderSoft}`,
+        verticalAlign:  'top',
+        fontSize:       13,
       }}
     >
       {children}

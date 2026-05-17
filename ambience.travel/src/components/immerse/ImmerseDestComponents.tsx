@@ -325,7 +325,15 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
                   </PricingRow>
                 ) : (
                   <PricingRow key={row.id}>
-                    <Td col={1}>{row.item}</Td>
+                    <Td col={1}>
+                      {isMobile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 13, color: ID.text }}>{row.item}</span>
+                          {row.basis && <span style={{ fontSize: 11, color: ID.muted }}>{row.basis}</span>}
+                          {row.stay && <span style={{ fontSize: 11, color: ID.dim }}>{row.stay}</span>}
+                        </div>
+                      ) : row.item}
+                    </Td>
                     <Td col={2}>{row.basis}</Td>
                     <Td col={3}>{row.stay}</Td>
                     <Td col={4}>{row.indicativeRange}</Td>
