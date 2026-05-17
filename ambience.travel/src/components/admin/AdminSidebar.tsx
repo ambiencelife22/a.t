@@ -2,18 +2,30 @@
  * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Guides,
  * Library, House, Programme). Future products (LIFE, MONEY) shown disabled.
  *
- * Last updated: S40D — Added HOUSE group (ambience.HOUSE CRM).
+ * Last updated: S43 — Phase 1 redesign: Lucide icons, no group headers,
+ *   hover states, bottom wordmark, motion system aligned.
+ * Prior: S40D — Added HOUSE group (ambience.HOUSE CRM).
  * Prior: S36 — Library/dining link now passes destinationId: null.
  * Prior: S36 — Added Guides + Library groups (Dining tab in each).
  * Prior: S33
  */
 
+import { useState } from 'react'
+import {
+  Plane,
+  BookOpen,
+  Library,
+  Home,
+  LayoutGrid,
+} from './_adminIcons'
 import {
   buildAdminHash,
   type AdminTab,
   type ProgrammeTabId,
 } from '../../lib/adminPath'
 import { A } from '../../lib/adminTokens'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type SidebarLink =
   | { kind: 'immerse-engagements' }
@@ -26,11 +38,21 @@ type SidebarLink =
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
-  key:      string
-  label:    string
-  link:     SidebarLink
+  key:       string
+  label:     string
+  link:      SidebarLink
   disabled?: boolean
 }
+
+type IconComponent = (props: { size?: number; color?: string; strokeWidth?: number }) => React.ReactElement
+
+type SidebarGroup = {
+  key:   string
+  icon:  IconComponent
+  items: SidebarItem[]
+}
+
+// ─── Item definitions ─────────────────────────────────────────────────────────
 
 const IMMERSE_ITEMS: SidebarItem[] = [
   { key: 'immerse-engagements', label: 'Engagements', link: { kind: 'immerse-engagements' } },
@@ -38,8 +60,8 @@ const IMMERSE_ITEMS: SidebarItem[] = [
 ]
 
 const GUIDES_ITEMS: SidebarItem[] = [
-  { key: 'guides-dining',       label: 'Dining',       link: { kind: 'guides-dining' } },
-  { key: 'guides-experiences',  label: 'Experiences',  link: { kind: 'guides-experiences' } },
+  { key: 'guides-dining',      label: 'Dining',       link: { kind: 'guides-dining' } },
+  { key: 'guides-experiences', label: 'Experiences',  link: { kind: 'guides-experiences' } },
 ]
 
 const LIBRARY_ITEMS: SidebarItem[] = [
@@ -52,19 +74,29 @@ const HOUSE_ITEMS: SidebarItem[] = [
 ]
 
 const PROGRAMME_ITEMS: SidebarItem[] = [
-  { key: 'p-programmes',    label: 'Programmes',         link: { kind: 'programme', tab: 'programmes' } },
-  { key: 'p-letters',       label: 'Welcome Letters',    link: { kind: 'programme', tab: 'letters' } },
-  { key: 'p-listings',      label: 'Listings',           link: { kind: 'programme', tab: 'listings' } },
-  { key: 'p-sections',      label: 'Property Sections',  link: { kind: 'programme', tab: 'sections' } },
-  { key: 'p-properties',    label: 'Properties',         link: { kind: 'programme', tab: 'properties' } },
-  { key: 'p-access-denied', label: 'Access Denied',      link: { kind: 'programme', tab: 'access-denied' } },
-  { key: 'p-client',        label: 'Client Profile',     link: { kind: 'programme', tab: 'client-profile' } },
+  { key: 'p-programmes',    label: 'Programmes',        link: { kind: 'programme', tab: 'programmes' } },
+  { key: 'p-letters',       label: 'Welcome Letters',   link: { kind: 'programme', tab: 'letters' } },
+  { key: 'p-listings',      label: 'Listings',          link: { kind: 'programme', tab: 'listings' } },
+  { key: 'p-sections',      label: 'Property Sections', link: { kind: 'programme', tab: 'sections' } },
+  { key: 'p-properties',    label: 'Properties',        link: { kind: 'programme', tab: 'properties' } },
+  { key: 'p-access-denied', label: 'Access Denied',     link: { kind: 'programme', tab: 'access-denied' } },
+  { key: 'p-client',        label: 'Client Profile',    link: { kind: 'programme', tab: 'client-profile' } },
 ]
 
 const SOON_ITEMS: SidebarItem[] = [
   { key: 'life',  label: 'LIFE',  link: { kind: 'immerse-engagements' }, disabled: true },
   { key: 'money', label: 'MONEY', link: { kind: 'immerse-engagements' }, disabled: true },
 ]
+
+const GROUPS: SidebarGroup[] = [
+  { key: 'immerse',   icon: Plane,       items: IMMERSE_ITEMS   },
+  { key: 'guides',    icon: BookOpen,    items: GUIDES_ITEMS    },
+  { key: 'library',   icon: Library,     items: LIBRARY_ITEMS   },
+  { key: 'house',     icon: Home,        items: HOUSE_ITEMS     },
+  { key: 'programme', icon: LayoutGrid,  items: PROGRAMME_ITEMS },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isActive(item: SidebarItem, current: AdminTab): boolean {
   if (item.link.kind === 'immerse-engagements') {
@@ -89,6 +121,10 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
     return current.product === 'house'
   }
   return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
+}
+
+function isGroupActive(group: SidebarGroup, current: AdminTab): boolean {
+  return group.items.some(item => isActive(item, current))
 }
 
 function hashFor(item: SidebarItem): string {
@@ -116,95 +152,207 @@ function hashFor(item: SidebarItem): string {
   return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
 }
 
-function GroupHeader({ label }: { label: string }) {
+// ─── Group header row (icon + group label, collapsed/expanded) ────────────────
+
+function GroupRow({
+  group,
+  current,
+  expanded,
+  onToggle,
+}: {
+  group:    SidebarGroup
+  current:  AdminTab
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const active = isGroupActive(group, current)
+  const Icon = group.icon
+
   return (
-    <div style={{
-      fontSize:      9,
-      fontWeight:    700,
-      letterSpacing: '0.16em',
-      textTransform: 'uppercase',
-      color:         A.faint,
-      fontFamily:    A.font,
-      padding:       '16px 20px 8px',
-    }}>
-      {label}
-    </div>
+    <button
+      onClick={onToggle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display:        'flex',
+        alignItems:     'center',
+        gap:            10,
+        width:          '100%',
+        padding:        '9px 16px',
+        background:     hovered ? 'rgba(216,181,106,0.04)' : 'transparent',
+        border:         'none',
+        borderLeft:     active ? `2px solid ${A.gold}` : '2px solid transparent',
+        cursor:         'pointer',
+        transition:     'background 120ms ease, border-color 120ms ease',
+        textAlign:      'left',
+      }}
+    >
+      <span style={{ flexShrink: 0, transition: 'color 120ms ease', display: 'flex' }}>
+        <Icon
+          size={15}
+          color={active ? A.gold : A.muted}
+          strokeWidth={active ? 2 : 1.5}
+        />
+      </span>
+      <span style={{
+        fontSize:      11,
+        fontWeight:    active ? 600 : 400,
+        letterSpacing: '0.04em',
+        color:         active ? A.gold : A.muted,
+        fontFamily:    A.font,
+        transition:    'color 120ms ease, font-weight 120ms ease',
+        flex:          1,
+      }}>
+        {group.key.charAt(0).toUpperCase() + group.key.slice(1)}
+      </span>
+      {/* Chevron */}
+      <svg
+        width={10}
+        height={10}
+        viewBox='0 0 10 10'
+        style={{
+          flexShrink: 0,
+          transform:  expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 150ms ease',
+          opacity:    0.4,
+        }}
+      >
+        <path d='M2 3.5 L5 6.5 L8 3.5' stroke={A.muted} strokeWidth={1.5} fill='none' strokeLinecap='round' strokeLinejoin='round' />
+      </svg>
+    </button>
   )
 }
 
+// ─── Individual nav item row ──────────────────────────────────────────────────
+
 function SidebarRow({ item, active }: { item: SidebarItem; active: boolean }) {
+  const [hovered, setHovered] = useState(false)
+
   const baseStyle: React.CSSProperties = {
-    display:      'block',
-    padding:      '8px 20px',
-    fontSize:     12,
-    fontWeight:   active ? 700 : 500,
-    color:        item.disabled ? A.faint : (active ? A.gold : A.muted),
-    fontFamily:   A.font,
-    background:   active ? 'rgba(201,184,142,0.06)' : 'transparent',
-    borderLeft:   active ? `2px solid ${A.gold}` : '2px solid transparent',
+    display:        'block',
+    padding:        '7px 16px 7px 41px',
+    fontSize:       12,
+    fontWeight:     active ? 600 : 400,
+    color:          item.disabled ? A.faint : (active ? A.gold : A.muted),
+    fontFamily:     A.font,
+    background:     active
+      ? 'rgba(216,181,106,0.08)'
+      : hovered
+        ? 'rgba(216,181,106,0.04)'
+        : 'transparent',
+    borderLeft:     active ? `2px solid ${A.gold}` : '2px solid transparent',
     textDecoration: 'none',
-    cursor:       item.disabled ? 'default' : 'pointer',
-    pointerEvents: item.disabled ? 'none' : 'auto',
+    cursor:         item.disabled ? 'default' : 'pointer',
+    pointerEvents:  item.disabled ? 'none' : 'auto',
+    transition:     'background 120ms ease',
+    letterSpacing:  '0.01em',
   }
 
   if (item.disabled) {
     return (
       <div style={baseStyle}>
-        {item.label} <span style={{ fontSize: 9, color: A.faint, marginLeft: 4 }}>soon</span>
+        {item.label}
+        <span style={{ fontSize: 9, color: A.faint, marginLeft: 6, letterSpacing: '0.08em' }}>
+          soon
+        </span>
       </div>
     )
   }
 
   return (
-    <a href={hashFor(item)} style={baseStyle}>
+    <a
+      href={hashFor(item)}
+      style={baseStyle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {item.label}
     </a>
   )
 }
 
+// ─── Desktop sidebar ──────────────────────────────────────────────────────────
+
 function DesktopSidebar({ tab }: { tab: AdminTab }) {
+  // Initialise all groups expanded; collapse on click
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(GROUPS.map(g => [g.key, true]))
+  )
+
+  function toggle(key: string) {
+    setExpanded(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
   return (
     <div style={{
-      width:        220,
-      flexShrink:   0,
-      background:   A.bgCard,
-      borderRight:  `1px solid ${A.border}`,
-      paddingTop:   8,
-      overflowY:    'auto',
+      width:          220,
+      flexShrink:     0,
+      background:     A.bgCard,
+      borderRight:    `1px solid ${A.border}`,
+      paddingTop:     12,
+      overflowY:      'auto',
+      display:        'flex',
+      flexDirection:  'column',
     }}>
-      <GroupHeader label='Immerse' />
-      {IMMERSE_ITEMS.map(item => (
-        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
-      ))}
+      {/* Nav groups */}
+      <div style={{ flex: 1 }}>
+        {GROUPS.map(group => (
+          <div key={group.key}>
+            <GroupRow
+              group={group}
+              current={tab}
+              expanded={expanded[group.key]}
+              onToggle={() => toggle(group.key)}
+            />
+            {expanded[group.key] && group.items.map(item => (
+              <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
+            ))}
+          </div>
+        ))}
 
-      <GroupHeader label='Guides' />
-      {GUIDES_ITEMS.map(item => (
-        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
-      ))}
+        {/* Future / soon */}
+        <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 8, paddingTop: 4 }}>
+          {SOON_ITEMS.map(item => (
+            <SidebarRow key={item.key} item={item} active={false} />
+          ))}
+        </div>
+      </div>
 
-      <GroupHeader label='Library' />
-      {LIBRARY_ITEMS.map(item => (
-        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
-      ))}
-
-      <GroupHeader label='House' />
-      {HOUSE_ITEMS.map(item => (
-        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
-      ))}
-
-      <GroupHeader label='Programme' />
-      {PROGRAMME_ITEMS.map(item => (
-        <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
-      ))}
-
-      <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 12, paddingTop: 4 }} />
-      <GroupHeader label='Future' />
-      {SOON_ITEMS.map(item => (
-        <SidebarRow key={item.key} item={item} active={false} />
-      ))}
+      {/* Bottom wordmark */}
+      <div style={{
+        padding:       '16px 16px 20px',
+        borderTop:     `1px solid ${A.border}`,
+        marginTop:     8,
+      }}>
+        <div style={{
+          fontSize:      9,
+          fontWeight:    700,
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color:         A.muted,
+          fontFamily:    A.font,
+          lineHeight:    1.6,
+        }}>
+          ambience
+        </div>
+        <div style={{
+          fontSize:      9,
+          fontWeight:    400,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color:         A.muted,
+          fontFamily:    A.font,
+          opacity:       0.6,
+        }}>
+          admin
+        </div>
+      </div>
     </div>
   )
 }
+
+// ─── Mobile selector (unchanged) ─────────────────────────────────────────────
 
 function MobileSelector({ tab }: { tab: AdminTab }) {
   const all: SidebarItem[] = [
@@ -232,17 +380,17 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         value={currentValue()}
         onChange={handleChange}
         style={{
-          width:        '100%',
-          background:   A.bgInput,
-          border:       `1px solid ${A.borderGold}`,
+          width:       '100%',
+          background:  A.bgInput,
+          border:      `1px solid ${A.borderGold}`,
           borderRadius: 10,
-          color:        A.gold,
-          padding:      '10px 14px',
-          fontSize:     13,
-          fontWeight:   700,
-          fontFamily:   A.font,
-          outline:      'none',
-          colorScheme:  'dark',
+          color:       A.gold,
+          padding:     '10px 14px',
+          fontSize:    13,
+          fontWeight:  700,
+          fontFamily:  A.font,
+          outline:     'none',
+          colorScheme: 'dark',
         }}
       >
         <optgroup label='Immerse'>
@@ -264,6 +412,8 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     </div>
   )
 }
+
+// ─── Export ───────────────────────────────────────────────────────────────────
 
 export default function AdminSidebar({
   tab,

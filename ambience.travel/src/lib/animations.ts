@@ -186,6 +186,31 @@ const APP_STYLES = `
   100% { opacity: 1;    transform: scale(1);    }
 }
 ._a_load_flash { animation: _a_load_flash 700ms cubic-bezier(0.25, 0, 0.1, 1) both; }
+
+/* ── Admin primitives (S43) ── */
+@keyframes _a_admin_card_in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes _a_admin_modal_in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes _a_admin_toast_in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes _a_admin_toast_out {
+  from { opacity: 1; transform: translateY(0);   }
+  to   { opacity: 0; transform: translateY(6px); }
+}
+
+@keyframes _a_admin_status_pill_in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
 `
 
 let _injected = false
