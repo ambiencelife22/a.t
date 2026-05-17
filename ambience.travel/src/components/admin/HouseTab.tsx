@@ -116,7 +116,7 @@ const PPD_KEYS = [
   'Home Address', 'Dietary Medical Note',
 ]
 
-const ROLES = ['principal', 'spouse', 'child', 'staff', 'advisor', 'guest']
+const ROLES = ['primary', 'spouse', 'partner', 'child', 'staff', 'other']
 
 const DEST_STATUSES: DestinationStatus[] = ['visited', 'planned', 'avoided']
 const DEST_TRIP_TYPES: DestinationTripType[] = ['family', 'couple', 'solo', 'business', 'other']
@@ -553,7 +553,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   const { toast }                 = useToast()
   const searchRef                 = useRef<HTMLInputElement>(null)
   const [addingPerson, setAddingPerson] = useState(false)
-  const [pd, setPd]               = useState({ member_ref: '', role: 'principal' })
+  const [pd, setPd]               = useState({ member_ref: '', role: 'primary' })
   const [addSaving, setAddSaving] = useState(false)
 
   async function loadAll() {
@@ -610,7 +610,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     setAddSaving(true)
     try {
       await createPerson(house.id, pd.member_ref.trim(), pd.role, null)
-      toast.success('Added.'); setAddingPerson(false); setPd({ member_ref: '', role: 'principal' }); await loadAll()
+      toast.success('Added.'); setAddingPerson(false); setPd({ member_ref: '', role: 'primary' }); await loadAll()
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
     setAddSaving(false)
   }
@@ -651,7 +651,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
             {ROLES.map(r => <option key={r} value={r}>{capitalize(r)}</option>)}
           </select>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-            <button onClick={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'principal' }) }} style={btnG}>Cancel</button>
+            <button onClick={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'primary' }) }} style={btnG}>Cancel</button>
             <button onClick={addPerson} style={{ ...btnP, opacity: addSaving ? 0.5 : 1 }} disabled={addSaving}>Add</button>
           </div>
         </div>

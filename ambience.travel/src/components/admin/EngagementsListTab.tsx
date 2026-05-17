@@ -17,9 +17,14 @@
  *     trip_code. Blur or Enter commits. Esc reverts. Optimistic update
  *     with reload-on-error.
  *
+ * S42 additions:
+ *   - "Add client" affordance on group header when no primary_client_id is
+ *     set. Opens inline ClientPicker typeahead. Writes primary_client_id to
+ *     travel_trips via updateTripPrimaryClient.
+ *
  * Inline edit of engagement_status_id + itinerary_status_id stays as S33.
  *
- * Last updated: S33B
+ * Last updated: S42
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -47,10 +52,13 @@ import {
   groupByTrip,
   updateTrip,
   updatePerson,
+  updateTripPrimaryClient,
   reassignEngagementTrip,
+  fetchPeople,
   type EngagementListRow,
   type StatusLookup,
   type TripGroup,
+  type PersonOption,
 } from '../../lib/adminEngagementQueries'
 import {
   buildEngagementUrl,
@@ -160,7 +168,7 @@ const labelStyle: React.CSSProperties = {
   display:       'block',
 }
 
-// ── Pencil icon (inline SVG, no icon library) ────────────────────────────────
+// ── Pencil icon ──────────────────────────────────────────────────────────────
 
 function PencilIcon({ size = 11, color }: { size?: number; color: string }) {
   return (
@@ -207,7 +215,7 @@ function AudiencePill({ audience, isTemplate }: { audience: 'private' | 'public'
   )
 }
 
-// ── Inline editable text — click-to-edit, blur/Enter commit, Esc revert ──────
+// ── Inline editable text ─────────────────────────────────────────────────────
 
 type EditableTextProps = {
   value:        string
@@ -218,13 +226,9 @@ type EditableTextProps = {
   fontWeight?:  number
   color?:       string
   onCommit:     (newValue: string) => Promise<void>
-  // Disabled when no underlying record exists (e.g. editing client_display
-  // when there's no linked person). Renders as plain text, no hover affordance.
   editable?:    boolean
   ariaLabel?:   string
-  // Maximum length. Pass 0 to disable.
   maxLength?:   number
-  // If true, an empty commit reverts (vs. committing as null/empty).
   rejectEmpty?: boolean
 }
 
@@ -248,7 +252,6 @@ function EditableText({
   const [saving, setSaving]   = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Keep draft in sync if the underlying value changes (e.g. parent reload).
   useEffect(() => {
     if (!editing) setDraft(value)
   }, [value, editing])
@@ -260,9 +263,9 @@ function EditableText({
     }
   }, [editing])
 
-  const fontSize = size === 'sm' ? 11 : size === 'lg' ? 15 : 13
+  const fontSize  = size === 'sm' ? 11 : size === 'lg' ? 15 : 13
   const baseColor = color ?? A.text
-  const family = monospace ? "'DM Mono', monospace" : A.font
+  const family    = monospace ? "'DM Mono', monospace" : A.font
 
   function startEdit(e: React.MouseEvent) {
     if (!editable || saving) return
@@ -273,21 +276,13 @@ function EditableText({
 
   async function commit() {
     const trimmed = draft.trim()
-    if (trimmed === value.trim()) {
-      setEditing(false)
-      return
-    }
-    if (rejectEmpty && !trimmed) {
-      setEditing(false)
-      setDraft(value)
-      return
-    }
+    if (trimmed === value.trim()) { setEditing(false); return }
+    if (rejectEmpty && !trimmed) { setEditing(false); setDraft(value); return }
     setSaving(true)
     try {
       await onCommit(trimmed)
       setEditing(false)
     } catch {
-      // Parent surfaces the toast. Revert local draft.
       setDraft(value)
       setEditing(false)
     }
@@ -295,17 +290,8 @@ function EditableText({
   }
 
   function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      e.stopPropagation()
-      commit()
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      e.stopPropagation()
-      setDraft(value)
-      setEditing(false)
-    }
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit() }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setDraft(value); setEditing(false) }
   }
 
   if (editing) {
@@ -350,11 +336,7 @@ function EditableText({
       aria-label={ariaLabel}
       onKeyDown={(e) => {
         if (!editable) return
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          setDraft(value)
-          setEditing(true)
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDraft(value); setEditing(true) }
       }}
       style={{
         display:      'inline-flex',
@@ -385,10 +367,108 @@ function EditableText({
   )
 }
 
-// ── Engagement card (one per row inside a group) ─────────────────────────────
-// Wrapped in a draggable wrapper outside the card body — the inner content
-// remains fully interactive (selects, links, buttons) because dnd-kit's drag
-// activation distance prevents accidental drags from input/button clicks.
+// ── Client picker — inline typeahead for setting primary_client_id ────────────
+// S42: Renders when a trip group has no client linked. Click "Add client"
+// to open, search by name, select to write primary_client_id.
+
+function ClientPicker({
+  onSet,
+  onCancel,
+}: {
+  onSet:    (personId: string) => Promise<void>
+  onCancel: () => void
+}) {
+  const [query, setQuery]     = useState('')
+  const [options, setOptions] = useState<PersonOption[]>([])
+  const [saving, setSaving]   = useState(false)
+  const inputRef              = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchPeople(query).then(setOptions).catch(() => setOptions([]))
+    }, 150)
+    return () => clearTimeout(t)
+  }, [query])
+
+  async function handleSelect(personId: string) {
+    setSaving(true)
+    try {
+      await onSet(personId)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', minWidth: 240 }}
+      onClick={e => e.stopPropagation()}
+    >
+      <input
+        ref={inputRef}
+        style={{
+          background:   A.bgInput,
+          border:       `1px solid ${A.borderGold}`,
+          borderRadius: 8,
+          padding:      '5px 10px',
+          fontSize:     13,
+          color:        A.text,
+          fontFamily:   A.font,
+          outline:      'none',
+          width:        '100%',
+          opacity:      saving ? 0.5 : 1,
+        }}
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder='Search people…'
+        disabled={saving}
+        onKeyDown={e => {
+          if (e.key === 'Escape') { e.stopPropagation(); onCancel() }
+        }}
+      />
+      {options.length > 0 && (
+        <div style={{
+          position:     'absolute',
+          top:          '100%',
+          left:         0,
+          right:        0,
+          zIndex:       50,
+          background:   A.bgCard,
+          border:       `1px solid ${A.borderGold}`,
+          borderRadius: 10,
+          marginTop:    4,
+          maxHeight:    240,
+          overflowY:    'auto',
+          boxShadow:    '0 8px 24px rgba(0,0,0,0.4)',
+        }}>
+          {options.map(p => (
+            <div
+              key={p.id}
+              onClick={() => handleSelect(p.id)}
+              style={{
+                padding:      '9px 14px',
+                cursor:       'pointer',
+                fontSize:     13,
+                color:        A.text,
+                fontFamily:   A.font,
+                borderBottom: `1px solid ${A.border}`,
+              }}
+            >
+              {p.nickname ?? p.first_name ?? '(unnamed)'}
+              {p.last_name && <span style={{ color: A.faint, marginLeft: 6 }}>{p.last_name}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Engagement card ──────────────────────────────────────────────────────────
 
 function EngagementCardInner({
   row,
@@ -423,20 +503,19 @@ function EngagementCardInner({
       opacity:       isDragging ? 0.5 : 1,
       transition:    'border-color 0.15s ease, opacity 0.15s ease',
     }}>
-      {/* Drag handle row — top of card */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {dragHandleProps && (
           <div
             {...dragHandleProps}
             aria-label='Drag to reassign engagement'
             style={{
-              cursor:       'grab',
-              padding:      '2px 4px',
-              color:        A.faint,
-              fontSize:     14,
-              lineHeight:   1,
-              userSelect:   'none',
-              touchAction:  'none',
+              cursor:      'grab',
+              padding:     '2px 4px',
+              color:       A.faint,
+              fontSize:    14,
+              lineHeight:  1,
+              userSelect:  'none',
+              touchAction: 'none',
               borderRadius: 6,
             }}
             onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.cursor = 'grabbing' }}
@@ -451,7 +530,6 @@ function EngagementCardInner({
         <AudiencePill audience={row.audience} isTemplate={row.is_public_template} />
       </div>
 
-      {/* Identifier row: url_id [· iteration_label] */}
       <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", wordBreak: 'break-all' }}>
         {row.url_id ?? '—'}
         {hasIterationLabel && (
@@ -459,7 +537,6 @@ function EngagementCardInner({
         )}
       </div>
 
-      {/* Status row */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
@@ -487,7 +564,6 @@ function EngagementCardInner({
         </div>
       </div>
 
-      {/* Actions */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
         {row.url_id && (
           <a
@@ -512,7 +588,7 @@ function EngagementCardInner({
   )
 }
 
-// ── Draggable wrapper around EngagementCardInner ─────────────────────────────
+// ── Draggable wrapper ────────────────────────────────────────────────────────
 
 function DraggableEngagementCard({
   row,
@@ -548,7 +624,7 @@ function DraggableEngagementCard({
   )
 }
 
-// ── Trip group (collapsible + droppable + editable header) ───────────────────
+// ── Trip group block ─────────────────────────────────────────────────────────
 
 function TripGroupBlock({
   group,
@@ -559,6 +635,9 @@ function TripGroupBlock({
   onStatusChange,
   onTripUpdate,
   onPersonUpdate,
+  onSetTripClient,
+  pickingClientForTrip,
+  setPickingClientForTrip,
   isDragOverFromOtherGroup,
   draggingFromThisGroup,
 }: {
@@ -582,29 +661,24 @@ function TripGroupBlock({
     field: 'first_name' | 'nickname',
     value: string,
   ) => Promise<void>
+  onSetTripClient: (tripId: string, personId: string) => Promise<void>
+  pickingClientForTrip:    string | null
+  setPickingClientForTrip: (id: string | null) => void
   isDragOverFromOtherGroup: boolean
   draggingFromThisGroup:    boolean
 }) {
   const isOrphan = group.trip_id == null
-  const dropId = isOrphan ? '__group_orphan__' : `group_${group.trip_id}`
+  const dropId   = isOrphan ? '__group_orphan__' : `group_${group.trip_id}`
   const { setNodeRef, isOver } = useDroppable({
-    id: dropId,
+    id:   dropId,
     data: { type: 'group', tripId: group.trip_id },
   })
 
-  // Visual highlight: only when dragging from a DIFFERENT group is hovering
-  // over this one. Dragging within the same group shouldn't highlight as
-  // a re-parenting target.
   const showDropHighlight = isOver && isDragOverFromOtherGroup
-
-  // The "client display" for the header is computed live from the editable
-  // person fields. Prefer nickname → first_name. We use first_name for the
-  // edit because nickname can be empty.
-  const personEditable = !isOrphan && group.client_id != null
-  const clientNameValue = group.client_nickname ?? group.client_first_name ?? ''
-
-  // Trip code / public title editing only available on real trips.
+  const personEditable    = !isOrphan && group.client_id != null
+  const clientNameValue   = group.client_nickname ?? group.client_first_name ?? ''
   const tripFieldsEditable = !isOrphan && group.trip_id != null
+  const isPickingHere     = group.trip_id != null && pickingClientForTrip === group.trip_id
 
   return (
     <div
@@ -618,7 +692,6 @@ function TripGroupBlock({
         transition:   'border-color 0.15s ease, box-shadow 0.15s ease',
       }}
     >
-      {/* Header — clickable toggle, but inline-editable fields stop propagation */}
       <div
         onClick={onToggle}
         style={{
@@ -648,21 +721,10 @@ function TripGroupBlock({
 
           {isOrphan && (
             <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize:   13,
-                fontWeight: 700,
-                color:      A.muted,
-                fontFamily: A.font,
-                fontStyle:  'italic',
-              }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: A.muted, fontFamily: A.font, fontStyle: 'italic' }}>
                 Unlinked
               </div>
-              <div style={{
-                fontSize:   11,
-                color:      A.faint,
-                fontFamily: A.font,
-                marginTop:  2,
-              }}>
+              <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 2 }}>
                 Drag here to remove from a trip · drag away to assign
               </div>
             </div>
@@ -670,35 +732,69 @@ function TripGroupBlock({
 
           {!isOrphan && (
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {/* Title row: "{client_display}'s {public_title}" — both editable */}
-              <div style={{
-                display:    'flex',
-                alignItems: 'center',
-                flexWrap:   'wrap',
-                gap:        4,
-              }}>
-                <EditableText
-                  value={clientNameValue}
-                  placeholder='Add client'
-                  size='lg'
-                  fontWeight={700}
-                  color={A.text}
-                  editable={personEditable}
-                  ariaLabel='Edit client name'
-                  rejectEmpty={false}
-                  onCommit={async (v) => {
-                    if (!group.client_id) return
-                    // We always write to first_name from the header (nickname
-                    // editing happens via the engagement detail tab). If the
-                    // header is showing nickname today, we still write to
-                    // first_name to keep the edit obvious — the operator can
-                    // tune nickname elsewhere.
-                    await onPersonUpdate(group.client_id, 'first_name', v)
-                  }}
-                />
-                {(clientNameValue || personEditable) && (
+              {/* Title row */}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+
+                {/* Client name — editable if linked, picker if not */}
+                {personEditable ? (
+                  <EditableText
+                    value={clientNameValue}
+                    placeholder='Add client'
+                    size='lg'
+                    fontWeight={700}
+                    color={A.text}
+                    editable={true}
+                    ariaLabel='Edit client name'
+                    rejectEmpty={false}
+                    onCommit={async (v) => {
+                      if (!group.client_id) return
+                      await onPersonUpdate(group.client_id, 'first_name', v)
+                    }}
+                  />
+                ) : group.trip_id ? (
+                  isPickingHere ? (
+                    <ClientPicker
+                      onSet={async (personId) => {
+                        await onSetTripClient(group.trip_id!, personId)
+                        setPickingClientForTrip(null)
+                      }}
+                      onCancel={() => setPickingClientForTrip(null)}
+                    />
+                  ) : (
+                    <span
+                      onClick={e => { e.stopPropagation(); setPickingClientForTrip(group.trip_id!) }}
+                      style={{
+                        fontSize:     15,
+                        fontWeight:   700,
+                        color:        A.faint,
+                        fontFamily:   A.font,
+                        fontStyle:    'italic',
+                        cursor:       'pointer',
+                        padding:      '2px 8px',
+                        borderRadius: 6,
+                        border:       `1px dashed ${A.border}`,
+                        transition:   'border-color 0.12s ease, color 0.12s ease',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = A.borderGold
+                        e.currentTarget.style.color = A.gold
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = A.border
+                        e.currentTarget.style.color = A.faint
+                      }}
+                    >
+                      + Add client
+                    </span>
+                  )
+                ) : null}
+
+                {/* 's separator — only when client name is showing */}
+                {(personEditable && clientNameValue) && (
                   <span style={{ fontSize: 15, fontWeight: 700, color: A.text, fontFamily: A.font }}>'s</span>
                 )}
+
+                {/* Public title */}
                 <EditableText
                   value={group.trip_public_title ?? ''}
                   placeholder='Add trip title'
@@ -714,13 +810,8 @@ function TripGroupBlock({
                 />
               </div>
 
-              {/* Subline: trip_code (editable, mono) · start_date (read-only) */}
-              <div style={{
-                display:    'flex',
-                alignItems: 'center',
-                flexWrap:   'wrap',
-                gap:        6,
-              }}>
+              {/* Subline: trip_code · start_date */}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 <EditableText
                   value={group.trip_code ?? ''}
                   placeholder='Add trip code'
@@ -736,11 +827,7 @@ function TripGroupBlock({
                   }}
                 />
                 {group.trip_start_date && (
-                  <span style={{
-                    fontSize:   11,
-                    color:      A.faint,
-                    fontFamily: "'DM Mono', monospace",
-                  }}>
+                  <span style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace" }}>
                     · {group.trip_start_date}
                   </span>
                 )}
@@ -762,24 +849,22 @@ function TripGroupBlock({
         </div>
       </div>
 
-      {/* Drop hint banner when an engagement is being dragged here from another group */}
       {showDropHighlight && (
         <div style={{
-          padding:    '10px 20px',
-          background: 'rgba(216,181,106,0.08)',
-          borderTop:  `1px dashed ${A.borderGold}`,
-          fontSize:   11,
-          fontWeight: 700,
+          padding:       '10px 20px',
+          background:    'rgba(216,181,106,0.08)',
+          borderTop:     `1px dashed ${A.borderGold}`,
+          fontSize:      11,
+          fontWeight:    700,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
-          color:      A.gold,
-          fontFamily: A.font,
+          color:         A.gold,
+          fontFamily:    A.font,
         }}>
           Drop to {isOrphan ? 'unlink' : `move to ${group.trip_code ?? 'this trip'}`}
         </div>
       )}
 
-      {/* Expanded body */}
       {expanded && (
         <div style={{
           padding:       '0 20px 20px',
@@ -803,7 +888,7 @@ function TripGroupBlock({
   )
 }
 
-// ── "+ Drop here to create new trip" zone ────────────────────────────────────
+// ── New trip drop zone ───────────────────────────────────────────────────────
 
 function NewTripDropZone({ active }: { active: boolean }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -836,19 +921,14 @@ function NewTripDropZone({ active }: { active: boolean }) {
       }}>
         + Drop here to create new trip
       </div>
-      <div style={{
-        fontSize:   11,
-        color:      A.faint,
-        fontFamily: A.font,
-        marginTop:  6,
-      }}>
+      <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 6 }}>
         Opens a form to create a trip and link this engagement
       </div>
     </div>
   )
 }
 
-// ── Create modal (existing engagement create flow — unchanged from S33) ──────
+// ── Create modal ─────────────────────────────────────────────────────────────
 
 function CreateModal({
   engagementStatuses,
@@ -878,14 +958,8 @@ function CreateModal({
   const [saving, setSaving]                        = useState(false)
 
   async function handleCreate() {
-    if (!title.trim()) {
-      showToast('Title is required.', 'error')
-      return
-    }
-    if (!engagementStatusId || !itineraryStatusId) {
-      showToast('Statuses are required.', 'error')
-      return
-    }
+    if (!title.trim()) { showToast('Title is required.', 'error'); return }
+    if (!engagementStatusId || !itineraryStatusId) { showToast('Statuses are required.', 'error'); return }
     setSaving(true)
     try {
       const sortOrder = await fetchMaxSortOrder()
@@ -927,9 +1001,7 @@ function CreateModal({
             <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
               New Engagement
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>
-              Create
-            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>Create</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
         </div>
@@ -947,27 +1019,14 @@ function CreateModal({
               <button onClick={() => setUrlId(generateUrlId())} style={btnGhost}>↻ Regen</button>
             </div>
           </div>
-
           <div>
             <label style={labelStyle}>Title</label>
-            <input
-              style={inputStyle}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder='e.g. Honeymoon'
-            />
+            <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder='e.g. Honeymoon' />
           </div>
-
           <div>
             <label style={labelStyle}>Iteration Label (optional)</label>
-            <input
-              style={inputStyle}
-              value={iterationLabel}
-              onChange={e => setIterationLabel(e.target.value)}
-              placeholder='e.g. Saudi VVIP, Refresh, Pre-Saudi'
-            />
+            <input style={inputStyle} value={iterationLabel} onChange={e => setIterationLabel(e.target.value)} placeholder='e.g. Saudi VVIP, Refresh' />
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Audience</label>
@@ -1016,8 +1075,7 @@ function CreateModal({
 
         <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: `1px solid ${A.border}` }}>
           <button onClick={handleCreate} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>
-            {saving && 'Creating…'}
-            {!saving && 'Create Engagement'}
+            {saving ? 'Creating…' : 'Create Engagement'}
           </button>
           <button onClick={onClose} style={btnGhost}>Cancel</button>
         </div>
@@ -1037,18 +1095,14 @@ export default function EngagementsListTab() {
   const [collapsedKeys, setCollapsedKeys]           = useState<Set<string>>(new Set())
   const { toast, showToast }                        = useToast()
 
-  // Drag state — id of currently dragged engagement, plus the row snapshot
-  // for the DragOverlay ghost.
+  // S42: which trip group is currently showing the client picker
+  const [pickingClientForTrip, setPickingClientForTrip] = useState<string | null>(null)
+
   const [draggingId, setDraggingId]   = useState<string | null>(null)
   const [draggingRow, setDraggingRow] = useState<EngagementListRow | null>(null)
-
-  // When the create-new-trip drop fires, we stash the engagement context
-  // and open the modal.
   const [pendingCreateForEngagement, setPendingCreateForEngagement] =
     useState<EngagementListRow | null>(null)
 
-  // dnd-kit sensors — pointer (with activation distance to avoid hijacking
-  // clicks on selects/buttons inside the card) plus keyboard for a11y.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -1076,7 +1130,6 @@ export default function EngagementsListTab() {
 
   const groups = useMemo(() => groupByTrip(rows), [rows])
 
-  // Group key for collapse-state tracking (orphan group keyed as '__orphan__')
   function groupKey(g: TripGroup): string {
     return g.trip_id ?? '__orphan__'
   }
@@ -1085,10 +1138,7 @@ export default function EngagementsListTab() {
     const key = groupKey(g)
     setCollapsedKeys(prev => {
       const next = new Set(prev)
-      if (prev.has(key)) {
-        next.delete(key)
-        return next
-      }
+      if (prev.has(key)) { next.delete(key); return next }
       next.add(key)
       return next
     })
@@ -1111,14 +1161,7 @@ export default function EngagementsListTab() {
     }
   }
 
-  // ── Inline edit handlers — optimistic with reload-on-error ───────────────
-
-  async function handleTripUpdate(
-    tripId: string,
-    field: 'trip_code' | 'public_title',
-    value: string,
-  ) {
-    // Optimistic local mutation for every row pointing at this trip.
+  async function handleTripUpdate(tripId: string, field: 'trip_code' | 'public_title', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
       if (r.trip_id !== tripId) return r
@@ -1133,17 +1176,13 @@ export default function EngagementsListTab() {
       const message = e instanceof Error ? e.message : 'unknown error'
       const isDuplicate = message.toLowerCase().includes('duplicate') || message.includes('23505')
       if (isDuplicate) showToast(`Trip code "${value}" already in use.`, 'error')
-      if (!isDuplicate) showToast(`Failed to update trip: ${message}`, 'error')
+      else showToast(`Failed to update trip: ${message}`, 'error')
       setRows(prevSnapshot)
-      throw e // bubble so EditableText resets
+      throw e
     }
   }
 
-  async function handlePersonUpdate(
-    personId: string,
-    field: 'first_name' | 'nickname',
-    value: string,
-  ) {
+  async function handlePersonUpdate(personId: string, field: 'first_name' | 'nickname', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
       if (r.client_id !== personId) return r
@@ -1162,52 +1201,40 @@ export default function EngagementsListTab() {
     }
   }
 
-  // ── Drag handlers ────────────────────────────────────────────────────────
+  // S42: set primary_client_id on a trip that has none yet
+  async function handleSetTripClient(tripId: string, personId: string) {
+    try {
+      await updateTripPrimaryClient(tripId, personId)
+      showToast('Client linked.', 'success')
+      load()
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'unknown error'
+      showToast(`Failed to link client: ${message}`, 'error')
+    }
+  }
 
   function handleDragStart(e: DragStartEvent) {
     const id = String(e.active.id)
     setDraggingId(id)
-    const row = rows.find(r => r.id === id) ?? null
-    setDraggingRow(row)
+    setDraggingRow(rows.find(r => r.id === id) ?? null)
   }
 
   async function handleDragEnd(e: DragEndEvent) {
     const activeRow = draggingRow
     setDraggingId(null)
     setDraggingRow(null)
-
     if (!e.over || !activeRow) return
-
     const overData = e.over.data.current as { type?: string; tripId?: string | null } | undefined
     if (!overData) return
-
-    // Drop on "+ New Trip" zone — open the modal (defer the reassignment
-    // until the trip is created via TripCreateModal).
-    if (overData.type === 'new_trip') {
-      setPendingCreateForEngagement(activeRow)
-      return
-    }
-
-    // Drop on a trip group — re-parent. Skip if dropped on the same group.
+    if (overData.type === 'new_trip') { setPendingCreateForEngagement(activeRow); return }
     if (overData.type === 'group') {
       const newTripId = overData.tripId ?? null
       if (newTripId === activeRow.trip_id) return
-
-      // Optimistic: update local state first.
       const prevSnapshot = rows
-      setRows(prev => prev.map(r => r.id === activeRow.id
-        ? { ...r, trip_id: newTripId }
-        : r,
-      ))
-
+      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, trip_id: newTripId } : r))
       try {
         await reassignEngagementTrip(activeRow.id, newTripId)
-        showToast(
-          newTripId ? 'Engagement moved.' : 'Engagement unlinked.',
-          'success',
-        )
-        // Reload to get fresh trip context (trip_code, public_title, client name)
-        // for the moved engagement.
+        showToast(newTripId ? 'Engagement moved.' : 'Engagement unlinked.', 'success')
         load()
       } catch (e2: unknown) {
         const message = e2 instanceof Error ? e2.message : 'unknown error'
@@ -1222,8 +1249,6 @@ export default function EngagementsListTab() {
     setDraggingRow(null)
   }
 
-  // For each group block, decide whether to highlight on hover. We highlight
-  // when the active drag started in a different group than this one.
   function isDragFromOtherGroup(targetGroup: TripGroup): boolean {
     if (!draggingRow) return false
     return draggingRow.trip_id !== targetGroup.trip_id
@@ -1238,7 +1263,6 @@ export default function EngagementsListTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
@@ -1254,14 +1278,9 @@ export default function EngagementsListTab() {
         <button onClick={() => setShowCreate(true)} style={btnPrimary}>+ New Engagement</button>
       </div>
 
-      {/* Empty / loading */}
       {loading && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font, padding: '20px 0' }}>Loading…</div>}
+      {!loading && rows.length === 0 && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font, padding: '20px 0' }}>No engagements yet.</div>}
 
-      {!loading && rows.length === 0 && (
-        <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font, padding: '20px 0' }}>No engagements yet.</div>
-      )}
-
-      {/* Trip groups — wrapped in DndContext */}
       {!loading && (
         <DndContext
           sensors={sensors}
@@ -1271,7 +1290,7 @@ export default function EngagementsListTab() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {groups.map(group => {
-              const key = groupKey(group)
+              const key      = groupKey(group)
               const expanded = !collapsedKeys.has(key)
               return (
                 <TripGroupBlock
@@ -1284,17 +1303,17 @@ export default function EngagementsListTab() {
                   onStatusChange={handleStatusChange}
                   onTripUpdate={handleTripUpdate}
                   onPersonUpdate={handlePersonUpdate}
+                  onSetTripClient={handleSetTripClient}
+                  pickingClientForTrip={pickingClientForTrip}
+                  setPickingClientForTrip={setPickingClientForTrip}
                   isDragOverFromOtherGroup={isDragFromOtherGroup(group)}
                   draggingFromThisGroup={isDraggingFromGroup(group)}
                 />
               )
             })}
-
-            {/* New-trip drop zone (always rendered; faded when no drag active) */}
             <NewTripDropZone active={draggingId != null} />
           </div>
 
-          {/* Drag overlay — mirror of the dragged card following the cursor */}
           <DragOverlay dropAnimation={null}>
             {draggingRow && (
               <div style={{ width: 'min(560px, 90vw)', cursor: 'grabbing' }}>
@@ -1302,7 +1321,7 @@ export default function EngagementsListTab() {
                   row={draggingRow}
                   engagementStatuses={engagementStatuses}
                   itineraryStatuses={itineraryStatuses}
-                  onStatusChange={() => { /* ghost is non-interactive */ }}
+                  onStatusChange={() => {}}
                 />
               </div>
             )}
@@ -1310,7 +1329,6 @@ export default function EngagementsListTab() {
         </DndContext>
       )}
 
-      {/* Create-engagement modal (S33) */}
       {showCreate && (
         <CreateModal
           engagementStatuses={engagementStatuses}
@@ -1324,17 +1342,13 @@ export default function EngagementsListTab() {
         />
       )}
 
-      {/* Drag-to-create-trip modal (S33B) */}
       {pendingCreateForEngagement && (
         <TripCreateModal
           engagementId={pendingCreateForEngagement.id}
           engagementTitle={pendingCreateForEngagement.title}
           engagementUrlId={pendingCreateForEngagement.url_id}
           onClose={() => setPendingCreateForEngagement(null)}
-          onSuccess={() => {
-            setPendingCreateForEngagement(null)
-            load()
-          }}
+          onSuccess={() => { setPendingCreateForEngagement(null); load() }}
           showToast={showToast}
         />
       )}

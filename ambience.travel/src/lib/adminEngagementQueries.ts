@@ -608,3 +608,18 @@ export async function reassignEngagementTrip(
     .eq('id', engagementId)
   if (error) throw error
 }
+
+// ── Trip primary client update ────────────────────────────────────────────────
+// Appended S42. Allows setting primary_client_id on travel_trips from the
+// engagement list group header when no client is currently linked.
+
+export async function updateTripPrimaryClient(
+  tripId:   string,
+  personId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('travel_trips')
+    .update({ primary_client_id: personId })
+    .eq('id', tripId)
+  if (error) throw new Error(`Failed to update trip client: ${error.message}`)
+}
