@@ -54,7 +54,7 @@ export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagemen
 
       <ImmerseWelcomeLetter {...data.welcomeLetter} />
 
-      {data.destinationRows.length > 1 && <ImmerseRouteStrip data={data} />}
+      {data.routeStops.length > 0 && data.destinationRows.filter(r => r.subpageStatus === 'live').length > 1 && <ImmerseRouteStrip data={data} />}
 
       {data.heroImageSrc2 && (
         <ImmerseHeroBlock

@@ -1,14 +1,12 @@
 // immerseDestinationHotels.ts — Hotel selector + room overlay + galleries for /immerse/ subpages.
 // Owns: getImmerseDestinationHotels — single canonical hotels fetcher.
-//   Internal: fetchHotelsShape (flat-vs-regioned dispatch), fetchFlatHotels,
-//   fetchRegionGroups, fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery.
+//   Internal: fetchHotelsShape, fetchFlatHotels, fetchRegionGroups,
+//   fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery.
 //
-// Last updated: S42 Add 3 — destinationUrlSlug param added to
-//   getImmerseDestinationHotels, fetchHotelsShape, fetchFlatHotels,
-//   fetchRoomsForHotels. Overlay rooms filtered by destination_url_slug
-//   when non-null: rows with destination_url_slug matching the variant OR
-//   NULL (backward compat — unscoped rooms show everywhere).
-//   travel_immerse_rooms.destination_url_slug column added via migration.
+// Last updated: S42 Add 3 — resort_map_src fetched from
+//   travel_immerse_trip_destination_hotels and mapped to ImmerseHotelOption.resortMapSrc.
+//   Rendered as a downloadable link below the hotel gallery in HotelDetailPanel.
+//   destinationUrlSlug scoping for room overlays also added this session.
 
 import { supabase } from './supabase'
 import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
@@ -67,7 +65,7 @@ async function fetchFlatHotels(
     .from('travel_immerse_trip_destination_hotels')
     .select(`
       id, hotel_id, rank, rank_label, bullets,
-      stay_label, sort_order,
+      stay_label, sort_order, resort_map_src,
       travel_accom_hotels (
         id, name, short_slug,
         hero_image_src, hero_image_alt, image_credit,
@@ -103,28 +101,27 @@ async function fetchFlatHotels(
       image_credit:   string | null
       bullets:        string[] | null
     } | null
-    const hotelId        = h?.id ?? r.hotel_id
-    const hotelSlug      = h?.short_slug ?? ''
-    const hotelName      = h?.name ?? ''
+    const hotelId         = h?.id ?? r.hotel_id
+    const hotelSlug       = h?.short_slug ?? ''
+    const hotelName       = h?.name ?? ''
     const overlayBullets  = r.bullets as string[] | null
     const canonBullets    = Array.isArray(h?.bullets) ? (h.bullets as string[]) : []
-    const resolvedBullets = overlayBullets === null
-      ? canonBullets
-      : overlayBullets
+    const resolvedBullets = overlayBullets === null ? canonBullets : overlayBullets
 
     return {
-      id:          hotelId,
-      storageSlug: hotelSlug,
-      rank:        (r.rank as 'primary' | 'secondary') ?? 'primary',
-      rankLabel:   r.rank_label  ?? '',
-      name:        hotelName,
-      bullets:     resolvedBullets,
-      imageSrc:    rewriteImageUrl(h?.hero_image_src),
-      imageAlt:    h?.hero_image_alt ?? '',
-      imageCredit: h?.image_credit   ?? undefined,
-      stayLabel:   r.stay_label  ?? '',
-      rooms:       roomsByHotel[hotelId]   ?? [],
-      gallery:     galleryByHotel[hotelId] ?? [],
+      id:           hotelId,
+      storageSlug:  hotelSlug,
+      rank:         (r.rank as 'primary' | 'secondary') ?? 'primary',
+      rankLabel:    r.rank_label  ?? '',
+      name:         hotelName,
+      bullets:      resolvedBullets,
+      imageSrc:     rewriteImageUrl(h?.hero_image_src),
+      imageAlt:     h?.hero_image_alt ?? '',
+      imageCredit:  h?.image_credit   ?? undefined,
+      stayLabel:    r.stay_label  ?? '',
+      rooms:        roomsByHotel[hotelId]   ?? [],
+      gallery:      galleryByHotel[hotelId] ?? [],
+      resortMapSrc: (r.resort_map_src as string | null) ?? undefined,
     }
   })
 }
@@ -218,9 +215,7 @@ async function fetchRegionGroups(
     const hotelName       = h?.name ?? ''
     const overlayBullets  = r.bullets as string[] | null
     const canonBullets    = Array.isArray(h?.bullets) ? (h.bullets as string[]) : []
-    const resolvedBullets = overlayBullets === null
-      ? canonBullets
-      : overlayBullets
+    const resolvedBullets = overlayBullets === null ? canonBullets : overlayBullets
 
     const option: ImmerseHotelOption = {
       id:          hotelId,
@@ -273,7 +268,6 @@ async function fetchRegionGroups(
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
 // destinationUrlSlug scoping: when non-null, returns overlay rows where
 // destination_url_slug matches OR is NULL (unscoped rows show everywhere).
-// NULL slug = no filtering (all overlay rows for the engagement).
 
 async function fetchRoomsForHotels(
   engagementId:       string,
@@ -338,9 +332,7 @@ async function fetchRoomsForHotels(
     const canon = canonById.get(o.room_id as string)
     if (!canon) continue
 
-    const roomImageSrc = rewriteImageUrl(
-      o.hero_image_src_override ?? canon.room_image_src
-    )
+    const roomImageSrc = rewriteImageUrl(o.hero_image_src_override ?? canon.room_image_src)
     const roomImageAlt = canon.room_image_alt ?? ''
 
     const sqftMin = o.sqft_min_override ?? canon.sqft_min ?? o.sqft_min ?? undefined
@@ -348,9 +340,7 @@ async function fetchRoomsForHotels(
     const sqmMin  = o.sqm_min_override  ?? canon.sqm_min  ?? o.sqm_min  ?? undefined
     const sqmMax  = o.sqm_max_override  ?? canon.sqm_max  ?? o.sqm_max  ?? undefined
 
-    const floorplanResolved = rewriteImageUrl(
-      o.floorplan_src_override ?? canon.floorplan_src
-    )
+    const floorplanResolved = rewriteImageUrl(o.floorplan_src_override ?? canon.floorplan_src)
     const floorplanSrc = floorplanResolved || undefined
 
     const roomBenefits = Array.isArray(o.room_benefits) && (o.room_benefits as string[]).length > 0
@@ -361,8 +351,7 @@ async function fetchRoomsForHotels(
     const galleryJsonb     = rewriteImageUrls(canon.room_gallery as string[] | null)
     const roomGallery      = galleryCanonical.length > 0 ? galleryCanonical : galleryJsonb
 
-    const rateSuffix = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
-
+    const rateSuffix  = o.rate_suffix_override ?? canon.rate_suffix ?? undefined
     const cadenceJoin = o.travel_immerse_rate_cadences as unknown as { label: string | null } | null
     const rateCadence = cadenceJoin?.label ?? undefined
 

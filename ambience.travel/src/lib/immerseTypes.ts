@@ -2,11 +2,9 @@
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
 //
-// Last updated: S32K — Added rateCadence to ImmerseRoomOption. Reads from
-//   travel_immerse_rooms.rate_cadence_id JOIN against travel_immerse_rate_cadences.
-//   Replaces hardcoded "/ night" suffix in RoomCategory render. Cadence values
-//   come from a reference table (Per Night, Per Stay, Per Week, Per Month);
-//   admin can extend without code changes.
+// Last updated: S42 Add 3 — resort_map_src added to ImmerseHotelOption.
+//   Sourced from travel_immerse_trip_destination_hotels.resort_map_src.
+//   Rendered as a downloadable link below the hotel gallery in HotelDetailPanel.
 
 export type EngagementType =
   | 'journey'
@@ -17,14 +15,6 @@ export type EngagementType =
 export type EngagementAudience =
   | 'private'
   | 'public'
-
-// ─── Status lookups ──────────────────────────────────────────────────────────
-// Slug union types match the canonical seed values from
-// migration_s30d_01_trip_itinerary_status_lookups.sql. Adding a new status
-// row to either lookup table without updating the union here will still
-// type-check at runtime — the runtime slug field is `string`. The unions
-// exist so consumers that want to branch on known slugs get compile-time
-// coverage of the canonical set.
 
 export type EngagementStatusSlug =
   | 'new_request'
@@ -51,7 +41,7 @@ export type ItineraryStatusSlug =
 
 export interface EngagementStatus {
   id:        string
-  slug:      string   // narrows to EngagementStatusSlug for known canonical values
+  slug:      string
   label:     string
   sortOrder: number
   isActive:  boolean
@@ -59,7 +49,7 @@ export interface EngagementStatus {
 
 export interface ItineraryStatus {
   id:        string
-  slug:      string   // narrows to ItineraryStatusSlug for known canonical values
+  slug:      string
   label:     string
   sortOrder: number
   isActive:  boolean
@@ -76,17 +66,11 @@ export type ImmerseRoomOption = {
   roomImageAlt:               string
   roomGallery?:               string[]
   floorplanSrc?:              string
-  // Three-tier rate taxonomy
-  publicNightlyRate?:         string   // direct/rack rate — struck-through in UI
-  nonNegotiatedNightlyRate?:  string   // current published rate
-  ambienceNightlyRate?:       string   // partner-negotiated rate — NULL until rates locked
+  publicNightlyRate?:         string
+  nonNegotiatedNightlyRate?:  string
+  ambienceNightlyRate?:       string
   taxInclusive?:              boolean
-  // Free-text per-room rate suffix rendered after both rate chips.
-  // Resolved override → canonical → undefined. NULL renders nothing.
   rateSuffix?:                string
-  // S32K: rate cadence label (e.g. "Per Night", "Per Stay", "Per Week", "Per Month").
-  // Sourced from travel_immerse_rate_cadences via FK. Pulled by query layer; rendered
-  // beside numeric rate chips in place of the prior hardcoded "/ night" suffix.
   rateCadence?:               string
   sqftMin?:                   number
   sqftMax?:                   number
@@ -95,20 +79,21 @@ export type ImmerseRoomOption = {
 }
 
 export type ImmerseHotelOption = {
-  id:           string   // real DB UUID (canonical travel_accom_hotels.id)
-  storageSlug:  string   // hotel_slug for storage path construction
-  rank:         'primary' | 'secondary'
-  rankLabel:    string
-  name:         string
-  bullets:      string[]
-  imageSrc:     string
-  imageAlt:     string
-  stayLabel:    string
-  rooms:            ImmerseRoomOption[]
-  gallery?:         string[]
-  imageCredit?:     string
-  imageCreditUrl?:  string
-  imageLicense?:    string
+  id:             string
+  storageSlug:    string
+  rank:           'primary' | 'secondary'
+  rankLabel:      string
+  name:           string
+  bullets:        string[]
+  imageSrc:       string
+  imageAlt:       string
+  stayLabel:      string
+  rooms:          ImmerseRoomOption[]
+  gallery?:       string[]
+  imageCredit?:   string
+  imageCreditUrl?: string
+  imageLicense?:  string
+  resortMapSrc?:  string  // S42 Add 3: downloadable resort map PDF link
 }
 
 export type ImmerseContentCard = {
@@ -117,7 +102,7 @@ export type ImmerseContentCard = {
   name:            string
   tagline:         string
   body:            string
-  bulletsHeading?: string   // small header above bullets (e.g. "Highlights")
+  bulletsHeading?: string
   bullets?:        string[]
   imageSrc:        string
   imageAlt:        string
@@ -135,11 +120,6 @@ export type ImmersePricingRow = {
   isTotal?:        boolean
 }
 
-// Pricing closer row (final closer beneath the pricing table). All four fields
-// nullable — null means "fall back to the frontend constant
-// PRICING_CLOSER_DEFAULT in ImmerseDestinationComponents.tsx". Populated per
-// engagement via 4 nullable override columns on travel_immerse_trip_destination_rows
-// once a price has been quoted.
 export type ImmersePricingCloser = {
   item:            string | null
   basis:           string | null
@@ -147,11 +127,6 @@ export type ImmersePricingCloser = {
   indicativeRange: string | null
 }
 
-// Proposal-wide welcome letter. Single canonical row shared across all
-// engagements; per-engagement overrides on travel_immerse_engagements.welcome_*_override.
-// Resolution: engagement override → canonical → ''. Empty string on all five
-// fields hides the entire section; empty string on an individual field hides
-// just that field (handled in ImmerseWelcomeLetter component).
 export type ImmerseWelcomeLetter = {
   eyebrow:     string
   title:       string
@@ -161,72 +136,59 @@ export type ImmerseWelcomeLetter = {
 }
 
 // ─── Region grouping ──────────────────────────────────────────────────────────
-// Nordic Winter has 3 regions (Iceland, Norway, Finland). Europe Finale has
-// 3 (Swiss Alps, Paris, French Alps). Each region carries its own positioning
-// (rank, rank_label, bullets from travel_immerse_trip_regions) plus a list of
-// hotel picks (from travel_immerse_trip_region_hotels). Child tables retain
-// "trip" prefix because their content is journey-engagement-specific.
 
 export type ImmerseRegionGroup = {
-  regionId:     string
-  slug:         string
-  title:        string
-  shorthand?:   string
-  rank:         'primary' | 'secondary'
-  rankLabel:    string
-  bullets:      string[]
-  stayLabel:    string
+  regionId:      string
+  slug:          string
+  title:         string
+  shorthand?:    string
+  rank:          'primary' | 'secondary'
+  rankLabel:     string
+  bullets:       string[]
+  stayLabel:     string
   heroImageSrc?: string
   heroImageAlt?: string
   regionGallery?: string[]
-  hotels:       ImmerseHotelOption[]
+  hotels:        ImmerseHotelOption[]
 }
 
-// Discriminated union — destination renders either flat hotels or region groups
 export type ImmerseDestinationHotelsShape =
   | { kind: 'flat';     hotels: ImmerseHotelOption[] }
   | { kind: 'regioned'; regions: ImmerseRegionGroup[] }
 
-// ─── Engagement overview (master page) ───────────────────────────────────────
-// The master page surface; data shape identifies as engagement and carries
-// engagementType + audience. Journey-shape detail types (ImmerseTripFormat,
-// ImmerseRouteStop, ImmerseDestinationRow, ImmerseTripPricingRow) keep "trip"
-// naming because they describe journey-engagement-specific content.
+// ─── Engagement overview ──────────────────────────────────────────────────────
 
 export type ImmerseTripFormat = 'journey' | 'experience'
 
-// Per-engagement per-destination subpage render state
-//   'live'    — clickable card, normal CTA (Discover More →)
-//   'preview' — non-clickable card, opacity 0.5, "Coming soon" badge
-//   'hidden'  — filtered out server-side; row not rendered at all
 export type ImmerseSubpageStatus = 'live' | 'preview' | 'hidden'
 
 export type ImmerseRouteStop = {
-  id: string
-  title: string
-  stayLabel: string
-  note: string
-  imageSrc: string
-  imageAlt: string
+  id:               string
+  title:            string
+  stayLabel:        string
+  note:             string
+  imageSrc:         string
+  imageAlt:         string
   destinationSlug?: string | null
-  anchorId?: string
+  anchorId?:        string
   destinationRowId?: string | null
 }
 
 export type ImmerseDestinationRow = {
-  id: string
-  numberLabel: string
-  title: string
-  mood: string
-  summary: string
-  imageSrc: string
-  imageAlt: string
-  stayLabel: string
-  destinationSlug?: string | null
-  destinationUrlSlug?: string | null  // S40B: variant slug override (newyork2 etc). ?? destinationSlug in href
-  anchorId?: string
-  subpageStatus: ImmerseSubpageStatus
+  id:                  string
+  numberLabel:         string
+  title:               string
+  mood:                string
+  summary:             string
+  imageSrc:            string
+  imageAlt:            string
+  stayLabel:           string
+  destinationSlug?:    string | null
+  destinationUrlSlug?: string | null
+  anchorId?:           string
+  subpageStatus:       ImmerseSubpageStatus
 }
+
 export type ImmerseTripPricingRow = {
   id:               string
   destination:      string
@@ -236,44 +198,37 @@ export type ImmerseTripPricingRow = {
 }
 
 export type ImmerseEngagementData = {
-  // meta
   engagementId:    string
-  engagementType:  EngagementType        // 'journey' | 'service' | 'experience' | 'acquisition'
-  audience:        EngagementAudience    // S32: 'private' | 'public' — drives render path dispatch
+  engagementType:  EngagementType
+  audience:        EngagementAudience
   urlId:           string
   slug:            string
-  tripFormat:      ImmerseTripFormat     // journey-engagement format detail
+  tripFormat:      ImmerseTripFormat
   journeyTypes:    string[]
   clientName:      string
-  statusLabel:     string                // guest-facing display copy
-  heroTagline?:    string                // S32 Add 1: route-summary copy (optional, not yet rendered)
-  // status — operator-facing lifecycle, distinct from statusLabel
+  statusLabel:     string
+  heroTagline?:    string
   engagementStatus:  EngagementStatus
   itineraryStatus:   ItineraryStatus
-  // welcome
-  welcomeLetter: ImmerseWelcomeLetter
-  // hero
-  eyebrow:      string
-  title:        string
-  subtitle:     string
-  heroImageSrc: string
-  heroImageAlt: string
-  heroImageSrc2?: string
-  heroImageAlt2?: string
-  heroTitle2?:    string
-  heroSubtitle2?: string
-  heroPills:    string[]
-  // route
-  routeHeading: string
-  routeBody:    string
-  routeEyebrow?: string
-  routeStops:   ImmerseRouteStop[]
-  // destinations
-  destinationHeading:    string
-  destinationSubtitle?:  string
-  destinationBody?:      string
-  destinationRows:       ImmerseDestinationRow[]
-  // pricing
+  welcomeLetter:   ImmerseWelcomeLetter
+  eyebrow:         string
+  title:           string
+  subtitle:        string
+  heroImageSrc:    string
+  heroImageAlt:    string
+  heroImageSrc2?:  string
+  heroImageAlt2?:  string
+  heroTitle2?:     string
+  heroSubtitle2?:  string
+  heroPills:       string[]
+  routeHeading:    string
+  routeBody:       string
+  routeEyebrow?:   string
+  routeStops:      ImmerseRouteStop[]
+  destinationHeading:   string
+  destinationSubtitle?: string
+  destinationBody?:     string
+  destinationRows:      ImmerseDestinationRow[]
   pricingHeading:      string
   pricingTitle:        string
   pricingBody:         string
@@ -288,47 +243,40 @@ export type ImmerseEngagementData = {
 // ─── Destination subpage ──────────────────────────────────────────────────────
 
 export type ImmerseDestinationData = {
-  // meta
-  destinationId:   string   // UUID — primary DB identity
-  destinationSlug: string   // URL-facing slug (e.g. "new-york")
+  destinationId:   string
+  destinationSlug: string
   journeyId:       string
   shorthand?:      string
-  // hero
-  eyebrow:      string
-  title:        string
-  subtitle:     string
-  heroImageSrc: string
-  heroImageAlt: string
-  heroImageSrc2?: string
-  heroImageAlt2?: string
-  heroTitle2?:    string
-  heroSubtitle2?: string
-  heroPills:    string[]
-  // intro
-  introEyebrow: string
-  introTitle:   string
-  introBody:    string
-  // hotels — flat OR region-grouped depending on destination
-  hotelsEyebrow: string
-  hotelsTitle:   string
-  hotelsBody:    string
-  hotels:        ImmerseDestinationHotelsShape
-  // dining
-  diningEyebrow: string
-  diningTitle:   string
-  diningBody:    string
-  dining:        ImmerseContentCard[]
-  // experiences
+  eyebrow:         string
+  title:           string
+  subtitle:        string
+  heroImageSrc:    string
+  heroImageAlt:    string
+  heroImageSrc2?:  string
+  heroImageAlt2?:  string
+  heroTitle2?:     string
+  heroSubtitle2?:  string
+  heroPills:       string[]
+  introEyebrow:    string
+  introTitle:      string
+  introBody:       string
+  hotelsEyebrow:   string
+  hotelsTitle:     string
+  hotelsBody:      string
+  hotels:          ImmerseDestinationHotelsShape
+  diningEyebrow:   string
+  diningTitle:     string
+  diningBody:      string
+  dining:          ImmerseContentCard[]
   experiencesEyebrow: string
   experiencesTitle:   string
   experiencesBody:    string
   experiences:        ImmerseContentCard[]
-  // pricing
   pricingEyebrow:      string
   pricingTitle:        string
   pricingBody:         string
   pricingRows:         ImmersePricingRow[]
-  pricingCloser:       ImmersePricingCloser  // per-engagement overlay of canonical default closer
+  pricingCloser:       ImmersePricingCloser
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        string[]
