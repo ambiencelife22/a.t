@@ -48,7 +48,7 @@
  *   depending on programme.ambience.travel for session establishment.
  *   Signup mode (?signup=1) is unaffected — remains programme-context only.
  *
- * Last updated: S40D — Added 'login' route at /login for admin auth.
+ * Prior: S40D — Added 'login' route at /login for admin auth.
  * Prior: S37 — Added 'guides-hotels' route. resolveGuidePath() now
  *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
  *   on surface. New lazy import HotelGuideRoute. Mirrors S35 dining shape.
@@ -151,16 +151,17 @@ function isGuidesHost(): boolean {
 // S35/S37 — resolve guide path segments.
 function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hotels' | 'experiences' } | null {
   const pathname = window.location.pathname.replace(/\/+$/, '')
-  let stripped: string
 
+  let stripped: string
   if (isGuidesHost()) {
     stripped = pathname.replace(/^\/+/, '')
-  } else {
+  }
+  if (!isGuidesHost()) {
     if (!pathname.startsWith('/guides/')) return null
     stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
   }
 
-  const parts = stripped.split('/').filter(Boolean)
+  const parts = (stripped!).split('/').filter(Boolean)
   if (parts.length === 2 && (parts[1] === 'dining' || parts[1] === 'hotels' || parts[1] === 'experiences')) {
     return { destinationSlug: parts[0], surface: parts[1] as 'dining' | 'hotels' | 'experiences' }
   }

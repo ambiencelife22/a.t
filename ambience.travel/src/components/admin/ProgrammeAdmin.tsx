@@ -417,26 +417,29 @@ export function ProgrammesTab() {
         .from('travel_programme_master')
         .update(payload)
         .eq('id', editing.id)
-
+ 
       if (error) {
         showToast(`Failed to update programme: ${error.message}`, 'error')
         setSaving(false)
         return
       }
       showToast('Programme updated.', 'success')
-    } else {
-      const { error } = await supabase
-        .from('travel_programme_master')
-        .insert(payload)
-
-      if (error) {
-        showToast(error.message.includes('unique') ? 'URL ID already exists.' : `Failed to create programme: ${error.message}`, 'error')
-        setSaving(false)
-        return
-      }
-      showToast('Programme created.', 'success')
+      setSaving(false)
+      cancelForm()
+      load()
+      return
     }
-
+ 
+    const { error } = await supabase
+      .from('travel_programme_master')
+      .insert(payload)
+ 
+    if (error) {
+      showToast(error.message.includes('unique') ? 'URL ID already exists.' : `Failed to create programme: ${error.message}`, 'error')
+      setSaving(false)
+      return
+    }
+    showToast('Programme created.', 'success')
     setSaving(false)
     cancelForm()
     load()
@@ -802,10 +805,10 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
     if (existing) {
       setEditing(existing)
       setEditContent(JSON.parse(JSON.stringify(existing.content)))
-    } else {
-      setEditing({ id: '', section_id: section.id, content: [] })
-      setEditContent([])
+      return
     }
+    setEditing({ id: '', section_id: section.id, content: [] })
+    setEditContent([])
   }
 
   function cancelEdit() {
@@ -820,7 +823,8 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
     if (existing) {
       const { error } = await supabase.from('travel_programme_sections').update({ content: editContent }).eq('id', existing.id)
       if (error) { showToast(`Failed to save override: ${error.message}`, 'error'); setSaving(false); return }
-    } else {
+    }
+    if (!existing) {
       const { error } = await supabase.from('travel_programme_sections').insert({ programme_id: programmeId, section_id: editing.section_id, content: editContent })
       if (error) { showToast(`Failed to save override: ${error.message}`, 'error'); setSaving(false); return }
     }
@@ -1237,15 +1241,22 @@ export function ListingsTab() {
       property_id: selectedProp,
     }
 
-    if (editing) {
+     if (editing) {
       const { error } = await supabase.from('travel_programme_property_listings').update(payload).eq('id', editing.id)
       if (error) { showToast(`Failed to update listing: ${error.message}`, 'error'); setSaving(false); return }
       showToast('Listing updated.', 'success')
-    } else {
-      const { error } = await supabase.from('travel_programme_property_listings').insert(payload)
-      if (error) { showToast(`Failed to create listing: ${error.message}`, 'error'); setSaving(false); return }
-      showToast('Listing created.', 'success')
+      setSaving(false)
+      cancelForm()
+      loadListings()
+      return
     }
+ 
+    const { error } = await supabase.from('travel_programme_property_listings').insert(payload)
+    if (error) { showToast(`Failed to create listing: ${error.message}`, 'error'); setSaving(false); return }
+    showToast('Listing created.', 'success')
+    setSaving(false)
+    cancelForm()
+    loadListings()
 
     setSaving(false)
     cancelForm()
