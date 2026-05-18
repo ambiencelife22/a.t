@@ -27,7 +27,8 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile, TripBrief, TripBriefPatch, JourneyStep,
 } from '../../lib/adminTripQueries'
-import { upsertTripBrief, updateBookingBriefFields } from '../../lib/adminTripQueries'
+import { upsertTripBrief, updateBookingBriefFields, createBookingRoom, updateBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
+import type { BookingRoom, BookingRoomPatch } from '../../lib/adminTripQueries'
 import { useDossierDownload } from '../../lib/useDossierDownload'
 import { useBriefDownload } from '../../lib/useBriefDownload'
 import type { ClientDossierData } from '../../lib/clientDossierPdf'
@@ -143,6 +144,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
   const [advisorPhone,    setAdvisorPhone]    = useState(br?.advisor_phone    ?? '')
   const [hotelNote,       setHotelNote]       = useState(br?.hotel_contact_note ?? 'Shared closer to arrival')
   const [footerTagline,   setFooterTagline]   = useState(br?.footer_tagline   ?? '')
+  const [heroImageSrc,    setHeroImageSrc]    = useState(br?.hero_image_src    ?? '')
   const [notesRaw,        setNotesRaw]        = useState((br?.important_notes ?? []).join('\n'))
   const [stepsRaw,        setStepsRaw]        = useState(
     (br?.journey_steps ?? []).map(s => `${s.icon}|${s.label}|${s.detail}`).join('\n')
@@ -170,6 +172,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
         advisor_phone:        advisorPhone    || null,
         hotel_contact_note:   hotelNote       || null,
         footer_tagline:       footerTagline   || null,
+        hero_image_src:       heroImageSrc    || null,
         important_notes:      notes,
         journey_steps:        steps,
       }
@@ -207,7 +210,22 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
           {editOpen ? 'Close Brief Editor' : (br ? 'Edit Brief' : 'Create Brief')}
         </button>
         <button
-          onClick={() => handleDownloadBrief({ trip, brief: trip.brief, house, destinationName: trip.destinations?.[0] ?? trip.trip_code, heroImageData: null })}
+          onClick={async () => {
+          let heroData: string | null = null
+          const heroSrc = trip.brief?.hero_image_src
+          if (heroSrc) {
+            try {
+              const res = await fetch(heroSrc)
+              const blob = await res.blob()
+              heroData = await new Promise(resolve => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as string)
+                reader.readAsDataURL(blob)
+              })
+            } catch { heroData = null }
+          }
+          handleDownloadBrief({ trip, brief: trip.brief, house, destinationName: trip.destinations?.[0] ?? trip.trip_code, heroImageData: heroData })
+        }}
           disabled={!pdfReady || pdfDownloading}
           style={{ ...btnBase, background: 'transparent', color: pdfReady && !pdfDownloading ? A.gold : A.faint, border: `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`, cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed' }}
         >
@@ -234,6 +252,10 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
               <div>
                 <label style={labelStyle}>Prepared For</label>
                 <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.display_name ?? ''} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Hero Image URL</label>
+                <input style={inputStyle} value={heroImageSrc} onChange={e => setHeroImageSrc(e.target.value)} placeholder='https://...' />
               </div>
             </div>
           </div>
@@ -335,6 +357,118 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
     <div>
       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{value}</div>
+    </div>
+  )
+}
+
+
+// ── RoomsEditor ───────────────────────────────────────────────────────────────
+
+function RoomsEditor({ booking }: { booking: TripBooking }) {
+  const [rooms,   setRooms]   = useState<BookingRoom[]>(booking._rooms)
+  const [adding,  setAdding]  = useState(false)
+  const [saving,  setSaving]  = useState<string | null>(null)
+  const [editId,  setEditId]  = useState<string | null>(null)
+
+  // New room form state
+  const [newRoomName,    setNewRoomName]    = useState('')
+  const [newConfNum,     setNewConfNum]     = useState('')
+  const [newGuestName,   setNewGuestName]   = useState('')
+  const [newPartyComp,   setNewPartyComp]   = useState('')
+  const [newNotes,       setNewNotes]       = useState('')
+
+  async function handleAdd() {
+    setSaving('add')
+    try {
+      const r = await createBookingRoom(booking.id, {
+        room_name: newRoomName || null,
+        confirmation_number: newConfNum || null,
+        guest_name: newGuestName || null,
+        party_composition: newPartyComp || null,
+        notes: newNotes || null,
+        sort_order: rooms.length,
+      })
+      setRooms(prev => [...prev, r])
+      setAdding(false)
+      setNewRoomName(''); setNewConfNum(''); setNewGuestName(''); setNewPartyComp(''); setNewNotes('')
+    } catch { /* silent */ }
+    finally { setSaving(null) }
+  }
+
+  async function handleDelete(roomId: string) {
+    setSaving(roomId)
+    try {
+      await deleteBookingRoom(roomId)
+      setRooms(prev => prev.filter(r => r.id !== roomId))
+    } catch { /* silent */ }
+    finally { setSaving(null) }
+  }
+
+  return (
+    <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
+          Rooms ({rooms.length})
+        </div>
+        <button
+          onClick={() => setAdding(o => !o)}
+          style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}
+        >
+          {adding ? 'Cancel' : '+ Add Room'}
+        </button>
+      </div>
+
+      {/* Existing rooms */}
+      {rooms.map(r => (
+        <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {r.confirmation_number && (
+              <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>
+            )}
+            {r.guest_name && (
+              <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>
+            )}
+            {r.party_composition && (
+              <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>
+            )}
+            {r.room_name && (
+              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>
+            )}
+            {r.notes && (
+              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>
+            )}
+          </div>
+          <button
+            onClick={() => handleDelete(r.id)}
+            disabled={saving === r.id}
+            style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}
+          >
+            {saving === r.id ? '...' : '✕'}
+          </button>
+        </div>
+      ))}
+
+      {/* Add room form */}
+      {adding && (
+        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div><label style={labelStyle}>Guest Name</label><input style={inputStyle} value={newGuestName} onChange={e => setNewGuestName(e.target.value)} placeholder='Princess Nouf' /></div>
+            <div><label style={labelStyle}>Confirmation #</label><input style={inputStyle} value={newConfNum} onChange={e => setNewConfNum(e.target.value)} placeholder='4375602759' /></div>
+            <div><label style={labelStyle}>Party Composition</label><input style={inputStyle} value={newPartyComp} onChange={e => setNewPartyComp(e.target.value)} placeholder='2 Adults, 2 Children' /></div>
+            <div><label style={labelStyle}>Room Name</label><input style={inputStyle} value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder='Two-Bedroom Suite' /></div>
+            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Notes</label><input style={inputStyle} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder='Includes rollaway bed' /></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={handleAdd}
+              disabled={saving === 'add'}
+              style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: 'pointer' }}
+            >
+              {saving === 'add' ? 'Adding...' : 'Add Room'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -538,6 +672,9 @@ function BookingCard({ booking: b, partners, mobile, house }: {
               </div>
             </div>
           </div>
+
+          {/* Rooms editor */}
+          <RoomsEditor booking={b} />
 
           {/* Download Dossier */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 2 }}>

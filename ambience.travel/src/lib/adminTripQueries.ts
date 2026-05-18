@@ -1,19 +1,15 @@
 // adminTripQueries.ts
 // Trip Dossier query layer — reads travel_bookings, travel_trips,
 // travel_partners, travel_accom_hotels for the HouseTab Trip Dossier surface.
-// Also owns travel_trip_briefs CRUD for the Confirmation Brief generator.
+// Also owns travel_trip_briefs + travel_booking_rooms CRUD.
 //
 // All column names verified against information_schema S44/S45 pre-flight.
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
-// Prior S44 path via travel_immerse_engagements.house_id was broken —
-// that column does not exist on travel_immerse_engagements.
 //
-// Partner names resolved client-side from partner map to avoid extra joins.
-// House profile pulled in parallel with partners for dossier pre-population.
-//
-// Last updated: S45 — add TripBrief type, fetchTripBrief, upsertTripBrief;
-//   add brief overlay columns to TripBooking type + select string.
+// Last updated: S45 — add BookingRoom type; fetch rooms in Step 5 parallel;
+//   attach rooms to TripBooking; add room CRUD functions.
+// Prior: S45 — TripBrief type, fetchTripBrief, upsertTripBrief.
 // Prior: S45 — fix Step 1 join; house profile; new booking columns.
 // Prior: S44 — initial ship.
 
@@ -40,46 +36,58 @@ export type HouseProfile = {
 }
 
 export type JourneyStep = {
-  icon:   string   // vocabulary: flight | car | bed | dining | anchor | yacht | experience | departure | transfer | wellness
-  label:  string   // e.g. "ARRIVAL"
-  detail: string   // e.g. "in Nice"
+  icon:   string
+  label:  string
+  detail: string
 }
 
 export type TripBrief = {
   id:                   string
   trip_id:              string
   house_id:             string | null
-  // Cover
   brief_title:          string | null
   brief_subtitle:       string | null
   prepared_for:         string | null
   hero_image_src:       string | null
   hero_image_alt:       string | null
-  // Snapshot
   snapshot_destination: string | null
   snapshot_dates:       string | null
   snapshot_guests:      string | null
   snapshot_status:      string | null
-  // Journey
   journey_steps:        JourneyStep[]
-  // Contacts
   advisor_name:         string | null
   advisor_email:        string | null
   advisor_phone:        string | null
   hotel_contact_note:   string | null
-  // Notes
   important_notes:      string[]
-  // Footer
   footer_tagline:       string | null
-  // Meta
   created_at:           string
   updated_at:           string
 }
 
 export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
 
+export type BookingRoom = {
+  id:                  string
+  booking_id:          string
+  room_name:           string | null
+  confirmation_number: string | null
+  guest_name:          string | null
+  party_composition:   string | null
+  notes:               string | null
+  nights:              number | null
+  rate:                number | null
+  tax_pct:             number | null
+  total:               number | null
+  brief_image_src:     string | null
+  sort_order:          number
+  created_at:          string
+  updated_at:          string
+}
+
+export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>
+
 export type TripBooking = {
-  // Core identity
   id:                     string
   trip_id:                string
   house_id:               string | null
@@ -88,11 +96,9 @@ export type TripBooking = {
   name:                   string | null
   status:                 string | null
   confirmation_number:    string | null
-  // Dates
   start_date:             string | null
   end_date:               string | null
   nights:                 number | null
-  // Financials
   commissionable_rate:    number | null
   total_rate:             number | null
   taxes_and_fees:         number | null
@@ -100,20 +106,17 @@ export type TripBooking = {
   rate_type:              string | null
   inclusions:             string | null
   price:                  number | null
-  // Payment
   deposit_amount:         number | null
   deposit_due_date:       string | null
   deposit_paid_at:        string | null
   balance_amount:         number | null
   balance_due_date:       string | null
   balance_paid_at:        string | null
-  // Commission
   commission_pct:         number | null
   commission_amount:      number | null
   net_revenue:            number | null
   commission_paid_at:     string | null
   invoice_number:         string | null
-  // Partners (IDs — resolve display via partner map)
   iata_partner_id:        string | null
   iata_share_pct:         number | null
   iata_share_amt:         number | null
@@ -123,30 +126,27 @@ export type TripBooking = {
   individual_id:          string | null
   individual_share_pct:   number | null
   individual_share_amt:   number | null
-  // Supplier
   accom_hotel_id:         string | null
   supplier_id:            string | null
   supplier_name_override: string | null
-  // Dossier fields (S45)
   party_composition:         string | null
   primary_contact_name:      string | null
   primary_contact_role:      string | null
   supplier_contact_name:     string | null
   supplier_contact_whatsapp: string | null
-  // Brief overlay fields (S45)
   brief_category:  string | null
   brief_show:      boolean
   brief_image_src: string | null
   booked_by:       string | null
-  // Policy
   cancellation_policy:    string | null
   booking_policy:         string | null
   notes:                  string | null
   sort_order:             number | null
   created_at:             string | null
   updated_at:             string | null
-  // Client-resolved hotel name
-  _hotel_name:            string | null
+  // Client-resolved
+  _hotel_name: string | null
+  _rooms:      BookingRoom[]
 }
 
 export type DossierTrip = {
@@ -174,11 +174,12 @@ export type TripDossierData = {
 
 type BookingTripRow = { trip_id: string }
 type TripRow        = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; destinations: string[] | null; guest_count_adults: number | null; guest_count_children: number | null }
-type BookingRow     = Omit<TripBooking, '_hotel_name'>
+type BookingRow     = Omit<TripBooking, '_hotel_name' | '_rooms'>
 type HotelRow       = { id: string; name: string }
 type PartnerRow     = TripPartner
 type HouseRow       = HouseProfile
 type BriefRow       = TripBrief
+type RoomRow        = BookingRoom
 
 // ── Main dossier query ────────────────────────────────────────────────────────
 
@@ -228,8 +229,10 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     for (const h of (hotelData ?? []) as HotelRow[]) hotelNameMap.set(h.id, h.name)
   }
 
-  // Step 5: partners + house profile + briefs (parallel)
-  const [partnerResult, houseResult, briefResult] = await Promise.all([
+  // Step 5: partners + house + briefs + rooms (parallel)
+  const bookingIds = bookingRows.map(b => b.id)
+
+  const [partnerResult, houseResult, briefResult, roomResult] = await Promise.all([
     supabase
       .from('travel_partners')
       .select('id, name, partner_type, default_share_pct, currency, is_active'),
@@ -242,6 +245,13 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
       .from('travel_trip_briefs')
       .select('*')
       .in('trip_id', tripIds),
+    bookingIds.length > 0
+      ? supabase
+          .from('travel_booking_rooms')
+          .select('*')
+          .in('booking_id', bookingIds)
+          .order('sort_order', { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   if (partnerResult.error) throw new Error(partnerResult.error.message)
@@ -253,6 +263,12 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   const briefMap = new Map<string, TripBrief>()
   for (const br of (briefResult.data ?? []) as BriefRow[]) briefMap.set(br.trip_id, br)
 
+  const roomsByBooking = new Map<string, BookingRoom[]>()
+  for (const r of (roomResult.data ?? []) as RoomRow[]) {
+    if (!roomsByBooking.has(r.booking_id)) roomsByBooking.set(r.booking_id, [])
+    roomsByBooking.get(r.booking_id)!.push(r)
+  }
+
   // Step 6: assemble
   const bookingsByTrip = new Map<string, TripBooking[]>()
   for (const b of bookingRows) {
@@ -260,6 +276,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     bookingsByTrip.get(b.trip_id)!.push({
       ...b,
       _hotel_name: b.accom_hotel_id ? (hotelNameMap.get(b.accom_hotel_id) ?? null) : null,
+      _rooms:      roomsByBooking.get(b.id) ?? [],
     })
   }
 
@@ -296,10 +313,7 @@ export async function fetchTripBrief(tripId: string): Promise<TripBrief | null> 
 export async function upsertTripBrief(tripId: string, houseId: string, patch: TripBriefPatch): Promise<TripBrief> {
   const { data, error } = await supabase
     .from('travel_trip_briefs')
-    .upsert(
-      { trip_id: tripId, house_id: houseId, ...patch },
-      { onConflict: 'trip_id' }
-    )
+    .upsert({ trip_id: tripId, house_id: houseId, ...patch }, { onConflict: 'trip_id' })
     .select()
     .single()
   if (error) throw new Error(error.message)
@@ -310,9 +324,44 @@ export async function updateBookingBriefFields(
   bookingId: string,
   patch: { brief_category?: string | null; brief_show?: boolean; brief_image_src?: string | null; booked_by?: string | null }
 ): Promise<void> {
-  const { error } = await supabase
-    .from('travel_bookings')
+  const { error } = await supabase.from('travel_bookings').update(patch).eq('id', bookingId)
+  if (error) throw new Error(error.message)
+}
+
+// ── Room CRUD ─────────────────────────────────────────────────────────────────
+
+export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[]> {
+  const { data, error } = await supabase
+    .from('travel_booking_rooms')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .order('sort_order', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as BookingRoom[]
+}
+
+export async function createBookingRoom(bookingId: string, patch: BookingRoomPatch): Promise<BookingRoom> {
+  const { data, error } = await supabase
+    .from('travel_booking_rooms')
+    .insert({ booking_id: bookingId, ...patch })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as BookingRoom
+}
+
+export async function updateBookingRoom(roomId: string, patch: BookingRoomPatch): Promise<BookingRoom> {
+  const { data, error } = await supabase
+    .from('travel_booking_rooms')
     .update(patch)
-    .eq('id', bookingId)
+    .eq('id', roomId)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as BookingRoom
+}
+
+export async function deleteBookingRoom(roomId: string): Promise<void> {
+  const { error } = await supabase.from('travel_booking_rooms').delete().eq('id', roomId)
   if (error) throw new Error(error.message)
 }
