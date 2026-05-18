@@ -19,7 +19,7 @@
 //   experiences — ExperienceVenue[], no recognition marks, kicker in eyebrow slot,
 //                 at_a_glance_bullets from overlay on welcome page
 //
-// Last updated: S41 — Added experiences variant. ExportGuidePdfOptions is now
+// Prior: S41 — Added experiences variant. ExportGuidePdfOptions is now
 //   a discriminated union. renderCard branches on variant. Recognition key
 //   omitted for experiences. Welcome page at-a-glance sourced from overlay
 //   for experiences. jsPDF load extracted to usePdfDownload hook.
@@ -236,14 +236,17 @@ async function renderCoverPage(ctx: RenderCtx) {
   for (const line of introLines) { doc.text(line, PAGE.margin + 4, introY); introY += 5.5 }
 
   const heroTop = 162; const heroBottom = 270
+  let heroDrawn = false
   if (heroImageSrc) {
     try {
       const imgData = await loadImageAsDataUrl(heroImageSrc)
       if (imgData) {
         doc.addImage(imgData.data, imgData.format, 0, heroTop, PAGE.width, heroBottom - heroTop, undefined, 'FAST')
-      } else { drawHeroFallback(doc, heroTop, heroBottom) }
-    } catch { drawHeroFallback(doc, heroTop, heroBottom) }
-  } else { drawHeroFallback(doc, heroTop, heroBottom) }
+        heroDrawn = true
+      }
+    } catch { /* fall through to fallback */ }
+  }
+  if (!heroDrawn) { drawHeroFallback(doc, heroTop, heroBottom) }
 }
 
 function drawHeroFallback(doc: any, top: number, bottom: number) {
@@ -291,7 +294,6 @@ function renderWelcomePage(ctx: RenderCtx) {
   doc.setTextColor(...THEME.ink)
   doc.text('At a Glance', PAGE.margin + 8, panelTop + 12)
 
-  // Experiences: pull from overlay.at_a_glance_bullets; Dining: use defaults
   const atAGlanceBullets: string[] = variant === 'experiences' && overlay?.at_a_glance_bullets?.length
     ? overlay.at_a_glance_bullets
     : variant === 'experiences'
@@ -507,8 +509,6 @@ function computeCardHeight(doc: any, venue: any, variant: 'dining' | 'experience
       venue.worlds_50_best
     if (hasRecognition) textHeight += 6
     if (venue.neighborhood) textHeight += 5
-  } else {
-    // experiences: no recognition, no neighborhood
   }
 
   if (venue.body) {
@@ -529,20 +529,22 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
            PAGE.width - PAGE.margin, top + cardHeight + CARD.rowGap / 2)
 
   const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
+  let cardImgDrawn = false
   if (venue.image_src) {
     try {
       const imgData = await loadImageAsDataUrl(venue.image_src)
       if (imgData) {
         doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
-      } else { drawImageFallback(doc, imgX, imgY, venue.name) }
-    } catch { drawImageFallback(doc, imgX, imgY, venue.name) }
-  } else { drawImageFallback(doc, imgX, imgY, venue.name) }
+        cardImgDrawn = true
+      }
+    } catch { /* fall through to fallback */ }
+  }
+  if (!cardImgDrawn) { drawImageFallback(doc, imgX, imgY, venue.name) }
 
   const textX = imgX + CARD.imageWidth + 8
   const textWidth = cardWidth - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  // Eyebrow slot: cuisine_subcategory (dining) or kicker (experiences)
   const eyebrow = variant === 'dining' ? venue.cuisine_subcategory : venue.kicker
   if (eyebrow) {
     setSans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
@@ -554,7 +556,6 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
   doc.text(venue.name, textX, ty)
   ty += 6
 
-  // Recognition marks — dining only
   if (variant === 'dining') {
     const hasStars = venue.michelin_award === 'star' && venue.michelin_stars
     const hasBib   = venue.michelin_award === 'bib_gourmand'
@@ -745,8 +746,12 @@ function setSerif(doc: any, style: 'normal' | 'italic', size: number) {
 }
 
 function setSans(doc: any, style: 'normal' | 'bold' | 'italic' | 'medium', size: number) {
-  if (style === 'medium') { doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal') }
-  else { doc.setFont(PDF_FONTS.sans, style) }
+  if (style === 'medium') {
+    doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal')
+    doc.setFontSize(size)
+    return
+  }
+  doc.setFont(PDF_FONTS.sans, style)
   doc.setFontSize(size)
 }
 

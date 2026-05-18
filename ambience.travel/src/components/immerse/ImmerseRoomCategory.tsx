@@ -13,7 +13,6 @@
 //   levelLabel (room name: "Oceanfront One Bedroom Suite", "Corner Suite").
 //   Prior bug: was rendering roomBasis ("Room Only") as title.
 // S32: detect numeric rate strings ($1,200 / €420 / EURO 5,400 / GBP 800 / 1500).
-// Anything else (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD')
 // is treated as informational copy and rendered without the cadence suffix.
 // S32 — Three rendering fixes on the chip row:
 //   (1) Square footage range collapses when min === max (was: '678–678 SQ FT'
@@ -26,7 +25,7 @@
 //   (3) Non-numeric rate chips drop white-space: nowrap so the long copy can
 //       wrap on narrow viewports instead of bleeding off the card edge.
 //   Detection: rate string starts with currency symbol ($/€/£/¥) or digit →
-//   numeric. Anything else → copy. Cheap and handles every realistic case.
+//   numeric.
 // Prior: S31 — Room transition animation swapped from immerseFadeIn
 //   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Slide felt like
 //   a page jump on room switch.
@@ -41,7 +40,7 @@ import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
 import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/immerseTypes'
 
-// S32: detect numeric rate strings ($1,200 / €420 / 1500). Anything else
+// S32: detect numeric rate strings ($1,200 / €420 / 1500)
 // (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is
 // treated as informational copy and rendered without the cadence suffix.
 function isNumericRate(rate: string): boolean {

@@ -15,7 +15,7 @@
  * in HouseDetail.loadAll and passed in as TripDossierData.
  *
  * Last updated: S46 — Edit Brief navigates to BriefEditorPage; inline editor
- *   removed from TripActionPanel. All else chains removed.
+ *   removed from TripActionPanel.
  * Prior: S45 — TripActionPanel added; confirmationBriefPdf wired;
  *   TripBrief edit form (inline); brief overlay fields on BookingCard.
  * Prior: S45 — Download Dossier button wired per BookingCard.

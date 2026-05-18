@@ -13,7 +13,7 @@
 //
 // All column names verified against information_schema S44 pre-flight.
 //
-// Last updated: S44 — initial ship.
+// Prior: S44 — initial ship.
 
 import { supabase } from './supabase'
 import type { TripPartner } from './adminTripQueries'
@@ -300,7 +300,8 @@ function computeSummary(trips: OpsTrip[]): OpsSummary {
       s.total_commission += commission
       if (b.commission_paid_at) {
         s.commission_paid += commission
-      } else {
+      }
+      if (!b.commission_paid_at) {
         s.commission_unpaid += commission
       }
 

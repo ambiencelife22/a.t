@@ -39,7 +39,7 @@ export const experience = {
     eyebrow: 'Why this exists',
     title:   'A signature experience held with intention.',
     body: [
-      'Iceland offers a kind of clarity that is difficult to manufacture elsewhere. The landscape strips away noise. The pace invites presence. The contrast between warmth and cold, stillness and movement, openness and shelter becomes part of the experience itself.',
+      'Iceland offers a kind of clarity that is difficult to realize in any other location. The landscape strips away noise. The pace invites presence. The contrast between warmth and cold, stillness and movement, openness and shelter becomes part of the experience itself.',
       '4 Elements is designed as an ambience Signature Experience: calm in tone, precise in composition, and quietly transformative in how it is held. It is not simply about seeing Iceland. It is about moving through it in a way that changes how it feels to be inside your own life.',
     ],
   },

@@ -262,7 +262,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
               <button
                 ref={el => {
                   if (el) buttonRefs.current.set(section.id, el)
-                  else    buttonRefs.current.delete(section.id)
+                  if (!el) buttonRefs.current.delete(section.id)
                 }}
                 onClick={() => handleToggle(section.id)}
                 style={{

@@ -594,6 +594,7 @@ function EditModal({
   function patch<K extends keyof OverrideDraft>(key: K, value: OverrideDraft[K]) {
     setDraft(prev => ({ ...prev, [key]: value }))
   }
+// Replace the handleSave function inside EditModal with this version
 
   async function handleSave() {
     setSaving(true)
@@ -612,25 +613,26 @@ function EditModal({
         return
       }
 
-      // If after the change everything is back to defaults (all null) AND
-      // an override row exists, delete the override row entirely.
       const allDefault = (Object.keys(draft) as (keyof OverrideDraft)[])
         .every(k => draft[k] === null)
 
       if (allDefault && card.override_id) {
         await deleteOverride(card.override_id)
         showToast('Reset to defaults.', 'success')
-      } else {
-        const cardId = (card.kind === 'dining' ? card.dining_venue_id : card.experience_id) ?? ''
-        await upsertOverride({
-          trip_id:     card.trip_id,
-          kind:        card.kind,
-          card_id:     cardId,
-          override_id: card.override_id,
-          fields,
-        })
-        showToast(`Saved ${Object.keys(fields).length} change${Object.keys(fields).length === 1 ? '' : 's'}.`, 'success')
+        onSaved()
+        setSaving(false)
+        return
       }
+
+      const cardId = (card.kind === 'dining' ? card.dining_venue_id : card.experience_id) ?? ''
+      await upsertOverride({
+        trip_id:     card.trip_id,
+        kind:        card.kind,
+        card_id:     cardId,
+        override_id: card.override_id,
+        fields,
+      })
+      showToast(`Saved ${Object.keys(fields).length} change${Object.keys(fields).length === 1 ? '' : 's'}.`, 'success')
 
       onSaved()
     } catch (e: unknown) {
@@ -639,7 +641,6 @@ function EditModal({
     }
     setSaving(false)
   }
-
   async function handleResetAll() {
     const confirmed = window.confirm(
       `Reset all customisations on this card?\n\n` +

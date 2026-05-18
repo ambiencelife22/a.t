@@ -13,7 +13,7 @@
 //   the route stops included an origin (e.g. v2: Saudi Start as stops[0])
 //   because route_stops and destination_rows have different cardinalities —
 //   stops include origin/return, rows do not. Title match: stop title is
-//   tested against each destination row's title; first match wins, else
+//   tested against each destination row's title; first match wins, otherwise
 //   anchorId stays null and the stop renders non-clickable. Origin/return
 //   stops naturally have no matching row → correctly non-clickable. Any
 //   route stop whose title matches its destination row's title scrolls

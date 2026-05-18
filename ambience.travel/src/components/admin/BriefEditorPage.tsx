@@ -19,7 +19,7 @@
  * Save: upsertTripBrief + updateBookingBriefFields for all bookings.
  * Download: exportConfirmationBriefPdf — uses preview state, hero pre-loaded.
  *
- * Last updated: S46 — initial ship.
+ * Prior: S46 — initial ship.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -154,16 +154,16 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     footerTagline, heroImageSrc, notesRaw, stepsRaw, trip, house,
   } = fields
 
-  const title     = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.trip_code
-  const subtitle  = briefSubtitle || 'TRIP CONFIRMATION BRIEF'
-  const pfor      = preparedFor || house?.display_name || ''
-  const dates     = snapDates || buildDateRange(trip.start_date, trip.end_date)
-  const dest      = snapDest  || trip.destinations[0]?.name || ''
-  const guests    = snapGuests || `${trip.guest_count_adults ?? 0} Adults`
-  const status    = snapStatus || 'Confirmed'
-  const footer    = footerTagline || 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
-  const notes     = notesRaw.split('\n').map(s => s.trim()).filter(Boolean)
-  const steps     = stepsRaw.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
+  const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.trip_code
+  const subtitle = briefSubtitle || 'TRIP CONFIRMATION BRIEF'
+  const pfor     = preparedFor || house?.display_name || ''
+  const dates    = snapDates || buildDateRange(trip.start_date, trip.end_date)
+  const dest     = snapDest  || trip.destinations[0]?.name || ''
+  const guests   = snapGuests || `${trip.guest_count_adults ?? 0} Adults`
+  const status   = snapStatus || 'Confirmed'
+  const footer   = footerTagline || 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
+  const notes    = notesRaw.split('\n').map(s => s.trim()).filter(Boolean)
+  const steps    = stepsRaw.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
     const [icon, label, ...rest] = line.split('|')
     return { icon: icon?.trim() ?? '', label: label?.trim() ?? '', detail: rest.join('|').trim() }
   }).filter(s => s.label)
@@ -179,20 +179,28 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
       for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-    } else {
-      allRooms.push({
-        room: {
-          id: b.id, booking_id: b.id,
-          room_name: b.name, confirmation_number: b.confirmation_number,
-          guest_name: house?.display_name ?? null,
-          party_composition: b.party_composition, notes: b.inclusions ?? null,
-          nights: b.nights, rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-          total: null, brief_image_src: b.brief_image_src,
-          sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
-        },
-        booking: b,
-      })
+      continue
     }
+    allRooms.push({
+      room: {
+        id:                  b.id,
+        booking_id:          b.id,
+        room_name:           b.name,
+        confirmation_number: b.confirmation_number,
+        guest_name:          house?.display_name ?? null,
+        party_composition:   b.party_composition,
+        notes:               b.inclusions ?? null,
+        nights:              b.nights,
+        rate:                b.commissionable_rate,
+        tax_pct:             b.taxes_and_fees,
+        total:               null,
+        brief_image_src:     b.brief_image_src,
+        sort_order:          b.sort_order ?? 0,
+        created_at:          b.created_at ?? '',
+        updated_at:          b.updated_at ?? '',
+      },
+      booking: b,
+    })
   }
 
   return (
@@ -207,12 +215,10 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         )}
-        {/* Fade */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
           background: `linear-gradient(to bottom, transparent, ${CREAM})`,
         }} />
-        {/* Frosted logo card */}
         <div style={{
           position: 'absolute', top: 16, left: 16,
           background: 'rgba(250,247,242,0.85)',
@@ -231,7 +237,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
       <div style={{ padding: '20px 28px 0' }}>
         <div style={{ fontSize: 28, fontWeight: 400, color: INK, lineHeight: 1.2, marginBottom: 6 }}>{title}</div>
 
-        {/* Gold rules + subtitle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={{ flex: 1, height: 1, background: GOLD }} />
           <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, letterSpacing: '0.12em', whiteSpace: 'nowrap' }}>
@@ -249,7 +254,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
 
         <div style={{ height: 1, background: RULE, marginBottom: 16 }} />
 
-        {/* Snapshot pills */}
         <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, textAlign: 'center', letterSpacing: '0.1em', marginBottom: 10 }}>TRIP SNAPSHOT</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 16 }}>
           {snaps.map(s => (
@@ -262,7 +266,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
 
         <div style={{ height: 1, background: RULE, marginBottom: 16 }} />
 
-        {/* Journey steps */}
         {steps.length > 0 && (
           <>
             <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 8 }}>JOURNEY</div>
@@ -283,7 +286,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
           </>
         )}
 
-        {/* Contacts */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, letterSpacing: '0.08em', marginBottom: 6 }}>PRIMARY CONTACTS</div>
@@ -300,7 +302,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
 
         <div style={{ height: 1, background: RULE, marginBottom: 16 }} />
 
-        {/* Important notes */}
         {notes.length > 0 && (
           <>
             <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 8 }}>IMPORTANT NOTES</div>
@@ -316,14 +317,12 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
           </>
         )}
 
-        {/* Room cards */}
         {allRooms.length > 0 && (
           <>
             <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 10 }}>CONFIRMED ARRANGEMENTS</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
               {allRooms.map(({ room, booking }, i) => (
                 <div key={room.id ?? i} style={{ background: '#fff', border: `1px solid ${RULE}`, borderRadius: 8, overflow: 'hidden', display: 'flex' }}>
-                  {/* Image area */}
                   <div style={{ width: 90, flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
                     {room.brief_image_src && (
                       <img src={room.brief_image_src} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
@@ -334,7 +333,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       </div>
                     )}
                   </div>
-                  {/* Content */}
                   <div style={{ flex: 1, padding: '10px 12px' }}>
                     {room.confirmation_number && (
                       <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, marginBottom: 2 }}>#{room.confirmation_number}</div>
@@ -349,11 +347,10 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       <div style={{ fontSize: 10, fontFamily: A.font, fontStyle: 'italic', color: FAINT }}>{room.room_name}</div>
                     )}
                   </div>
-                  {/* Booked-by pill */}
                   <div style={{ padding: '8px 10px', display: 'flex', alignItems: 'flex-start' }}>
                     <div style={{
                       fontSize: 8, fontFamily: A.font, fontWeight: 700,
-                      color: booking.booked_by === 'ambience' ? GOLD : FAINT,
+                      color:   booking.booked_by === 'ambience' ? GOLD : FAINT,
                       border: `1px solid ${booking.booked_by === 'ambience' ? GOLD : FAINT}`,
                       borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap',
                     }}>
@@ -366,7 +363,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
           </>
         )}
 
-        {/* Footer */}
         <div style={{ height: 1, background: RULE, marginBottom: 10 }} />
         <div style={{ fontSize: 9, fontFamily: A.font, color: FAINT, textAlign: 'center', letterSpacing: '0.06em' }}>
           {footer}
@@ -390,17 +386,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function BriefEditorPage({ tripId }: { tripId: string }) {
-  const [trip,        setTrip]        = useState<DossierTrip | null>(null)
-  const [house,       setHouse]       = useState<HouseProfile | null>(null)
-  const [loadErr,     setLoadErr]     = useState<string | null>(null)
-  const [saving,      setSaving]      = useState(false)
-  const [saveErr,     setSaveErr]     = useState<string | null>(null)
-  const [saved,       setSaved]       = useState(false)
-  const [pickerOpen,  setPickerOpen]  = useState(false)
+  const [trip,       setTrip]       = useState<DossierTrip | null>(null)
+  const [house,      setHouse]      = useState<HouseProfile | null>(null)
+  const [loadErr,    setLoadErr]    = useState<string | null>(null)
+  const [saving,     setSaving]     = useState(false)
+  const [saveErr,    setSaveErr]    = useState<string | null>(null)
+  const [saved,      setSaved]      = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
 
-  // ── Form state ──────────────────────────────────────────────────────────────
   const [briefTitle,    setBriefTitle]    = useState('')
   const [briefSubtitle, setBriefSubtitle] = useState('')
   const [preparedFor,   setPreparedFor]   = useState('')
@@ -417,7 +412,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const [notesRaw,      setNotesRaw]      = useState('')
   const [stepsRaw,      setStepsRaw]      = useState('')
 
-  // ── Load ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       const houseId = await resolveHouseIdForTrip(tripId)
@@ -459,7 +453,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
   }, [tripId])
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
   async function handleSave() {
     if (!trip || !house) return
     setSaving(true); setSaveErr(null); setSaved(false)
@@ -497,7 +490,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     }
   }
 
-  // ── Download ──────────────────────────────────────────────────────────────────
   async function handleDownload() {
     if (!trip) return
     let heroData: string | null = null
@@ -541,7 +533,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     })
   }
 
-  // ── Preview fields (debounced) ────────────────────────────────────────────────
   const [previewFields, setPreviewFields] = useState<PreviewFields | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -565,8 +556,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
   useEffect(() => { schedulePreview() }, [schedulePreview])
 
-  // ── Styles ────────────────────────────────────────────────────────────────────
-
   const btnBase: React.CSSProperties = {
     fontFamily:    A.font,
     fontSize:      11,
@@ -579,8 +568,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     transition:    'all 150ms ease',
     border:        'none',
   }
-
-  // ── Loading / error states ────────────────────────────────────────────────────
 
   if (loadErr) {
     return (
@@ -601,12 +588,9 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     )
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
-
   return (
     <div style={{ minHeight: '100vh', background: CREAM, fontFamily: A.font, color: INK }}>
 
-      {/* Top bar */}
       <div style={{
         position:     'sticky',
         top:          0,
@@ -634,11 +618,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {saveErr && <span style={{ fontSize: 10, color: '#f87171' }}>{saveErr}</span>}
           {saved   && <span style={{ fontSize: 10, color: '#4ade80', fontFamily: A.font }}>Saved</span>}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{ ...btnBase, background: INK, color: '#F7F5F0', opacity: saving ? 0.6 : 1 }}
-          >
+          <button onClick={handleSave} disabled={saving} style={{ ...btnBase, background: INK, color: '#F7F5F0', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Saving...' : 'Save Brief'}
           </button>
           <button
@@ -651,51 +631,33 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         </div>
       </div>
 
-      {/* Split layout */}
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 50px)' }}>
 
-        {/* ── Left: editor panel (40%) ──────────────────────────────────────── */}
         <div style={{
-          width:      '40%',
-          flexShrink: 0,
-          borderRight: `1px solid ${RULE}`,
-          overflowY:  'auto',
-          background: '#EDE9E2',
-          padding:    24,
-          display:    'flex',
+          width:         '40%',
+          flexShrink:    0,
+          borderRight:   `1px solid ${RULE}`,
+          overflowY:     'auto',
+          background:    '#EDE9E2',
+          padding:       24,
+          display:       'flex',
           flexDirection: 'column',
-          gap:        24,
+          gap:           24,
         }}>
 
-          {/* Cover */}
           <section>
             <div style={sectionHeadStyle}>Cover</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <Field label='Trip Title'>
-                  <input
-                    style={inputStyle}
-                    value={briefTitle}
-                    onChange={e => setBriefTitle(e.target.value)}
-                    placeholder={trip.destinations.map(d => d.name).join(' & ') || trip.trip_code}
-                  />
+                  <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || trip.trip_code} />
                 </Field>
                 <Field label='Subtitle'>
-                  <input
-                    style={inputStyle}
-                    value={briefSubtitle}
-                    onChange={e => setBriefSubtitle(e.target.value)}
-                    placeholder='Trip Confirmation Brief'
-                  />
+                  <input style={inputStyle} value={briefSubtitle} onChange={e => setBriefSubtitle(e.target.value)} placeholder='Trip Confirmation Brief' />
                 </Field>
               </div>
               <Field label='Prepared For'>
-                <input
-                  style={inputStyle}
-                  value={preparedFor}
-                  onChange={e => setPreparedFor(e.target.value)}
-                  placeholder={house?.display_name ?? ''}
-                />
+                <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.display_name ?? ''} />
               </Field>
               <Field label='Hero Image'>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -709,17 +671,11 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                     </div>
                   )}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <button
-                      onClick={() => setPickerOpen(true)}
-                      style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', textAlign: 'left' as const }}
-                    >
+                    <button onClick={() => setPickerOpen(true)} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', textAlign: 'left' as const }}>
                       {heroImageSrc ? 'Change Image' : 'Select from Library'}
                     </button>
                     {heroImageSrc && (
-                      <button
-                        onClick={() => setHeroImageSrc('')}
-                        style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}
-                      >
+                      <button onClick={() => setHeroImageSrc('')} style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}>
                         Remove
                       </button>
                     )}
@@ -729,89 +685,48 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
             </div>
           </section>
 
-          {/* Snapshot */}
           <section>
             <div style={sectionHeadStyle}>Snapshot Pills</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <Field label='Destination'>
-                <input style={inputStyle} value={snapDest} onChange={e => setSnapDest(e.target.value)} placeholder={trip.destinations[0]?.name ?? ''} />
-              </Field>
-              <Field label='Dates'>
-                <input style={inputStyle} value={snapDates} onChange={e => setSnapDates(e.target.value)} />
-              </Field>
-              <Field label='Guests'>
-                <input style={inputStyle} value={snapGuests} onChange={e => setSnapGuests(e.target.value)} placeholder={`${trip.guest_count_adults ?? 0} Adults`} />
-              </Field>
-              <Field label='Status'>
-                <input style={inputStyle} value={snapStatus} onChange={e => setSnapStatus(e.target.value)} />
-              </Field>
+              <Field label='Destination'><input style={inputStyle} value={snapDest} onChange={e => setSnapDest(e.target.value)} placeholder={trip.destinations[0]?.name ?? ''} /></Field>
+              <Field label='Dates'><input style={inputStyle} value={snapDates} onChange={e => setSnapDates(e.target.value)} /></Field>
+              <Field label='Guests'><input style={inputStyle} value={snapGuests} onChange={e => setSnapGuests(e.target.value)} placeholder={`${trip.guest_count_adults ?? 0} Adults`} /></Field>
+              <Field label='Status'><input style={inputStyle} value={snapStatus} onChange={e => setSnapStatus(e.target.value)} /></Field>
             </div>
           </section>
 
-          {/* Journey */}
           <section>
             <div style={sectionHeadStyle}>Journey Steps</div>
             <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginBottom: 6 }}>
               One per line: <span style={{ color: A.gold, fontFamily: 'DM Mono, monospace' }}>icon|LABEL|detail</span>
               {' '}&middot; Icons: flight, car, bed, dining, anchor, yacht, experience, departure, transfer, wellness
             </div>
-            <textarea
-              style={{ ...inputStyle, height: 88, resize: 'vertical', fontFamily: 'DM Mono, monospace', fontSize: 10 }}
-              value={stepsRaw}
-              onChange={e => setStepsRaw(e.target.value)}
-              placeholder={'flight|ARRIVAL|in Nice\ncar|TRANSFER|to St. Tropez\nbed|7 NIGHTS|Cheval Blanc'}
-            />
+            <textarea style={{ ...inputStyle, height: 88, resize: 'vertical', fontFamily: 'DM Mono, monospace', fontSize: 10 }} value={stepsRaw} onChange={e => setStepsRaw(e.target.value)} placeholder={'flight|ARRIVAL|in Nice\ncar|TRANSFER|to St. Tropez\nbed|7 NIGHTS|Cheval Blanc'} />
           </section>
 
-          {/* Contacts */}
           <section>
             <div style={sectionHeadStyle}>Contacts</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <Field label='Advisor Name'>
-                <input style={inputStyle} value={advisorName} onChange={e => setAdvisorName(e.target.value)} />
-              </Field>
-              <Field label='Advisor Email'>
-                <input style={inputStyle} value={advisorEmail} onChange={e => setAdvisorEmail(e.target.value)} />
-              </Field>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <Field label='Advisor Phone'>
-                  <input style={inputStyle} value={advisorPhone} onChange={e => setAdvisorPhone(e.target.value)} />
-                </Field>
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <Field label='Hotel Contact Note'>
-                  <input style={inputStyle} value={hotelNote} onChange={e => setHotelNote(e.target.value)} />
-                </Field>
-              </div>
+              <Field label='Advisor Name'><input style={inputStyle} value={advisorName} onChange={e => setAdvisorName(e.target.value)} /></Field>
+              <Field label='Advisor Email'><input style={inputStyle} value={advisorEmail} onChange={e => setAdvisorEmail(e.target.value)} /></Field>
+              <div style={{ gridColumn: '1 / -1' }}><Field label='Advisor Phone'><input style={inputStyle} value={advisorPhone} onChange={e => setAdvisorPhone(e.target.value)} /></Field></div>
+              <div style={{ gridColumn: '1 / -1' }}><Field label='Hotel Contact Note'><input style={inputStyle} value={hotelNote} onChange={e => setHotelNote(e.target.value)} /></Field></div>
             </div>
           </section>
 
-          {/* Notes */}
           <section>
             <div style={sectionHeadStyle}>Important Notes</div>
             <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginBottom: 6 }}>One note per line</div>
-            <textarea
-              style={{ ...inputStyle, height: 72, resize: 'vertical' }}
-              value={notesRaw}
-              onChange={e => setNotesRaw(e.target.value)}
-              placeholder={'Final timings subject to reconfirmation.\nRestaurant reservations may carry cancellation policies.'}
-            />
+            <textarea style={{ ...inputStyle, height: 72, resize: 'vertical' }} value={notesRaw} onChange={e => setNotesRaw(e.target.value)} placeholder={'Final timings subject to reconfirmation.\nRestaurant reservations may carry cancellation policies.'} />
           </section>
 
-          {/* Footer */}
           <section>
             <div style={sectionHeadStyle}>Footer</div>
             <Field label='Footer Tagline (leave blank for default)'>
-              <input
-                style={inputStyle}
-                value={footerTagline}
-                onChange={e => setFooterTagline(e.target.value)}
-                placeholder='PRIVATE TRAVEL DESIGN  ·  TAILORED SUPPORT  ·  SEAMLESS EXECUTION'
-              />
+              <input style={inputStyle} value={footerTagline} onChange={e => setFooterTagline(e.target.value)} placeholder='PRIVATE TRAVEL DESIGN  ·  TAILORED SUPPORT  ·  SEAMLESS EXECUTION' />
             </Field>
           </section>
 
-          {/* Rooms summary (read-only — edit rooms from BookingCard in HouseTab) */}
           <section>
             <div style={sectionHeadStyle}>Rooms</div>
             {trip.bookings.every(b => b._rooms.length === 0) ? (
@@ -822,9 +737,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {trip.bookings.flatMap(b => b._rooms).map(r => (
                   <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '7px 10px' }}>
-                    {r.confirmation_number && (
-                      <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>#{r.confirmation_number}</div>
-                    )}
+                    {r.confirmation_number && <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>#{r.confirmation_number}</div>}
                     {r.guest_name && <div style={{ fontSize: 11, color: A.text, fontFamily: A.font, fontWeight: 700 }}>{r.guest_name}</div>}
                     {r.room_name  && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
                   </div>
@@ -835,23 +748,12 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
         </div>
 
-        {/* ── Right: live preview (60%) ─────────────────────────────────────── */}
         <div style={{ flex: 1, overflowY: 'auto', background: '#E8E4DC' }}>
-          {/* Preview chrome */}
           <div style={{ padding: '12px 20px', borderBottom: `1px solid ${RULE}`, background: '#DDD9D1' }}>
-            <span style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              Live Preview
-            </span>
+            <span style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live Preview</span>
           </div>
-          {/* Preview frame */}
           <div style={{ padding: 24 }}>
-            <div style={{
-              maxWidth:     560,
-              margin:       '0 auto',
-              boxShadow:    '0 4px 24px rgba(0,0,0,0.12)',
-              borderRadius: 4,
-              overflow:     'hidden',
-            }}>
+            <div style={{ maxWidth: 560, margin: '0 auto', boxShadow: '0 4px 24px rgba(0,0,0,0.12)', borderRadius: 4, overflow: 'hidden' }}>
               {previewFields && <BriefPreview fields={previewFields} />}
             </div>
           </div>
@@ -859,7 +761,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
       </div>
 
-      {/* Asset picker */}
       {pickerOpen && (
         <AssetPicker
           onClose={() => setPickerOpen(false)}

@@ -4,7 +4,7 @@
 //   into the original bundled ImmerseDestinationData shape (parallel fan-out).
 //   Also owns: slug resolution cache, fetchEngagementOverride, ImmerseDestinationCore type.
 //
-// Last updated: S42 Add 3 — getImmerseDestination back-compat wrapper now
+// Prior: S42 Add 3 — getImmerseDestination back-compat wrapper now
 //   passes core.destinationUrlSlug to getImmerseDestinationHotels so variant
 //   pages scope their room overlays correctly.
 
@@ -174,7 +174,8 @@ async function fetchEngagementOverride(
 
   if (variantSlug) {
     query = query.eq('destination_url_slug', variantSlug)
-  } else {
+  }
+  if (!variantSlug) {
     query = query.is('destination_url_slug', null)
   }
 
@@ -201,7 +202,8 @@ export async function getImmerseDestinationCore(
 
   if (resolution.kind === 'variant') {
     dest = resolution.destRow
-  } else {
+  }
+  if (resolution.kind === 'canonical') {
     const { data, error } = await supabase
       .from('travel_immerse_destinations')
       .select('*')
@@ -220,10 +222,10 @@ export async function getImmerseDestinationCore(
   if (!overrideResult) return null
 
   const ov     = overrideResult
-  const destId = dest.id as string
+  const destId = dest!.id as string
 
   const heroSrc2Resolved = rewriteImageUrl(
-    (ov?.hero_image_src_2_override ?? dest.hero_image_src_2) as string | null
+    (ov?.hero_image_src_2_override ?? dest!.hero_image_src_2) as string | null
   )
 
   return {
@@ -233,44 +235,44 @@ export async function getImmerseDestinationCore(
     destinationSlug:      urlSlug,
     destinationUrlSlug:   resolution.kind === 'variant' ? urlSlug : null,
     journeyId:            engagementId,
-    shorthand:            (dest.shorthand as string | null) ?? undefined,
+    shorthand:            (dest!.shorthand as string | null) ?? undefined,
 
-    eyebrow:      (dest.eyebrow   as string | null) ?? '',
-    title:        (dest.title     as string | null) ?? '',
-    subtitle:     (dest.subtitle  as string | null) ?? '',
+    eyebrow:      (dest!.eyebrow   as string | null) ?? '',
+    title:        (dest!.title     as string | null) ?? '',
+    subtitle:     (dest!.subtitle  as string | null) ?? '',
     heroImageSrc: rewriteImageUrl(
-                    (ov?.hero_image_src_override ?? dest.hero_image_src) as string | null
+                    (ov?.hero_image_src_override ?? dest!.hero_image_src) as string | null
                   ),
     heroImageAlt:  ov?.hero_image_alt_override
-                     ?? (dest.hero_image_alt  as string | null) ?? '',
+                     ?? (dest!.hero_image_alt  as string | null) ?? '',
     heroImageSrc2: heroSrc2Resolved || undefined,
     heroImageAlt2: ov?.hero_image_alt_2_override
-                     ?? (dest.hero_image_alt_2 as string | null) ?? undefined,
+                     ?? (dest!.hero_image_alt_2 as string | null) ?? undefined,
     heroTitle2:    ov?.hero_title_2_override
-                     ?? (dest.hero_title_2    as string | null) ?? undefined,
+                     ?? (dest!.hero_title_2    as string | null) ?? undefined,
     heroSubtitle2: ov?.hero_subtitle_2_override
-                     ?? (dest.hero_subtitle_2 as string | null) ?? undefined,
-    heroPills:     (dest.hero_pills as string[] | null) ?? [],
+                     ?? (dest!.hero_subtitle_2 as string | null) ?? undefined,
+    heroPills:     (dest!.hero_pills as string[] | null) ?? [],
 
-    introEyebrow: (dest.intro_eyebrow as string | null) ?? '',
-    introTitle:   ov?.intro_title_override ?? (dest.intro_title as string | null) ?? '',
-    introBody:    ov?.intro_body_override  ?? (dest.intro_body  as string | null) ?? '',
+    introEyebrow: (dest!.intro_eyebrow as string | null) ?? '',
+    introTitle:   ov?.intro_title_override ?? (dest!.intro_title as string | null) ?? '',
+    introBody:    ov?.intro_body_override  ?? (dest!.intro_body  as string | null) ?? '',
 
-    hotelsEyebrow: (dest.hotels_eyebrow as string | null) ?? '',
-    hotelsTitle:   (dest.hotels_title   as string | null) ?? '',
-    hotelsBody:    (dest.hotels_body    as string | null) ?? '',
+    hotelsEyebrow: (dest!.hotels_eyebrow as string | null) ?? '',
+    hotelsTitle:   (dest!.hotels_title   as string | null) ?? '',
+    hotelsBody:    (dest!.hotels_body    as string | null) ?? '',
 
-    diningEyebrow: ov?.dining_eyebrow_override ?? (dest.dining_eyebrow as string | null) ?? '',
-    diningTitle:   ov?.dining_title_override   ?? (dest.dining_title   as string | null) ?? '',
-    diningBody:    ov?.dining_body_override    ?? (dest.dining_body    as string | null) ?? '',
+    diningEyebrow: ov?.dining_eyebrow_override ?? (dest!.dining_eyebrow as string | null) ?? '',
+    diningTitle:   ov?.dining_title_override   ?? (dest!.dining_title   as string | null) ?? '',
+    diningBody:    ov?.dining_body_override    ?? (dest!.dining_body    as string | null) ?? '',
 
-    experiencesEyebrow: ov?.experiences_eyebrow_override ?? (dest.experiences_eyebrow as string | null) ?? '',
-    experiencesTitle:   ov?.experiences_title_override   ?? (dest.experiences_title   as string | null) ?? '',
-    experiencesBody:    ov?.experiences_body_override    ?? (dest.experiences_body    as string | null) ?? '',
+    experiencesEyebrow: ov?.experiences_eyebrow_override ?? (dest!.experiences_eyebrow as string | null) ?? '',
+    experiencesTitle:   ov?.experiences_title_override   ?? (dest!.experiences_title   as string | null) ?? '',
+    experiencesBody:    ov?.experiences_body_override    ?? (dest!.experiences_body    as string | null) ?? '',
 
-    pricingEyebrow: (dest.pricing_eyebrow as string | null) ?? '',
-    pricingTitle:   (dest.pricing_title   as string | null) ?? '',
-    pricingBody:    ov?.pricing_body_override ?? (dest.pricing_body as string | null) ?? '',
+    pricingEyebrow: (dest!.pricing_eyebrow as string | null) ?? '',
+    pricingTitle:   (dest!.pricing_title   as string | null) ?? '',
+    pricingBody:    ov?.pricing_body_override ?? (dest!.pricing_body as string | null) ?? '',
 
     pricingCloser: {
       item:            ov?.pricing_closer_item_override             ?? null,
@@ -279,11 +281,11 @@ export async function getImmerseDestinationCore(
       indicativeRange: ov?.pricing_closer_indicative_range_override ?? null,
     },
     pricingNotesHeading: ov?.pricing_notes_heading_override
-                           ?? (dest.pricing_notes_heading as string | null) ?? '',
+                           ?? (dest!.pricing_notes_heading as string | null) ?? '',
     pricingNotesTitle:   ov?.pricing_notes_title_override
-                           ?? (dest.pricing_notes_title   as string | null) ?? '',
+                           ?? (dest!.pricing_notes_title   as string | null) ?? '',
     pricingNotes:        (ov?.pricing_notes_override as string[] | null)
-                           ?? (dest.pricing_notes as string[] | null)
+                           ?? (dest!.pricing_notes as string[] | null)
                            ?? [],
   }
 }
