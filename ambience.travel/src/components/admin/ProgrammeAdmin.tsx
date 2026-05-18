@@ -1257,10 +1257,6 @@ export function ListingsTab() {
     setSaving(false)
     cancelForm()
     loadListings()
-
-    setSaving(false)
-    cancelForm()
-    loadListings()
   }
 
   async function handleDelete(id: string) {
