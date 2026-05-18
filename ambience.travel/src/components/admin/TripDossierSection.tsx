@@ -534,9 +534,8 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
 // ── TripDossierSection — exported ─────────────────────────────────────────────
 
 export function TripDossierSection({ dossier, mobile }: {
-  dossier:          TripDossierData
-  mobile:           boolean
-  house: HouseProfile | null
+  dossier: TripDossierData
+  mobile:  boolean
 }) {
   const [expandedTrip, setExpandedTrip] = useState<string | null>(
     dossier.trips.length === 1 ? dossier.trips[0].id : null

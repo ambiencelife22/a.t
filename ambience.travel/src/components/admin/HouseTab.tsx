@@ -142,7 +142,7 @@ interface AllData {
 
 const EMPTY_DATA: AllData = {
   people: [], preferences: [], dining: [], destinations: [],
-  contacts: [], ppd: [], dossier: { trips: [], partners: {} }, requests: [],
+  contacts: [], ppd: [], dossier: { trips: [], partners: {}, house: null }, requests: [],
 }
 
 // ── Section type ──────────────────────────────────────────────────────────────
@@ -710,7 +710,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     if (loading) return <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading...</div>
     switch (section) {
       case 'overview':     return <OverviewSection     house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={mobile} />
-      case 'trips':        return <TripDossierSection  dossier={data.dossier} mobile={mobile} />
+      case 'trips': return <TripDossierSection         dossier={data.dossier} mobile={mobile} />
       case 'requests':    return <RequestsSection     requests={data.requests} houseId={house.id} onReload={loadAll} mobile={mobile} />
       case 'preferences':  return <PreferencesSection  data={data} houseId={house.id} onReload={loadAll} personRef={personRef} mobile={mobile} />
       case 'dining':       return <DiningSection       data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />
