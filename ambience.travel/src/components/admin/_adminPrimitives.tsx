@@ -1,4 +1,4 @@
-/* adminPrimitives.tsx
+/* _adminPrimitives.tsx
  * Phase 2 admin UI primitives for AmbienceAdmin.
  *
  * What it owns:

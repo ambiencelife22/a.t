@@ -1,4 +1,4 @@
-/* adminIcons.tsx
+/* _adminIcons.tsx
  * Custom SVG icon components for AmbienceAdmin sidebar.
  * Drop-in replacement for lucide-react — same props interface.
  * All icons: 16x16 viewBox, stroke-based, no fill.

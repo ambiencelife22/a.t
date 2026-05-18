@@ -1,18 +1,16 @@
 /* HouseTab.tsx
  * ambience.HOUSE — private client intelligence platform.
  *
+ * Shell component only. Section components are imported from their own files.
+ * Shared UI primitives live in houseUi.tsx.
+ *
  * Mobile-responsive: useWindowWidth hook drives layout decisions.
  *   < 768px (mobile): single column, horizontal pill nav, full-screen modal.
  *   >= 768px (desktop): two-panel layout, sticky sidebar nav.
  *
- * Last updated: S43 — Phase 4 redesign.
- *   - useToast -> useAdminToast throughout.
- *   - HouseCard: designation badge, pull-quote summary, mono house ID.
- *   - PersonModal: refined drag handle + _a_admin_modal_in entrance.
- *   - AdminSection replaces SectionLabel in section headers.
- *   - Shared primitives: StatusFilterBar, AddFormShell, EntryCard,
- *     SectionHeader extracted to reduce repetition.
- *   - AdminEmptyState replaces all inline empty-state divs.
+ * Last updated: S44 — refactor. Extracted section components + shared primitives.
+ *   Added Trip Dossier section (TripDossierSection) + adminTripQueries fetch.
+ * Prior: S43 — Phase 4 redesign (useAdminToast, HouseCard, shared primitives).
  * Prior: S41 — Destinations + Contacts sections added.
  * Prior: S40D — mobile-responsive layout pass.
  */
@@ -43,6 +41,17 @@ import {
   type PrefCategory, type PrefConfidence, type DiningStatus,
   type DestinationStatus, type DestinationTripType, type ContactType,
 } from '../../lib/adminHouseQueries'
+import { fetchTripDossierForHouse, type TripDossierData } from '../../lib/adminTripQueries'
+import {
+  capitalize, formatDOB,
+  DesigBadge, StatusFilterBar, AddFormShell, EntryCard,
+  SectionHeader, FormActions, SourceSelect, PPDValueInput,
+} from './houseUi'
+import { TripDossierSection } from './TripDossierSection'
+
+// Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
+// They remain here because they are tightly coupled to AllData and house context.
+// TripDossierSection is standalone and lives in its own file.
 
 // ── Responsive hook ───────────────────────────────────────────────────────────
 
@@ -85,12 +94,6 @@ const DEST_STATUS_LABEL: Record<DestinationStatus, string> = {
   avoided: 'Avoided',
 }
 
-const DESIG_COLOR: Record<string, string> = {
-  HRH: '#c084fc',
-  HH:  '#93c5fd',
-  VVIP: '#D8B56A',
-}
-
 const PREF_CATEGORIES: PrefCategory[] = [
   'Dining', 'Accommodation', 'Experiences', 'Flight',
   'Beverage', 'Allergies', 'Service', 'Misc',
@@ -117,220 +120,31 @@ const PPD_KEYS = [
   'Home Address', 'Dietary Medical Note',
 ]
 
-const ROLES = ['primary', 'spouse', 'partner', 'child', 'staff', 'other']
-const DEST_STATUSES: DestinationStatus[]   = ['visited', 'planned', 'avoided']
+const ROLES              = ['primary', 'spouse', 'partner', 'child', 'staff', 'other']
+const DEST_STATUSES: DestinationStatus[]     = ['visited', 'planned', 'avoided']
 const DEST_TRIP_TYPES: DestinationTripType[] = ['family', 'couple', 'solo', 'business', 'other']
-const CONTACT_TYPES: ContactType[]         = ['pa', 'driver', 'fixer', 'medical', 'security', 'concierge', 'other']
+const CONTACT_TYPES: ContactType[]          = ['pa', 'driver', 'fixer', 'medical', 'security', 'concierge', 'other']
 
-function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1) }
+// ── AllData ───────────────────────────────────────────────────────────────────
 
-// ── Shared section primitives ─────────────────────────────────────────────────
-
-// StatusFilterBar — filter pill row with counts. Used in Dining + Destinations.
-function StatusFilterBar<T extends string>({
-  options,
-  active,
-  onSelect,
-  labelFor,
-  colorFor,
-  counts,
-  children,
-}: {
-  options:   T[]
-  active:    T | 'all'
-  onSelect:  (v: T | 'all') => void
-  labelFor:  (v: T | 'all') => string
-  colorFor:  (v: T | 'all') => string
-  counts:    Record<string, number>
-  children?: React.ReactNode
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
-      {(['all', ...options] as (T | 'all')[]).map(s => {
-        const isActive = active === s
-        const color    = colorFor(s)
-        const count    = counts[s as string] ?? 0
-        return (
-          <button
-            key={s as string}
-            onClick={() => onSelect(s)}
-            style={{
-              padding:      '7px 13px',
-              whiteSpace:   'nowrap',
-              flexShrink:   0,
-              background:   isActive ? color + '12' : 'transparent',
-              color:        isActive ? color : A.muted,
-              border:       isActive ? `1px solid ${color}30` : `1px solid ${A.border}`,
-              borderRadius: 8,
-              fontSize:     11,
-              fontWeight:   600,
-              fontFamily:   A.font,
-              cursor:       'pointer',
-            }}
-          >
-            {labelFor(s)}
-            {count > 0 && <span style={{ marginLeft: 4, opacity: 0.55 }}>({count})</span>}
-          </button>
-        )
-      })}
-      {children && <div style={{ flexShrink: 0, marginLeft: 4 }}>{children}</div>}
-    </div>
-  )
+interface AllData {
+  people:       HousePerson[]
+  preferences:  HousePreference[]
+  dining:       HouseDiningEntry[]
+  destinations: HouseDestination[]
+  contacts:     HouseContact[]
+  ppd:          PPDPeopleEntry[]
+  dossier:      TripDossierData
 }
 
-// AddFormShell — gold-bordered add form wrapper.
-function AddFormShell({ children, danger = false }: { children: React.ReactNode; danger?: boolean }) {
-  return (
-    <div style={{
-      padding:      14,
-      background:   A.bgCard,
-      border:       `1px solid ${danger ? 'rgba(248,113,113,0.25)' : `${A.gold}40`}`,
-      borderRadius: 10,
-      display:      'flex',
-      flexDirection: 'column',
-      gap:          10,
-    }}>
-      {children}
-    </div>
-  )
+const EMPTY_DATA: AllData = {
+  people: [], preferences: [], dining: [], destinations: [],
+  contacts: [], ppd: [], dossier: { trips: [], partners: {} },
 }
 
-// EntryCard — coloured left-border card. Used in Preferences, Dining, Destinations, Contacts, Sensitive.
-function EntryCard({
-  accentColor,
-  children,
-  danger = false,
-}: {
-  accentColor?: string
-  children:     React.ReactNode
-  danger?:      boolean
-}) {
-  const border = danger ? '1px solid rgba(248,113,113,0.12)' : `1px solid ${A.border}`
-  return (
-    <div style={{
-      padding:      '12px 14px',
-      background:   A.bgCard,
-      border,
-      borderLeft:   accentColor ? `3px solid ${accentColor}` : border,
-      borderRadius: 8,
-    }}>
-      {children}
-    </div>
-  )
-}
+// ── Section type ──────────────────────────────────────────────────────────────
 
-// SectionHeader — label + count + optional add button.
-function SectionHeader({
-  title,
-  color,
-  count,
-  onAdd,
-  adding,
-}: {
-  title:   string
-  color?:  string
-  count?:  number
-  onAdd?:  () => void
-  adding?: boolean
-}) {
-  const label = count !== undefined ? `${title} · ${count}` : title
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-      <AdminSection title={label} style={{ borderLeftColor: color ? `${color}50` : undefined }} />
-      {onAdd && !adding && (
-        <button onClick={onAdd} style={{ ...btnP, padding: '4px 12px', fontSize: 11 }}>+ Add</button>
-      )}
-    </div>
-  )
-}
-
-// FormActions — cancel + save row.
-function FormActions({
-  onCancel,
-  onSave,
-  saving,
-  saveLabel = 'Add',
-}: {
-  onCancel:   () => void
-  onSave:     () => void
-  saving:     boolean
-  saveLabel?: string
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-      <button onClick={onCancel} style={btnG}>Cancel</button>
-      <button onClick={onSave} style={{ ...btnP, opacity: saving ? 0.5 : 1 }} disabled={saving}>
-        {saving ? 'Saving...' : saveLabel}
-      </button>
-    </div>
-  )
-}
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-function SourceSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <select style={inputStyle} value={value} onChange={e => onChange(e.target.value)}>
-      <option value='direct'>Direct</option>
-      <option value='inferred'>Inferred</option>
-      <option value='staff_note'>Staff Note</option>
-      <option value='profile_summary'>Profile Summary</option>
-      <option value='trip'>Trip</option>
-      <option value='observation'>Observation</option>
-    </select>
-  )
-}
-
-function formatDOB(iso: string): string {
-  if (!iso) return ''
-  const d = new Date(iso + 'T00:00:00')
-  if (isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
-}
-
-function PPDValueInput({ dataKey, value, onChange }: { dataKey: string; value: string; onChange: (v: string) => void }) {
-  if (dataKey === 'Date of Birth') {
-    const toISO = (stored: string): string => {
-      if (!stored) return ''
-      if (/^\d{4}-\d{2}-\d{2}$/.test(stored)) return stored
-      const d = new Date(stored)
-      if (isNaN(d.getTime())) return ''
-      return d.toISOString().slice(0, 10)
-    }
-    return (
-      <input
-        type='date'
-        style={{ ...inputStyle, colorScheme: 'dark' }}
-        value={toISO(value)}
-        onChange={e => onChange(e.target.value ? formatDOB(e.target.value) : '')}
-        autoFocus
-      />
-    )
-  }
-  return (
-    <input style={inputStyle} placeholder='Enter value...' value={value} onChange={e => onChange(e.target.value)} autoComplete='off' autoFocus />
-  )
-}
-
-function DesigBadge({ designation }: { designation: string }) {
-  const color = DESIG_COLOR[designation] ?? A.gold
-  return (
-    <span style={{
-      padding:       '2px 8px',
-      borderRadius:  5,
-      background:    color + '18',
-      border:        `1px solid ${color}35`,
-      color,
-      fontSize:      9,
-      fontWeight:    700,
-      fontFamily:    A.font,
-      letterSpacing: '0.1em',
-      flexShrink:    0,
-    }}>
-      {designation}
-    </span>
-  )
-}
+type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'sensitive' | 'notes' | 'trips'
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
@@ -455,20 +269,19 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width:        mobile ? '100%' : 'min(680px, 100%)',
-          maxHeight:    mobile ? '92vh' : 'none',
-          background:   A.bg,
-          border:       `1px solid ${A.border}`,
-          borderRadius: mobile ? '14px 14px 0 0' : 14,
-          padding:      mobile ? '20px 16px' : 24,
-          display:      'flex',
+          width:         mobile ? '100%' : 'min(680px, 100%)',
+          maxHeight:     mobile ? '92vh' : 'none',
+          background:    A.bg,
+          border:        `1px solid ${A.border}`,
+          borderRadius:  mobile ? '14px 14px 0 0' : 14,
+          padding:       mobile ? '20px 16px' : 24,
+          display:       'flex',
           flexDirection: 'column',
-          gap:          14,
-          overflowY:    'auto',
-          animation:    `_a_admin_modal_in 200ms cubic-bezier(0.16,1,0.3,1) both`,
+          gap:           14,
+          overflowY:     'auto',
+          animation:     `_a_admin_modal_in 200ms cubic-bezier(0.16,1,0.3,1) both`,
         }}
       >
-        {/* Drag handle (mobile) */}
         {mobile && (
           <div style={{ width: 36, height: 4, borderRadius: 2, background: A.border, margin: '-8px auto 0', flexShrink: 0 }} />
         )}
@@ -490,7 +303,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
           <button onClick={() => setTab('sensitive')}   style={tabStyle('sensitive')}>
             Sensitive {personPPD.length > 0 && <span style={{ opacity: 0.6 }}>({personPPD.length})</span>}
           </button>
-          <button onClick={() => setTab('profile')}     style={tabStyle('profile')}>Profile</button>
+          <button onClick={() => setTab('profile')} style={tabStyle('profile')}>Profile</button>
         </div>
 
         {tab === 'identity' && (
@@ -547,7 +360,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
                       <option value='outdated'>Outdated</option>
                     </select>
                   </Field>
-                  <Field label='Source'><SourceSelect value={prefDraft.source} onChange={(v: string) => setPrefDraft(d => ({ ...d, source: v }))} /></Field>
+                  <Field label='Source'><SourceSelect value={prefDraft.source} onChange={v => setPrefDraft(d => ({ ...d, source: v }))} /></Field>
                 </div>
                 <FormActions onCancel={() => setAddingPref(false)} onSave={addPref} saving={prefSaving} />
               </AddFormShell>
@@ -667,7 +480,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
   )
 }
 
-// ── Household list ────────────────────────────────────────────────────────────
+// ── HouseList ─────────────────────────────────────────────────────────────────
 
 function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
   const [houses, setHouses]   = useState<House[]>([])
@@ -724,52 +537,32 @@ function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        padding:    '18px 20px 16px',
-        background: hov ? '#1a1f1c' : A.bgCard,
-        border:     `1px solid ${hov ? A.gold + '50' : A.border}`,
-        borderRadius: 12,
-        cursor:     'pointer',
-        transition: 'all 0.12s ease',
-        display:    'flex',
+        padding:       '18px 20px 16px',
+        background:    hov ? '#1a1f1c' : A.bgCard,
+        border:        `1px solid ${hov ? A.gold + '50' : A.border}`,
+        borderRadius:  12,
+        cursor:        'pointer',
+        transition:    'all 0.12s ease',
+        display:       'flex',
         flexDirection: 'column',
-        gap:        10,
+        gap:           10,
       }}
     >
-      {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
           <span style={{ fontSize: 17, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.display_name}</span>
           {house.designation && <DesigBadge designation={house.designation} />}
-          <span style={{
-            fontSize:      9,
-            color:         house.status === 'active' ? '#4ade80' : A.faint,
-            fontFamily:    A.font,
-            fontWeight:    700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-          }}>
+          <span style={{ fontSize: 9, color: house.status === 'active' ? '#4ade80' : A.faint, fontFamily: A.font, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {house.status}
           </span>
         </div>
         <span style={{ color: A.gold, opacity: hov ? 0.9 : 0.25, transition: 'opacity 0.12s', fontSize: 14, flexShrink: 0 }}>→</span>
       </div>
-
-      {/* Pull-quote summary */}
       {summary && (
-        <div style={{
-          fontSize:    12,
-          color:       A.muted,
-          fontFamily:  A.font,
-          lineHeight:  1.6,
-          borderLeft:  `2px solid rgba(216,181,106,0.3)`,
-          paddingLeft: 12,
-          fontStyle:   'italic',
-        }}>
+        <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6, borderLeft: `2px solid rgba(216,181,106,0.3)`, paddingLeft: 12, fontStyle: 'italic' }}>
           {summary.slice(0, 160)}{summary.length > 160 ? '...' : ''}
         </div>
       )}
-
-      {/* House ID */}
       <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em' }}>
         {house.a_house_id}
       </div>
@@ -777,46 +570,35 @@ function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
   )
 }
 
-// ── House detail ──────────────────────────────────────────────────────────────
-
-type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'sensitive' | 'notes'
-
-interface AllData {
-  people:       HousePerson[]
-  preferences:  HousePreference[]
-  dining:       HouseDiningEntry[]
-  destinations: HouseDestination[]
-  contacts:     HouseContact[]
-  ppd:          PPDPeopleEntry[]
-}
+// ── HouseDetail ───────────────────────────────────────────────────────────────
 
 function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void }) {
   const mobile                        = useWindowWidth() < 768
   const [house, setHouse]             = useState<House>(init)
   const [section, setSection]         = useState<Section>('overview')
   const [q, setQ]                     = useState('')
-  const [data, setData]               = useState<AllData>({ people: [], preferences: [], dining: [], destinations: [], contacts: [], ppd: [] })
+  const [data, setData]               = useState<AllData>(EMPTY_DATA)
   const [loading, setLoading]         = useState(true)
   const [modalPerson, setModalPerson] = useState<HousePerson | null>(null)
-  const { error }                     = useAdminToast()
+  const { error, success }            = useAdminToast()
   const searchRef                     = useRef<HTMLInputElement>(null)
   const [addingPerson, setAddingPerson] = useState(false)
   const [pd, setPd]                   = useState({ member_ref: '', role: 'primary' })
   const [addSaving, setAddSaving]     = useState(false)
-  const { success }                   = useAdminToast()
 
   async function loadAll() {
     setLoading(true)
     try {
-      const [people, preferences, dining, destinations, contacts, ppdResponse] = await Promise.all([
+      const [people, preferences, dining, destinations, contacts, ppdResponse, dossier] = await Promise.all([
         fetchPeopleForHouse(house.id),
         fetchPreferencesForHouse(house.id),
         fetchDiningHistoryForHouse(house.id),
         fetchDestinationsForHouse(house.id),
         fetchContactsForHouse(house.id),
         fetchPPDForHouse(house.id),
+        fetchTripDossierForHouse(house.id),
       ])
-      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people })
+      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people, dossier })
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to load') }
     setLoading(false)
   }
@@ -868,21 +650,20 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   }
 
   const NAV: Array<{ id: Section; label: string; count?: number }> = [
-    { id: 'overview',      label: 'Overview' },
-    { id: 'preferences',   label: 'Preferences',  count: data.preferences.length },
-    { id: 'dining',        label: 'Dining',        count: data.dining.length },
-    { id: 'destinations',  label: 'Destinations',  count: data.destinations.length },
-    { id: 'contacts',      label: 'Contacts',      count: data.contacts.length },
-    { id: 'sensitive',     label: 'Sensitive',     count: data.ppd.length },
-    { id: 'notes',         label: 'Notes' },
+    { id: 'overview',     label: 'Overview' },
+    { id: 'trips',        label: 'Trips',        count: data.dossier.trips.length },
+    { id: 'preferences',  label: 'Preferences',  count: data.preferences.length },
+    { id: 'dining',       label: 'Dining',        count: data.dining.length },
+    { id: 'destinations', label: 'Destinations',  count: data.destinations.length },
+    { id: 'contacts',     label: 'Contacts',      count: data.contacts.length },
+    { id: 'sensitive',    label: 'Sensitive',     count: data.ppd.length },
+    { id: 'notes',        label: 'Notes' },
   ]
 
   const PeopleBlock = (
     <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, padding: '12px 14px' }}>
       <SectionHeader title='Household' onAdd={() => setAddingPerson(true)} adding={addingPerson} />
-      {data.people.length === 0 && !addingPerson && (
-        <AdminEmptyState message='No members yet.' />
-      )}
+      {data.people.length === 0 && !addingPerson && <AdminEmptyState message='No members yet.' />}
       {data.people.map(p => (
         <div key={p.id} onClick={() => setModalPerson(p)} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, cursor: 'pointer', padding: '4px 0' }}>
           <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${A.gold}18`, border: `1px solid ${A.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: A.gold, fontFamily: A.font, flexShrink: 0 }}>
@@ -920,6 +701,52 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     </div>
   ) : null
 
+  const renderSection = () => {
+    if (loading) return <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading...</div>
+    switch (section) {
+      case 'overview':     return <OverviewSection     house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={mobile} />
+      case 'trips':        return <TripDossierSection  dossier={data.dossier} mobile={mobile} />
+      case 'preferences':  return <PreferencesSection  data={data} houseId={house.id} onReload={loadAll} personRef={personRef} mobile={mobile} />
+      case 'dining':       return <DiningSection       data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />
+      case 'destinations': return <DestinationsSection data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />
+      case 'contacts':     return <ContactsSection     data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />
+      case 'sensitive':    return <SensitiveSection    data={data} houseId={house.id} onReload={loadAll} personRef={personRef} />
+      case 'notes':        return <NotesSection        house={house} onSaved={reloadHouse} />
+    }
+  }
+
+  const navPillStyle = (id: Section): React.CSSProperties => ({
+    padding:      '8px 14px',
+    whiteSpace:   'nowrap',
+    flexShrink:   0,
+    background:   section === id ? 'rgba(216,181,106,0.10)' : 'transparent',
+    color:        section === id ? A.gold : A.muted,
+    border:       section === id ? '1px solid rgba(216,181,106,0.28)' : `1px solid ${A.border}`,
+    borderRadius: 20,
+    fontSize:     12,
+    fontWeight:   section === id ? 700 : 500,
+    fontFamily:   A.font,
+    cursor:       'pointer',
+  })
+
+  const navSidebarStyle = (id: Section, i: number): React.CSSProperties => ({
+    display:        'flex',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+    width:          '100%',
+    padding:        '10px 14px',
+    textAlign:      'left',
+    background:     section === id ? 'rgba(216,181,106,0.08)' : 'transparent',
+    borderLeft:     section === id ? `2px solid ${A.gold}` : '2px solid transparent',
+    border:         'none',
+    borderBottom:   i < NAV.length - 1 ? `1px solid ${A.border}` : 'none',
+    color:          section === id ? A.gold : A.muted,
+    fontSize:       12,
+    fontWeight:     section === id ? 700 : 500,
+    fontFamily:     A.font,
+    cursor:         'pointer',
+  })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {modalPerson && (
@@ -943,22 +770,11 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         </div>
       </div>
 
+      {/* Mobile pill nav */}
       {mobile && (
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12, marginBottom: 12, scrollbarWidth: 'none' }}>
           {NAV.map(n => (
-            <button key={n.id} onClick={() => setSection(n.id)} style={{
-              padding:      '8px 14px',
-              whiteSpace:   'nowrap',
-              flexShrink:   0,
-              background:   section === n.id ? 'rgba(216,181,106,0.10)' : 'transparent',
-              color:        section === n.id ? A.gold : A.muted,
-              border:       section === n.id ? '1px solid rgba(216,181,106,0.28)' : `1px solid ${A.border}`,
-              borderRadius: 20,
-              fontSize:     12,
-              fontWeight:   section === n.id ? 700 : 500,
-              fontFamily:   A.font,
-              cursor:       'pointer',
-            }}>
+            <button key={n.id} onClick={() => setSection(n.id)} style={navPillStyle(n.id)}>
               {n.label}{n.count ? ` ${n.count}` : ''}
             </button>
           ))}
@@ -970,66 +786,30 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
       {!searchResults && (
         mobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {loading ? (
-              <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading...</div>
-            ) : (
-              <>
-                {PeopleBlock}
-                {AvoidBlock}
-                {section === 'overview'     && <OverviewSection      house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={true} />}
-                {section === 'preferences'  && <PreferencesSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={true} />}
-                {section === 'dining'       && <DiningSection        data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
-                {section === 'destinations' && <DestinationsSection  data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
-                {section === 'contacts'     && <ContactsSection      data={data}   houseId={house.id} onReload={loadAll} mobile={true} />}
-                {section === 'sensitive'    && <SensitiveSection     data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
-                {section === 'notes'        && <NotesSection         house={house} onSaved={reloadHouse} />}
-              </>
-            )}
+            {PeopleBlock}
+            {AvoidBlock}
+            {renderSection()}
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+            {/* Sidebar */}
             <div style={{ width: 210, flexShrink: 0, position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, overflow: 'hidden' }}>
                 {NAV.map((n, i) => (
-                  <button key={n.id} onClick={() => setSection(n.id)} style={{
-                    display:        'flex',
-                    alignItems:     'center',
-                    justifyContent: 'space-between',
-                    width:          '100%',
-                    padding:        '10px 14px',
-                    textAlign:      'left',
-                    background:     section === n.id ? 'rgba(216,181,106,0.08)' : 'transparent',
-                    borderLeft:     section === n.id ? `2px solid ${A.gold}` : '2px solid transparent',
-                    border:         'none',
-                    borderBottom:   i < NAV.length - 1 ? `1px solid ${A.border}` : 'none',
-                    color:          section === n.id ? A.gold : A.muted,
-                    fontSize:       12,
-                    fontWeight:     section === n.id ? 700 : 500,
-                    fontFamily:     A.font,
-                    cursor:         'pointer',
-                  }}>
+                  <button key={n.id} onClick={() => setSection(n.id)} style={navSidebarStyle(n.id, i)}>
                     <span>{n.label}</span>
-                    {n.count !== undefined && n.count > 0 && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{n.count}</span>}
+                    {n.count !== undefined && n.count > 0 && (
+                      <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{n.count}</span>
+                    )}
                   </button>
                 ))}
               </div>
               {PeopleBlock}
               {AvoidBlock}
             </div>
+            {/* Main */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              {loading ? (
-                <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading...</div>
-              ) : (
-                <>
-                  {section === 'overview'     && <OverviewSection      house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={false} />}
-                  {section === 'preferences'  && <PreferencesSection   data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} mobile={false} />}
-                  {section === 'dining'       && <DiningSection        data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
-                  {section === 'destinations' && <DestinationsSection  data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
-                  {section === 'contacts'     && <ContactsSection      data={data}   houseId={house.id} onReload={loadAll} mobile={false} />}
-                  {section === 'sensitive'    && <SensitiveSection     data={data}   houseId={house.id} onReload={loadAll} personRef={personRef} />}
-                  {section === 'notes'        && <NotesSection         house={house} onSaved={reloadHouse} />}
-                </>
-              )}
+              {renderSection()}
             </div>
           </div>
         )
@@ -1038,12 +818,12 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   )
 }
 
-// ── Search results ────────────────────────────────────────────────────────────
+// ── SearchResults ─────────────────────────────────────────────────────────────
 
 function SearchResults({ results, personRef, onClose }: {
-  results: { preferences: HousePreference[]; dining: HouseDiningEntry[]; destinations: HouseDestination[]; contacts: HouseContact[]; ppd: PPDPeopleEntry[] }
+  results:   { preferences: HousePreference[]; dining: HouseDiningEntry[]; destinations: HouseDestination[]; contacts: HouseContact[]; ppd: PPDPeopleEntry[] }
   personRef: (id: string | null) => string | null
-  onClose: () => void
+  onClose:   () => void
 }) {
   const total = results.preferences.length + results.dining.length + results.destinations.length + results.contacts.length + results.ppd.length
   return (
@@ -1137,7 +917,7 @@ function SearchResults({ results, personRef, onClose }: {
   )
 }
 
-// ── Overview section ──────────────────────────────────────────────────────────
+// ── OverviewSection ───────────────────────────────────────────────────────────
 
 function OverviewSection({ house, data, onSaved, onReload, mobile }: {
   house: House; data: AllData; mobile: boolean; onSaved: () => void; onReload: () => void
@@ -1292,7 +1072,7 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
   )
 }
 
-// ── Preferences section ───────────────────────────────────────────────────────
+// ── PreferencesSection ────────────────────────────────────────────────────────
 
 function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
   data: AllData; houseId: string; mobile: boolean
@@ -1388,7 +1168,7 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <Field label='Source'><SourceSelect value={draft.source} onChange={(v: string) => setDraft(d => ({ ...d, source: v }))} /></Field>
+            <Field label='Source'><SourceSelect value={draft.source} onChange={v => setDraft(d => ({ ...d, source: v }))} /></Field>
             <Field label='Notes'><input style={inputStyle} placeholder='Context...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           </div>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
@@ -1424,7 +1204,7 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
   )
 }
 
-// ── Dining section ────────────────────────────────────────────────────────────
+// ── DiningSection ─────────────────────────────────────────────────────────────
 
 function DiningSection({ data, houseId, onReload, mobile }: {
   data: AllData; houseId: string; onReload: () => void; mobile: boolean
@@ -1476,8 +1256,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <StatusFilterBar
-        options={STATUSES}
-        active={filter}
+        options={STATUSES} active={filter}
         onSelect={v => setFilter(v as DiningStatus | 'all')}
         labelFor={s => s === 'all' ? 'All' : s === 'to_try' ? 'To Try' : capitalize(s as string)}
         colorFor={s => s === 'all' ? A.gold : STATUS[s as DiningStatus].text}
@@ -1540,7 +1319,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
   )
 }
 
-// ── Destinations section ──────────────────────────────────────────────────────
+// ── DestinationsSection ───────────────────────────────────────────────────────
 
 function DestinationsSection({ data, houseId, onReload, mobile }: {
   data: AllData; houseId: string; onReload: () => void; mobile: boolean
@@ -1591,8 +1370,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <StatusFilterBar
-        options={DEST_STATUSES}
-        active={filter}
+        options={DEST_STATUSES} active={filter}
         onSelect={v => setFilter(v as DestinationStatus | 'all')}
         labelFor={s => s === 'all' ? 'All' : DEST_STATUS_LABEL[s as DestinationStatus]}
         colorFor={s => s === 'all' ? A.gold : DEST_STATUS_COLOR[s as DestinationStatus]}
@@ -1664,7 +1442,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
   )
 }
 
-// ── Contacts section ──────────────────────────────────────────────────────────
+// ── ContactsSection ───────────────────────────────────────────────────────────
 
 function ContactsSection({ data, houseId, onReload, mobile }: {
   data: AllData; houseId: string; onReload: () => void; mobile: boolean
@@ -1782,7 +1560,7 @@ function ContactsSection({ data, houseId, onReload, mobile }: {
   )
 }
 
-// ── Sensitive section ─────────────────────────────────────────────────────────
+// ── SensitiveSection ──────────────────────────────────────────────────────────
 
 function SensitiveSection({ data, houseId, onReload, personRef }: {
   data: AllData; houseId: string; onReload: () => void
@@ -1877,7 +1655,7 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
   )
 }
 
-// ── Notes section ─────────────────────────────────────────────────────────────
+// ── NotesSection ──────────────────────────────────────────────────────────────
 
 function NotesSection({ house, onSaved }: { house: House; onSaved: () => void }) {
   const [editing, setEditing] = useState(false)
