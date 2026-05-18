@@ -48,7 +48,6 @@ export type GeoDestination = {
 
 export type GeoHotel = {
   id:             string
-  slug:           string
   short_slug:     string
   name:           string
   destination_id: string | null
@@ -122,7 +121,7 @@ export async function fetchDestinations(filter: {
 export async function fetchHotelsByDestination(destinationId: string): Promise<GeoHotel[]> {
   const { data, error } = await supabase
     .from('travel_accom_hotels')
-    .select('id, slug, short_slug, name, destination_id')
+    .select('id, short_slug, name, destination_id')
     .eq('destination_id', destinationId)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })

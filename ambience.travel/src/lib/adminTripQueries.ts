@@ -7,7 +7,10 @@
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
-// Last updated: S45 — add BookingRoom type; fetch rooms in Step 5 parallel;
+// Last updated: S46 — _hotel_image_src added to TripBooking; hotelMap replaces
+//   hotelNameMap; travel_accom_hotels.hero_image_src fetched alongside name.
+//   BookingRow type updated to exclude _hotel_image_src.
+// Prior: S45 — add BookingRoom type; fetch rooms in Step 5 parallel;
 //   attach rooms to TripBooking; add room CRUD functions.
 // Prior: S45 — TripBrief type, fetchTripBrief, upsertTripBrief.
 // Prior: S45 — fix Step 1 join; house profile; new booking columns.
@@ -157,8 +160,9 @@ export type TripBooking = {
   created_at:             string | null
   updated_at:             string | null
   // Client-resolved
-  _hotel_name: string | null
-  _rooms:      BookingRoom[]
+  _hotel_name:      string | null
+  _hotel_image_src: string | null
+  _rooms:           BookingRoom[]
 }
 
 export type DossierTrip = {
@@ -186,8 +190,8 @@ export type TripDossierData = {
 
 type BookingTripRow = { trip_id: string }
 type TripRow        = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
-type BookingRow     = Omit<TripBooking, '_hotel_name' | '_rooms'>
-type HotelRow       = { id: string; name: string }
+type BookingRow     = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>
+type HotelRow       = { id: string; name: string; hero_image_src: string | null }
 type PartnerRow     = TripPartner
 type HouseRow       = HouseProfile
 type BriefRow       = TripBrief
@@ -231,15 +235,17 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   if (bookErr) throw new Error(bookErr.message)
   const bookingRows = (bookData ?? []) as BookingRow[]
 
-  // Step 4: hotel names
+  // Step 4: hotel name + hero image
   const hotelIds = [...new Set(bookingRows.map(b => b.accom_hotel_id).filter((id): id is string => !!id))]
-  const hotelNameMap = new Map<string, string>()
+  const hotelMap = new Map<string, { name: string; hero_image_src: string | null }>()
   if (hotelIds.length > 0) {
     const { data: hotelData } = await supabase
       .from('travel_accom_hotels')
-      .select('id, name')
+      .select('id, name, hero_image_src')
       .in('id', hotelIds)
-    for (const h of (hotelData ?? []) as HotelRow[]) hotelNameMap.set(h.id, h.name)
+    for (const h of (hotelData ?? []) as HotelRow[]) {
+      hotelMap.set(h.id, { name: h.name, hero_image_src: h.hero_image_src })
+    }
   }
 
   // Step 5: partners + house + briefs + rooms (parallel)
@@ -308,10 +314,12 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   const bookingsByTrip = new Map<string, TripBooking[]>()
   for (const b of bookingRows) {
     if (!bookingsByTrip.has(b.trip_id)) bookingsByTrip.set(b.trip_id, [])
+    const hotel = b.accom_hotel_id ? (hotelMap.get(b.accom_hotel_id) ?? null) : null
     bookingsByTrip.get(b.trip_id)!.push({
       ...b,
-      _hotel_name: b.accom_hotel_id ? (hotelNameMap.get(b.accom_hotel_id) ?? null) : null,
-      _rooms:      roomsByBooking.get(b.id) ?? [],
+      _hotel_name:      hotel?.name ?? null,
+      _hotel_image_src: hotel?.hero_image_src ?? null,
+      _rooms:           roomsByBooking.get(b.id) ?? [],
     })
   }
 

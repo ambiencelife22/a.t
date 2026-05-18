@@ -1,16 +1,19 @@
 // AssetPicker.tsx — modal for browsing and selecting existing images from
 // the ambience-assets bucket. Returns the public URL of the selected asset.
 //
-// Used by: TripDossierSection (hero image picker for travel_trip_briefs),
-//          and any future admin field that needs an asset URL.
+// Used by: BriefEditorPage (hero + room image pickers).
 //
 // Design:
-//   - GeoCascade folder picker (same as AssetUploader)
-//   - Grid of image thumbnails from listFolderContents + getPublicUrl
+//   - GeoCascade folder picker (same as AssetUploader) when no presetPath
+//   - When presetPath provided: lists that folder directly
+//   - If folder contains subfolders (no image extension), shows subfolder
+//     picker first, then lists images inside selected subfolder
 //   - Click to select — calls onSelected(publicUrl) and closes
-//   - Optional presetPath to skip GeoCascade (same pattern as AssetUploader)
 //
-// Last updated: S45 — initial ship.
+// Last updated: S46 — subfolder browsing when presetPath contains folders
+//   not images (e.g. accom/ contains hotel subfolders). Pre-selects first
+//   subfolder automatically.
+// Prior: S45 — initial ship.
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -24,10 +27,20 @@ function getPublicUrl(path: string): string {
   return data.publicUrl
 }
 
+function isImageFile(name: string): boolean {
+  return /\.(webp|jpg|jpeg|png)$/i.test(name)
+}
+
 const labelStyle: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
   textTransform: 'uppercase', color: A.faint, fontFamily: A.font,
   marginBottom: 6, display: 'block',
+}
+
+const selectStyle: React.CSSProperties = {
+  width: '100%', background: A.bgInput, border: `1px solid ${A.border}`,
+  borderRadius: 10, padding: '10px 14px', fontSize: 13, color: A.text,
+  fontFamily: A.font, outline: 'none', boxSizing: 'border-box' as const, cursor: 'pointer',
 }
 
 const btnGhost: React.CSSProperties = {
@@ -37,38 +50,64 @@ const btnGhost: React.CSSProperties = {
 }
 
 export type AssetPickerProps = {
-  onClose:    () => void
-  onSelected: (publicUrl: string) => void
+  onClose:     () => void
+  onSelected:  (publicUrl: string) => void
   presetPath?: string
 }
 
 export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPickerProps) {
-  const [geo,      setGeo]      = useState<GeoCascadeValue>({ resolvedPath: null })
-  const [files,    setFiles]    = useState<string[]>([])
-  const [loading,  setLoading]  = useState(false)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [geo,          setGeo]          = useState<GeoCascadeValue>({ resolvedPath: null })
+  const [subfolders,   setSubfolders]   = useState<string[]>([])
+  const [subfolder,    setSubfolder]    = useState<string>('')
+  const [files,        setFiles]        = useState<string[]>([])
+  const [loading,      setLoading]      = useState(false)
+  const [selected,     setSelected]     = useState<string | null>(null)
 
-  const resolvedPath = presetPath ?? geo.resolvedPath
+  const basePath    = presetPath ?? geo.resolvedPath
+  const activePath  = subfolders.length > 0 ? (subfolder ? `${basePath}/${subfolder}` : null) : basePath
 
+  // When basePath changes, list it to detect subfolders vs images
   useEffect(() => {
-    if (!resolvedPath) { setFiles([]); return }
+    if (!basePath) { setSubfolders([]); setSubfolder(''); setFiles([]); return }
     setLoading(true)
-    // List directly without relying on listFolderContents which filters id===null
+    setSubfolders([]); setSubfolder(''); setFiles([])
     supabase.storage
-      .from('ambience-assets')
-      .list(resolvedPath, { limit: 200, sortBy: { column: 'name', order: 'asc' } })
+      .from(BUCKET)
+      .list(basePath, { limit: 200, sortBy: { column: 'name', order: 'asc' } })
       .then(({ data }) => {
-        const imgs = (data ?? [])
-          .filter(item => /\.(webp|jpg|jpeg|png)$/i.test(item.name))
-          .map(item => item.name)
+        const items = data ?? []
+        const imgs  = items.filter(i => isImageFile(i.name)).map(i => i.name)
+        // Folders have id === null in Supabase Storage list response
+        const dirs  = items.filter(i => i.id === null).map(i => i.name)
+        if (dirs.length > 0) {
+          setSubfolders(dirs)
+          setSubfolder(dirs[0]) // auto-select first subfolder
+        } else {
+          setFiles(imgs)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [basePath])
+
+  // When subfolder changes, list its images
+  useEffect(() => {
+    if (!basePath || subfolders.length === 0 || !subfolder) { return }
+    setLoading(true)
+    setFiles([])
+    supabase.storage
+      .from(BUCKET)
+      .list(`${basePath}/${subfolder}`, { limit: 200, sortBy: { column: 'name', order: 'asc' } })
+      .then(({ data }) => {
+        const imgs = (data ?? []).filter(i => isImageFile(i.name)).map(i => i.name)
         setFiles(imgs)
       })
       .catch(() => setFiles([]))
       .finally(() => setLoading(false))
-  }, [resolvedPath])
+  }, [basePath, subfolder, subfolders.length])
 
   function handleSelect(filename: string) {
-    const fullPath  = `${resolvedPath}/${filename}`
+    const fullPath  = `${activePath}/${filename}`
     const publicUrl = getPublicUrl(fullPath)
     setSelected(fullPath)
     onSelected(publicUrl)
@@ -108,7 +147,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
               background: A.bgInput, border: `1px solid ${A.border}`,
               fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.muted,
             }}>
-              {presetPath}
+              {activePath ?? presetPath}
             </div>
           </div>
         ) : (
@@ -121,26 +160,42 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
                 background: A.bgInput, border: `1px solid ${A.border}`,
                 fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.muted,
               }}>
-                {geo.resolvedPath}
+                {activePath ?? geo.resolvedPath}
               </div>
             )}
           </div>
         )}
 
+        {/* Subfolder picker — shown when basePath contains folders not images */}
+        {subfolders.length > 0 && (
+          <div>
+            <label style={labelStyle}>Hotel</label>
+            <select
+              style={selectStyle}
+              value={subfolder}
+              onChange={e => setSubfolder(e.target.value)}
+            >
+              {subfolders.map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Image grid */}
-        {!resolvedPath && (
+        {!activePath && (
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
             Select a folder to browse assets.
           </div>
         )}
 
-        {resolvedPath && loading && (
+        {activePath && loading && (
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
             Loading...
           </div>
         )}
 
-        {resolvedPath && !loading && files.length === 0 && (
+        {activePath && !loading && files.length === 0 && (
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
             No images in this folder.
           </div>
@@ -150,13 +205,10 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-            gap: 10,
-            maxHeight: 420,
-            overflowY: 'auto',
-            padding: 4,
+            gap: 10, maxHeight: 420, overflowY: 'auto', padding: 4,
           }}>
             {files.map(filename => {
-              const fullPath  = `${resolvedPath}/${filename}`
+              const fullPath  = `${activePath}/${filename}`
               const publicUrl = getPublicUrl(fullPath)
               const isSelected = selected === fullPath
               return (
@@ -164,38 +216,21 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
                   key={filename}
                   onClick={() => handleSelect(filename)}
                   style={{
-                    cursor:       'pointer',
-                    borderRadius: 10,
-                    overflow:     'hidden',
-                    border:       `2px solid ${isSelected ? A.gold : A.border}`,
-                    transition:   'border-color 120ms ease',
-                    display:      'flex',
-                    flexDirection: 'column',
+                    cursor: 'pointer', borderRadius: 10, overflow: 'hidden',
+                    border: `2px solid ${isSelected ? A.gold : A.border}`,
+                    transition: 'border-color 120ms ease',
+                    display: 'flex', flexDirection: 'column',
                   }}
                 >
                   <div style={{ position: 'relative', paddingBottom: '66%', background: A.bgInput }}>
                     <img
-                      src={publicUrl}
-                      alt={filename}
-                      loading='lazy'
-                      style={{
-                        position:   'absolute',
-                        inset:      0,
-                        width:      '100%',
-                        height:     '100%',
-                        objectFit:  'cover',
-                      }}
+                      src={publicUrl} alt={filename} loading='lazy'
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   </div>
                   <div style={{
-                    padding:    '5px 7px',
-                    fontSize:   9,
-                    color:      A.faint,
-                    fontFamily: A.font,
-                    overflow:   'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    background: A.bg,
+                    padding: '5px 7px', fontSize: 9, color: A.faint, fontFamily: A.font,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: A.bg,
                   }}>
                     {filename}
                   </div>

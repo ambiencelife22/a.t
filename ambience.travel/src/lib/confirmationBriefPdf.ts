@@ -1,8 +1,8 @@
 // confirmationBriefPdf.ts — Trip Confirmation Brief PDF export
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
-//   - Page 1: hero full-bleed, emblem + logo prominent, title block,
-//             4-pill snapshot, booking status legend, contacts (minimal)
+//   - Page 1: hero full-bleed, frosted glass card top-left (emblem + logo),
+//             title block, 4-pill snapshot, booking status legend, contacts
 //   - Page 2+: per-room cards (one card per BookingRoom row, image-forward,
 //              confirmation number prominent, guest name + party composition)
 //   - Fallback: if no rooms on a booking, one card from the booking itself
@@ -13,6 +13,10 @@
 //   - Data fetching (caller passes ConfirmationBriefData)
 //   - jsPDF script loading (useBriefDownload owns this)
 //
+// Last updated: S46 — Frosted glass card pattern: emblem + logo drawn top-left
+//   over hero in renderPage1 (not stampChrome). stampChrome no longer places
+//   emblem/logo — footer only.
+// Prior: S46 — else chains removed.
 // Prior: S45 — redesign: hero prominent, no journey strip,
 //   minimal page 1, per-room page 2 from travel_booking_rooms.
 
@@ -180,24 +184,55 @@ function drawIconCircle(doc: any, icon: string, cx: number, cy: number, r = 5) {
   }
 }
 
-// ── Page chrome ───────────────────────────────────────────────────────────────
+// ── Frosted glass card — emblem + logo top-left over hero ─────────────────────
+// Per S45 Add 1 standing rules: white semi-transparent rounded rect, top-left,
+// padding 8mm. Never float emblem over raw hero without background.
 
-function stampChrome(doc: any, brief: TripBrief | null, emblem: Img | null, logo: Img | null) {
+function drawFrostedLogoCard(doc: any, emblem: Img | null, logo: Img | null) {
+  const cardX   = P.margin
+  const cardY   = 8
+  const padH    = 5   // vertical padding inside card
+  const padW    = 5   // horizontal padding inside card
+  const emblemS = 16  // emblem square size mm
+  const logoH   = 9   // logo height mm
+  const logoW   = logoH * 4.0
+  const gap     = 4   // gap between emblem and logo
+
+  // Card dimensions
+  const cardW = padW + emblemS + gap + logoW + padW
+  const cardH = padH * 2 + Math.max(emblemS, logoH)
+
+  // Frosted background — semi-transparent, subtle border
+  doc.setGState(doc.GState({ opacity: 0.72 }))
+  doc.setFillColor(250, 247, 242)
+  doc.setDrawColor(200, 195, 185)
+  doc.setLineWidth(0.2)
+  doc.roundedRect(cardX, cardY, cardW, cardH, 3, 3, 'FD')
+  doc.setGState(doc.GState({ opacity: 1 }))
+
+  // Emblem
+  const emblemX = cardX + padW
+  const emblemY = cardY + padH
+  if (emblem) {
+    doc.addImage(emblem.data, emblem.format, emblemX, emblemY, emblemS, emblemS, undefined, 'FAST')
+  }
+
+  // Logo — vertically centred alongside emblem
+  const logoX = emblemX + emblemS + gap
+  const logoY = cardY + padH + (emblemS - logoH) / 2
+  if (logo) {
+    doc.addImage(logo.data, logo.format, logoX, logoY, logoW, logoH, undefined, 'FAST')
+  }
+}
+
+// ── Page chrome — footer only (no emblem/logo — drawn in renderPage1) ─────────
+
+function stampChrome(doc: any, brief: TripBrief | null) {
   const count  = doc.getNumberOfPages()
   const footer = brief?.footer_tagline ?? 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
 
   for (let i = 1; i <= count; i++) {
     doc.setPage(i)
-
-    if (emblem) {
-      const es = 12
-      doc.addImage(emblem.data, emblem.format, P.w / 2 - es / 2, 6, es, es, undefined, 'FAST')
-    }
-    if (logo) {
-      const lh = 8; const lw = lh * 3
-      doc.addImage(logo.data, logo.format, P.w / 2 - lw / 2, 20, lw, lh, undefined, 'FAST')
-    }
-
     rule(doc, P.margin, P.h - 10, CW)
     doc.setFillColor(T.ambience[0], T.ambience[1], T.ambience[2])
     doc.circle(P.w / 2, P.h - 7.5, 0.8, 'F')
@@ -210,12 +245,14 @@ function stampChrome(doc: any, brief: TripBrief | null, emblem: Img | null, logo
 
 // ── Page 1 ────────────────────────────────────────────────────────────────────
 
-function renderPage1(doc: any, d: ConfirmationBriefData) {
+function renderPage1(doc: any, d: ConfirmationBriefData, emblem: Img | null, logo: Img | null) {
   const { trip, brief, house } = d
 
   doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
   doc.rect(0, 0, P.w, P.h, 'F')
 
+  // Hero
+  let heroDrawn = false
   if (d.heroImageData) {
     try {
       doc.addImage(d.heroImageData, 'JPEG', 0, 0, P.w, P.heroH, undefined, 'FAST')
@@ -229,12 +266,16 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
         doc.rect(0, P.heroH - 40 + i, P.w, 1.2, 'F')
       }
       doc.setGState(doc.GState({ opacity: 1 }))
+      heroDrawn = true
     } catch { /* silent */ }
   }
-  if (!d.heroImageData) {
+  if (!heroDrawn) {
     doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
     doc.rect(0, 0, P.w, P.heroH, 'F')
   }
+
+  // Frosted glass card — emblem + logo top-left over hero
+  drawFrostedLogoCard(doc, emblem, logo)
 
   let y: number = P.heroH + 6
 
@@ -382,7 +423,6 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
 
   rule(doc, P.margin, y, CW); y += 8
 
-  // Collect all rooms across all visible bookings
   const allRooms: { room: BookingRoom; booking: TripBooking }[] = []
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
@@ -408,11 +448,30 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
     allRooms.push({ room: synthetic, booking: b })
   }
 
-  const imgH  = 52
-  const cardH = imgH + 2
-  const imgW  = 60
+  const imgW = 70   // landscape ~3:2
+  const imgH = 47
 
   for (const { room, booking } of allRooms) {
+    // Pre-load image before drawing so we know actual dimensions
+    let roomImgData: Awaited<ReturnType<typeof loadImg>> = null
+    if (room.brief_image_src) {
+      try { roomImgData = await loadImg(room.brief_image_src) } catch { /* silent */ }
+    }
+
+    // Estimate content height to size card dynamically
+    const tx = P.margin + imgW + 10
+    const tw = CW - imgW - 10 - 2
+    let contentH = 8 // top padding
+    if (room.confirmation_number) contentH += 4 + 7
+    if (room.guest_name)          contentH += 6
+    if (room.party_composition)   contentH += 5
+    if (room.room_name)           contentH += 4
+    // room.notes is internal — not shown on client brief
+    contentH += 6 // bottom padding
+
+    // cardH: content side gets +6 padding; image side must be flush
+    const cardH = Math.max(imgH + 6, contentH)
+
     if (y + cardH > P.h - 18) {
       doc.addPage()
       doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
@@ -425,23 +484,14 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
     doc.setLineWidth(0.3)
     doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'FD')
 
-    let imgLoaded = false
-    if (room.brief_image_src) {
-      try {
-        const imgData = await loadImg(room.brief_image_src)
-        if (imgData) {
-          doc.addImage(imgData.data, imgData.format, P.margin, y, imgW, imgH, undefined, 'FAST')
-          imgLoaded = true
-        }
-      } catch { /* silent */ }
+    if (roomImgData) {
+      doc.addImage(roomImgData.data, roomImgData.format, P.margin, y, imgW, imgH, undefined, 'FAST')
     }
-    if (!imgLoaded) {
+    if (!roomImgData) {
       doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
       doc.rect(P.margin, y, imgW, imgH, 'F')
     }
 
-    const tx = P.margin + imgW + 10
-    const tw = CW - imgW - 10 - 2
     let ty = y + 8
 
     if (room.confirmation_number) {
@@ -470,13 +520,6 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
       doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
       const rLines = doc.splitTextToSize(room.room_name, tw)
       doc.text(rLines[0] ?? '', tx, ty); ty += 4
-    }
-
-    if (room.notes) {
-      sans(doc, 'normal', 7.5)
-      doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-      const nLines = doc.splitTextToSize(room.notes, tw)
-      nLines.slice(0, 2).forEach((l: string) => { doc.text(l, tx, ty); ty += 3.5 })
     }
 
     const bookedBy  = booking.booked_by ?? 'ambience'
@@ -522,9 +565,9 @@ export async function exportConfirmationBriefPdf(data: ConfirmationBriefData): P
     loadSvg(ASSETS.logoSvg, 800),
   ])
 
-  renderPage1(doc, data)
+  renderPage1(doc, data, emblem, logo)
   await renderRoomPages(doc, data)
-  stampChrome(doc, data.brief, emblem, logo)
+  stampChrome(doc, data.brief)
 
   doc.save(buildFilename(data))
 }

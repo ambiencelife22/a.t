@@ -19,6 +19,7 @@
  * Save: upsertTripBrief + updateBookingBriefFields for all bookings.
  * Download: exportConfirmationBriefPdf — uses preview state, hero pre-loaded.
  *
+ * Last updated: S46 — Removed else from BriefPreview room collection loop.
  * Prior: S46 — initial ship.
  */
 
@@ -29,6 +30,7 @@ import {
   fetchTripDossierForHouse,
   upsertTripBrief,
   updateBookingBriefFields,
+  updateBookingRoom,
 } from '../../lib/adminTripQueries'
 import type {
   DossierTrip,
@@ -147,6 +149,115 @@ interface PreviewFields {
   house:         HouseProfile | null
 }
 
+// ── RoomImageEditor ──────────────────────────────────────────────────────────
+
+function RoomImageEditor({ trip }: { trip: DossierTrip }) {
+  const allRooms = trip.bookings.flatMap(b =>
+    b._rooms.map(r => ({ room: r, booking: b }))
+  )
+
+  const [imageSrcs, setImageSrcs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      allRooms.map(({ room, booking }) => [
+        room.id,
+        room.brief_image_src ?? booking._hotel_image_src ?? '',
+      ])
+    )
+  )
+  const [saving,       setSaving]       = useState<string | null>(null)
+  const [pickerRoomId, setPickerRoomId] = useState<string | null>(null)
+
+  async function handleSave(roomId: string) {
+    setSaving(roomId)
+    try {
+      await updateBookingRoom(roomId, { brief_image_src: imageSrcs[roomId] || null })
+    } catch { /* silent */ }
+    finally { setSaving(null) }
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {allRooms.map(({ room }) => {
+          const src = imageSrcs[room.id] ?? ''
+          return (
+            <div key={room.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px' }}>
+              <div style={{ marginBottom: 8 }}>
+                {room.confirmation_number && <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>#{room.confirmation_number}</div>}
+                {room.guest_name && <div style={{ fontSize: 11, color: A.text, fontFamily: A.font, fontWeight: 700 }}>{room.guest_name}</div>}
+                {room.room_name  && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{room.room_name}</div>}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {src ? (
+                  <div style={{ width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
+                    <img src={src} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgCard, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
+                  </div>
+                )}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <button
+                    onClick={() => setPickerRoomId(room.id)}
+                    style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', textAlign: 'left' as const }}
+                  >
+                    {src ? 'Change Image' : 'Select from Library'}
+                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {src && (
+                      <button
+                        onClick={async () => {
+                          setImageSrcs(prev => ({ ...prev, [room.id]: '' }))
+                          setSaving(room.id)
+                          try { await updateBookingRoom(room.id, { brief_image_src: null }) }
+                          catch { /* silent */ }
+                          finally { setSaving(null) }
+                        }}
+                        style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}
+                      >
+                        {saving === room.id ? 'Saving...' : 'Remove'}
+                      </button>
+                    )}
+                    {src && (
+                      <button
+                        onClick={() => handleSave(room.id)}
+                        disabled={saving === room.id}
+                        style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: 'none', cursor: saving === room.id ? 'not-allowed' : 'pointer', padding: 0 }}
+                      >
+                        {saving === room.id ? 'Saving...' : 'Save'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {pickerRoomId && (
+        <AssetPicker
+          onClose={() => setPickerRoomId(null)}
+          presetPath={
+            trip.destinations[0]?.storage_path
+              ? `${trip.destinations[0].storage_path}/accom`
+              : undefined
+          }
+          onSelected={async url => {
+            setImageSrcs(prev => ({ ...prev, [pickerRoomId]: url }))
+            setPickerRoomId(null)
+            setSaving(pickerRoomId)
+            try { await updateBookingRoom(pickerRoomId, { brief_image_src: url }) }
+            catch { /* silent */ }
+            finally { setSaving(null) }
+          }}
+        />
+      )}
+    </>
+  )
+}
+
 function BriefPreview({ fields }: { fields: PreviewFields }) {
   const {
     briefTitle, briefSubtitle, preparedFor, snapDest, snapDates, snapGuests,
@@ -220,16 +331,15 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
           background: `linear-gradient(to bottom, transparent, ${CREAM})`,
         }} />
         <div style={{
-          position: 'absolute', top: 16, left: 16,
-          background: 'rgba(250,247,242,0.85)',
+          position: 'absolute', top: 12, left: 12,
+          background: 'rgba(250,247,242,0.72)',
           backdropFilter: 'blur(8px)',
-          borderRadius: 8, padding: '8px 12px',
-          display: 'flex', alignItems: 'center', gap: 8,
+          borderRadius: 8, padding: '8px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          border: '0.5px solid rgba(200,195,185,0.6)',
         }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 12, color: GOLD }}>✦</span>
-          </div>
-          <span style={{ fontSize: 11, fontFamily: A.font, fontWeight: 700, color: INK, letterSpacing: '0.08em' }}>ambience</span>
+          <img src='/emblem.png' alt='' style={{ width: 32, height: 32, objectFit: 'contain' }} />
+          <img src='/ambience_travel.svg' alt='ambience' style={{ height: 18, objectFit: 'contain' }} />
         </div>
       </div>
 
@@ -734,15 +844,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                 No rooms seeded yet. Add rooms via the booking card in the House tab.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {trip.bookings.flatMap(b => b._rooms).map(r => (
-                  <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '7px 10px' }}>
-                    {r.confirmation_number && <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700 }}>#{r.confirmation_number}</div>}
-                    {r.guest_name && <div style={{ fontSize: 11, color: A.text, fontFamily: A.font, fontWeight: 700 }}>{r.guest_name}</div>}
-                    {r.room_name  && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
-                  </div>
-                ))}
-              </div>
+              <RoomImageEditor trip={trip} />
             )}
           </section>
 

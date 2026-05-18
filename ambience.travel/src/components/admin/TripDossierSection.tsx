@@ -15,7 +15,7 @@
  * in HouseDetail.loadAll and passed in as TripDossierData.
  *
  * Last updated: S46 — Edit Brief navigates to BriefEditorPage; inline editor
- *   removed from TripActionPanel.
+ *   removed from TripActionPanel. All else chains removed.
  * Prior: S45 — TripActionPanel added; confirmationBriefPdf wired;
  *   TripBrief edit form (inline); brief overlay fields on BookingCard.
  * Prior: S45 — Download Dossier button wired per BookingCard.
@@ -30,7 +30,7 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile, TripBrief,
 } from '../../lib/adminTripQueries'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
+import { updateBookingBriefFields, createBookingRoom, updateBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
 import type { BookingRoom, BookingRoomPatch } from '../../lib/adminTripQueries'
 import { useDossierDownload } from '../../lib/useDossierDownload'
 import { useBriefDownload } from '../../lib/useBriefDownload'
@@ -228,11 +228,20 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
 
+  // New room form state
   const [newRoomName,  setNewRoomName]  = useState('')
   const [newConfNum,   setNewConfNum]   = useState('')
   const [newGuestName, setNewGuestName] = useState('')
   const [newPartyComp, setNewPartyComp] = useState('')
   const [newNotes,     setNewNotes]     = useState('')
+  const [newImageSrc,  setNewImageSrc]  = useState(booking._hotel_image_src ?? '')
+
+  // Per-room image editing: roomId -> draft URL
+  // Seed from brief_image_src if set, else fall back to hotel hero image
+  const hotelFallback = booking._hotel_image_src ?? ''
+  const [roomImageDraft, setRoomImageDraft] = useState<Record<string, string>>(() =>
+    Object.fromEntries(booking._rooms.map(r => [r.id, r.brief_image_src ?? hotelFallback]))
+  )
 
   async function handleAdd() {
     setSaving('add')
@@ -243,11 +252,23 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
         guest_name:          newGuestName || null,
         party_composition:   newPartyComp || null,
         notes:               newNotes     || null,
+        brief_image_src:     newImageSrc  || null,
         sort_order:          rooms.length,
       })
       setRooms(prev => [...prev, r])
+      setRoomImageDraft(prev => ({ ...prev, [r.id]: r.brief_image_src ?? '' }))
       setAdding(false)
-      setNewRoomName(''); setNewConfNum(''); setNewGuestName(''); setNewPartyComp(''); setNewNotes('')
+      setNewRoomName(''); setNewConfNum(''); setNewGuestName('')
+      setNewPartyComp(''); setNewNotes(''); setNewImageSrc(booking._hotel_image_src ?? '')
+    } catch { /* silent */ }
+    finally { setSaving(null) }
+  }
+
+  async function handleSaveImage(roomId: string) {
+    setSaving(roomId + '_img')
+    try {
+      const updated = await updateBookingRoom(roomId, { brief_image_src: roomImageDraft[roomId] || null })
+      setRooms(prev => prev.map(r => r.id === roomId ? updated : r))
     } catch { /* silent */ }
     finally { setSaving(null) }
   }
@@ -276,31 +297,72 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
       </div>
 
       {rooms.map(r => (
-        <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {r.confirmation_number && (
-              <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>
-            )}
-            {r.guest_name && (
-              <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>
-            )}
-            {r.party_composition && (
-              <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>
-            )}
-            {r.room_name && (
-              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>
-            )}
-            {r.notes && (
-              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>
-            )}
+        <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {r.confirmation_number && (
+                <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>
+              )}
+              {r.guest_name && (
+                <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>
+              )}
+              {r.party_composition && (
+                <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>
+              )}
+              {r.room_name && (
+                <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>
+              )}
+              {r.notes && (
+                <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>
+              )}
+            </div>
+            <button
+              onClick={() => handleDelete(r.id)}
+              disabled={saving === r.id}
+              style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}
+            >
+              {saving === r.id ? '...' : '\u2715'}
+            </button>
           </div>
-          <button
-            onClick={() => handleDelete(r.id)}
-            disabled={saving === r.id}
-            style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}
-          >
-            {saving === r.id ? '...' : '\u2715'}
-          </button>
+          <div style={{ marginTop: 8, borderTop: `1px solid ${A.border}`, paddingTop: 8 }}>
+            <label style={labelStyle}>Brief Image</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {roomImageDraft[r.id] ? (
+                <div style={{ width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
+                  <img src={roomImageDraft[r.id]} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ) : (
+                <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgCard, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
+                </div>
+              )}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <input
+                  style={inputStyle}
+                  value={roomImageDraft[r.id] ?? ''}
+                  onChange={e => setRoomImageDraft(prev => ({ ...prev, [r.id]: e.target.value }))}
+                  placeholder='https://...'
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => handleSaveImage(r.id)}
+                    disabled={saving === r.id + '_img'}
+                    style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '3px 10px', cursor: 'pointer' }}
+                  >
+                    {saving === r.id + '_img' ? 'Saving...' : 'Save Image'}
+                  </button>
+                  {roomImageDraft[r.id] && (
+                    <button
+                      onClick={() => setRoomImageDraft(prev => ({ ...prev, [r.id]: '' }))}
+                      style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ))}
 
@@ -312,6 +374,21 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
             <div><label style={labelStyle}>Party Composition</label><input style={inputStyle} value={newPartyComp} onChange={e => setNewPartyComp(e.target.value)} placeholder='2 Adults, 2 Children' /></div>
             <div><label style={labelStyle}>Room Name</label><input style={inputStyle} value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder='Two-Bedroom Suite' /></div>
             <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Notes</label><input style={inputStyle} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder='Includes rollaway bed' /></div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Brief Image</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {newImageSrc ? (
+                  <div style={{ width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
+                    <img src={newImageSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bg, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
+                  </div>
+                )}
+                <input style={{ ...inputStyle, flex: 1 }} value={newImageSrc} onChange={e => setNewImageSrc(e.target.value)} placeholder='https://...' />
+              </div>
+            </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
