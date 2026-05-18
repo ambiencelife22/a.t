@@ -169,7 +169,7 @@ export default function GeoCascade({
     }
 
     const hotelStorageSlug = hotel
-      ? (hotel.short_slug || hotel.slug)
+      ? (hotel.short_slug)
       : undefined
 
     const resolved = resolveStoragePath({
@@ -282,7 +282,7 @@ export default function GeoCascade({
                 <option value=''>Select hotel…</option>
                 {hotels.map(h => (
                   <option key={h.id} value={h.id}>
-                    {h.name} ({h.short_slug || h.slug})
+                    {h.name} (h.short_slug)
                   </option>
                 ))}
               </select>
