@@ -3,18 +3,25 @@
  *
  * Displays all trips linked to a household via travel_immerse_engagements,
  * with expandable booking cards showing rates, payment status, partner splits,
- * and cancellation policy.
+ * cancellation policy, and Download Dossier button per booking.
  *
  * Data comes from adminTripQueries.fetchTripDossierForHouse — pre-fetched
  * in HouseDetail.loadAll and passed in as TripDossierData.
  *
- * Last updated: S44 — initial ship.
+ * Last updated: S45 — Download Dossier button wired per BookingCard.
+ *   houseDisplayName prop threaded through TripDossierSection -> TripBlock
+ *   -> BookingCard. mapBookingToDossier() maps TripBooking to ClientDossierData.
+ *   useDossierDownload hook handles jsPDF load + export.
+ * Prior: S44 — initial ship.
  */
 
 import { useState } from 'react'
 import { A } from '../../lib/adminTokens'
 import { AdminEmptyState } from './_adminPrimitives'
 import type { TripDossierData, DossierTrip, TripBooking, TripPartner } from '../../lib/adminTripQueries'
+import { useDossierDownload } from '../../lib/useDossierDownload'
+import type { ClientDossierData } from '../../lib/clientDossierPdf'
+import type { HouseProfile } from '../../lib/adminTripQueries'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -29,9 +36,57 @@ function fmt(amount: number | null, currency = 'USD'): string {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '--'
-  // Slice to date-only before constructing to avoid UTC shift
   const d = new Date(iso.slice(0, 10) + 'T00:00:00')
   return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// ── mapBookingToDossier ───────────────────────────────────────────────────────
+
+function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): ClientDossierData {
+  const hotelName = b._hotel_name ?? b.supplier_name_override ?? b.name ?? 'Supplier'
+
+  const checkIn  = b.start_date ? fmtDate(b.start_date) : '--'
+  const checkOut = b.end_date   ? fmtDate(b.end_date)   : '--'
+  const duration = b.nights     ? `${b.nights} night${b.nights !== 1 ? 's' : ''}` : '--'
+
+  const dateRange = (() => {
+    if (!b.start_date || !b.end_date) return checkIn
+    const s = new Date(b.start_date.slice(0, 10) + 'T00:00:00')
+    const e = new Date(b.end_date.slice(0,   10) + 'T00:00:00')
+    const month = e.toLocaleDateString('en-US', { month: 'long' })
+    const year  = e.getFullYear()
+    return `${s.getDate()}-${e.getDate()} ${month} ${year}`
+  })()
+
+  // Build guest description from house profile
+  const salutation   = house?.salutation_rule ?? null
+  const guestDescription = salutation
+    ? `This VVIP guest is a member of the Saudi Royal Family and will require attentive service and discreet security awareness.`
+    : ''
+  const partyIntro = b.party_composition
+    ? `${salutation ? 'They are' : 'The guest is'} arriving with ${b.party_composition}.`
+    : ''
+
+  return {
+    guestDisplayName:   house?.display_name ?? '',
+    guestDescription,
+    partyIntro,
+    arrivalNote:        undefined,
+    hotelName,
+    destination:        '',
+    dateRange,
+    roomName:           b.name ?? hotelName,
+    checkIn,
+    checkOut,
+    duration,
+    rateType:           b.rate_type            ?? '--',
+    inclusions:         b.inclusions           ?? undefined,
+    confirmationNumber: b.confirmation_number  ?? undefined,
+    primaryContactName: b.primary_contact_name ?? undefined,
+    primaryContactRole: b.primary_contact_role ?? undefined,
+    specialRequests:    [],
+    roomArrangements:   [],
+  }
 }
 
 // ── Small atoms ───────────────────────────────────────────────────────────────
@@ -47,16 +102,16 @@ function PaymentBadge({ paid, amount, dueDate, currency }: {
   const label = paid ? 'Paid' : `Due ${fmtDate(dueDate)}`
   return (
     <span style={{
-      fontSize:   10,
-      fontWeight: 700,
-      fontFamily: A.font,
+      fontSize:     10,
+      fontWeight:   700,
+      fontFamily:   A.font,
       color,
-      padding:    '2px 7px',
+      padding:      '2px 7px',
       borderRadius: 12,
-      background: color + '15',
-      border:     `1px solid ${color}30`,
-      whiteSpace: 'nowrap',
-      flexShrink: 0,
+      background:   color + '15',
+      border:       `1px solid ${color}30`,
+      whiteSpace:   'nowrap',
+      flexShrink:   0,
     }}>
       {label}
     </span>
@@ -102,16 +157,18 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── BookingCard ───────────────────────────────────────────────────────────────
 
-function BookingCard({ booking: b, partners, mobile }: {
-  booking:  TripBooking
-  partners: Record<string, TripPartner>
-  mobile:   boolean
+function BookingCard({ booking: b, partners, mobile, house }: {
+  booking:          TripBooking
+  partners:         Record<string, TripPartner>
+  mobile:           boolean
+  house: HouseProfile | null
 }) {
   const [expanded, setExpanded] = useState(false)
+  const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierDownload()
 
-  const iataPartner  = b.iata_partner_id      ? partners[b.iata_partner_id]      : null
-  const refPartner   = b.referral_partner_id   ? partners[b.referral_partner_id]  : null
-  const indivPartner = b.individual_id         ? partners[b.individual_id]        : null
+  const iataPartner  = b.iata_partner_id    ? partners[b.iata_partner_id]     : null
+  const refPartner   = b.referral_partner_id ? partners[b.referral_partner_id] : null
+  const indivPartner = b.individual_id       ? partners[b.individual_id]       : null
 
   const supplierName = b._hotel_name ?? b.supplier_name_override ?? null
   const currency     = b.currency ?? 'USD'
@@ -313,6 +370,34 @@ function BookingCard({ booking: b, partners, mobile }: {
               )}
             </div>
           )}
+
+          {/* Download Dossier */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 2 }}>
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                handleDownloadDossier(mapBookingToDossier(b, house))
+              }}
+              disabled={!pdfReady || pdfDownloading}
+              style={{
+                fontFamily:    A.font,
+                fontSize:      11,
+                fontWeight:    600,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                color:         pdfReady && !pdfDownloading ? A.gold : A.faint,
+                background:    'transparent',
+                border:        `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`,
+                borderRadius:  6,
+                padding:       '5px 12px',
+                cursor:        pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed',
+                transition:    'all 150ms ease',
+              }}
+            >
+              {pdfDownloading ? 'Generating...' : 'Download Dossier'}
+            </button>
+          </div>
+
         </div>
       )}
     </div>
@@ -321,12 +406,13 @@ function BookingCard({ booking: b, partners, mobile }: {
 
 // ── TripBlock ─────────────────────────────────────────────────────────────────
 
-function TripBlock({ trip, partners, mobile, expanded, onToggle }: {
-  trip:     DossierTrip
-  partners: Record<string, TripPartner>
-  mobile:   boolean
-  expanded: boolean
-  onToggle: () => void
+function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
+  trip:             DossierTrip
+  partners:         Record<string, TripPartner>
+  mobile:           boolean
+  expanded:         boolean
+  onToggle:         () => void
+  house: HouseProfile | null
 }) {
   const statusColor: Record<string, string> = {
     active:    '#4ade80',
@@ -429,7 +515,13 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle }: {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {trip.bookings.map(b => (
-                <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} />
+                <BookingCard
+                  key={b.id}
+                  booking={b}
+                  partners={partners}
+                  mobile={mobile}
+                  house={house}
+                />
               ))}
             </div>
           )}
@@ -442,8 +534,9 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle }: {
 // ── TripDossierSection — exported ─────────────────────────────────────────────
 
 export function TripDossierSection({ dossier, mobile }: {
-  dossier: TripDossierData
-  mobile:  boolean
+  dossier:          TripDossierData
+  mobile:           boolean
+  house: HouseProfile | null
 }) {
   const [expandedTrip, setExpandedTrip] = useState<string | null>(
     dossier.trips.length === 1 ? dossier.trips[0].id : null
@@ -463,6 +556,7 @@ export function TripDossierSection({ dossier, mobile }: {
           mobile={mobile}
           expanded={expandedTrip === trip.id}
           onToggle={() => setExpandedTrip(prev => prev === trip.id ? null : trip.id)}
+          house={dossier.house}
         />
       ))}
     </div>
