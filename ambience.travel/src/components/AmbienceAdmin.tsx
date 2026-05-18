@@ -7,7 +7,8 @@
  *
  * Auth gate: same pattern as ProgrammeAdmin — getSession() + global_profiles.is_admin.
  *
- * Last updated: S40D — Added House product group (HouseTab).
+ * Last updated: S46 — Added trips/brief route → BriefEditorPage. Removed all else chains.
+ * Prior: S40D — Added House product group (HouseTab).
  * Prior: S36 — Wired Library + Guides product groups (Dining tab in each).
  *   Library tab passes destinationId from URL hash for destination-scoped views.
  * Prior: S33
@@ -29,6 +30,7 @@ import GuidesHotelsTab        from './admin/GuidesHotelsTab'
 import LibraryHotelsTab       from './admin/LibraryHotelsTab'
 import GuidesExperiencesTab   from './admin/GuidesExperiencesTab'
 import HouseTab            from './admin/HouseTab'
+import BriefEditorPage     from './admin/BriefEditorPage'
 import { AdminToastProvider } from './admin/_adminPrimitives'
 import { OperationsTab } from './admin/OperationsTab'
 
@@ -85,6 +87,11 @@ function AdminShell() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  // BriefEditorPage is full-page cream — bypass the standard admin chrome
+  if (tab.product === 'trips' && tab.tab === 'brief') {
+    return <BriefEditorPage tripId={tab.tripId} />
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
@@ -147,14 +154,12 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'hotels')      return <GuidesHotelsTab />
   }
 
-   if (tab.product === 'library') {
+  if (tab.product === 'library') {
     if (tab.tab === 'dining') return <LibraryDiningTab destinationId={tab.destinationId} />
     if (tab.tab === 'hotels') return <LibraryHotelsTab destinationId={tab.destinationId} />
   }
 
-  if (tab.product === 'house') {
-    return <HouseTab />
-  }
+  if (tab.product === 'house') return <HouseTab />
 
   if (tab.product === 'operations') return <OperationsTab />
 

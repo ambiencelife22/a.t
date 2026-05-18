@@ -6,15 +6,17 @@
  * cancellation policy, and Download Dossier button per booking.
  *
  * Trip-level action panel (TripActionPanel) sits above booking cards in each
- * expanded TripBlock. Houses all trip-level actions for the travel designer:
- *   - Edit Brief (inline form for travel_trip_briefs overlay)
+ * expanded TripBlock. Houses trip-level actions for the travel designer:
+ *   - Edit Brief → navigates to BriefEditorPage (#admin/trips/{tripId}/brief)
  *   - Download Confirmation Brief (exportConfirmationBriefPdf)
  *   - Download Dossier is per-booking (BookingCard level)
  *
  * Data comes from adminTripQueries.fetchTripDossierForHouse — pre-fetched
  * in HouseDetail.loadAll and passed in as TripDossierData.
  *
- * Last updated: S45 — TripActionPanel added; confirmationBriefPdf wired;
+ * Last updated: S46 — Edit Brief navigates to BriefEditorPage; inline editor
+ *   removed from TripActionPanel. All else chains removed.
+ * Prior: S45 — TripActionPanel added; confirmationBriefPdf wired;
  *   TripBrief edit form (inline); brief overlay fields on BookingCard.
  * Prior: S45 — Download Dossier button wired per BookingCard.
  * Prior: S44 — initial ship.
@@ -22,16 +24,16 @@
 
 import { useState } from 'react'
 import { A } from '../../lib/adminTokens'
+import { navigateAdmin } from '../../lib/adminPath'
 import { AdminEmptyState } from './_adminPrimitives'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
-  HouseProfile, TripBrief, TripBriefPatch, JourneyStep,
+  HouseProfile, TripBrief,
 } from '../../lib/adminTripQueries'
-import { upsertTripBrief, updateBookingBriefFields, createBookingRoom, updateBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
 import type { BookingRoom, BookingRoomPatch } from '../../lib/adminTripQueries'
 import { useDossierDownload } from '../../lib/useDossierDownload'
 import { useBriefDownload } from '../../lib/useBriefDownload'
-import AssetPicker from './AssetPicker'
 import type { ClientDossierData } from '../../lib/clientDossierPdf'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -120,73 +122,11 @@ const labelStyle: React.CSSProperties = {
 
 // ── TripActionPanel ───────────────────────────────────────────────────────────
 
-function TripActionPanel({ trip, house, onBriefSaved }: {
-  trip:         DossierTrip
-  house:        HouseProfile | null
-  onBriefSaved: (brief: TripBrief) => void
+function TripActionPanel({ trip, house }: {
+  trip:  DossierTrip
+  house: HouseProfile | null
 }) {
-  const [editOpen, setEditOpen]     = useState(false)
-  const [saving,   setSaving]       = useState(false)
-  const [saveErr,  setSaveErr]      = useState<string | null>(null)
-  const [pickerOpen, setPickerOpen]  = useState(false)
-
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
-
-  // Brief form state — initialised from existing brief or blank
-  const br = trip.brief
-  const [briefTitle,      setBriefTitle]      = useState(br?.brief_title      ?? '')
-  const [briefSubtitle,   setBriefSubtitle]   = useState(br?.brief_subtitle   ?? '')
-  const [preparedFor,     setPreparedFor]     = useState(br?.prepared_for     ?? house?.display_name ?? '')
-  const [snapDest,        setSnapDest]        = useState(br?.snapshot_destination ?? '')
-  const [snapDates,       setSnapDates]       = useState(br?.snapshot_dates   ?? buildDateRange(trip.start_date, trip.end_date))
-  const [snapGuests,      setSnapGuests]      = useState(br?.snapshot_guests  ?? '')
-  const [snapStatus,      setSnapStatus]      = useState(br?.snapshot_status  ?? 'Confirmed')
-  const [advisorName,     setAdvisorName]     = useState(br?.advisor_name     ?? '')
-  const [advisorEmail,    setAdvisorEmail]    = useState(br?.advisor_email    ?? '')
-  const [advisorPhone,    setAdvisorPhone]    = useState(br?.advisor_phone    ?? '')
-  const [hotelNote,       setHotelNote]       = useState(br?.hotel_contact_note ?? 'Shared closer to arrival')
-  const [footerTagline,   setFooterTagline]   = useState(br?.footer_tagline   ?? '')
-  const [heroImageSrc,    setHeroImageSrc]    = useState(br?.hero_image_src    ?? '')
-  const [notesRaw,        setNotesRaw]        = useState((br?.important_notes ?? []).join('\n'))
-  const [stepsRaw,        setStepsRaw]        = useState(
-    (br?.journey_steps ?? []).map(s => `${s.icon}|${s.label}|${s.detail}`).join('\n')
-  )
-
-  async function handleSave() {
-    if (!house) return
-    setSaving(true); setSaveErr(null)
-    try {
-      const notes: string[]      = notesRaw.split('\n').map(s => s.trim()).filter(Boolean)
-      const steps: JourneyStep[] = stepsRaw.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
-        const [icon, label, ...rest] = line.split('|')
-        return { icon: icon?.trim() ?? 'anchor', label: label?.trim() ?? '', detail: rest.join('|').trim() }
-      })
-      const patch: TripBriefPatch = {
-        brief_title:          briefTitle      || null,
-        brief_subtitle:       briefSubtitle   || null,
-        prepared_for:         preparedFor     || null,
-        snapshot_destination: snapDest        || null,
-        snapshot_dates:       snapDates       || null,
-        snapshot_guests:      snapGuests      || null,
-        snapshot_status:      snapStatus      || null,
-        advisor_name:         advisorName     || null,
-        advisor_email:        advisorEmail    || null,
-        advisor_phone:        advisorPhone    || null,
-        hotel_contact_note:   hotelNote       || null,
-        footer_tagline:       footerTagline   || null,
-        hero_image_src:       heroImageSrc    || null,
-        important_notes:      notes,
-        journey_steps:        steps,
-      }
-      const saved = await upsertTripBrief(trip.id, house.id, patch)
-      onBriefSaved(saved)
-      setEditOpen(false)
-    } catch (err) {
-      setSaveErr(err instanceof Error ? err.message : 'Save failed')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const btnBase: React.CSSProperties = {
     fontFamily:    A.font,
@@ -201,159 +141,50 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
     border:        'none',
   }
 
+  async function handleDownload() {
+    let heroData: string | null = null
+    const heroSrc = trip.brief?.hero_image_src
+    if (heroSrc) {
+      try {
+        const res  = await fetch(heroSrc)
+        const blob = await res.blob()
+        heroData = await new Promise(resolve => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+      } catch { heroData = null }
+    }
+    handleDownloadBrief({
+      trip,
+      brief:           trip.brief,
+      house,
+      destinationName: trip.destinations[0]?.name ?? trip.trip_code,
+      heroImageData:   heroData,
+    })
+  }
+
   return (
-    <div style={{ marginBottom: 14 }}>
-      {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: editOpen ? 12 : 0 }}>
-        <button
-          onClick={() => setEditOpen(o => !o)}
-          style={{ ...btnBase, background: editOpen ? A.gold + '20' : A.bgCard, color: A.gold, border: `1px solid ${A.gold}40` }}
-        >
-          {editOpen ? 'Close Brief Editor' : (br ? 'Edit Brief' : 'Create Brief')}
-        </button>
-        <button
-          onClick={async () => {
-          let heroData: string | null = null
-          const heroSrc = trip.brief?.hero_image_src
-          if (heroSrc) {
-            try {
-              const res = await fetch(heroSrc)
-              const blob = await res.blob()
-              heroData = await new Promise(resolve => {
-                const reader = new FileReader()
-                reader.onload = () => resolve(reader.result as string)
-                reader.readAsDataURL(blob)
-              })
-            } catch { heroData = null }
-          }
-          handleDownloadBrief({ trip, brief: trip.brief, house, destinationName: trip.destinations[0]?.name ?? trip.trip_code, heroImageData: heroData })
+    <div style={{ marginBottom: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <button
+        onClick={() => navigateAdmin({ product: 'trips', tab: 'brief', tripId: trip.id })}
+        style={{ ...btnBase, background: A.bgCard, color: A.gold, border: `1px solid ${A.gold}40` }}
+      >
+        {trip.brief ? 'Edit Brief' : 'Create Brief'}
+      </button>
+      <button
+        onClick={handleDownload}
+        disabled={!pdfReady || pdfDownloading}
+        style={{
+          ...btnBase,
+          background: 'transparent',
+          color:      pdfReady && !pdfDownloading ? A.gold : A.faint,
+          border:     `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`,
+          cursor:     pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed',
         }}
-          disabled={!pdfReady || pdfDownloading}
-          style={{ ...btnBase, background: 'transparent', color: pdfReady && !pdfDownloading ? A.gold : A.faint, border: `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`, cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed' }}
-        >
-          {pdfDownloading ? 'Generating...' : 'Download Confirmation Brief'}
-        </button>
-      </div>
-
-      {/* Inline brief editor */}
-      {editOpen && (
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-          {/* Cover */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Cover</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
-                <label style={labelStyle}>Trip Title</label>
-                <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || trip.trip_code} />
-              </div>
-              <div>
-                <label style={labelStyle}>Subtitle</label>
-                <input style={inputStyle} value={briefSubtitle} onChange={e => setBriefSubtitle(e.target.value)} placeholder='Trip Confirmation Brief' />
-              </div>
-              <div>
-                <label style={labelStyle}>Prepared For</label>
-                <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.display_name ?? ''} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Hero Image</label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {heroImageSrc ? (
-                    <div style={{ position: 'relative', width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
-                      <img src={heroImageSrc} alt='hero' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                  ) : (
-                    <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgInput, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
-                    </div>
-                  )}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <button
-                      onClick={() => setPickerOpen(true)}
-                      style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', textAlign: 'left' as const }}
-                    >
-                      {heroImageSrc ? 'Change Image' : 'Select from Library'}
-                    </button>
-                    {heroImageSrc && (
-                      <button
-                        onClick={() => setHeroImageSrc('')}
-                        style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Snapshot */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Snapshot Pills</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Destination</label><input style={inputStyle} value={snapDest} onChange={e => setSnapDest(e.target.value)} placeholder={trip.destinations[0]?.name ?? ''} /></div>
-              <div><label style={labelStyle}>Dates</label><input style={inputStyle} value={snapDates} onChange={e => setSnapDates(e.target.value)} /></div>
-              <div><label style={labelStyle}>Guests</label><input style={inputStyle} value={snapGuests} onChange={e => setSnapGuests(e.target.value)} placeholder={`${trip.guest_count_adults ?? 0} Adults`} /></div>
-              <div><label style={labelStyle}>Status</label><input style={inputStyle} value={snapStatus} onChange={e => setSnapStatus(e.target.value)} /></div>
-            </div>
-          </div>
-
-          {/* Journey steps */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Journey Steps</div>
-            <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginBottom: 6 }}>
-              One per line: <span style={{ color: A.gold, fontFamily: 'DM Mono, monospace' }}>icon|LABEL|detail</span>
-              {' '}· Icons: flight, car, bed, dining, anchor, yacht, experience, departure, transfer, wellness
-            </div>
-            <textarea
-              style={{ ...inputStyle, height: 80, resize: 'vertical', fontFamily: 'DM Mono, monospace', fontSize: 10 }}
-              value={stepsRaw}
-              onChange={e => setStepsRaw(e.target.value)}
-              placeholder={'flight|ARRIVAL|in Nice\ncar|TRANSFER|to St. Tropez\nbed|7 NIGHTS|Cheval Blanc'}
-            />
-          </div>
-
-          {/* Contacts */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Contacts</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Advisor Name</label><input style={inputStyle} value={advisorName} onChange={e => setAdvisorName(e.target.value)} /></div>
-              <div><label style={labelStyle}>Advisor Email</label><input style={inputStyle} value={advisorEmail} onChange={e => setAdvisorEmail(e.target.value)} /></div>
-              <div><label style={labelStyle}>Advisor Phone</label><input style={inputStyle} value={advisorPhone} onChange={e => setAdvisorPhone(e.target.value)} /></div>
-              <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Hotel Contact Note</label><input style={inputStyle} value={hotelNote} onChange={e => setHotelNote(e.target.value)} /></div>
-            </div>
-          </div>
-
-          {/* Important notes */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Important Notes</div>
-            <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginBottom: 6 }}>One note per line</div>
-            <textarea
-              style={{ ...inputStyle, height: 70, resize: 'vertical' }}
-              value={notesRaw}
-              onChange={e => setNotesRaw(e.target.value)}
-              placeholder={'Final timings subject to reconfirmation.\nRestaurant reservations may carry cancellation policies.'}
-            />
-          </div>
-
-          {/* Footer */}
-          <div>
-            <label style={labelStyle}>Footer Tagline (leave blank for default)</label>
-            <input style={inputStyle} value={footerTagline} onChange={e => setFooterTagline(e.target.value)} placeholder='PRIVATE TRAVEL DESIGN  ·  TAILORED SUPPORT  ·  SEAMLESS EXECUTION' />
-          </div>
-
-          {saveErr && <div style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>{saveErr}</div>}
-          {pickerOpen && <AssetPicker onClose={() => setPickerOpen(false)} onSelected={url => { setHeroImageSrc(url); setPickerOpen(false) }} presetPath={trip.destinations[0]?.storage_path ?? undefined} />}
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={() => setEditOpen(false)} style={{ ...btnBase, background: 'transparent', color: A.faint, border: `1px solid ${A.border}` }}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} style={{ ...btnBase, background: A.gold, color: '#0F1110', border: 'none', opacity: saving ? 0.6 : 1 }}>
-              {saving ? 'Saving...' : 'Save Brief'}
-            </button>
-          </div>
-        </div>
-      )}
+      >
+        {pdfDownloading ? 'Generating...' : 'Download Confirmation Brief'}
+      </button>
     </div>
   )
 }
@@ -390,32 +221,29 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-
 // ── RoomsEditor ───────────────────────────────────────────────────────────────
 
 function RoomsEditor({ booking }: { booking: TripBooking }) {
-  const [rooms,   setRooms]   = useState<BookingRoom[]>(booking._rooms)
-  const [adding,  setAdding]  = useState(false)
-  const [saving,  setSaving]  = useState<string | null>(null)
-  const [editId,  setEditId]  = useState<string | null>(null)
+  const [rooms,  setRooms]  = useState<BookingRoom[]>(booking._rooms)
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState<string | null>(null)
 
-  // New room form state
-  const [newRoomName,    setNewRoomName]    = useState('')
-  const [newConfNum,     setNewConfNum]     = useState('')
-  const [newGuestName,   setNewGuestName]   = useState('')
-  const [newPartyComp,   setNewPartyComp]   = useState('')
-  const [newNotes,       setNewNotes]       = useState('')
+  const [newRoomName,  setNewRoomName]  = useState('')
+  const [newConfNum,   setNewConfNum]   = useState('')
+  const [newGuestName, setNewGuestName] = useState('')
+  const [newPartyComp, setNewPartyComp] = useState('')
+  const [newNotes,     setNewNotes]     = useState('')
 
   async function handleAdd() {
     setSaving('add')
     try {
       const r = await createBookingRoom(booking.id, {
-        room_name: newRoomName || null,
-        confirmation_number: newConfNum || null,
-        guest_name: newGuestName || null,
-        party_composition: newPartyComp || null,
-        notes: newNotes || null,
-        sort_order: rooms.length,
+        room_name:           newRoomName  || null,
+        confirmation_number: newConfNum   || null,
+        guest_name:          newGuestName || null,
+        party_composition:   newPartyComp || null,
+        notes:               newNotes     || null,
+        sort_order:          rooms.length,
       })
       setRooms(prev => [...prev, r])
       setAdding(false)
@@ -447,7 +275,6 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
         </button>
       </div>
 
-      {/* Existing rooms */}
       {rooms.map(r => (
         <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -472,12 +299,11 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
             disabled={saving === r.id}
             style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}
           >
-            {saving === r.id ? '...' : '✕'}
+            {saving === r.id ? '...' : '\u2715'}
           </button>
         </div>
       ))}
 
-      {/* Add room form */}
       {adding && (
         <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -510,7 +336,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
   mobile:   boolean
   house:    HouseProfile | null
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded,  setExpanded]  = useState(false)
   const [briefCat,  setBriefCat]  = useState(b.brief_category ?? '')
   const [bookedBy,  setBookedBy]  = useState(b.booked_by ?? 'ambience')
   const [briefShow, setBriefShow] = useState(b.brief_show ?? true)
@@ -518,9 +344,9 @@ function BookingCard({ booking: b, partners, mobile, house }: {
 
   const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierDownload()
 
-  const iataPartner  = b.iata_partner_id     ? partners[b.iata_partner_id]     : null
-  const refPartner   = b.referral_partner_id  ? partners[b.referral_partner_id] : null
-  const indivPartner = b.individual_id        ? partners[b.individual_id]       : null
+  const iataPartner  = b.iata_partner_id    ? partners[b.iata_partner_id]    : null
+  const refPartner   = b.referral_partner_id ? partners[b.referral_partner_id] : null
+  const indivPartner = b.individual_id       ? partners[b.individual_id]       : null
   const supplierName = b._hotel_name ?? b.supplier_name_override ?? null
   const currency     = b.currency ?? 'USD'
   const depositPaid  = !!b.deposit_paid_at
@@ -531,7 +357,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
   async function saveBriefFields() {
     setSaving(true)
     try { await updateBookingBriefFields(b.id, { brief_category: briefCat || null, booked_by: bookedBy, brief_show: briefShow }) }
-    catch { /* silent — toast could be added */ }
+    catch { /* silent */ }
     finally { setSaving(false) }
   }
 
@@ -710,7 +536,20 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             <button
               onClick={e => { e.stopPropagation(); handleDownloadDossier(mapBookingToDossier(b, house)) }}
               disabled={!pdfReady || pdfDownloading}
-              style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: pdfReady && !pdfDownloading ? A.gold : A.faint, background: 'transparent', border: `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`, borderRadius: 6, padding: '5px 12px', cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed', transition: 'all 150ms ease' }}
+              style={{
+                fontFamily:    A.font,
+                fontSize:      11,
+                fontWeight:    600,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                color:         pdfReady && !pdfDownloading ? A.gold : A.faint,
+                background:    'transparent',
+                border:        `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`,
+                borderRadius:  6,
+                padding:       '5px 12px',
+                cursor:        pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed',
+                transition:    'all 150ms ease',
+              }}
             >
               {pdfDownloading ? 'Generating...' : 'Download Dossier'}
             </button>
@@ -723,14 +562,13 @@ function BookingCard({ booking: b, partners, mobile, house }: {
 
 // ── TripBlock ─────────────────────────────────────────────────────────────────
 
-function TripBlock({ trip, partners, mobile, expanded, onToggle, house, onBriefSaved }: {
-  trip:         DossierTrip
-  partners:     Record<string, TripPartner>
-  mobile:       boolean
-  expanded:     boolean
-  onToggle:     () => void
-  house:        HouseProfile | null
-  onBriefSaved: (tripId: string, brief: TripBrief) => void
+function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
+  trip:     DossierTrip
+  partners: Record<string, TripPartner>
+  mobile:   boolean
+  expanded: boolean
+  onToggle: () => void
+  house:    HouseProfile | null
 }) {
   const statusColor: Record<string, string> = { active: '#4ade80', completed: '#86efac', cancelled: '#f87171', draft: A.faint }
   const tripColor       = statusColor[trip.status ?? ''] ?? A.gold
@@ -778,7 +616,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house, onBriefS
           </div>
 
           {/* Trip action panel */}
-          <TripActionPanel trip={trip} house={house} onBriefSaved={br => onBriefSaved(trip.id, br)} />
+          <TripActionPanel trip={trip} house={house} />
 
           {/* Bookings */}
           {trip.bookings.length === 0 ? (
@@ -805,10 +643,6 @@ export function TripDossierSection({ dossier, mobile }: {
   )
   const [trips, setTrips] = useState<DossierTrip[]>(dossier.trips)
 
-  function handleBriefSaved(tripId: string, brief: TripBrief) {
-    setTrips(prev => prev.map(t => t.id === tripId ? { ...t, brief } : t))
-  }
-
   if (trips.length === 0) return <AdminEmptyState message='No trips linked to this household yet.' />
 
   return (
@@ -822,7 +656,6 @@ export function TripDossierSection({ dossier, mobile }: {
           expanded={expandedTrip === trip.id}
           onToggle={() => setExpandedTrip(prev => prev === trip.id ? null : trip.id)}
           house={dossier.house}
-          onBriefSaved={handleBriefSaved}
         />
       ))}
     </div>
