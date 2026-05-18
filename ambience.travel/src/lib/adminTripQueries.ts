@@ -35,6 +35,18 @@ export type HouseProfile = {
   service_notes:      string | null
 }
 
+
+export type TripDestination = {
+  id:            string
+  destination_id: string
+  sort_order:    number
+  // Resolved from global_destinations
+  slug:          string
+  name:          string
+  storage_path:  string | null
+  hero_image_src: string | null
+}
+
 export type JourneyStep = {
   icon:   string
   label:  string
@@ -157,7 +169,7 @@ export type DossierTrip = {
   end_date:             string | null
   duration_nights:      number | null
   trip_type:            string | null
-  destinations:         string[] | null
+  destinations:         TripDestination[]
   guest_count_adults:   number | null
   guest_count_children: number | null
   bookings:             TripBooking[]
@@ -173,13 +185,14 @@ export type TripDossierData = {
 // ── Raw row shapes ────────────────────────────────────────────────────────────
 
 type BookingTripRow = { trip_id: string }
-type TripRow        = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; destinations: string[] | null; guest_count_adults: number | null; guest_count_children: number | null }
+type TripRow        = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
 type BookingRow     = Omit<TripBooking, '_hotel_name' | '_rooms'>
 type HotelRow       = { id: string; name: string }
 type PartnerRow     = TripPartner
 type HouseRow       = HouseProfile
 type BriefRow       = TripBrief
 type RoomRow        = BookingRoom
+type TripDestRow    = { id: string; trip_id: string; destination_id: string; sort_order: number; global_destinations: { slug: string; name: string; storage_path: string | null; hero_image_src: string | null } | { slug: string; name: string; storage_path: string | null; hero_image_src: string | null }[] }
 
 // ── Main dossier query ────────────────────────────────────────────────────────
 
@@ -200,7 +213,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   // Step 2: trips
   const { data: tripData, error: tripErr } = await supabase
     .from('travel_trips')
-    .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, destinations, guest_count_adults, guest_count_children')
+    .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
     .in('id', tripIds)
     .order('start_date', { ascending: false })
 
@@ -232,7 +245,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   // Step 5: partners + house + briefs + rooms (parallel)
   const bookingIds = bookingRows.map(b => b.id)
 
-  const [partnerResult, houseResult, briefResult, roomResult] = await Promise.all([
+  const [partnerResult, houseResult, briefResult, roomResult, destResult] = await Promise.all([
     supabase
       .from('travel_partners')
       .select('id, name, partner_type, default_share_pct, currency, is_active'),
@@ -252,6 +265,11 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
           .in('booking_id', bookingIds)
           .order('sort_order', { ascending: true })
       : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from('travel_trip_destinations')
+      .select('id, trip_id, destination_id, sort_order, global_destinations!travel_trip_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+      .in('trip_id', tripIds)
+      .order('sort_order', { ascending: true }),
   ])
 
   if (partnerResult.error) throw new Error(partnerResult.error.message)
@@ -267,6 +285,23 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   for (const r of (roomResult.data ?? []) as RoomRow[]) {
     if (!roomsByBooking.has(r.booking_id)) roomsByBooking.set(r.booking_id, [])
     roomsByBooking.get(r.booking_id)!.push(r)
+  }
+
+  const destsByTrip = new Map<string, TripDestination[]>()
+  for (const row of ((destResult.data ?? []) as unknown as TripDestRow[])) {
+    if (!destsByTrip.has(row.trip_id)) destsByTrip.set(row.trip_id, [])
+    const gdRaw = row.global_destinations
+    const gd = Array.isArray(gdRaw) ? gdRaw[0] : gdRaw
+    if (!gd) continue
+    destsByTrip.get(row.trip_id)!.push({
+      id:             row.id,
+      destination_id: row.destination_id,
+      sort_order:     row.sort_order,
+      slug:           gd.slug,
+      name:           gd.name,
+      storage_path:   gd.storage_path,
+      hero_image_src: gd.hero_image_src,
+    })
   }
 
   // Step 6: assemble
@@ -288,7 +323,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     end_date:             t.end_date,
     duration_nights:      t.duration_nights,
     trip_type:            t.trip_type,
-    destinations:         t.destinations,
+    destinations:         destsByTrip.get(t.id) ?? [],
     guest_count_adults:   t.guest_count_adults,
     guest_count_children: t.guest_count_children,
     bookings:             bookingsByTrip.get(t.id) ?? [],

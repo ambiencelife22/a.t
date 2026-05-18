@@ -31,6 +31,7 @@ import { upsertTripBrief, updateBookingBriefFields, createBookingRoom, updateBoo
 import type { BookingRoom, BookingRoomPatch } from '../../lib/adminTripQueries'
 import { useDossierDownload } from '../../lib/useDossierDownload'
 import { useBriefDownload } from '../../lib/useBriefDownload'
+import AssetPicker from './AssetPicker'
 import type { ClientDossierData } from '../../lib/clientDossierPdf'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
   const [editOpen, setEditOpen]     = useState(false)
   const [saving,   setSaving]       = useState(false)
   const [saveErr,  setSaveErr]      = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen]  = useState(false)
 
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
 
@@ -224,7 +226,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
               })
             } catch { heroData = null }
           }
-          handleDownloadBrief({ trip, brief: trip.brief, house, destinationName: trip.destinations?.[0] ?? trip.trip_code, heroImageData: heroData })
+          handleDownloadBrief({ trip, brief: trip.brief, house, destinationName: trip.destinations[0]?.name ?? trip.trip_code, heroImageData: heroData })
         }}
           disabled={!pdfReady || pdfDownloading}
           style={{ ...btnBase, background: 'transparent', color: pdfReady && !pdfDownloading ? A.gold : A.faint, border: `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`, cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed' }}
@@ -243,7 +245,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={labelStyle}>Trip Title</label>
-                <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations?.join(' & ') ?? trip.trip_code} />
+                <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || trip.trip_code} />
               </div>
               <div>
                 <label style={labelStyle}>Subtitle</label>
@@ -254,8 +256,34 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
                 <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.display_name ?? ''} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Hero Image URL</label>
-                <input style={inputStyle} value={heroImageSrc} onChange={e => setHeroImageSrc(e.target.value)} placeholder='https://...' />
+                <label style={labelStyle}>Hero Image</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {heroImageSrc ? (
+                    <div style={{ position: 'relative', width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
+                      <img src={heroImageSrc} alt='hero' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgInput, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
+                    </div>
+                  )}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <button
+                      onClick={() => setPickerOpen(true)}
+                      style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', textAlign: 'left' as const }}
+                    >
+                      {heroImageSrc ? 'Change Image' : 'Select from Library'}
+                    </button>
+                    {heroImageSrc && (
+                      <button
+                        onClick={() => setHeroImageSrc('')}
+                        style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -264,7 +292,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Snapshot Pills</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div><label style={labelStyle}>Destination</label><input style={inputStyle} value={snapDest} onChange={e => setSnapDest(e.target.value)} placeholder={trip.destinations?.[0] ?? ''} /></div>
+              <div><label style={labelStyle}>Destination</label><input style={inputStyle} value={snapDest} onChange={e => setSnapDest(e.target.value)} placeholder={trip.destinations[0]?.name ?? ''} /></div>
               <div><label style={labelStyle}>Dates</label><input style={inputStyle} value={snapDates} onChange={e => setSnapDates(e.target.value)} /></div>
               <div><label style={labelStyle}>Guests</label><input style={inputStyle} value={snapGuests} onChange={e => setSnapGuests(e.target.value)} placeholder={`${trip.guest_count_adults ?? 0} Adults`} /></div>
               <div><label style={labelStyle}>Status</label><input style={inputStyle} value={snapStatus} onChange={e => setSnapStatus(e.target.value)} /></div>
@@ -316,6 +344,7 @@ function TripActionPanel({ trip, house, onBriefSaved }: {
           </div>
 
           {saveErr && <div style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>{saveErr}</div>}
+          {pickerOpen && <AssetPicker onClose={() => setPickerOpen(false)} onSelected={url => { setHeroImageSrc(url); setPickerOpen(false) }} presetPath={trip.destinations[0]?.storage_path ?? undefined} />}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => setEditOpen(false)} style={{ ...btnBase, background: 'transparent', color: A.faint, border: `1px solid ${A.border}` }}>Cancel</button>
@@ -733,7 +762,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house, onBriefS
 
           {/* Meta strip */}
           <div style={{ display: 'flex', gap: 20, padding: '12px 0', flexWrap: 'wrap', borderBottom: `1px solid ${A.border}`, marginBottom: 14 }}>
-            {trip.destinations && trip.destinations.length > 0 && <MetaCell label='Destinations' value={trip.destinations.join(', ')} />}
+            {trip.destinations && trip.destinations.length > 0 && <MetaCell label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
             {(trip.guest_count_adults || trip.guest_count_children) && (
               <MetaCell label='Guests' value={`${trip.guest_count_adults ?? 0} adult${(trip.guest_count_adults ?? 0) !== 1 ? 's' : ''}${trip.guest_count_children ? `, ${trip.guest_count_children} child${trip.guest_count_children !== 1 ? 'ren' : ''}` : ''}`} />
             )}
