@@ -10,7 +10,7 @@
 // hasFullAccess hardcoded true until that view ships — same pattern as
 // dining's current state. Remove hardcode when grant view is ready.
 //
-// Last updated: S41 — initial build.
+// Prior: S41 — initial build.
 
 import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
@@ -34,12 +34,13 @@ function resolveDestinationSlug(): string | null {
   let stripped: string
   if (isGuidesHost) {
     stripped = pathname.replace(/^\/+/, '')
-  } else {
+  }
+  if (!isGuidesHost) {
     if (!pathname.startsWith('/guides/')) return null
     stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
   }
 
-  const parts = stripped.split('/').filter(Boolean)
+  const parts = (stripped!).split('/').filter(Boolean)
   if (parts.length === 2 && parts[1] === 'experiences') {
     return parts[0]
   }
@@ -81,21 +82,7 @@ export default function ExperiencesGuideRoute() {
         }
 
         if (cancelled) return
-        // let hasFullAccess = false
-        // try {
-        //   const grant = await checkExperiencesGuideGrant(slug)
-        //   hasFullAccess = grant.status === 'granted'
-        // } catch (grantErr) {
-        //   console.warn('ExperiencesGuideRoute: grant check failed, defaulting to teaser', grantErr)
-        //   hasFullAccess = false
-        // }
-        // if (cancelled) return
 
-        // setState({
-        //   phase:         'ready',
-        //   destination:   dest,
-        //   hasFullAccess,
-        // })
         setState({
           phase:         'ready',
           destination:   dest,

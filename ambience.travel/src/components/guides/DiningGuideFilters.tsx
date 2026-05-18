@@ -3,7 +3,7 @@
 //   ambience Pick toggle.
 // What it does not own: filtered-result computation (parent owns that).
 //
-// Last updated: S40B — Added highlightedOnly to FilterState. ambience Pick
+// Prior: S40B — Added highlightedOnly to FilterState. ambience Pick
 //   chip renders when hasHighlightedItems is true.
 // Prior: S40 — Neighborhoods removed.
 // Prior: S35 — Initial ship.
@@ -18,10 +18,10 @@ export interface FilterState {
 }
 
 export interface FilterChipsProps {
-  state:              FilterState
-  onChange:           (next: FilterState) => void
-  availableCuisines:  string[]
-  hasMichelinItems:   boolean
+  state:               FilterState
+  onChange:            (next: FilterState) => void
+  availableCuisines:   string[]
+  hasMichelinItems:    boolean
   hasHighlightedItems: boolean
 }
 
@@ -42,9 +42,10 @@ export function DiningGuideFilters({
     const next = new Set(state.cuisines)
     if (next.has(c)) {
       next.delete(c)
-    } else {
-      next.add(c)
+      onChange({ ...state, cuisines: next })
+      return
     }
+    next.add(c)
     onChange({ ...state, cuisines: next })
   }
 
@@ -104,23 +105,23 @@ function Chip({ active, onClick, children }: ChipProps) {
 }
 
 const filtersStyle: React.CSSProperties = {
-  display:      'flex',
-  gap:          10,
-  flexWrap:     'wrap',
-  padding:      16,
-  border:       `1px solid ${IMMERSE.tableBorder}`,
-  borderRadius: 26,
-  background:   'rgba(255,255,255,0.03)',
-  marginBottom: 26,
+  display:       'flex',
+  gap:           10,
+  flexWrap:      'wrap',
+  padding:       16,
+  border:        `1px solid ${IMMERSE.tableBorder}`,
+  borderRadius:  26,
+  background:    'rgba(255,255,255,0.03)',
+  marginBottom:  26,
 }
 
 const chipBaseStyle: React.CSSProperties = {
-  borderRadius: 999,
-  padding:      '10px 14px',
-  fontSize:     13,
-  fontFamily:   'inherit',
-  cursor:       'pointer',
-  transition:   'background 180ms ease, color 180ms ease, border-color 180ms ease',
+  borderRadius:  999,
+  padding:       '10px 14px',
+  fontSize:      13,
+  fontFamily:    'inherit',
+  cursor:        'pointer',
+  transition:    'background 180ms ease, color 180ms ease, border-color 180ms ease',
   letterSpacing: '0.005em',
 }
 
@@ -131,8 +132,8 @@ const chipInactiveStyle: React.CSSProperties = {
 }
 
 const chipActiveStyle: React.CSSProperties = {
-  border:     `1px solid ${ID.text}`,
-  background: ID.text,
-  color:      '#141610',
-  fontWeight: 600,
+  border:      `1px solid ${ID.text}`,
+  background:  ID.text,
+  color:       '#141610',
+  fontWeight:  600,
 }

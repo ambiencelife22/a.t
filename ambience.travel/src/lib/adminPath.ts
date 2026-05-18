@@ -21,7 +21,6 @@
 //   #admin/programme/access-denied               → wrapped existing tab
 //   #admin/programme/client-profile              → wrapped existing tab
 //
-// Last updated: S46 — Added 'trips' product with 'brief' tab. Removed all else chains.
 // Prior: S44 — Added 'operations' product with 'bookings' tab.
 // Prior: S41 — Added 'experiences' guide tab.
 // Prior: S40D — Added 'house' product (ambience.HOUSE CRM).

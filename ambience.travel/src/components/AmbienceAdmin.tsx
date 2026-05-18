@@ -7,7 +7,6 @@
  *
  * Auth gate: same pattern as ProgrammeAdmin — getSession() + global_profiles.is_admin.
  *
- * Last updated: S46 — Added trips/brief route → BriefEditorPage. Removed all else chains.
  * Prior: S40D — Added House product group (HouseTab).
  * Prior: S36 — Wired Library + Guides product groups (Dining tab in each).
  *   Library tab passes destinationId from URL hash for destination-scoped views.

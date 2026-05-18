@@ -7,7 +7,7 @@
 //   ambience.travel/guides/<dest>/hotels           (main domain fallback)
 //   localhost:5173/guides/<dest>/hotels            (local dev)
 //
-// Last updated: S37
+// Prior: S37 — initial build.
 
 import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
@@ -17,21 +17,22 @@ import { useToast } from '../../lib/ToastContext'
 import { getHotelGuideDestination, type HotelGuideDestination } from '../../lib/hotelGuideQueries'
 
 const GUIDES_HOST = 'guides.ambience.travel'
-const HOME_URL = 'https://ambience.travel/'
+const HOME_URL    = 'https://ambience.travel/'
 
 function resolveDestinationSlug(): string | null {
-  const pathname = window.location.pathname.replace(/\/+$/, '')
+  const pathname     = window.location.pathname.replace(/\/+$/, '')
   const isGuidesHost = window.location.hostname === GUIDES_HOST
 
   let stripped: string
   if (isGuidesHost) {
     stripped = pathname.replace(/^\/+/, '')
-  } else {
+  }
+  if (!isGuidesHost) {
     if (!pathname.startsWith('/guides/')) return null
     stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
   }
 
-  const parts = stripped.split('/').filter(Boolean)
+  const parts = (stripped!).split('/').filter(Boolean)
   if (parts.length === 2 && parts[1] === 'hotels') {
     return parts[0]
   }
@@ -39,12 +40,12 @@ function resolveDestinationSlug(): string | null {
 }
 
 export default function HotelGuideRoute() {
-  const { toast } = useToast()
-  const toastRef = useRef(toast)
+  const { toast }    = useToast()
+  const toastRef     = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
   const [destination, setDestination] = useState<HotelGuideDestination | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -89,13 +90,9 @@ export default function HotelGuideRoute() {
     return () => { cancelled = true }
   }, [])
 
-  if (loading) {
-    return <RouteLoading />
-  }
+  if (loading) return <RouteLoading />
 
-  if (!destination) {
-    return null
-  }
+  if (!destination) return null
 
   return (
     <GuideLayout>

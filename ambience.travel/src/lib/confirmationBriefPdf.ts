@@ -13,7 +13,7 @@
 //   - Data fetching (caller passes ConfirmationBriefData)
 //   - jsPDF script loading (useBriefDownload owns this)
 //
-// Last updated: S45 — redesign: hero prominent, no journey strip,
+// Prior: S45 — redesign: hero prominent, no journey strip,
 //   minimal page 1, per-room page 2 from travel_booking_rooms.
 
 import { loadGuideFonts, registerGuideFonts, PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './guidePdfFonts'
@@ -58,9 +58,14 @@ const ASSETS = { emblem: '/emblem.png', logoSvg: '/ambience_travel.svg' } as con
 function serif(doc: any, style: 'normal' | 'italic', size: number) {
   doc.setFont(PDF_FONTS.serif, style); doc.setFontSize(size)
 }
+
 function sans(doc: any, style: 'normal' | 'bold' | 'italic' | 'medium', size: number) {
-  if (style === 'medium') doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal')
-  else doc.setFont(PDF_FONTS.sans, style)
+  if (style === 'medium') {
+    doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal')
+    doc.setFontSize(size)
+    return
+  }
+  doc.setFont(PDF_FONTS.sans, style)
   doc.setFontSize(size)
 }
 
@@ -178,13 +183,12 @@ function drawIconCircle(doc: any, icon: string, cx: number, cy: number, r = 5) {
 // ── Page chrome ───────────────────────────────────────────────────────────────
 
 function stampChrome(doc: any, brief: TripBrief | null, emblem: Img | null, logo: Img | null) {
-  const count   = doc.getNumberOfPages()
-  const footer  = brief?.footer_tagline ?? 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
+  const count  = doc.getNumberOfPages()
+  const footer = brief?.footer_tagline ?? 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
 
   for (let i = 1; i <= count; i++) {
     doc.setPage(i)
 
-    // Emblem + logo centred — larger than before
     if (emblem) {
       const es = 12
       doc.addImage(emblem.data, emblem.format, P.w / 2 - es / 2, 6, es, es, undefined, 'FAST')
@@ -194,7 +198,6 @@ function stampChrome(doc: any, brief: TripBrief | null, emblem: Img | null, logo
       doc.addImage(logo.data, logo.format, P.w / 2 - lw / 2, 20, lw, lh, undefined, 'FAST')
     }
 
-    // Footer
     rule(doc, P.margin, P.h - 10, CW)
     doc.setFillColor(T.ambience[0], T.ambience[1], T.ambience[2])
     doc.circle(P.w / 2, P.h - 7.5, 0.8, 'F')
@@ -213,11 +216,9 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
   doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
   doc.rect(0, 0, P.w, P.h, 'F')
 
-  // Hero — full bleed, tall
   if (d.heroImageData) {
     try {
       doc.addImage(d.heroImageData, 'JPEG', 0, 0, P.w, P.heroH, undefined, 'FAST')
-      // Fade bottom of hero into cream
       for (let i = 0; i < 40; i++) {
         const a = i / 40
         const r = Math.round(T.cream[0] * a + 255 * (1 - a))
@@ -229,15 +230,14 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
       }
       doc.setGState(doc.GState({ opacity: 1 }))
     } catch { /* silent */ }
-  } else {
-    // Placeholder if no hero
+  }
+  if (!d.heroImageData) {
     doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
     doc.rect(0, 0, P.w, P.heroH, 'F')
   }
 
   let y: number = P.heroH + 6
 
-  // Trip title — large serif
   const title = brief?.brief_title ?? d.destinationName
   serif(doc, 'normal', 32)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
@@ -245,23 +245,20 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
   for (const line of titleLines) { doc.text(line, P.margin, y); y += 12 }
   y -= 2
 
-  // TRIP CONFIRMATION BRIEF label with gold rules either side
   const labelText = (brief?.brief_subtitle ?? 'TRIP CONFIRMATION BRIEF').toUpperCase()
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-  const lw2   = doc.getTextWidth(labelText)
+  const lw2    = doc.getTextWidth(labelText)
   const labelX = P.w / 2 - lw2 / 2
   doc.text(labelText, labelX, y, { charSpace: 0.8 })
   rule(doc, P.margin, y - 1.5, labelX - P.margin - 3, T.gold, 0.5)
   rule(doc, labelX + lw2 + 3, y - 1.5, P.w - P.margin - labelX - lw2 - 3, T.gold, 0.5)
   y += 5
 
-  // Gold dot
   doc.setFillColor(T.gold[0], T.gold[1], T.gold[2])
   doc.circle(P.w / 2, y, 0.8, 'F')
   y += 5
 
-  // Prepared for + dates
   const preparedFor = brief?.prepared_for ?? house?.display_name ?? ''
   if (preparedFor) {
     serif(doc, 'italic', 11)
@@ -277,7 +274,6 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
 
   rule(doc, P.margin, y, CW); y += 8
 
-  // ── Trip Snapshot (4 pills) ────────────────────────────────────────────────
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('TRIP SNAPSHOT', P.w / 2, y, { align: 'center', charSpace: 0.8 })
@@ -309,7 +305,6 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
 
   rule(doc, P.margin, y, CW); y += 8
 
-  // ── Booking status legend ──────────────────────────────────────────────────
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('BOOKING STATUS', P.w / 2, y, { align: 'center', charSpace: 0.8 })
@@ -332,7 +327,6 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
 
   rule(doc, P.margin, y, CW); y += 8
 
-  // ── Contacts — two column, minimal ────────────────────────────────────────
   const colW = (CW - 6) / 2
   const colR = P.margin + colW + 6
 
@@ -342,7 +336,6 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
   doc.text('HOTEL CONTACT', colR, y, { charSpace: 0.6 })
   y += 6
 
-  // Advisor
   const aName  = brief?.advisor_name  ?? ''
   const aEmail = brief?.advisor_email ?? ''
   const aPhone = brief?.advisor_phone ?? ''
@@ -356,7 +349,6 @@ function renderPage1(doc: any, d: ConfirmationBriefData) {
   if (aEmail) { doc.text(aEmail, P.margin + 11, ay); ay += 4 }
   if (aPhone) { doc.text(aPhone, P.margin + 11, ay) }
 
-  // Hotel contact
   drawIconCircle(doc, 'hotel', colR + 5, y + 4, 3.5)
   sans(doc, 'normal', 8)
   doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
@@ -371,12 +363,11 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
   doc.rect(0, 0, P.w, P.h, 'F')
 
   const { trip, brief } = d
-  const hotelName  = trip.bookings[0]?._hotel_name ?? trip.bookings[0]?.name ?? d.destinationName
-  const dateRange  = brief?.snapshot_dates ?? buildDateRange(trip.start_date, trip.end_date)
+  const hotelName = trip.bookings[0]?._hotel_name ?? trip.bookings[0]?.name ?? d.destinationName
+  const dateRange = brief?.snapshot_dates ?? buildDateRange(trip.start_date, trip.end_date)
 
-  let y: number = 34  // below chrome
+  let y: number = 34
 
-  // Page heading
   serif(doc, 'normal', 24)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
   doc.text('Confirmed Arrangements', P.margin, y); y += 5
@@ -396,30 +387,29 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
       for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-    } else {
-      // Fallback — synthesise a room from the booking itself
-      const synthetic: BookingRoom = {
-        id: b.id, booking_id: b.id,
-        room_name:           b.name,
-        confirmation_number: b.confirmation_number,
-        guest_name:          d.house?.display_name ?? null,
-        party_composition:   b.party_composition,
-        notes:               b.inclusions ?? null,
-        nights:              b.nights,
-        rate:                b.commissionable_rate,
-        tax_pct:             b.taxes_and_fees,
-        total:               null,
-        brief_image_src:     b.brief_image_src,
-        sort_order:          b.sort_order ?? 0,
-        created_at:          b.created_at ?? '',
-        updated_at:          b.updated_at ?? '',
-      }
-      allRooms.push({ room: synthetic, booking: b })
+      continue
     }
+    const synthetic: BookingRoom = {
+      id: b.id, booking_id: b.id,
+      room_name:           b.name,
+      confirmation_number: b.confirmation_number,
+      guest_name:          d.house?.display_name ?? null,
+      party_composition:   b.party_composition,
+      notes:               b.inclusions ?? null,
+      nights:              b.nights,
+      rate:                b.commissionable_rate,
+      tax_pct:             b.taxes_and_fees,
+      total:               null,
+      brief_image_src:     b.brief_image_src,
+      sort_order:          b.sort_order ?? 0,
+      created_at:          b.created_at ?? '',
+      updated_at:          b.updated_at ?? '',
+    }
+    allRooms.push({ room: synthetic, booking: b })
   }
 
   const imgH  = 52
-  const cardH = imgH + 2  // image height + border
+  const cardH = imgH + 2
   const imgW  = 60
 
   for (const { room, booking } of allRooms) {
@@ -430,13 +420,11 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
       y = 34
     }
 
-    // Card background
     doc.setFillColor(T.white[0], T.white[1], T.white[2])
     doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
     doc.setLineWidth(0.3)
     doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'FD')
 
-    // Room image
     let imgLoaded = false
     if (room.brief_image_src) {
       try {
@@ -452,12 +440,10 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
       doc.rect(P.margin, y, imgW, imgH, 'F')
     }
 
-    // Content area
     const tx = P.margin + imgW + 10
     const tw = CW - imgW - 10 - 2
     let ty = y + 8
 
-    // Confirmation number — prominent mono
     if (room.confirmation_number) {
       sans(doc, 'bold', 7)
       doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
@@ -467,21 +453,18 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
       doc.text(`#${room.confirmation_number}`, tx, ty); ty += 7
     }
 
-    // Guest name
     if (room.guest_name) {
       serif(doc, 'normal', 13)
       doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
       doc.text(room.guest_name, tx, ty); ty += 6
     }
 
-    // Party composition
     if (room.party_composition) {
       sans(doc, 'normal', 8.5)
       doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
       doc.text(room.party_composition, tx, ty); ty += 5
     }
 
-    // Room name
     if (room.room_name) {
       sans(doc, 'italic', 8)
       doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
@@ -489,7 +472,6 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
       doc.text(rLines[0] ?? '', tx, ty); ty += 4
     }
 
-    // Notes
     if (room.notes) {
       sans(doc, 'normal', 7.5)
       doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
@@ -497,10 +479,9 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
       nLines.slice(0, 2).forEach((l: string) => { doc.text(l, tx, ty); ty += 3.5 })
     }
 
-    // Booked by pill — top right
-    const bookedBy   = booking.booked_by ?? 'ambience'
-    const pillLabel  = bookedBy === 'ambience' ? 'BOOKED BY AMBIENCE' : 'SELF-BOOKED'
-    const pillColor  = bookedBy === 'ambience' ? T.gold : T.faint
+    const bookedBy  = booking.booked_by ?? 'ambience'
+    const pillLabel = bookedBy === 'ambience' ? 'BOOKED BY AMBIENCE' : 'SELF-BOOKED'
+    const pillColor = bookedBy === 'ambience' ? T.gold : T.faint
     sans(doc, 'bold', 5.5)
     doc.setTextColor(pillColor[0], pillColor[1], pillColor[2])
     const pillW = doc.getTextWidth(pillLabel) + 8
@@ -518,10 +499,10 @@ async function renderRoomPages(doc: any, d: ConfirmationBriefData) {
 
 function buildFilename(d: ConfirmationBriefData): string {
   const today = new Date()
-  const dd = String(today.getDate()).padStart(2, '0')
-  const mm = String(today.getMonth() + 1).padStart(2, '0')
-  const yyyy = today.getFullYear()
-  const safe = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase()
+  const dd    = String(today.getDate()).padStart(2, '0')
+  const mm    = String(today.getMonth() + 1).padStart(2, '0')
+  const yyyy  = today.getFullYear()
+  const safe  = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase()
   return `ambience-confirmation-brief-${safe(d.trip.trip_code)}-${dd}${mm}${yyyy}.pdf`
 }
 

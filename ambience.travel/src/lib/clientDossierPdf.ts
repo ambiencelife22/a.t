@@ -21,7 +21,7 @@
 //   important  — gold left bar + amber tint (#FFF8E6 / #C9A84C)
 //   vital      — red left bar + red tint (#FDE8E8 / #C94C4C)
 //
-// Last updated: S45 — initial ship.
+// Prior: S45 — initial ship.
 
 import { loadGuideFonts, registerGuideFonts, PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './guidePdfFonts'
 
@@ -107,8 +107,12 @@ function setSerif(doc: any, style: 'normal' | 'italic', size: number) {
 }
 
 function setSans(doc: any, style: 'normal' | 'bold' | 'italic' | 'medium', size: number) {
-  if (style === 'medium') doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal')
-  else doc.setFont(PDF_FONTS.sans, style)
+  if (style === 'medium') {
+    doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal')
+    doc.setFontSize(size)
+    return
+  }
+  doc.setFont(PDF_FONTS.sans, style)
   doc.setFontSize(size)
 }
 
@@ -202,8 +206,8 @@ function drawBulletItem(
   priority: DossierPriority,
   contentWidth: number,
 ): number {
-  const padL = priority !== 'plain' ? 14 : 10
-  const padV = priority !== 'plain' ? 4  : 2.5
+  const padL  = priority !== 'plain' ? 14  : 10
+  const padV  = priority !== 'plain' ? 4   : 2.5
   const textW = contentWidth - padL - 2
 
   setSans(doc, 'normal', 9)
@@ -216,7 +220,9 @@ function drawBulletItem(
     doc.rect(PAGE.margin, y, contentWidth, blockH, 'F')
     doc.setFillColor(THEME.goldHlBar[0], THEME.goldHlBar[1], THEME.goldHlBar[2])
     doc.rect(PAGE.margin, y, 2.5, blockH, 'F')
-  } else if (priority === 'vital') {
+  }
+
+  if (priority === 'vital') {
     doc.setFillColor(THEME.redHlBg[0], THEME.redHlBg[1], THEME.redHlBg[2])
     doc.rect(PAGE.margin, y, contentWidth, blockH, 'F')
     doc.setFillColor(THEME.redHlBar[0], THEME.redHlBar[1], THEME.redHlBar[2])
@@ -384,8 +390,8 @@ export async function exportClientDossierPdf(dossier: ClientDossierData): Promis
   y = drawLabelValue(doc, 'Check-Out',     dossier.checkOut,  y)
   y = drawLabelValue(doc, 'Duration',      dossier.duration,  y)
   y = drawLabelValue(doc, 'Rate Plan',     dossier.rateType,  y)
-  if (dossier.inclusions)         y = drawLabelValue(doc, 'Inclusions',           dossier.inclusions,         y)
-  if (dossier.confirmationNumber) y = drawLabelValue(doc, 'Confirmation Number',  dossier.confirmationNumber, y)
+  if (dossier.inclusions)         y = drawLabelValue(doc, 'Inclusions',          dossier.inclusions,         y)
+  if (dossier.confirmationNumber) y = drawLabelValue(doc, 'Confirmation Number', dossier.confirmationNumber, y)
 
   // ── Contact ───────────────────────────────────────────────────────────────
   if (y > PAGE.height - 50) y = newPage(doc)

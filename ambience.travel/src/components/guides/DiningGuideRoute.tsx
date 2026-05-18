@@ -15,7 +15,7 @@
 //
 // Grant check failures default to teaser — never block page render.
 //
-// Last updated: S40C — Grant check added. All non-granted states render
+// Prior: S40C — Grant check added. All non-granted states render
 //   teaser via DiningGuidePage hasFullAccess={false}. Grant check errors
 //   isolated — fall back to teaser, never notFound.
 // Prior: S40 — NotFoundPage replaces null return on failed destination load.
@@ -43,12 +43,13 @@ function resolveDestinationSlug(): string | null {
   let stripped: string
   if (isGuidesHost) {
     stripped = pathname.replace(/^\/+/, '')
-  } else {
+  }
+  if (!isGuidesHost) {
     if (!pathname.startsWith('/guides/')) return null
     stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
   }
 
-  const parts = stripped.split('/').filter(Boolean)
+  const parts = (stripped!).split('/').filter(Boolean)
   if (parts.length === 2 && parts[1] === 'dining') {
     return parts[0]
   }
