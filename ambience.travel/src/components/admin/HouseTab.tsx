@@ -48,6 +48,8 @@ import {
   SectionHeader, FormActions, SourceSelect, PPDValueInput,
 } from './houseUi'
 import { TripDossierSection } from './TripDossierSection'
+import { RequestsSection } from './RequestsSection'
+import { fetchRequestsForHouse, type TravelRequest } from '../../lib/adminRequestQueries'
 
 // Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
 // They remain here because they are tightly coupled to AllData and house context.
@@ -135,16 +137,17 @@ interface AllData {
   contacts:     HouseContact[]
   ppd:          PPDPeopleEntry[]
   dossier:      TripDossierData
+  requests:     TravelRequest[]
 }
 
 const EMPTY_DATA: AllData = {
   people: [], preferences: [], dining: [], destinations: [],
-  contacts: [], ppd: [], dossier: { trips: [], partners: {} },
+  contacts: [], ppd: [], dossier: { trips: [], partners: {} }, requests: [],
 }
 
 // ── Section type ──────────────────────────────────────────────────────────────
 
-type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'sensitive' | 'notes' | 'trips'
+type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'sensitive' | 'notes' | 'trips' | 'requests'
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
@@ -589,7 +592,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   async function loadAll() {
     setLoading(true)
     try {
-      const [people, preferences, dining, destinations, contacts, ppdResponse, dossier] = await Promise.all([
+      const [people, preferences, dining, destinations, contacts, ppdResponse, dossier, requests] = await Promise.all([
         fetchPeopleForHouse(house.id),
         fetchPreferencesForHouse(house.id),
         fetchDiningHistoryForHouse(house.id),
@@ -597,8 +600,9 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         fetchContactsForHouse(house.id),
         fetchPPDForHouse(house.id),
         fetchTripDossierForHouse(house.id),
+        fetchRequestsForHouse(house.id),
       ])
-      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people, dossier })
+      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people, dossier, requests })
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to load') }
     setLoading(false)
   }
@@ -656,6 +660,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     { id: 'dining',       label: 'Dining',        count: data.dining.length },
     { id: 'destinations', label: 'Destinations',  count: data.destinations.length },
     { id: 'contacts',     label: 'Contacts',      count: data.contacts.length },
+    { id: 'requests',     label: 'Requests',      count: data.requests.length },
     { id: 'sensitive',    label: 'Sensitive',     count: data.ppd.length },
     { id: 'notes',        label: 'Notes' },
   ]
@@ -706,6 +711,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     switch (section) {
       case 'overview':     return <OverviewSection     house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={mobile} />
       case 'trips':        return <TripDossierSection  dossier={data.dossier} mobile={mobile} />
+      case 'requests':    return <RequestsSection     requests={data.requests} houseId={house.id} onReload={loadAll} mobile={mobile} />
       case 'preferences':  return <PreferencesSection  data={data} houseId={house.id} onReload={loadAll} personRef={personRef} mobile={mobile} />
       case 'dining':       return <DiningSection       data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />
       case 'destinations': return <DestinationsSection data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />
