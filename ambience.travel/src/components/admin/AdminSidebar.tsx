@@ -1,8 +1,9 @@
 /* AdminSidebar.tsx
  * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Guides,
- * Library, House, Programme). Future products (LIFE, MONEY) shown disabled.
+ * Library, House, Operations, Programme). Future products (LIFE, MONEY) shown disabled.
  *
- * Last updated: S43 — Phase 1 redesign: Lucide icons, no group headers,
+ * Last updated: S44 — Added Operations group (Bookings tab).
+ * Prior: S43 — Phase 1 redesign: custom SVG icons, no group headers,
  *   hover states, bottom wordmark, motion system aligned.
  * Prior: S40D — Added HOUSE group (ambience.HOUSE CRM).
  * Prior: S36 — Library/dining link now passes destinationId: null.
@@ -35,6 +36,7 @@ type SidebarLink =
   | { kind: 'library-dining' }
   | { kind: 'library-hotels' }
   | { kind: 'house-households' }
+  | { kind: 'operations-bookings' }
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
@@ -73,6 +75,10 @@ const HOUSE_ITEMS: SidebarItem[] = [
   { key: 'house-households', label: 'Households', link: { kind: 'house-households' } },
 ]
 
+const OPERATIONS_ITEMS: SidebarItem[] = [
+  { key: 'operations-bookings', label: 'Bookings', link: { kind: 'operations-bookings' } },
+]
+
 const PROGRAMME_ITEMS: SidebarItem[] = [
   { key: 'p-programmes',    label: 'Programmes',        link: { kind: 'programme', tab: 'programmes' } },
   { key: 'p-letters',       label: 'Welcome Letters',   link: { kind: 'programme', tab: 'letters' } },
@@ -89,11 +95,12 @@ const SOON_ITEMS: SidebarItem[] = [
 ]
 
 const GROUPS: SidebarGroup[] = [
-  { key: 'immerse',   icon: Plane,       items: IMMERSE_ITEMS   },
-  { key: 'guides',    icon: BookOpen,    items: GUIDES_ITEMS    },
-  { key: 'library',   icon: Library,     items: LIBRARY_ITEMS   },
-  { key: 'house',     icon: Home,        items: HOUSE_ITEMS     },
-  { key: 'programme', icon: LayoutGrid,  items: PROGRAMME_ITEMS },
+  { key: 'immerse',    icon: Plane,      items: IMMERSE_ITEMS    },
+  { key: 'guides',     icon: BookOpen,   items: GUIDES_ITEMS     },
+  { key: 'library',    icon: Library,    items: LIBRARY_ITEMS    },
+  { key: 'house',      icon: Home,       items: HOUSE_ITEMS      },
+  { key: 'operations', icon: LayoutGrid, items: OPERATIONS_ITEMS },
+  { key: 'programme',  icon: LayoutGrid, items: PROGRAMME_ITEMS  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,6 +126,9 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   }
   if (item.link.kind === 'house-households') {
     return current.product === 'house'
+  }
+  if (item.link.kind === 'operations-bookings') {
+    return current.product === 'operations'
   }
   return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
 }
@@ -149,10 +159,13 @@ function hashFor(item: SidebarItem): string {
   if (item.link.kind === 'house-households') {
     return buildAdminHash({ product: 'house', tab: 'households' })
   }
+  if (item.link.kind === 'operations-bookings') {
+    return buildAdminHash({ product: 'operations', tab: 'bookings' })
+  }
   return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
 }
 
-// ─── Group header row (icon + group label, collapsed/expanded) ────────────────
+// ─── Group header row ─────────────────────────────────────────────────────────
 
 function GroupRow({
   group,
@@ -167,7 +180,7 @@ function GroupRow({
 }) {
   const [hovered, setHovered] = useState(false)
   const active = isGroupActive(group, current)
-  const Icon = group.icon
+  const Icon   = group.icon
 
   return (
     <button
@@ -175,17 +188,17 @@ function GroupRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display:        'flex',
-        alignItems:     'center',
-        gap:            10,
-        width:          '100%',
-        padding:        '9px 16px',
-        background:     hovered ? 'rgba(216,181,106,0.04)' : 'transparent',
-        border:         'none',
-        borderLeft:     active ? `2px solid ${A.gold}` : '2px solid transparent',
-        cursor:         'pointer',
-        transition:     'background 120ms ease, border-color 120ms ease',
-        textAlign:      'left',
+        display:    'flex',
+        alignItems: 'center',
+        gap:        10,
+        width:      '100%',
+        padding:    '9px 16px',
+        background: hovered ? 'rgba(216,181,106,0.04)' : 'transparent',
+        border:     'none',
+        borderLeft: active ? `2px solid ${A.gold}` : '2px solid transparent',
+        cursor:     'pointer',
+        transition: 'background 120ms ease, border-color 120ms ease',
+        textAlign:  'left',
       }}
     >
       <span style={{ flexShrink: 0, transition: 'color 120ms ease', display: 'flex' }}>
@@ -206,7 +219,6 @@ function GroupRow({
       }}>
         {group.key.charAt(0).toUpperCase() + group.key.slice(1)}
       </span>
-      {/* Chevron */}
       <svg
         width={10}
         height={10}
@@ -275,7 +287,6 @@ function SidebarRow({ item, active }: { item: SidebarItem; active: boolean }) {
 // ─── Desktop sidebar ──────────────────────────────────────────────────────────
 
 function DesktopSidebar({ tab }: { tab: AdminTab }) {
-  // Initialise all groups expanded; collapse on click
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(GROUPS.map(g => [g.key, true]))
   )
@@ -286,16 +297,15 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
 
   return (
     <div style={{
-      width:          220,
-      flexShrink:     0,
-      background:     A.bgCard,
-      borderRight:    `1px solid ${A.border}`,
-      paddingTop:     12,
-      overflowY:      'auto',
-      display:        'flex',
-      flexDirection:  'column',
+      width:         220,
+      flexShrink:    0,
+      background:    A.bgCard,
+      borderRight:   `1px solid ${A.border}`,
+      paddingTop:    12,
+      overflowY:     'auto',
+      display:       'flex',
+      flexDirection: 'column',
     }}>
-      {/* Nav groups */}
       <div style={{ flex: 1 }}>
         {GROUPS.map(group => (
           <div key={group.key}>
@@ -311,7 +321,6 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
           </div>
         ))}
 
-        {/* Future / soon */}
         <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 8, paddingTop: 4 }}>
           {SOON_ITEMS.map(item => (
             <SidebarRow key={item.key} item={item} active={false} />
@@ -319,11 +328,10 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
         </div>
       </div>
 
-      {/* Bottom wordmark */}
       <div style={{
-        padding:       '16px 16px 20px',
-        borderTop:     `1px solid ${A.border}`,
-        marginTop:     8,
+        padding:   '16px 16px 20px',
+        borderTop: `1px solid ${A.border}`,
+        marginTop: 8,
       }}>
         <div style={{
           fontSize:      9,
@@ -352,7 +360,7 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
   )
 }
 
-// ─── Mobile selector (unchanged) ─────────────────────────────────────────────
+// ─── Mobile selector ──────────────────────────────────────────────────────────
 
 function MobileSelector({ tab }: { tab: AdminTab }) {
   const all: SidebarItem[] = [
@@ -360,6 +368,7 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     ...GUIDES_ITEMS,
     ...LIBRARY_ITEMS,
     ...HOUSE_ITEMS,
+    ...OPERATIONS_ITEMS,
     ...PROGRAMME_ITEMS,
   ]
 
@@ -380,17 +389,17 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         value={currentValue()}
         onChange={handleChange}
         style={{
-          width:       '100%',
-          background:  A.bgInput,
-          border:      `1px solid ${A.borderGold}`,
+          width:        '100%',
+          background:   A.bgInput,
+          border:       `1px solid ${A.borderGold}`,
           borderRadius: 10,
-          color:       A.gold,
-          padding:     '10px 14px',
-          fontSize:    13,
-          fontWeight:  700,
-          fontFamily:  A.font,
-          outline:     'none',
-          colorScheme: 'dark',
+          color:        A.gold,
+          padding:      '10px 14px',
+          fontSize:     13,
+          fontWeight:   700,
+          fontFamily:   A.font,
+          outline:      'none',
+          colorScheme:  'dark',
         }}
       >
         <optgroup label='Immerse'>
@@ -404,6 +413,9 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         </optgroup>
         <optgroup label='House'>
           {HOUSE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+        </optgroup>
+        <optgroup label='Operations'>
+          {OPERATIONS_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
         <optgroup label='Programme'>
           {PROGRAMME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}

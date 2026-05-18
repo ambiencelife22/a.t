@@ -30,6 +30,7 @@ import LibraryHotelsTab       from './admin/LibraryHotelsTab'
 import GuidesExperiencesTab   from './admin/GuidesExperiencesTab'
 import HouseTab            from './admin/HouseTab'
 import { AdminToastProvider } from './admin/_adminPrimitives'
+import { OperationsTab } from './admin/OperationsTab'
 
 import {
   ProgrammesTab,
@@ -154,6 +155,8 @@ function TabContent({ tab }: { tab: AdminTab }) {
   if (tab.product === 'house') {
     return <HouseTab />
   }
+
+  if (tab.product === 'operations') return <OperationsTab />
 
   if (tab.product === 'programme') {
     if (tab.tab === 'programmes')      return <ProgrammesTab />
