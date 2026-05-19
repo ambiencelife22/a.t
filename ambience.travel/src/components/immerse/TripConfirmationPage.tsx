@@ -1,0 +1,493 @@
+// TripConfirmationPage.tsx — Client-facing trip confirmation page.
+//
+// What it owns:
+//   - Standalone confirmation layout: slim top bar (logo + PDF download),
+//     cream document body — accommodation, flights, transfers, car services.
+//   - Data fetch mode: when urlId provided, fetches via fetchTripClientData.
+//   - Preview mode: when data provided directly (BriefEditorPage preview panel),
+//     renders immediately with no fetch.
+//   - PDF download: calls exportConfirmationBriefPdf with current data.
+//
+// Two render modes — same component, one source of truth:
+//   1. Live route:   <TripConfirmationPage urlId='NfXkQ2mRp7B' />
+//   2. Editor preview: <TripConfirmationPage data={previewData} />
+//
+// What it does not own:
+//   - Route resolution (ImmerseEngagementRoute.tsx)
+//   - Data fetching primitives (tripClientQueries.ts, adminTripQueries.ts)
+//   - PDF generation (confirmationBriefPdf.ts)
+//   - Programme page (TripProgrammePage.tsx)
+//
+// Last updated: S48 — initial ship. Extracted from BriefEditorPage.BriefPreview.
+//   Adds top bar, PDF download, standalone data fetch via tripClientQueries.
+
+import { useEffect, useState } from 'react'
+import { getAuxTypeMeta } from '../../lib/auxBookingTypes'
+import { fetchTripClientData, type TripClientData } from '../../lib/tripClientQueries'
+import type { TripBooking, TripAuxBooking } from '../../lib/adminTripQueries'
+import type { ConfirmationBriefData } from '../../lib/confirmationBriefPdf'
+import { useBriefDownload } from '../../lib/useBriefDownload'
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+const CREAM   = '#F7F5F0'
+const INK     = '#1A1D1A'
+const GOLD    = '#C9A84C'
+const MUTED   = '#787060'
+const FAINT   = '#B4AFA5'
+const RULE    = '#DCDBD5'
+const CARD_BG = '#F0EDE6'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso.slice(0, 10) + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function fmtTime(t: string | null): string {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hour = parseInt(h, 10)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const h12  = hour % 12 || 12
+  return `${h12}:${m} ${ampm}`
+}
+
+function buildDateRange(start: string | null, end: string | null): string {
+  if (!start) return ''
+  if (!end) return fmtDate(start)
+  const s = new Date(start.slice(0, 10) + 'T00:00:00')
+  const e = new Date(end.slice(0, 10) + 'T00:00:00')
+  const sm = s.toLocaleDateString('en-US', { month: 'long' })
+  const em = e.toLocaleDateString('en-US', { month: 'long' })
+  if (sm === em && s.getFullYear() === e.getFullYear())
+    return `${s.getDate()}\u2013${e.getDate()} ${em} ${e.getFullYear()}`
+  return `${fmtDate(start)}\u2013${fmtDate(end)}`
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+// Live route: provide urlId — component fetches its own data.
+// Editor preview: provide data directly — no fetch.
+type Props =
+  | { urlId: string;  data?: never }
+  | { data: TripClientData; urlId?: never }
+
+// ── Top bar ───────────────────────────────────────────────────────────────────
+
+function ConfirmationTopBar({ clientData, programmeUrl }: {
+  clientData: TripClientData | null
+  programmeUrl: string | null
+}) {
+  const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
+
+  async function handlePdf() {
+    if (!clientData) return
+    const { trip, brief, house, destinationName, auxBookings } = clientData
+
+    let heroData: string | null = null
+    const heroSrc = brief?.hero_image_src
+    if (heroSrc) {
+      try {
+        const res  = await fetch(heroSrc)
+        const blob = await res.blob()
+        heroData = await new Promise(resolve => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+      } catch { heroData = null }
+    }
+
+    handleDownloadBrief({ trip, brief, house, destinationName, heroImageData: heroData, auxBookings })
+  }
+
+  return (
+    <div style={{
+      position:      'sticky',
+      top:           0,
+      zIndex:        50,
+      height:        56,
+      background:    'rgba(250,247,242,0.96)',
+      backdropFilter: 'blur(12px)',
+      borderBottom:  `1px solid ${RULE}`,
+      display:       'flex',
+      alignItems:    'center',
+      padding:       '0 clamp(16px,5vw,48px)',
+      gap:           12,
+    }}>
+      {/* Logo */}
+      <a href='https://ambience.travel' style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}>
+        <img src='/emblem.png' alt='' style={{ width: 24, height: 24, borderRadius: '50%' }} />
+        <img src='/ambience_travel.svg' alt='ambience travel' style={{ height: 32, objectFit: 'contain' }} />
+      </a>
+
+      <div style={{ flex: 1 }} />
+
+      {/* Programme link */}
+      {programmeUrl && (
+        <a
+          href={programmeUrl}
+          style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 11, fontWeight: 600, color: MUTED,
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+            textDecoration: 'none', padding: '5px 10px',
+            border: `1px solid ${RULE}`, borderRadius: 6,
+            transition: 'color 150ms, border-color 150ms',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLAnchorElement).style.color = GOLD
+            ;(e.currentTarget as HTMLAnchorElement).style.borderColor = GOLD
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLAnchorElement).style.color = MUTED
+            ;(e.currentTarget as HTMLAnchorElement).style.borderColor = RULE
+          }}
+        >
+          Daily Programme →
+        </a>
+      )}
+
+      {/* PDF download */}
+      <button
+        onClick={handlePdf}
+        disabled={!pdfReady || pdfDownloading || !clientData}
+        style={{
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+          textTransform: 'uppercase', border: 'none', borderRadius: 6,
+          padding: '5px 14px', cursor: pdfReady && clientData ? 'pointer' : 'not-allowed',
+          background: GOLD, color: INK,
+          opacity: pdfReady && !pdfDownloading && clientData ? 1 : 0.45,
+          transition: 'opacity 150ms',
+        }}
+      >
+        {pdfDownloading ? 'Generating…' : 'Download PDF'}
+      </button>
+    </div>
+  )
+}
+
+// ── Document body ─────────────────────────────────────────────────────────────
+
+export function TripConfirmationDocument({ clientData }: { clientData: TripClientData }) {
+  const { trip, brief, house, auxBookings } = clientData
+
+  const logoVariant = brief?.logo_variant ?? 'ambience'
+  const title       = brief?.brief_title ?? clientData.destinationName
+  const subtitle    = (brief?.brief_subtitle ?? 'TRIP CONFIRMATION BRIEF').toUpperCase()
+  const pfor        = brief?.prepared_for ?? house?.display_name ?? ''
+  const heroSrc     = brief?.hero_image_src ?? ''
+  const dates       = buildDateRange(trip.start_date, trip.end_date)
+
+  // Build room list
+  const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
+  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
+    if (b._rooms.length > 0) {
+      for (const r of b._rooms) allRooms.push({ room: r, booking: b })
+      continue
+    }
+    allRooms.push({
+      room: {
+        id: b.id, booking_id: b.id, room_name: b.name,
+        confirmation_number: b.confirmation_number,
+        guest_name: house?.display_name ?? null,
+        party_composition: b.party_composition,
+        notes: b.inclusions ?? null, nights: b.nights,
+        rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
+        total: null, brief_image_src: b.brief_image_src,
+        additional_guests: null, booked_by_label: null,
+        sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
+      } as any,
+      booking: b,
+    })
+  }
+
+  // Group aux by type
+  const sortedAux = [...auxBookings]
+    .filter(a => a.brief_show !== false)
+    .sort((a, b) => {
+      const ma = getAuxTypeMeta(a.booking_type)
+      const mb = getAuxTypeMeta(b.booking_type)
+      if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
+      return a.sort_order - b.sort_order
+    })
+
+  const auxSections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
+  for (const aux of sortedAux) {
+    const type = aux.booking_type ?? 'Other'
+    const meta = getAuxTypeMeta(type)
+    const last = auxSections[auxSections.length - 1]
+    if (last && last.type === type) {
+      last.items.push(aux)
+    } else {
+      auxSections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
+    }
+  }
+
+  return (
+    <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100vh', paddingBottom: 80 }}>
+
+      {/* Hero */}
+      <div style={{ position: 'relative', height: 'clamp(220px, 38vw, 360px)', background: CARD_BG, overflow: 'hidden' }}>
+        {heroSrc && <img src={heroSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+
+        {/* Frosted logo card */}
+        {logoVariant !== 'unbranded' && (
+          <div style={{
+            position: 'absolute', top: 16, left: 16,
+            background: 'rgba(250,247,242,0.92)', backdropFilter: 'blur(8px)',
+            borderRadius: 10, padding: '8px 14px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            border: '0.5px solid rgba(200,195,185,0.6)',
+          }}>
+            {logoVariant !== 'alfaone' && (
+              <img src='/emblem.png' alt='' style={{ width: 36, height: 36, objectFit: 'contain' }} />
+            )}
+            {logoVariant === 'alfaone'
+              ? <span style={{ fontFamily: 'Georgia, serif', fontSize: 15, color: '#B49050', letterSpacing: '0.02em' }}>AlfaOne Concierge</span>
+              : <img src='/ambience_travel.svg' alt='ambience' style={{ height: 40, objectFit: 'contain' }} />
+            }
+          </div>
+        )}
+      </div>
+
+      {/* Cover text */}
+      <div style={{ padding: 'clamp(24px,5vw,48px) clamp(20px,8vw,120px) 0', textAlign: 'center' }}>
+        <h1 style={{ fontSize: 'clamp(28px,5vw,48px)', fontWeight: 400, color: INK, lineHeight: 1.15, margin: '0 0 16px' }}>
+          {title}
+        </h1>
+        <div style={{ height: 1, background: GOLD, margin: '0 auto 12px', maxWidth: 480 }} />
+        <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: GOLD, letterSpacing: '0.14em', marginBottom: 8 }}>
+          {subtitle}
+        </div>
+        {pfor && (
+          <div style={{ fontSize: 15, fontStyle: 'italic', color: MUTED, marginBottom: 6 }}>
+            Prepared for {pfor}
+          </div>
+        )}
+        {dates && (
+          <div style={{ fontSize: 13, color: FAINT, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            {dates}
+          </div>
+        )}
+      </div>
+
+      {/* Accommodation */}
+      {allRooms.length > 0 && (
+        <Section label='ACCOMMODATION'>
+          {allRooms.map(({ room, booking }, i) => {
+            const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
+            const bookedByText = (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+            const pillColor    = isAmbience ? GOLD : FAINT
+            const imgSrc       = room.brief_image_src
+
+            const guestParts: string[] = []
+            if (room.guest_name)              guestParts.push(room.guest_name)
+            if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
+            if (room.party_composition)       guestParts.push(room.party_composition)
+            const guestLine = guestParts.join(' · ')
+
+            return (
+              <div key={room.id ?? i} style={{
+                background: '#fff', border: `0.5px solid ${RULE}`,
+                borderRadius: 12, overflow: 'hidden',
+                display: 'flex', minHeight: 100,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              }}>
+                <div style={{ width: 'clamp(120px,35%,220px)', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
+                  {imgSrc && <img src={imgSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
+                </div>
+                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    {room.room_name && <div style={{ fontSize: 16, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{room.room_name}</div>}
+                    {guestLine && <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED }}>{guestLine}</div>}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    {room.confirmation_number && (
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        border: `1px solid ${pillColor}`, borderRadius: 5,
+                        padding: '3px 10px', marginBottom: 6,
+                        background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                      }}>
+                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
+                          Conf #:  {room.confirmation_number}
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", fontStyle: 'italic', color: FAINT }}>
+                      {bookedByText}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </Section>
+      )}
+
+      {/* Aux sections */}
+      {auxSections.map(section => (
+        <Section key={section.type} label={section.label}>
+          {section.items.map(aux => {
+            const bookedBy    = aux.booked_by?.trim() ?? null
+            const isAmbience  = !bookedBy || bookedBy.toLowerCase().includes('ambience')
+            const bookedByTxt = bookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+            const pillColor   = isAmbience ? GOLD : FAINT
+            const dep         = fmtTime(aux.start_time)
+            const arr         = fmtTime(aux.end_time)
+            const timeStr     = dep && arr ? `${dep} – ${arr}` : dep || arr || ''
+            const route       = [aux.origin, aux.destination].filter(Boolean).join(' → ')
+
+            return (
+              <div key={aux.id} style={{
+                background: '#fff', border: `0.5px solid ${RULE}`,
+                borderRadius: 12, padding: '16px 20px',
+                display: 'flex', alignItems: 'flex-start', gap: 16,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+              }}>
+                <div style={{ fontSize: 22, color: GOLD, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>
+                  {section.icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {aux.name && <div style={{ fontSize: 16, color: INK, marginBottom: 4 }}>{aux.name}</div>}
+                  {route && <div style={{ fontSize: 12, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED }}>{route}</div>}
+                  {aux.start_date && (
+                    <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, marginTop: 2 }}>
+                      {fmtDate(aux.start_date)}
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  {timeStr && (
+                    <div style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: INK }}>
+                      {timeStr}
+                    </div>
+                  )}
+                  {aux.guest_label && (
+                    <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", fontStyle: 'italic', color: FAINT, marginTop: 2 }}>
+                      {aux.guest_label}
+                    </div>
+                  )}
+                  {aux.confirmation_number && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      border: `1px solid ${pillColor}`, borderRadius: 5,
+                      padding: '2px 8px', marginTop: 6,
+                      background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                    }}>
+                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>
+                        Conf #:  {aux.confirmation_number}
+                      </span>
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, fontFamily: "'Plus Jakarta Sans', sans-serif", fontStyle: 'italic', color: FAINT, marginTop: 4 }}>
+                    {bookedByTxt}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </Section>
+      ))}
+
+      {/* Footer */}
+      <div style={{ padding: '40px clamp(20px,8vw,120px) 0', textAlign: 'center' }}>
+        <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
+        <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, letterSpacing: '0.08em' }}>
+          TAILORED TRAVEL DESIGN · CONCIERGE SUPPORT ·{' '}
+          <a href='https://ambience.travel' style={{ color: FAINT, textDecoration: 'none' }}>ambience.travel</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Section wrapper ───────────────────────────────────────────────────────────
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ padding: 'clamp(24px,4vw,40px) clamp(20px,8vw,120px) 0' }}>
+      <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
+      <div style={{
+        fontSize: 10, fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontWeight: 700, color: GOLD, letterSpacing: '0.14em',
+        marginBottom: 16,
+      }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ── Loading / error states ────────────────────────────────────────────────────
+
+function ConfirmationLoading() {
+  return (
+    <div style={{
+      minHeight: '100vh', background: CREAM,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16,
+    }}>
+      <img src='/emblem.png' alt='' style={{ width: 48, height: 48, opacity: 0.6 }} />
+      <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        Preparing Your Confirmation
+      </div>
+    </div>
+  )
+}
+
+function ConfirmationNotFound() {
+  return (
+    <div style={{
+      minHeight: '100vh', background: CREAM,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: '0 24px', textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 20, color: INK, fontFamily: 'Georgia, serif' }}>This confirmation is not available.</div>
+      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: 'none' }}>
+        Return to ambience.travel →
+      </a>
+    </div>
+  )
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+
+export default function TripConfirmationPage({ urlId, data }: Props) {
+  const [clientData, setClientData] = useState<TripClientData | null>(data ?? null)
+  const [notFound,   setNotFound]   = useState(false)
+
+  useEffect(() => {
+    if (data || !urlId) return
+    fetchTripClientData(urlId)
+      .then(d => { if (d) setClientData(d); else setNotFound(true) })
+      .catch(() => setNotFound(true))
+  }, [urlId, data])
+
+  // Derive programme URL from urlId
+  const programmeUrl = clientData
+    ? (typeof window !== 'undefined' && window.location.hostname === 'immerse.ambience.travel'
+        ? `/${clientData.urlId}/programme`
+        : `/immerse/${clientData.urlId}/programme`)
+    : null
+
+  if (notFound) return <ConfirmationNotFound />
+  if (!clientData) return <ConfirmationLoading />
+
+  // Editor preview mode — no top bar, no chrome
+  if (data) return <TripConfirmationDocument clientData={clientData} />
+
+  // Live route mode — full chrome
+  return (
+    <div style={{ minHeight: '100vh', background: CREAM }}>
+      <ConfirmationTopBar clientData={clientData} programmeUrl={programmeUrl} />
+      <TripConfirmationDocument clientData={clientData} />
+    </div>
+  )
+}

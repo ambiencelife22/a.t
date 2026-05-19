@@ -1,5 +1,5 @@
 // ImmerseEngagementRoute.tsx — Route resolver for immerse engagement pages.
-// Resolves url_id (+ optional destination_slug) from pathname, with
+// Resolves url_id (+ optional destination_slug or surface) from pathname, with
 // hostname-aware path parsing.
 //
 // Subdomain awareness:
@@ -7,39 +7,52 @@
 //   ambience.travel/immerse/<url_id>[/<dest>]   → path[1] = url_id (path[0] = 'immerse')
 //   localhost:5173/immerse/<url_id>[/<dest>]    → same as above
 //
-// Overview (no destination segment)  → fetches engagement, renders ImmerseEngagementPage.
-// Destination (with slug)             → fetches engagement, renders DestinationPage.
-// No React Router — reads window.location.pathname directly.
+// Route kinds (discriminated union):
+//   overview      → no second segment — renders ImmerseEngagementPage
+//   destination   → second segment is a destination slug — renders DestinationPage
+//   confirmation  → second segment === 'confirmation' — renders TripConfirmationPage
+//   programme     → second segment === 'programme' — renders TripProgrammePage
+//   invalid       → no valid url_id in first segment — redirects
 //
-// Last updated: S32F — Inline IMMERSE_HOST + isImmerseHost() removed. url_id
-//   regex match in resolveImmerseRoute now goes through isTripUrlId from
-//   lib/immersePath. Inline overview-URL builder at logoHref swapped for
-//   getOverviewUrl(). resolveImmerseRoute itself stays in place — different
-//   surface than App's resolveImmerseSegments (returns a discriminated union
-//   with validation, App returns raw segments). No behavioural change.
-// Prior: S32D — Back-button fix. `kind` is now derived synchronously
-//   from pathname instead of being React state set inside an async effect.
-//   On back-navigation, render decisions use the current URL on the same tick
-//   the URL changes, eliminating the stale-state window where a destination
-//   slug is gone from the URL but DestinationPage still mounted. Engagement
-//   fetch runs only when urlId changes, not on every pathname change.
-// Prior: S32 — Subdomain-aware path parsing. resolveImmerseRoute strips the
-//   /immerse/ prefix only when not on the immerse subdomain.
+// Reserved second segments ('confirmation', 'programme') are intercepted before
+// the destinationSlug branch. All future client-facing trip surfaces follow the
+// same pattern — add to RESERVED_SEGMENTS and add a route kind.
+//
+// Last updated: S48 — confirmation and programme route kinds added.
+//   resolveImmerseRoute extended with RESERVED_SEGMENTS intercept. Lazy imports
+//   for TripConfirmationPage and TripProgrammePage added.
+// Prior: S32F — Inline IMMERSE_HOST + isImmerseHost() removed. url_id regex
+//   match goes through isTripUrlId from lib/immersePath. Inline overview-URL
+//   builder swapped for getOverviewUrl().
+// Prior: S32D — Back-button fix. `kind` derived synchronously from pathname.
+// Prior: S32 — Subdomain-aware path parsing.
 
-import { useEffect, useMemo, useState } from 'react'
-import { getImmerseEngagement }            from '../../lib/immerseEngagementQueries'
-import type { ImmerseEngagementData }      from '../../lib/immerseTypes'
-import ImmerseEngagementPage               from './ImmerseEngagementPage'
-import DestinationPage                     from './DestinationPage'
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { getImmerseEngagement }              from '../../lib/immerseEngagementQueries'
+import type { ImmerseEngagementData }        from '../../lib/immerseTypes'
+import ImmerseEngagementPage                 from './ImmerseEngagementPage'
+import DestinationPage                       from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
-import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
+import { TravelLoadingScreen, NotFound }     from './ImmerseStateScreens'
 import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../lib/immersePath'
+import RouteLoading from '../RouteLoading'
+
+const TripConfirmationPage = lazy(() => import('./TripConfirmationPage.tsx'))
+const TripProgrammePage    = lazy(() => import('./TripProgrammePage'))
+
+// ── Reserved second segments ──────────────────────────────────────────────────
+// These are intercepted before destinationSlug resolution. Extend here to add
+// future client-facing trip surfaces.
+
+const RESERVED_SEGMENTS = new Set(['confirmation', 'programme'])
 
 // ── URL resolution ───────────────────────────────────────────────────────────
 
 type ResolvedRoute =
-  | { kind: 'overview';    urlId: string }
-  | { kind: 'destination'; urlId: string; destinationSlug: string }
+  | { kind: 'overview';     urlId: string }
+  | { kind: 'destination';  urlId: string; destinationSlug: string }
+  | { kind: 'confirmation'; urlId: string }
+  | { kind: 'programme';    urlId: string }
   | { kind: 'invalid' }
 
 export function resolveImmerseRoute(pathname: string): ResolvedRoute {
@@ -54,14 +67,17 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
   if (!seg1) return { kind: 'invalid' }
   if (!isTripUrlId(seg1)) return { kind: 'invalid' }
 
-  if (seg2) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
+  // Reserved segments — client-facing trip surfaces
+  if (seg2 === 'confirmation') return { kind: 'confirmation', urlId: seg1 }
+  if (seg2 === 'programme')    return { kind: 'programme',    urlId: seg1 }
+
+  // Destination subpage
+  if (seg2 && !RESERVED_SEGMENTS.has(seg2)) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
+
   return { kind: 'overview', urlId: seg1 }
 }
 
 // ── Nav items builder ────────────────────────────────────────────────────────
-// Trip Overview first, then one item per destination row in sort_order.
-// 'hidden' rows are filtered server-side; 'preview' rows render with the
-// Preview pill.
 
 export function buildImmerseNavItems(
   engagement: ImmerseEngagementData,
@@ -94,8 +110,6 @@ export function buildImmerseNavItems(
 // ── Main component ──────────────────────────────────────────────────────────
 
 export default function ImmerseEngagementRoute() {
-  // Track pathname so component re-resolves on browser back/forward within
-  // the immerse subtree.
   const [pathname, setPathname] = useState(window.location.pathname)
 
   useEffect(() => {
@@ -108,18 +122,30 @@ export default function ImmerseEngagementRoute() {
     }
   }, [])
 
-  // S32D: Route is derived synchronously from pathname on every render.
-  // This is the load-bearing change — render decisions never see a stale
-  // `kind` while the URL says otherwise.
   const route = useMemo(() => resolveImmerseRoute(pathname), [pathname])
 
-  const [engagement, setEngagement] = useState<ImmerseEngagementData | null>(null)
-  const [error,   setError]   = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Confirmation and programme pages handle their own data fetching
+  if (route.kind === 'confirmation') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <TripConfirmationPage urlId={route.urlId} />
+      </Suspense>
+    )
+  }
 
-  // Engagement only needs to refetch when urlId changes, not on every URL
-  // change. Switching between overview and destination subpages of the same
-  // engagement reuses the cached engagement state.
+  if (route.kind === 'programme') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <TripProgrammePage urlId={route.urlId} />
+      </Suspense>
+    )
+  }
+
+  // Engagement-based routes (overview + destination) — need engagement data
+  const [engagement, setEngagement] = useState<ImmerseEngagementData | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
+  const [loading,    setLoading]    = useState(true)
+
   const urlId = route.kind === 'invalid' ? null : route.urlId
 
   useEffect(() => {
@@ -161,7 +187,7 @@ export default function ImmerseEngagementRoute() {
   if (loading) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
-       <TravelLoadingScreen />
+        <TravelLoadingScreen />
       </ImmerseLayout>
     )
   }
