@@ -4,20 +4,29 @@
 //   - Page 1: hero cover-crop + cream mask, frosted glass logo card, centred title.
 //             Rooms flow below on same page; new page only on overflow.
 //   - Per-room cards — half-width image left (cover crop), room name serif,
-//     guests muted, Conf #: pill + booked_by_label (free-text) pinned bottom.
+//     guests muted, Conf #: pill + booked_by_label (free-text) natural flow.
 //   - Fallback: if no rooms on a booking, one synthetic card from the booking.
 //
-// Last updated: S47 — booked_by_label wired: room.booked_by_label ?? fallback.
-//   SVG loading ported exactly from guidePdf.ts rasterizeSvgAsDataUrl.
-//   Logo card image-based (emblem PNG + SVG raster). Footer ambience.travel
-//   hyperlinked via doc.link(). Footer dot removed. No unconditional page break.
+// What it does not own:
+//   - Image loading, SVG rasterisation, cover crop, font helpers (pdfUtils.ts)
+//   - Font loading / registration (guidePdfFonts.ts)
+//   - jsPDF script loading (useBriefDownload hook)
+//
+// Last updated: S48 — refactored to import shared primitives from pdfUtils.ts.
+//   Removed: local Img interface, loadImg, loadSvg, makeCoverCropAsync,
+//   serif, sans, rule, inline jsPDF guard. PDF_FONTS / PDF_FONTS_SANS_MEDIUM_FAMILY
+//   imports removed (now routed through pdfUtils). assertJsPdf() replaces inline guard.
+// Prior: S47 — booked_by_label wired. Logo card image-based. Footer hyperlinked.
 
-import { loadGuideFonts, registerGuideFonts, PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './guidePdfFonts'
+import { loadGuideFonts, registerGuideFonts } from './guidePdfFonts'
+import {
+  assertJsPdf, loadImg, loadSvg, makeCoverCropAsync,
+  serif, sans, drawRule,
+  type RGB, type Img,
+} from './pdfUtils'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom } from './adminTripQueries'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
-
-type RGB = [number, number, number]
 
 const T: Record<string, RGB> = {
   cream:   [250, 247, 242],
@@ -46,110 +55,7 @@ export interface ConfirmationBriefData {
 
 const ASSETS = { emblem: '/emblem.png', logoSvg: '/ambience_travel.svg' } as const
 
-// ── Font helpers ──────────────────────────────────────────────────────────────
-
-function serif(doc: any, style: 'normal' | 'italic', size: number) {
-  doc.setFont(PDF_FONTS.serif, style); doc.setFontSize(size)
-}
-
-function sans(doc: any, style: 'normal' | 'bold' | 'italic' | 'medium', size: number) {
-  if (style === 'medium') {
-    doc.setFont(PDF_FONTS_SANS_MEDIUM_FAMILY, 'normal'); doc.setFontSize(size); return
-  }
-  doc.setFont(PDF_FONTS.sans, style); doc.setFontSize(size)
-}
-
-// ── Image loading ─────────────────────────────────────────────────────────────
-
-interface Img { data: string; format: 'PNG' | 'JPEG'; nw: number; nh: number }
-
-async function loadImg(src: string): Promise<Img | null> {
-  return new Promise(resolve => {
-    const img = new Image(); img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      try {
-        const nw = img.naturalWidth || 1; const nh = img.naturalHeight || 1
-        const c = document.createElement('canvas'); c.width = nw; c.height = nh
-        const ctx = c.getContext('2d'); if (!ctx) { resolve(null); return }
-        const isPng = /\.png(\?|$)/i.test(src)
-        if (!isPng) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, nw, nh) }
-        ctx.drawImage(img, 0, 0)
-        resolve(isPng
-          ? { data: c.toDataURL('image/png'),        format: 'PNG',  nw, nh }
-          : { data: c.toDataURL('image/jpeg', 0.88), format: 'JPEG', nw, nh })
-      } catch { resolve(null) }
-    }
-    img.onerror = () => resolve(null)
-    img.src = src
-  })
-}
-
-// Exact port of rasterizeSvgAsDataUrl from guidePdf.ts — the version that works.
-async function loadSvg(src: string, targetW: number): Promise<Img | null> {
-  try {
-    const res = await fetch(src); if (!res.ok) return null
-    const svgText = await res.text()
-    const blob    = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' })
-    const blobUrl = URL.createObjectURL(blob)
-    return await new Promise(resolve => {
-      const img = new Image()
-      img.onload = () => {
-        try {
-          const naturalW = img.naturalWidth  || targetW
-          const naturalH = img.naturalHeight || Math.round(targetW / 3)
-          const scale    = targetW / naturalW
-          const c = document.createElement('canvas')
-          c.width  = Math.round(naturalW * scale)
-          c.height = Math.round(naturalH * scale)
-          const ctx = c.getContext('2d')
-          if (!ctx) { URL.revokeObjectURL(blobUrl); resolve(null); return }
-          ctx.drawImage(img, 0, 0, c.width, c.height)
-          URL.revokeObjectURL(blobUrl)
-          resolve({ data: c.toDataURL('image/png'), format: 'PNG', nw: c.width, nh: c.height })
-        } catch { URL.revokeObjectURL(blobUrl); resolve(null) }
-      }
-      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null) }
-      img.src = blobUrl
-    })
-  } catch { return null }
-}
-
-// ── Cover crop — async, awaits image load ─────────────────────────────────────
-
-async function makeCoverCropAsync(
-  srcData: string, format: 'PNG' | 'JPEG',
-  srcNw: number, srcNh: number,
-  destWmm: number, destHmm: number,
-): Promise<{ data: string; format: 'PNG' | 'JPEG' }> {
-  const PX = 4
-  const outW = Math.round(destWmm * PX); const outH = Math.round(destHmm * PX)
-  const scale = Math.max(outW / srcNw, outH / srcNh)
-  const sw = Math.round(srcNw * scale); const sh = Math.round(srcNh * scale)
-  const ox = Math.round((sw - outW) / 2); const oy = Math.round((sh - outH) / 2)
-
-  return new Promise(resolve => {
-    const img = new Image()
-    img.onload = () => {
-      try {
-        const c = document.createElement('canvas'); c.width = outW; c.height = outH
-        const ctx = c.getContext('2d')
-        if (!ctx) { resolve({ data: srcData, format }); return }
-        if (format !== 'PNG') { ctx.fillStyle = '#FAF7F2'; ctx.fillRect(0, 0, outW, outH) }
-        ctx.drawImage(img, -ox, -oy, sw, sh)
-        resolve({ data: format === 'PNG' ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88), format })
-      } catch { resolve({ data: srcData, format }) }
-    }
-    img.onerror = () => resolve({ data: srcData, format })
-    img.src = srcData
-  })
-}
-
 // ── Draw helpers ──────────────────────────────────────────────────────────────
-
-function rule(doc: any, x: number, y: number, w: number, color: RGB = T.rule, t = 0.3) {
-  doc.setDrawColor(color[0], color[1], color[2]); doc.setLineWidth(t)
-  doc.line(x, y, x + w, y)
-}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
@@ -168,19 +74,10 @@ function buildDateRange(s: string | null, e: string | null): string {
   return `${fmtDate(s)}\u2013${fmtDate(e)}`
 }
 
-// ── Frosted glass logo card — exact same pattern as guidePdf.ts ───────────────
+// ── Frosted glass logo card ───────────────────────────────────────────────────
 
 // variant: 'ambience' (default) | 'alfaone' | 'unbranded' | null
-// 'ambience'  — frosted card: emblem PNG + ambience_travel.svg raster
-// 'alfaone'   — frosted card: "AlfaOne Concierge" in gold serif (asset TBD)
-// 'unbranded' — nothing drawn
-// null        — treated as 'ambience'
-function drawFrostedLogoCard(
-  doc: any,
-  emblem: Img | null,
-  logo: Img | null,
-  variant: string | null,
-) {
+function drawFrostedLogoCard(doc: any, emblem: Img | null, logo: Img | null, variant: string | null) {
   const v = variant ?? 'ambience'
   if (v === 'unbranded') return
 
@@ -188,7 +85,7 @@ function drawFrostedLogoCard(
   const pH = 5; const pW = 5; const eS = 12; const gap = 4
 
   if (v === 'alfaone') {
-    doc.setFont(PDF_FONTS.serif, 'normal'); doc.setFontSize(13)
+    doc.setFont('CormorantGaramond', 'normal'); doc.setFontSize(13)
     const textW = doc.getTextWidth('AlfaOne Concierge')
     const cW = pW * 2 + textW
     const cH = pH * 2 + eS
@@ -200,7 +97,7 @@ function drawFrostedLogoCard(
     doc.roundedRect(cx, cy, cW, cH, 3, 3, 'FD')
     doc.setGState(doc.GState({ opacity: 1 }))
 
-    doc.setFont(PDF_FONTS.serif, 'normal'); doc.setFontSize(13)
+    doc.setFont('CormorantGaramond', 'normal'); doc.setFontSize(13)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
     doc.text('AlfaOne Concierge', cx + pW, cy + pH + eS * 0.62)
     return
@@ -233,10 +130,9 @@ function stampChrome(doc: any, brief: TripBrief | null) {
   const footer = brief?.footer_tagline ?? 'TAILORED TRAVEL DESIGN  \u00b7  CONCIERGE SUPPORT  \u00b7  ambience.travel'
   for (let i = 1; i <= count; i++) {
     doc.setPage(i)
-    rule(doc, P.margin, P.h - 10, CW)
+    drawRule(doc, P.margin, P.h - 10, CW)
     sans(doc, 'normal', 6.5)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-    // Hyperlink ambience.travel portion
     const LINK = 'ambience.travel'
     const idx  = footer.lastIndexOf(LINK)
     if (idx !== -1) {
@@ -262,30 +158,26 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const padV = 7; const padH = 8; const minCardH = 36
   const contentX = P.margin + imgW; const contentW = CW - imgW
 
-  // Guest line
   const guestParts: string[] = []
   if (room.guest_name) guestParts.push(room.guest_name)
   if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
   if (room.party_composition) guestParts.push(room.party_composition)
   const guestLine = guestParts.join('  \u00b7  ')
 
-  // Booked-by: free-text label takes priority over booking-level fallback
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as RGB) : ([245, 245, 245] as RGB)
   const bookedByText = room.booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Self-booked')
   const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
 
-  // Measure content height
   serif(doc, 'normal', 11)
   const nameLines    = doc.splitTextToSize(room.room_name ?? 'Booking', contentW - padH * 2)
   const nameH        = nameLines.length * 5.5
   const guestH       = guestLine ? 5 : 0
-  const bottomBlockH = confText ? 4 + 6 + 7 + 4.5 : 4 + 4.5  // gap + pill + gap + booked-by
+  const bottomBlockH = confText ? 4 + 6 + 7 + 4.5 : 4 + 4.5
   const contentH     = padV + nameH + (guestH ? guestH + 5 : 0) + bottomBlockH + padV
   const cardH        = Math.max(minCardH, contentH)
 
-  // Room image — async cover crop to exact dimensions
   let croppedImg: { data: string; format: 'PNG' | 'JPEG' } | null = null
   if (room.brief_image_src) {
     try {
@@ -294,13 +186,11 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
     } catch { /* silent */ }
   }
 
-  // Card background
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
   doc.setLineWidth(0.3)
   doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'FD')
 
-  // Image
   if (croppedImg) {
     doc.addImage(croppedImg.data, croppedImg.format, P.margin, y, imgW, cardH, undefined, 'FAST')
   } else {
@@ -308,12 +198,10 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
     doc.rect(P.margin, y, imgW, cardH, 'F')
   }
 
-  // Redraw border over image
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
   doc.setLineWidth(0.3)
   doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'D')
 
-  // Content — natural top-to-bottom flow, no pinning
   const tx = contentX + padH; let ty = y + padV
 
   serif(doc, 'normal', 11)
@@ -328,7 +216,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
     ty += 5
   }
 
-  ty += 4  // breathing room before pill
+  ty += 4
 
   if (confText) {
     sans(doc, 'normal', 8)
@@ -358,7 +246,6 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
   doc.rect(0, 0, P.w, P.h, 'F')
 
-  // Hero
   if (d.heroImageData) {
     try {
       const raw = await loadImg(d.heroImageData)
@@ -373,13 +260,11 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.rect(0, 0, P.w, P.heroH, 'F')
   }
 
-  // Cream mask — prevents any hero bleed onto title
   doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
   doc.rect(0, P.heroH, P.w, P.h - P.heroH, 'F')
 
   drawFrostedLogoCard(doc, emblem, logo, brief?.logo_variant ?? null)
 
-  // Cover text
   let y = P.heroH + 14
 
   const title = brief?.brief_title ?? d.destinationName
@@ -390,7 +275,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   }
   y += 4
 
-  rule(doc, P.margin, y, CW, T.gold, 0.4); y += 8
+  drawRule(doc, P.margin, y, CW, T.gold, 0.4); y += 8
 
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
@@ -411,7 +296,6 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.text(dateRange, P.w / 2, y, { align: 'center' }); y += 12
   }
 
-  // Collect rooms
   const allRooms: { room: BookingRoom; booking: TripBooking }[] = []
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
@@ -437,7 +321,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 
   if (allRooms.length === 0) return
 
-  rule(doc, P.margin, y, CW); y += 8
+  drawRule(doc, P.margin, y, CW); y += 8
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('CONFIRMED ARRANGEMENTS', P.margin, y, { charSpace: 0.5 }); y += 7
@@ -445,7 +329,6 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   const FOOTER_MARGIN = 18
 
   for (const { room, booking } of allRooms) {
-    // Pre-measure card height
     const padH = 8; const padV = 7; const contentW = CW - Math.round(CW * 0.44)
     serif(doc, 'normal', 11)
     const nl = doc.splitTextToSize(room.room_name ?? 'Booking', contentW - padH * 2)
@@ -472,12 +355,9 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 // ── Filename + export ─────────────────────────────────────────────────────────
 
 function buildFilename(d: ConfirmationBriefData): string {
-  // Trip Confirmation - {Client Name} - {Destination} {dd-dd Month YYYY}
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-
   const clientName  = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.trip_code
   const destination = d.destinationName
-
   const dateRange = (() => {
     const s = d.trip.start_date; const e = d.trip.end_date
     if (!s) return ''
@@ -490,14 +370,11 @@ function buildFilename(d: ConfirmationBriefData): string {
     }
     return `${sd.getDate()} ${month} ${year}`
   })()
-
   return ['Trip Confirmation', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'
 }
 
 export async function exportConfirmationBriefPdf(data: ConfirmationBriefData): Promise<void> {
-  const w = window as any
-  const jsPDF = w.jspdf?.jsPDF
-  if (!jsPDF) throw new Error('jsPDF not loaded')
+  const jsPDF = assertJsPdf()
 
   const fontData = await loadGuideFonts()
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
