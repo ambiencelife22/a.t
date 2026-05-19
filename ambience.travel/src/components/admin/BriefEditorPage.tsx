@@ -31,7 +31,7 @@ import { supabase } from '../../lib/supabase'
 
 const CREAM   = '#F7F5F0'
 const INK     = '#1A1D1A'
-const GOLD    = '#B49050'
+const GOLD    = '#C9A84C'
 const MUTED   = '#787060'
 const FAINT   = '#B4AFA5'
 const RULE    = '#DCDBD5'
@@ -111,12 +111,13 @@ interface PreviewFields {
 
 // ── BriefRoomEditor ───────────────────────────────────────────────────────────
 
-function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, onRoomDraftsChange }: {
+function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, onRoomDraftsChange, isMobile }: {
   trip:               DossierTrip
   roomImageSrcs:      Record<string, string>
   onImageSrcsChange:  (srcs: Record<string, string>) => void
   roomDrafts:         Record<string, RoomDraft>
   onRoomDraftsChange: (drafts: Record<string, RoomDraft>) => void
+  isMobile:           boolean
 }) {
   const allRooms = trip.bookings.flatMap(b => b._rooms.map(r => ({ room: r, booking: b })))
 
@@ -206,7 +207,7 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
                   #{room.confirmation_number}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px', marginBottom: 10 }}>
                 <div>
                   <label style={labelStyle2}>Primary Guest</label>
                   <input style={fieldStyle} value={draft.guest_name}
@@ -338,11 +339,11 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
       <div style={{ position: 'relative', height: 240, background: CARD_BG, overflow: 'hidden' }}>
         {heroImageSrc && <img src={heroImageSrc} alt='hero' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         {logoVariant !== 'unbranded' && (
-          <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(250,247,242,0.72)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, border: '0.5px solid rgba(200,195,185,0.6)' }}>
-            {logoVariant !== 'alfaone' && <img src='/emblem.png' alt='' style={{ width: 32, height: 32, objectFit: 'contain' }} />}
+          <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(250,247,242,0.92)', backdropFilter: 'blur(8px)', borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, border: '0.5px solid rgba(200,195,185,0.6)' }}>
+            {logoVariant !== 'alfaone' && <img src='/emblem.png' alt='' style={{ width: 36, height: 36, objectFit: 'contain' }} />}
             {logoVariant === 'alfaone'
               ? <span style={{ fontFamily: 'Georgia, serif', fontSize: 15, color: '#B49050', letterSpacing: '0.02em' }}>AlfaOne Concierge</span>
-              : <img src='/ambience_travel.svg' alt='ambience' style={{ height: 18, objectFit: 'contain' }} />
+              : <img src='/ambience_travel.svg' alt='ambience' style={{ height: 42, objectFit: 'contain' }} />
             }
           </div>
         )}
@@ -421,6 +422,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function BriefEditorPage({ tripId }: { tripId: string }) {
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
+  useEffect(() => {
+    function onResize() { setWindowWidth(window.innerWidth) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const isMobile = windowWidth < 768
+  const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit')
+
   const [trip,       setTrip]       = useState<DossierTrip | null>(null)
   const [house,      setHouse]      = useState<HouseProfile | null>(null)
   const [loadErr,    setLoadErr]    = useState<string | null>(null)
@@ -592,12 +602,38 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         </div>
       </div>
 
+      {/* Mobile tab bar */}
+      {isMobile && (
+        <div style={{ display: 'flex', borderBottom: `1px solid ${RULE}`, background: '#EDE9E2' }}>
+          {(['edit', 'preview'] as const).map(tab => (
+            <button key={tab} onClick={() => setMobileTab(tab)} style={{
+              flex: 1, fontFamily: A.font, fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.08em', textTransform: 'uppercase' as const,
+              padding: '10px 0', border: 'none', cursor: 'pointer',
+              background: mobileTab === tab ? CREAM : '#EDE9E2',
+              color: mobileTab === tab ? INK : MUTED,
+              borderBottom: mobileTab === tab ? `2px solid ${GOLD}` : '2px solid transparent',
+              transition: 'all 120ms ease',
+            }}>
+              {tab === 'edit' ? 'Edit' : 'Preview'}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 50px)' }}>
-        <div style={{ width: '40%', flexShrink: 0, borderRight: `1px solid ${RULE}`, overflowY: 'auto', background: '#EDE9E2', padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{
+          width: isMobile ? '100%' : '40%',
+          flexShrink: 0,
+          borderRight: isMobile ? 'none' : `1px solid ${RULE}`,
+          overflowY: 'auto', background: '#EDE9E2', padding: isMobile ? 16 : 24,
+          display: isMobile && mobileTab !== 'edit' ? 'none' : 'flex',
+          flexDirection: 'column', gap: 24,
+        }}>
           <section>
             <div style={sectionHeadStyle}>Cover</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 768 ? '1fr' : '1fr 1fr', gap: 10 }}>
                 <Field label='Trip Title'>
                   <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || trip.trip_code} />
                 </Field>
@@ -658,12 +694,12 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
             {trip.bookings.every(b => b._rooms.length === 0) ? (
               <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No rooms seeded yet. Add rooms via the booking card in the House tab.</div>
             ) : (
-              <BriefRoomEditor trip={trip} roomImageSrcs={roomImageSrcs} onImageSrcsChange={setRoomImageSrcs} roomDrafts={roomDrafts} onRoomDraftsChange={setRoomDrafts} />
+              <BriefRoomEditor trip={trip} roomImageSrcs={roomImageSrcs} onImageSrcsChange={setRoomImageSrcs} roomDrafts={roomDrafts} onRoomDraftsChange={setRoomDrafts} isMobile={isMobile} />
             )}
           </section>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', background: '#E8E4DC' }}>
+        <div style={{ flex: 1, overflowY: 'auto', background: '#E8E4DC', display: isMobile && mobileTab !== 'preview' ? 'none' : 'block' }}>
           <div style={{ padding: '12px 20px', borderBottom: `1px solid ${RULE}`, background: '#DDD9D1' }}>
             <span style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live Preview</span>
           </div>
@@ -676,7 +712,27 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       </div>
 
       {pickerOpen && (
-        <AssetPicker onClose={() => setPickerOpen(false)} onSelected={url => { setHeroImageSrc(url); setPickerOpen(false) }} presetPath={trip.destinations[0]?.storage_path ?? undefined} />
+        <AssetPicker
+          onClose={() => setPickerOpen(false)}
+          presetPath={trip.destinations[0]?.storage_path ?? undefined}
+          onSelected={async url => {
+            setHeroImageSrc(url)
+            setPickerOpen(false)
+            // Auto-save hero immediately — same pattern as room images
+            if (trip && house) {
+              try {
+                const savedBrief = await upsertTripBrief(trip.id, house.id, {
+                  brief_title:    briefTitle    || null,
+                  brief_subtitle: briefSubtitle || null,
+                  prepared_for:   preparedFor   || null,
+                  hero_image_src: url,
+                  logo_variant:   logoVariant   || null,
+                })
+                setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
+              } catch { /* silent — user can still hit Save */ }
+            }
+          }}
+        />
       )}
     </div>
   )

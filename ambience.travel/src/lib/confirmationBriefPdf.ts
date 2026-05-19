@@ -25,7 +25,7 @@ const T: Record<string, RGB> = {
   inkSoft: [60,  66,  60],
   muted:   [120, 115, 105],
   faint:   [180, 175, 165],
-  gold:    [180, 145, 80],
+  gold:    [201, 168, 76],
   rule:    [220, 215, 205],
   cardBg:  [245, 242, 236],
   white:   [255, 255, 255],
@@ -193,7 +193,7 @@ function drawFrostedLogoCard(
     const cW = pW * 2 + textW
     const cH = pH * 2 + eS
 
-    doc.setGState(doc.GState({ opacity: 0.82 }))
+    doc.setGState(doc.GState({ opacity: 0.92 }))
     doc.setFillColor(250, 247, 242)
     doc.setDrawColor(200, 195, 185)
     doc.setLineWidth(0.2)
@@ -207,11 +207,11 @@ function drawFrostedLogoCard(
   }
 
   // 'ambience' — emblem + SVG logo
-  const logoH = 10; const logoW = logoH * 3.0
+  const logoH = 14; const logoW = logoH * 3.0
   const cW = pW + eS + gap + logoW + pW
   const cH = pH * 2 + Math.max(eS, logoH)
 
-  doc.setGState(doc.GState({ opacity: 0.82 }))
+  doc.setGState(doc.GState({ opacity: 0.92 }))
   doc.setFillColor(250, 247, 242)
   doc.setDrawColor(200, 195, 185)
   doc.setLineWidth(0.2)

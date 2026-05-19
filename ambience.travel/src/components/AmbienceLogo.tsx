@@ -18,7 +18,7 @@ const PRODUCT_STYLES = {
   travel: {
     ariaLabel: 'ambience.TRAVEL',
     suffix: '.travel',
-    suffixColor: '#C9B88E',
+    suffixColor: '#C9A84C',   // S47 — aligned with PDF gold + SVG
     suffixLetterSpacing: '0.03em',
   },
   life: {

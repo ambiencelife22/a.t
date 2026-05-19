@@ -4,15 +4,16 @@
 // Used by: BriefEditorPage (hero + room image pickers).
 //
 // Design:
-//   - GeoCascade folder picker (same as AssetUploader) when no presetPath
+//   - GeoCascade folder picker when no presetPath
 //   - When presetPath provided: lists that folder directly
-//   - If folder contains subfolders (no image extension), shows subfolder
-//     picker first, then lists images inside selected subfolder
+//   - Handles up to TWO levels of subfolders before images:
+//       e.g. nyc/ → accom/ → four-seasons/ → image.webp
 //   - Click to select — calls onSelected(publicUrl) and closes
 //
-// Last updated: S46 — subfolder browsing when presetPath contains folders
-//   not images (e.g. accom/ contains hotel subfolders). Pre-selects first
-//   subfolder automatically.
+// Last updated: S47 — two-level subfolder support. Level 1 shown as tabs
+//   (Hotel / Accom / Dining etc). Level 2 shown as dropdown. Images shown
+//   in grid once both levels resolved.
+// Prior: S46 — single subfolder level.
 // Prior: S45 — initial ship.
 
 import { useEffect, useState } from 'react'
@@ -29,6 +30,17 @@ function getPublicUrl(path: string): string {
 
 function isImageFile(name: string): boolean {
   return /\.(webp|jpg|jpeg|png)$/i.test(name)
+}
+
+function isFolder(item: { id: string | null }): boolean {
+  return item.id === null
+}
+
+async function listPath(path: string) {
+  const { data } = await supabase.storage
+    .from(BUCKET)
+    .list(path, { limit: 200, sortBy: { column: 'name', order: 'asc' } })
+  return data ?? []
 }
 
 const labelStyle: React.CSSProperties = {
@@ -56,63 +68,97 @@ export type AssetPickerProps = {
 }
 
 export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPickerProps) {
-  const [geo,          setGeo]          = useState<GeoCascadeValue>({ resolvedPath: null })
-  const [subfolders,   setSubfolders]   = useState<string[]>([])
-  const [subfolder,    setSubfolder]    = useState<string>('')
-  const [files,        setFiles]        = useState<string[]>([])
-  const [loading,      setLoading]      = useState(false)
-  const [selected,     setSelected]     = useState<string | null>(null)
+  const [geo,       setGeo]       = useState<GeoCascadeValue>({ resolvedPath: null })
 
-  const basePath    = presetPath ?? geo.resolvedPath
-  const activePath  = subfolders.length > 0 ? (subfolder ? `${basePath}/${subfolder}` : null) : basePath
+  // Level 1 subfolders (e.g. accom, dining, experiences, hotel)
+  const [level1Dirs, setLevel1Dirs] = useState<string[]>([])
+  const [level1Sel,  setLevel1Sel]  = useState<string>('')
 
-  // When basePath changes, list it to detect subfolders vs images
+  // Level 2 subfolders (e.g. four-seasons, peninsula)
+  const [level2Dirs, setLevel2Dirs] = useState<string[]>([])
+  const [level2Sel,  setLevel2Sel]  = useState<string>('')
+
+  const [files,   setFiles]   = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState<string | null>(null)
+
+  const basePath = presetPath ?? geo.resolvedPath
+
+  // ── Level 1: list basePath ────────────────────────────────────────────────
   useEffect(() => {
-    if (!basePath) { setSubfolders([]); setSubfolder(''); setFiles([]); return }
+    if (!basePath) {
+      setLevel1Dirs([]); setLevel1Sel(''); setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+      return
+    }
     setLoading(true)
-    setSubfolders([]); setSubfolder(''); setFiles([])
-    supabase.storage
-      .from(BUCKET)
-      .list(basePath, { limit: 200, sortBy: { column: 'name', order: 'asc' } })
-      .then(({ data }) => {
-        const items = data ?? []
-        const imgs  = items.filter(i => isImageFile(i.name)).map(i => i.name)
-        // Folders have id === null in Supabase Storage list response
-        const dirs  = items.filter(i => i.id === null).map(i => i.name)
-        if (dirs.length > 0) {
-          setSubfolders(dirs)
-          setSubfolder(dirs[0]) // auto-select first subfolder
-        } else {
-          setFiles(imgs)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    setLevel1Dirs([]); setLevel1Sel(''); setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+
+    listPath(basePath).then(items => {
+      const dirs = items.filter(isFolder).map(i => i.name)
+      const imgs = items.filter(i => isImageFile(i.name)).map(i => i.name)
+
+      if (dirs.length > 0) {
+        setLevel1Dirs(dirs)
+        // Don't auto-select — let user choose
+      } else {
+        setFiles(imgs)
+      }
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [basePath])
 
-  // When subfolder changes, list its images
+  // ── Level 2: list basePath/level1Sel ─────────────────────────────────────
   useEffect(() => {
-    if (!basePath || subfolders.length === 0 || !subfolder) { return }
+    if (!basePath || !level1Sel) {
+      setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+      return
+    }
+    setLoading(true)
+    setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+
+    listPath(`${basePath}/${level1Sel}`).then(items => {
+      const dirs = items.filter(isFolder).map(i => i.name)
+      const imgs = items.filter(i => isImageFile(i.name)).map(i => i.name)
+
+      if (dirs.length > 0) {
+        setLevel2Dirs(dirs)
+        // Don't auto-select
+      } else {
+        setFiles(imgs)
+      }
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [basePath, level1Sel])
+
+  // ── Level 3 (images): list basePath/level1Sel/level2Sel ──────────────────
+  useEffect(() => {
+    if (!basePath || !level1Sel || level2Dirs.length === 0 || !level2Sel) return
     setLoading(true)
     setFiles([])
-    supabase.storage
-      .from(BUCKET)
-      .list(`${basePath}/${subfolder}`, { limit: 200, sortBy: { column: 'name', order: 'asc' } })
-      .then(({ data }) => {
-        const imgs = (data ?? []).filter(i => isImageFile(i.name)).map(i => i.name)
-        setFiles(imgs)
-      })
-      .catch(() => setFiles([]))
-      .finally(() => setLoading(false))
-  }, [basePath, subfolder, subfolders.length])
+
+    listPath(`${basePath}/${level1Sel}/${level2Sel}`).then(items => {
+      setFiles(items.filter(i => isImageFile(i.name)).map(i => i.name))
+    }).catch(() => setFiles([])).finally(() => setLoading(false))
+  }, [basePath, level1Sel, level2Sel, level2Dirs.length])
+
+  // ── Active path for image resolution ─────────────────────────────────────
+  const activePath = (() => {
+    if (!basePath) return null
+    if (level1Dirs.length === 0) return basePath                          // no subfolders
+    if (!level1Sel) return null                                           // waiting for L1 pick
+    if (level2Dirs.length === 0) return `${basePath}/${level1Sel}`       // L1 has images directly
+    if (!level2Sel) return null                                           // waiting for L2 pick
+    return `${basePath}/${level1Sel}/${level2Sel}`                       // L2 has images
+  })()
 
   function handleSelect(filename: string) {
+    if (!activePath) return
     const fullPath  = `${activePath}/${filename}`
     const publicUrl = getPublicUrl(fullPath)
     setSelected(fullPath)
     onSelected(publicUrl)
     setTimeout(onClose, 150)
   }
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
   return (
     <div style={{
@@ -138,7 +184,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
         </div>
 
-        {/* Folder picker */}
+        {/* Folder display */}
         {presetPath ? (
           <div>
             <div style={{ ...labelStyle, marginBottom: 10 }}>Folder</div>
@@ -166,30 +212,63 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           </div>
         )}
 
-        {/* Subfolder picker — shown when basePath contains folders not images */}
-        {subfolders.length > 0 && (
+        {/* Level 1 — tab strip */}
+        {level1Dirs.length > 0 && (
           <div>
-            <label style={labelStyle}>Hotel</label>
+            <label style={labelStyle}>Category</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {level1Dirs.map(d => (
+                <button
+                  key={d}
+                  onClick={() => { setLevel1Sel(d); setLevel2Sel('') }}
+                  style={{
+                    fontFamily: A.font, fontSize: 10, fontWeight: 600,
+                    letterSpacing: '0.04em', textTransform: 'capitalize' as const,
+                    border: `1px solid ${level1Sel === d ? A.gold : A.border}`,
+                    borderRadius: 6, padding: '5px 14px', cursor: 'pointer',
+                    background: level1Sel === d ? `${A.gold}18` : 'transparent',
+                    color: level1Sel === d ? A.gold : A.faint,
+                    transition: 'all 120ms ease',
+                  }}
+                >
+                  {capitalize(d)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Level 2 — dropdown */}
+        {level2Dirs.length > 0 && (
+          <div>
+            <label style={labelStyle}>Hotel / Venue</label>
             <select
               style={selectStyle}
-              value={subfolder}
-              onChange={e => setSubfolder(e.target.value)}
+              value={level2Sel}
+              onChange={e => setLevel2Sel(e.target.value)}
             >
-              {subfolders.map(f => (
+              <option value=''>— Select —</option>
+              {level2Dirs.map(f => (
                 <option key={f} value={f}>{f}</option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Image grid */}
-        {!activePath && (
+        {/* States */}
+        {!activePath && !loading && basePath && (
+          <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
+            {level1Dirs.length > 0 ? 'Select a category above.' : 'No images found.'}
+          </div>
+        )}
+
+        {!basePath && (
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
             Select a folder to browse assets.
           </div>
         )}
 
-        {activePath && loading && (
+        {loading && (
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
             Loading...
           </div>
@@ -201,6 +280,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           </div>
         )}
 
+        {/* Image grid */}
         {files.length > 0 && (
           <div style={{
             display: 'grid',
