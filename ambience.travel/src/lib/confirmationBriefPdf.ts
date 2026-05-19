@@ -3,10 +3,11 @@
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Page 1: hero cover-crop + cream mask, frosted glass logo card, centred title.
 //             Rooms flow below on same page; new page only on overflow.
-//   - Per-room cards — half-width image left, room name serif, guests muted,
-//     Conf #: pill + booked_by_label italic. Natural top-to-bottom flow.
+//   - Accommodation cards — half-width image left, room name serif, guests muted,
+//     Conf #: pill + booked_by_label italic. Section header: "ACCOMMODATION".
 //   - Flight cards — no image, ✈ icon, route line, times, conf# pill,
-//     booked_by italic line matching room card pattern.
+//     booked_by italic line. Section header: "FLIGHTS".
+//   - Future sections: Car Services and others follow same pattern.
 //   - Fallback: if no rooms on a booking, one synthetic card from the booking.
 //
 // What it does not own:
@@ -15,7 +16,7 @@
 //   - jsPDF script loading (useBriefDownload hook)
 //
 // Last updated: S48 — booked_by added to drawFlightCard. Renders italic
-//   'Booked by ...' / 'Own Arrangements' line below conf# pill, matching room
+//   "Booked by ..." / "Self-arranged" line below conf# pill, matching room
 //   card pattern exactly. auxBookings added to ConfirmationBriefData.
 // Prior: S48 — flight cards added, pdfUtils refactor.
 // Prior: S47 — booked_by_label wired. Logo card image-based. Footer hyperlinked.
@@ -168,7 +169,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as RGB) : ([245, 245, 245] as RGB)
-  const bookedByText = room.booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+  const bookedByText = room.booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Self-booked')
   const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
 
   serif(doc, 'normal', 11)
@@ -255,7 +256,7 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   // Determine booked_by text — same logic as room card
   const rawBookedBy  = aux.booked_by?.trim() ?? null
   const isAmbience   = !rawBookedBy || rawBookedBy.toLowerCase().includes('ambience')
-  const bookedByText = rawBookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+  const bookedByText = rawBookedBy || (isAmbience ? 'Booked by ambience' : 'Self-arranged')
 
   // Measure height: base layout + booked_by line
   const cardH = 34  // 28 base + 6 for booked_by line
@@ -431,7 +432,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     drawRule(doc, P.margin, y, CW); y += 8
     sans(doc, 'bold', 7)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-    doc.text('CONFIRMED ARRANGEMENTS', P.margin, y, { charSpace: 0.5 }); y += 7
+    doc.text('ACCOMMODATION', P.margin, y, { charSpace: 0.5 }); y += 7
 
     for (const { room, booking } of allRooms) {
       const padH = 8; const padV = 7; const contentW = CW - Math.round(CW * 0.44)

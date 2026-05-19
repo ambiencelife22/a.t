@@ -546,7 +546,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
       {allRooms.length > 0 && (
         <div style={{ padding: '28px 28px 0' }}>
           <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
-          <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>CONFIRMED ARRANGEMENTS</div>
+          <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>ACCOMMODATION</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {allRooms.map(({ room, booking }, i) => {
               const d                = roomDrafts[room.id]
@@ -556,7 +556,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
               const imgSrc           = roomImageSrcs[room.id] || room.brief_image_src
               const isAmbience       = (booking.booked_by ?? 'ambience') === 'ambience'
-              const bookedByText     = d?.booked_by_label?.trim() || (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+              const bookedByText     = d?.booked_by_label?.trim() || (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Self-booked')
               const pillColor        = isAmbience ? GOLD : FAINT
 
               const guestParts: string[] = []
@@ -610,7 +610,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const startDate  = d?.start_date || aux.start_date              || null
 
               const isAmbience  = !bookedBy || bookedBy.toLowerCase().includes('ambience')
-              const bookedByTxt = bookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+              const bookedByTxt = bookedBy || (isAmbience ? 'Booked by ambience' : 'Self-arranged')
               const pillColor   = isAmbience ? GOLD : FAINT
 
               const dep = fmtTime(startTime)

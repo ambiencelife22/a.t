@@ -1,11 +1,11 @@
 /* TripDossierSection.tsx
  * Trip Dossier surface for HouseTab.
  *
- * Last updated: S47 — navigateAdmin imported from adminPath. TripActionPanel
- *   onBriefSaved prop removed (brief saving now lives in BriefEditorPage).
- *   TripBlock onBriefSaved prop + handler removed. trips local state removed
- *   (dossier.trips read directly — brief updates handled in BriefEditorPage).
- *   All 4 TS errors resolved.
+ * Last updated: S48 — fetchTripAuxBookings imported. TripActionPanel
+ *   handleDownload now fetches aux bookings before calling handleDownloadBrief,
+ *   satisfying the required auxBookings field on ConfirmationBriefData.
+ * Prior: S47 — navigateAdmin imported from adminPath. TripActionPanel
+ *   onBriefSaved prop removed. trips local state removed.
  * Prior: S46 — Edit Brief navigates to BriefEditorPage.
  * Prior: S45 — TripActionPanel; confirmationBriefPdf; RoomsEditor.
  * Prior: S44 — initial ship.
@@ -19,7 +19,7 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
 } from '../../lib/adminTripQueries'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings } from '../../lib/adminTripQueries'
 import type { BookingRoom } from '../../lib/adminTripQueries'
 import { useDossierDownload } from '../../lib/useDossierDownload'
 import { useBriefDownload } from '../../lib/useBriefDownload'
@@ -112,10 +112,17 @@ function TripActionPanel({ trip, house }: {
         })
       } catch { heroData = null }
     }
+
+    // Fetch aux bookings (flights, transfers, car services) for the brief
+    const auxBookings = await fetchTripAuxBookings(trip.id).catch(() => [])
+
     handleDownloadBrief({
-      trip, brief: trip.brief, house,
+      trip,
+      brief:           trip.brief,
+      house,
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
+      auxBookings,
     })
   }
 
