@@ -7,13 +7,12 @@
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
-// Last updated: S47 — booked_by_label text added to BookingRoom (migration S47).
-//   Flows through BookingRoomPatch automatically. select('*') picks it up.
-// Prior: S46 — _hotel_image_src added to TripBooking; hotelMap replaces
-//   hotelNameMap; travel_accom_hotels.hero_image_src fetched alongside name.
+// Last updated: S48 — booked_by text added to TripAuxBooking (migration S48).
+//   TripAuxBookingPatch type added. updateTripAuxBooking function added.
+//   select('*') picks up new column automatically — no query change needed.
+// Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
+// Prior: S46 — _hotel_image_src added to TripBooking.
 // Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
-// Prior: S45 — TripBrief type, fetchTripBrief, upsertTripBrief.
-// Prior: S45 — fix Step 1 join; house profile; new booking columns.
 // Prior: S44 — initial ship.
 
 import { supabase } from './supabase'
@@ -74,7 +73,7 @@ export type TripBrief = {
   hotel_contact_note:   string | null
   important_notes:      string[]
   footer_tagline:       string | null
-  logo_variant:         string | null   // "ambience" | "alfaone" | "unbranded" | null
+  logo_variant:         string | null
   created_at:           string
   updated_at:           string
 }
@@ -130,11 +129,15 @@ export type TripAuxBooking = {
   destination:         string | null
   notes:               string | null
   guest_label:         string | null
+  booked_by:           string | null   // S48 — migration added this column
   brief_show:          boolean
   sort_order:          number
   created_at:          string
   updated_at:          string
 }
+
+// TripAuxBookingPatch inherits booked_by automatically via Partial<Omit<...>>
+export type TripAuxBookingPatch = Partial<Omit<TripAuxBooking, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
 
 export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
 
@@ -158,7 +161,6 @@ export type BookingRoom = {
   updated_at:          string
 }
 
-// BookingRoomPatch inherits booked_by_label automatically via Partial<Omit<...>>
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>
 
 export type TripBooking = {
@@ -462,6 +464,19 @@ export async function deleteBookingRoom(roomId: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// ── Aux booking CRUD ──────────────────────────────────────────────────────────
+
+export async function updateTripAuxBooking(id: string, patch: TripAuxBookingPatch): Promise<TripAuxBooking> {
+  const { data, error } = await supabase
+    .from('travel_trip_aux_bookings')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as TripAuxBooking
+}
+
 // ── Itinerary CRUD ────────────────────────────────────────────────────────────
 
 export async function fetchTripDays(tripId: string): Promise<TripDay[]> {
@@ -609,7 +624,7 @@ export async function autoDeriveTripItinerary(
       title:               aux.name ?? catIcon,
       subtitle:            aux.origin && aux.destination ? `${aux.origin} → ${aux.destination}` : null,
       category:            catIcon,
-      booked_by:           'self',
+      booked_by:           aux.booked_by ?? 'Own Arrangements',
       confirmation_number: aux.confirmation_number,
       guest_label:         aux.guest_label,
       notes:               aux.notes,

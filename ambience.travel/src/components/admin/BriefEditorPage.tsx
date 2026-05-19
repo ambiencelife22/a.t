@@ -2,11 +2,12 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S48 — editor panel switched to dark background (A.bg / A.bgCard)
- *   to match admin dark theme. Preview panel remains cream.
- * Prior: S47 — booked_by_label added to RoomDraft. Free-text "Booked By"
- *   input per room. Preview and PDF both read booked_by_label ?? fallback.
- * Prior: S47 — stripped to cover + rooms only. roomDrafts lifted for real-time preview.
+ * Last updated: S48 — flights section fully editable. AuxDraft type mirrors
+ *   RoomDraft pattern. booked_by field added (free-text, saves on blur via
+ *   updateTripAuxBooking). All aux fields editable inline with same dark-theme
+ *   field style as rooms. Preview and PDF both read booked_by ?? fallback.
+ * Prior: S48 — aux bookings fetched, flight cards in preview, dark editor panel.
+ * Prior: S47 — booked_by_label added to RoomDraft.
  * Prior: S46 — initial ship.
  */
 
@@ -15,8 +16,10 @@ import { A } from '../../lib/adminTokens'
 import { navigateAdmin } from '../../lib/adminPath'
 import {
   fetchTripDossierForHouse,
+  fetchTripAuxBookings,
   upsertTripBrief,
   updateBookingRoom,
+  updateTripAuxBooking,
 } from '../../lib/adminTripQueries'
 import type {
   DossierTrip,
@@ -24,6 +27,7 @@ import type {
   TripBrief,
   TripBriefPatch,
   TripBooking,
+  TripAuxBooking,
 } from '../../lib/adminTripQueries'
 import { useBriefDownload } from '../../lib/useBriefDownload'
 import AssetPicker from './AssetPicker'
@@ -57,12 +61,35 @@ const sectionHeadStyle: React.CSSProperties = {
   marginBottom: 10, paddingBottom: 6, borderBottom: `1px solid ${A.border}`,
 }
 
-// ── Date helpers ─────────────────────────────────────────────────────────────
+const fieldStyle: React.CSSProperties = {
+  fontFamily: A.font, fontSize: 11, color: A.text,
+  background: 'transparent', border: 'none',
+  borderBottom: `1px solid ${A.border}`,
+  outline: 'none', width: '100%', padding: '2px 0',
+  boxSizing: 'border-box' as const,
+}
+
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const, color: A.faint,
+  fontFamily: A.font, display: 'block', marginBottom: 2,
+}
+
+// ── Date / time helpers ───────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso.slice(0, 10) + 'T00:00:00')
   return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function fmtTime(t: string | null): string {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hour = parseInt(h, 10)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const h12  = hour % 12 || 12
+  return `${h12}:${m} ${ampm}`
 }
 
 function buildDateRange(start: string | null, end: string | null): string {
@@ -99,6 +126,22 @@ type RoomDraft = {
   booked_by_label:   string
 }
 
+// AuxDraft mirrors the editable fields on TripAuxBooking
+type AuxDraft = {
+  name:                string
+  booking_type:        string
+  origin:              string
+  destination:         string
+  start_date:          string
+  start_time:          string
+  end_date:            string
+  end_time:            string
+  confirmation_number: string
+  guest_label:         string
+  booked_by:           string
+  notes:               string
+}
+
 interface PreviewFields {
   briefTitle:    string
   briefSubtitle: string
@@ -109,6 +152,8 @@ interface PreviewFields {
   house:         HouseProfile | null
   roomImageSrcs: Record<string, string>
   roomDrafts:    Record<string, RoomDraft>
+  auxBookings:   TripAuxBooking[]
+  auxDrafts:     Record<string, AuxDraft>
 }
 
 // ── BriefRoomEditor ───────────────────────────────────────────────────────────
@@ -183,20 +228,6 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
     catch { /* silent */ }
   }
 
-  // Dark-theme field styles for editor panel
-  const fieldStyle: React.CSSProperties = {
-    fontFamily: A.font, fontSize: 11, color: A.text,
-    background: 'transparent', border: 'none',
-    borderBottom: `1px solid ${A.border}`,
-    outline: 'none', width: '100%', padding: '2px 0',
-    boxSizing: 'border-box' as const,
-  }
-  const labelStyle2: React.CSSProperties = {
-    fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
-    textTransform: 'uppercase' as const, color: A.faint,
-    fontFamily: A.font, display: 'block', marginBottom: 2,
-  }
-
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -212,7 +243,7 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
               )}
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px', marginBottom: 10 }}>
                 <div>
-                  <label style={labelStyle2}>Primary Guest</label>
+                  <label style={fieldLabelStyle}>Primary Guest</label>
                   <input style={fieldStyle} value={draft.guest_name}
                     onChange={e => patch(room.id, room, 'guest_name', e.target.value)}
                     onBlur={e => saveField(room.id, 'guest_name', e.target.value)}
@@ -233,28 +264,28 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
                   </button>
                 </div>
                 <div>
-                  <label style={labelStyle2}>Party Composition</label>
+                  <label style={fieldLabelStyle}>Party Composition</label>
                   <input style={fieldStyle} value={draft.party_composition}
                     onChange={e => patch(room.id, room, 'party_composition', e.target.value)}
                     onBlur={e => saveField(room.id, 'party_composition', e.target.value)}
                     placeholder='2 Adults, 2 Children' />
                 </div>
                 <div>
-                  <label style={labelStyle2}>Room Name</label>
+                  <label style={fieldLabelStyle}>Room Name</label>
                   <input style={fieldStyle} value={draft.room_name}
                     onChange={e => patch(room.id, room, 'room_name', e.target.value)}
                     onBlur={e => saveField(room.id, 'room_name', e.target.value)}
                     placeholder='Two-Bedroom Suite Palm View' />
                 </div>
                 <div>
-                  <label style={labelStyle2}>Notes</label>
+                  <label style={fieldLabelStyle}>Notes</label>
                   <input style={fieldStyle} value={draft.notes}
                     onChange={e => patch(room.id, room, 'notes', e.target.value)}
                     onBlur={e => saveField(room.id, 'notes', e.target.value)}
                     placeholder='Complimentary rollaway bed' />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle2}>Booked By</label>
+                  <label style={fieldLabelStyle}>Booked By</label>
                   <input style={fieldStyle} value={draft.booked_by_label}
                     onChange={e => patch(room.id, room, 'booked_by_label', e.target.value)}
                     onBlur={e => saveField(room.id, 'booked_by_label', e.target.value)}
@@ -297,7 +328,7 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
           onSelected={async url => {
             onImageSrcsChange({ ...roomImageSrcs, [pickerRoomId]: url })
             setPickerRoomId(null)
-            saveImage(pickerRoomId, url)
+            updateBookingRoom(pickerRoomId, { brief_image_src: url }).catch(() => {})
           }}
         />
       )}
@@ -305,10 +336,155 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
   )
 }
 
+// ── BriefFlightEditor ─────────────────────────────────────────────────────────
+
+function BriefFlightEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }: {
+  auxBookings:       TripAuxBooking[]
+  auxDrafts:         Record<string, AuxDraft>
+  onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
+  isMobile:          boolean
+}) {
+  const visible = auxBookings.filter(a => a.brief_show !== false).sort((a, b) => a.sort_order - b.sort_order)
+
+  function getDraft(aux: TripAuxBooking): AuxDraft {
+    return auxDrafts[aux.id] ?? {
+      name:                aux.name                ?? '',
+      booking_type:        aux.booking_type        ?? '',
+      origin:              aux.origin              ?? '',
+      destination:         aux.destination         ?? '',
+      start_date:          aux.start_date          ?? '',
+      start_time:          aux.start_time?.slice(0, 5) ?? '',
+      end_date:            aux.end_date            ?? '',
+      end_time:            aux.end_time?.slice(0, 5) ?? '',
+      confirmation_number: aux.confirmation_number ?? '',
+      guest_label:         aux.guest_label         ?? '',
+      booked_by:           aux.booked_by           ?? '',
+      notes:               aux.notes               ?? '',
+    }
+  }
+
+  function patch(id: string, aux: TripAuxBooking, field: keyof AuxDraft, value: string) {
+    const prev = getDraft(aux)
+    onAuxDraftsChange({ ...auxDrafts, [id]: { ...prev, [field]: value } })
+  }
+
+  async function save(id: string, field: keyof AuxDraft, value: string) {
+    try {
+      await updateTripAuxBooking(id, { [field]: value || null } as any)
+    } catch { /* silent */ }
+  }
+
+  if (visible.length === 0) return (
+    <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
+      No aux bookings with brief_show enabled for this trip.
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {visible.map(aux => {
+        const draft = getDraft(aux)
+        return (
+          <div key={aux.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '10px 12px' }}>
+            {/* Header row: type + confirmation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 14, color: A.gold }}>✈</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {draft.booking_type || aux.booking_type || 'Flight'}
+              </span>
+              {draft.confirmation_number && (
+                <span style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', marginLeft: 'auto' }}>
+                  {draft.confirmation_number}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={fieldLabelStyle}>Flight / Name</label>
+                <input style={fieldStyle} value={draft.name}
+                  onChange={e => patch(aux.id, aux, 'name', e.target.value)}
+                  onBlur={e => save(aux.id, 'name', e.target.value)}
+                  placeholder='Flynas XY 277' />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Origin</label>
+                <input style={fieldStyle} value={draft.origin}
+                  onChange={e => patch(aux.id, aux, 'origin', e.target.value)}
+                  onBlur={e => save(aux.id, 'origin', e.target.value)}
+                  placeholder='RUH' />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Destination</label>
+                <input style={fieldStyle} value={draft.destination}
+                  onChange={e => patch(aux.id, aux, 'destination', e.target.value)}
+                  onBlur={e => save(aux.id, 'destination', e.target.value)}
+                  placeholder='SSH' />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Departure Date</label>
+                <input type='date' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.start_date}
+                  onChange={e => patch(aux.id, aux, 'start_date', e.target.value)}
+                  onBlur={e => save(aux.id, 'start_date', e.target.value)} />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Arrival Date</label>
+                <input type='date' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.end_date}
+                  onChange={e => patch(aux.id, aux, 'end_date', e.target.value)}
+                  onBlur={e => save(aux.id, 'end_date', e.target.value)} />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Departure Time</label>
+                <input type='time' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.start_time}
+                  onChange={e => patch(aux.id, aux, 'start_time', e.target.value)}
+                  onBlur={e => save(aux.id, 'start_time', e.target.value)} />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Arrival Time</label>
+                <input type='time' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.end_time}
+                  onChange={e => patch(aux.id, aux, 'end_time', e.target.value)}
+                  onBlur={e => save(aux.id, 'end_time', e.target.value)} />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Confirmation #</label>
+                <input style={fieldStyle} value={draft.confirmation_number}
+                  onChange={e => patch(aux.id, aux, 'confirmation_number', e.target.value)}
+                  onBlur={e => save(aux.id, 'confirmation_number', e.target.value)}
+                  placeholder='XY277-...' />
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Guest Label</label>
+                <input style={fieldStyle} value={draft.guest_label}
+                  onChange={e => patch(aux.id, aux, 'guest_label', e.target.value)}
+                  onBlur={e => save(aux.id, 'guest_label', e.target.value)}
+                  placeholder='All guests' />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={fieldLabelStyle}>Booked By</label>
+                <input style={fieldStyle} value={draft.booked_by}
+                  onChange={e => patch(aux.id, aux, 'booked_by', e.target.value)}
+                  onBlur={e => save(aux.id, 'booked_by', e.target.value)}
+                  placeholder='Booked by Deron' />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={fieldLabelStyle}>Notes</label>
+                <input style={fieldStyle} value={draft.notes}
+                  onChange={e => patch(aux.id, aux, 'notes', e.target.value)}
+                  onBlur={e => save(aux.id, 'notes', e.target.value)}
+                  placeholder='Any notes...' />
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── BriefPreview ──────────────────────────────────────────────────────────────
 
 function BriefPreview({ fields }: { fields: PreviewFields }) {
-  const { briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts } = fields
+  const { briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, auxBookings, auxDrafts } = fields
 
   const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.trip_code
   const subtitle = (briefSubtitle || 'TRIP CONFIRMATION BRIEF').toUpperCase()
@@ -337,8 +513,13 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     })
   }
 
+  const visibleFlights = auxBookings
+    .filter(a => a.brief_show !== false)
+    .sort((a, b) => a.sort_order - b.sort_order)
+
   return (
     <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100%', padding: '0 0 40px' }}>
+      {/* Hero */}
       <div style={{ position: 'relative', height: 240, background: CARD_BG, overflow: 'hidden' }}>
         {heroImageSrc && <img src={heroImageSrc} alt='hero' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         {logoVariant !== 'unbranded' && (
@@ -352,18 +533,20 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
         )}
       </div>
 
+      {/* Cover text */}
       <div style={{ padding: '24px 28px 0' }}>
         <div style={{ fontSize: 30, fontWeight: 400, color: INK, lineHeight: 1.2, marginBottom: 10, textAlign: 'center' }}>{title}</div>
         <div style={{ height: 1, background: GOLD, marginBottom: 8 }} />
-        <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, textAlign: 'center', letterSpacing: '0.12em', marginBottom: 6 }}>{subtitle}</div>
+        <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, textAlign: 'center', letterSpacing: '0.12em', marginBottom: 6 }}>{subtitle}</div>
         {pfor && <div style={{ fontSize: 13, fontStyle: 'italic', color: MUTED, textAlign: 'center', marginBottom: 4 }}>Prepared for {pfor}</div>}
-        {dates && <div style={{ fontSize: 11, color: FAINT, textAlign: 'center', fontFamily: A.font }}>{dates}</div>}
+        {dates && <div style={{ fontSize: 11, color: FAINT, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{dates}</div>}
       </div>
 
+      {/* Room cards */}
       {allRooms.length > 0 && (
         <div style={{ padding: '28px 28px 0' }}>
           <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
-          <div style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>CONFIRMED ARRANGEMENTS</div>
+          <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>CONFIRMED ARRANGEMENTS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {allRooms.map(({ room, booking }, i) => {
               const d                = roomDrafts[room.id]
@@ -373,7 +556,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
               const imgSrc           = roomImageSrcs[room.id] || room.brief_image_src
               const isAmbience       = (booking.booked_by ?? 'ambience') === 'ambience'
-              const bookedByText     = d?.booked_by_label?.trim() || (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Self-booked')
+              const bookedByText     = d?.booked_by_label?.trim() || (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
               const pillColor        = isAmbience ? GOLD : FAINT
 
               const guestParts: string[] = []
@@ -390,7 +573,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                   <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
                       {roomName && <div style={{ fontSize: 14, color: INK, marginBottom: 3, lineHeight: 1.3 }}>{roomName}</div>}
-                      {guestLine && <div style={{ fontSize: 10, fontFamily: A.font, color: MUTED }}>{guestLine}</div>}
+                      {guestLine && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{guestLine}</div>}
                     </div>
                     <div style={{ marginTop: 10 }}>
                       {room.confirmation_number && (
@@ -398,8 +581,60 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {room.confirmation_number}</span>
                         </div>
                       )}
-                      <div style={{ fontSize: 10, fontFamily: A.font, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                      <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
                     </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Flight cards */}
+      {visibleFlights.length > 0 && (
+        <div style={{ padding: '20px 28px 0' }}>
+          <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
+          <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>FLIGHTS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {visibleFlights.map(aux => {
+              const d          = auxDrafts[aux.id]
+              const name       = d?.name              || aux.name              || ''
+              const origin     = d?.origin            || aux.origin            || ''
+              const dest       = d?.destination       || aux.destination       || ''
+              const confNum    = d?.confirmation_number || aux.confirmation_number || ''
+              const guestLbl   = d?.guest_label       || aux.guest_label       || ''
+              const bookedBy   = d?.booked_by?.trim() || aux.booked_by?.trim() || null
+              const startTime  = d?.start_time || aux.start_time?.slice(0, 5) || null
+              const endTime    = d?.end_time   || aux.end_time?.slice(0, 5)   || null
+              const startDate  = d?.start_date || aux.start_date              || null
+
+              const isAmbience  = !bookedBy || bookedBy.toLowerCase().includes('ambience')
+              const bookedByTxt = bookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+              const pillColor   = isAmbience ? GOLD : FAINT
+
+              const dep = fmtTime(startTime)
+              const arr = fmtTime(endTime)
+              const timeStr = dep && arr ? `${dep} – ${arr}` : dep || arr || ''
+              const route = [origin, dest].filter(Boolean).join(' → ')
+
+              return (
+                <div key={aux.id} style={{ background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 12, minHeight: 56 }}>
+                  <div style={{ fontSize: 18, color: GOLD, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>✈</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {name && <div style={{ fontSize: 13, color: INK, marginBottom: 2 }}>{name}</div>}
+                    {route && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{route}</div>}
+                    {startDate && <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: FAINT, marginTop: 1 }}>{fmtDate(startDate)}</div>}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    {timeStr && <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</div>}
+                    {guestLbl && <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{guestLbl}</div>}
+                    {confNum && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 4, padding: '1px 7px', marginTop: 4, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
+                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: pillColor }}>Conf #:  {confNum}</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT, marginTop: 3 }}>{bookedByTxt}</div>
                   </div>
                 </div>
               )
@@ -434,13 +669,14 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const isMobile = windowWidth < 768
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit')
 
-  const [trip,       setTrip]       = useState<DossierTrip | null>(null)
-  const [house,      setHouse]      = useState<HouseProfile | null>(null)
-  const [loadErr,    setLoadErr]    = useState<string | null>(null)
-  const [saving,     setSaving]     = useState(false)
-  const [saveErr,    setSaveErr]    = useState<string | null>(null)
-  const [saved,      setSaved]      = useState(false)
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [trip,        setTrip]        = useState<DossierTrip | null>(null)
+  const [house,       setHouse]       = useState<HouseProfile | null>(null)
+  const [auxBookings, setAuxBookings] = useState<TripAuxBooking[]>([])
+  const [loadErr,     setLoadErr]     = useState<string | null>(null)
+  const [saving,      setSaving]      = useState(false)
+  const [saveErr,     setSaveErr]     = useState<string | null>(null)
+  const [saved,       setSaved]       = useState(false)
+  const [pickerOpen,  setPickerOpen]  = useState(false)
 
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
 
@@ -452,16 +688,23 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
   const [roomImageSrcs, setRoomImageSrcs] = useState<Record<string, string>>({})
   const [roomDrafts,    setRoomDrafts]    = useState<Record<string, RoomDraft>>({})
+  const [auxDrafts,     setAuxDrafts]     = useState<Record<string, AuxDraft>>({})
 
   useEffect(() => {
     async function load() {
       const houseId = await resolveHouseIdForTrip(tripId)
       if (!houseId) { setLoadErr('No house linked to this trip. Open the trip from the House tab.'); return }
-      const dossier = await fetchTripDossierForHouse(houseId)
-      const found   = dossier.trips.find(t => t.id === tripId)
+
+      const [dossier, auxData] = await Promise.all([
+        fetchTripDossierForHouse(houseId),
+        fetchTripAuxBookings(tripId),
+      ])
+
+      const found = dossier.trips.find(t => t.id === tripId)
       if (!found) { setLoadErr('Trip not found in dossier.'); return }
       setTrip(found)
       setHouse(dossier.house)
+      setAuxBookings(auxData)
 
       const allRooms = found.bookings.flatMap(b => b._rooms)
       setRoomDrafts(Object.fromEntries(allRooms.map(r => [r.id, {
@@ -547,10 +790,33 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       })),
     }
 
+    // Merge auxDrafts into auxBookings for PDF
+    const mergedAux = auxBookings.map(aux => {
+      const d = auxDrafts[aux.id]
+      if (!d) return aux
+      return {
+        ...aux,
+        name:                d.name                || aux.name,
+        origin:              d.origin              || aux.origin,
+        destination:         d.destination         || aux.destination,
+        start_date:          d.start_date          || aux.start_date,
+        start_time:          d.start_time          || aux.start_time,
+        end_date:            d.end_date            || aux.end_date,
+        end_time:            d.end_time            || aux.end_time,
+        confirmation_number: d.confirmation_number || aux.confirmation_number,
+        guest_label:         d.guest_label         || aux.guest_label,
+        booked_by:           d.booked_by           || aux.booked_by,
+        notes:               d.notes               || aux.notes,
+      }
+    })
+
     handleDownloadBrief({
-      trip: mergedTrip,
-      brief: trip.brief ?? ({ brief_title: briefTitle || null, brief_subtitle: briefSubtitle || null, prepared_for: preparedFor || null, hero_image_src: heroImageSrc || null, logo_variant: logoVariant || null } as any),
-      house, destinationName: trip.destinations[0]?.name ?? trip.trip_code, heroImageData: heroData,
+      trip:            mergedTrip,
+      brief:           trip.brief ?? ({ brief_title: briefTitle || null, brief_subtitle: briefSubtitle || null, prepared_for: preparedFor || null, hero_image_src: heroImageSrc || null, logo_variant: logoVariant || null } as any),
+      house,
+      destinationName: trip.destinations[0]?.name ?? trip.trip_code,
+      heroImageData:   heroData,
+      auxBookings:     mergedAux,
     })
   }
 
@@ -561,9 +827,9 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     if (!trip) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      setPreviewFields({ briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts })
+      setPreviewFields({ briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, auxBookings, auxDrafts })
     }, 300)
-  }, [briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts])
+  }, [briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, auxBookings, auxDrafts])
 
   useEffect(() => { schedulePreview() }, [schedulePreview])
 
@@ -589,7 +855,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
 
-      {/* Top bar — dark */}
+      {/* Top bar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: A.bgCard, borderBottom: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
         <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -627,7 +893,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 50px)' }}>
 
-        {/* Editor panel — dark */}
+        {/* Editor panel */}
         <div style={{
           width: isMobile ? '100%' : '40%',
           flexShrink: 0,
@@ -653,19 +919,15 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
               <Field label='Logo'>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['ambience', 'alfaone', 'unbranded'] as const).map(v => (
-                    <button
-                      key={v}
-                      onClick={() => setLogoVariant(v)}
-                      style={{
-                        fontFamily: A.font, fontSize: 10, fontWeight: 600,
-                        letterSpacing: '0.04em', textTransform: 'capitalize' as const,
-                        border: `1px solid ${logoVariant === v ? A.gold : A.border}`,
-                        borderRadius: 6, padding: '4px 12px', cursor: 'pointer',
-                        background: logoVariant === v ? `${A.gold}18` : 'transparent',
-                        color: logoVariant === v ? A.gold : A.faint,
-                        transition: 'all 120ms ease',
-                      }}
-                    >
+                    <button key={v} onClick={() => setLogoVariant(v)} style={{
+                      fontFamily: A.font, fontSize: 10, fontWeight: 600,
+                      letterSpacing: '0.04em', textTransform: 'capitalize' as const,
+                      border: `1px solid ${logoVariant === v ? A.gold : A.border}`,
+                      borderRadius: 6, padding: '4px 12px', cursor: 'pointer',
+                      background: logoVariant === v ? `${A.gold}18` : 'transparent',
+                      color: logoVariant === v ? A.gold : A.faint,
+                      transition: 'all 120ms ease',
+                    }}>
                       {v === 'ambience' ? 'ambience' : v === 'alfaone' ? 'AlfaOne' : 'Unbranded'}
                     </button>
                   ))}
@@ -706,9 +968,21 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
               <BriefRoomEditor trip={trip} roomImageSrcs={roomImageSrcs} onImageSrcsChange={setRoomImageSrcs} roomDrafts={roomDrafts} onRoomDraftsChange={setRoomDrafts} isMobile={isMobile} />
             )}
           </section>
+
+          {auxBookings.filter(a => a.brief_show !== false).length > 0 && (
+            <section>
+              <div style={sectionHeadStyle}>Flights</div>
+              <BriefFlightEditor
+                auxBookings={auxBookings}
+                auxDrafts={auxDrafts}
+                onAuxDraftsChange={setAuxDrafts}
+                isMobile={isMobile}
+              />
+            </section>
+          )}
         </div>
 
-        {/* Preview panel — cream */}
+        {/* Preview panel */}
         <div style={{ flex: 1, overflowY: 'auto', background: '#E8E4DC', display: isMobile && mobileTab !== 'preview' ? 'none' : 'block' }}>
           <div style={{ padding: '12px 20px', borderBottom: `1px solid ${RULE}`, background: '#DDD9D1' }}>
             <span style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live Preview</span>

@@ -3,8 +3,10 @@
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Page 1: hero cover-crop + cream mask, frosted glass logo card, centred title.
 //             Rooms flow below on same page; new page only on overflow.
-//   - Per-room cards — half-width image left (cover crop), room name serif,
-//     guests muted, Conf #: pill + booked_by_label (free-text) natural flow.
+//   - Per-room cards — half-width image left, room name serif, guests muted,
+//     Conf #: pill + booked_by_label italic. Natural top-to-bottom flow.
+//   - Flight cards — no image, ✈ icon, route line, times, conf# pill,
+//     booked_by italic line matching room card pattern.
 //   - Fallback: if no rooms on a booking, one synthetic card from the booking.
 //
 // What it does not own:
@@ -12,10 +14,10 @@
 //   - Font loading / registration (guidePdfFonts.ts)
 //   - jsPDF script loading (useBriefDownload hook)
 //
-// Last updated: S48 — refactored to import shared primitives from pdfUtils.ts.
-//   Removed: local Img interface, loadImg, loadSvg, makeCoverCropAsync,
-//   serif, sans, rule, inline jsPDF guard. PDF_FONTS / PDF_FONTS_SANS_MEDIUM_FAMILY
-//   imports removed (now routed through pdfUtils). assertJsPdf() replaces inline guard.
+// Last updated: S48 — booked_by added to drawFlightCard. Renders italic
+//   'Booked by ...' / 'Own Arrangements' line below conf# pill, matching room
+//   card pattern exactly. auxBookings added to ConfirmationBriefData.
+// Prior: S48 — flight cards added, pdfUtils refactor.
 // Prior: S47 — booked_by_label wired. Logo card image-based. Footer hyperlinked.
 
 import { loadGuideFonts, registerGuideFonts } from './guidePdfFonts'
@@ -24,7 +26,7 @@ import {
   serif, sans, drawRule,
   type RGB, type Img,
 } from './pdfUtils'
-import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom } from './adminTripQueries'
+import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from './adminTripQueries'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -51,11 +53,12 @@ export interface ConfirmationBriefData {
   house:           HouseProfile | null
   destinationName: string
   heroImageData:   string | null
+  auxBookings:     TripAuxBooking[]
 }
 
 const ASSETS = { emblem: '/emblem.png', logoSvg: '/ambience_travel.svg' } as const
 
-// ── Draw helpers ──────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
@@ -74,9 +77,17 @@ function buildDateRange(s: string | null, e: string | null): string {
   return `${fmtDate(s)}\u2013${fmtDate(e)}`
 }
 
+function fmtTime(t: string | null): string {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hour   = parseInt(h, 10)
+  const ampm   = hour >= 12 ? 'PM' : 'AM'
+  const h12    = hour % 12 || 12
+  return `${h12}:${m} ${ampm}`
+}
+
 // ── Frosted glass logo card ───────────────────────────────────────────────────
 
-// variant: 'ambience' (default) | 'alfaone' | 'unbranded' | null
 function drawFrostedLogoCard(doc: any, emblem: Img | null, logo: Img | null, variant: string | null) {
   const v = variant ?? 'ambience'
   if (v === 'unbranded') return
@@ -87,34 +98,24 @@ function drawFrostedLogoCard(doc: any, emblem: Img | null, logo: Img | null, var
   if (v === 'alfaone') {
     doc.setFont('CormorantGaramond', 'normal'); doc.setFontSize(13)
     const textW = doc.getTextWidth('AlfaOne Concierge')
-    const cW = pW * 2 + textW
-    const cH = pH * 2 + eS
-
+    const cW = pW * 2 + textW; const cH = pH * 2 + eS
     doc.setGState(doc.GState({ opacity: 0.92 }))
-    doc.setFillColor(250, 247, 242)
-    doc.setDrawColor(200, 195, 185)
-    doc.setLineWidth(0.2)
+    doc.setFillColor(250, 247, 242); doc.setDrawColor(200, 195, 185); doc.setLineWidth(0.2)
     doc.roundedRect(cx, cy, cW, cH, 3, 3, 'FD')
     doc.setGState(doc.GState({ opacity: 1 }))
-
     doc.setFont('CormorantGaramond', 'normal'); doc.setFontSize(13)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
     doc.text('AlfaOne Concierge', cx + pW, cy + pH + eS * 0.62)
     return
   }
 
-  // 'ambience' — emblem + SVG logo
   const logoH = 14; const logoW = logoH * 3.0
   const cW = pW + eS + gap + logoW + pW
   const cH = pH * 2 + Math.max(eS, logoH)
-
   doc.setGState(doc.GState({ opacity: 0.92 }))
-  doc.setFillColor(250, 247, 242)
-  doc.setDrawColor(200, 195, 185)
-  doc.setLineWidth(0.2)
+  doc.setFillColor(250, 247, 242); doc.setDrawColor(200, 195, 185); doc.setLineWidth(0.2)
   doc.roundedRect(cx, cy, cW, cH, 3, 3, 'FD')
   doc.setGState(doc.GState({ opacity: 1 }))
-
   if (emblem) doc.addImage(emblem.data, emblem.format, cx + pW, cy + pH, eS, eS, undefined, 'FAST')
   if (logo) {
     const logoX = cx + pW + eS + gap
@@ -167,7 +168,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as RGB) : ([245, 245, 245] as RGB)
-  const bookedByText = room.booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Self-booked')
+  const bookedByText = room.booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
   const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
 
   serif(doc, 'normal', 11)
@@ -238,6 +239,109 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   return cardH
 }
 
+// ── Flight card ───────────────────────────────────────────────────────────────
+
+// Layout:
+//   Left:   ✈ icon (gold) + booking_type label (faint caps)
+//   Centre: name (serif) + route (muted) + date (faint)
+//   Right:  times (bold) + guest label (italic faint)
+//   Bottom-right: Conf# pill (gold)
+//   Below pill: booked_by italic line — matches room card pattern exactly
+
+function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
+  const padV  = 6
+  const padH  = 10
+
+  // Determine booked_by text — same logic as room card
+  const rawBookedBy  = aux.booked_by?.trim() ?? null
+  const isAmbience   = !rawBookedBy || rawBookedBy.toLowerCase().includes('ambience')
+  const bookedByText = rawBookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+
+  // Measure height: base layout + booked_by line
+  const cardH = 34  // 28 base + 6 for booked_by line
+
+  doc.setFillColor(T.white[0], T.white[1], T.white[2])
+  doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
+  doc.setLineWidth(0.3)
+  doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'FD')
+
+  // ✈ icon
+  const iconX = P.margin + padH
+  sans(doc, 'normal', 13)
+  doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+  doc.text('\u2708', iconX, y + padV + 5)
+
+  // Type label
+  const typeLabel = (aux.booking_type ?? 'Flight').toUpperCase()
+  sans(doc, 'bold', 6)
+  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+  doc.text(typeLabel, iconX, y + padV + 11, { charSpace: 0.3 })
+
+  // Centre column
+  const centreX = P.margin + CW * 0.28
+
+  if (aux.name) {
+    serif(doc, 'normal', 10.5)
+    doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+    doc.text(aux.name, centreX, y + padV + 5)
+  }
+
+  if (aux.origin || aux.destination) {
+    const route = [aux.origin, aux.destination].filter(Boolean).join('  \u2192  ')
+    sans(doc, 'normal', 9)
+    doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    doc.text(route, centreX, y + padV + 11)
+  }
+
+  if (aux.start_date) {
+    sans(doc, 'normal', 7.5)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text(fmtDate(aux.start_date), centreX, y + padV + 17)
+  }
+
+  // Right column
+  const rightX = P.margin + CW - padH
+
+  const dep = fmtTime(aux.start_time)
+  const arr = fmtTime(aux.end_time)
+  if (dep || arr) {
+    const timeStr = dep && arr ? `${dep}  \u2013  ${arr}` : dep || arr
+    sans(doc, 'bold', 9)
+    doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+    doc.text(timeStr, rightX, y + padV + 5, { align: 'right' })
+  }
+
+  if (aux.guest_label) {
+    sans(doc, 'italic', 7.5)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text(aux.guest_label, rightX, y + padV + 11, { align: 'right' })
+  }
+
+  // Conf# pill
+  if (aux.confirmation_number) {
+    const confText = `Conf #:  ${aux.confirmation_number}`
+    sans(doc, 'normal', 8)
+    const pillTextW = doc.getTextWidth(confText)
+    const ppx = 5; const pillW = pillTextW + ppx * 2; const pillH = 6
+    const pillX = P.margin + CW - padH - pillW
+    const pillY = y + cardH - 10
+
+    doc.setFillColor(250, 247, 240)
+    doc.setDrawColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.setLineWidth(0.3)
+    doc.roundedRect(pillX, pillY - pillH + 2, pillW, pillH, 1.5, 1.5, 'FD')
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.text(confText, pillX + ppx, pillY - 0.2)
+  }
+
+  // Booked-by line — bottom left, italic faint, matching room card exactly
+  sans(doc, 'italic', 7.5)
+  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+  doc.text(bookedByText, P.margin + padH, y + cardH - 4)
+
+  return cardH
+}
+
 // ── Main render ───────────────────────────────────────────────────────────────
 
 async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null, logo: Img | null) {
@@ -296,6 +400,10 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.text(dateRange, P.w / 2, y, { align: 'center' }); y += 12
   }
 
+  const FOOTER_MARGIN = 18
+
+  // ── Room cards ────────────────────────────────────────────────────────────
+
   const allRooms: { room: BookingRoom; booking: TripBooking }[] = []
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
@@ -319,36 +427,66 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     })
   }
 
-  if (allRooms.length === 0) return
+  if (allRooms.length > 0) {
+    drawRule(doc, P.margin, y, CW); y += 8
+    sans(doc, 'bold', 7)
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.text('CONFIRMED ARRANGEMENTS', P.margin, y, { charSpace: 0.5 }); y += 7
 
-  drawRule(doc, P.margin, y, CW); y += 8
-  sans(doc, 'bold', 7)
-  doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-  doc.text('CONFIRMED ARRANGEMENTS', P.margin, y, { charSpace: 0.5 }); y += 7
+    for (const { room, booking } of allRooms) {
+      const padH = 8; const padV = 7; const contentW = CW - Math.round(CW * 0.44)
+      serif(doc, 'normal', 11)
+      const nl = doc.splitTextToSize(room.room_name ?? 'Booking', contentW - padH * 2)
+      const gp: string[] = []
+      if (room.guest_name) gp.push(room.guest_name)
+      if (room.additional_guests?.length) gp.push(...room.additional_guests)
+      if (room.party_composition) gp.push(room.party_composition)
+      const bH = room.confirmation_number ? 4 + 6 + 7 + 4.5 : 4 + 4.5
+      const cH = padV + nl.length * 5.5 + (gp.length ? 10 : 0) + bH + padV
+      const cardH = Math.max(36, cH)
 
-  const FOOTER_MARGIN = 18
+      if (y + cardH > P.h - FOOTER_MARGIN) {
+        doc.addPage()
+        doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
+        doc.rect(0, 0, P.w, P.h, 'F')
+        y = 26
+      }
 
-  for (const { room, booking } of allRooms) {
-    const padH = 8; const padV = 7; const contentW = CW - Math.round(CW * 0.44)
-    serif(doc, 'normal', 11)
-    const nl = doc.splitTextToSize(room.room_name ?? 'Booking', contentW - padH * 2)
-    const gp: string[] = []
-    if (room.guest_name) gp.push(room.guest_name)
-    if (room.additional_guests?.length) gp.push(...room.additional_guests)
-    if (room.party_composition) gp.push(room.party_composition)
-    const bH = room.confirmation_number ? 4 + 6 + 7 + 4.5 : 4 + 4.5
-    const cH = padV + nl.length * 5.5 + (gp.length ? 10 : 0) + bH + padV
-    const cardH = Math.max(36, cH)
+      const drawn = await drawRoomCard(doc, room, booking, y)
+      y += drawn + 4
+    }
+  }
 
-    if (y + cardH > P.h - FOOTER_MARGIN) {
+  // ── Flight cards ──────────────────────────────────────────────────────────
+
+  const visibleFlights = d.auxBookings
+    .filter(a => a.brief_show !== false)
+    .sort((a, b) => a.sort_order - b.sort_order)
+
+  if (visibleFlights.length > 0) {
+    y += 6
+    if (y + 20 > P.h - FOOTER_MARGIN) {
       doc.addPage()
       doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
       doc.rect(0, 0, P.w, P.h, 'F')
       y = 26
     }
+    drawRule(doc, P.margin, y, CW); y += 8
+    sans(doc, 'bold', 7)
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.text('FLIGHTS', P.margin, y, { charSpace: 0.5 }); y += 7
 
-    const drawn = await drawRoomCard(doc, room, booking, y)
-    y += drawn + 4
+    for (const aux of visibleFlights) {
+      const FLIGHT_CARD_H = 34
+      if (y + FLIGHT_CARD_H > P.h - FOOTER_MARGIN) {
+        doc.addPage()
+        doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
+        doc.rect(0, 0, P.w, P.h, 'F')
+        y = 26
+      }
+      const drawn = drawFlightCard(doc, aux, y)
+      y += drawn + 4
+    }
   }
 }
 
