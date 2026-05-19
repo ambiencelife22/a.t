@@ -1,24 +1,13 @@
 /* TripDossierSection.tsx
  * Trip Dossier surface for HouseTab.
  *
- * Displays all trips linked to a household via travel_immerse_engagements,
- * with expandable booking cards showing rates, payment status, partner splits,
- * cancellation policy, and Download Dossier button per booking.
- *
- * Trip-level action panel (TripActionPanel) sits above booking cards in each
- * expanded TripBlock. Houses trip-level actions for the travel designer:
- *   - Edit Brief → navigates to BriefEditorPage (#admin/trips/{tripId}/brief)
- *   - Download Confirmation Brief (exportConfirmationBriefPdf)
- *   - Download Dossier is per-booking (BookingCard level)
- *
- * Data comes from adminTripQueries.fetchTripDossierForHouse — pre-fetched
- * in HouseDetail.loadAll and passed in as TripDossierData.
- *
- * Last updated: S46 — Edit Brief navigates to BriefEditorPage; inline editor
- *   removed from TripActionPanel. All else chains removed.
- * Prior: S45 — TripActionPanel added; confirmationBriefPdf wired;
- *   TripBrief edit form (inline); brief overlay fields on BookingCard.
- * Prior: S45 — Download Dossier button wired per BookingCard.
+ * Last updated: S47 — navigateAdmin imported from adminPath. TripActionPanel
+ *   onBriefSaved prop removed (brief saving now lives in BriefEditorPage).
+ *   TripBlock onBriefSaved prop + handler removed. trips local state removed
+ *   (dossier.trips read directly — brief updates handled in BriefEditorPage).
+ *   All 4 TS errors resolved.
+ * Prior: S46 — Edit Brief navigates to BriefEditorPage.
+ * Prior: S45 — TripActionPanel; confirmationBriefPdf; RoomsEditor.
  * Prior: S44 — initial ship.
  */
 
@@ -28,10 +17,10 @@ import { navigateAdmin } from '../../lib/adminPath'
 import { AdminEmptyState } from './_adminPrimitives'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
-  HouseProfile, TripBrief,
+  HouseProfile,
 } from '../../lib/adminTripQueries'
-import { updateBookingBriefFields, createBookingRoom, updateBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
-import type { BookingRoom, BookingRoomPatch } from '../../lib/adminTripQueries'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom } from '../../lib/adminTripQueries'
+import type { BookingRoom } from '../../lib/adminTripQueries'
 import { useDossierDownload } from '../../lib/useDossierDownload'
 import { useBriefDownload } from '../../lib/useBriefDownload'
 import type { ClientDossierData } from '../../lib/clientDossierPdf'
@@ -48,19 +37,6 @@ function fmtDate(iso: string | null): string {
   const d = new Date(iso.slice(0, 10) + 'T00:00:00')
   return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
-function buildDateRange(start: string | null, end: string | null): string {
-  if (!start) return ''
-  if (!end) return fmtDate(start)
-  const s = new Date(start.slice(0, 10) + 'T00:00:00')
-  const e = new Date(end.slice(0, 10) + 'T00:00:00')
-  const sm = s.toLocaleDateString('en-US', { month: 'long' })
-  const em = e.toLocaleDateString('en-US', { month: 'long' })
-  if (sm === em) return `${s.getDate()}\u2013${e.getDate()} ${em} ${e.getFullYear()}`
-  return `${fmtDate(start)}\u2013${fmtDate(end)}`
-}
-
-// ── mapBookingToDossier ───────────────────────────────────────────────────────
 
 function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): ClientDossierData {
   const hotelName = b._hotel_name ?? b.supplier_name_override ?? b.name ?? 'Supplier'
@@ -94,30 +70,18 @@ function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): Client
   }
 }
 
-// ── Shared input style ────────────────────────────────────────────────────────
+// ── Shared styles ─────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
-  fontFamily:    A.font,
-  fontSize:      11,
-  color:         A.text,
-  background:    A.bg,
-  border:        `1px solid ${A.border}`,
-  borderRadius:  6,
-  padding:       '5px 8px',
-  width:         '100%',
-  boxSizing:     'border-box' as const,
-  outline:       'none',
+  fontFamily: A.font, fontSize: 11, color: A.text, background: A.bg,
+  border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 8px',
+  width: '100%', boxSizing: 'border-box' as const, outline: 'none',
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize:      9,
-  fontWeight:    700,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase' as const,
-  color:         A.faint,
-  fontFamily:    A.font,
-  marginBottom:  3,
-  display:       'block',
+  fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+  textTransform: 'uppercase' as const, color: A.faint,
+  fontFamily: A.font, marginBottom: 3, display: 'block',
 }
 
 // ── TripActionPanel ───────────────────────────────────────────────────────────
@@ -129,16 +93,9 @@ function TripActionPanel({ trip, house }: {
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
 
   const btnBase: React.CSSProperties = {
-    fontFamily:    A.font,
-    fontSize:      11,
-    fontWeight:    600,
-    letterSpacing: '0.05em',
-    textTransform: 'uppercase',
-    borderRadius:  6,
-    padding:       '5px 12px',
-    cursor:        'pointer',
-    transition:    'all 150ms ease',
-    border:        'none',
+    fontFamily: A.font, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
+    textTransform: 'uppercase', borderRadius: 6, padding: '5px 12px',
+    cursor: 'pointer', transition: 'all 150ms ease', border: 'none',
   }
 
   async function handleDownload() {
@@ -156,9 +113,7 @@ function TripActionPanel({ trip, house }: {
       } catch { heroData = null }
     }
     handleDownloadBrief({
-      trip,
-      brief:           trip.brief,
-      house,
+      trip, brief: trip.brief, house,
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
     })
@@ -176,14 +131,19 @@ function TripActionPanel({ trip, house }: {
         onClick={handleDownload}
         disabled={!pdfReady || pdfDownloading}
         style={{
-          ...btnBase,
-          background: 'transparent',
-          color:      pdfReady && !pdfDownloading ? A.gold : A.faint,
-          border:     `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`,
-          cursor:     pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed',
+          ...btnBase, background: 'transparent',
+          color:   pdfReady && !pdfDownloading ? A.gold  : A.faint,
+          border:  `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`,
+          cursor:  pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed',
         }}
       >
         {pdfDownloading ? 'Generating...' : 'Download Confirmation Brief'}
+      </button>
+      <button
+        onClick={() => navigateAdmin({ product: 'trips', tab: 'itinerary', tripId: trip.id })}
+        style={{ ...btnBase, background: A.bgCard, color: A.muted, border: `1px solid ${A.border}` }}
+      >
+        Daily Programme
       </button>
     </div>
   )
@@ -191,13 +151,14 @@ function TripActionPanel({ trip, house }: {
 
 // ── Small atoms ───────────────────────────────────────────────────────────────
 
-function PaymentBadge({ paid, amount, dueDate, currency }: { paid: boolean; amount: number | null; dueDate: string | null; currency: string | null }) {
+function PaymentBadge({ paid, amount, dueDate, currency }: {
+  paid: boolean; amount: number | null; dueDate: string | null; currency: string | null
+}) {
   if (amount == null) return null
   const color = paid ? '#4ade80' : '#fbbf24'
-  const label = paid ? 'Paid' : `Due ${fmtDate(dueDate)}`
   return (
     <span style={{ fontSize: 10, fontWeight: 700, fontFamily: A.font, color, padding: '2px 7px', borderRadius: 12, background: color + '15', border: `1px solid ${color}30`, whiteSpace: 'nowrap', flexShrink: 0 }}>
-      {label}
+      {paid ? 'Paid' : `Due ${fmtDate(dueDate)}`}
     </span>
   )
 }
@@ -227,142 +188,55 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
   const [rooms,  setRooms]  = useState<BookingRoom[]>(booking._rooms)
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
-
-  // New room form state
   const [newRoomName,  setNewRoomName]  = useState('')
   const [newConfNum,   setNewConfNum]   = useState('')
   const [newGuestName, setNewGuestName] = useState('')
   const [newPartyComp, setNewPartyComp] = useState('')
   const [newNotes,     setNewNotes]     = useState('')
-  const [newImageSrc,  setNewImageSrc]  = useState(booking._hotel_image_src ?? '')
-
-  // Per-room image editing: roomId -> draft URL
-  // Seed from brief_image_src if set, else fall back to hotel hero image
-  const hotelFallback = booking._hotel_image_src ?? ''
-  const [roomImageDraft, setRoomImageDraft] = useState<Record<string, string>>(() =>
-    Object.fromEntries(booking._rooms.map(r => [r.id, r.brief_image_src ?? hotelFallback]))
-  )
 
   async function handleAdd() {
     setSaving('add')
     try {
       const r = await createBookingRoom(booking.id, {
-        room_name:           newRoomName  || null,
-        confirmation_number: newConfNum   || null,
-        guest_name:          newGuestName || null,
-        party_composition:   newPartyComp || null,
-        notes:               newNotes     || null,
-        brief_image_src:     newImageSrc  || null,
-        sort_order:          rooms.length,
+        room_name: newRoomName || null, confirmation_number: newConfNum || null,
+        guest_name: newGuestName || null, party_composition: newPartyComp || null,
+        notes: newNotes || null, sort_order: rooms.length,
       })
       setRooms(prev => [...prev, r])
-      setRoomImageDraft(prev => ({ ...prev, [r.id]: r.brief_image_src ?? '' }))
       setAdding(false)
-      setNewRoomName(''); setNewConfNum(''); setNewGuestName('')
-      setNewPartyComp(''); setNewNotes(''); setNewImageSrc(booking._hotel_image_src ?? '')
-    } catch { /* silent */ }
-    finally { setSaving(null) }
-  }
-
-  async function handleSaveImage(roomId: string) {
-    setSaving(roomId + '_img')
-    try {
-      const updated = await updateBookingRoom(roomId, { brief_image_src: roomImageDraft[roomId] || null })
-      setRooms(prev => prev.map(r => r.id === roomId ? updated : r))
+      setNewRoomName(''); setNewConfNum(''); setNewGuestName(''); setNewPartyComp(''); setNewNotes('')
     } catch { /* silent */ }
     finally { setSaving(null) }
   }
 
   async function handleDelete(roomId: string) {
     setSaving(roomId)
-    try {
-      await deleteBookingRoom(roomId)
-      setRooms(prev => prev.filter(r => r.id !== roomId))
-    } catch { /* silent */ }
+    try { await deleteBookingRoom(roomId); setRooms(prev => prev.filter(r => r.id !== roomId)) }
+    catch { /* silent */ }
     finally { setSaving(null) }
   }
 
   return (
     <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
-          Rooms ({rooms.length})
-        </div>
-        <button
-          onClick={() => setAdding(o => !o)}
-          style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}
-        >
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>Rooms ({rooms.length})</div>
+        <button onClick={() => setAdding(o => !o)} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}>
           {adding ? 'Cancel' : '+ Add Room'}
         </button>
       </div>
 
       {rooms.map(r => (
-        <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {r.confirmation_number && (
-                <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>
-              )}
-              {r.guest_name && (
-                <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>
-              )}
-              {r.party_composition && (
-                <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>
-              )}
-              {r.room_name && (
-                <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>
-              )}
-              {r.notes && (
-                <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>
-              )}
-            </div>
-            <button
-              onClick={() => handleDelete(r.id)}
-              disabled={saving === r.id}
-              style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}
-            >
-              {saving === r.id ? '...' : '\u2715'}
-            </button>
+        <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {r.confirmation_number && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>}
+            {r.guest_name         && <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>}
+            {r.party_composition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>}
+            {r.room_name          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
+            {r.notes              && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>}
           </div>
-          <div style={{ marginTop: 8, borderTop: `1px solid ${A.border}`, paddingTop: 8 }}>
-            <label style={labelStyle}>Brief Image</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {roomImageDraft[r.id] ? (
-                <div style={{ width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
-                  <img src={roomImageDraft[r.id]} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              ) : (
-                <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgCard, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
-                </div>
-              )}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <input
-                  style={inputStyle}
-                  value={roomImageDraft[r.id] ?? ''}
-                  onChange={e => setRoomImageDraft(prev => ({ ...prev, [r.id]: e.target.value }))}
-                  placeholder='https://...'
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => handleSaveImage(r.id)}
-                    disabled={saving === r.id + '_img'}
-                    style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '3px 10px', cursor: 'pointer' }}
-                  >
-                    {saving === r.id + '_img' ? 'Saving...' : 'Save Image'}
-                  </button>
-                  {roomImageDraft[r.id] && (
-                    <button
-                      onClick={() => setRoomImageDraft(prev => ({ ...prev, [r.id]: '' }))}
-                      style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <button onClick={() => handleDelete(r.id)} disabled={saving === r.id} style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>
+            {saving === r.id ? '...' : '✕'}
+          </button>
         </div>
       ))}
 
@@ -374,28 +248,9 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
             <div><label style={labelStyle}>Party Composition</label><input style={inputStyle} value={newPartyComp} onChange={e => setNewPartyComp(e.target.value)} placeholder='2 Adults, 2 Children' /></div>
             <div><label style={labelStyle}>Room Name</label><input style={inputStyle} value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder='Two-Bedroom Suite' /></div>
             <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Notes</label><input style={inputStyle} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder='Includes rollaway bed' /></div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Brief Image</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {newImageSrc ? (
-                  <div style={{ width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
-                    <img src={newImageSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ) : (
-                  <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bg, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
-                  </div>
-                )}
-                <input style={{ ...inputStyle, flex: 1 }} value={newImageSrc} onChange={e => setNewImageSrc(e.target.value)} placeholder='https://...' />
-              </div>
-            </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleAdd}
-              disabled={saving === 'add'}
-              style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: 'pointer' }}
-            >
+            <button onClick={handleAdd} disabled={saving === 'add'} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: 'pointer' }}>
               {saving === 'add' ? 'Adding...' : 'Add Room'}
             </button>
           </div>
@@ -415,7 +270,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
 }) {
   const [expanded,  setExpanded]  = useState(false)
   const [briefCat,  setBriefCat]  = useState(b.brief_category ?? '')
-  const [bookedBy,  setBookedBy]  = useState(b.booked_by ?? 'ambience')
+  const [bookedBy,  setBookedBy]  = useState(b.booked_by ?? '')
   const [briefShow, setBriefShow] = useState(b.brief_show ?? true)
   const [saving,    setSaving]    = useState(false)
 
@@ -440,7 +295,6 @@ function BookingCard({ booking: b, partners, mobile, house }: {
 
   return (
     <div style={{ background: A.bg, border: `1px solid ${A.border}`, borderLeft: `3px solid ${typeColor}`, borderRadius: 8, overflow: 'hidden' }}>
-      {/* Summary row */}
       <div onClick={() => setExpanded(e => !e)} style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
@@ -464,11 +318,9 @@ function BookingCard({ booking: b, partners, mobile, house }: {
         </div>
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
         <div style={{ borderTop: `1px solid ${A.border}`, padding: '12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* Rate grid */}
           {(b.commissionable_rate != null || b.total_rate != null) && (
             <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10 }}>
               {b.commissionable_rate != null && (
@@ -501,7 +353,6 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             </div>
           )}
 
-          {/* Inclusions */}
           {b.inclusions && (
             <div style={{ padding: '8px 10px', background: `${A.gold}08`, border: `1px solid ${A.gold}20`, borderRadius: 6 }}>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Inclusions</div>
@@ -509,7 +360,6 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             </div>
           )}
 
-          {/* Payment */}
           {(b.deposit_amount != null || b.balance_amount != null) && (
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Payment</div>
@@ -537,34 +387,17 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             </div>
           )}
 
-          {/* Partner splits */}
           {(iataPartner || refPartner || indivPartner) && (
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Commission Splits</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {iataPartner && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{iataPartner.name} <span style={{ fontSize: 10, color: A.faint }}>IATA</span></span>
-                    <span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.iata_share_pct}% · {fmt(b.iata_share_amt, currency)}</span>
-                  </div>
-                )}
-                {refPartner && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{refPartner.name} <span style={{ fontSize: 10, color: A.faint }}>Referral</span></span>
-                    <span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.referral_share_pct}% · {fmt(b.referral_share_amt, currency)}</span>
-                  </div>
-                )}
-                {indivPartner && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{indivPartner.name}</span>
-                    <span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.individual_share_pct}% · {fmt(b.individual_share_amt, currency)}</span>
-                  </div>
-                )}
+                {iataPartner   && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{iataPartner.name} <span style={{ fontSize: 10, color: A.faint }}>IATA</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.iata_share_pct}% · {fmt(b.iata_share_amt, currency)}</span></div>}
+                {refPartner    && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{refPartner.name} <span style={{ fontSize: 10, color: A.faint }}>Referral</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.referral_share_pct}% · {fmt(b.referral_share_amt, currency)}</span></div>}
+                {indivPartner  && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{indivPartner.name}</span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.individual_share_pct}% · {fmt(b.individual_share_amt, currency)}</span></div>}
               </div>
             </div>
           )}
 
-          {/* Cancellation + notes */}
           {(b.cancellation_policy || b.notes) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {b.cancellation_policy && (
@@ -577,21 +410,16 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             </div>
           )}
 
-          {/* Brief overlay fields */}
           <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 12 }}>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Brief Settings</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, alignItems: 'end' }}>
               <div>
                 <label style={labelStyle}>Category</label>
-                <input style={inputStyle} value={briefCat} onChange={e => setBriefCat(e.target.value)} placeholder='Accommodation, Dining, Experiences...' />
+                <input style={inputStyle} value={briefCat} onChange={e => setBriefCat(e.target.value)} placeholder='Accommodation, Dining...' />
               </div>
               <div>
                 <label style={labelStyle}>Booked By</label>
-                <select style={{ ...inputStyle }} value={bookedBy} onChange={e => setBookedBy(e.target.value)}>
-                  <option value='ambience'>Booked by ambience</option>
-                  <option value='self'>Self-booked</option>
-                  <option value='tbc'>TBC</option>
-                </select>
+                <input style={inputStyle} value={bookedBy} onChange={e => setBookedBy(e.target.value)} placeholder='Booked by Deron' />
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 1 }}>
                 <label style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -605,28 +433,13 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             </div>
           </div>
 
-          {/* Rooms editor */}
           <RoomsEditor booking={b} />
 
-          {/* Download Dossier */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 2 }}>
             <button
               onClick={e => { e.stopPropagation(); handleDownloadDossier(mapBookingToDossier(b, house)) }}
               disabled={!pdfReady || pdfDownloading}
-              style={{
-                fontFamily:    A.font,
-                fontSize:      11,
-                fontWeight:    600,
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                color:         pdfReady && !pdfDownloading ? A.gold : A.faint,
-                background:    'transparent',
-                border:        `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`,
-                borderRadius:  6,
-                padding:       '5px 12px',
-                cursor:        pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed',
-                transition:    'all 150ms ease',
-              }}
+              style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: pdfReady && !pdfDownloading ? A.gold : A.faint, background: 'transparent', border: `1px solid ${pdfReady && !pdfDownloading ? A.gold + '50' : A.border}`, borderRadius: 6, padding: '5px 12px', cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed', transition: 'all 150ms ease' }}
             >
               {pdfDownloading ? 'Generating...' : 'Download Dossier'}
             </button>
@@ -654,7 +467,6 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
 
   return (
     <div style={{ background: A.bgCard, border: `1px solid ${expanded ? A.gold + '40' : A.border}`, borderRadius: 12, overflow: 'hidden', transition: 'border-color 150ms ease' }}>
-      {/* Header */}
       <div onClick={onToggle} style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
@@ -671,11 +483,8 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
         </div>
       </div>
 
-      {/* Body */}
       {expanded && (
         <div style={{ borderTop: `1px solid ${A.border}`, padding: '0 16px 16px' }}>
-
-          {/* Meta strip */}
           <div style={{ display: 'flex', gap: 20, padding: '12px 0', flexWrap: 'wrap', borderBottom: `1px solid ${A.border}`, marginBottom: 14 }}>
             {trip.destinations && trip.destinations.length > 0 && <MetaCell label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
             {(trip.guest_count_adults || trip.guest_count_children) && (
@@ -692,24 +501,23 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
             )}
           </div>
 
-          {/* Trip action panel */}
           <TripActionPanel trip={trip} house={house} />
 
-          {/* Bookings */}
-          {trip.bookings.length === 0 ? (
-            <AdminEmptyState message='No bookings on this trip yet.' />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {trip.bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} />)}
-            </div>
-          )}
+          {trip.bookings.length === 0
+            ? <AdminEmptyState message='No bookings on this trip yet.' />
+            : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {trip.bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} />)}
+              </div>
+            )
+          }
         </div>
       )}
     </div>
   )
 }
 
-// ── TripDossierSection — exported ─────────────────────────────────────────────
+// ── TripDossierSection ────────────────────────────────────────────────────────
 
 export function TripDossierSection({ dossier, mobile }: {
   dossier: TripDossierData
@@ -718,13 +526,12 @@ export function TripDossierSection({ dossier, mobile }: {
   const [expandedTrip, setExpandedTrip] = useState<string | null>(
     dossier.trips.length === 1 ? dossier.trips[0].id : null
   )
-  const [trips, setTrips] = useState<DossierTrip[]>(dossier.trips)
 
-  if (trips.length === 0) return <AdminEmptyState message='No trips linked to this household yet.' />
+  if (dossier.trips.length === 0) return <AdminEmptyState message='No trips linked to this household yet.' />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {trips.map(trip => (
+      {dossier.trips.map(trip => (
         <TripBlock
           key={trip.id}
           trip={trip}

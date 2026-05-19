@@ -13,6 +13,7 @@
 //   #admin/house                                 → household list
 //   #admin/operations/bookings                   → operations console (cross-client)
 //   #admin/trips/<trip-uuid>/brief               → dedicated brief editor for a trip
+//   #admin/trips/<trip-uuid>/itinerary           → dedicated itinerary editor for a trip
 //   #admin/programme/programmes                  → wrapped existing tab
 //   #admin/programme/letters                     → wrapped existing tab
 //   #admin/programme/listings                    → wrapped existing tab
@@ -21,7 +22,9 @@
 //   #admin/programme/access-denied               → wrapped existing tab
 //   #admin/programme/client-profile              → wrapped existing tab
 //
-// Prior: S44 — Added 'operations' product with 'bookings' tab.
+// Last updated: S47 — trips union extended with 'itinerary' tab variant.
+//   parseAdminHash and buildAdminHash updated to handle both brief + itinerary.
+// Prior: S45 — Added 'operations' product with 'bookings' tab.
 // Prior: S41 — Added 'experiences' guide tab.
 // Prior: S40D — Added 'house' product (ambience.HOUSE CRM).
 // Prior: S36 — Library/dining accepts optional <dest-uuid> segment.
@@ -42,7 +45,8 @@ export type AdminTab =
   | { product: 'library';    tab: 'hotels'; destinationId: string | null }
   | { product: 'house';      tab: 'households' }
   | { product: 'operations'; tab: 'bookings' }
-  | { product: 'trips';      tab: 'brief'; tripId: string }
+  | { product: 'trips';      tab: 'brief';      tripId: string }
+  | { product: 'trips';      tab: 'itinerary';  tripId: string }
   | { product: 'programme';  tab: ProgrammeTabId }
 
 export type ProgrammeTabId =
@@ -109,11 +113,12 @@ export function parseAdminHash(hash: string): AdminTab {
   }
 
   if (product === 'trips') {
-    // #admin/trips/<trip-uuid>/brief
-    const tripId = tab   // second segment is the trip UUID
-    const subTab = rest[0]
-    if (tripId && UUID_RE.test(tripId) && subTab === 'brief') {
-      return { product: 'trips', tab: 'brief', tripId }
+    // #admin/trips/<trip-uuid>/brief   OR   #admin/trips/<trip-uuid>/itinerary
+    const tripId = tab        // second segment is the trip UUID
+    const subTab = rest[0]    // third segment is the sub-tab
+    if (tripId && UUID_RE.test(tripId)) {
+      if (subTab === 'brief')      return { product: 'trips', tab: 'brief',     tripId }
+      if (subTab === 'itinerary')  return { product: 'trips', tab: 'itinerary', tripId }
     }
     return DEFAULT_TAB
   }
@@ -155,7 +160,7 @@ export function buildAdminHash(target: AdminTab): string {
     return '#admin/operations/bookings'
   }
   if (target.product === 'trips') {
-    return `#admin/trips/${target.tripId}/brief`
+    return `#admin/trips/${target.tripId}/${target.tab}`
   }
   return `#admin/programme/${target.tab}`
 }

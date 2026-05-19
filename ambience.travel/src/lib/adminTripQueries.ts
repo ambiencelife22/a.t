@@ -1,17 +1,17 @@
 // adminTripQueries.ts
 // Trip Dossier query layer — reads travel_bookings, travel_trips,
 // travel_partners, travel_accom_hotels for the HouseTab Trip Dossier surface.
-// Also owns travel_trip_briefs + travel_booking_rooms CRUD.
+// Also owns travel_trip_briefs + travel_booking_rooms + travel_trip_days CRUD.
 //
-// All column names verified against information_schema S44/S45 pre-flight.
+// All column names verified against information_schema S44/S45/S46 pre-flight.
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
-// Last updated: S46 — _hotel_image_src added to TripBooking; hotelMap replaces
+// Last updated: S47 — booked_by_label text added to BookingRoom (migration S47).
+//   Flows through BookingRoomPatch automatically. select('*') picks it up.
+// Prior: S46 — _hotel_image_src added to TripBooking; hotelMap replaces
 //   hotelNameMap; travel_accom_hotels.hero_image_src fetched alongside name.
-//   BookingRow type updated to exclude _hotel_image_src.
-// Prior: S45 — add BookingRoom type; fetch rooms in Step 5 parallel;
-//   attach rooms to TripBooking; add room CRUD functions.
+// Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
 // Prior: S45 — TripBrief type, fetchTripBrief, upsertTripBrief.
 // Prior: S45 — fix Step 1 join; house profile; new booking columns.
 // Prior: S44 — initial ship.
@@ -38,15 +38,13 @@ export type HouseProfile = {
   service_notes:      string | null
 }
 
-
 export type TripDestination = {
-  id:            string
+  id:             string
   destination_id: string
-  sort_order:    number
-  // Resolved from global_destinations
-  slug:          string
-  name:          string
-  storage_path:  string | null
+  sort_order:     number
+  slug:           string
+  name:           string
+  storage_path:   string | null
   hero_image_src: string | null
 }
 
@@ -76,8 +74,66 @@ export type TripBrief = {
   hotel_contact_note:   string | null
   important_notes:      string[]
   footer_tagline:       string | null
+  logo_variant:         string | null   // "ambience" | "alfaone" | "unbranded" | null
   created_at:           string
   updated_at:           string
+}
+
+export type TripDay = {
+  id:         string
+  trip_id:    string
+  entry_date: string
+  show:       boolean
+  day_label:  string | null
+  day_note:   string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type TripDayEntry = {
+  id:                  string
+  trip_id:             string
+  entry_date:          string
+  start_time:          string | null
+  end_time:            string | null
+  title:               string
+  subtitle:            string | null
+  category:            string | null
+  booked_by:           string
+  confirmation_number: string | null
+  guest_label:         string | null
+  notes:               string | null
+  brief_show:          boolean
+  sort_order:          number
+  is_auto_derived:     boolean
+  source_booking_id:   string | null
+  source_aux_id:       string | null
+  created_at:          string
+  updated_at:          string
+}
+
+export type TripDayPatch      = Partial<Omit<TripDay,      'id' | 'trip_id' | 'created_at' | 'updated_at'>>
+export type TripDayEntryPatch = Partial<Omit<TripDayEntry, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
+
+export type TripAuxBooking = {
+  id:                  string
+  trip_id:             string
+  booking_type:        string | null
+  name:                string | null
+  confirmation_number: string | null
+  start_date:          string | null
+  start_time:          string | null
+  end_date:            string | null
+  end_time:            string | null
+  origin:              string | null
+  destination:         string | null
+  notes:               string | null
+  guest_label:         string | null
+  brief_show:          boolean
+  sort_order:          number
+  created_at:          string
+  updated_at:          string
 }
 
 export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
@@ -95,11 +151,14 @@ export type BookingRoom = {
   tax_pct:             number | null
   total:               number | null
   brief_image_src:     string | null
+  additional_guests:   string[] | null
+  booked_by_label:     string | null   // S47 — free-text override e.g. "Booked by Deron"
   sort_order:          number
   created_at:          string
   updated_at:          string
 }
 
+// BookingRoomPatch inherits booked_by_label automatically via Partial<Omit<...>>
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>
 
 export type TripBooking = {
@@ -201,7 +260,6 @@ type TripDestRow    = { id: string; trip_id: string; destination_id: string; sor
 // ── Main dossier query ────────────────────────────────────────────────────────
 
 export async function fetchTripDossierForHouse(houseId: string): Promise<TripDossierData> {
-  // Step 1: bookings.house_id -> trip IDs
   const { data: bookTripData, error: bookTripErr } = await supabase
     .from('travel_bookings')
     .select('trip_id')
@@ -214,7 +272,6 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
 
   const tripIds = [...new Set(bookTripRows.map(r => r.trip_id))]
 
-  // Step 2: trips
   const { data: tripData, error: tripErr } = await supabase
     .from('travel_trips')
     .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
@@ -225,7 +282,6 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   const tripRows = (tripData ?? []) as TripRow[]
   if (tripRows.length === 0) return { trips: [], partners: {}, house: null }
 
-  // Step 3: bookings
   const { data: bookData, error: bookErr } = await supabase
     .from('travel_bookings')
     .select('id, trip_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
@@ -235,7 +291,6 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   if (bookErr) throw new Error(bookErr.message)
   const bookingRows = (bookData ?? []) as BookingRow[]
 
-  // Step 4: hotel name + hero image
   const hotelIds = [...new Set(bookingRows.map(b => b.accom_hotel_id).filter((id): id is string => !!id))]
   const hotelMap = new Map<string, { name: string; hero_image_src: string | null }>()
   if (hotelIds.length > 0) {
@@ -248,7 +303,6 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     }
   }
 
-  // Step 5: partners + house + briefs + rooms (parallel)
   const bookingIds = bookingRows.map(b => b.id)
 
   const [partnerResult, houseResult, briefResult, roomResult, destResult] = await Promise.all([
@@ -310,7 +364,6 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     })
   }
 
-  // Step 6: assemble
   const bookingsByTrip = new Map<string, TripBooking[]>()
   for (const b of bookingRows) {
     if (!bookingsByTrip.has(b.trip_id)) bookingsByTrip.set(b.trip_id, [])
@@ -407,4 +460,168 @@ export async function updateBookingRoom(roomId: string, patch: BookingRoomPatch)
 export async function deleteBookingRoom(roomId: string): Promise<void> {
   const { error } = await supabase.from('travel_booking_rooms').delete().eq('id', roomId)
   if (error) throw new Error(error.message)
+}
+
+// ── Itinerary CRUD ────────────────────────────────────────────────────────────
+
+export async function fetchTripDays(tripId: string): Promise<TripDay[]> {
+  const { data, error } = await supabase
+    .from('travel_trip_days')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('entry_date', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as TripDay[]
+}
+
+export async function fetchTripDayEntries(tripId: string): Promise<TripDayEntry[]> {
+  const { data, error } = await supabase
+    .from('travel_trip_day_entries')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('entry_date', { ascending: true })
+    .order('sort_order', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as TripDayEntry[]
+}
+
+export async function fetchTripAuxBookings(tripId: string): Promise<TripAuxBooking[]> {
+  const { data, error } = await supabase
+    .from('travel_trip_aux_bookings')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('sort_order', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as TripAuxBooking[]
+}
+
+export async function upsertTripDay(tripId: string, date: string, patch: TripDayPatch): Promise<TripDay> {
+  const { data, error } = await supabase
+    .from('travel_trip_days')
+    .upsert({ trip_id: tripId, entry_date: date, ...patch }, { onConflict: 'trip_id,entry_date' })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as TripDay
+}
+
+export async function createTripDayEntry(tripId: string, entry: Omit<TripDayEntry, 'id' | 'created_at' | 'updated_at'>): Promise<TripDayEntry> {
+  const { data, error } = await supabase
+    .from('travel_trip_day_entries')
+    .insert({ ...entry, trip_id: tripId })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as TripDayEntry
+}
+
+export async function updateTripDayEntry(id: string, patch: TripDayEntryPatch): Promise<TripDayEntry> {
+  const { data, error } = await supabase
+    .from('travel_trip_day_entries')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as TripDayEntry
+}
+
+export async function deleteTripDayEntry(id: string): Promise<void> {
+  const { error } = await supabase.from('travel_trip_day_entries').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function autoDeriveTripItinerary(
+  trip: DossierTrip,
+  auxBookings: TripAuxBooking[],
+): Promise<{ days: TripDay[]; entries: TripDayEntry[] }> {
+  if (!trip.start_date || !trip.end_date) return { days: [], entries: [] }
+
+  const dates: string[] = []
+  const cursor = new Date(trip.start_date + 'T00:00:00')
+  const end    = new Date(trip.end_date   + 'T00:00:00')
+  while (cursor <= end) {
+    dates.push(cursor.toISOString().slice(0, 10))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  const dayPromises = dates.map((date, i) =>
+    upsertTripDay(trip.id, date, { sort_order: i, show: true })
+  )
+  const days = await Promise.all(dayPromises)
+
+  const entries: TripDayEntry[] = []
+
+  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
+    if (b.start_date && b.booking_type === 'Hotel') {
+      const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
+      const checkIn = await createTripDayEntry(trip.id, {
+        entry_date:          b.start_date,
+        start_time:          null,
+        end_time:            null,
+        title:               `Check-in — ${hotelName}`,
+        subtitle:            b.name ?? null,
+        category:            'Hotel',
+        booked_by:           b.booked_by ?? 'ambience',
+        confirmation_number: b.confirmation_number,
+        guest_label:         null,
+        notes:               b.inclusions ?? null,
+        brief_show:          true,
+        sort_order:          10,
+        is_auto_derived:     true,
+        source_booking_id:   b.id,
+        source_aux_id:       null,
+        trip_id:             trip.id,
+      })
+      entries.push(checkIn)
+
+      if (b.end_date) {
+        const checkOut = await createTripDayEntry(trip.id, {
+          entry_date:          b.end_date,
+          start_time:          null,
+          end_time:            null,
+          title:               `Check-out — ${hotelName}`,
+          subtitle:            null,
+          category:            'Hotel',
+          booked_by:           b.booked_by ?? 'ambience',
+          confirmation_number: b.confirmation_number,
+          guest_label:         null,
+          notes:               null,
+          brief_show:          true,
+          sort_order:          90,
+          is_auto_derived:     true,
+          source_booking_id:   b.id,
+          source_aux_id:       null,
+          trip_id:             trip.id,
+        })
+        entries.push(checkOut)
+      }
+    }
+  }
+
+  for (const aux of auxBookings) {
+    if (!aux.start_date) continue
+    const catIcon = aux.booking_type ?? 'Other'
+    const entry = await createTripDayEntry(trip.id, {
+      entry_date:          aux.start_date,
+      start_time:          aux.start_time,
+      end_time:            aux.end_time,
+      title:               aux.name ?? catIcon,
+      subtitle:            aux.origin && aux.destination ? `${aux.origin} → ${aux.destination}` : null,
+      category:            catIcon,
+      booked_by:           'self',
+      confirmation_number: aux.confirmation_number,
+      guest_label:         aux.guest_label,
+      notes:               aux.notes,
+      brief_show:          true,
+      sort_order:          aux.start_time ? parseInt(aux.start_time.replace(':', ''), 10) : 50,
+      is_auto_derived:     true,
+      source_booking_id:   null,
+      source_aux_id:       aux.id,
+      trip_id:             trip.id,
+    })
+    entries.push(entry)
+  }
+
+  return { days, entries }
 }
