@@ -4,7 +4,7 @@
  *
  * Layout:
  *   - Cream background — matches Brief Editor aesthetic
- *   - Top bar: back button + trip code + Save All
+ *   - Top bar: back button + trip code + Save All + Download PDF
  *   - Left panel (42%): day-by-day accordion editor
  *     - Each day: show/hide toggle, day label override, day note override
  *     - Each entry: time, title, subtitle, category, booked_by, guest_label, notes
@@ -17,7 +17,9 @@
  * Empty days: always shown with "No plans today" unless day_note overrides.
  *   Admin can hide individual days via show toggle.
  *
- * Last updated: S45 — initial ship.
+ * Last updated: S48 — useProgrammeDownload wired. "Download PDF" button added
+ *   to top bar. Disabled when days.length === 0 (pre-derive state).
+ * Prior: S45 — initial ship.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -43,6 +45,7 @@ import type {
   TripDayEntryPatch,
 } from '../../lib/adminTripQueries'
 import { supabase } from '../../lib/supabase'
+import { useProgrammeDownload } from '../../lib/useProgrammeDownload'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -505,6 +508,8 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
   const [deriving, setDeriving] = useState(false)
   const [derived,  setDerived]  = useState(false)
 
+  const { pdfReady, pdfDownloading, handleDownloadProgramme } = useProgrammeDownload()
+
   useEffect(() => {
     async function load() {
       const houseId = await resolveHouseIdForTrip(tripId)
@@ -618,6 +623,18 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
             style={{ ...btnBase, background: GOLD + '20', color: GOLD, border: `1px solid ${GOLD}40`, opacity: deriving ? 0.6 : 1 }}
           >{deriving ? 'Generating...' : 'Auto-populate from Bookings'}</button>
         )}
+        <button
+          onClick={() => handleDownloadProgramme({ trip, house, days, entriesByDate })}
+          disabled={!pdfReady || pdfDownloading || days.length === 0}
+          style={{
+            ...btnBase,
+            background: 'transparent',
+            color:   pdfReady && !pdfDownloading && days.length > 0 ? GOLD  : MUTED,
+            border:  `1px solid ${pdfReady && !pdfDownloading && days.length > 0 ? GOLD + '60' : RULE}`,
+            opacity: days.length === 0 ? 0.4 : 1,
+            cursor:  pdfReady && !pdfDownloading && days.length > 0 ? 'pointer' : 'not-allowed',
+          }}
+        >{pdfDownloading ? 'Generating...' : 'Download PDF'}</button>
       </div>
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 50px)' }}>

@@ -2,7 +2,9 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S47 — booked_by_label added to RoomDraft. Free-text "Booked By"
+ * Last updated: S48 — editor panel switched to dark background (A.bg / A.bgCard)
+ *   to match admin dark theme. Preview panel remains cream.
+ * Prior: S47 — booked_by_label added to RoomDraft. Free-text "Booked By"
  *   input per room. Preview and PDF both read booked_by_label ?? fallback.
  * Prior: S47 — stripped to cover + rooms only. roomDrafts lifted for real-time preview.
  * Prior: S46 — initial ship.
@@ -94,7 +96,7 @@ type RoomDraft = {
   party_composition: string
   notes:             string
   additional_guests: string[]
-  booked_by_label:   string   // free-text e.g. "Booked by Deron"
+  booked_by_label:   string
 }
 
 interface PreviewFields {
@@ -181,6 +183,7 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
     catch { /* silent */ }
   }
 
+  // Dark-theme field styles for editor panel
   const fieldStyle: React.CSSProperties = {
     fontFamily: A.font, fontSize: 11, color: A.text,
     background: 'transparent', border: 'none',
@@ -201,7 +204,7 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
           const src   = roomImageSrcs[room.id] ?? ''
           const draft = getDraft(room.id, room)
           return (
-            <div key={room.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 8, padding: '10px 12px' }}>
+            <div key={room.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '10px 12px' }}>
               {room.confirmation_number && (
                 <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700, marginBottom: 8 }}>
                   #{room.confirmation_number}
@@ -265,7 +268,7 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
                     <img src={src} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ) : (
-                  <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgCard, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bg, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
                   </div>
                 )}
@@ -521,13 +524,12 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       } catch { heroData = null }
     }
 
-    // Merge roomDrafts + roomImageSrcs into the trip so the PDF sees live edits
     const mergedTrip = {
       ...trip,
       bookings: trip.bookings.map(b => ({
         ...b,
         _rooms: b._rooms.map(r => {
-          const draft = roomDrafts[r.id]
+          const draft  = roomDrafts[r.id]
           const imgSrc = roomImageSrcs[r.id]
           return {
             ...r,
@@ -585,18 +587,20 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: CREAM, fontFamily: A.font, color: INK }}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#EDE9E2', borderBottom: `1px solid ${RULE}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
-        <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: 'transparent', color: MUTED, border: `1px solid ${RULE}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
+    <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
+
+      {/* Top bar — dark */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: A.bgCard, borderBottom: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
+        <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
-          <span style={{ fontSize: 10, color: MUTED }}>Confirmation Brief</span>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
+          <span style={{ fontSize: 10, color: A.muted }}>Confirmation Brief</span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {saveErr && <span style={{ fontSize: 10, color: '#f87171' }}>{saveErr}</span>}
           {saved   && <span style={{ fontSize: 10, color: '#4ade80', fontFamily: A.font }}>Saved</span>}
-          <button onClick={handleSave} disabled={saving} style={{ ...btnBase, background: INK, color: '#F7F5F0', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : 'Save'}</button>
-          <button onClick={handleDownload} disabled={!pdfReady || pdfDownloading} style={{ ...btnBase, background: GOLD, color: '#fff', opacity: pdfReady && !pdfDownloading ? 1 : 0.5, cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed' }}>
+          <button onClick={handleSave} disabled={saving} style={{ ...btnBase, background: A.bgCard, color: A.text, border: `1px solid ${A.border}`, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : 'Save'}</button>
+          <button onClick={handleDownload} disabled={!pdfReady || pdfDownloading} style={{ ...btnBase, background: A.gold, color: '#0F1110', opacity: pdfReady && !pdfDownloading ? 1 : 0.5, cursor: pdfReady && !pdfDownloading ? 'pointer' : 'not-allowed' }}>
             {pdfDownloading ? 'Generating...' : 'Download PDF'}
           </button>
         </div>
@@ -604,15 +608,15 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
       {/* Mobile tab bar */}
       {isMobile && (
-        <div style={{ display: 'flex', borderBottom: `1px solid ${RULE}`, background: '#EDE9E2' }}>
+        <div style={{ display: 'flex', borderBottom: `1px solid ${A.border}`, background: A.bgCard }}>
           {(['edit', 'preview'] as const).map(tab => (
             <button key={tab} onClick={() => setMobileTab(tab)} style={{
               flex: 1, fontFamily: A.font, fontSize: 10, fontWeight: 700,
               letterSpacing: '0.08em', textTransform: 'uppercase' as const,
               padding: '10px 0', border: 'none', cursor: 'pointer',
-              background: mobileTab === tab ? CREAM : '#EDE9E2',
-              color: mobileTab === tab ? INK : MUTED,
-              borderBottom: mobileTab === tab ? `2px solid ${GOLD}` : '2px solid transparent',
+              background: mobileTab === tab ? A.bg : A.bgCard,
+              color: mobileTab === tab ? A.gold : A.muted,
+              borderBottom: mobileTab === tab ? `2px solid ${A.gold}` : `2px solid transparent`,
               transition: 'all 120ms ease',
             }}>
               {tab === 'edit' ? 'Edit' : 'Preview'}
@@ -622,13 +626,18 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       )}
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 50px)' }}>
+
+        {/* Editor panel — dark */}
         <div style={{
           width: isMobile ? '100%' : '40%',
           flexShrink: 0,
-          borderRight: isMobile ? 'none' : `1px solid ${RULE}`,
-          overflowY: 'auto', background: '#EDE9E2', padding: isMobile ? 16 : 24,
+          borderRight: isMobile ? 'none' : `1px solid ${A.border}`,
+          overflowY: 'auto',
+          background: A.bg,
+          padding: isMobile ? 16 : 24,
           display: isMobile && mobileTab !== 'edit' ? 'none' : 'flex',
-          flexDirection: 'column', gap: 24,
+          flexDirection: 'column',
+          gap: 24,
         }}>
           <section>
             <div style={sectionHeadStyle}>Cover</div>
@@ -672,7 +681,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                       <img src={heroImageSrc} alt='hero' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ) : (
-                    <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bg, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bgCard, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
                     </div>
                   )}
@@ -699,6 +708,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
           </section>
         </div>
 
+        {/* Preview panel — cream */}
         <div style={{ flex: 1, overflowY: 'auto', background: '#E8E4DC', display: isMobile && mobileTab !== 'preview' ? 'none' : 'block' }}>
           <div style={{ padding: '12px 20px', borderBottom: `1px solid ${RULE}`, background: '#DDD9D1' }}>
             <span style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live Preview</span>
@@ -718,7 +728,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
           onSelected={async url => {
             setHeroImageSrc(url)
             setPickerOpen(false)
-            // Auto-save hero immediately — same pattern as room images
             if (trip && house) {
               try {
                 const savedBrief = await upsertTripBrief(trip.id, house.id, {
@@ -729,7 +738,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                   logo_variant:   logoVariant   || null,
                 })
                 setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
-              } catch { /* silent — user can still hit Save */ }
+              } catch { /* silent */ }
             }
           }}
         />
