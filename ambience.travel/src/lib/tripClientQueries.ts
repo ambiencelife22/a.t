@@ -1,26 +1,19 @@
 // tripClientQueries.ts — Data layer for client-facing trip pages.
 //
 // What it owns:
-//   - fetchTripBriefDataByUrlId: resolves url_id → engagement.trip_id →
-//     house_id → full ConfirmationBriefData. Single entry point for both
-//     TripConfirmationRoute and TripProgrammeRoute.
+//   - fetchTripClientData: calls the get-trip-confirmation Edge Function,
+//     which resolves url_id → full TripClientData server-side via service role.
+//     No direct Supabase table reads — RLS is bypassed server-side only.
 //
-// What it does not own:
-//   - PDF export (confirmationBriefPdf.ts, dailyProgrammePdf.ts)
-//   - Route rendering (TripConfirmationRoute.tsx, TripProgrammeRoute.tsx)
-//   - Admin dossier queries (adminTripQueries.ts)
+// Security model:
+//   - Public endpoint — url_id is the access token
+//   - All DB reads happen server-side via service role in the Edge Function
+//   - No sensitive financial or commission data is returned
 //
-// Join path:
-//   travel_immerse_engagements.url_id
-//     → travel_immerse_engagements.trip_id
-//     → travel_bookings.house_id (first non-null)
-//     → fetchTripDossierForHouse(house_id)
-//     → fetchTripAuxBookings(trip_id)
-//
-// Last updated: S48 — initial ship.
+// Last updated: S48 — added apikey + Authorization headers required by
+//   Supabase Edge Function gateway even for public endpoints.
+// Prior: S48 — initial ship.
 
-import { supabase } from './supabase'
-import { fetchTripDossierForHouse, fetchTripAuxBookings } from './adminTripQueries'
 import type { DossierTrip, HouseProfile, TripAuxBooking, TripBrief } from './adminTripQueries'
 
 export type TripClientData = {
@@ -32,48 +25,36 @@ export type TripClientData = {
   urlId:           string
 }
 
+const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/get-trip-confirmation`
+
 export async function fetchTripClientData(urlId: string): Promise<TripClientData | null> {
-  // Step 1: resolve url_id → trip_id
-  const { data: engData, error: engErr } = await supabase
-    .from('travel_immerse_engagements')
-    .select('trip_id')
-    .eq('url_id', urlId)
-    .not('trip_id', 'is', null)
-    .limit(1)
-    .single()
+  try {
+    console.log('FUNCTION_URL:', FUNCTION_URL)        // ← add this
+    console.log('ANON_KEY:', SUPABASE_ANON_KEY?.slice(0, 20))  // ← and this
+    const res = await fetch(FUNCTION_URL, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ url_id: urlId }),
+    })
 
-  if (engErr || !engData?.trip_id) return null
-  const tripId = engData.trip_id as string
+    if (!res.ok) {
+      console.error('get-trip-confirmation failed:', res.status, await res.text())
+      return null
+    }
 
-  // Step 2: resolve trip_id → house_id
-  const { data: bookData, error: bookErr } = await supabase
-    .from('travel_bookings')
-    .select('house_id')
-    .eq('trip_id', tripId)
-    .not('house_id', 'is', null)
-    .limit(1)
-    .single()
+    const payload = await res.json()
+    if (payload.error || !payload.trip) return null
 
-  if (bookErr || !bookData?.house_id) return null
-  const houseId = bookData.house_id as string
-
-  // Step 3: fetch dossier + aux in parallel
-  const [dossier, auxBookings] = await Promise.all([
-    fetchTripDossierForHouse(houseId),
-    fetchTripAuxBookings(tripId),
-  ])
-
-  const trip = dossier.trips.find(t => t.id === tripId)
-  if (!trip) return null
-
-  const destinationName = trip.destinations[0]?.name ?? trip.trip_code
-
-  return {
-    trip,
-    brief:           trip.brief,
-    house:           dossier.house,
-    destinationName,
-    auxBookings,
-    urlId,
+    return payload as TripClientData
+  } catch (err) {
+    console.error('fetchTripClientData error:', err)
+    return null
   }
 }

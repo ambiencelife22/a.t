@@ -6,17 +6,54 @@
 //   - Data fetch: resolves urlId → TripClientData + TripDayEntries.
 //   - PDF download: calls exportDailyProgrammePdf.
 //
-// Current state: S48 — data fetch + top nav + loading/error states.
-//   Day content rendering ships next session once confirmation page is confirmed.
-//
-// Last updated: S48 — initial ship.
+// Last updated: S48 — load rewritten to call get-trip-programme Edge Function
+//   instead of direct fetchTripDays / fetchTripDayEntries queries, which were
+//   blocked by RLS on unauthenticated public pages.
+// Prior: S48 — initial ship.
 
 import { useEffect, useState } from 'react'
-import { fetchTripClientData, type TripClientData } from '../../lib/tripClientQueries'
-import { fetchTripDays, fetchTripDayEntries } from '../../lib/adminTripQueries'
+import type { TripClientData } from '../../lib/tripClientQueries'
 import type { TripDay, TripDayEntry } from '../../lib/adminTripQueries'
 import { useProgrammeDownload } from '../../lib/useProgrammeDownload'
 import { isImmerseHost } from '../../lib/immersePath'
+
+const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-trip-programme`
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+async function fetchTripProgrammeData(urlId: string): Promise<{
+  clientData: TripClientData
+  days:       TripDay[]
+  entries:    TripDayEntry[]
+} | null> {
+  try {
+    const res = await fetch(PROGRAMME_FN, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body:    JSON.stringify({ url_id: urlId }),
+    })
+    if (!res.ok) return null
+    const payload = await res.json()
+    if (payload.error || !payload.trip) return null
+    return {
+      clientData: {
+        trip:            payload.trip,
+        brief:           payload.brief,
+        house:           payload.house,
+        destinationName: payload.destinationName,
+        auxBookings:     payload.auxBookings,
+        urlId,
+      },
+      days:    payload.days    ?? [],
+      entries: payload.entries ?? [],
+    }
+  } catch {
+    return null
+  }
+}
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -276,19 +313,12 @@ export default function TripProgrammePage({ urlId }: { urlId: string }) {
 
   useEffect(() => {
     async function load() {
-      const data = await fetchTripClientData(urlId).catch(() => null)
-      if (!data) { setNotFound(true); return }
-      setClientData(data)
-
-      const [tripDays, tripEntries] = await Promise.all([
-        fetchTripDays(data.trip.id).catch(() => []),
-        fetchTripDayEntries(data.trip.id).catch(() => []),
-      ])
-
-      const visibleDays = tripDays.filter(d => d.show).sort((a, b) => a.sort_order - b.sort_order)
-      setDays(visibleDays)
-      setEntries(tripEntries)
-      if (visibleDays.length > 0) setActiveDate(visibleDays[0].entry_date)
+      const result = await fetchTripProgrammeData(urlId).catch(() => null)
+      if (!result) { setNotFound(true); return }
+      setClientData(result.clientData)
+      setDays(result.days)
+      setEntries(result.entries)
+      if (result.days.length > 0) setActiveDate(result.days[0].entry_date)
     }
     load()
   }, [urlId])

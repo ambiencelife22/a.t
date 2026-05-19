@@ -14,18 +14,20 @@
 //   programme     → second segment === 'programme' — renders TripProgrammePage
 //   invalid       → no valid url_id in first segment — redirects
 //
-// Reserved second segments ('confirmation', 'programme') are intercepted before
-// the destinationSlug branch. All future client-facing trip surfaces follow the
-// same pattern — add to RESERVED_SEGMENTS and add a route kind.
+// Architecture note:
+//   Engagement data fetching (getImmerseEngagement) is isolated in
+//   EngagementRoute — a separate component mounted only for overview +
+//   destination routes. This prevents hooks-after-conditional-returns which
+//   caused getImmerseEngagement to fire on confirmation/programme routes,
+//   making unauthorised direct Supabase queries.
 //
-// Last updated: S48 — confirmation and programme route kinds added.
-//   resolveImmerseRoute extended with RESERVED_SEGMENTS intercept. Lazy imports
-//   for TripConfirmationPage and TripProgrammePage added.
-// Prior: S32F — Inline IMMERSE_HOST + isImmerseHost() removed. url_id regex
-//   match goes through isTripUrlId from lib/immersePath. Inline overview-URL
-//   builder swapped for getOverviewUrl().
-// Prior: S32D — Back-button fix. `kind` derived synchronously from pathname.
-// Prior: S32 — Subdomain-aware path parsing.
+// Last updated: S48 — engagement state + fetch extracted into EngagementRoute
+//   component to fix hooks-after-conditional-returns bug. Confirmation and
+//   programme routes now render without triggering engagement queries.
+// Prior: S48 — confirmation and programme route kinds added.
+// Prior: S32F — immersePath helpers, overview URL builder.
+// Prior: S32D — back-button fix, synchronous route derivation.
+// Prior: S32 — subdomain-aware path parsing.
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { getImmerseEngagement }              from '../../lib/immerseEngagementQueries'
@@ -37,16 +39,14 @@ import { TravelLoadingScreen, NotFound }     from './ImmerseStateScreens'
 import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../lib/immersePath'
 import RouteLoading from '../RouteLoading'
 
-const TripConfirmationPage = lazy(() => import('./TripConfirmationPage.tsx'))
+const TripConfirmationPage = lazy(() => import('./TripConfirmationPage'))
 const TripProgrammePage    = lazy(() => import('./TripProgrammePage'))
 
 // ── Reserved second segments ──────────────────────────────────────────────────
-// These are intercepted before destinationSlug resolution. Extend here to add
-// future client-facing trip surfaces.
 
 const RESERVED_SEGMENTS = new Set(['confirmation', 'programme'])
 
-// ── URL resolution ───────────────────────────────────────────────────────────
+// ── URL resolution ────────────────────────────────────────────────────────────
 
 type ResolvedRoute =
   | { kind: 'overview';     urlId: string }
@@ -67,17 +67,15 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
   if (!seg1) return { kind: 'invalid' }
   if (!isTripUrlId(seg1)) return { kind: 'invalid' }
 
-  // Reserved segments — client-facing trip surfaces
   if (seg2 === 'confirmation') return { kind: 'confirmation', urlId: seg1 }
   if (seg2 === 'programme')    return { kind: 'programme',    urlId: seg1 }
 
-  // Destination subpage
   if (seg2 && !RESERVED_SEGMENTS.has(seg2)) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
 
   return { kind: 'overview', urlId: seg1 }
 }
 
-// ── Nav items builder ────────────────────────────────────────────────────────
+// ── Nav items builder ─────────────────────────────────────────────────────────
 
 export function buildImmerseNavItems(
   engagement: ImmerseEngagementData,
@@ -107,41 +105,14 @@ export function buildImmerseNavItems(
   return items
 }
 
-// ── Main component ──────────────────────────────────────────────────────────
+// ── EngagementRoute ───────────────────────────────────────────────────────────
+// Handles overview + destination routes only. Isolated into its own component
+// so that engagement data fetching hooks never run on confirmation/programme
+// routes — fixing the hooks-after-conditional-returns bug.
 
-export default function ImmerseEngagementRoute() {
-  const [pathname, setPathname] = useState(window.location.pathname)
-
-  useEffect(() => {
-    function sync() { setPathname(window.location.pathname) }
-    window.addEventListener('popstate', sync)
-    window.addEventListener('pageshow', sync)
-    return () => {
-      window.removeEventListener('popstate', sync)
-      window.removeEventListener('pageshow', sync)
-    }
-  }, [])
-
-  const route = useMemo(() => resolveImmerseRoute(pathname), [pathname])
-
-  // Confirmation and programme pages handle their own data fetching
-  if (route.kind === 'confirmation') {
-    return (
-      <Suspense fallback={<RouteLoading />}>
-        <TripConfirmationPage urlId={route.urlId} />
-      </Suspense>
-    )
-  }
-
-  if (route.kind === 'programme') {
-    return (
-      <Suspense fallback={<RouteLoading />}>
-        <TripProgrammePage urlId={route.urlId} />
-      </Suspense>
-    )
-  }
-
-  // Engagement-based routes (overview + destination) — need engagement data
+function EngagementRoute({ route }: {
+  route: Extract<ResolvedRoute, { kind: 'overview' | 'destination' | 'invalid' }>
+}) {
   const [engagement, setEngagement] = useState<ImmerseEngagementData | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   const [loading,    setLoading]    = useState(true)
@@ -218,4 +189,43 @@ export default function ImmerseEngagementRoute() {
       <NotFound message='Something went wrong. Please try again.' />
     </ImmerseLayout>
   )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+// Resolves the route and dispatches to the correct surface. Confirmation and
+// programme render directly — no engagement fetch. Overview and destination
+// delegate to EngagementRoute which owns the engagement fetch lifecycle.
+
+export default function ImmerseEngagementRoute() {
+  const [pathname, setPathname] = useState(window.location.pathname)
+
+  useEffect(() => {
+    function sync() { setPathname(window.location.pathname) }
+    window.addEventListener('popstate', sync)
+    window.addEventListener('pageshow', sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener('pageshow', sync)
+    }
+  }, [])
+
+  const route = useMemo(() => resolveImmerseRoute(pathname), [pathname])
+
+  if (route.kind === 'confirmation') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <TripConfirmationPage urlId={route.urlId} />
+      </Suspense>
+    )
+  }
+
+  if (route.kind === 'programme') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <TripProgrammePage urlId={route.urlId} />
+      </Suspense>
+    )
+  }
+
+  return <EngagementRoute route={route as any} />
 }

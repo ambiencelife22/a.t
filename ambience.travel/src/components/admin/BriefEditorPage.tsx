@@ -2,10 +2,13 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S48 — aux sections grouped by booking_type via auxBookingTypes
- *   registry. BriefFlightEditor booking_type selector uses AUX_BOOKING_TYPES.
- *   Preview renders one section per type with label from getAuxTypeMeta.
- *   "FLIGHTS" hardcode replaced with dynamic grouping.
+ * Last updated: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
+ *   auxBookings fetched in parallel with dossier. auxDrafts state added.
+ *   mergedAux built in handleDownload and passed to handleDownloadBrief.
+ *   auxBookings + auxDrafts added to PreviewFields + schedulePreview.
+ *   Design, BriefPreview, BriefAuxEditor — all untouched.
+ * Prior: S48 — aux sections grouped by booking_type via auxBookingTypes
+ *   registry. BriefAuxEditor. Transport & Transfers section label.
  * Prior: S48 — flights fully editable, booked_by, AuxDraft type, dark editor.
  * Prior: S47 — booked_by_label added to RoomDraft.
  * Prior: S46 — initial ship.
