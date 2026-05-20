@@ -9,7 +9,7 @@
 //   pages scope their room overlays correctly.
 
 import { supabase } from './supabase'
-import { rewriteImageUrl } from './utilsImageUrl'
+import { rewriteImageUrl } from '../utils/utilsImageUrl'
 import { getImmerseDestinationHotels }   from './queriesImmerseDestHotels'
 import { getImmerseDestinationCards }    from './queriesImmerseDestCards'
 import { getImmerseDestinationPricing }  from './queriesImmerseDestPricing'

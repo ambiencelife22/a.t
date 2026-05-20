@@ -23,7 +23,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ID, IMMERSE_HERO, FONTS } from '../../tokens/tokensLanding'
 import { useImmerseMobile } from './ImmerseComponents'
-import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/utilsAnimations'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../utils/utilsAnimations'
 
 // ─── Layout config ───────────────────────────────────────────────────────────
 // All hero shape/motion constants live here. Visual chrome (colors, gradients,

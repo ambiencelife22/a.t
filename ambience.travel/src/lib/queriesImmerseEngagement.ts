@@ -22,7 +22,7 @@
 // Prior: S30 — Welcome letter hydration.
 
 import { supabaseAnon } from './supabase'
-import { rewriteImageUrl } from './utilsImageUrl'
+import { rewriteImageUrl } from '../utils/utilsImageUrl'
 import { mapEngagementStatus, mapItineraryStatus } from './queriesStatus'
 import type {
   ImmerseEngagementData,

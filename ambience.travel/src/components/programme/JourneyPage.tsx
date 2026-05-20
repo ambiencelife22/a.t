@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react'
 import type { Booking, Property } from '../../types/typesProgramme'
 import type { JourneyDay, JourneyEvent, EventStatus } from '../../types/typesJourney'
 import PropertyIntroSection from './PropertyIntroSection'
-import { formatDateOnly, formatDateWithWeekday } from '../../lib/utilsDates'
+import { formatDateOnly, formatDateWithWeekday } from '../../utils/utilsDates'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 

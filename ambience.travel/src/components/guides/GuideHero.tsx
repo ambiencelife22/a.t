@@ -31,7 +31,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ID, IMMERSE_HERO, FONTS } from '../../tokens/tokensLanding'
 import { useImmerseMobile } from '../immerse/ImmerseComponents'
-import { useVisible, fadeUp } from '../../lib/utilsAnimations'
+import { useVisible, fadeUp } from '../../utils/utilsAnimations'
 
 const HERO_LAYOUT = {
   minHeightMobile:    520,

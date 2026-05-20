@@ -30,7 +30,7 @@ import {
   btnPrimary, btnGhost, btnDanger,
 } from '../../styles/stylesAdmin'
 import { Field } from './adminUi'
-import { buildGuideUrl } from '../../lib/utilsAdminPath'
+import { buildGuideUrl } from '../../utils/utilsAdminPath'
 import {
   fetchDiningGuides,
   fetchDestinationsWithDining,

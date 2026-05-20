@@ -9,7 +9,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
-import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/utilsAnimations'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../utils/utilsAnimations'
 import { C } from '../../types/typesLanding'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'

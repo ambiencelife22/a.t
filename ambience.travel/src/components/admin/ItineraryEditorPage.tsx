@@ -24,7 +24,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { A } from '../../tokens/tokensAdmin'
-import { navigateAdmin } from '../../lib/utilsAdminPath'
+import { navigateAdmin } from '../../utils/utilsAdminPath'
 import {
   fetchTripDossierForHouse,
   fetchTripDays,

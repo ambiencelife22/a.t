@@ -23,7 +23,7 @@ import {
   buildAdminHash,
   type AdminTab,
   type ProgrammeTabId,
-} from '../../lib/utilsAdminPath'
+} from '../../utils/utilsAdminPath'
 import { A } from '../../tokens/tokensAdmin'
 
 // ─── Types ───────────────────────────────────────────────────────────────────

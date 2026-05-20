@@ -11,8 +11,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { getSession } from '../lib/utilsAuth'
-import { parseAdminHash, type AdminTab } from '../lib/utilsAdminPath'
+import { getSession } from '../utils/utilsAuth'
+import { parseAdminHash, type AdminTab } from '../utils/utilsAdminPath'
 import { A } from '../tokens/tokensAdmin'
 
 import AdminSidebar           from './admin/AdminSidebar'

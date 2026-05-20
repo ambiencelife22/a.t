@@ -45,7 +45,7 @@ import {
 import {
   buildEngagementUrl,
   navigateAdmin,
-} from '../../lib/utilsAdminPath'
+} from '../../utils/utilsAdminPath'
 import { A } from '../../tokens/tokensAdmin'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import DestinationRowsEditor from './DestinationRowsEditor'

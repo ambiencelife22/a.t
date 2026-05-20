@@ -26,7 +26,7 @@ import { getImmerseDestinationPricing } from '../../lib/queriesImmerseDestPricin
 import { useToast } from '../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
-import { getOverviewUrl } from '../../lib/utilsImmersePath'
+import { getOverviewUrl } from '../../utils/utilsImmersePath'
 import type {
   ImmerseDestinationData,
   ImmerseDestinationHotelsShape,

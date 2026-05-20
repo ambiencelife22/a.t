@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react'
 import type { TripClientData } from '../../lib/queriesImmerseTrip'
 import type { TripDay, TripDayEntry, TripAuxBooking } from '../../lib/queriesAdminTrip'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
-import { isImmerseHost } from '../../lib/utilsImmersePath'
+import { isImmerseHost } from '../../utils/utilsImmersePath'
 
 const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-trip-programme`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string

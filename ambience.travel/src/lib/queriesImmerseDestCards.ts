@@ -18,7 +18,7 @@
 //   param; fetchContentCards filters accordingly.
 
 import { supabase } from './supabase'
-import { rewriteImageUrl } from './utilsImageUrl'
+import { rewriteImageUrl } from '../utils/utilsImageUrl'
 import type { ImmerseContentCard } from '../types/typesImmerse'
 
 // ─── Public types ─────────────────────────────────────────────────────────────

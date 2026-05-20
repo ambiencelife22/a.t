@@ -34,8 +34,8 @@ import {
   btnPrimary, btnGhost, btnDanger,
 } from '../../styles/stylesAdmin'
 import { Field } from './adminUi'
-import { buildAdminHash } from '../../lib/utilsAdminPath'
-import { resolveStoragePath } from '../../lib/utilsStoragePath'
+import { buildAdminHash } from '../../utils/utilsAdminPath'
+import { resolveStoragePath } from '../../utils/utilsStoragePath'
 import {
   fetchAllDiningVenues,
   updateDiningVenue,

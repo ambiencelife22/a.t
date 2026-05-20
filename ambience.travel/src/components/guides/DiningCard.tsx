@@ -18,7 +18,7 @@
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
-import { resolveMapsUrl } from '../../lib/utilsMapsUrl'
+import { resolveMapsUrl } from '../../utils/utilsMapsUrl'
 import type { DiningVenue, VenueStatus } from '../../lib/queriesGuidesDining'
 import { RecognitionMark } from './RecognitionKey'
 

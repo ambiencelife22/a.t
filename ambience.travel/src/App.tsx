@@ -78,11 +78,11 @@
 
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'
 import RouteLoading from './components/RouteLoading'
-import { getSession } from './lib/utilsAuth'
+import { getSession } from './utils/utilsAuth'
 import { getProfile } from './lib/queriesProgramme'
 import { _setPalette, darkPalette, lightPalette } from './tokens/tokensProgramme'
 import { ThemeContext } from './context/contextTheme'
-import { isImmerseHost, isTripUrlId } from './lib/utilsImmersePath'
+import { isImmerseHost, isTripUrlId } from './utils/utilsImmersePath'
 import type { Session } from '@supabase/supabase-js'
 import type { Page } from './components/Layout'
 
@@ -404,7 +404,7 @@ function AuthenticatedApp() {
   }, [])
 
   async function handleSignOut() {
-    const { signOut } = await import('./lib/utilsAuth')
+    const { signOut } = await import('./utils/utilsAuth')
     await signOut()
     window.location.reload()
   }

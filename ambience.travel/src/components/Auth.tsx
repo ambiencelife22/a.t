@@ -19,7 +19,7 @@
  */
 
 import { useState } from 'react'
-import { signIn, signUp } from '../lib/utilsAuth'
+import { signIn, signUp } from '../utils/utilsAuth'
 import { C, DARK } from '../types/typesLanding'
 import AmbienceLogo from './AmbienceLogo'
 

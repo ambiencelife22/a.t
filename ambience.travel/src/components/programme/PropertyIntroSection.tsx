@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
 import { DARK } from '../../types/typesLanding'
 import { WIDGET } from '../../tokens/tokensLanding'
-import { formatDateOnly } from '../../lib/utilsDates'
+import { formatDateOnly } from '../../utils/utilsDates'
 
 // ── Float positions — 8 anchors, alternating left/right ──────────────────────
 // Identical to IntroSection.tsx ALL_POSITIONS

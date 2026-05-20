@@ -13,7 +13,7 @@
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
-import { resolveMapsLink } from '../../lib/utilsMapsUrl'
+import { resolveMapsLink } from '../../utils/utilsMapsUrl'
 import type { HotelVenue } from '../../lib/queriesGuidesHotels'
 
 interface HotelCardProps {

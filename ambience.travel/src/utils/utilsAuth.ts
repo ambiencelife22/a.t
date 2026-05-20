@@ -12,7 +12,7 @@
  *   nickname   — optional, stored in travel_clients.nickname + profiles.display_name fallback
  */
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 export async function signUp(
   email:     string,

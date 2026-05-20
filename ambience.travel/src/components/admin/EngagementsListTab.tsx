@@ -66,7 +66,7 @@ import {
   buildEngagementUrl,
   navigateAdmin,
   generateUrlId,
-} from '../../lib/utilsAdminPath'
+} from '../../utils/utilsAdminPath'
 import { A } from '../../tokens/tokensAdmin'
 import {
   StatusPill,

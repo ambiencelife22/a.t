@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ID, IMMERSE } from '../../tokens/tokensLanding'
-import { useVisible, fadeUp } from '../../lib/utilsAnimations'
+import { useVisible, fadeUp } from '../../utils/utilsAnimations'
 export { ID } from '../../tokens/tokensLanding'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────

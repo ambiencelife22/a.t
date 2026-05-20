@@ -28,12 +28,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { getSession } from '../../lib/utilsAuth'
+import { getSession } from '../../utils/utilsAuth'
 // import { DARK } from '../../types/typesLanding'
 // import { WIDGET } from '../../lib/landingColors'
 
 import type { ListingCategory } from '../../types/typesProgramme'
-import { formatDateOnly } from '../../lib/utilsDates'
+import { formatDateOnly } from '../../utils/utilsDates'
 import ClientProfilePage from './ClientProfilePage'
 import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'
 import GuestLinker from './GuestLinker'
