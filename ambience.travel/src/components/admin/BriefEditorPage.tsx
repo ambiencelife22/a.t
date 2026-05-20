@@ -23,7 +23,7 @@ import {
   upsertTripBrief,
   updateBookingRoom,
   updateTripAuxBooking,
-} from '../../lib/queriesAdminTrip'
+} from '../../queries/queriesAdminTrip'
 import type {
   DossierTrip,
   HouseProfile,
@@ -31,7 +31,7 @@ import type {
   TripBriefPatch,
   TripBooking,
   TripAuxBooking,
-} from '../../lib/queriesAdminTrip'
+} from '../../queries/queriesAdminTrip'
 import { getAuxTypeMeta, AUX_BOOKING_TYPES } from '../../types/typesAuxBooking'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'

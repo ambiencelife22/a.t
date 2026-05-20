@@ -11,7 +11,7 @@
 // sort_order is 0-indexed in this table (matches DB sample).
 // Last updated: S33D
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

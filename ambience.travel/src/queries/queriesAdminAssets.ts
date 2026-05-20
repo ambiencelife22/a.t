@@ -16,7 +16,7 @@
 //
 // Last updated: S33B
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 const BUCKET = 'ambience-assets'
 

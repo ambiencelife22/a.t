@@ -11,7 +11,7 @@
 // NULL; destination_id nullable. subpage_status NOT NULL default 'live'.
 // Last updated: S33C
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

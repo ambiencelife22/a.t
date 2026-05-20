@@ -18,7 +18,7 @@ import {
   type GeoState,
   type GeoDestination,
   type GeoHotel,
-} from '../../lib/queriesAdminGeo'
+} from '../../queries/queriesAdminGeo'
 import {
   resolveStoragePath,
   type AssetCategory,

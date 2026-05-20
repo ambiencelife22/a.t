@@ -19,9 +19,9 @@ import { AdminEmptyState } from './_adminPrimitives'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
-} from '../../lib/queriesAdminTrip'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings } from '../../lib/queriesAdminTrip'
-import type { BookingRoom } from '../../lib/queriesAdminTrip'
+} from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings } from '../../queries/queriesAdminTrip'
+import type { BookingRoom } from '../../queries/queriesAdminTrip'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'

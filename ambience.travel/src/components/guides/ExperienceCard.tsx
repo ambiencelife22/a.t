@@ -13,7 +13,7 @@
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { resolveMapsUrl } from '../../utils/utilsMapsUrl'
-import type { ExperienceVenue } from '../../lib/queriesGuidesExperiences'
+import type { ExperienceVenue } from '../../queries/queriesGuidesExperiences'
 
 interface ExperienceCardProps {
   venue:           ExperienceVenue

@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { C } from '../tokens/tokensProgramme'
-import { getGuestProgrammes, type GuestProgramme } from '../lib/queriesProgramme'
+import { getGuestProgrammes, type GuestProgramme } from '../queries/queriesProgramme'
 
 function programmeUrl(p: GuestProgramme): string {
   const hostname = window.location.hostname

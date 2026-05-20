@@ -22,7 +22,7 @@
 // Prior: S39 — Dropped legacy michelin boolean. Added michelin_award,
 //   michelin_stars, michelin_green_star, worlds_50_best.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

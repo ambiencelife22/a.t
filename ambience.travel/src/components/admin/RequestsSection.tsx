@@ -23,7 +23,7 @@ import {
   createRequest, updateRequest, deleteRequest,
   REQUEST_STATUSES, REQUEST_CHANNELS,
   type TravelRequest, type RequestStatus, type RequestChannel,
-} from '../../lib/queriesAdminRequests'
+} from '../../queries/queriesAdminRequests'
 import { AddFormShell, EntryCard, FormActions, StatusFilterBar } from './houseUi'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────

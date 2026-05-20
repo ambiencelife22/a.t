@@ -23,7 +23,7 @@
 // is fine. Order by sort_order so dropdowns render in the operator-facing
 // logical sequence without re-sorting client-side.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 import type { EngagementStatus, ItineraryStatus } from '../types/typesImmerse'
 
 // ─── DB row types ────────────────────────────────────────────────────────────

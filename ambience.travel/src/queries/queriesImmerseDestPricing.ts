@@ -17,7 +17,7 @@
 // Highlighted / Alt 1 / Alt 2 / Dining-Experiences, or Stay 1 / Stay 2 split.
 // is_total flag retained but all rows = false today.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 import type { ImmersePricingRow } from '../types/typesImmerse'
 
 export async function getImmerseDestinationPricing(

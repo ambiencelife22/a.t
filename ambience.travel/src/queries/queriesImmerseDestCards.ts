@@ -17,7 +17,7 @@
 //   cards (e.g. newyork2). getImmerseDestinationCards accepts destinationUrlSlug
 //   param; fetchContentCards filters accordingly.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
 import type { ImmerseContentCard } from '../types/typesImmerse'
 

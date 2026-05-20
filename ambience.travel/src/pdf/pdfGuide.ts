@@ -27,8 +27,8 @@
 // Prior: S39 — Added accuracyDate.
 // Prior: S37 — Welcome + Contents merged. Source Sans 3 Light embedded.
 
-import type { DiningVenue, GuideDestination } from '../lib/queriesGuidesDining'
-import type { ExperienceVenue, ExperiencesGuideDestination } from '../lib/queriesGuidesExperiences'
+import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
+import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,

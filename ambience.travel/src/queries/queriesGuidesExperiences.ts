@@ -13,7 +13,7 @@
 // Prior: S40B — experience_category added to ExperienceVenue type + SELECT.
 // Prior: S41 — initial build. Mirrors dining guide query architecture.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 export interface ExperienceVenue {
   id:                  string

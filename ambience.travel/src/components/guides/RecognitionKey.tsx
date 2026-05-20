@@ -124,7 +124,7 @@ export function RecognitionKeyStrip({ presentKinds }: RecognitionKeyStripProps) 
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
-import type { DiningVenue } from '../../lib/queriesGuidesDining'
+import type { DiningVenue } from '../../queries/queriesGuidesDining'
 
 export function deriveRecognitionKindsFromVenues(venues: DiningVenue[]): Set<RecognitionKind> {
   const set = new Set<RecognitionKind>()

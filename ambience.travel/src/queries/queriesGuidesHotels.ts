@@ -9,7 +9,7 @@
 //
 // Last updated: S37 — initial. Pattern lifted from diningGuideQueries.ts.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 export interface HotelVenue {
   id: string

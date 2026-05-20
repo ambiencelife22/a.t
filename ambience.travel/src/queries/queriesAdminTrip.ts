@@ -16,7 +16,7 @@
 // Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
 // Prior: S44 — initial ship.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

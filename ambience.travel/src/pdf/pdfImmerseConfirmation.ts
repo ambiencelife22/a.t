@@ -27,7 +27,7 @@ import {
   serif, sans, drawRule,
   type RGB, type Img,
 } from './pdfUtils'
-import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../lib/queriesAdminTrip'
+import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 

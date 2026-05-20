@@ -41,7 +41,7 @@ import {
   type TripOption,
   type ChildCounts,
   type WelcomeLetterCanonical,
-} from '../../lib/queriesAdminEngagements'
+} from '../../queries/queriesAdminEngagements'
 import {
   buildEngagementUrl,
   navigateAdmin,

@@ -7,7 +7,7 @@
  * Prior: S334
  */
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

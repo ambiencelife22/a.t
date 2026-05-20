@@ -23,8 +23,8 @@
 
 import { useEffect, useState } from 'react'
 import { getAuxTypeMeta } from '../../types/typesAuxBooking'
-import { fetchTripClientData, type TripClientData } from '../../lib/queriesImmerseTrip'
-import type { TripBooking, TripAuxBooking } from '../../lib/queriesAdminTrip'
+import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
+import type { TripBooking, TripAuxBooking } from '../../queries/queriesAdminTrip'
 import type { ConfirmationBriefData } from '../../pdf/pdfImmerseConfirmation'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 

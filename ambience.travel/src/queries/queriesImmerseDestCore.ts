@@ -8,11 +8,11 @@
 //   passes core.destinationUrlSlug to getImmerseDestinationHotels so variant
 //   pages scope their room overlays correctly.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
-import { getImmerseDestinationHotels }   from './queriesImmerseDestHotels'
-import { getImmerseDestinationCards }    from './queriesImmerseDestCards'
-import { getImmerseDestinationPricing }  from './queriesImmerseDestPricing'
+import { getImmerseDestinationHotels }   from '../queries/queriesImmerseDestHotels'
+import { getImmerseDestinationCards }    from '../queries/queriesImmerseDestCards'
+import { getImmerseDestinationPricing }  from '../queries/queriesImmerseDestPricing'
 import type { ImmerseDestinationData }   from '../types/typesImmerse'
 
 // ─── Public types ─────────────────────────────────────────────────────────────

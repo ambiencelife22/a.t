@@ -10,7 +10,7 @@
 // Prior: S33 — Added iteration_label (s33_01). List query joins
 //   travel_trips + global_people for trip-group rendering.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

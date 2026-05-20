@@ -20,7 +20,7 @@
 // Last updated: S40D — added destinations, contacts, a_ppd_* tables,
 //   Edge Function caller for PPD reads.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

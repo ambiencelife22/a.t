@@ -14,7 +14,7 @@
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { resolveMapsLink } from '../../utils/utilsMapsUrl'
-import type { HotelVenue } from '../../lib/queriesGuidesHotels'
+import type { HotelVenue } from '../../queries/queriesGuidesHotels'
 
 interface HotelCardProps {
   hotel: HotelVenue

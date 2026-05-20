@@ -12,7 +12,7 @@
 //
 // Column shape verified S42 (16 May 2026).
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

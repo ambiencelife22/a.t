@@ -18,7 +18,7 @@
  *   (cross-product table, not migrated).
  */
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

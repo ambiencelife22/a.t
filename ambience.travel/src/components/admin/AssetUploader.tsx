@@ -22,7 +22,7 @@ import {
   listFolderContents,
   detectCollision,
   type UploadResult,
-} from '../../lib/queriesAdminAssets'
+} from '../../queries/queriesAdminAssets'
 import GeoCascade, { type GeoCascadeValue } from './GeoCascade'
 import { A } from '../../tokens/tokensAdmin'
 

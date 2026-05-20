@@ -61,7 +61,7 @@ import {
   type StatusLookup,
   type TripGroup,
   type PersonOption,
-} from '../../lib/queriesAdminEngagements'
+} from '../../queries/queriesAdminEngagements'
 import {
   buildEngagementUrl,
   navigateAdmin,

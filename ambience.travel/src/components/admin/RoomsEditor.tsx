@@ -42,7 +42,7 @@ import {
   type CanonicalRoom,
   type RateCadence,
   type OverlayRoomPatch,
-} from '../../lib/queriesAdminRooms'
+} from '../../queries/queriesAdminRooms'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

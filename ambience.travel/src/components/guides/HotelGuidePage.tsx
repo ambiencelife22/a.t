@@ -12,7 +12,7 @@ import {
   getHotelsByDestination,
   type HotelVenue,
   type HotelGuideDestination,
-} from '../../lib/queriesGuidesHotels'
+} from '../../queries/queriesGuidesHotels'
 import { HotelCard } from './HotelCard'
 import { GuideHero } from './GuideHero'
 import { HotelGuideFilters, type HotelFilterState } from './HotelGuideFilters'

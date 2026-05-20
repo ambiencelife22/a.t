@@ -49,7 +49,7 @@ import {
   type DiningGuidePatch,
   type AdminGrant,
   type GlobalPerson,
-} from '../../lib/queriesAdminGuides'
+} from '../../queries/queriesAdminGuides'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

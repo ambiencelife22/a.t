@@ -21,9 +21,9 @@
 // Prior: S30D — Storage URL rewriting at the read layer.
 // Prior: S30 — Welcome letter hydration.
 
-import { supabaseAnon } from './supabase'
+import { supabaseAnon } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
-import { mapEngagementStatus, mapItineraryStatus } from './queriesStatus'
+import { mapEngagementStatus, mapItineraryStatus } from '../queries/queriesStatus'
 import type {
   ImmerseEngagementData,
   ImmerseTripFormat,

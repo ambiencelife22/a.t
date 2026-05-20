@@ -46,7 +46,7 @@ import {
   type DiningVenuePatch,
   type IngestPayload,
   type IngestResult,
-} from '../../lib/queriesAdminGuides'
+} from '../../queries/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 

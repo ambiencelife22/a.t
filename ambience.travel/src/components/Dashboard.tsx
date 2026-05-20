@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from 'react'
 import { C } from '../tokens/tokensProgramme'
-import { getGuestProgrammes, type GuestProgramme } from '../lib/queriesProgramme'
+import { getGuestProgrammes, type GuestProgramme } from '../queries/queriesProgramme'
 
 interface DashboardProps {
   displayName?: string

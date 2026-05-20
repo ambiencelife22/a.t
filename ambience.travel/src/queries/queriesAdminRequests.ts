@@ -7,7 +7,7 @@
 //
 // Last updated: S44 — initial ship.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

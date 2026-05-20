@@ -8,7 +8,7 @@
 //   Rendered as a downloadable link below the hotel gallery in HotelDetailPanel.
 //   destinationUrlSlug scoping for room overlays also added this session.
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 import { rewriteImageUrl, rewriteImageUrls } from '../utils/utilsImageUrl'
 import type {
   ImmerseDestinationHotelsShape,

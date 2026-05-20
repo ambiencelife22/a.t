@@ -15,8 +15,8 @@
 // Prior: S48 — initial ship.
 
 import { useEffect, useState } from 'react'
-import type { TripClientData } from '../../lib/queriesImmerseTrip'
-import type { TripDay, TripDayEntry, TripAuxBooking } from '../../lib/queriesAdminTrip'
+import type { TripClientData } from '../../queries/queriesImmerseTrip'
+import type { TripDay, TripDayEntry, TripAuxBooking } from '../../queries/queriesAdminTrip'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost } from '../../utils/utilsImmersePath'
 

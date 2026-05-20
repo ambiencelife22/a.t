@@ -10,7 +10,7 @@
 //   to global_destinations as canonical fields (migration s40_01).
 // Prior: S39 — Added accuracy_date. Removed slug (dropped S38).
 
-import { supabase } from './supabase'
+import { supabase } from '../lib/supabase'
 
 export type VenueStatus = 'operational' | 'temporarily_closed' | 'permanently_closed' | 'seasonal_closure'
 
