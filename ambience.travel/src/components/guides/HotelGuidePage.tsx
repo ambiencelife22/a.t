@@ -6,7 +6,7 @@
 // Last updated: S37
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
+import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { useToast } from '../../lib/ToastContext'
 import {
   getHotelsByDestination,

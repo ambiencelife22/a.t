@@ -23,11 +23,11 @@
  */
 
 import { useEffect, useState, useMemo } from 'react'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,
-} from '../../lib/stylesAdmin'
+} from '../../styles/stylesAdmin'
 import { Field } from './adminUi'
 import { AdminModal, AdminSection, AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import { PillToggle } from './adminUi'

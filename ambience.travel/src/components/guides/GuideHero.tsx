@@ -29,7 +29,7 @@
 //   parallax pattern.
 
 import { useEffect, useRef, useState } from 'react'
-import { ID, IMMERSE_HERO, FONTS } from '../../lib/tokensLanding'
+import { ID, IMMERSE_HERO, FONTS } from '../../tokens/tokensLanding'
 import { useImmerseMobile } from '../immerse/ImmerseComponents'
 import { useVisible, fadeUp } from '../../lib/utilsAnimations'
 

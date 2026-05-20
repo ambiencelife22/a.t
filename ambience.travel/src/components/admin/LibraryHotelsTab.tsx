@@ -21,12 +21,12 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import { useToast } from '../../lib/ToastContext'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,
-} from '../../lib/stylesAdmin'
+} from '../../styles/stylesAdmin'
 import { Field } from './adminUi'
 import { buildAdminHash } from '../../lib/utilsAdminPath'
 import { resolveStoragePath } from '../../lib/utilsStoragePath'

@@ -15,8 +15,8 @@
  */
 
 import { useState } from 'react'
-import { A } from '../../lib/tokensAdmin'
-import { labelStyle } from '../../lib/stylesAdmin'
+import { A } from '../../tokens/tokensAdmin'
+import { labelStyle } from '../../styles/stylesAdmin'
 
 // ── Field ─────────────────────────────────────────────────────────────────────
 

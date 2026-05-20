@@ -12,11 +12,11 @@
  */
 
 import { useState, useMemo } from 'react'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import {
   inputStyle, textareaStyle,
   btnPrimary as btnP, btnGhost as btnG, btnDanger as btnD,
-} from '../../lib/stylesAdmin'
+} from '../../styles/stylesAdmin'
 import { Field } from './adminUi'
 import { AdminSection, AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import {

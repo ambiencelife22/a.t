@@ -23,7 +23,7 @@ import {
   resolveStoragePath,
   type AssetCategory,
 } from '../../lib/utilsStoragePath'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 
 // ── Selection emitted by the cascade ──────────────────────────────────────────
 

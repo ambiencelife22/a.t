@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ThemeContext } from './context/contextTheme'
 import { ToastProvider, ToastContainer } from './components/Toast'
-import { _setPalette, darkPalette, lightPalette } from './lib/tokensProgramme'
+import { _setPalette, darkPalette, lightPalette } from './tokens/tokensProgramme'
 import './index.css'
 
 function Root() {

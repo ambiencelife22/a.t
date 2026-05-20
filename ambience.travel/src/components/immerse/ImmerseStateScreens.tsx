@@ -26,7 +26,7 @@
 //   load, eliminating the flash.
 
 import { useState, useEffect } from 'react'
-import { ID } from '../../lib/tokensLanding'
+import { ID } from '../../tokens/tokensLanding'
 
 // ─── Minimal text loader (preserved) ─────────────────────────────────────────
 

@@ -13,12 +13,12 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import {
   inputStyle,
   btnPrimary as btnP,
   btnGhost as btnG,
-} from '../../lib/stylesAdmin'
+} from '../../styles/stylesAdmin'
 import { AdminSection, AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import {
   fetchOpsPortfolio,

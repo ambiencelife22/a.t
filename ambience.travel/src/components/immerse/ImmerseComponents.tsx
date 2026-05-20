@@ -12,9 +12,9 @@
 // Prior: S12 — original primitives shipped.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { ID, IMMERSE } from '../../lib/tokensLanding'
+import { ID, IMMERSE } from '../../tokens/tokensLanding'
 import { useVisible, fadeUp } from '../../lib/utilsAnimations'
-export { ID } from '../../lib/tokensLanding'
+export { ID } from '../../tokens/tokensLanding'
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 

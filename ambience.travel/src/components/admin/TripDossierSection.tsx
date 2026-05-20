@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../lib/utilsAdminPath'
 import { AdminEmptyState } from './_adminPrimitives'
 import type {

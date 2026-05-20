@@ -7,7 +7,7 @@
  */
 
 import { useState, useContext, type ReactNode } from 'react'
-import { C } from '../lib/tokensProgramme'
+import { C } from '../tokens/tokensProgramme'
 import { ThemeContext } from '../context/contextTheme'
 import AmbienceLogo from './AmbienceLogo'
 

@@ -24,7 +24,7 @@ import {
   type AdminTab,
   type ProgrammeTabId,
 } from '../../lib/utilsAdminPath'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -67,7 +67,7 @@ import {
   navigateAdmin,
   generateUrlId,
 } from '../../lib/utilsAdminPath'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import {
   StatusPill,
   AdminModal,

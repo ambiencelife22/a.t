@@ -41,7 +41,7 @@ import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { ExperienceCard } from './ExperienceCard'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
-import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
+import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import {
   pageStyle,
   sectionTitleStyle,
@@ -57,7 +57,7 @@ import {
   messageTextStyle,
   emptyStateStyle,
   emptyStateTextStyle,
-} from '../../lib/stylesGuidePage'
+} from '../../styles/stylesGuidePage'
 
 interface ExperiencesGuidePageProps {
   destination:   ExperiencesGuideDestination

@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../lib/utilsAdminPath'
 import {
   fetchTripDossierForHouse,

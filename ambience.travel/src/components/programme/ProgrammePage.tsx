@@ -11,8 +11,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { C } from '../../lib/tokensProgramme'
-import { DANGER } from '../../lib/tokensProgrammeColors'
+import { C } from '../../tokens/tokensProgramme'
+import { DANGER } from '../../tokens/tokensProgrammeColors'
 import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../lib/typesProgramme'
 import PropertyIntroSection from './PropertyIntroSection'
 

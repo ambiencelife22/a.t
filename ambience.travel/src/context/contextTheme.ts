@@ -1,6 +1,6 @@
 // ThemeContext.ts
 import { createContext } from 'react'
-import type { Palette } from '../lib/tokensProgramme'
+import type { Palette } from '../tokens/tokensProgramme'
 
 export interface ThemeContextValue {
   isDark:      boolean

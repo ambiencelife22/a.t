@@ -36,7 +36,7 @@ import {
   pyvItemStyle,
   pyvDotStyle,
   pyvItemTextStyle,
-} from '../../lib/stylesGuidePage'
+} from '../../styles/stylesGuidePage'
 
 // ── Guide variant type ────────────────────────────────────────────────────────
 

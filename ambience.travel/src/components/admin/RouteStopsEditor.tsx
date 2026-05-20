@@ -40,7 +40,7 @@ import {
   type RouteStop,
 } from '../../lib/queriesAdminRouteStops'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 

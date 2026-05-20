@@ -12,7 +12,7 @@
 //   tinted gradient sweep, sized to roughly match the real section so layout
 //   doesn't jump.
 
-import { ID } from '../../lib/tokensLanding'
+import { ID } from '../../tokens/tokensLanding'
 
 // ─── Single primitive ────────────────────────────────────────────────────────
 

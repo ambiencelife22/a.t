@@ -24,7 +24,7 @@ import {
   type UploadResult,
 } from '../../lib/queriesAdminAssets'
 import GeoCascade, { type GeoCascadeValue } from './GeoCascade'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return (

@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createTrip, reassignEngagementTrip } from '../../lib/queriesAdminEngagements'
-import { A } from '../../lib/tokensAdmin'
+import { A } from '../../tokens/tokensAdmin'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

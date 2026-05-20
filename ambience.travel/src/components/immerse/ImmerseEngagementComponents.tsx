@@ -42,7 +42,7 @@ import {
   ImmerseStayBox,
 } from './ImmerseComponents'
 import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/utilsAnimations'
-import { IMMERSE } from '../../lib/tokensLanding'
+import { IMMERSE } from '../../tokens/tokensLanding'
 import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../lib/typesImmerse'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

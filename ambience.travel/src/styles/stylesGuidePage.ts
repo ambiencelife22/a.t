@@ -7,8 +7,8 @@
 // Prior: S40 — extracted from DiningGuidePage.tsx inline styles
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from './tokensLanding'
-import { C } from '../lib/tokensProgramme'
+import { ID, IMMERSE, FONTS } from '../tokens/tokensLanding'
+import { C } from '../tokens/tokensProgramme'
 
 // ── DiningGuidePage ───────────────────────────────────────────────────────────
 

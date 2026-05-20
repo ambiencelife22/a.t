@@ -17,8 +17,8 @@
  *   capitalize          — first char upper
  */
 
-import { A } from '../../lib/tokensAdmin'
-import { inputStyle, btnPrimary as btnP, btnGhost as btnG } from '../../lib/stylesAdmin'
+import { A } from '../../tokens/tokensAdmin'
+import { inputStyle, btnPrimary as btnP, btnGhost as btnG } from '../../styles/stylesAdmin'
 import { AdminSection } from './_adminPrimitives'
 
 // ── Misc helpers ──────────────────────────────────────────────────────────────

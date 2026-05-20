@@ -20,7 +20,7 @@
 //   DiningGuideRoute. Gives guide routes a proper branded 404 instead of
 //   a blank screen after redirect.
 
-import { ID, FONTS } from '../lib/tokensLanding'
+import { ID, FONTS } from '../tokens/tokensLanding'
 
 interface NotFoundPageProps {
   message?:  string
