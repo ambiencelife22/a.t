@@ -9,7 +9,7 @@
 // Prior: S35 — Initial ship.
 
 import React from 'react'
-import { ID, IMMERSE } from '../../lib/landingColors'
+import { ID, IMMERSE } from '../../lib/tokensLanding'
 
 export interface FilterState {
   cuisines:        Set<string>

@@ -12,8 +12,8 @@
 // Last updated: S37
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
-import { resolveMapsLink } from '../../lib/mapsUrl'
+import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
+import { resolveMapsLink } from '../../lib/utilsMapsUrl'
 import type { HotelVenue } from '../../lib/queriesGuidesHotels'
 
 interface HotelCardProps {

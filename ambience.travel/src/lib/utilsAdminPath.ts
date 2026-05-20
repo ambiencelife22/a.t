@@ -31,7 +31,7 @@
 // Prior: S36 — Added 'guides' + 'library' products.
 // Prior: S33
 
-import { isTripUrlId } from './immersePath'
+import { isTripUrlId } from './utilsImmersePath'
 
 export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips'
 

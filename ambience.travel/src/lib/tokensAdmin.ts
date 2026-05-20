@@ -27,7 +27,7 @@
 //
 // Last updated: S33
 
-import { ID, IMMERSE } from './landingColors'
+import { ID, IMMERSE } from './tokensLanding'
 
 export const A = {
   bg:         ID.bg,

@@ -15,7 +15,7 @@
 //   - inputWithFocus: spreads inputStyle + onFocus/onBlur for convenience.
 // Prior: S40D — extracted from HouseTab, GuidesDiningTab, LibraryDiningTab.
 
-import { A } from './adminTokens'
+import { A } from './tokensAdmin'
 
 export const inputStyle: React.CSSProperties = {
   width:        '100%',

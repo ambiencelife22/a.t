@@ -9,10 +9,10 @@
 //   pages scope their room overlays correctly.
 
 import { supabase } from './supabase'
-import { rewriteImageUrl } from './imageUrl'
-import { getImmerseDestinationHotels }   from './immerseDestinationHotels'
-import { getImmerseDestinationCards }    from './immerseDestinationCards'
-import { getImmerseDestinationPricing }  from './immerseDestinationPricing'
+import { rewriteImageUrl } from './utilsImageUrl'
+import { getImmerseDestinationHotels }   from './queriesImmerseDestHotels'
+import { getImmerseDestinationCards }    from './queriesImmerseDestCards'
+import { getImmerseDestinationPricing }  from './queriesImmerseDestPricing'
 import type { ImmerseDestinationData }   from './typesImmerse'
 
 // ─── Public types ─────────────────────────────────────────────────────────────

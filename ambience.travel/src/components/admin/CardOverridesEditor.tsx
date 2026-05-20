@@ -19,7 +19,7 @@ import {
   type CardKind,
 } from '../../lib/queriesAdminCardOverrides'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 

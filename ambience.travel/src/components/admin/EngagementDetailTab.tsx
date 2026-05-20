@@ -45,8 +45,8 @@ import {
 import {
   buildEngagementUrl,
   navigateAdmin,
-} from '../../lib/adminPath'
-import { A } from '../../lib/adminTokens'
+} from '../../lib/utilsAdminPath'
+import { A } from '../../lib/tokensAdmin'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import DestinationRowsEditor from './DestinationRowsEditor'
 import RouteStopsEditor from './RouteStopsEditor'

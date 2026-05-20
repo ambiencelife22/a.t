@@ -5,7 +5,7 @@
  * Rendered by ProgrammeRoute when Supabase returns no programme for the current user.
  */
 
-import { signOut } from '../../lib/auth'
+import { signOut } from '../../lib/utilsAuth'
 import { C, DARK } from '../../lib/typesLanding'
 import AmbienceLogo from '../AmbienceLogo'
 

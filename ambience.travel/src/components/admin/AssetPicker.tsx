@@ -19,7 +19,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import GeoCascade, { type GeoCascadeValue } from './GeoCascade'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 const BUCKET = 'ambience-assets'
 

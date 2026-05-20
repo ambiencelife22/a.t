@@ -36,7 +36,7 @@ import ImmerseEngagementPage                 from './ImmerseEngagementPage'
 import DestinationPage                       from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
 import { TravelLoadingScreen, NotFound }     from './ImmerseStateScreens'
-import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../lib/immersePath'
+import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../lib/utilsImmersePath'
 import RouteLoading from '../RouteLoading'
 
 const TripConfirmationPage = lazy(() => import('./TripConfirmationPage'))

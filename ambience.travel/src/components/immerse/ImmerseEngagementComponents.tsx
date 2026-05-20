@@ -41,8 +41,8 @@ import {
   ImmersePanel,
   ImmerseStayBox,
 } from './ImmerseComponents'
-import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
-import { IMMERSE } from '../../lib/landingColors'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/utilsAnimations'
+import { IMMERSE } from '../../lib/tokensLanding'
 import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../lib/typesImmerse'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

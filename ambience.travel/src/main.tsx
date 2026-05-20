@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { ThemeContext } from './lib/ThemeContext'
+import { ThemeContext } from './lib/contextTheme'
 import { ToastProvider, ToastContainer } from './components/Toast'
-import { _setPalette, darkPalette, lightPalette } from './lib/theme'
+import { _setPalette, darkPalette, lightPalette } from './lib/tokensProgramme'
 import './index.css'
 
 function Root() {

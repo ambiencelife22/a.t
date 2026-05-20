@@ -8,7 +8,7 @@
 //   bet type colours, geo zone colours, status colours, transaction type colours,
 //   destructive UI, branding, landing widget chrome.
 
-import { C } from './theme'
+import { C } from './tokensProgramme'
 
 // ── Destructive / Danger ──────────────────────────────────────────────────────
 // Stronger red used for irreversible actions (delete, restore, account removal).

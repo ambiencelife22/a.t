@@ -5,7 +5,7 @@
  * Last updated: S33
  */
 
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 export default function ShowcasesListTab() {
   return (

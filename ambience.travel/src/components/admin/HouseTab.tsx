@@ -16,11 +16,11 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 import {
   inputStyle, textareaStyle,
   btnPrimary as btnP, btnGhost as btnG, btnDanger as btnD,
-} from '../../lib/adminStyles'
+} from '../../lib/stylesAdmin'
 import { Field, CopyButton } from './adminUi'
 import { AdminSection, AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import {

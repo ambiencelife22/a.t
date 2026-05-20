@@ -19,22 +19,22 @@ import {
   ImmerseDestPricing,
 } from './ImmerseDestinationComponents'
 import { HotelsShimmer, ContentGridShimmer, PricingShimmer } from './ImmerseShimmer'
-import { getImmerseDestinationCore }    from '../../lib/immerseDestinationCore'
-import { getImmerseDestinationHotels }  from '../../lib/immerseDestinationHotels'
-import { getImmerseDestinationCards }   from '../../lib/immerseDestinationCards'
-import { getImmerseDestinationPricing } from '../../lib/immerseDestinationPricing'
+import { getImmerseDestinationCore }    from '../../lib/queriesImmerseDestCore'
+import { getImmerseDestinationHotels }  from '../../lib/queriesImmerseDestHotels'
+import { getImmerseDestinationCards }   from '../../lib/queriesImmerseDestCards'
+import { getImmerseDestinationPricing } from '../../lib/queriesImmerseDestPricing'
 import { useToast } from '../../lib/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
-import { getOverviewUrl } from '../../lib/immersePath'
+import { getOverviewUrl } from '../../lib/utilsImmersePath'
 import type {
   ImmerseDestinationData,
   ImmerseDestinationHotelsShape,
   ImmerseEngagementData,
   ImmersePricingRow,
 } from '../../lib/typesImmerse'
-import type { ImmerseDestinationCore }  from '../../lib/immerseDestinationCore'
-import type { ImmerseDestinationCards } from '../../lib/immerseDestinationCards'
+import type { ImmerseDestinationCore }  from '../../lib/queriesImmerseDestCore'
+import type { ImmerseDestinationCards } from '../../lib/queriesImmerseDestCards'
 
 // ── Hero derivation helpers ──────────────────────────────────────────────────
 

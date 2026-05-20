@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 

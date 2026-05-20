@@ -56,7 +56,7 @@ import {
   type CardKind,
 } from '../../lib/queriesAdminCardSelections'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 

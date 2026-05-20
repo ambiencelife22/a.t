@@ -16,7 +16,7 @@
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
-import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
+import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/utilsAnimations'
 import { C } from '../../lib/typesLanding'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseEngagementComponents'
 import type { ImmerseDestinationData, ImmerseContentCard } from '../../lib/typesImmerse'

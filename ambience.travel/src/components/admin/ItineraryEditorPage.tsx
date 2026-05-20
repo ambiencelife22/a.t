@@ -23,8 +23,8 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { A } from '../../lib/adminTokens'
-import { navigateAdmin } from '../../lib/adminPath'
+import { A } from '../../lib/tokensAdmin'
+import { navigateAdmin } from '../../lib/utilsAdminPath'
 import {
   fetchTripDossierForHouse,
   fetchTripDays,

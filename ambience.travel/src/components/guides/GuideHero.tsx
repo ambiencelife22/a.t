@@ -29,9 +29,9 @@
 //   parallax pattern.
 
 import { useEffect, useRef, useState } from 'react'
-import { ID, IMMERSE_HERO, FONTS } from '../../lib/landingColors'
+import { ID, IMMERSE_HERO, FONTS } from '../../lib/tokensLanding'
 import { useImmerseMobile } from '../immerse/ImmerseComponents'
-import { useVisible, fadeUp } from '../../lib/animations'
+import { useVisible, fadeUp } from '../../lib/utilsAnimations'
 
 const HERO_LAYOUT = {
   minHeightMobile:    520,

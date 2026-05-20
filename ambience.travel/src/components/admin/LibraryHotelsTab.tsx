@@ -21,15 +21,15 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 import { useToast } from '../../lib/ToastContext'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,
-} from '../../lib/adminStyles'
+} from '../../lib/stylesAdmin'
 import { Field } from './adminUi'
-import { buildAdminHash } from '../../lib/adminPath'
-import { resolveStoragePath } from '../../lib/storagePath'
+import { buildAdminHash } from '../../lib/utilsAdminPath'
+import { resolveStoragePath } from '../../lib/utilsStoragePath'
 import {
   fetchAllHotels,
   fetchDestinationOptions,

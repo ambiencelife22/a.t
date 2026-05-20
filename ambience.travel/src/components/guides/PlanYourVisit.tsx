@@ -20,7 +20,7 @@
 //   serif heading, gold rule, responsive bullet grid. Styles in guidePageStyles.
 
 import React from 'react'
-import { useVisible, fadeUp } from '../../lib/animations'
+import { useVisible, fadeUp } from '../../lib/utilsAnimations'
 import type { DiningGuideOverlay } from '../../lib/queriesGuidesDining'
 import {
   pyvSectionStyle,
@@ -36,7 +36,7 @@ import {
   pyvItemStyle,
   pyvDotStyle,
   pyvItemTextStyle,
-} from '../../lib/guidePageStyles'
+} from '../../lib/stylesGuidePage'
 
 // ── Guide variant type ────────────────────────────────────────────────────────
 

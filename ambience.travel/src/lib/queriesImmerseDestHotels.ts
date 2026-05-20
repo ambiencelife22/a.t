@@ -9,7 +9,7 @@
 //   destinationUrlSlug scoping for room overlays also added this session.
 
 import { supabase } from './supabase'
-import { rewriteImageUrl, rewriteImageUrls } from './imageUrl'
+import { rewriteImageUrl, rewriteImageUrls } from './utilsImageUrl'
 import type {
   ImmerseDestinationHotelsShape,
   ImmerseHotelOption,

@@ -15,9 +15,9 @@
 
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { ToastContext, type Toast, type ToastVariant } from '../lib/ToastContext'
-import { C } from '../lib/theme'
+import { C } from '../lib/tokensProgramme'
 import { useContext } from 'react'
-import { ThemeContext } from '../lib/ThemeContext'
+import { ThemeContext } from '../lib/contextTheme'
 
 // ── Default durations (ms) ────────────────────────────────────────────────────
 

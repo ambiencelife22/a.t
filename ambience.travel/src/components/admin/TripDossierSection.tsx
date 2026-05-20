@@ -13,8 +13,8 @@
  */
 
 import { useState } from 'react'
-import { A } from '../../lib/adminTokens'
-import { navigateAdmin } from '../../lib/adminPath'
+import { A } from '../../lib/tokensAdmin'
+import { navigateAdmin } from '../../lib/utilsAdminPath'
 import { AdminEmptyState } from './_adminPrimitives'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,

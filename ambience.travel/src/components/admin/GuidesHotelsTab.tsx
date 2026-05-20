@@ -17,14 +17,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 import { useToast } from '../../lib/ToastContext'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,
-} from '../../lib/adminStyles'
+} from '../../lib/stylesAdmin'
 import { Field } from './adminUi'
-import { buildGuideUrl } from '../../lib/adminPath'
+import { buildGuideUrl } from '../../lib/utilsAdminPath'
 import {
   fetchHotelGuides,
   fetchDestinationsWithHotels,

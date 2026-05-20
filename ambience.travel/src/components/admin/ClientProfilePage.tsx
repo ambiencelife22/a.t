@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { C } from '../../lib/theme'
+import { C } from '../../lib/tokensProgramme'
 
 type Tab =
   | 'overview'

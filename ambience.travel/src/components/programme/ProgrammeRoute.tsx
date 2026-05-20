@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase, supabaseAnon } from '../../lib/supabase'
-import { getSession } from '../../lib/auth'
+import { getSession } from '../../lib/utilsAuth'
 import ProgrammeAccessDenied from './ProgrammeAccessDenied'
 import ProgrammePage from './ProgrammePage'
 import JourneyPage from './JourneyPage'

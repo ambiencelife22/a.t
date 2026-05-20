@@ -17,8 +17,8 @@
 // Prior: S35 — Initial ship.
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
-import { resolveMapsUrl } from '../../lib/mapsUrl'
+import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
+import { resolveMapsUrl } from '../../lib/utilsMapsUrl'
 import type { DiningVenue, VenueStatus } from '../../lib/queriesGuidesDining'
 import { RecognitionMark } from './RecognitionKey'
 

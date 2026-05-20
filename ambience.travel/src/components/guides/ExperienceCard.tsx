@@ -11,8 +11,8 @@
 // Last updated: S41 — initial build.
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
-import { resolveMapsUrl } from '../../lib/mapsUrl'
+import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
+import { resolveMapsUrl } from '../../lib/utilsMapsUrl'
 import type { ExperienceVenue } from '../../lib/queriesGuidesExperiences'
 
 interface ExperienceCardProps {

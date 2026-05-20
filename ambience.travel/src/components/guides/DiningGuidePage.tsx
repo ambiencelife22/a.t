@@ -56,7 +56,7 @@ import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
 import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
 import { PlanYourVisit } from './PlanYourVisit'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
+import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
 import {
   pageStyle,
   sectionTitleStyle,
@@ -74,7 +74,7 @@ import {
   messageTextStyle,
   emptyStateStyle,
   emptyStateTextStyle,
-} from '../../lib/guidePageStyles'
+} from '../../lib/stylesGuidePage'
 
 interface DiningGuidePageProps {
   destination:   GuideDestination

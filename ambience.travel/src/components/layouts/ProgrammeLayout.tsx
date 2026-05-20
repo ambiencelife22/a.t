@@ -13,7 +13,7 @@
 import { useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
 import { C, DARK } from '../../lib/typesLanding'
-import { signOut } from '../../lib/auth'
+import { signOut } from '../../lib/utilsAuth'
 
 interface ProgrammeLayoutProps {
   children:    React.ReactNode

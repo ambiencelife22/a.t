@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { C } from '../lib/theme'
+import { C } from '../lib/tokensProgramme'
 import { supabase } from '../lib/supabase'
 import {
   getProfile,

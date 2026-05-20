@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { C } from '../lib/theme'
+import { C } from '../lib/tokensProgramme'
 import { getGuestProgrammes, type GuestProgramme } from '../lib/queriesProgramme'
 
 function programmeUrl(p: GuestProgramme): string {

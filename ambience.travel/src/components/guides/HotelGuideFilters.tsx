@@ -5,7 +5,7 @@
 // Last updated: S37
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
+import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
 
 export interface HotelFilterState {
   minStars:     number | null

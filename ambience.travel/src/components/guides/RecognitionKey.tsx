@@ -10,7 +10,7 @@
 // Prior: S37 — Initial ship.
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
+import { ID, IMMERSE, FONTS } from '../../lib/tokensLanding'
 
 export const GREEN_STAR_COLOR = '#3aa55a'
 

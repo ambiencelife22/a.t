@@ -12,7 +12,7 @@
 
 import { useState } from 'react'
 import AssetUploader from './AssetUploader'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 const inputStyle: React.CSSProperties = {
   width:        '100%',

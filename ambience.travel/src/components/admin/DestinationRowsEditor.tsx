@@ -43,7 +43,7 @@ import {
   type DestinationOption,
 } from '../../lib/queriesAdminDestinationRows'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
-import { A } from '../../lib/adminTokens'
+import { A } from '../../lib/tokensAdmin'
 
 // ── Shared styles (mirrors EngagementDetailTab patterns) ─────────────────────
 
