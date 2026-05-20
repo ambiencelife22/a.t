@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
-import { C, DARK } from '../../lib/landingTypes'
+import { C, DARK } from '../../lib/typesLanding'
 import { TRAVEL_MOMENT_COLORS, WIDGET } from '../../lib/landingColors'
 
 // ── Type ──────────────────────────────────────────────────────────────────────

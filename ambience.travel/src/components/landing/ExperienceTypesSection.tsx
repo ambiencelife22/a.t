@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react'
-import { C } from '../../lib/landingTypes'
+import { C } from '../../lib/typesLanding'
 import { fadeUp, useScrollProgress, useVisible } from './LandingComponents'
 
 const items = [

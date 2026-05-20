@@ -10,10 +10,10 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow } from './ImmerseComponents'
 import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
-import { C } from '../../lib/landingTypes'
+import { C } from '../../lib/typesLanding'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup } from '../../lib/immerseTypes'
+import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup } from '../../lib/typesImmerse'
 
 // ─── Hotel options ────────────────────────────────────────────────────────────
 

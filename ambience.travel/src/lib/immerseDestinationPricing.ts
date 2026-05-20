@@ -18,7 +18,7 @@
 // is_total flag retained but all rows = false today.
 
 import { supabase } from './supabase'
-import type { ImmersePricingRow } from './immerseTypes'
+import type { ImmersePricingRow } from './typesImmerse'
 
 export async function getImmerseDestinationPricing(
   tripDestinationRowId: string,

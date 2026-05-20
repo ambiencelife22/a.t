@@ -1,4 +1,4 @@
-// adminTripQueries.ts
+// queriesAdminTrip.ts
 // Trip Dossier query layer — reads travel_bookings, travel_trips,
 // travel_partners, travel_accom_hotels for the HouseTab Trip Dossier surface.
 // Also owns travel_trip_briefs + travel_booking_rooms + travel_trip_days CRUD.
@@ -7,9 +7,10 @@
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
-// Last updated: S48 — booked_by text added to TripAuxBooking (migration S48).
-//   TripAuxBookingPatch type added. updateTripAuxBooking function added.
-//   select('*') picks up new column automatically — no query change needed.
+// Last updated: S48 — url_id added to DossierTrip. fetchTripDossierForHouse
+//   fetches travel_immerse_engagements in parallel and attaches url_id per trip.
+//   Used by TripActionPanel copy-link buttons.
+// Prior: S48 — booked_by text added to TripAuxBooking. TripAuxBookingPatch added.
 // Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
 // Prior: S46 — _hotel_image_src added to TripBooking.
 // Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
@@ -239,6 +240,7 @@ export type DossierTrip = {
   guest_count_children: number | null
   bookings:             TripBooking[]
   brief:                TripBrief | null
+  url_id:               string | null   // from travel_immerse_engagements — first engagement for this trip
 }
 
 export type TripDossierData = {
@@ -307,7 +309,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
 
   const bookingIds = bookingRows.map(b => b.id)
 
-  const [partnerResult, houseResult, briefResult, roomResult, destResult] = await Promise.all([
+  const [partnerResult, houseResult, briefResult, roomResult, destResult, engResult] = await Promise.all([
     supabase
       .from('travel_partners')
       .select('id, name, partner_type, default_share_pct, currency, is_active'),
@@ -332,6 +334,11 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
       .select('id, trip_id, destination_id, sort_order, global_destinations!travel_trip_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
       .in('trip_id', tripIds)
       .order('sort_order', { ascending: true }),
+    supabase
+      .from('travel_immerse_engagements')
+      .select('trip_id, url_id')
+      .in('trip_id', tripIds)
+      .not('trip_id', 'is', null),
   ])
 
   if (partnerResult.error) throw new Error(partnerResult.error.message)
@@ -378,6 +385,12 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     })
   }
 
+  // url_id from travel_immerse_engagements — first engagement per trip
+  const urlIdByTrip = new Map<string, string>()
+  for (const row of ((engResult.data ?? []) as { trip_id: string; url_id: string }[])) {
+    if (!urlIdByTrip.has(row.trip_id)) urlIdByTrip.set(row.trip_id, row.url_id)
+  }
+
   const trips: DossierTrip[] = tripRows.map(t => ({
     id:                   t.id,
     trip_code:            t.trip_code,
@@ -391,6 +404,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     guest_count_children: t.guest_count_children,
     bookings:             bookingsByTrip.get(t.id) ?? [],
     brief:                briefMap.get(t.id) ?? null,
+    url_id:               urlIdByTrip.get(t.id) ?? null,
   }))
 
   return { trips, partners: partnerMap, house }

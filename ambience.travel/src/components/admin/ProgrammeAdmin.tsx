@@ -29,10 +29,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getSession } from '../../lib/auth'
-// import { DARK } from '../../lib/landingTypes'
+// import { DARK } from '../../lib/typesLanding'
 // import { WIDGET } from '../../lib/landingColors'
 
-import type { ListingCategory } from '../../lib/programmeTypes'
+import type { ListingCategory } from '../../lib/typesProgramme'
 import { formatDateOnly } from '../../lib/dates'
 import ClientProfilePage from './ClientProfilePage'
 import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'

@@ -2,7 +2,7 @@
 // Owns the four-card stat grid only.
 // Last updated: S9
 
-import { C, DARK } from '../../../lib/landingTypes'
+import { C, DARK } from '../../../lib/typesLanding'
 import { fadeUp, useVisible } from '../LandingComponents'
 
 type ExperienceTheme = {

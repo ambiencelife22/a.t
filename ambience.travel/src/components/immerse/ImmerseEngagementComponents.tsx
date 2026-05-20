@@ -43,7 +43,7 @@ import {
 } from './ImmerseComponents'
 import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../lib/animations'
 import { IMMERSE } from '../../lib/landingColors'
-import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../lib/immerseTypes'
+import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../lib/typesImmerse'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

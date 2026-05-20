@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { C, OVERLAY } from '../../lib/landingTypes'
+import { C, OVERLAY } from '../../lib/typesLanding'
 import { fadeUp, Section, useVisible } from './LandingComponents'
 
 export default function HeroSection() {

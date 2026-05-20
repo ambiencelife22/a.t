@@ -28,7 +28,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { A } from '../../lib/adminTokens'
-import type { EngagementStatusSlug } from '../../lib/immerseTypes'
+import type { EngagementStatusSlug } from '../../lib/typesImmerse'
 
 const EASE = 'cubic-bezier(0.16,1,0.3,1)'
 

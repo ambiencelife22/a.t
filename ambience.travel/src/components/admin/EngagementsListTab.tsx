@@ -74,7 +74,7 @@ import {
   AdminEmptyState,
   useAdminToast,
 } from './_adminPrimitives'
-import type { EngagementStatusSlug } from '../../lib/immerseTypes'
+import type { EngagementStatusSlug } from '../../lib/typesImmerse'
 import TripCreateModal from './TripCreateModal'
 
 // ── Shared styles ────────────────────────────────────────────────────────────

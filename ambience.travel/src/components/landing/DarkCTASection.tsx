@@ -5,7 +5,7 @@
  * Understated — visible only if you're watching.
  */
 
-import { C, DARK } from '../../lib/landingTypes'
+import { C, DARK } from '../../lib/typesLanding'
 import { fadeUp, useVisible } from './LandingComponents'
 
 export default function DarkCTASection() {

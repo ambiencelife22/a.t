@@ -3,7 +3,7 @@
 // Last updated: S9
 
 import { useEffect, useState } from 'react'
-import { C } from '../../../lib/landingTypes'
+import { C } from '../../../lib/typesLanding'
 import { fadeUp, useVisible } from '../LandingComponents'
 
 type Props = {

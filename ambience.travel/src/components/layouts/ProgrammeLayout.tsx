@@ -12,7 +12,7 @@
 
 import { useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
-import { C, DARK } from '../../lib/landingTypes'
+import { C, DARK } from '../../lib/typesLanding'
 import { signOut } from '../../lib/auth'
 
 interface ProgrammeLayoutProps {

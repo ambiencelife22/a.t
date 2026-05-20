@@ -1,4 +1,4 @@
-import { C } from '../../lib/landingTypes'
+import { C } from '../../lib/typesLanding'
 import { fadeUp, useVisible } from './LandingComponents'
 
 const items = [

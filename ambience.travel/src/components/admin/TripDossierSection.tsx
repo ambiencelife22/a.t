@@ -1,9 +1,10 @@
 /* TripDossierSection.tsx
  * Trip Dossier surface for HouseTab.
  *
- * Last updated: S48 — fetchTripAuxBookings imported. TripActionPanel
- *   handleDownload now fetches aux bookings before calling handleDownloadBrief,
- *   satisfying the required auxBookings field on ConfirmationBriefData.
+ * Last updated: S48 — Copy Link buttons added to TripActionPanel for
+ *   /confirmation and /programme client URLs. url_id now on DossierTrip.
+ *   buildClientUrl + copyLink helpers. copied state with 2s feedback.
+ * Prior: S48 — fetchTripAuxBookings imported. handleDownload fetches aux.
  * Prior: S47 — navigateAdmin imported from adminPath. TripActionPanel
  *   onBriefSaved prop removed. trips local state removed.
  * Prior: S46 — Edit Brief navigates to BriefEditorPage.
@@ -91,11 +92,25 @@ function TripActionPanel({ trip, house }: {
   house: HouseProfile | null
 }) {
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
+  const [copied, setCopied] = useState<'confirmation' | 'programme' | null>(null)
 
   const btnBase: React.CSSProperties = {
     fontFamily: A.font, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
     textTransform: 'uppercase', borderRadius: 6, padding: '5px 12px',
     cursor: 'pointer', transition: 'all 150ms ease', border: 'none',
+  }
+
+  function buildClientUrl(surface: 'confirmation' | 'programme'): string | null {
+    if (!trip.url_id) return null
+    return `https://immerse.ambience.travel/${trip.url_id}/${surface}`
+  }
+
+  async function copyLink(surface: 'confirmation' | 'programme') {
+    const url = buildClientUrl(surface)
+    if (!url) return
+    await navigator.clipboard.writeText(url)
+    setCopied(surface)
+    setTimeout(() => setCopied(null), 2000)
   }
 
   async function handleDownload() {
@@ -113,7 +128,6 @@ function TripActionPanel({ trip, house }: {
       } catch { heroData = null }
     }
 
-    // Fetch aux bookings (flights, transfers, car services) for the brief
     const auxBookings = await fetchTripAuxBookings(trip.id).catch(() => [])
 
     handleDownloadBrief({
@@ -152,6 +166,22 @@ function TripActionPanel({ trip, house }: {
       >
         Daily Programme
       </button>
+      {trip.url_id && (
+        <>
+          <button
+            onClick={() => copyLink('confirmation')}
+            style={{ ...btnBase, background: 'transparent', color: copied === 'confirmation' ? '#4ade80' : A.faint, border: `1px solid ${copied === 'confirmation' ? '#4ade8050' : A.border}` }}
+          >
+            {copied === 'confirmation' ? 'Copied!' : 'Copy Confirmation Link'}
+          </button>
+          <button
+            onClick={() => copyLink('programme')}
+            style={{ ...btnBase, background: 'transparent', color: copied === 'programme' ? '#4ade80' : A.faint, border: `1px solid ${copied === 'programme' ? '#4ade8050' : A.border}` }}
+          >
+            {copied === 'programme' ? 'Copied!' : 'Copy Programme Link'}
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -242,7 +272,7 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
             {r.notes              && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>}
           </div>
           <button onClick={() => handleDelete(r.id)} disabled={saving === r.id} style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>
-            {saving === r.id ? '...' : '✕'}
+            {saving === r.id ? '...' : '\u2715'}
           </button>
         </div>
       ))}
@@ -321,7 +351,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
           {b.commission_amount != null && <span style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commission_amount, currency)}</span>}
-          <span style={{ fontSize: 10, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
+          <span style={{ fontSize: 10, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>\u203a</span>
         </div>
       </div>
 
@@ -376,7 +406,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
                     <div>
                       <span style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>Deposit </span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.deposit_amount, currency)}</span>
-                      {depositPaid && b.deposit_paid_at && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}> · paid {fmtDate(b.deposit_paid_at)}</span>}
+                      {depositPaid && b.deposit_paid_at && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}> \u00b7 paid {fmtDate(b.deposit_paid_at)}</span>}
                     </div>
                     <PaymentBadge paid={depositPaid} amount={b.deposit_amount} dueDate={b.deposit_due_date} currency={currency} />
                   </div>
@@ -398,9 +428,9 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Commission Splits</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {iataPartner   && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{iataPartner.name} <span style={{ fontSize: 10, color: A.faint }}>IATA</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.iata_share_pct}% · {fmt(b.iata_share_amt, currency)}</span></div>}
-                {refPartner    && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{refPartner.name} <span style={{ fontSize: 10, color: A.faint }}>Referral</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.referral_share_pct}% · {fmt(b.referral_share_amt, currency)}</span></div>}
-                {indivPartner  && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{indivPartner.name}</span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.individual_share_pct}% · {fmt(b.individual_share_amt, currency)}</span></div>}
+                {iataPartner   && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{iataPartner.name} <span style={{ fontSize: 10, color: A.faint }}>IATA</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.iata_share_pct}% \u00b7 {fmt(b.iata_share_amt, currency)}</span></div>}
+                {refPartner    && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{refPartner.name} <span style={{ fontSize: 10, color: A.faint }}>Referral</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.referral_share_pct}% \u00b7 {fmt(b.referral_share_amt, currency)}</span></div>}
+                {indivPartner  && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{indivPartner.name}</span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.individual_share_pct}% \u00b7 {fmt(b.individual_share_amt, currency)}</span></div>}
               </div>
             </div>
           )}
@@ -486,7 +516,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           {totalCommission > 0 && <span style={{ fontSize: 12, color: A.gold, fontFamily: A.font, fontWeight: 600 }}>{fmt(totalCommission)} commission</span>}
-          <span style={{ fontSize: 14, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
+          <span style={{ fontSize: 14, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>\u203a</span>
         </div>
       </div>
 
