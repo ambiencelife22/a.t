@@ -37,7 +37,7 @@ import {
   type ExperienceVenue,
   type ExperiencesGuideDestination,
 } from '../../lib/experiencesGuideQueries'
-import { usePdfDownload } from '../../lib/usePdfDownload'
+import { useGuidePdf } from '../../lib/useGuidePdf'
 import { ExperienceCard } from './ExperienceCard'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
@@ -208,7 +208,7 @@ export default function ExperiencesGuidePage({
   const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
-  const { pdfReady, pdfDownloading, handleDownloadPdf } = usePdfDownload()
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
 
   const [venues,         setVenues]         = useState<ExperienceVenue[]>([])
   const [loading,        setLoading]        = useState(true)

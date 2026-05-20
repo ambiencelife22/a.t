@@ -17,7 +17,7 @@
 import { useEffect, useState } from 'react'
 import type { TripClientData } from '../../lib/tripClientQueries'
 import type { TripDay, TripDayEntry, TripAuxBooking } from '../../lib/adminTripQueries'
-import { useProgrammeDownload } from '../../lib/useProgrammeDownload'
+import { useImmerseProgrammePdf } from '../../lib/useImmerseProgrammePdf'
 import { isImmerseHost } from '../../lib/immersePath'
 
 const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-trip-programme`
@@ -176,7 +176,7 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
   entries:         TripDayEntry[]
   onDaySelect:     (date: string) => void
 }) {
-  const { pdfReady, pdfDownloading, handleDownloadProgramme } = useProgrammeDownload()
+  const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
   async function handlePdf() {
     if (!clientData) return

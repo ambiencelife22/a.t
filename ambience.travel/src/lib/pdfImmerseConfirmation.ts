@@ -21,7 +21,7 @@
 // Prior: S48 — flight cards added, pdfUtils refactor.
 // Prior: S47 — booked_by_label wired. Logo card image-based. Footer hyperlinked.
 
-import { loadGuideFonts, registerGuideFonts } from './guidePdfFonts'
+import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg, makeCoverCropAsync,
   serif, sans, drawRule,

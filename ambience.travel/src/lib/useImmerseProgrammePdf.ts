@@ -1,20 +1,19 @@
-// useDossierDownload.ts — jsPDF loader + download handler for Client Dossier PDFs.
-// Mirrors usePdfDownload pattern exactly. Kept separate so guide PDF state
-// does not bleed into admin dossier state.
+// useProgrammeDownload.ts — jsPDF loader + download handler for Daily Programme PDFs.
+// Mirrors useBriefDownload / useDossierDownload pattern exactly.
 //
 // Usage:
-//   const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierDownload()
-//   <button onClick={() => handleDownloadDossier(data)} disabled={!pdfReady || pdfDownloading} />
+//   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useProgrammeDownload()
+//   <button onClick={() => handleDownloadProgramme(data)} disabled={!pdfReady || pdfDownloading} />
 //
-// Last updated: S45 — initial ship.
+// Last updated: S48 — initial ship.
 
 import { useEffect, useRef, useState } from 'react'
-import { exportClientDossierPdf, type ClientDossierData } from './clientDossierPdf'
+import { exportDailyProgrammePdf, type DailyProgrammeData } from './pdfImmerseProgramme'
 import { useToast } from './ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 
-export function useDossierDownload() {
+export function useImmerseProgrammePdf() {
   const { toast } = useToast()
   const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
@@ -35,35 +34,35 @@ export function useDossierDownload() {
           existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)))
           return
         }
-        const s       = document.createElement('script')
-        s.src         = src
-        s.onload      = () => resolve()
-        s.onerror     = () => reject(new Error(`Failed to load ${src}`))
+        const s  = document.createElement('script')
+        s.src    = src
+        s.onload = () => resolve()
+        s.onerror = () => reject(new Error(`Failed to load ${src}`))
         document.head.appendChild(s)
       })
     }
 
     loadScript(JSPDF_CDN)
       .then(() => setPdfReady(true))
-      .catch((err) => console.error('PDF library load error:', err))
+      .catch(err => console.error('PDF library load error:', err))
   }, [])
 
-  async function handleDownloadDossier(data: ClientDossierData) {
+  async function handleDownloadProgramme(data: DailyProgrammeData) {
     if (!pdfReady) {
       toastRef.current.info('PDF library is still loading. Try again in a moment.')
       return
     }
     setPdfDownloading(true)
     try {
-      await exportClientDossierPdf(data)
+      await exportDailyProgrammePdf(data)
     } catch (err) {
-      console.error('Dossier export failed:', err)
+      console.error('Programme export failed:', err)
       const msg = err instanceof Error ? err.message : 'Unknown error'
-      toastRef.current.error(`Dossier export failed: ${msg}`)
+      toastRef.current.error(`Programme export failed: ${msg}`)
     } finally {
       setPdfDownloading(false)
     }
   }
 
-  return { pdfReady, pdfDownloading, handleDownloadDossier }
+  return { pdfReady, pdfDownloading, handleDownloadProgramme }
 }

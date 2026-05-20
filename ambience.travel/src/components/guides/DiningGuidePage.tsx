@@ -50,7 +50,7 @@ import {
   type DiningVenue,
   type GuideDestination,
 } from '../../lib/diningGuideQueries'
-import { usePdfDownload } from '../../lib/usePdfDownload'
+import { useGuidePdf } from '../../lib/useGuidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
@@ -136,7 +136,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
-  const { pdfReady, pdfDownloading, handleDownloadPdf } = usePdfDownload()
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
 
   const [venues,      setVenues]      = useState<DiningVenue[]>([])
   const [loading,     setLoading]     = useState(true)

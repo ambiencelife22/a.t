@@ -1,20 +1,20 @@
-// useBriefDownload.ts — jsPDF loader + download handler for Confirmation Brief PDFs.
-// Mirrors useDossierDownload pattern. Kept separate so brief state does not
-// bleed into dossier or guide PDF state.
+// useDossierDownload.ts — jsPDF loader + download handler for Client Dossier PDFs.
+// Mirrors usePdfDownload pattern exactly. Kept separate so guide PDF state
+// does not bleed into admin dossier state.
 //
 // Usage:
-//   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
-//   <button onClick={() => handleDownloadBrief(data)} disabled={!pdfReady || pdfDownloading} />
+//   const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierDownload()
+//   <button onClick={() => handleDownloadDossier(data)} disabled={!pdfReady || pdfDownloading} />
 //
 // Last updated: S45 — initial ship.
 
 import { useEffect, useRef, useState } from 'react'
-import { exportConfirmationBriefPdf, type ConfirmationBriefData } from './confirmationBriefPdf'
+import { exportClientDossierPdf, type ClientDossierData } from './pdfDossierClient'
 import { useToast } from './ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 
-export function useBriefDownload() {
+export function useDossierClientPdf() {
   const { toast } = useToast()
   const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
@@ -35,29 +35,35 @@ export function useBriefDownload() {
           existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)))
           return
         }
-        const s = document.createElement('script')
-        s.src = src; s.onload = () => resolve(); s.onerror = () => reject(new Error(`Failed to load ${src}`))
+        const s       = document.createElement('script')
+        s.src         = src
+        s.onload      = () => resolve()
+        s.onerror     = () => reject(new Error(`Failed to load ${src}`))
         document.head.appendChild(s)
       })
     }
 
     loadScript(JSPDF_CDN)
       .then(() => setPdfReady(true))
-      .catch(err => console.error('PDF library load error:', err))
+      .catch((err) => console.error('PDF library load error:', err))
   }, [])
 
-  async function handleDownloadBrief(data: ConfirmationBriefData) {
-    if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
+  async function handleDownloadDossier(data: ClientDossierData) {
+    if (!pdfReady) {
+      toastRef.current.info('PDF library is still loading. Try again in a moment.')
+      return
+    }
     setPdfDownloading(true)
     try {
-      await exportConfirmationBriefPdf(data)
+      await exportClientDossierPdf(data)
     } catch (err) {
-      console.error('Brief export failed:', err)
-      toastRef.current.error(`Brief export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      console.error('Dossier export failed:', err)
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      toastRef.current.error(`Dossier export failed: ${msg}`)
     } finally {
       setPdfDownloading(false)
     }
   }
 
-  return { pdfReady, pdfDownloading, handleDownloadBrief }
+  return { pdfReady, pdfDownloading, handleDownloadDossier }
 }

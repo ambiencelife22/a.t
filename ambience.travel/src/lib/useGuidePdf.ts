@@ -1,21 +1,30 @@
-// useProgrammeDownload.ts — jsPDF loader + download handler for Daily Programme PDFs.
-// Mirrors useBriefDownload / useDossierDownload pattern exactly.
+// usePdfDownload.ts — shared hook for guide PDF download across all guide pages.
+// What it owns:
+//   - jsPDF CDN load (once per page, idempotent)
+//   - pdfReady state
+//   - pdfDownloading state
+//   - handleDownloadPdf — calls exportGuidePdf, manages loading state + toasts
+//
+// What it does not own:
+//   - exportGuidePdf options construction (caller's job)
+//   - Venue data (caller's job)
 //
 // Usage:
-//   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useProgrammeDownload()
-//   <button onClick={() => handleDownloadProgramme(data)} disabled={!pdfReady || pdfDownloading} />
+//   const { pdfReady, pdfDownloading, handleDownloadPdf } = usePdfDownload()
+//   <button onClick={() => handleDownloadPdf(opts)} disabled={!pdfReady || pdfDownloading} />
 //
-// Last updated: S48 — initial ship.
+// Last updated: S41 — extracted from DiningGuidePage. Shared across
+//   DiningGuidePage + ExperiencesGuidePage (and any future guide pages).
 
 import { useEffect, useRef, useState } from 'react'
-import { exportDailyProgrammePdf, type DailyProgrammeData } from './dailyProgrammePdf'
+import { exportGuidePdf, type ExportGuidePdfOptions } from './pdfGuide'
 import { useToast } from './ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 
-export function useProgrammeDownload() {
-  const { toast } = useToast()
-  const toastRef  = useRef(toast)
+export function useGuidePdf() {
+  const { toast }   = useToast()
+  const toastRef    = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
 
   const [pdfReady,       setPdfReady]       = useState(false)
@@ -34,9 +43,9 @@ export function useProgrammeDownload() {
           existing.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)))
           return
         }
-        const s  = document.createElement('script')
-        s.src    = src
-        s.onload = () => resolve()
+        const s = document.createElement('script')
+        s.src     = src
+        s.onload  = () => resolve()
         s.onerror = () => reject(new Error(`Failed to load ${src}`))
         document.head.appendChild(s)
       })
@@ -44,25 +53,29 @@ export function useProgrammeDownload() {
 
     loadScript(JSPDF_CDN)
       .then(() => setPdfReady(true))
-      .catch(err => console.error('PDF library load error:', err))
+      .catch((err) => { console.error('PDF library load error:', err) })
   }, [])
 
-  async function handleDownloadProgramme(data: DailyProgrammeData) {
+  async function handleDownloadPdf(opts: ExportGuidePdfOptions) {
     if (!pdfReady) {
       toastRef.current.info('PDF library is still loading. Try again in a moment.')
       return
     }
+    if (opts.venues.length === 0) {
+      toastRef.current.info('No venues to export yet.')
+      return
+    }
     setPdfDownloading(true)
     try {
-      await exportDailyProgrammePdf(data)
+      await exportGuidePdf(opts)
     } catch (err) {
-      console.error('Programme export failed:', err)
+      console.error('PDF export failed:', err)
       const msg = err instanceof Error ? err.message : 'Unknown error'
-      toastRef.current.error(`Programme export failed: ${msg}`)
+      toastRef.current.error(`PDF export failed: ${msg}`)
     } finally {
       setPdfDownloading(false)
     }
   }
 
-  return { pdfReady, pdfDownloading, handleDownloadProgramme }
+  return { pdfReady, pdfDownloading, handleDownloadPdf }
 }

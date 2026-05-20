@@ -29,7 +29,7 @@
 
 import type { DiningVenue, GuideDestination } from './diningGuideQueries'
 import type { ExperienceVenue, ExperiencesGuideDestination } from './experiencesGuideQueries'
-import { loadGuideFonts, registerGuideFonts } from './guidePdfFonts'
+import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,
   serif, sans, drawRule, drawStar, drawStarRow,

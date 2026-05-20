@@ -25,8 +25,8 @@ import { useEffect, useState } from 'react'
 import { getAuxTypeMeta } from '../../lib/auxBookingTypes'
 import { fetchTripClientData, type TripClientData } from '../../lib/tripClientQueries'
 import type { TripBooking, TripAuxBooking } from '../../lib/adminTripQueries'
-import type { ConfirmationBriefData } from '../../lib/confirmationBriefPdf'
-import { useBriefDownload } from '../../lib/useBriefDownload'
+import type { ConfirmationBriefData } from '../../lib/pdfImmerseConfirmation'
+import { useImmerseConfirmationPdf } from '../../lib/useImmerseConfirmationPdf'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ function ConfirmationTopBar({ clientData, programmeUrl }: {
   clientData: TripClientData | null
   programmeUrl: string | null
 }) {
-  const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
+  const { pdfReady, pdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
 
   async function handlePdf() {
     if (!clientData) return

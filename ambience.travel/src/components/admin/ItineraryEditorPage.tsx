@@ -45,7 +45,7 @@ import type {
   TripDayEntryPatch,
 } from '../../lib/adminTripQueries'
 import { supabase } from '../../lib/supabase'
-import { useProgrammeDownload } from '../../lib/useProgrammeDownload'
+import { useImmerseProgrammePdf } from '../../lib/useImmerseProgrammePdf'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -508,7 +508,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
   const [deriving, setDeriving] = useState(false)
   const [derived,  setDerived]  = useState(false)
 
-  const { pdfReady, pdfDownloading, handleDownloadProgramme } = useProgrammeDownload()
+  const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
   useEffect(() => {
     async function load() {

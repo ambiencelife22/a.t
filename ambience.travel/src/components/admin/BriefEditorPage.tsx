@@ -33,7 +33,7 @@ import type {
   TripAuxBooking,
 } from '../../lib/adminTripQueries'
 import { getAuxTypeMeta, AUX_BOOKING_TYPES } from '../../lib/auxBookingTypes'
-import { useBriefDownload } from '../../lib/useBriefDownload'
+import { useImmerseConfirmationPdf } from '../../lib/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
 import { supabase } from '../../lib/supabase'
 
@@ -733,7 +733,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const [saved,       setSaved]       = useState(false)
   const [pickerOpen,  setPickerOpen]  = useState(false)
 
-  const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
+  const { pdfReady, pdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
 
   const [briefTitle,    setBriefTitle]    = useState('')
   const [briefSubtitle, setBriefSubtitle] = useState('')

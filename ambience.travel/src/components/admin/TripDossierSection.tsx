@@ -21,9 +21,9 @@ import type {
 } from '../../lib/adminTripQueries'
 import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings } from '../../lib/adminTripQueries'
 import type { BookingRoom } from '../../lib/adminTripQueries'
-import { useDossierDownload } from '../../lib/useDossierDownload'
-import { useBriefDownload } from '../../lib/useBriefDownload'
-import type { ClientDossierData } from '../../lib/clientDossierPdf'
+import { useDossierClientPdf } from '../../lib/useDossierClientPdf'
+import { useImmerseConfirmationPdf } from '../../lib/useImmerseConfirmationPdf'
+import type { ClientDossierData } from '../../lib/pdfDossierClient'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -90,7 +90,7 @@ function TripActionPanel({ trip, house }: {
   trip:  DossierTrip
   house: HouseProfile | null
 }) {
-  const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
+  const { pdfReady, pdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
 
   const btnBase: React.CSSProperties = {
     fontFamily: A.font, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
@@ -281,7 +281,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
   const [briefShow, setBriefShow] = useState(b.brief_show ?? true)
   const [saving,    setSaving]    = useState(false)
 
-  const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierDownload()
+  const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierClientPdf()
 
   const iataPartner  = b.iata_partner_id    ? partners[b.iata_partner_id]    : null
   const refPartner   = b.referral_partner_id ? partners[b.referral_partner_id] : null

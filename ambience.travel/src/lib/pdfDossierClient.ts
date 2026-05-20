@@ -29,7 +29,7 @@
 //   loadImageAsDataUrl->loadImg, rasterizeSvgAsDataUrl->loadSvg. assertJsPdf() added.
 // Prior: S45 — initial ship.
 
-import { loadGuideFonts, registerGuideFonts } from './guidePdfFonts'
+import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, serif, sans, type RGB, type Img } from './pdfUtils'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────

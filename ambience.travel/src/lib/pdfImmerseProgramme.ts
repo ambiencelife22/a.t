@@ -24,7 +24,7 @@
 //
 // Last updated: S48 — initial ship.
 
-import { loadGuideFonts, registerGuideFonts } from './guidePdfFonts'
+import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
 import type { RGB } from './pdfUtils'
 import type { TripDay, TripDayEntry, DossierTrip, HouseProfile } from './adminTripQueries'

@@ -22,7 +22,7 @@
 // Last updated: S48 — initial extraction from guidePdf.ts +
 //   confirmationBriefPdf.ts. Identical logic, single source.
 
-import { PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './guidePdfFonts'
+import { PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './pdfFonts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
