@@ -14,7 +14,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { ToastContext, type Toast, type ToastVariant } from '../lib/ToastContext'
+import { ToastContext, type Toast, type ToastVariant } from '../providers/ToastContext'
 import { C } from '../tokens/tokensProgramme'
 import { useContext } from 'react'
 import { ThemeContext } from '../context/contextTheme'

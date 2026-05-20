@@ -22,7 +22,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
-import { useToast } from '../../lib/ToastContext'
+import { useToast } from '../../providers/ToastContext'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,

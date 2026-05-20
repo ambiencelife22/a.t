@@ -23,7 +23,7 @@ import { getImmerseDestinationCore }    from '../../queries/queriesImmerseDestCo
 import { getImmerseDestinationHotels }  from '../../queries/queriesImmerseDestHotels'
 import { getImmerseDestinationCards }   from '../../queries/queriesImmerseDestCards'
 import { getImmerseDestinationPricing } from '../../queries/queriesImmerseDestPricing'
-import { useToast } from '../../lib/ToastContext'
+import { useToast } from '../../providers/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
 import { getOverviewUrl } from '../../utils/utilsImmersePath'

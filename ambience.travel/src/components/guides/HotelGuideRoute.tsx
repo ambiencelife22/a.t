@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import HotelGuidePage from './HotelGuidePage'
 import RouteLoading from '../RouteLoading'
-import { useToast } from '../../lib/ToastContext'
+import { useToast } from '../../providers/ToastContext'
 import { getHotelGuideDestination, type HotelGuideDestination } from '../../queries/queriesGuidesHotels'
 
 const GUIDES_HOST = 'guides.ambience.travel'

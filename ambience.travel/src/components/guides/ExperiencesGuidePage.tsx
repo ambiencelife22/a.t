@@ -31,7 +31,7 @@
 // Prior: S41 — initial build.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useToast } from '../../lib/ToastContext'
+import { useToast } from '../../providers/ToastContext'
 import {
   getExperienceVenuesByDestination,
   type ExperienceVenue,

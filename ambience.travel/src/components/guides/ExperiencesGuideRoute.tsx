@@ -17,7 +17,7 @@ import GuideLayout from '../layouts/GuideLayout'
 import ExperiencesGuidePage from './ExperiencesGuidePage'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
-import { useToast } from '../../lib/ToastContext'
+import { useToast } from '../../providers/ToastContext'
 import {
   getExperiencesGuideDestination,
   // checkExperiencesGuideGrant,

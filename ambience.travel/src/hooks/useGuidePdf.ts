@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { exportGuidePdf, type ExportGuidePdfOptions } from '../pdf/pdfGuide'
-import { useToast } from '../lib/ToastContext'
+import { useToast } from '../providers/ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 

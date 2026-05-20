@@ -7,7 +7,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
-import { useToast } from '../../lib/ToastContext'
+import { useToast } from '../../providers/ToastContext'
 import {
   getHotelsByDestination,
   type HotelVenue,
