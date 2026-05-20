@@ -70,7 +70,7 @@ export async function checkExperiencesGuideGrant(
   if (!sessionData.session) return { status: 'no_session' }
 
   const { data, error } = await supabase
-    .from('experiences_guide_for_user')
+    .from('travel_experiences_guide_for_user')
     .select('global_destination_id')
     .eq('destination_slug', destinationSlug)
     .maybeSingle()

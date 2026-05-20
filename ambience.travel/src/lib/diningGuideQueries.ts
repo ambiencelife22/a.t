@@ -84,7 +84,7 @@ export async function checkGuideGrant(
   if (!sessionData.session) return { status: 'no_session' }
 
   const { data, error } = await supabase
-    .from('dining_guide_for_user')
+    .from('travel_dining_guide_for_user')
     .select('global_destination_id')
     .eq('destination_slug', destinationSlug)
     .maybeSingle()

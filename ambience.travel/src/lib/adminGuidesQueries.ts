@@ -188,7 +188,7 @@ export async function fetchGrantsForDestination(
   globalDestinationId: string,
 ): Promise<AdminGrant[]> {
   const { data, error } = await supabase
-    .from('dining_guide_grants')
+    .from('travel_dining_guide_grants')
     .select(`
       id, user_id, global_destination_id, granted_at,
       profile:global_profiles!user_id (
@@ -424,7 +424,7 @@ export async function fetchExperiencesGrantsForDestination(
   globalDestinationId: string,
 ): Promise<AdminExperiencesGrant[]> {
   const { data, error } = await supabase
-    .from('experiences_guide_grants')
+    .from('travel_experiences_guide_grants')
     .select(`
       id, user_id, global_destination_id, granted_at,
       profile:global_profiles!user_id (
@@ -516,14 +516,14 @@ export async function createExperiencesGrant(
   globalDestinationId: string,
 ): Promise<void> {
   const { error } = await supabase
-    .from('experiences_guide_grants')
+    .from('travel_experiences_guide_grants')
     .insert({ user_id: userId, global_destination_id: globalDestinationId })
   if (error) throw new Error(`Failed to create experiences grant: ${error.message}`)
 }
 
 export async function deleteExperiencesGrant(id: string): Promise<void> {
   const { error } = await supabase
-    .from('experiences_guide_grants')
+    .from('travel_experiences_guide_grants')
     .delete()
     .eq('id', id)
   if (error) throw new Error(`Failed to delete experiences grant: ${error.message}`)
@@ -536,14 +536,14 @@ export async function createGrant(
   globalDestinationId:  string,
 ): Promise<void> {
   const { error } = await supabase
-    .from('dining_guide_grants')
+    .from('travel_dining_guide_grants')
     .insert({ user_id: userId, global_destination_id: globalDestinationId })
   if (error) throw new Error(`Failed to create grant: ${error.message}`)
 }
 
 export async function deleteGrant(id: string): Promise<void> {
   const { error } = await supabase
-    .from('dining_guide_grants')
+    .from('travel_dining_guide_grants')
     .delete()
     .eq('id', id)
   if (error) throw new Error(`Failed to delete grant: ${error.message}`)
