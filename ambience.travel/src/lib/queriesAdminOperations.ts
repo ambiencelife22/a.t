@@ -16,7 +16,7 @@
 // Prior: S44 — initial ship.
 
 import { supabase } from './supabase'
-import type { TripPartner } from './adminTripQueries'
+import type { TripPartner } from './queriesAdminTrip'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

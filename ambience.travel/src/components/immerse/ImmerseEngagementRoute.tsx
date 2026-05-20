@@ -30,7 +30,7 @@
 // Prior: S32 — subdomain-aware path parsing.
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
-import { getImmerseEngagement }              from '../../lib/immerseEngagementQueries'
+import { getImmerseEngagement }              from '../../lib/queriesImmerseEngagement'
 import type { ImmerseEngagementData }        from '../../lib/immerseTypes'
 import ImmerseEngagementPage                 from './ImmerseEngagementPage'
 import DestinationPage                       from './DestinationPage'

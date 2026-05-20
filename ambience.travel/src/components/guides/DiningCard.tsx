@@ -19,7 +19,7 @@
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
 import { resolveMapsUrl } from '../../lib/mapsUrl'
-import type { DiningVenue, VenueStatus } from '../../lib/diningGuideQueries'
+import type { DiningVenue, VenueStatus } from '../../lib/queriesGuidesDining'
 import { RecognitionMark } from './RecognitionKey'
 
 interface DiningCardProps {

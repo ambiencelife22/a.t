@@ -36,7 +36,7 @@ import {
   type DestinationWithHotelCounts,
   type DestinationOption,
   type HotelGuidePatch,
-} from '../../lib/adminGuidesQueries'
+} from '../../lib/queriesAdminGuides'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Edit Modal ────────────────────────────────────────────────────────────────

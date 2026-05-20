@@ -27,7 +27,7 @@
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
 import type { RGB } from './pdfUtils'
-import type { TripDay, TripDayEntry, DossierTrip, HouseProfile } from './adminTripQueries'
+import type { TripDay, TripDayEntry, DossierTrip, HouseProfile } from './queriesAdminTrip'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 

@@ -40,8 +40,8 @@ import {
   type PPDPeopleEntry, type HousePersonProfile,
   type PrefCategory, type PrefConfidence, type DiningStatus,
   type DestinationStatus, type DestinationTripType, type ContactType,
-} from '../../lib/adminHouseQueries'
-import { fetchTripDossierForHouse, type TripDossierData } from '../../lib/adminTripQueries'
+} from '../../lib/queriesAdminHouse'
+import { fetchTripDossierForHouse, type TripDossierData } from '../../lib/queriesAdminTrip'
 import {
   capitalize, formatDOB,
   DesigBadge, StatusFilterBar, AddFormShell, EntryCard,
@@ -49,7 +49,7 @@ import {
 } from './houseUi'
 import { TripDossierSection } from './TripDossierSection'
 import { RequestsSection } from './RequestsSection'
-import { fetchRequestsForHouse, type TravelRequest } from '../../lib/adminRequestQueries'
+import { fetchRequestsForHouse, type TravelRequest } from '../../lib/queriesAdminRequests'
 
 // Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
 // They remain here because they are tightly coupled to AllData and house context.

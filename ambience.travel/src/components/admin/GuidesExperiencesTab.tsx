@@ -48,7 +48,7 @@ import {
   type DestinationOption,
   type ExperiencesGuidePatch,
   type GlobalPerson,
-} from '../../lib/adminGuidesQueries'
+} from '../../lib/queriesAdminGuides'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

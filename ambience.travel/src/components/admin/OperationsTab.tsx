@@ -23,8 +23,8 @@ import { AdminSection, AdminEmptyState, useAdminToast } from './_adminPrimitives
 import {
   fetchOpsPortfolio,
   type OpsPortfolio, type OpsTrip, type OpsBooking, type OpsSummary,
-} from '../../lib/adminOperationsQueries'
-import type { TripPartner } from '../../lib/adminTripQueries'
+} from '../../lib/queriesAdminOperations'
+import type { TripPartner } from '../../lib/queriesAdminTrip'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

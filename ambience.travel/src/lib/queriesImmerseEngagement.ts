@@ -23,7 +23,7 @@
 
 import { supabaseAnon } from './supabase'
 import { rewriteImageUrl } from './imageUrl'
-import { mapEngagementStatus, mapItineraryStatus } from './statusQueries'
+import { mapEngagementStatus, mapItineraryStatus } from './queriesStatus'
 import type {
   ImmerseEngagementData,
   ImmerseTripFormat,

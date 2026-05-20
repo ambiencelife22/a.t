@@ -17,7 +17,7 @@ import {
   type CardOverride,
   type CardCanonicalOption,
   type CardKind,
-} from '../../lib/adminCardOverrideQueries'
+} from '../../lib/queriesAdminCardOverrides'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../lib/adminTokens'
 

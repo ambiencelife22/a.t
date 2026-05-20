@@ -14,7 +14,7 @@
 //   Supabase Edge Function gateway even for public endpoints.
 // Prior: S48 — initial ship.
 
-import type { DossierTrip, HouseProfile, TripAuxBooking, TripBrief } from './adminTripQueries'
+import type { DossierTrip, HouseProfile, TripAuxBooking, TripBrief } from './queriesAdminTrip'
 
 export type TripClientData = {
   trip:            DossierTrip

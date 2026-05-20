@@ -31,7 +31,7 @@ import {
   getGuideDestination,
   checkGuideGrant,
   type GuideDestination,
-} from '../../lib/diningGuideQueries'
+} from '../../lib/queriesGuidesDining'
 
 const GUIDES_HOST = 'guides.ambience.travel'
 const HOME_URL    = 'https://ambience.travel/'

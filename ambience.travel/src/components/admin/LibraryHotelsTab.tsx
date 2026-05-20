@@ -37,7 +37,7 @@ import {
   type AdminHotel,
   type DestinationOption,
   type HotelPatch,
-} from '../../lib/adminGuidesQueries'
+} from '../../lib/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 

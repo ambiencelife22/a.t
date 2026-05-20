@@ -14,7 +14,7 @@
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../lib/landingColors'
 import { resolveMapsLink } from '../../lib/mapsUrl'
-import type { HotelVenue } from '../../lib/hotelGuideQueries'
+import type { HotelVenue } from '../../lib/queriesGuidesHotels'
 
 interface HotelCardProps {
   hotel: HotelVenue

@@ -54,7 +54,7 @@ import {
   type CardSelection,
   type CardCanonicalOption,
   type CardKind,
-} from '../../lib/adminCardSelectionQueries'
+} from '../../lib/queriesAdminCardSelections'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../lib/adminTokens'
 

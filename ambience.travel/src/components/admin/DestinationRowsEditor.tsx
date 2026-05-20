@@ -41,7 +41,7 @@ import {
   fetchMaxDestinationSortOrder,
   type DestinationRow,
   type DestinationOption,
-} from '../../lib/adminDestinationRowQueries'
+} from '../../lib/queriesAdminDestinationRows'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../lib/adminTokens'
 

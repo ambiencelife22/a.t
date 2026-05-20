@@ -26,7 +26,7 @@ import {
   type SupportTicket,
   type TicketMessage,
   type RecentLogin,
-} from '../lib/queries'
+} from '../lib/queriesProgramme'
 import { useToast } from '../lib/ToastContext'
 
 const DANGER = '#ef4444'

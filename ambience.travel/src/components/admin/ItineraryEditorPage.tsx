@@ -35,7 +35,7 @@ import {
   updateTripDayEntry,
   deleteTripDayEntry,
   autoDeriveTripItinerary,
-} from '../../lib/adminTripQueries'
+} from '../../lib/queriesAdminTrip'
 import type {
   DossierTrip,
   HouseProfile,
@@ -43,7 +43,7 @@ import type {
   TripDayEntry,
   TripDayPatch,
   TripDayEntryPatch,
-} from '../../lib/adminTripQueries'
+} from '../../lib/queriesAdminTrip'
 import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../lib/useImmerseProgrammePdf'
 

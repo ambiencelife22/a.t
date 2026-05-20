@@ -36,7 +36,7 @@ import {
   getExperienceVenuesByDestination,
   type ExperienceVenue,
   type ExperiencesGuideDestination,
-} from '../../lib/experiencesGuideQueries'
+} from '../../lib/queriesGuidesExperiences'
 import { useGuidePdf } from '../../lib/useGuidePdf'
 import { ExperienceCard } from './ExperienceCard'
 import { GuideHero } from './GuideHero'

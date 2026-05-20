@@ -21,7 +21,7 @@
 
 import React from 'react'
 import { useVisible, fadeUp } from '../../lib/animations'
-import type { DiningGuideOverlay } from '../../lib/diningGuideQueries'
+import type { DiningGuideOverlay } from '../../lib/queriesGuidesDining'
 import {
   pyvSectionStyle,
   pyvScanLineStyle,

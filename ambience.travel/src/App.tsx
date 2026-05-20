@@ -79,7 +79,7 @@
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'
 import RouteLoading from './components/RouteLoading'
 import { getSession } from './lib/auth'
-import { getProfile } from './lib/queries'
+import { getProfile } from './lib/queriesProgramme'
 import { _setPalette, darkPalette, lightPalette } from './lib/theme'
 import { ThemeContext } from './lib/ThemeContext'
 import { isImmerseHost, isTripUrlId } from './lib/immersePath'

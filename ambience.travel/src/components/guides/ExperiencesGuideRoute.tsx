@@ -22,7 +22,7 @@ import {
   getExperiencesGuideDestination,
   // checkExperiencesGuideGrant,
   type ExperiencesGuideDestination,
-} from '../../lib/experiencesGuideQueries'
+} from '../../lib/queriesGuidesExperiences'
 
 const GUIDES_HOST = 'guides.ambience.travel'
 const HOME_URL    = 'https://ambience.travel/'

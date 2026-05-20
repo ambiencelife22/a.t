@@ -14,7 +14,7 @@ import GuideLayout from '../layouts/GuideLayout'
 import HotelGuidePage from './HotelGuidePage'
 import RouteLoading from '../RouteLoading'
 import { useToast } from '../../lib/ToastContext'
-import { getHotelGuideDestination, type HotelGuideDestination } from '../../lib/hotelGuideQueries'
+import { getHotelGuideDestination, type HotelGuideDestination } from '../../lib/queriesGuidesHotels'
 
 const GUIDES_HOST = 'guides.ambience.travel'
 const HOME_URL    = 'https://ambience.travel/'

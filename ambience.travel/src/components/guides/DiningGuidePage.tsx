@@ -49,7 +49,7 @@ import {
   getDiningVenuesByDestination,
   type DiningVenue,
   type GuideDestination,
-} from '../../lib/diningGuideQueries'
+} from '../../lib/queriesGuidesDining'
 import { useGuidePdf } from '../../lib/useGuidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'

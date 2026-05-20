@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { createTrip, reassignEngagementTrip } from '../../lib/adminEngagementQueries'
+import { createTrip, reassignEngagementTrip } from '../../lib/queriesAdminEngagements'
 import { A } from '../../lib/adminTokens'
 
 // ── Types ────────────────────────────────────────────────────────────────────
