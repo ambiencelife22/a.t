@@ -8,7 +8,7 @@
 
 import { useState, useContext, type ReactNode } from 'react'
 import { C } from '../lib/tokensProgramme'
-import { ThemeContext } from '../lib/contextTheme'
+import { ThemeContext } from '../context/contextTheme'
 import AmbienceLogo from './AmbienceLogo'
 
 export type Page = 'dashboard' | 'programme' | 'profile'
