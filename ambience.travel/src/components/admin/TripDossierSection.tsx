@@ -22,9 +22,9 @@ import type {
 } from '../../lib/queriesAdminTrip'
 import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings } from '../../lib/queriesAdminTrip'
 import type { BookingRoom } from '../../lib/queriesAdminTrip'
-import { useDossierClientPdf } from '../../lib/useDossierClientPdf'
-import { useImmerseConfirmationPdf } from '../../lib/useImmerseConfirmationPdf'
-import type { ClientDossierData } from '../../lib/pdfDossierClient'
+import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
+import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
+import type { ClientDossierData } from '../../pdf/pdfDossierClient'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

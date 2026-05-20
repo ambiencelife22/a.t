@@ -50,7 +50,7 @@ import {
   type DiningVenue,
   type GuideDestination,
 } from '../../lib/queriesGuidesDining'
-import { useGuidePdf } from '../../lib/useGuidePdf'
+import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'

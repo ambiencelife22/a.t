@@ -25,8 +25,8 @@ import { useEffect, useState } from 'react'
 import { getAuxTypeMeta } from '../../lib/typesAuxBooking'
 import { fetchTripClientData, type TripClientData } from '../../lib/queriesImmerseTrip'
 import type { TripBooking, TripAuxBooking } from '../../lib/queriesAdminTrip'
-import type { ConfirmationBriefData } from '../../lib/pdfImmerseConfirmation'
-import { useImmerseConfirmationPdf } from '../../lib/useImmerseConfirmationPdf'
+import type { ConfirmationBriefData } from '../../pdf/pdfImmerseConfirmation'
+import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 

@@ -45,7 +45,7 @@ import type {
   TripDayEntryPatch,
 } from '../../lib/queriesAdminTrip'
 import { supabase } from '../../lib/supabase'
-import { useImmerseProgrammePdf } from '../../lib/useImmerseProgrammePdf'
+import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

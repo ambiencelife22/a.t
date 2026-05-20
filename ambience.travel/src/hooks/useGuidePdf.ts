@@ -17,8 +17,8 @@
 //   DiningGuidePage + ExperiencesGuidePage (and any future guide pages).
 
 import { useEffect, useRef, useState } from 'react'
-import { exportGuidePdf, type ExportGuidePdfOptions } from './pdfGuide'
-import { useToast } from './ToastContext'
+import { exportGuidePdf, type ExportGuidePdfOptions } from '../pdf/pdfGuide'
+import { useToast } from '../lib/ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 
