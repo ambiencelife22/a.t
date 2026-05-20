@@ -19,7 +19,7 @@
 
 import { supabase } from './supabase'
 import { rewriteImageUrl } from './utilsImageUrl'
-import type { ImmerseContentCard } from './typesImmerse'
+import type { ImmerseContentCard } from '../types/typesImmerse'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 

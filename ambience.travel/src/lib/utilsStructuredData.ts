@@ -17,7 +17,7 @@ import type {
   ImmerseDestinationHotelsShape,
   ImmerseHotelOption,
   ImmerseContentCard,
-} from './typesImmerse'
+} from '../types/typesImmerse'
 
 const UNSPLASH_LICENSE = 'https://unsplash.com/license'
 const UNSPLASH_CREDIT  = 'Unsplash'

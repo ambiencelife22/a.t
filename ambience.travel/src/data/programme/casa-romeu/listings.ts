@@ -1,7 +1,7 @@
 // casa-romeu/listings.ts
 // All dining, experiences, and shopping listings for Casa Romeu.
 
-import type { Listing } from '../../../lib/typesProgramme'
+import type { Listing } from '../../../types/typesProgramme'
 
 export const listings: Listing[] = [
 

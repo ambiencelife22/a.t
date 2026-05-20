@@ -38,7 +38,7 @@
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
-import type { ImmerseHotelOption, ImmerseRoomOption } from '../../lib/typesImmerse'
+import type { ImmerseHotelOption, ImmerseRoomOption } from '../../types/typesImmerse'
 
 // S32: detect numeric rate strings ($1,200 / €420 / 1500)
 // (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is

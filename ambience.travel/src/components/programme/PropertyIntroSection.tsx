@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
-import { DARK } from '../../lib/typesLanding'
+import { DARK } from '../../types/typesLanding'
 import { WIDGET } from '../../tokens/tokensLanding'
 import { formatDateOnly } from '../../lib/utilsDates'
 

@@ -40,7 +40,7 @@ import JourneyMomentsSection from '../landing/JourneyMomentsSection'
 import ExperienceTypesSection from '../landing/ExperienceTypesSection'
 import DarkCTASection from '../landing/DarkCTASection'
 
-import { C, OVERLAY } from '../../lib/typesLanding'
+import { C, OVERLAY } from '../../types/typesLanding'
 
 // SPORTS dashboard/app page types — not used for travel landing right now
 // type Page =

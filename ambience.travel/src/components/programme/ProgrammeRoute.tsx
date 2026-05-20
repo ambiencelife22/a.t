@@ -16,8 +16,8 @@ import ProgrammeAccessDenied from './ProgrammeAccessDenied'
 import ProgrammePage from './ProgrammePage'
 import JourneyPage from './JourneyPage'
 import ProgrammeLayout from '../layouts/ProgrammeLayout'
-import type { Booking, Property, ManualSection, Listing } from '../../lib/typesProgramme'
-import type { JourneyDay, JourneyEvent, EventContact, EventType, EventStatus } from '../../lib/typesJourney'
+import type { Booking, Property, ManualSection, Listing } from '../../types/typesProgramme'
+import type { JourneyDay, JourneyEvent, EventContact, EventType, EventStatus } from '../../types/typesJourney'
 
 // ── URL resolution ─────────────────────────────────────────────────────────────
 

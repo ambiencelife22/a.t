@@ -15,7 +15,7 @@ import type {
   ImmerseHotelOption,
   ImmerseRegionGroup,
   ImmerseRoomOption,
-} from './typesImmerse'
+} from '../types/typesImmerse'
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 

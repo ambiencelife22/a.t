@@ -5,7 +5,7 @@
 
 import { useEffect } from 'react'
 import { buildDestinationStructuredData } from '../../lib/utilsStructuredData'
-import type { ImmerseDestinationData } from '../../lib/typesImmerse'
+import type { ImmerseDestinationData } from '../../types/typesImmerse'
 
 const SCRIPT_ID = 'immerse-structured-data'
 

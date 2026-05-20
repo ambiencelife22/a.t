@@ -28,7 +28,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { A } from '../../tokens/tokensAdmin'
-import type { EngagementStatusSlug } from '../../lib/typesImmerse'
+import type { EngagementStatusSlug } from '../../types/typesImmerse'
 
 const EASE = 'cubic-bezier(0.16,1,0.3,1)'
 

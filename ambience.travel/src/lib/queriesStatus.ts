@@ -24,7 +24,7 @@
 // logical sequence without re-sorting client-side.
 
 import { supabase } from './supabase'
-import type { EngagementStatus, ItineraryStatus } from './typesImmerse'
+import type { EngagementStatus, ItineraryStatus } from '../types/typesImmerse'
 
 // ─── DB row types ────────────────────────────────────────────────────────────
 

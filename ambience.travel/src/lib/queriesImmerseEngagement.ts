@@ -36,7 +36,7 @@ import type {
   EngagementAudience,
   EngagementStatus,
   ItineraryStatus,
-} from './typesImmerse'
+} from '../types/typesImmerse'
 
 // ── DB row types ─────────────────────────────────────────────────────────────
 

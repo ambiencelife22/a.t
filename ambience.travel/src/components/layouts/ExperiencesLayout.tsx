@@ -5,7 +5,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
-import { C, OVERLAY } from '../../lib/typesLanding'
+import { C, OVERLAY } from '../../types/typesLanding'
 
 interface Props {
   children: ReactNode

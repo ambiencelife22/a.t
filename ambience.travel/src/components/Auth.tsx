@@ -20,7 +20,7 @@
 
 import { useState } from 'react'
 import { signIn, signUp } from '../lib/utilsAuth'
-import { C, DARK } from '../lib/typesLanding'
+import { C, DARK } from '../types/typesLanding'
 import AmbienceLogo from './AmbienceLogo'
 
 interface AuthProps {

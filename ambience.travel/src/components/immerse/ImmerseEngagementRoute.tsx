@@ -31,7 +31,7 @@
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { getImmerseEngagement }              from '../../lib/queriesImmerseEngagement'
-import type { ImmerseEngagementData }        from '../../lib/typesImmerse'
+import type { ImmerseEngagementData }        from '../../types/typesImmerse'
 import ImmerseEngagementPage                 from './ImmerseEngagementPage'
 import DestinationPage                       from './DestinationPage'
 import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'

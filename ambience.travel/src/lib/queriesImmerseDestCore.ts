@@ -13,7 +13,7 @@ import { rewriteImageUrl } from './utilsImageUrl'
 import { getImmerseDestinationHotels }   from './queriesImmerseDestHotels'
 import { getImmerseDestinationCards }    from './queriesImmerseDestCards'
 import { getImmerseDestinationPricing }  from './queriesImmerseDestPricing'
-import type { ImmerseDestinationData }   from './typesImmerse'
+import type { ImmerseDestinationData }   from '../types/typesImmerse'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 

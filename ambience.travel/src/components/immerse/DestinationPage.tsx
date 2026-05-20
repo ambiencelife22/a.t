@@ -32,7 +32,7 @@ import type {
   ImmerseDestinationHotelsShape,
   ImmerseEngagementData,
   ImmersePricingRow,
-} from '../../lib/typesImmerse'
+} from '../../types/typesImmerse'
 import type { ImmerseDestinationCore }  from '../../lib/queriesImmerseDestCore'
 import type { ImmerseDestinationCards } from '../../lib/queriesImmerseDestCards'
 

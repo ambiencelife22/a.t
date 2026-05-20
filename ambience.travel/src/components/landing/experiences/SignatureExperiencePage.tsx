@@ -15,7 +15,7 @@ import SignatureInclusions  from './SignatureInclusions'
 import SignaturePractical   from './SignaturePractical'
 import SignatureQuote       from './SignatureQuote'
 import SignatureEnquiryCTA  from './SignatureEnquiryCTA'
-import { C } from '../../../lib/typesLanding'
+import { C } from '../../../types/typesLanding'
 
 // Registry — add new experiences here as data files land
 const REGISTRY: Record<string, typeof iceland4e> = {

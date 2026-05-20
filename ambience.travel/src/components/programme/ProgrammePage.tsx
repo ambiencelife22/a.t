@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { C } from '../../tokens/tokensProgramme'
 import { DANGER } from '../../tokens/tokensProgrammeColors'
-import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../lib/typesProgramme'
+import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../types/typesProgramme'
 import PropertyIntroSection from './PropertyIntroSection'
 
 // ── Travel-specific light-section tokens ──────────────────────────────────────

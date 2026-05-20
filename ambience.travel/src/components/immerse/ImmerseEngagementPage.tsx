@@ -23,7 +23,7 @@ import { ImmerseRouteStrip } from './ImmerseEngagementComponents'
 import { ImmerseDestinationRows } from './ImmerseEngagementComponents'
 import { ImmerseEngagementPricing } from './ImmerseEngagementComponents'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
-import type { ImmerseEngagementData } from '../../lib/typesImmerse'
+import type { ImmerseEngagementData } from '../../types/typesImmerse'
 
 export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagementData | null }) {
   if (!data) return null

@@ -16,7 +16,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
-import { C, DARK, OVERLAY } from '../../lib/typesLanding'
+import { C, DARK, OVERLAY } from '../../types/typesLanding'
 import { ID } from '../immerse/ImmerseComponents'
 
 export type GuideNavItem = {

@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { C, DARK } from '../../lib/typesLanding'
+import { C, DARK } from '../../types/typesLanding'
 import { fadeUp, useScrollProgress, useVisible } from './LandingComponents'
 
 const items = [

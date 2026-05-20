@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { C, OVERLAY } from '../../lib/typesLanding'
+import { C, OVERLAY } from '../../types/typesLanding'
 import { fadeUp, useVisible, useScrollParallax } from './LandingComponents'
 
 const pillars = [

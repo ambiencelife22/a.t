@@ -3,7 +3,7 @@
 // Last updated: S9
 
 import { useEffect, useState } from 'react'
-import { C } from '../../../lib/typesLanding'
+import { C } from '../../../types/typesLanding'
 import { fadeUp, useScrollParallax, useVisible } from '../LandingComponents'
 
 type Bullet = {

@@ -3,7 +3,7 @@
 // Last updated: S9
 
 import { useEffect, useRef, useState } from 'react'
-import { C } from '../../../lib/typesLanding'
+import { C } from '../../../types/typesLanding'
 import { fadeUp, useVisible } from '../LandingComponents'
 
 // Iceland palette — local to this component only, not exported

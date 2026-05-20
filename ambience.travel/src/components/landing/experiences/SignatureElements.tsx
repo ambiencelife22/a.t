@@ -3,7 +3,7 @@
 // Last updated: S9
 
 import { useState } from 'react'
-import { C, DARK } from '../../../lib/typesLanding'
+import { C, DARK } from '../../../types/typesLanding'
 import { fadeUp, useVisible } from '../LandingComponents'
 
 type ExperienceTheme = {
