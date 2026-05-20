@@ -6,14 +6,17 @@
 //   - Data fetch: resolves urlId → TripClientData + TripDayEntries.
 //   - PDF download: calls exportDailyProgrammePdf.
 //
-// Last updated: S48 — load rewritten to call get-trip-programme Edge Function
-//   instead of direct fetchTripDays / fetchTripDayEntries queries, which were
-//   blocked by RLS on unauthenticated public pages.
+// Last updated: S48 — auxBookings merged into DayContent alongside day entries.
+//   Aux bookings matched by start_date to entry_date, sorted by time, rendered
+//   with same visual card. No derivation step required — data comes directly
+//   from travel_trip_aux_bookings via Edge Function.
+// Prior: S48 — visual-first entry cards with CRM image resolution.
+// Prior: S48 — load rewritten to call get-trip-programme Edge Function.
 // Prior: S48 — initial ship.
 
 import { useEffect, useState } from 'react'
 import type { TripClientData } from '../../lib/tripClientQueries'
-import type { TripDay, TripDayEntry } from '../../lib/adminTripQueries'
+import type { TripDay, TripDayEntry, TripAuxBooking } from '../../lib/adminTripQueries'
 import { useProgrammeDownload } from '../../lib/useProgrammeDownload'
 import { isImmerseHost } from '../../lib/immersePath'
 
@@ -33,7 +36,7 @@ async function fetchTripProgrammeData(urlId: string): Promise<{
         'apikey':        SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body:    JSON.stringify({ url_id: urlId }),
+      body: JSON.stringify({ url_id: urlId }),
     })
     if (!res.ok) return null
     const payload = await res.json()
@@ -55,14 +58,41 @@ async function fetchTripProgrammeData(urlId: string): Promise<{
   }
 }
 
+// ── Hooks ────────────────────────────────────────────────────────────────────
+
+function useWindowWidth(): number {
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
+  useEffect(() => {
+    function onResize() { setWidth(window.innerWidth) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return width
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
-const CREAM = '#F7F5F0'
-const INK   = '#1A1D1A'
-const GOLD  = '#C9A84C'
-const MUTED = '#787060'
-const FAINT = '#B4AFA5'
-const RULE  = '#DCDBD5'
+const CREAM    = '#F7F5F0'
+const CARD_BG  = '#F0EDE6'
+const INK      = '#1A1D1A'
+const GOLD     = '#C9A84C'
+const MUTED    = '#787060'
+const FAINT    = '#B4AFA5'
+const RULE     = '#DCDBD5'
+
+// Category accent colours — mirror dailyProgrammePdf.ts + ItineraryEditorPage
+function categoryAccent(category: string | null): string {
+  switch (category) {
+    case 'Flight':     return '#93C5FD'
+    case 'Transfer':   return '#A3E635'
+    case 'Hotel':      return '#C9A84C'
+    case 'Dining':     return '#F9A8D4'
+    case 'Experience': return '#C4B5FD'
+    case 'Leisure':    return '#6EE7B7'
+    case 'Note':       return '#B4AFA5'
+    default:           return '#B4AFA5'
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -71,13 +101,69 @@ function fmtDayLabel(iso: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function fmtTime(t: string | null): string {
+function fmtTime(t: string | null | undefined): string {
   if (!t) return ''
   const [h, m] = t.split(':')
   const hour = parseInt(h, 10)
   const ampm = hour >= 12 ? 'PM' : 'AM'
   const h12  = hour % 12 || 12
   return `${h12}:${m} ${ampm}`
+}
+
+function sortKey(time: string | null | undefined): number {
+  if (!time) return 9999
+  const parts = time.split(':')
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1] ?? '0', 10)
+}
+
+// ── Unified card item ─────────────────────────────────────────────────────────
+// Normalises a TripDayEntry or TripAuxBooking into one shape for rendering.
+
+type CardItem = {
+  id:                  string
+  category:            string | null
+  start_time:          string | null
+  end_time:            string | null
+  title:               string
+  subtitle:            string | null
+  notes:               string | null
+  confirmation_number: string | null
+  guest_label:         string | null
+  booked_by:           string | null
+  image_src:           string | null
+}
+
+function entryToCard(e: TripDayEntry): CardItem {
+  return {
+    id:                  e.id,
+    category:            e.category,
+    start_time:          e.start_time,
+    end_time:            e.end_time,
+    title:               e.title,
+    subtitle:            e.subtitle ?? null,
+    notes:               e.notes ?? null,
+    confirmation_number: e.confirmation_number ?? null,
+    guest_label:         e.guest_label ?? null,
+    booked_by:           e.booked_by ?? null,
+    image_src:           (e as any).image_src ?? null,
+  }
+}
+
+function auxToCard(a: TripAuxBooking): CardItem {
+  const route = a.origin && a.destination ? `${a.origin} → ${a.destination}` : null
+  return {
+    id:                  a.id,
+    category:            a.booking_type ?? 'Other',
+    start_time:          a.start_time ?? null,
+    end_time:            a.end_time ?? null,
+    title:               a.name ?? a.booking_type ?? 'Booking',
+    subtitle:            route,
+    notes:               a.notes ?? null,
+    confirmation_number: a.confirmation_number ?? null,
+    guest_label:         a.guest_label ?? null,
+    booked_by:           a.booked_by ?? null,
+    image_src:           null, // aux bookings have no images
+  }
 }
 
 // ── Top bar ───────────────────────────────────────────────────────────────────
@@ -111,16 +197,17 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
       {/* Main bar */}
       <div style={{
         height: 56, display: 'flex', alignItems: 'center',
-        padding: '0 clamp(16px,5vw,48px)', gap: 12,
+        padding: '0 clamp(16px,5vw,48px)', gap: 8, overflow: 'hidden',
       }}>
+        {/* Logo — emblem only on mobile, full logo on wider screens */}
         <a href='https://ambience.travel' style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}>
-          <img src='/emblem.png' alt='' style={{ width: 24, height: 24, borderRadius: '50%' }} />
-          <img src='/ambience_travel.svg' alt='ambience travel' style={{ height: 32, objectFit: 'contain' }} />
+          <img src='/emblem.png' alt='' style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }} />
+          <img src='/ambience_travel.svg' alt='ambience travel' style={{ height: 28, objectFit: 'contain', display: 'block', maxWidth: 'clamp(80px, 20vw, 160px)' }} />
         </a>
 
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: 0 }} />
 
-        {/* Confirmation link */}
+        {/* Confirmation link — text hidden on small screens */}
         {confirmationUrl && (
           <a
             href={confirmationUrl}
@@ -131,7 +218,7 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
               textDecoration: 'none', padding: '5px 10px',
               border: `1px solid ${RULE}`, borderRadius: 6,
               transition: 'color 150ms, border-color 150ms',
-              flexShrink: 0,
+              flexShrink: 0, whiteSpace: 'nowrap',
             }}
             onMouseEnter={e => {
               (e.currentTarget as HTMLAnchorElement).style.color = GOLD
@@ -156,10 +243,10 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
             padding: '5px 14px', cursor: pdfReady && clientData ? 'pointer' : 'not-allowed',
             background: GOLD, color: INK,
             opacity: pdfReady && !pdfDownloading && clientData ? 1 : 0.45,
-            transition: 'opacity 150ms', flexShrink: 0,
+            transition: 'opacity 150ms', flexShrink: 0, whiteSpace: 'nowrap',
           }}
         >
-          {pdfDownloading ? 'Generating…' : 'Download PDF'}
+          {pdfDownloading ? 'Generating…' : 'PDF'}
         </button>
       </div>
 
@@ -179,7 +266,8 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontSize: 11, fontWeight: activeDate === day.entry_date ? 700 : 500,
                 color: activeDate === day.entry_date ? GOLD : MUTED,
-                background: 'transparent', border: 'none', borderBottom: `2px solid ${activeDate === day.entry_date ? GOLD : 'transparent'}`,
+                background: 'transparent', border: 'none',
+                borderBottom: `2px solid ${activeDate === day.entry_date ? GOLD : 'transparent'}`,
                 padding: '10px 12px', cursor: 'pointer', flexShrink: 0,
                 whiteSpace: 'nowrap', transition: 'color 120ms, border-color 120ms',
               }}
@@ -193,17 +281,189 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
   )
 }
 
+// ── Entry card ────────────────────────────────────────────────────────────────
+
+function EntryCard({ item }: { item: CardItem }) {
+  const accent     = categoryAccent(item.category)
+  const dep        = fmtTime(item.start_time)
+  const arr        = fmtTime(item.end_time)
+  const timeStr    = dep && arr ? `${dep} – ${arr}` : dep || arr || null
+  const isAmbience = !item.booked_by || item.booked_by.toLowerCase().includes('ambience')
+  const width      = useWindowWidth()
+  const isMobile   = width < 600
+
+  // On mobile: stack vertically (image top, content below)
+  // On desktop: image left panel, content right
+  const stackLayout = isMobile && !!item.image_src
+
+  return (
+    <div style={{
+      background: '#fff',
+      border: `0.5px solid ${RULE}`,
+      borderRadius: 12,
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: stackLayout ? 'column' : 'row',
+      minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
+    }}>
+      {/* Image panel */}
+      {item.image_src && (
+        <div style={{
+          // Mobile: full width, fixed height. Desktop: fixed width panel.
+          width:     stackLayout ? '100%' : 'clamp(120px, 28%, 200px)',
+          height:    stackLayout ? 200    : 'auto',
+          flexShrink: 0,
+          background: CARD_BG,
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <img
+            src={item.image_src}
+            alt=''
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: 3, background: accent,
+          }} />
+        </div>
+      )}
+
+      {/* Content */}
+      <div style={{
+        flex: 1,
+        padding: '16px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minWidth: 0,
+        borderLeft: (!stackLayout && !item.image_src) ? `3px solid ${accent}` : 'none',
+      }}>
+        <div>
+          {/* Category + time */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: 8, gap: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+              <span style={{
+                fontSize: 9, fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 700, letterSpacing: '0.12em',
+                textTransform: 'uppercase', color: MUTED,
+              }}>
+                {item.category ?? 'Other'}
+              </span>
+            </div>
+            {timeStr && (
+              <span style={{
+                fontSize: 11, fontFamily: 'DM Mono, monospace',
+                fontWeight: 700, color: INK, flexShrink: 0,
+              }}>
+                {timeStr}
+              </span>
+            )}
+          </div>
+
+          {/* Title */}
+          <div style={{
+            fontSize: 'clamp(14px,1.8vw,17px)',
+            fontFamily: 'Georgia, serif',
+            color: INK, lineHeight: 1.3, marginBottom: 4,
+          }}>
+            {item.title}
+          </div>
+
+          {/* Subtitle */}
+          {item.subtitle && (
+            <div style={{
+              fontSize: 12, fontFamily: "'Plus Jakarta Sans', sans-serif",
+              color: MUTED, marginBottom: 6,
+            }}>
+              {item.subtitle}
+            </div>
+          )}
+
+          {/* Notes */}
+          {item.notes && (
+            <div style={{
+              fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif",
+              color: FAINT, fontStyle: 'italic', lineHeight: 1.5,
+            }}>
+              {item.notes}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {(item.confirmation_number || item.guest_label || !isAmbience) && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: 12, paddingTop: 10, borderTop: `1px solid ${RULE}`,
+            gap: 8, flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {item.confirmation_number && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  border: `1px solid ${GOLD}`, borderRadius: 4,
+                  padding: '1px 8px', background: '#FAF7F0',
+                }}>
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>
+                    Conf #: {item.confirmation_number}
+                  </span>
+                </div>
+              )}
+              {item.guest_label && (
+                <span style={{
+                  fontSize: 10, fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  fontStyle: 'italic', color: FAINT,
+                }}>
+                  {item.guest_label}
+                </span>
+              )}
+            </div>
+            {!isAmbience && (
+              <span style={{
+                fontSize: 9, fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 600, letterSpacing: '0.08em',
+                textTransform: 'uppercase', color: FAINT,
+              }}>
+                Own Arrangements
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Day content ───────────────────────────────────────────────────────────────
 
-function DayContent({ day, entries }: { day: TripDay; entries: TripDayEntry[] }) {
-  const dayEntries = entries
-    .filter(e => e.entry_date === day.entry_date && e.brief_show)
-    .sort((a, b) => a.sort_order - b.sort_order)
+function DayContent({ day, entries, auxBookings }: {
+  day:         TripDay
+  entries:     TripDayEntry[]
+  auxBookings: TripAuxBooking[]
+}) {
+  // Merge day entries + aux bookings for this date, sorted by time
+  const cards: CardItem[] = [
+    ...entries
+      .filter(e => e.entry_date === day.entry_date && e.brief_show)
+      .map(entryToCard),
+    ...auxBookings
+      .filter(a => a.start_date === day.entry_date && a.brief_show !== false)
+      .map(auxToCard),
+  ].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time))
 
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,8vw,120px)' }}>
       {day.day_label && (
-        <div style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: GOLD, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
+        <div style={{
+          fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontWeight: 700, color: GOLD, letterSpacing: '0.12em',
+          textTransform: 'uppercase', marginBottom: 4,
+        }}>
           {day.day_label}
         </div>
       )}
@@ -211,67 +471,26 @@ function DayContent({ day, entries }: { day: TripDay; entries: TripDayEntry[] })
         {new Date(day.entry_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
       </div>
       {day.day_note && (
-        <div style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED, fontStyle: 'italic', marginBottom: 20 }}>
+        <div style={{
+          fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif",
+          color: MUTED, fontStyle: 'italic', marginBottom: 20,
+        }}>
           {day.day_note}
         </div>
       )}
 
       <div style={{ height: 1, background: RULE, margin: '16px 0 24px' }} />
 
-      {dayEntries.length === 0 ? (
-        <div style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, fontStyle: 'italic' }}>
-          No programme entries for this day.
+      {cards.length === 0 ? (
+        <div style={{
+          fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif",
+          color: FAINT, fontStyle: 'italic',
+        }}>
+          Nothing planned today.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {dayEntries.map((entry, i) => (
-            <div key={entry.id} style={{ display: 'flex', gap: 20, position: 'relative' }}>
-              {/* Time column */}
-              <div style={{ width: 64, flexShrink: 0, textAlign: 'right', paddingTop: 2 }}>
-                {entry.start_time && (
-                  <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, fontWeight: 600 }}>
-                    {fmtTime(entry.start_time)}
-                  </div>
-                )}
-              </div>
-
-              {/* Accent dot + line */}
-              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: GOLD, marginTop: 4, flexShrink: 0 }} />
-                {i < dayEntries.length - 1 && (
-                  <div style={{ width: 1, flex: 1, background: RULE, minHeight: 24, marginTop: 4 }} />
-                )}
-              </div>
-
-              {/* Content */}
-              <div style={{ flex: 1, paddingBottom: 24 }}>
-                <div style={{ fontSize: 15, fontFamily: 'Georgia, serif', color: INK, marginBottom: 2 }}>
-                  {entry.title}
-                </div>
-                {entry.subtitle && (
-                  <div style={{ fontSize: 12, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED, marginBottom: 4 }}>
-                    {entry.subtitle}
-                  </div>
-                )}
-                {entry.confirmation_number && (
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    border: `1px solid ${GOLD}`, borderRadius: 4,
-                    padding: '1px 8px', marginBottom: 4, background: '#FAF7F0',
-                  }}>
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>
-                      Conf #:  {entry.confirmation_number}
-                    </span>
-                  </div>
-                )}
-                {entry.notes && (
-                  <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, fontStyle: 'italic' }}>
-                    {entry.notes}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {cards.map(item => <EntryCard key={item.id} item={item} />)}
         </div>
       )}
     </div>
@@ -344,7 +563,11 @@ export default function TripProgrammePage({ urlId }: { urlId: string }) {
       />
 
       {activeDay ? (
-        <DayContent day={activeDay} entries={entries} />
+        <DayContent
+          day={activeDay}
+          entries={entries}
+          auxBookings={clientData.auxBookings}
+        />
       ) : (
         <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,8vw,120px)', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: FAINT, fontStyle: 'italic' }}>
           No programme days available yet.

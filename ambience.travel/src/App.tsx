@@ -8,10 +8,14 @@
  *   ambience.travel/#admin                               → AmbienceAdmin (S33)
  *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
+ *   ambience.travel/immerse/:url_id/confirmation         → TripConfirmationPage (S48)
+ *   ambience.travel/immerse/:url_id/programme            → TripProgrammePage (S48)
  *   ambience.travel/guides/:destination/dining           → DiningGuideRoute (S35)
  *   ambience.travel/guides/:destination/hotels           → HotelGuideRoute (S37)
  *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
+ *   immerse.ambience.travel/:url_id/confirmation         → TripConfirmationPage (S48)
+ *   immerse.ambience.travel/:url_id/programme            → TripProgrammePage (S48)
  *   guides.ambience.travel/:destination/dining           → DiningGuideRoute (S35)
  *   guides.ambience.travel/:destination/hotels           → HotelGuideRoute (S37)
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin (existing, untouched)
@@ -31,6 +35,8 @@
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
+ *   localhost:5173/immerse/:url_id/confirmation          → TripConfirmationPage (S48)
+ *   localhost:5173/immerse/:url_id/programme             → TripProgrammePage (S48)
  *   localhost:5173/guides/:destination/dining            → DiningGuideRoute (S35)
  *   localhost:5173/guides/:destination/hotels            → HotelGuideRoute (S37)
  *
@@ -48,6 +54,9 @@
  *   depending on programme.ambience.travel for session establishment.
  *   Signup mode (?signup=1) is unaffected — remains programme-context only.
  *
+ * Prior: S48 — Added confirmation + programme routes under immerse surface.
+ *   Handled inside ImmerseEngagementRoute via RESERVED_SEGMENTS intercept —
+ *   no changes to App.tsx routing logic required.
  * Prior: S40D — Added 'login' route at /login for admin auth.
  * Prior: S37 — Added 'guides-hotels' route. resolveGuidePath() now
  *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
