@@ -141,3 +141,33 @@ export const CATEGORY_ACCENT: Record<string, string> = {
 export function getCategoryAccent(category: string | null | undefined): string {
   return CATEGORY_ACCENT[category ?? ''] ?? CATEGORY_ACCENT['Other']
 }
+
+// ── Event / booking status ─────────────────────────────────────────────────────
+// Platform-wide status taxonomy for all bookable trip elements.
+// Applies to JourneyEvent, TripDayEntry, TripAuxBooking, and future booking types.
+// Ordered by lifecycle stage — proposed through to cancelled.
+// DB CHECK constraints and UI pills must match this list exactly.
+
+export const EVENT_STATUSES = [
+  'recommended',       // Proposed by advisor — not yet reviewed by client
+  'awaiting_decision', // Presented — client is considering
+  'pending',           // Approved — booking in progress
+  'confirmed',         // Booked and confirmed with supplier
+  'paid',              // Fully settled — no outstanding payments
+  'cancelled',         // No longer active
+] as const
+
+export type EventStatus = typeof EVENT_STATUSES[number]
+
+export const EVENT_STATUS_META: Record<EventStatus, { label: string; color: string }> = {
+  recommended:       { label: 'Recommended',      color: '#B4AFA5' },  // faint — proposed
+  awaiting_decision: { label: 'Awaiting Decision', color: '#93C5FD' },  // blue — client considering
+  pending:           { label: 'Pending',           color: '#fbbf24' },  // amber — in progress
+  confirmed:         { label: 'Confirmed',         color: '#C9A84C' },  // gold — booked
+  paid:              { label: 'Paid',              color: '#4ade80' },  // green — settled
+  cancelled:         { label: 'Cancelled',         color: '#f87171' },  // red — inactive
+}
+
+export function getEventStatusMeta(status: EventStatus | string | null | undefined): { label: string; color: string } {
+  return EVENT_STATUS_META[status as EventStatus] ?? EVENT_STATUS_META['recommended']
+}

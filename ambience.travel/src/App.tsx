@@ -86,6 +86,7 @@ import { isImmerseHost, isTripUrlId } from './utils/utilsImmersePath'
 import type { Session } from '@supabase/supabase-js'
 import type { Page } from './components/Layout'
 
+
 // ── Lazy route components ────────────────────────────────────────────────────
 
 const LandingLayout            = lazy(() => import('./components/layouts/LandingLayout'))
@@ -102,6 +103,7 @@ const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/Immerse
 const DiningGuideRoute         = lazy(() => import('./components/guides/DiningGuideRoute'))
 const HotelGuideRoute          = lazy(() => import('./components/guides/HotelGuideRoute'))
 const ExperiencesGuideRoute    = lazy(() => import('./components/guides/ExperiencesGuideRoute'))
+const JourneyPreview = lazy(() => import('./components/immerse/JourneyPreview'))
 
 type Route =
   | 'landing'
@@ -116,6 +118,7 @@ type Route =
   | 'guides-dining'
   | 'guides-hotels'
   | 'guides-experiences'
+  | 'preview-journey'
 
 
 function hasUrlId(): boolean {
@@ -233,6 +236,7 @@ function resolveRoute(): Route {
     return 'app'
   }
 
+  if (pathname === '/preview/journey') return 'preview-journey'
   if (isImmerseRoute())    return 'immerse'
   if (isExperienceRoute()) return 'experience'
 
@@ -346,6 +350,13 @@ export default function App() {
     )
   }
 
+  if (route === 'preview-journey') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <JourneyPreview />
+      </Suspense>
+    )
+  }
   if (route === 'programme-detail') {
     return (
       <Suspense fallback={<RouteLoading />}>

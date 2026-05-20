@@ -7,9 +7,10 @@
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
-// Last updated: S48 — url_id added to DossierTrip. fetchTripDossierForHouse
-//   fetches travel_immerse_engagements in parallel and attaches url_id per trip.
-//   Used by TripActionPanel copy-link buttons.
+// Last updated: S48 — TripBrief gains 5 new columns: programme_show_images,
+//   welcome_letter, show_tab_confirmation, show_tab_itinerary, show_tab_brief,
+//   show_tab_contacts. Mirrors migration s48_trip_page_controls.
+// Prior: S48 — url_id added to DossierTrip. Engagement join in fetchTripDossierForHouse.
 // Prior: S48 — booked_by text added to TripAuxBooking. TripAuxBookingPatch added.
 // Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
 // Prior: S46 — _hotel_image_src added to TripBooking.
@@ -74,9 +75,15 @@ export type TripBrief = {
   hotel_contact_note:   string | null
   important_notes:      string[]
   footer_tagline:       string | null
-  logo_variant:         string | null
-  created_at:           string
-  updated_at:           string
+  logo_variant:          string | null
+  programme_show_images: boolean
+  welcome_letter:        string | null
+  show_tab_confirmation: boolean
+  show_tab_itinerary:    boolean
+  show_tab_brief:        boolean
+  show_tab_contacts:     boolean
+  created_at:            string
+  updated_at:            string
 }
 
 export type TripDay = {

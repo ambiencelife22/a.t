@@ -1,7 +1,15 @@
-/* journeyTypes.ts
+/* typesJourney.ts
  * Shared TypeScript types for ambience.travel journey programmes.
  * Covers programme_days, programme_events, programme_event_contacts.
+ *
+ * Last updated: S48 — EventStatus migrated to typesSuppliers.ts as the
+ *   platform-wide booking status taxonomy. Six-value lifecycle:
+ *   recommended → awaiting_decision → pending → confirmed → paid → cancelled.
+ * Prior: S23 — initial build.
  */
+
+import type { EventStatus } from './typesSuppliers'
+export type { EventStatus }
 
 // ── Event types ───────────────────────────────────────────────────────────────
 
@@ -12,8 +20,6 @@ export type EventType =
   | 'check_out'
   | 'experience'
   | 'dining'
-
-export type EventStatus = 'confirmed' | 'recommended' | 'cancelled'
 
 // ── Contact attached to an event ──────────────────────────────────────────────
 
@@ -53,6 +59,7 @@ export type JourneyEvent = {
   check_in_date:       string | null
   check_out_date:      string | null
   inclusions:          string | null
+  image_src:           string | null   // S48 — resolved by Edge Function for check_in events
   contacts:            EventContact[]
 }
 

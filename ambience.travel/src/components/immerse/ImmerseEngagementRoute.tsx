@@ -12,6 +12,7 @@
 //   destination   → second segment is a destination slug — renders DestinationPage
 //   confirmation  → second segment === 'confirmation' — renders TripConfirmationPage
 //   programme     → second segment === 'programme' — renders TripProgrammePage
+//   trip          → second segment === 'trip' — renders ImmerseTripPage (unified)
 //   invalid       → no valid url_id in first segment — redirects
 //
 // Architecture note:
@@ -21,13 +22,12 @@
 //   caused getImmerseEngagement to fire on confirmation/programme routes,
 //   making unauthorised direct Supabase queries.
 //
-// Last updated: S48 — engagement state + fetch extracted into EngagementRoute
-//   component to fix hooks-after-conditional-returns bug. Confirmation and
-//   programme routes now render without triggering engagement queries.
+// Last updated: S48 — ImmerseTripPage added as unified client surface.
+//   Route kind 'trip' resolves /{url_id}/trip → ImmerseTripPage.
+// Prior: S48 — engagement state + fetch extracted into EngagementRoute
+//   component to fix hooks-after-conditional-returns bug.
 // Prior: S48 — confirmation and programme route kinds added.
 // Prior: S32F — immersePath helpers, overview URL builder.
-// Prior: S32D — back-button fix, synchronous route derivation.
-// Prior: S32 — subdomain-aware path parsing.
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { getImmerseEngagement }              from '../../queries/queriesImmerseEngagement'
@@ -41,10 +41,11 @@ import RouteLoading from '../RouteLoading'
 
 const TripConfirmationPage = lazy(() => import('./TripConfirmationPage'))
 const TripProgrammePage    = lazy(() => import('./TripProgrammePage'))
+const ImmerseTripPage      = lazy(() => import('./ImmerseTripPage'))
 
 // ── Reserved second segments ──────────────────────────────────────────────────
 
-const RESERVED_SEGMENTS = new Set(['confirmation', 'programme'])
+const RESERVED_SEGMENTS = new Set(['confirmation', 'programme', 'trip'])
 
 // ── URL resolution ────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ type ResolvedRoute =
   | { kind: 'destination';  urlId: string; destinationSlug: string }
   | { kind: 'confirmation'; urlId: string }
   | { kind: 'programme';    urlId: string }
+  | { kind: 'trip';         urlId: string }
   | { kind: 'invalid' }
 
 export function resolveImmerseRoute(pathname: string): ResolvedRoute {
@@ -69,6 +71,7 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
 
   if (seg2 === 'confirmation') return { kind: 'confirmation', urlId: seg1 }
   if (seg2 === 'programme')    return { kind: 'programme',    urlId: seg1 }
+  if (seg2 === 'trip')         return { kind: 'trip',         urlId: seg1 }
 
   if (seg2 && !RESERVED_SEGMENTS.has(seg2)) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
 
@@ -106,9 +109,6 @@ export function buildImmerseNavItems(
 }
 
 // ── EngagementRoute ───────────────────────────────────────────────────────────
-// Handles overview + destination routes only. Isolated into its own component
-// so that engagement data fetching hooks never run on confirmation/programme
-// routes — fixing the hooks-after-conditional-returns bug.
 
 function EngagementRoute({ route }: {
   route: Extract<ResolvedRoute, { kind: 'overview' | 'destination' | 'invalid' }>
@@ -192,9 +192,6 @@ function EngagementRoute({ route }: {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-// Resolves the route and dispatches to the correct surface. Confirmation and
-// programme render directly — no engagement fetch. Overview and destination
-// delegate to EngagementRoute which owns the engagement fetch lifecycle.
 
 export default function ImmerseEngagementRoute() {
   const [pathname, setPathname] = useState(window.location.pathname)
@@ -223,6 +220,14 @@ export default function ImmerseEngagementRoute() {
     return (
       <Suspense fallback={<RouteLoading />}>
         <TripProgrammePage urlId={route.urlId} />
+      </Suspense>
+    )
+  }
+
+  if (route.kind === 'trip') {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <ImmerseTripPage urlId={route.urlId} />
       </Suspense>
     )
   }
