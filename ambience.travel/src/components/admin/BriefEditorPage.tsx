@@ -2,10 +2,12 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
+ * Last updated: S48 — public_view toggle in Cover section. Controls visibility
+ *   of the engagement to public anon clients via the get-engagement-stage
+ *   Edge Function. Default false; admin flips on per engagement.
+ * Prior: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
  *   auxBookings fetched in parallel with dossier. auxDrafts state added.
  *   mergedAux built in handleDownload and passed to handleDownloadBrief.
- *   auxBookings + auxDrafts added to PreviewFields + schedulePreview.
  *   Design, BriefPreview, BriefAuxEditor — all untouched.
  * Prior: S48 — aux sections grouped by booking_type via auxBookingTypes
  *   registry. BriefAuxEditor. Transport & Transfers section label.
@@ -23,6 +25,8 @@ import {
   upsertTripBrief,
   updateBookingRoom,
   updateTripAuxBooking,
+  fetchEngagementPublicView,
+  setEngagementPublicView,
 } from '../../queries/queriesAdminTrip'
 import type {
   DossierTrip,
@@ -340,8 +344,6 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
 }
 
 // ── BriefAuxEditor ────────────────────────────────────────────────────────────
-// Single component handles all aux booking types — section header derives from
-// registry. One instance per type rendered from the parent.
 
 function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }: {
   auxBookings:       TripAuxBooking[]
@@ -349,7 +351,6 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
   onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
   isMobile:          boolean
 }) {
-  // Group by booking_type, ordered by sort_order
   const sorted = [...auxBookings]
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
@@ -408,7 +409,6 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {sections.map(section => (
         <div key={section.type}>
-          {/* Sub-section header */}
           <div style={{ fontSize: 9, fontWeight: 700, color: A.faint, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>{section.icon}</span>
             <span>{section.label}</span>
@@ -548,7 +548,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     })
   }
 
-  // Group aux by type, sorted by registry sort_order
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
@@ -572,7 +571,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
 
   return (
     <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100%', padding: '0 0 40px' }}>
-      {/* Hero */}
       <div style={{ position: 'relative', height: 240, background: CARD_BG, overflow: 'hidden' }}>
         {heroImageSrc && <img src={heroImageSrc} alt='hero' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         {logoVariant !== 'unbranded' && (
@@ -586,7 +584,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
         )}
       </div>
 
-      {/* Cover text */}
       <div style={{ padding: '24px 28px 0' }}>
         <div style={{ fontSize: 30, fontWeight: 400, color: INK, lineHeight: 1.2, marginBottom: 10, textAlign: 'center' }}>{title}</div>
         <div style={{ height: 1, background: GOLD, marginBottom: 8 }} />
@@ -595,7 +592,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
         {dates && <div style={{ fontSize: 11, color: FAINT, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{dates}</div>}
       </div>
 
-      {/* Accommodation */}
       {allRooms.length > 0 && (
         <div style={{ padding: '28px 28px 0' }}>
           <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
@@ -644,7 +640,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
         </div>
       )}
 
-      {/* Aux sections — one per type */}
       {auxSections.map(section => (
         <div key={section.type} style={{ padding: '20px 28px 0' }}>
           <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
@@ -670,8 +665,8 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
 
               const dep = fmtTime(startTime)
               const arr = fmtTime(endTime)
-              const timeStr = dep && arr ? `${dep} – ${arr}` : dep || arr || ''
-              const route = [origin, dest].filter(Boolean).join(' → ')
+              const timeStr = dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || ''
+              const route = [origin, dest].filter(Boolean).join(' \u2192 ')
 
               return (
                 <div key={aux.id} style={{ background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 12, minHeight: 56 }}>
@@ -733,6 +728,10 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const [saved,       setSaved]       = useState(false)
   const [pickerOpen,  setPickerOpen]  = useState(false)
 
+  // S48 — engagement public_view toggle
+  const [publicView,       setPublicView]       = useState(false)
+  const [publicViewSaving, setPublicViewSaving] = useState(false)
+
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
 
   const [briefTitle,    setBriefTitle]    = useState('')
@@ -750,9 +749,10 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       const houseId = await resolveHouseIdForTrip(tripId)
       if (!houseId) { setLoadErr('No house linked to this trip. Open the trip from the House tab.'); return }
 
-      const [dossier, auxData] = await Promise.all([
+      const [dossier, auxData, isPublic] = await Promise.all([
         fetchTripDossierForHouse(houseId),
         fetchTripAuxBookings(tripId),
+        fetchEngagementPublicView(tripId),
       ])
 
       const found = dossier.trips.find(t => t.id === tripId)
@@ -760,6 +760,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       setTrip(found)
       setHouse(dossier.house)
       setAuxBookings(auxData)
+      setPublicView(isPublic)
 
       const allRooms = found.bookings.flatMap(b => b._rooms)
       setRoomDrafts(Object.fromEntries(allRooms.map(r => [r.id, {
@@ -784,6 +785,20 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     }
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
   }, [tripId])
+
+  async function handleTogglePublicView() {
+    if (!trip) return
+    const next = !publicView
+    setPublicViewSaving(true)
+    setPublicView(next)  // optimistic
+    try {
+      await setEngagementPublicView(trip.id, next)
+    } catch {
+      setPublicView(!next)  // revert
+    } finally {
+      setPublicViewSaving(false)
+    }
+  }
 
   async function handleSave() {
     if (!trip || !house) return
@@ -912,7 +927,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
 
-      {/* Top bar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: A.bgCard, borderBottom: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
         <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -929,7 +943,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         </div>
       </div>
 
-      {/* Mobile tab bar */}
       {isMobile && (
         <div style={{ display: 'flex', borderBottom: `1px solid ${A.border}`, background: A.bgCard }}>
           {(['edit', 'preview'] as const).map(tab => (
@@ -950,7 +963,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 50px)' }}>
 
-        {/* Editor panel */}
         <div style={{
           width: isMobile ? '100%' : '40%',
           flexShrink: 0,
@@ -992,6 +1004,33 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
               </Field>
               <Field label='Prepared For'>
                 <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.display_name ?? ''} />
+              </Field>
+              <Field label='Public View'>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={handleTogglePublicView}
+                    disabled={publicViewSaving}
+                    style={{
+                      width: 38, height: 20, borderRadius: 999,
+                      border: `1px solid ${publicView ? A.gold : A.border}`,
+                      background: publicView ? A.gold : 'transparent',
+                      cursor: publicViewSaving ? 'wait' : 'pointer',
+                      position: 'relative', flexShrink: 0,
+                      transition: 'all 150ms ease', padding: 0,
+                    }}
+                  >
+                    <div style={{
+                      width: 14, height: 14, borderRadius: '50%',
+                      background: publicView ? '#0F1110' : A.faint,
+                      position: 'absolute', top: 2,
+                      left: publicView ? 20 : 2,
+                      transition: 'left 150ms ease',
+                    }} />
+                  </button>
+                  <div style={{ flex: 1, fontSize: 10, color: publicView ? A.gold : A.faint, fontFamily: A.font, letterSpacing: '0.04em' }}>
+                    {publicView ? 'Client URL is live' : 'Hidden — client URL returns not found'}
+                  </div>
+                </div>
               </Field>
               <Field label='Hero Image'>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1039,7 +1078,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
           )}
         </div>
 
-        {/* Preview panel */}
         <div style={{ flex: 1, overflowY: 'auto', background: '#E8E4DC', display: isMobile && mobileTab !== 'preview' ? 'none' : 'block' }}>
           <div style={{ padding: '12px 20px', borderBottom: `1px solid ${RULE}`, background: '#DDD9D1' }}>
             <span style={{ fontSize: 9, fontFamily: A.font, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live Preview</span>

@@ -663,20 +663,28 @@ export async function autoDeriveTripItinerary(
   return { days, entries }
 }
 
+// ── Append these two functions to the end of src/queries/queriesAdminTrip.ts ──
+// They share the same `supabase` import already present in that file.
+
+// ── Engagement public_view toggle ─────────────────────────────────────────────
+// S48 — Admin toggle for whether an engagement is visible to public anon
+// clients via the get-engagement-stage Edge Function. Default false at the
+// DB level; admin flips per engagement from the BriefEditorPage Cover section.
+
+export async function fetchEngagementPublicView(tripId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('travel_immerse_engagements')
+    .select('public_view')
+    .eq('trip_id', tripId)
+    .single()
+  if (error || !data) return false
+  return !!data.public_view
+}
+
 export async function setEngagementPublicView(tripId: string, publicView: boolean): Promise<void> {
   const { error } = await supabase
     .from('travel_immerse_engagements')
     .update({ public_view: publicView })
     .eq('trip_id', tripId)
   if (error) throw error
-}
-
-export async function fetchEngagementPublicView(tripId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('travel_immerse_engagements')
-    .select('public_view, url_id')
-    .eq('trip_id', tripId)
-    .single()
-  if (error || !data) return false
-  return !!data.public_view
 }
