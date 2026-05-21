@@ -3,15 +3,17 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see queriesImmerseDestination.ts).
 //
-// Last updated: S48 — engagement stage computation. Query now performs three
-//   light count queries against the linked trip to determine data presence,
-//   then derives stage from declared engagement_status_id + content truth.
-//   Stage is the single source of truth for downstream routing.
-// Prior: S32K — Pricing rows + destination rows select destination NAME from
-//   global_destinations, not slug.
-// Prior: S32D — Trip pricing rows read destination slug via nested join.
-// Prior: S30E perf — Removed getImmerseEngagementBySlug.
-// Prior: S30D — Storage URL rewriting at the read layer.
+// Last updated: S48 — engagement primary fetch routed through the
+//   get-engagement-stage Edge Function. The Edge Function uses the service
+//   role key to bypass RLS on the engagement row + operational tables, and
+//   gates exposure on the engagement.public_view flag. This means:
+//     - Anon clients never query travel_immerse_engagements directly here
+//     - Anon never touches admin-protected operational tables
+//     - Hidden engagements are indistinguishable from non-existent ones
+//   The hydration logic (route stops, destination rows, pricing rows) still
+//   uses anon supabase calls because those tables have public read RLS for
+//   live engagements.
+// Prior: S32K — Pricing rows + destination rows select destination NAME.
 
 import { supabaseAnon } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
@@ -53,6 +55,7 @@ type EngagementRow = {
   journey_types:                   string[] | null
   person_id:                       string | null
   status_label:                    string | null
+  public_view:                     boolean
   engagement_status_id:            string
   itinerary_status_id:             string
   travel_engagement_statuses:      StatusJoinRow | null
@@ -141,35 +144,37 @@ type PricingRowRow = {
   global_destinations: GlobalDestinationDisplayJoin | null
 }
 
+// ── Edge Function gateway ─────────────────────────────────────────────────────
+// S48 — Primary engagement fetch goes through this Edge Function so we can
+// bypass RLS on the engagement row and operational tables with the service
+// role key, while gating exposure on the public_view flag.
+
+type EngagementStagePayload = {
+  engagement:     EngagementRow
+  hasTripContent: boolean
+}
+
+async function fetchEngagementStage(urlId: string): Promise<EngagementStagePayload | null> {
+  try {
+    const { data, error } = await supabaseAnon.functions.invoke('get-engagement-stage', {
+      body: { url_id: urlId },
+    })
+
+    if (error || !data) return null
+    if (!data.engagement) return null
+
+    return data as EngagementStagePayload
+  } catch {
+    return null
+  }
+}
+
 // ── Public fetch ─────────────────────────────────────────────────────────────
 
-const ENGAGEMENT_SELECT_COLUMNS = `
-  id, url_id, slug, trip_id, trip_format, engagement_type, audience, journey_types,
-  person_id, status_label,
-  engagement_status_id, itinerary_status_id,
-  travel_engagement_statuses (id, slug, label, sort_order, is_active),
-  travel_itinerary_statuses  (id, slug, label, sort_order, is_active),
-  eyebrow, title, hero_tagline, subtitle,
-  hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
-  hero_title_2, hero_subtitle_2, hero_pills,
-  welcome_eyebrow_override, welcome_title_override, welcome_body_override,
-  welcome_signoff_body_override, welcome_signoff_name_override,
-  route_heading, route_body, route_eyebrow,
-  destination_heading, destination_subtitle, destination_body,
-  pricing_heading, pricing_title, pricing_body,
-  pricing_total_label, pricing_total_value,
-  pricing_notes_heading, pricing_notes_title, pricing_notes
-`
-
 export async function getImmerseEngagement(urlId: string): Promise<ImmerseEngagementData | null> {
-  const { data: engagement, error } = await supabaseAnon
-    .from('travel_immerse_engagements')
-    .select(ENGAGEMENT_SELECT_COLUMNS)
-    .eq('url_id', urlId)
-    .single()
-
-  if (error || !engagement) return null
-  return hydrateEngagement(engagement as unknown as EngagementRow)
+  const payload = await fetchEngagementStage(urlId)
+  if (!payload) return null
+  return hydrateEngagement(payload.engagement, payload.hasTripContent)
 }
 
 async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
@@ -184,43 +189,15 @@ async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
 const EMPTY_ENGAGEMENT_STATUS: EngagementStatus = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 const EMPTY_ITINERARY_STATUS:  ItineraryStatus  = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 
-// ── Trip content presence check ──────────────────────────────────────────────
-// S48 — Three light count queries to determine if the linked trip actually has
-// any content. Used to derive the engagement stage. Returns false when there's
-// no trip_id at all, or when the trip exists but has no bookings, days, or
-// aux bookings.
-
-async function fetchHasTripContent(tripId: string | null): Promise<boolean> {
-  if (!tripId) return false
-
-  const [bookingsRes, daysRes, auxRes] = await Promise.all([
-    supabaseAnon
-      .from('travel_bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('trip_id', tripId),
-    supabaseAnon
-      .from('travel_trip_days')
-      .select('id', { count: 'exact', head: true })
-      .eq('trip_id', tripId),
-    supabaseAnon
-      .from('travel_trip_aux_bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('trip_id', tripId),
-  ])
-
-  return (
-    (bookingsRes.count ?? 0) > 0 ||
-    (daysRes.count     ?? 0) > 0 ||
-    (auxRes.count      ?? 0) > 0
-  )
-}
-
 // ── Shared hydration ─────────────────────────────────────────────────────────
 
-async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseEngagementData | null> {
+async function hydrateEngagement(
+  engagementRow: EngagementRow,
+  hasTripContent: boolean,
+): Promise<ImmerseEngagementData | null> {
   const engagementId = engagementRow.id
 
-  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon, hasTripContent] = await Promise.all([
+  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon] = await Promise.all([
     supabaseAnon
       .from('travel_immerse_trip_display')
       .select('first_name, nickname')
@@ -250,7 +227,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .eq('trip_id', engagementId)
       .order('sort_order'),
     fetchCanonicalWelcomeLetter(),
-    fetchHasTripContent(engagementRow.trip_id),
   ])
 
   const displayRow = (displayRes.data  ?? null) as EngagementDisplayRow | null
@@ -258,9 +234,9 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   const destRows   = (destsRes.data    ?? []) as unknown as DestinationRowRow[]
   const priceRows  = (pricingRes.data  ?? []) as unknown as PricingRowRow[]
 
-  // ── S48: Compute engagement stage from declared status + content presence ─
-  // Status is intent; data presence is truth. Stage is the routing source of
-  // truth.
+  // ── Compute engagement stage ──────────────────────────────────────────────
+  // hasTripContent comes from the Edge Function (service-role count check).
+  // hasProposalContent is derivable from the engagement row + dest rows here.
   const hasProposalContent = !!(
     engagementRow.hero_tagline    ||
     engagementRow.route_body      ||
