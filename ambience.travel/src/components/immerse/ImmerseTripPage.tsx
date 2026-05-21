@@ -33,6 +33,8 @@
 //               S49r3 — full image overlay chain in ConfirmationTab:
 //                        room.brief_image_src ?? booking.brief_image_src ??
 //                        booking._hotel_image_src ?? destinations[0].hero_image_src.
+//               S49r4 — hero image fallback: brief.hero_image_src || destination hero.
+//                        ?? insufficient — brief.hero_image_src can be "" (empty string).
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -1033,7 +1035,10 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   // Hero data
   const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.trip_code
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' · ')
-  const heroImage    = brief?.hero_image_src ?? ''
+  // Hero image: brief override ?? destination hero ?? empty.
+  // Use || not ?? — brief.hero_image_src can be "" (empty string, not null),
+  // which ?? passes through. || correctly falls back on any falsy value.
+  const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
   const guestName    = house?.display_name ?? brief?.prepared_for ?? ''
   const dateLabel    = buildDateRange(trip.start_date, trip.end_date) || undefined
 
