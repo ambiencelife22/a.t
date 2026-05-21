@@ -2,6 +2,8 @@
  * Top-level admin shell for ambience.travel/#admin (and localhost:5173/#admin).
  * Mounts both the Immerse and Programme product groups behind a single sidebar.
  *
+ * Last updated: S49 — import programme tabs directly from ProgrammeAdmin.tsx.
+ *   ProgrammeAdminTabs.ts shim deleted — no longer needed.
  * Prior: S45 — Added ItineraryEditorPage at #admin/trips/{tripId}/itinerary.
  * Prior: S46 — Added BriefEditorPage at #admin/trips/{tripId}/brief.
  * Prior: S40D — Added House product group (HouseTab).
@@ -37,7 +39,7 @@ import {
   PropertySectionsTab,
   PropertiesTab,
   AccessDeniedPageTab,
-} from './admin/ProgrammeAdminTabs'
+} from './admin/ProgrammeAdmin'
 import ClientProfilePage from './admin/ClientProfilePage'
 
 // ── Access denied ─────────────────────────────────────────────────────────────
