@@ -357,7 +357,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
             const isAmbience  = !aux.booked_by || aux.booked_by.toLowerCase().includes('ambience')
             const pillColor   = isAmbience ? GOLD : FAINT
             const timeStr     = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' \u2013 ')
-            const route       = [aux.origin, aux.destination].filter(Boolean).join(' → ')
+            const route       = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
               <div key={aux.id} style={{
@@ -412,29 +412,61 @@ function ProgrammeTab({ days, entries, auxBookings }: {
     guest_label: string | null; booked_by: string | null
     image_src: string | null; status: string | null
     description: string | null
+    // Flight-specific (surfaced separately so departure/arrival render as two lines, not one)
+    flightOrigin:      string | null
+    flightDestination: string | null
+    flightDepartTime:  string | null
+    flightArriveTime:  string | null
   }
 
   const cards: CardItem[] = activeDay ? [
     ...entries
       .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
-      .map(e => ({
-        id: e.id, category: e.category, start_time: e.start_time,
-        end_time: e.end_time, title: e.title, subtitle: e.subtitle ?? null,
-        notes: e.notes ?? null, confirmation_number: e.confirmation_number ?? null,
-        guest_label: e.guest_label ?? null, booked_by: e.booked_by ?? null,
-        image_src: (e as any).image_src ?? null, status: null, description: null,
-      })),
+      .map(e => {
+        const isFlight = (e.category ?? '').toLowerCase() === 'flight'
+        // For flight entries, the subtitle holds "Origin → Destination" — parse
+        // it back into structured fields so we can render Departure and Arrival
+        // as two separate lines, not one squished arrow line.
+        let flightOrigin:      string | null = null
+        let flightDestination: string | null = null
+        if (isFlight && e.subtitle) {
+          const parts = e.subtitle.split('→').map(s => s.trim())
+          if (parts.length === 2) {
+            flightOrigin      = parts[0] || null
+            flightDestination = parts[1] || null
+          }
+        }
+        return {
+          id: e.id, category: e.category, start_time: e.start_time,
+          end_time: e.end_time, title: e.title,
+          subtitle: isFlight ? null : (e.subtitle ?? null),
+          notes: e.notes ?? null, confirmation_number: e.confirmation_number ?? null,
+          guest_label: e.guest_label ?? null, booked_by: e.booked_by ?? null,
+          image_src: (e as any).image_src ?? null, status: null, description: null,
+          flightOrigin,
+          flightDestination,
+          flightDepartTime: isFlight ? (e.start_time ?? null) : null,
+          flightArriveTime: isFlight ? (e.end_time   ?? null) : null,
+        }
+      }),
     ...auxBookings
       .filter(a => a.start_date === activeDay.entry_date && a.brief_show !== false)
-      .map(a => ({
-        id: a.id, category: a.booking_type ?? 'Other',
-        start_time: a.start_time ?? null, end_time: a.end_time ?? null,
-        title: a.name ?? a.booking_type ?? 'Booking',
-        subtitle: a.origin && a.destination ? `${a.origin} → ${a.destination}` : null,
-        notes: a.notes ?? null, confirmation_number: a.confirmation_number ?? null,
-        guest_label: a.guest_label ?? null, booked_by: a.booked_by ?? null,
-        image_src: null, status: null, description: null,
-      })),
+      .map(a => {
+        const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
+        return {
+          id: a.id, category: a.booking_type ?? 'Other',
+          start_time: a.start_time ?? null, end_time: a.end_time ?? null,
+          title: a.name ?? a.booking_type ?? 'Booking',
+          subtitle: isFlight ? null : (a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null),
+          notes: a.notes ?? null, confirmation_number: a.confirmation_number ?? null,
+          guest_label: a.guest_label ?? null, booked_by: a.booked_by ?? null,
+          image_src: null, status: null, description: null,
+          flightOrigin:      isFlight ? (a.origin      ?? null) : null,
+          flightDestination: isFlight ? (a.destination ?? null) : null,
+          flightDepartTime:  isFlight ? (a.start_time  ?? null) : null,
+          flightArriveTime:  isFlight ? (a.end_time    ?? null) : null,
+        }
+      }),
   ].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time)) : []
 
   return (
@@ -573,7 +605,10 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                   const accent      = categoryAccent(item.category)
                   const dep         = fmtTime(item.start_time)
                   const arr         = fmtTime(item.end_time)
-                  const timeStr     = dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || null
+                  const isFlight    = !!(item.flightOrigin || item.flightDestination || item.flightDepartTime || item.flightArriveTime)
+                  // For flights, the structured Departure/Arrival block carries the times.
+                  // For everything else, show the time range in the header.
+                  const timeStr     = isFlight ? null : (dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || null)
                   const isMobileW   = width < 600
                   const stackLayout = isMobileW && !!item.image_src
 
@@ -624,6 +659,58 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                         <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 4 }}>
                           {item.title}
                         </div>
+
+                        {/* Flight: Departure / Arrival as two clear lines */}
+                        {isFlight && (item.flightOrigin || item.flightDestination) && (
+                          <div style={{
+                            marginTop: 10, marginBottom: 8,
+                            padding: '10px 12px',
+                            background: CARD_BG,
+                            borderRadius: 6,
+                            display: 'flex', flexDirection: 'column', gap: 6,
+                          }}>
+                            {item.flightOrigin && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                                <div style={{
+                                  width: 64, flexShrink: 0,
+                                  fontSize: 9, fontFamily: SANS, fontWeight: 700,
+                                  letterSpacing: '0.12em', textTransform: 'uppercase',
+                                  color: FAINT,
+                                }}>
+                                  Departure
+                                </div>
+                                <div style={{ flex: 1, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4 }}>
+                                  {item.flightOrigin}
+                                </div>
+                                {item.flightDepartTime && (
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK, flexShrink: 0 }}>
+                                    {fmtTime(item.flightDepartTime)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {item.flightDestination && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                                <div style={{
+                                  width: 64, flexShrink: 0,
+                                  fontSize: 9, fontFamily: SANS, fontWeight: 700,
+                                  letterSpacing: '0.12em', textTransform: 'uppercase',
+                                  color: FAINT,
+                                }}>
+                                  Arrival
+                                </div>
+                                <div style={{ flex: 1, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4 }}>
+                                  {item.flightDestination}
+                                </div>
+                                {item.flightArriveTime && (
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK, flexShrink: 0 }}>
+                                    {fmtTime(item.flightArriveTime)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Subtitle + notes */}
                         {item.subtitle && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: 4 }}>{item.subtitle}</div>}
@@ -722,7 +809,7 @@ function TripBriefTab({ clientData, days, entries }: {
               key={f.id}
               label={f.start_date ? fmtDate(f.start_date) : '\u2014'}
               value={[f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
-              sub={[f.origin, f.destination].filter(Boolean).join(' → ')}
+              sub={[f.origin, f.destination].filter(Boolean).join(' \u2192 ')}
             />
           ))}
         </BriefSection>
@@ -735,7 +822,7 @@ function TripBriefTab({ clientData, days, entries }: {
               key={t.id}
               label={t.start_date ? fmtDate(t.start_date) : '\u2014'}
               value={t.name ?? 'Transfer'}
-              sub={[t.origin, t.destination].filter(Boolean).join(' → ')}
+              sub={[t.origin, t.destination].filter(Boolean).join(' \u2192 ')}
             />
           ))}
         </BriefSection>
@@ -830,7 +917,7 @@ function TripNotFound() {
   return (
     <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: '0 24px', textAlign: 'center' }}>
       <div style={{ fontSize: 20, fontFamily: SERIF, color: INK }}>This trip is not available.</div>
-      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel →</a>
+      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel \u2192</a>
     </div>
   )
 }

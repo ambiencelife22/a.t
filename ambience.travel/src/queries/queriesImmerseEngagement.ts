@@ -3,15 +3,15 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see queriesImmerseDestination.ts).
 //
-// Last updated: S48 — engagement stage derives `hasTripContent` from the
-//   advisor-declared status slugs (engagement + itinerary), not from counting
-//   rows in operational tables. Those tables (travel_bookings, travel_trip_days,
-//   travel_trip_aux_bookings) are admin-only by RLS and anon counts would
-//   silently return 0. The status slugs live on the engagement row itself,
-//   which anon can read. Status is the authoritative signal: when the advisor
-//   marks 'booked', 'confirmed', 'in_travel', 'completed' etc, they're
-//   declaring the trip is real. No RLS roundtrip; no security debt.
-// Prior: S32K — Pricing rows + destination rows select destination NAME.
+// Last updated: S48 — engagement stage computation. Query now performs three
+//   light count queries against the linked trip to determine data presence,
+//   then derives stage from declared engagement_status_id + content truth.
+//   Stage is the single source of truth for downstream routing.
+// Prior: S32K — Pricing rows + destination rows select destination NAME from
+//   global_destinations, not slug.
+// Prior: S32D — Trip pricing rows read destination slug via nested join.
+// Prior: S30E perf — Removed getImmerseEngagementBySlug.
+// Prior: S30D — Storage URL rewriting at the read layer.
 
 import { supabaseAnon } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
@@ -31,25 +31,6 @@ import type {
   EngagementStage,
 } from '../types/typesImmerse'
 import { computeEngagementStage } from '../types/typesImmerse'
-
-// ── Trip-live status slugs ───────────────────────────────────────────────────
-// Status slugs that authoritatively indicate a real, populated trip exists.
-// When either engagement_status or itinerary_status matches one of these, we
-// treat hasTripContent as true without needing to read operational tables.
-
-const ENGAGEMENT_TRIP_LIVE_SLUGS = new Set<string>([
-  'booked',
-  'in_travel',
-  'completed',
-])
-
-const ITINERARY_TRIP_LIVE_SLUGS = new Set<string>([
-  'partially_confirmed',
-  'confirmed',
-  'in_travel',
-  'completed',
-  'archived',
-])
 
 // ── DB row types ─────────────────────────────────────────────────────────────
 
@@ -203,12 +184,43 @@ async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
 const EMPTY_ENGAGEMENT_STATUS: EngagementStatus = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 const EMPTY_ITINERARY_STATUS:  ItineraryStatus  = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 
+// ── Trip content presence check ──────────────────────────────────────────────
+// S48 — Three light count queries to determine if the linked trip actually has
+// any content. Used to derive the engagement stage. Returns false when there's
+// no trip_id at all, or when the trip exists but has no bookings, days, or
+// aux bookings.
+
+async function fetchHasTripContent(tripId: string | null): Promise<boolean> {
+  if (!tripId) return false
+
+  const [bookingsRes, daysRes, auxRes] = await Promise.all([
+    supabaseAnon
+      .from('travel_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId),
+    supabaseAnon
+      .from('travel_trip_days')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId),
+    supabaseAnon
+      .from('travel_trip_aux_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId),
+  ])
+
+  return (
+    (bookingsRes.count ?? 0) > 0 ||
+    (daysRes.count     ?? 0) > 0 ||
+    (auxRes.count      ?? 0) > 0
+  )
+}
+
 // ── Shared hydration ─────────────────────────────────────────────────────────
 
 async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseEngagementData | null> {
   const engagementId = engagementRow.id
 
-  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon] = await Promise.all([
+  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon, hasTripContent] = await Promise.all([
     supabaseAnon
       .from('travel_immerse_trip_display')
       .select('first_name, nickname')
@@ -238,6 +250,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .eq('trip_id', engagementId)
       .order('sort_order'),
     fetchCanonicalWelcomeLetter(),
+    fetchHasTripContent(engagementRow.trip_id),
   ])
 
   const displayRow = (displayRes.data  ?? null) as EngagementDisplayRow | null
@@ -246,20 +259,8 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   const priceRows  = (pricingRes.data  ?? []) as unknown as PricingRowRow[]
 
   // ── S48: Compute engagement stage from declared status + content presence ─
-  // hasTripContent derives from the advisor's declared status slugs. This is
-  // the authoritative signal — operational tables are admin-only by RLS so
-  // we can't count their rows from anon. Status is intent + truth combined:
-  // when an advisor marks an engagement 'booked' / 'in_travel' / 'completed',
-  // they're declaring the trip is real and populated.
-  const engagementSlug = engagementRow.travel_engagement_statuses?.slug ?? ''
-  const itinerarySlug  = engagementRow.travel_itinerary_statuses?.slug  ?? ''
-
-  const hasTripContent =
-    !!engagementRow.trip_id && (
-      ENGAGEMENT_TRIP_LIVE_SLUGS.has(engagementSlug) ||
-      ITINERARY_TRIP_LIVE_SLUGS.has(itinerarySlug)
-    )
-
+  // Status is intent; data presence is truth. Stage is the routing source of
+  // truth.
   const hasProposalContent = !!(
     engagementRow.hero_tagline    ||
     engagementRow.route_body      ||
@@ -270,7 +271,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
   )
 
   const stage: EngagementStage = computeEngagementStage({
-    statusSlug: engagementSlug,
+    statusSlug:         engagementRow.travel_engagement_statuses?.slug ?? '',
     hasProposalContent,
     hasTripContent,
   })
