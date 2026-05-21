@@ -176,14 +176,22 @@ function EngagementRoute({ route }: {
 
   // Bare URL — content-driven
   if (route.kind === 'auto') {
-    if (hasProposalContent(engagement)) {
-      return <ImmerseEngagementPage data={engagement} />
-    }
+    // Trip wins the bare URL whenever it exists
     if (hasTripContent(engagement)) {
       return (
         <Suspense fallback={<RouteLoading />}>
           <ImmerseTripPage urlId={engagement.urlId} />
         </Suspense>
+      )
+    }
+    // No trip but proposal exists — redirect to explicit /proposal
+    if (hasProposalContent(engagement)) {
+      const target = `${getOverviewUrl(engagement.urlId)}/proposal`
+      window.location.replace(target)
+      return (
+        <ImmerseLayout>
+          <TravelLoadingScreen />
+        </ImmerseLayout>
       )
     }
     return (
