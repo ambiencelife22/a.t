@@ -489,7 +489,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
           {flights.map(f => (
             <BriefRow
               key={f.id}
-              label={f.time_local ?? '\u2014'}
+              label={f.time_local ?? '—'}
               value={[f.airline, f.flight_number, f.departure_airport && f.arrival_airport ? `${f.departure_airport} \u2192 ${f.arrival_airport}` : null].filter(Boolean).join(' \u00b7 ')}
               sub={[f.flight_class, f.seats, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
             />
@@ -502,7 +502,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
           {hotels.map(h => (
             <BriefRow
               key={h.id}
-              label={h.check_in_date ? formatDateOnly(h.check_in_date) : '\u2014'}
+              label={h.check_in_date ? formatDateOnly(h.check_in_date) : '—'}
               value={h.title}
               sub={[h.room_type, h.check_out_date ? `Until ${formatDateOnly(h.check_out_date)}` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
             />
@@ -515,7 +515,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
           {transfers.map(t => (
             <BriefRow
               key={t.id}
-              label={t.time_local ?? '\u2014'}
+              label={t.time_local ?? '—'}
               value={t.title}
               sub={[t.driver_name, t.driver_phone].filter(Boolean).join(' \u00b7 ')}
             />
@@ -528,7 +528,7 @@ function TripBriefTab({ booking, days }: { booking: Booking; days: JourneyDay[] 
           {experiences.map(a => (
             <BriefRow
               key={a.id}
-              label={a.time_local ?? '\u2014'}
+              label={a.time_local ?? '—'}
               value={a.title}
               sub={[a.location, a.confirmation_number ? `Conf: ${a.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
             />

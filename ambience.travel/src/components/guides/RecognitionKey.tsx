@@ -76,13 +76,13 @@ function MarkGlyph({ kind, starCount }: { kind: RecognitionKind; starCount?: num
   }
   if (kind === 'stars') {
     const count = Math.max(1, Math.min(3, starCount ?? 1))
-    return <span style={starsGlyphStyle}>{'\u2605'.repeat(count)}</span>
+    return <span style={starsGlyphStyle}>{'★'.repeat(count)}</span>
   }
   if (kind === 'bib') {
     return <span style={bibPillStyle}>BIB</span>
   }
   if (kind === 'green') {
-    return <span style={greenStarGlyphStyle}>{'\u2605'}</span>
+    return <span style={greenStarGlyphStyle}>{'★'}</span>
   }
   if (kind === 'fifty_best') {
     return <span style={fiftyPillStyle}>50 BEST</span>

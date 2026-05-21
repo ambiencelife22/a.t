@@ -272,7 +272,7 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
             {r.notes              && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>}
           </div>
           <button onClick={() => handleDelete(r.id)} disabled={saving === r.id} style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>
-            {saving === r.id ? '...' : '\u2715'}
+            {saving === r.id ? '...' : '×'}
           </button>
         </div>
       ))}
