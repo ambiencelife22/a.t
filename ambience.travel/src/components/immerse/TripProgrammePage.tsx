@@ -6,10 +6,10 @@
 //   - Data fetch: resolves urlId → TripClientData + TripDayEntries.
 //   - PDF download: calls exportDailyProgrammePdf.
 //
-// Last updated: S48 — auxBookings merged into DayContent alongside day entries.
-//   Aux bookings matched by start_date to entry_date, sorted by time, rendered
-//   with same visual card. No derivation step required — data comes directly
-//   from travel_trip_aux_bookings via Edge Function.
+// Last updated: S49 — added guides default to clientData construction.
+//   TripClientData.guides is required; programme Edge Function does not return
+//   guide data so a safe default is supplied here.
+// Prior: S48 — auxBookings merged into DayContent alongside day entries.
 // Prior: S48 — visual-first entry cards with CRM image resolution.
 // Prior: S48 — load rewritten to call get-trip-programme Edge Function.
 // Prior: S48 — initial ship.
@@ -48,6 +48,9 @@ async function fetchTripProgrammeData(urlId: string): Promise<{
         house:           payload.house,
         destinationName: payload.destinationName,
         auxBookings:     payload.auxBookings,
+        // Programme Edge Function does not return guide data — safe default.
+        // Guide availability is only needed on the Trip Brief tab (ImmerseTripPage).
+        guides: { hasDining: false, hasExperiences: false, destinationSlug: null },
         urlId,
       },
       days:    payload.days    ?? [],
@@ -309,7 +312,6 @@ function EntryCard({ item }: { item: CardItem }) {
       {/* Image panel */}
       {item.image_src && (
         <div style={{
-          // Mobile: full width, fixed height. Desktop: fixed width panel.
           width:     stackLayout ? '100%' : 'clamp(120px, 28%, 200px)',
           height:    stackLayout ? 200    : 'auto',
           flexShrink: 0,
@@ -446,7 +448,6 @@ function DayContent({ day, entries, auxBookings }: {
   entries:     TripDayEntry[]
   auxBookings: TripAuxBooking[]
 }) {
-  // Merge day entries + aux bookings for this date, sorted by time
   const cards: CardItem[] = [
     ...entries
       .filter(e => e.entry_date === day.entry_date && e.brief_show)
