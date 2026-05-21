@@ -357,7 +357,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
             const isAmbience  = !aux.booked_by || aux.booked_by.toLowerCase().includes('ambience')
             const pillColor   = isAmbience ? GOLD : FAINT
             const timeStr     = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' \u2013 ')
-            const route       = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
+            const route       = [aux.origin, aux.destination].filter(Boolean).join(' → ')
 
             return (
               <div key={aux.id} style={{
@@ -430,7 +430,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
         id: a.id, category: a.booking_type ?? 'Other',
         start_time: a.start_time ?? null, end_time: a.end_time ?? null,
         title: a.name ?? a.booking_type ?? 'Booking',
-        subtitle: a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null,
+        subtitle: a.origin && a.destination ? `${a.origin} → ${a.destination}` : null,
         notes: a.notes ?? null, confirmation_number: a.confirmation_number ?? null,
         guest_label: a.guest_label ?? null, booked_by: a.booked_by ?? null,
         image_src: null, status: null, description: null,
@@ -722,7 +722,7 @@ function TripBriefTab({ clientData, days, entries }: {
               key={f.id}
               label={f.start_date ? fmtDate(f.start_date) : '\u2014'}
               value={[f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
-              sub={[f.origin, f.destination].filter(Boolean).join(' \u2192 ')}
+              sub={[f.origin, f.destination].filter(Boolean).join(' → ')}
             />
           ))}
         </BriefSection>
@@ -735,7 +735,7 @@ function TripBriefTab({ clientData, days, entries }: {
               key={t.id}
               label={t.start_date ? fmtDate(t.start_date) : '\u2014'}
               value={t.name ?? 'Transfer'}
-              sub={[t.origin, t.destination].filter(Boolean).join(' \u2192 ')}
+              sub={[t.origin, t.destination].filter(Boolean).join(' → ')}
             />
           ))}
         </BriefSection>
@@ -830,7 +830,7 @@ function TripNotFound() {
   return (
     <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: '0 24px', textAlign: 'center' }}>
       <div style={{ fontSize: 20, fontFamily: SERIF, color: INK }}>This trip is not available.</div>
-      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel \u2192</a>
+      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel →</a>
     </div>
   )
 }
