@@ -579,7 +579,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
         )}
 
         {activeDay ? (
-          <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)' }}>
+          <div style={{ padding: 'clamp(24px,4vw,48px) clamp(24px,5vw,56px)' }}>
             {/* Day header */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: 6 }}>
@@ -732,7 +732,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
             )}
           </div>
         ) : (
-          <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)', fontSize: 13, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>
+          <div style={{ padding: 'clamp(24px,4vw,48px) clamp(24px,5vw,56px)', fontSize: 13, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>
             No programme days available yet.
           </div>
         )}
@@ -779,7 +779,7 @@ function TripBriefTab({ clientData, days, entries }: {
   }
 
   return (
-    <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
+    <div style={{ padding: 'clamp(24px,4vw,48px) clamp(24px,6vw,80px)' }}>
       <BriefSection title='Overview'>
         <BriefRow label='Guest'    value={house?.display_name ?? trip.trip_code} />
         <BriefRow label='Trip'     value={trip.trip_code} />
@@ -858,7 +858,7 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
   }
 
   return (
-    <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
+    <div style={{ padding: 'clamp(24px,4vw,48px) clamp(24px,6vw,80px)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
         {brief?.advisor_name && (
           <ContactCard
@@ -892,7 +892,7 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
 
 function TabSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: 'clamp(20px,4vw,36px) clamp(20px,6vw,80px) 0' }}>
+    <div style={{ padding: 'clamp(20px,4vw,36px) clamp(24px,6vw,80px) 0' }}>
       <div style={{ height: 1, background: RULE, marginBottom: 18 }} />
       <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, color: GOLD, letterSpacing: '0.14em', marginBottom: 14 }}>{label}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
@@ -1032,7 +1032,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
       {/* Welcome letter */}
       {welcomeLetter && (
-        <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: CREAM }}>
+        <section style={{ padding: 'clamp(48px,7vw,88px) clamp(24px,5vw,48px)', background: CREAM }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: FAINT, marginBottom: 28, fontFamily: SANS }}>Welcome</p>
             {(welcomeLetter as string).split('\n\n').filter(Boolean).map((p: string, i: number, arr: string[]) => (
@@ -1060,7 +1060,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           background:     'rgba(247,245,240,0.96)',
           backdropFilter: 'blur(12px)',
           borderBottom:   width < 640 ? 'none' : `1px solid ${RULE}`,
-          padding:        '0 clamp(20px,5vw,48px)',
+          padding:        '0 clamp(24px,5vw,48px)',
           display:        'flex',
           alignItems:     'center',
           justifyContent: 'space-between',
@@ -1239,7 +1239,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '40px clamp(20px,6vw,80px)', textAlign: 'center', borderTop: `1px solid ${RULE}` }}>
+        <div style={{ padding: '40px clamp(24px,6vw,80px)', textAlign: 'center', borderTop: `1px solid ${RULE}` }}>
           <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Tailored Travel Design &nbsp;&middot;&nbsp; Concierge Support &nbsp;&middot;&nbsp;
             <a href='https://ambience.travel' style={{ color: FAINT, textDecoration: 'none' }}> ambience.travel</a>
