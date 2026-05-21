@@ -30,6 +30,9 @@
 // Last updated: S49 — mobile horizontal scroll + right-padding fixes.
 //               S49r2 — unified mobile nav bar: active day merged into sticky tab bar,
 //                        eliminating the stacked second nav row on Programme tab.
+//               S49r3 — full image overlay chain in ConfirmationTab:
+//                        room.brief_image_src ?? booking.brief_image_src ??
+//                        booking._hotel_image_src ?? destinations[0].hero_image_src.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -235,6 +238,10 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
   const { trip, brief, house, auxBookings } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
+  // Destination hero is the final fallback in the image overlay chain when no
+  // room, booking, or hotel canon image exists (e.g. experience-only trips).
+  const destHero = trip.destinations[0]?.hero_image_src ?? null
+
   const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
@@ -248,7 +255,9 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
           party_composition: b.party_composition,
           notes: b.inclusions ?? null, nights: b.nights,
           rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-          total: null, brief_image_src: b._hotel_image_src ?? b.brief_image_src ?? null,
+          total: null,
+          // Full overlay chain: per-booking override ?? hotel canon ?? destination hero
+          brief_image_src: b.brief_image_src ?? b._hotel_image_src ?? destHero,
           additional_guests: null, booked_by_label: null,
           sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '',
           updated_at: b.updated_at ?? '',
@@ -290,7 +299,8 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
             const bookedByText = (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
             const pillColor    = isAmbience ? GOLD : FAINT
-            const imgSrc       = (room as any).brief_image_src ?? null
+            // Full overlay chain: per-room ?? per-booking ?? hotel canon ?? destination hero
+            const imgSrc       = (room as any).brief_image_src ?? booking.brief_image_src ?? booking._hotel_image_src ?? destHero
             const guests       = [room.guest_name, room.party_composition].filter(Boolean).join(' · ')
 
             return (
