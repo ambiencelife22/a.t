@@ -207,6 +207,7 @@ export type ImmerseEngagementData = {
   journeyTypes:    string[]
   clientName:      string
   statusLabel:     string
+  tripId?:         string
   heroTagline?:    string
   engagementStatus:  EngagementStatus
   itineraryStatus:   ItineraryStatus

@@ -51,6 +51,7 @@ type StatusJoinRow = {
 type EngagementRow = {
   id:                              string
   url_id:                          string
+  trip_id:                         string | null
   slug:                            string
   trip_format:                     string
   engagement_type:                 string
@@ -153,7 +154,7 @@ type PricingRowRow = {
 // ── Public fetch ─────────────────────────────────────────────────────────────
 
 const ENGAGEMENT_SELECT_COLUMNS = `
-  id, url_id, slug, trip_format, engagement_type, audience, journey_types,
+  id, url_id, slug, trip_id, trip_format, engagement_type, audience, journey_types,
   person_id, status_label,
   engagement_status_id, itinerary_status_id,
   travel_engagement_statuses (id, slug, label, sort_order, is_active),
@@ -295,6 +296,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     engagementType:  (engagementRow.engagement_type as EngagementType) ?? 'journey',
     audience:        normalizeAudience(engagementRow.audience),
     urlId:           engagementRow.url_id,
+    tripId:          engagementRow.trip_id ?? undefined,
     slug:            engagementRow.slug,
     tripFormat:      (engagementRow.trip_format as ImmerseTripFormat) ?? 'journey',
     journeyTypes:    engagementRow.journey_types ?? [],

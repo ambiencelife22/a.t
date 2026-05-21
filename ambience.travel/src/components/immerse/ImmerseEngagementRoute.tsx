@@ -1,33 +1,19 @@
 // ImmerseEngagementRoute.tsx — Route resolver for immerse engagement pages.
-// Resolves url_id (+ optional destination_slug or surface) from pathname, with
-// hostname-aware path parsing.
 //
-// Subdomain awareness:
-//   immerse.ambience.travel/<url_id>[/<dest>]   → path[0] = url_id
-//   ambience.travel/immerse/<url_id>[/<dest>]   → path[1] = url_id (path[0] = 'immerse')
-//   localhost:5173/immerse/<url_id>[/<dest>]    → same as above
+// Routing logic (S48 late):
+//   /{url_id}                → trip surface if trip exists, else proposal overview
+//   /{url_id}/proposal       → proposal overview (explicit)
+//   /{url_id}/{destination}  → destination subpage
+//   /{url_id}/confirmation   → legacy confirmation page (still live)
+//   /{url_id}/programme      → legacy programme page (still live)
 //
-// Route kinds (discriminated union):
-//   overview      → no second segment — renders ImmerseEngagementPage
-//   destination   → second segment is a destination slug — renders DestinationPage
-//   confirmation  → second segment === 'confirmation' — renders TripConfirmationPage
-//   programme     → second segment === 'programme' — renders TripProgrammePage
-//   trip          → second segment === 'trip' — renders ImmerseTripPage (unified)
-//   invalid       → no valid url_id in first segment — redirects
+// Data-driven default: when proposal content exists, bare URL renders proposal.
+// When no proposal content but trip is linked, bare URL renders trip surface.
+// When neither, not found.
 //
-// Architecture note:
-//   Engagement data fetching (getImmerseEngagement) is isolated in
-//   EngagementRoute — a separate component mounted only for overview +
-//   destination routes. This prevents hooks-after-conditional-returns which
-//   caused getImmerseEngagement to fire on confirmation/programme routes,
-//   making unauthorised direct Supabase queries.
-//
-// Last updated: S48 — ImmerseTripPage added as unified client surface.
-//   Route kind 'trip' resolves /{url_id}/trip → ImmerseTripPage.
-// Prior: S48 — engagement state + fetch extracted into EngagementRoute
-//   component to fix hooks-after-conditional-returns bug.
-// Prior: S48 — confirmation and programme route kinds added.
-// Prior: S32F — immersePath helpers, overview URL builder.
+// Last updated: S48 — bare /{url_id} renders trip surface when no proposal
+//   content exists. /{url_id}/proposal explicitly renders proposal. /trip
+//   segment removed.
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { getImmerseEngagement }              from '../../queries/queriesImmerseEngagement'
@@ -45,16 +31,16 @@ const ImmerseTripPage      = lazy(() => import('./ImmerseTripPage'))
 
 // ── Reserved second segments ──────────────────────────────────────────────────
 
-const RESERVED_SEGMENTS = new Set(['confirmation', 'programme', 'trip'])
+const RESERVED_SEGMENTS = new Set(['confirmation', 'programme', 'proposal'])
 
 // ── URL resolution ────────────────────────────────────────────────────────────
 
 type ResolvedRoute =
-  | { kind: 'overview';     urlId: string }
+  | { kind: 'auto';         urlId: string }
+  | { kind: 'proposal';     urlId: string }
   | { kind: 'destination';  urlId: string; destinationSlug: string }
   | { kind: 'confirmation'; urlId: string }
   | { kind: 'programme';    urlId: string }
-  | { kind: 'trip';         urlId: string }
   | { kind: 'invalid' }
 
 export function resolveImmerseRoute(pathname: string): ResolvedRoute {
@@ -71,11 +57,28 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
 
   if (seg2 === 'confirmation') return { kind: 'confirmation', urlId: seg1 }
   if (seg2 === 'programme')    return { kind: 'programme',    urlId: seg1 }
-  if (seg2 === 'trip')         return { kind: 'trip',         urlId: seg1 }
+  if (seg2 === 'proposal')     return { kind: 'proposal',     urlId: seg1 }
 
   if (seg2 && !RESERVED_SEGMENTS.has(seg2)) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
 
-  return { kind: 'overview', urlId: seg1 }
+  return { kind: 'auto', urlId: seg1 }
+}
+
+// ── Content detection ─────────────────────────────────────────────────────────
+
+function hasProposalContent(engagement: ImmerseEngagementData): boolean {
+  return !!(
+    engagement.heroTagline ||
+    engagement.routeBody ||
+    engagement.destinationBody ||
+    engagement.pricingBody ||
+    engagement.pricingTotalValue ||
+    (engagement.destinationRows && engagement.destinationRows.length > 0)
+  )
+}
+
+function hasTripContent(engagement: ImmerseEngagementData): boolean {
+  return !!engagement.tripId
 }
 
 // ── Nav items builder ─────────────────────────────────────────────────────────
@@ -111,7 +114,7 @@ export function buildImmerseNavItems(
 // ── EngagementRoute ───────────────────────────────────────────────────────────
 
 function EngagementRoute({ route }: {
-  route: Extract<ResolvedRoute, { kind: 'overview' | 'destination' | 'invalid' }>
+  route: Extract<ResolvedRoute, { kind: 'auto' | 'proposal' | 'destination' | 'invalid' }>
 }) {
   const [engagement, setEngagement] = useState<ImmerseEngagementData | null>(null)
   const [error,      setError]      = useState<string | null>(null)
@@ -163,19 +166,40 @@ function EngagementRoute({ route }: {
     )
   }
 
-  if (error === 'not-found') {
+  if (error === 'not-found' || !engagement) {
     return (
       <ImmerseLayout>
-        <NotFound message='This proposal is not available.' />
+        <NotFound message='This page is not available.' />
       </ImmerseLayout>
     )
   }
 
-  if (route.kind === 'overview' && engagement) {
+  // Bare URL — content-driven
+  if (route.kind === 'auto') {
+    if (hasProposalContent(engagement)) {
+      return <ImmerseEngagementPage data={engagement} />
+    }
+    if (hasTripContent(engagement)) {
+      return (
+        <Suspense fallback={<RouteLoading />}>
+          <ImmerseTripPage urlId={engagement.urlId} />
+        </Suspense>
+      )
+    }
+    return (
+      <ImmerseLayout>
+        <NotFound message='This page is not available.' />
+      </ImmerseLayout>
+    )
+  }
+
+  // Explicit /proposal
+  if (route.kind === 'proposal') {
     return <ImmerseEngagementPage data={engagement} />
   }
 
-  if (route.kind === 'destination' && engagement) {
+  // Destination subpage
+  if (route.kind === 'destination') {
     return (
       <DestinationPage
         engagement={engagement}
@@ -220,14 +244,6 @@ export default function ImmerseEngagementRoute() {
     return (
       <Suspense fallback={<RouteLoading />}>
         <TripProgrammePage urlId={route.urlId} />
-      </Suspense>
-    )
-  }
-
-  if (route.kind === 'trip') {
-    return (
-      <Suspense fallback={<RouteLoading />}>
-        <ImmerseTripPage urlId={route.urlId} />
       </Suspense>
     )
   }
