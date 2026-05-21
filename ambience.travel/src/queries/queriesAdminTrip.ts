@@ -662,3 +662,21 @@ export async function autoDeriveTripItinerary(
 
   return { days, entries }
 }
+
+export async function setEngagementPublicView(tripId: string, publicView: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('travel_immerse_engagements')
+    .update({ public_view: publicView })
+    .eq('trip_id', tripId)
+  if (error) throw error
+}
+
+export async function fetchEngagementPublicView(tripId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('travel_immerse_engagements')
+    .select('public_view, url_id')
+    .eq('trip_id', tripId)
+    .single()
+  if (error || !data) return false
+  return !!data.public_view
+}
