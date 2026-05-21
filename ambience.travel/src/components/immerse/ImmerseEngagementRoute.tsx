@@ -1,19 +1,22 @@
 // ImmerseEngagementRoute.tsx — Route resolver for immerse engagement pages.
 //
-// Routing logic (S48 late):
-//   /{url_id}                → trip surface if trip exists, else proposal overview
-//   /{url_id}/proposal       → proposal overview (explicit)
+// Routing logic (S48 late — stage-driven):
+//   /{url_id}                → routes based on engagement.stage
+//   /{url_id}/proposal       → proposal overview (explicit, always renders)
 //   /{url_id}/{destination}  → destination subpage
 //   /{url_id}/confirmation   → legacy confirmation page (still live)
 //   /{url_id}/programme      → legacy programme page (still live)
 //
-// Data-driven default: when proposal content exists, bare URL renders proposal.
-// When no proposal content but trip is linked, bare URL renders trip surface.
-// When neither, not found.
+// Bare URL routing is data-driven via the computed `stage` field on the
+// engagement, set in the query layer based on status + content presence.
 //
-// Last updated: S48 — bare /{url_id} renders trip surface when no proposal
-//   content exists. /{url_id}/proposal explicitly renders proposal. /trip
-//   segment removed.
+//   stage 'trip' / 'completed'              → render ImmerseTripPage
+//   stage 'proposal' / 'proposal_with_pending' → redirect to /proposal
+//   stage 'draft' / 'cancelled'             → not found
+//
+// Last updated: S48 — bare URL is stage-driven. /proposal is the explicit
+//   proposal route. Trip stage takes bare URL when active. /trip segment
+//   removed entirely.
 
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { getImmerseEngagement }              from '../../queries/queriesImmerseEngagement'
@@ -62,23 +65,6 @@ export function resolveImmerseRoute(pathname: string): ResolvedRoute {
   if (seg2 && !RESERVED_SEGMENTS.has(seg2)) return { kind: 'destination', urlId: seg1, destinationSlug: seg2 }
 
   return { kind: 'auto', urlId: seg1 }
-}
-
-// ── Content detection ─────────────────────────────────────────────────────────
-
-function hasProposalContent(engagement: ImmerseEngagementData): boolean {
-  return !!(
-    engagement.heroTagline ||
-    engagement.routeBody ||
-    engagement.destinationBody ||
-    engagement.pricingBody ||
-    engagement.pricingTotalValue ||
-    (engagement.destinationRows && engagement.destinationRows.length > 0)
-  )
-}
-
-function hasTripContent(engagement: ImmerseEngagementData): boolean {
-  return !!engagement.tripId
 }
 
 // ── Nav items builder ─────────────────────────────────────────────────────────
@@ -174,39 +160,46 @@ function EngagementRoute({ route }: {
     )
   }
 
-  // Bare URL — content-driven
+  // ── Bare URL — stage-driven routing ───────────────────────────────────────
   if (route.kind === 'auto') {
-    // Trip wins the bare URL whenever it exists
-    if (hasTripContent(engagement)) {
-      return (
-        <Suspense fallback={<RouteLoading />}>
-          <ImmerseTripPage urlId={engagement.urlId} />
-        </Suspense>
-      )
+    switch (engagement.stage) {
+      case 'trip':
+      case 'completed':
+        return (
+          <Suspense fallback={<RouteLoading />}>
+            <ImmerseTripPage urlId={engagement.urlId} />
+          </Suspense>
+        )
+
+      case 'proposal':
+      case 'proposal_with_pending': {
+        // Explicit redirect to /proposal — bare URL is for trip surfaces only
+        const target = `${getOverviewUrl(engagement.urlId)}/proposal`
+        window.location.replace(target)
+        return (
+          <ImmerseLayout>
+            <TravelLoadingScreen />
+          </ImmerseLayout>
+        )
+      }
+
+      case 'draft':
+      case 'cancelled':
+      default:
+        return (
+          <ImmerseLayout>
+            <NotFound message='This page is not available.' />
+          </ImmerseLayout>
+        )
     }
-    // No trip but proposal exists — redirect to explicit /proposal
-    if (hasProposalContent(engagement)) {
-      const target = `${getOverviewUrl(engagement.urlId)}/proposal`
-      window.location.replace(target)
-      return (
-        <ImmerseLayout>
-          <TravelLoadingScreen />
-        </ImmerseLayout>
-      )
-    }
-    return (
-      <ImmerseLayout>
-        <NotFound message='This page is not available.' />
-      </ImmerseLayout>
-    )
   }
 
-  // Explicit /proposal
+  // ── Explicit /proposal route ──────────────────────────────────────────────
   if (route.kind === 'proposal') {
     return <ImmerseEngagementPage data={engagement} />
   }
 
-  // Destination subpage
+  // ── Destination subpage ───────────────────────────────────────────────────
   if (route.kind === 'destination') {
     return (
       <DestinationPage

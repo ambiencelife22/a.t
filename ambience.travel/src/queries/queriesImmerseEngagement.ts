@@ -1,25 +1,17 @@
-// immerseEngagementQueries.ts — Supabase query layer for immerse engagement master data
+// queriesImmerseEngagement.ts — Supabase query layer for immerse engagement master data
 // Owns:
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
-// Does not own: destination subpage data (see immerseQueries.ts).
+// Does not own: destination subpage data (see queriesImmerseDestination.ts).
 //
-// Last updated: S32K — Pricing rows + destination rows now select destination
-//   NAME (title case) from global_destinations, not slug. The slug column was
-//   leaking into the rendered Item label as lowercase ("seychelles", "newyork").
-//   destination_slug retained on destination rows because routing/anchors need
-//   it; pricing rows drop slug entirely since they only render the human label.
-// Prior: S32D — Trip pricing rows now read destination slug via nested
-//   join to global_destinations. Legacy `destination` text-slug column was
-//   dropped in S32B Phase 4 but this file still selected it, causing 42703
-//   on every engagement load. Same nested-join pattern S32C applied to
-//   trip_destination_rows.
-// Prior: S32C — destination_rows SELECT reads slug via nested join to
-//   global_destinations rather than the immerse-side destination_slug column.
-// Prior: S32 (Add 1) — Added hero_tagline. Earlier S32: audience field.
+// Last updated: S48 — engagement stage computation. Query now performs three
+//   light count queries against the linked trip to determine data presence,
+//   then derives stage from declared engagement_status_id + content truth.
+//   Stage is the single source of truth for downstream routing.
+// Prior: S32K — Pricing rows + destination rows select destination NAME from
+//   global_destinations, not slug.
+// Prior: S32D — Trip pricing rows read destination slug via nested join.
 // Prior: S30E perf — Removed getImmerseEngagementBySlug.
-// Prior: S30E — Engagement abstraction.
 // Prior: S30D — Storage URL rewriting at the read layer.
-// Prior: S30 — Welcome letter hydration.
 
 import { supabaseAnon } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
@@ -36,7 +28,9 @@ import type {
   EngagementAudience,
   EngagementStatus,
   ItineraryStatus,
+  EngagementStage,
 } from '../types/typesImmerse'
+import { computeEngagementStage } from '../types/typesImmerse'
 
 // ── DB row types ─────────────────────────────────────────────────────────────
 
@@ -51,8 +45,8 @@ type StatusJoinRow = {
 type EngagementRow = {
   id:                              string
   url_id:                          string
-  trip_id:                         string | null
   slug:                            string
+  trip_id:                         string | null
   trip_format:                     string
   engagement_type:                 string
   audience:                        string
@@ -118,8 +112,6 @@ type RouteStopRow = {
   image_alt:  string | null
 }
 
-// S32C/S32K: destination rows pull both slug (for routing/anchors) and name
-// (title case, for display).
 type GlobalDestinationDisplayJoin = {
   slug: string | null
   name: string | null
@@ -140,8 +132,6 @@ type DestinationRowRow = {
   destination_url_slug: string | null
 }
 
-// S32K: pricing rows pull destination NAME only (no slug). Item column
-// renders the proper-case "Seychelles" / "New York City", never the slug.
 type PricingRowRow = {
   id:                 string
   sort_order:         number
@@ -194,12 +184,43 @@ async function fetchCanonicalWelcomeLetter(): Promise<WelcomeLetterRow | null> {
 const EMPTY_ENGAGEMENT_STATUS: EngagementStatus = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 const EMPTY_ITINERARY_STATUS:  ItineraryStatus  = { id: '', slug: '', label: '', sortOrder: 0, isActive: false }
 
+// ── Trip content presence check ──────────────────────────────────────────────
+// S48 — Three light count queries to determine if the linked trip actually has
+// any content. Used to derive the engagement stage. Returns false when there's
+// no trip_id at all, or when the trip exists but has no bookings, days, or
+// aux bookings.
+
+async function fetchHasTripContent(tripId: string | null): Promise<boolean> {
+  if (!tripId) return false
+
+  const [bookingsRes, daysRes, auxRes] = await Promise.all([
+    supabaseAnon
+      .from('travel_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId),
+    supabaseAnon
+      .from('travel_trip_days')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId),
+    supabaseAnon
+      .from('travel_trip_aux_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_id', tripId),
+  ])
+
+  return (
+    (bookingsRes.count ?? 0) > 0 ||
+    (daysRes.count     ?? 0) > 0 ||
+    (auxRes.count      ?? 0) > 0
+  )
+}
+
 // ── Shared hydration ─────────────────────────────────────────────────────────
 
 async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseEngagementData | null> {
   const engagementId = engagementRow.id
 
-  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon] = await Promise.all([
+  const [displayRes, stopsRes, destsRes, pricingRes, welcomeCanon, hasTripContent] = await Promise.all([
     supabaseAnon
       .from('travel_immerse_trip_display')
       .select('first_name, nickname')
@@ -220,7 +241,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .eq('trip_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
-    // S32K: pricing rows read destination NAME (title case) for display.
     supabaseAnon
       .from('travel_immerse_trip_pricing_rows')
       .select(`
@@ -230,12 +250,31 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
       .eq('trip_id', engagementId)
       .order('sort_order'),
     fetchCanonicalWelcomeLetter(),
+    fetchHasTripContent(engagementRow.trip_id),
   ])
 
   const displayRow = (displayRes.data  ?? null) as EngagementDisplayRow | null
   const stopRows   = (stopsRes.data    ?? []) as RouteStopRow[]
   const destRows   = (destsRes.data    ?? []) as unknown as DestinationRowRow[]
   const priceRows  = (pricingRes.data  ?? []) as unknown as PricingRowRow[]
+
+  // ── S48: Compute engagement stage from declared status + content presence ─
+  // Status is intent; data presence is truth. Stage is the routing source of
+  // truth.
+  const hasProposalContent = !!(
+    engagementRow.hero_tagline    ||
+    engagementRow.route_body      ||
+    engagementRow.destination_body ||
+    engagementRow.pricing_body    ||
+    engagementRow.pricing_total_value ||
+    destRows.length > 0
+  )
+
+  const stage: EngagementStage = computeEngagementStage({
+    statusSlug:         engagementRow.travel_engagement_statuses?.slug ?? '',
+    hasProposalContent,
+    hasTripContent,
+  })
 
   const clientName = displayRow?.nickname
     ?? displayRow?.first_name
@@ -280,7 +319,6 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     subpageStatus:      normalizeSubpageStatus(r.subpage_status),
   }))
 
-  // S32K: pricing rows render destination NAME, not slug.
   const tripPricingRows: ImmerseTripPricingRow[] = priceRows.map(r => ({
     id:               r.id,
     destination:      r.global_destinations?.name ?? '',
@@ -296,7 +334,7 @@ async function hydrateEngagement(engagementRow: EngagementRow): Promise<ImmerseE
     engagementType:  (engagementRow.engagement_type as EngagementType) ?? 'journey',
     audience:        normalizeAudience(engagementRow.audience),
     urlId:           engagementRow.url_id,
-    tripId:          engagementRow.trip_id ?? undefined,
+    stage,
     slug:            engagementRow.slug,
     tripFormat:      (engagementRow.trip_format as ImmerseTripFormat) ?? 'journey',
     journeyTypes:    engagementRow.journey_types ?? [],
