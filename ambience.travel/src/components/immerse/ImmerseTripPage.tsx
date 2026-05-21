@@ -27,8 +27,7 @@
 // Tab visibility: driven by show_tab_* booleans on travel_trip_briefs.
 // Tab renders only when: (a) admin enabled it AND (b) relevant data exists.
 //
-// Last updated: S48 — initial ship. Replaces TripConfirmationPage,
-//   TripProgrammePage, and JourneyPage as the single client-facing surface.
+// Last updated: S49 — mobile horizontal scroll + right-padding fixes.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -297,6 +296,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                 background: '#fff', border: `0.5px solid ${RULE}`,
                 borderRadius: 12, overflow: 'hidden',
                 display: 'flex', minHeight: 100,
+                boxSizing: 'border-box',
               }}>
                 <div
                   style={{
@@ -323,7 +323,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                     </div>
                   )}
                 </div>
-                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
                     {room.room_name && <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{room.room_name}</div>}
                     {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>{guests}</div>}
@@ -360,19 +360,20 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
             const route       = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
+              // Fix: right-aligned column removed — all content flows in the flex-1 div.
+              // Previously a flexShrink:0 right column caused horizontal scroll on mobile.
               <div key={aux.id} style={{
                 background: '#fff', border: `0.5px solid ${RULE}`,
                 borderRadius: 12, padding: '16px 20px',
                 display: 'flex', alignItems: 'flex-start', gap: 16,
+                boxSizing: 'border-box',
               }}>
                 <div style={{ fontSize: 22, color: GOLD, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {aux.name && <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 3 }}>{aux.name}</div>}
-                  {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{route}</div>}
+                  {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{fmtDate(aux.start_date)}</div>}
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK }}>{timeStr}</div>}
+                  {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 4 }}>{timeStr}</div>}
                   {aux.guest_label && <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{aux.guest_label}</div>}
                   {aux.confirmation_number && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 5, padding: '2px 8px', marginTop: 6, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
@@ -412,7 +413,6 @@ function ProgrammeTab({ days, entries, auxBookings }: {
     guest_label: string | null; booked_by: string | null
     image_src: string | null; status: string | null
     description: string | null
-    // Flight-specific (surfaced separately so departure/arrival render as two lines, not one)
     flightOrigin:      string | null
     flightDestination: string | null
     flightDepartTime:  string | null
@@ -424,9 +424,6 @@ function ProgrammeTab({ days, entries, auxBookings }: {
       .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
       .map(e => {
         const isFlight = (e.category ?? '').toLowerCase() === 'flight'
-        // For flight entries, the subtitle holds "Origin → Destination" — parse
-        // it back into structured fields so we can render Departure and Arrival
-        // as two separate lines, not one squished arrow line.
         let flightOrigin:      string | null = null
         let flightDestination: string | null = null
         if (isFlight && e.subtitle) {
@@ -560,7 +557,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
       )}
 
       {/* ── Day content ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {/* Mobile day navigator toggle */}
         {isMobile && !sidebarOpen && (
           <button
@@ -606,8 +603,6 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                   const dep         = fmtTime(item.start_time)
                   const arr         = fmtTime(item.end_time)
                   const isFlight    = !!(item.flightOrigin || item.flightDestination || item.flightDepartTime || item.flightArriveTime)
-                  // For flights, the structured Departure/Arrival block carries the times.
-                  // For everything else, show the time range in the header.
                   const timeStr     = isFlight ? null : (dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || null)
                   const isMobileW   = width < 600
                   const stackLayout = isMobileW && !!item.image_src
@@ -618,6 +613,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                       overflow: 'hidden', display: 'flex',
                       flexDirection: stackLayout ? 'column' : 'row',
                       minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
+                      boxSizing: 'border-box',
                     }}>
                       {/* Image panel */}
                       {item.image_src && (
@@ -649,7 +645,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                               {item.category ?? 'Other'}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             {item.status && <StatusPill status={item.status} />}
                             {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</span>}
                           </div>
@@ -670,7 +666,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                             display: 'flex', flexDirection: 'column', gap: 6,
                           }}>
                             {item.flightOrigin && (
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
                                   fontSize: 9, fontFamily: SANS, fontWeight: 700,
@@ -679,7 +675,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                                 }}>
                                   Departure
                                 </div>
-                                <div style={{ flex: 1, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4 }}>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                   {item.flightOrigin}
                                 </div>
                                 {item.flightDepartTime && (
@@ -690,7 +686,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                               </div>
                             )}
                             {item.flightDestination && (
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
                                   fontSize: 9, fontFamily: SANS, fontWeight: 700,
@@ -699,7 +695,7 @@ function ProgrammeTab({ days, entries, auxBookings }: {
                                 }}>
                                   Arrival
                                 </div>
-                                <div style={{ flex: 1, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4 }}>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                   {item.flightDestination}
                                 </div>
                                 {item.flightArriveTime && (
@@ -769,10 +765,11 @@ function TripBriefTab({ clientData, days, entries }: {
   function BriefRow({ label, value, sub }: { label: string; value: string; sub?: string }) {
     return (
       <div style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
-        <div style={{ width: 140, flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>{label}</div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS }}>{value}</div>
-          {sub && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2 }}>{sub}</div>}
+        {/* Fix: clamp label width so it doesn't crowd the value on narrow screens */}
+        <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>{label}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>{value}</div>
+          {sub && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{sub}</div>}
         </div>
       </div>
     )
@@ -848,11 +845,11 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
 
   function ContactCard({ name, role, email, phone }: { name: string; role: string; email?: string | null; phone?: string | null }) {
     return (
-      <div style={{ padding: '20px 24px', borderRadius: 12, border: `0.5px solid ${RULE}`, background: '#fff' }}>
+      <div style={{ padding: '20px 24px', borderRadius: 12, border: `0.5px solid ${RULE}`, background: '#fff', boxSizing: 'border-box' }}>
         <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 8, fontFamily: SANS }}>{role}</div>
         <div style={{ fontSize: 18, fontFamily: SERIF, color: INK, marginBottom: 8 }}>{name}</div>
         {phone && <a href={`tel:${phone}`} style={{ display: 'block', fontSize: 13, color: GOLD, textDecoration: 'none', fontFamily: SANS, marginBottom: 3 }}>{phone}</a>}
-        {email && <a href={`mailto:${email}`} style={{ display: 'block', fontSize: 12, color: MUTED, textDecoration: 'none', fontFamily: SANS }}>{email}</a>}
+        {email && <a href={`mailto:${email}`} style={{ display: 'block', fontSize: 12, color: MUTED, textDecoration: 'none', fontFamily: SANS, wordBreak: 'break-all' }}>{email}</a>}
       </div>
     )
   }
@@ -882,8 +879,6 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
           <div style={{ fontSize: 13, fontFamily: SANS, color: MUTED, lineHeight: 1.7 }}>{brief.hotel_contact_note}</div>
         </div>
       )}
-
-
     </div>
   )
 }
@@ -892,7 +887,13 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
 
 function TabSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: 'clamp(20px,4vw,36px) clamp(20px,6vw,80px) 0' }}>
+    // Fix: added bottom padding + overflow:hidden to prevent child overflow escaping section boundary
+    <div style={{
+      padding:    'clamp(20px,4vw,36px) clamp(20px,5vw,48px) clamp(20px,4vw,36px)',
+      boxSizing:  'border-box',
+      width:      '100%',
+      overflow:   'hidden',
+    }}>
       <div style={{ height: 1, background: RULE, marginBottom: 18 }} />
       <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, color: GOLD, letterSpacing: '0.14em', marginBottom: 14 }}>{label}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
@@ -1000,7 +1001,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   // Determine which tabs are visible
   const tabs: { id: TabId; label: string }[] = []
   if (brief?.show_tab_brief        !== false) tabs.push({ id: 'brief',        label: 'Trip Brief' })
-  if (brief?.show_tab_itinerary    !== false) tabs.push({ id: 'programme',   label: 'Programme' })
+  if (brief?.show_tab_itinerary    !== false) tabs.push({ id: 'programme',    label: 'Programme' })
   if (brief?.show_tab_confirmation !== false) tabs.push({ id: 'confirmation', label: 'Confirmation' })
   if (brief?.show_tab_contacts     !== false) tabs.push({ id: 'contacts',     label: 'Contacts' })
 
