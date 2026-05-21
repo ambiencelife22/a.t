@@ -351,7 +351,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
           {b.commission_amount != null && <span style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commission_amount, currency)}</span>}
-          <span style={{ fontSize: 10, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>\u203a</span>
+          <span style={{ fontSize: 10, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
         </div>
       </div>
 
@@ -516,7 +516,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           {totalCommission > 0 && <span style={{ fontSize: 12, color: A.gold, fontFamily: A.font, fontWeight: 600 }}>{fmt(totalCommission)} commission</span>}
-          <span style={{ fontSize: 14, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>\u203a</span>
+          <span style={{ fontSize: 14, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
         </div>
       </div>
 
