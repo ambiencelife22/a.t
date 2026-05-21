@@ -10,11 +10,22 @@
 //   - All DB reads happen server-side via service role in the Edge Function
 //   - No sensitive financial or commission data is returned
 //
-// Last updated: S48 — added apikey + Authorization headers required by
+// Naming note: this file should be renamed queriesImmerseTrip.ts to conform
+//   to the queries{Domain}.ts convention (S48 naming standards). Deferred —
+//   do not rename mid-session without updating all import paths.
+//
+// Last updated: S49 — added guides field to TripClientData (hasDining,
+//   hasExperiences, destinationSlug) populated by Edge Function.
+// Prior: S48 — added apikey + Authorization headers required by
 //   Supabase Edge Function gateway even for public endpoints.
-// Prior: S48 — initial ship.
 
 import type { DossierTrip, HouseProfile, TripAuxBooking, TripBrief } from '../queries/queriesAdminTrip'
+
+export type TripGuides = {
+  hasDining:       boolean
+  hasExperiences:  boolean
+  destinationSlug: string | null
+}
 
 export type TripClientData = {
   trip:            DossierTrip
@@ -22,6 +33,7 @@ export type TripClientData = {
   house:           HouseProfile | null
   destinationName: string
   auxBookings:     TripAuxBooking[]
+  guides:          TripGuides
   urlId:           string
 }
 
@@ -32,8 +44,8 @@ const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/get-trip-confirmation`
 
 export async function fetchTripClientData(urlId: string): Promise<TripClientData | null> {
   try {
-    console.log('FUNCTION_URL:', FUNCTION_URL)        // ← add this
-    console.log('ANON_KEY:', SUPABASE_ANON_KEY?.slice(0, 20))  // ← and this
+    console.log('FUNCTION_URL:', FUNCTION_URL)
+    console.log('ANON_KEY:', SUPABASE_ANON_KEY?.slice(0, 20))
     const res = await fetch(FUNCTION_URL, {
       method:  'POST',
       headers: {

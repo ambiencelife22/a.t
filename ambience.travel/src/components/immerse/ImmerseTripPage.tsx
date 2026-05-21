@@ -35,6 +35,8 @@
 //                        booking._hotel_image_src ?? destinations[0].hero_image_src.
 //               S49r4 — hero image fallback: brief.hero_image_src || destination hero.
 //                        ?? insufficient — brief.hero_image_src can be "" (empty string).
+//               S49r5 — Guides section in TripBriefTab: dining + experiences buttons,
+//                        conditional on guide availability flags from Edge Function.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -853,6 +855,87 @@ function TripBriefTab({ clientData, days, entries }: {
           ))}
         </BriefSection>
       )}
+
+      {/* Guides — only renders when dining or experiences guide exists for this destination */}
+      {(clientData.guides?.hasDining || clientData.guides?.hasExperiences) && (
+        <BriefSection title='Guides'>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {clientData.guides.hasDining && (
+              <a
+                href={`https://guides.ambience.travel/${clientData.guides.destinationSlug}/dining`}
+                target='_blank'
+                rel='noopener noreferrer'
+                style={{ textDecoration: 'none' }}
+              >
+                <div style={{
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'space-between',
+                  padding:        '14px 18px',
+                  borderRadius:   10,
+                  border:         `1px solid ${RULE}`,
+                  background:     '#fff',
+                  cursor:         'pointer',
+                  transition:     'border-color 150ms',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>🍽</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
+                        Dining Guide
+                      </div>
+                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>
+                        {clientData.destinationName}
+                      </div>
+                    </div>
+                  </div>
+                  {/* External link icon */}
+                  <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
+                    <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                    <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                  </svg>
+                </div>
+              </a>
+            )}
+            {clientData.guides.hasExperiences && (
+              <a
+                href={`https://guides.ambience.travel/${clientData.guides.destinationSlug}/experiences`}
+                target='_blank'
+                rel='noopener noreferrer'
+                style={{ textDecoration: 'none' }}
+              >
+                <div style={{
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'space-between',
+                  padding:        '14px 18px',
+                  borderRadius:   10,
+                  border:         `1px solid ${RULE}`,
+                  background:     '#fff',
+                  cursor:         'pointer',
+                  transition:     'border-color 150ms',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>✦</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
+                        Experiences Guide
+                      </div>
+                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>
+                        {clientData.destinationName}
+                      </div>
+                    </div>
+                  </div>
+                  <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
+                    <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                    <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                  </svg>
+                </div>
+              </a>
+            )}
+          </div>
+        </BriefSection>
+      )}
     </div>
   )
 }
@@ -990,6 +1073,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           house:           confPayload.house,
           destinationName: confPayload.destinationName,
           auxBookings:     confPayload.auxBookings ?? [],
+          guides:          confPayload.guides ?? { hasDining: false, hasExperiences: false, destinationSlug: null },
           urlId,
         }
 
