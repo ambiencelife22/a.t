@@ -1095,7 +1095,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         const brief = confPayload.brief
         if (brief?.show_tab_brief !== false) {
           setActiveTab('brief')
-        } else if (brief?.show_tab_itinerary !== false && (progPayload?.days?.length ?? 0) > 0) {
+        } else if (brief?.show_tab_programme !== false && (progPayload?.days?.length ?? 0) > 0) {
           setActiveTab('programme')
         } else if (brief?.show_tab_confirmation !== false) {
           setActiveTab('confirmation')
@@ -1118,7 +1118,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   // Determine which tabs are visible
   const tabs: { id: TabId; label: string }[] = []
   if (brief?.show_tab_brief        !== false) tabs.push({ id: 'brief',        label: 'Trip Brief' })
-  if (brief?.show_tab_itinerary    !== false) tabs.push({ id: 'programme',    label: 'Programme' })
+  if (brief?.show_tab_programme    !== false) tabs.push({ id: 'programme',    label: 'Programme' })
   if (brief?.show_tab_confirmation !== false) tabs.push({ id: 'confirmation', label: 'Confirmation' })
   if (brief?.show_tab_contacts     !== false) tabs.push({ id: 'contacts',     label: 'Contacts' })
 

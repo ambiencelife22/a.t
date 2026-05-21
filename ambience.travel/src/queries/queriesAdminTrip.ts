@@ -8,7 +8,7 @@
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
 // Last updated: S48 — TripBrief gains 5 new columns: programme_show_images,
-//   welcome_letter, show_tab_confirmation, show_tab_itinerary, show_tab_brief,
+//   welcome_letter, show_tab_confirmation, show_tab_programme, show_tab_brief,
 //   show_tab_contacts. Mirrors migration s48_trip_page_controls.
 // Prior: S48 — url_id added to DossierTrip. Engagement join in fetchTripDossierForHouse.
 // Prior: S48 — booked_by text added to TripAuxBooking. TripAuxBookingPatch added.
@@ -79,7 +79,7 @@ export type TripBrief = {
   programme_show_images: boolean
   welcome_letter:        string | null
   show_tab_confirmation: boolean
-  show_tab_itinerary:    boolean
+  show_tab_programme:    boolean
   show_tab_brief:        boolean
   show_tab_contacts:     boolean
   show_advisor_phone:    boolean
