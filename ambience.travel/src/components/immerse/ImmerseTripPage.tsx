@@ -778,6 +778,7 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
             name={brief.advisor_name}
             role='Travel Advisor'
             email={brief.advisor_email}
+            phone={(brief as any).show_advisor_phone ? (brief as any).advisor_phone : null}
           />
         )}
         {house?.display_name && (
@@ -840,6 +841,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   const [tripData,  setTripData]  = useState<TripData | null>(null)
   const [notFound,  setNotFound]  = useState(false)
   const [activeTab, setActiveTab] = useState<TabId | null>(null)
+  const [tabMenuOpen, setTabMenuOpen] = useState(false)
   const width = useWindowWidth()
 
   const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
@@ -970,32 +972,94 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           zIndex:         50,
           background:     'rgba(247,245,240,0.96)',
           backdropFilter: 'blur(12px)',
-          borderBottom:   `1px solid ${RULE}`,
+          borderBottom:   width < 640 ? 'none' : `1px solid ${RULE}`,
           padding:        '0 clamp(20px,5vw,48px)',
           display:        'flex',
           alignItems:     'center',
           justifyContent: 'space-between',
           gap:            16,
         }}>
-          {/* Tabs — dropdown on mobile, tab strip on desktop */}
+          {/* Tabs — hamburger drawer on mobile, tab strip on desktop */}
           {width < 640 ? (
-            <select
-              value={activeTab ?? ''}
-              onChange={e => setActiveTab(e.target.value as TabId)}
-              style={{
-                fontFamily: SANS, fontSize: 11, fontWeight: 600,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                color: GOLD, background: 'transparent',
-                border: `1px solid ${RULE}`, borderRadius: 6,
-                padding: '8px 12px', cursor: 'pointer',
-                outline: 'none', appearance: 'none',
-                WebkitAppearance: 'none',
-              }}
-            >
-              {tabs.map(t => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setTabMenuOpen(o => !o)}
+                aria-label='Open tab menu'
+                style={{
+                  display:       'flex',
+                  alignItems:    'center',
+                  gap:           10,
+                  padding:       '8px 14px',
+                  border:        `1px solid ${RULE}`,
+                  borderRadius:  6,
+                  background:    'transparent',
+                  cursor:        'pointer',
+                  fontFamily:    SANS,
+                  fontSize:      11,
+                  fontWeight:    700,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color:         GOLD,
+                  transition:    'border-color 150ms',
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1 }}>☰</span>
+                <span>{tabs.find(t => t.id === activeTab)?.label ?? 'Menu'}</span>
+              </button>
+
+              {tabMenuOpen && (
+                <>
+                  {/* Backdrop */}
+                  <div
+                    onClick={() => setTabMenuOpen(false)}
+                    style={{
+                      position: 'fixed', inset: 0,
+                      background: 'rgba(0,0,0,0.3)', zIndex: 60,
+                    }}
+                  />
+                  {/* Drawer */}
+                  <div style={{
+                    position:     'absolute',
+                    top:          'calc(100% + 8px)',
+                    left:         0,
+                    minWidth:     200,
+                    zIndex:       70,
+                    background:   '#fff',
+                    border:       `1px solid ${RULE}`,
+                    borderRadius: 8,
+                    boxShadow:    '0 8px 24px rgba(0,0,0,0.12)',
+                    padding:      '6px',
+                    display:      'flex',
+                    flexDirection: 'column',
+                    gap:          2,
+                  }}>
+                    {tabs.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => { setActiveTab(t.id); setTabMenuOpen(false) }}
+                        style={{
+                          textAlign:     'left',
+                          padding:       '12px 14px',
+                          border:        'none',
+                          borderRadius:  6,
+                          background:    activeTab === t.id ? `${GOLD}14` : 'transparent',
+                          color:         activeTab === t.id ? GOLD : INK,
+                          fontSize:      12,
+                          fontWeight:    activeTab === t.id ? 700 : 500,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                          fontFamily:    SANS,
+                          cursor:        'pointer',
+                          transition:    'background 120ms',
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <div style={{ display: 'flex', gap: 0 }}>
               {tabs.map(t => (

@@ -82,6 +82,7 @@ export type TripBrief = {
   show_tab_itinerary:    boolean
   show_tab_brief:        boolean
   show_tab_contacts:     boolean
+  show_advisor_phone:    boolean
   created_at:            string
   updated_at:            string
 }
