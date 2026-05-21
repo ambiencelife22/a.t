@@ -28,6 +28,8 @@
 // Tab renders only when: (a) admin enabled it AND (b) relevant data exists.
 //
 // Last updated: S49 — mobile horizontal scroll + right-padding fixes.
+//               S49r2 — unified mobile nav bar: active day merged into sticky tab bar,
+//                        eliminating the stacked second nav row on Programme tab.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -392,10 +394,12 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
 
 // ── Programme tab ─────────────────────────────────────────────────────────────
 
-function ProgrammeTab({ days, entries, auxBookings }: {
-  days:        TripDay[]
-  entries:     TripDayEntry[]
-  auxBookings: TripAuxBooking[]
+function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
+  days:               TripDay[]
+  entries:            TripDayEntry[]
+  auxBookings:        TripAuxBooking[]
+  // Callback so the parent sticky bar can show the active day label and open the sidebar
+  onActiveDayChange?: (label: string, openSidebar: () => void) => void
 }) {
   const visibleDays = days.filter(d => d.show)
   const [activeDate,    setActiveDate]    = useState(visibleDays[0]?.entry_date ?? null)
@@ -405,6 +409,15 @@ function ProgrammeTab({ days, entries, auxBookings }: {
   const isMobile = width < 768
 
   const activeDay = visibleDays.find(d => d.entry_date === activeDate) ?? null
+
+  // Notify parent whenever active day or sidebar-open function changes
+  useEffect(() => {
+    if (!onActiveDayChange) return
+    const label = activeDay
+      ? (activeDay.day_label || fmtDateShort(activeDay.entry_date))
+      : 'Select day'
+    onActiveDayChange(label, () => setSidebarOpen(true))
+  }, [activeDate, onActiveDayChange])
 
   type CardItem = {
     id: string; category: string | null; start_time: string | null
@@ -504,13 +517,23 @@ function ProgrammeTab({ days, entries, auxBookings }: {
             <button
               onClick={() => setSidebarOpen(o => !o)}
               style={{
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                color: FAINT, fontSize: 14, padding: 4, lineHeight: 1,
-                transition: 'color 150ms',
+                display:        'flex',
+                alignItems:     'center',
+                justifyContent: 'center',
+                background:     'transparent',
+                border:         'none',
+                cursor:         'pointer',
+                color:          GOLD,
+                fontSize:       16,
+                fontWeight:     700,
+                padding:        '4px 8px',
+                lineHeight:     1,
+                transition:     'opacity 150ms',
+                flexShrink:     0,
               }}
               title={sidebarOpen ? 'Collapse' : 'Expand'}
             >
-              {sidebarOpen ? '\u25C4' : '\u25BA'}
+              {sidebarOpen ? '‹' : '›'}
             </button>
           </div>
 
@@ -558,22 +581,6 @@ function ProgrammeTab({ days, entries, auxBookings }: {
 
       {/* ── Day content ── */}
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {/* Mobile day navigator toggle */}
-        {isMobile && !sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            style={{
-              width: '100%', padding: '10px 20px',
-              background: CREAM, border: 'none', borderBottom: `1px solid ${RULE}`,
-              display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-            }}
-          >
-            <span style={{ fontSize: 12, color: GOLD }}>☰</span>
-            <span style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>
-              {activeDay ? (activeDay.day_label || fmtDateShort(activeDay.entry_date)) : 'Select day'}
-            </span>
-          </button>
-        )}
 
         {activeDay ? (
           <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)' }}>
@@ -930,7 +937,15 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   const [notFound,  setNotFound]  = useState(false)
   const [activeTab, setActiveTab] = useState<TabId | null>(null)
   const [tabMenuOpen, setTabMenuOpen] = useState(false)
+  // Programme tab: active day label + sidebar opener — surfaced into the unified sticky bar
+  const [activeDayLabel, setActiveDayLabel] = useState<string>('')
+  const [openDayNav,     setOpenDayNav]     = useState<(() => void) | null>(null)
   const width = useWindowWidth()
+
+  const handleActiveDayChange = useCallback((label: string, opener: () => void) => {
+    setActiveDayLabel(label)
+    setOpenDayNav(() => opener)
+  }, [])
 
   const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
   const { pdfReady: progPdfReady, pdfDownloading: progPdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
@@ -1069,83 +1084,108 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         }}>
           {/* Tabs — hamburger drawer on mobile, tab strip on desktop */}
           {width < 640 ? (
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setTabMenuOpen(o => !o)}
-                aria-label='Open tab menu'
-                style={{
-                  display:       'flex',
-                  alignItems:    'center',
-                  gap:           10,
-                  padding:       '8px 14px',
-                  border:        `1px solid ${RULE}`,
-                  borderRadius:  6,
-                  background:    'transparent',
-                  cursor:        'pointer',
-                  fontFamily:    SANS,
-                  fontSize:      11,
-                  fontWeight:    700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color:         GOLD,
-                  transition:    'border-color 150ms',
-                }}
-              >
-                <span style={{ fontSize: 14, lineHeight: 1 }}>☰</span>
-                <span>{tabs.find(t => t.id === activeTab)?.label ?? 'Menu'}</span>
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1, minWidth: 0 }}>
+              {/* Left: active tab picker */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setTabMenuOpen(o => !o)}
+                  aria-label='Open tab menu'
+                  style={{
+                    display:       'flex',
+                    alignItems:    'center',
+                    gap:           8,
+                    padding:       '10px 0',
+                    border:        'none',
+                    background:    'transparent',
+                    cursor:        'pointer',
+                    fontFamily:    SANS,
+                    fontSize:      10,
+                    fontWeight:    700,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    color:         GOLD,
+                  }}
+                >
+                  <span style={{ fontSize: 13, lineHeight: 1 }}>☰</span>
+                  <span>{tabs.find(t => t.id === activeTab)?.label ?? 'Menu'}</span>
+                </button>
 
-              {tabMenuOpen && (
-                <>
-                  {/* Backdrop */}
-                  <div
-                    onClick={() => setTabMenuOpen(false)}
-                    style={{
-                      position: 'fixed', inset: 0,
-                      background: 'rgba(0,0,0,0.3)', zIndex: 60,
-                    }}
-                  />
-                  {/* Drawer */}
-                  <div style={{
-                    position:     'absolute',
-                    top:          'calc(100% + 8px)',
-                    left:         0,
-                    minWidth:     200,
-                    zIndex:       70,
-                    background:   '#fff',
-                    border:       `1px solid ${RULE}`,
-                    borderRadius: 8,
-                    boxShadow:    '0 8px 24px rgba(0,0,0,0.12)',
-                    padding:      '6px',
-                    display:      'flex',
-                    flexDirection: 'column',
-                    gap:          2,
-                  }}>
-                    {tabs.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => { setActiveTab(t.id); setTabMenuOpen(false) }}
-                        style={{
-                          textAlign:     'left',
-                          padding:       '12px 14px',
-                          border:        'none',
-                          borderRadius:  6,
-                          background:    activeTab === t.id ? `${GOLD}14` : 'transparent',
-                          color:         activeTab === t.id ? GOLD : INK,
-                          fontSize:      12,
-                          fontWeight:    activeTab === t.id ? 700 : 500,
-                          letterSpacing: '0.04em',
-                          textTransform: 'uppercase',
-                          fontFamily:    SANS,
-                          cursor:        'pointer',
-                          transition:    'background 120ms',
-                        }}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                {tabMenuOpen && (
+                  <>
+                    <div
+                      onClick={() => setTabMenuOpen(false)}
+                      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 60 }}
+                    />
+                    <div style={{
+                      position:      'absolute',
+                      top:           'calc(100% + 6px)',
+                      left:          0,
+                      minWidth:      200,
+                      zIndex:        70,
+                      background:    '#fff',
+                      border:        `1px solid ${RULE}`,
+                      borderRadius:  8,
+                      boxShadow:     '0 8px 24px rgba(0,0,0,0.12)',
+                      padding:       '6px',
+                      display:       'flex',
+                      flexDirection: 'column',
+                      gap:           2,
+                    }}>
+                      {tabs.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => { setActiveTab(t.id); setTabMenuOpen(false) }}
+                          style={{
+                            textAlign:     'left',
+                            padding:       '12px 14px',
+                            border:        'none',
+                            borderRadius:  6,
+                            background:    activeTab === t.id ? `${GOLD}14` : 'transparent',
+                            color:         activeTab === t.id ? GOLD : INK,
+                            fontSize:      12,
+                            fontWeight:    activeTab === t.id ? 700 : 500,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                            fontFamily:    SANS,
+                            cursor:        'pointer',
+                            transition:    'background 120ms',
+                          }}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Right: active day selector — only on Programme tab */}
+              {activeTab === 'programme' && activeDayLabel && (
+                <button
+                  onClick={() => openDayNav?.()}
+                  style={{
+                    display:       'flex',
+                    alignItems:    'center',
+                    gap:           6,
+                    padding:       '6px 10px 6px 12px',
+                    border:        `1px solid ${GOLD}55`,
+                    borderRadius:  20,
+                    background:    `${GOLD}0D`,
+                    cursor:        'pointer',
+                    fontFamily:    SANS,
+                    fontSize:      10,
+                    fontWeight:    600,
+                    letterSpacing: '0.04em',
+                    color:         MUTED,
+                    maxWidth:      180,
+                    flexShrink:    0,
+                    whiteSpace:    'nowrap',
+                    transition:    'border-color 150ms, background 150ms',
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeDayLabel}</span>
+                  <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>›</span>
+                </button>
               )}
             </div>
           ) : (
@@ -1234,7 +1274,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         {/* Tab content */}
         <div style={{ background: CREAM, minHeight: '60vh' }}>
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
-          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} />}
+          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} onActiveDayChange={handleActiveDayChange} />}
           {activeTab === 'brief'        && <TripBriefTab clientData={clientData} days={days} entries={entries} />}
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>
