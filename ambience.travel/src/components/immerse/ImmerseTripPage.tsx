@@ -2,17 +2,17 @@
 //
 // The world's finest travel design platform — one intelligent surface where the
 // designer's craft and the guest's experience converge. Every trip lives as one
-// object: hero, welcome letter, confirmation, itinerary, brief, contacts.
+// object: hero, welcome letter, confirmation, programme, brief, contacts.
 //
 // What it owns:
 //   - ImmerseHero — cinematic full-bleed hero with trip title, dates, guest name
 //   - Optional welcome letter between hero and tabs
 //   - Four tabs (each admin-toggled via travel_trip_briefs show_tab_* columns):
 //       Confirmation — accommodation cards + aux bookings (flights, transfers etc)
-//       Itinerary    — day-by-day with collapsible left sidebar day navigator
+//       Programme    — day-by-day with collapsible left sidebar day navigator
 //       Trip Brief   — structured summary (flights, hotels, transfers, contacts)
 //       Contacts     — advisor + property + key trip contacts
-//   - Collapsible left sidebar day navigator on Itinerary tab (desktop + mobile)
+//   - Collapsible left sidebar day navigator on Programme tab (desktop + mobile)
 //   - Status pills: Recommended / Awaiting Decision / Pending / Confirmed / Paid / Cancelled
 //   - Clickable image gallery on event cards
 //   - PDF download (confirmation brief + programme)
@@ -55,7 +55,7 @@ type TripData = {
   entries:    TripDayEntry[]
 }
 
-type TabId = 'confirmation' | 'itinerary' | 'brief' | 'contacts'
+type TabId = 'confirmation' | 'programme' | 'brief' | 'contacts'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -389,9 +389,9 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
   )
 }
 
-// ── Itinerary tab ─────────────────────────────────────────────────────────────
+// ── Programme tab ─────────────────────────────────────────────────────────────
 
-function ItineraryTab({ days, entries, auxBookings }: {
+function ProgrammeTab({ days, entries, auxBookings }: {
   days:        TripDay[]
   entries:     TripDayEntry[]
   auxBookings: TripAuxBooking[]
@@ -646,7 +646,7 @@ function ItineraryTab({ days, entries, auxBookings }: {
           </div>
         ) : (
           <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)', fontSize: 13, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>
-            No itinerary days available yet.
+            No programme days available yet.
           </div>
         )}
       </div>
@@ -891,7 +891,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         if (brief?.show_tab_brief !== false) {
           setActiveTab('brief')
         } else if (brief?.show_tab_itinerary !== false && (progPayload?.days?.length ?? 0) > 0) {
-          setActiveTab('itinerary')
+          setActiveTab('programme')
         } else if (brief?.show_tab_confirmation !== false) {
           setActiveTab('confirmation')
         } else {
@@ -913,7 +913,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   // Determine which tabs are visible
   const tabs: { id: TabId; label: string }[] = []
   if (brief?.show_tab_brief        !== false) tabs.push({ id: 'brief',        label: 'Trip Brief' })
-  if (brief?.show_tab_itinerary    !== false) tabs.push({ id: 'itinerary',    label: 'Itinerary' })
+  if (brief?.show_tab_itinerary    !== false) tabs.push({ id: 'programme',   label: 'Programme' })
   if (brief?.show_tab_confirmation !== false) tabs.push({ id: 'confirmation', label: 'Confirmation' })
   if (brief?.show_tab_contacts     !== false) tabs.push({ id: 'contacts',     label: 'Contacts' })
 
@@ -1117,7 +1117,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                 {briefPdfDownloading ? 'Generating\u2026' : activeTab === 'confirmation' ? 'Confirmation PDF' : 'Brief PDF'}
               </button>
             )}
-            {activeTab === 'itinerary' && (
+            {activeTab === 'programme' && (
               <button
                 disabled={!progPdfReady || progPdfDownloading}
                 onClick={() => {
@@ -1146,7 +1146,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         {/* Tab content */}
         <div style={{ background: CREAM, minHeight: '60vh' }}>
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
-          {activeTab === 'itinerary'    && <ItineraryTab days={days} entries={entries} auxBookings={clientData.auxBookings} />}
+          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} />}
           {activeTab === 'brief'        && <TripBriefTab clientData={clientData} days={days} entries={entries} />}
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>
