@@ -257,6 +257,7 @@ function mapEvent(row: EventRow, contacts: ContactRow[]): JourneyEvent {
     check_in_date:       row.check_in_date,
     check_out_date:      row.check_out_date,
     inclusions:          row.inclusions,
+    image_src:           null,
     contacts:            contacts
       .filter(c => c.event_id === row.id)
       .map(c => ({
