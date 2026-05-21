@@ -1,15 +1,18 @@
-// useBriefDownload.ts — jsPDF loader + download handler for Confirmation Brief PDFs.
-// Mirrors useDossierDownload pattern. Kept separate so brief state does not
-// bleed into dossier or guide PDF state.
+// useImmerseConfirmationPdf.ts — jsPDF loader + download handlers for
+// Confirmation Brief and Trip Brief PDFs.
 //
-// Usage:
-//   const { pdfReady, pdfDownloading, handleDownloadBrief } = useBriefDownload()
-//   <button onClick={() => handleDownloadBrief(data)} disabled={!pdfReady || pdfDownloading} />
+// Exports two handlers from one hook so both PDF types share a single
+// jsPDF load lifecycle:
+//   handleDownloadBrief(data)        — Trip Confirmation PDF
+//   handleDownloadTripBrief(data)    — Trip Brief PDF (structured summary)
 //
-// Last updated: S45 — initial ship.
+// Last updated: S49 — added handleDownloadTripBrief for Trip Brief tab.
+//   Both handlers share pdfReady / pdfDownloading state from one jsPDF load.
+// Prior: S45 — initial ship.
 
 import { useEffect, useRef, useState } from 'react'
 import { exportConfirmationBriefPdf, type ConfirmationBriefData } from '../pdf/pdfImmerseConfirmation'
+import { exportTripBriefPdf, type TripBriefPdfData } from '../pdf/pdfImmerseBrief'
 import { useToast } from '../providers/ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
@@ -46,18 +49,33 @@ export function useImmerseConfirmationPdf() {
       .catch(err => console.error('PDF library load error:', err))
   }, [])
 
+  // Confirmation Brief PDF — accommodation cards + flights (card layout)
   async function handleDownloadBrief(data: ConfirmationBriefData) {
     if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
     setPdfDownloading(true)
     try {
       await exportConfirmationBriefPdf(data)
     } catch (err) {
-      console.error('Brief export failed:', err)
-      toastRef.current.error(`Brief export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      console.error('Confirmation PDF export failed:', err)
+      toastRef.current.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setPdfDownloading(false)
     }
   }
 
-  return { pdfReady, pdfDownloading, handleDownloadBrief }
+  // Trip Brief PDF — structured summary (overview table + sections)
+  async function handleDownloadTripBrief(data: TripBriefPdfData) {
+    if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
+    setPdfDownloading(true)
+    try {
+      await exportTripBriefPdf(data)
+    } catch (err) {
+      console.error('Trip Brief PDF export failed:', err)
+      toastRef.current.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setPdfDownloading(false)
+    }
+  }
+
+  return { pdfReady, pdfDownloading, handleDownloadBrief, handleDownloadTripBrief }
 }

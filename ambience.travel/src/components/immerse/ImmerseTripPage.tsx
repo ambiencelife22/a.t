@@ -37,6 +37,9 @@
 //                        ?? insufficient — brief.hero_image_src can be "" (empty string).
 //               S49r5 — Guides section in TripBriefTab: dining + experiences buttons,
 //                        conditional on guide availability flags from Edge Function.
+//               S49r6 — Brief PDF now calls exportTripBriefPdf (structured summary)
+//                        via handleDownloadTripBrief. Confirmation PDF unchanged.
+//                        Hero fetch uses || fallback to handle empty string src.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -427,10 +430,13 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
   // Notify parent whenever active day or sidebar-open function changes
   useEffect(() => {
     if (!onActiveDayChange) return
+    const idx   = visibleDays.findIndex(d => d.entry_date === activeDate)
+    const dayN  = idx >= 0 ? `Day ${idx + 1}` : null
     const label = activeDay
       ? (activeDay.day_label || fmtDateShort(activeDay.entry_date))
       : 'Select day'
-    onActiveDayChange(label, () => setSidebarOpen(true))
+    const combined = dayN ? `${dayN} · ${label}` : label
+    onActiveDayChange(combined, () => setSidebarOpen(true))
   }, [activeDate, onActiveDayChange])
 
   type CardItem = {
@@ -1042,7 +1048,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
     setOpenDayNav(() => opener)
   }, [])
 
-  const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
+  const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief, handleDownloadTripBrief } = useImmerseConfirmationPdf()
   const { pdfReady: progPdfReady, pdfDownloading: progPdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
   useEffect(() => {
@@ -1266,7 +1272,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                     display:       'flex',
                     alignItems:    'center',
                     gap:           6,
-                    padding:       '6px 10px 6px 12px',
+                    padding:       '6px 10px 6px 10px',
                     border:        `1px solid ${GOLD}55`,
                     borderRadius:  20,
                     background:    `${GOLD}0D`,
@@ -1276,12 +1282,13 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                     fontWeight:    600,
                     letterSpacing: '0.04em',
                     color:         MUTED,
-                    maxWidth:      180,
+                    maxWidth:      200,
                     flexShrink:    0,
                     whiteSpace:    'nowrap',
                     transition:    'border-color 150ms, background 150ms',
                   }}
                 >
+                  <span style={{ fontSize: 11, color: GOLD, flexShrink: 0, lineHeight: 1 }}>☰</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeDayLabel}</span>
                   <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>›</span>
                 </button>
@@ -1324,13 +1331,18 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                 disabled={!briefPdfReady || briefPdfDownloading}
                 onClick={async () => {
                   let heroData: string | null = null
-                  if (brief?.hero_image_src) {
+                  const heroSrc = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || null
+                  if (heroSrc) {
                     try {
-                      const blob = await fetch(brief.hero_image_src).then(r => r.blob())
+                      const blob = await fetch(heroSrc).then(r => r.blob())
                       heroData = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(blob) })
                     } catch {}
                   }
-                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
+                  if (activeTab === 'brief') {
+                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
+                  } else {
+                    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
+                  }
                 }}
                 style={{
                   fontFamily: SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
