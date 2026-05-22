@@ -8,11 +8,13 @@
 //   - When presetPath provided: lists that folder directly
 //   - Handles up to TWO levels of subfolders before images:
 //       e.g. nyc/ → accom/ → four-seasons/ → image.webp
+//   - Root-level images shown under a 'Hero' tab alongside subfolder tabs
 //   - Click to select — calls onSelected(publicUrl) and closes
 //
-// Last updated: S47 — two-level subfolder support. Level 1 shown as tabs
-//   (Hotel / Accom / Dining etc). Level 2 shown as dropdown. Images shown
-//   in grid once both levels resolved.
+// Last updated: S49 — root-level images (hero images) now appear under a
+//   'Hero' tab when the folder also contains subfolders. Previously the
+//   category tab strip appeared but root images were never reachable.
+// Prior: S47 — two-level subfolder support.
 // Prior: S46 — single subfolder level.
 // Prior: S45 — initial ship.
 
@@ -43,6 +45,8 @@ async function listPath(path: string) {
   return data ?? []
 }
 
+const HERO_TAB = '__hero__'
+
 const labelStyle: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
   textTransform: 'uppercase', color: A.faint, fontFamily: A.font,
@@ -71,15 +75,16 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
   const [geo,       setGeo]       = useState<GeoCascadeValue>({ resolvedPath: null })
 
   // Level 1 subfolders (e.g. accom, dining, experiences, hotel)
-  const [level1Dirs, setLevel1Dirs] = useState<string[]>([])
-  const [level1Sel,  setLevel1Sel]  = useState<string>('')
+  const [level1Dirs,       setLevel1Dirs]       = useState<string[]>([])
+  const [level1RootImages, setLevel1RootImages] = useState<string[]>([])  // images at root alongside subdirs
+  const [level1Sel,        setLevel1Sel]        = useState<string>('')
 
   // Level 2 subfolders (e.g. four-seasons, peninsula)
   const [level2Dirs, setLevel2Dirs] = useState<string[]>([])
   const [level2Sel,  setLevel2Sel]  = useState<string>('')
 
-  const [files,   setFiles]   = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
+  const [files,    setFiles]    = useState<string[]>([])
+  const [loading,  setLoading]  = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
 
   const basePath = presetPath ?? geo.resolvedPath
@@ -87,11 +92,13 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
   // ── Level 1: list basePath ────────────────────────────────────────────────
   useEffect(() => {
     if (!basePath) {
-      setLevel1Dirs([]); setLevel1Sel(''); setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+      setLevel1Dirs([]); setLevel1RootImages([]); setLevel1Sel('')
+      setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
       return
     }
     setLoading(true)
-    setLevel1Dirs([]); setLevel1Sel(''); setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+    setLevel1Dirs([]); setLevel1RootImages([]); setLevel1Sel('')
+    setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
 
     listPath(basePath).then(items => {
       const dirs = items.filter(isFolder).map(i => i.name)
@@ -99,7 +106,12 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
       if (dirs.length > 0) {
         setLevel1Dirs(dirs)
-        // Don't auto-select — let user choose
+        setLevel1RootImages(imgs)  // may be empty — that's fine
+        // If there are root images, auto-select the Hero tab
+        if (imgs.length > 0) {
+          setLevel1Sel(HERO_TAB)
+          setFiles(imgs)
+        }
       } else {
         setFiles(imgs)
       }
@@ -108,8 +120,12 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
   // ── Level 2: list basePath/level1Sel ─────────────────────────────────────
   useEffect(() => {
-    if (!basePath || !level1Sel) {
-      setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+    if (!basePath || !level1Sel || level1Sel === HERO_TAB) {
+      if (level1Sel === HERO_TAB) {
+        setLevel2Dirs([]); setLevel2Sel(''); setFiles(level1RootImages)
+      } else {
+        setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
+      }
       return
     }
     setLoading(true)
@@ -121,7 +137,6 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
       if (dirs.length > 0) {
         setLevel2Dirs(dirs)
-        // Don't auto-select
       } else {
         setFiles(imgs)
       }
@@ -130,7 +145,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
   // ── Level 3 (images): list basePath/level1Sel/level2Sel ──────────────────
   useEffect(() => {
-    if (!basePath || !level1Sel || level2Dirs.length === 0 || !level2Sel) return
+    if (!basePath || !level1Sel || level1Sel === HERO_TAB || level2Dirs.length === 0 || !level2Sel) return
     setLoading(true)
     setFiles([])
 
@@ -142,11 +157,12 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
   // ── Active path for image resolution ─────────────────────────────────────
   const activePath = (() => {
     if (!basePath) return null
-    if (level1Dirs.length === 0) return basePath                          // no subfolders
-    if (!level1Sel) return null                                           // waiting for L1 pick
-    if (level2Dirs.length === 0) return `${basePath}/${level1Sel}`       // L1 has images directly
-    if (!level2Sel) return null                                           // waiting for L2 pick
-    return `${basePath}/${level1Sel}/${level2Sel}`                       // L2 has images
+    if (level1Dirs.length === 0) return basePath                              // no subfolders
+    if (!level1Sel) return null                                               // waiting for L1 pick
+    if (level1Sel === HERO_TAB) return basePath                              // root images
+    if (level2Dirs.length === 0) return `${basePath}/${level1Sel}`           // L1 has images directly
+    if (!level2Sel) return null                                               // waiting for L2 pick
+    return `${basePath}/${level1Sel}/${level2Sel}`                           // L2 has images
   })()
 
   function handleSelect(filename: string) {
@@ -159,6 +175,12 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
   }
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+  // Build tab list — Hero tab first if root images exist
+  const allTabs = [
+    ...(level1RootImages.length > 0 ? [HERO_TAB] : []),
+    ...level1Dirs,
+  ]
 
   return (
     <div style={{
@@ -212,12 +234,12 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           </div>
         )}
 
-        {/* Level 1 — tab strip */}
-        {level1Dirs.length > 0 && (
+        {/* Level 1 — tab strip (Hero tab + subfolders) */}
+        {allTabs.length > 0 && (
           <div>
             <label style={labelStyle}>Category</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {level1Dirs.map(d => (
+              {allTabs.map(d => (
                 <button
                   key={d}
                   onClick={() => { setLevel1Sel(d); setLevel2Sel('') }}
@@ -231,7 +253,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
                     transition: 'all 120ms ease',
                   }}
                 >
-                  {capitalize(d)}
+                  {d === HERO_TAB ? 'Hero' : capitalize(d)}
                 </button>
               ))}
             </div>
@@ -258,7 +280,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
         {/* States */}
         {!activePath && !loading && basePath && (
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, textAlign: 'center', padding: '24px 0' }}>
-            {level1Dirs.length > 0 ? 'Select a category above.' : 'No images found.'}
+            {allTabs.length > 0 ? 'Select a category above.' : 'No images found.'}
           </div>
         )}
 
