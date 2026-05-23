@@ -2,7 +2,12 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S48 — public_view toggle in Cover section. Controls visibility
+ * Last updated: S50 — Contacts section added. Editable advisor_name,
+ *   advisor_email, advisor_phone with inline show_advisor_email +
+ *   show_advisor_phone visibility toggles. Each toggle gates whether
+ *   the corresponding field renders on the public Contacts tab via
+ *   ImmerseTripPage.tsx ContactsTab.
+ * Prior: S48 — public_view toggle in Cover section. Controls visibility
  *   of the engagement to public anon clients via the get-engagement-stage
  *   Edge Function. Default false; admin flips on per engagement.
  * Prior: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
@@ -161,6 +166,48 @@ interface PreviewFields {
   roomDrafts:    Record<string, RoomDraft>
   auxBookings:   TripAuxBooking[]
   auxDrafts:     Record<string, AuxDraft>
+}
+
+// ── VisibilityToggle ──────────────────────────────────────────────────────────
+// Small inline toggle used in the Contacts section. Matches the public_view
+// toggle pattern but at a more compact scale to sit beside a text input.
+
+function VisibilityToggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      title={label}
+      aria-label={label}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        padding: '2px 0', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        width: 28, height: 16, borderRadius: 999,
+        border: `1px solid ${on ? A.gold : A.border}`,
+        background: on ? A.gold : 'transparent',
+        position: 'relative', flexShrink: 0,
+        transition: 'all 150ms ease',
+      }}>
+        <span style={{
+          width: 10, height: 10, borderRadius: '50%',
+          background: on ? '#0F1110' : A.faint,
+          position: 'absolute', top: 2,
+          left: on ? 15 : 2,
+          transition: 'left 150ms ease',
+        }} />
+      </span>
+      <span style={{
+        fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+        textTransform: 'uppercase', fontFamily: A.font,
+        color: on ? A.gold : A.faint,
+      }}>
+        {on ? 'Shown' : 'Hidden'}
+      </span>
+    </button>
+  )
 }
 
 // ── BriefRoomEditor ───────────────────────────────────────────────────────────
@@ -367,9 +414,9 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
     const last = sections[sections.length - 1]
     if (last && last.type === type) {
       last.items.push(aux)
-    } else {
-      sections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
+      continue
     }
+    sections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
   }
 
   function getDraft(aux: TripAuxBooking): AuxDraft {
@@ -564,9 +611,9 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     const last = auxSections[auxSections.length - 1]
     if (last && last.type === type) {
       last.items.push(aux)
-    } else {
-      auxSections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
+      continue
     }
+    auxSections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
   }
 
   return (
@@ -740,6 +787,13 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const [logoVariant,   setLogoVariant]   = useState<string>('ambience')
   const [heroImageSrc,  setHeroImageSrc]  = useState('')
 
+  // S50 — Contacts section
+  const [advisorName,      setAdvisorName]      = useState('')
+  const [advisorEmail,     setAdvisorEmail]     = useState('')
+  const [advisorPhone,     setAdvisorPhone]     = useState('')
+  const [showAdvisorEmail, setShowAdvisorEmail] = useState(false)
+  const [showAdvisorPhone, setShowAdvisorPhone] = useState(false)
+
   const [roomImageSrcs, setRoomImageSrcs] = useState<Record<string, string>>({})
   const [roomDrafts,    setRoomDrafts]    = useState<Record<string, RoomDraft>>({})
   const [auxDrafts,     setAuxDrafts]     = useState<Record<string, AuxDraft>>({})
@@ -779,6 +833,11 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         setPreparedFor(br.prepared_for ?? dossier.house?.display_name ?? '')
         setHeroImageSrc(br.hero_image_src ?? '')
         setLogoVariant(br.logo_variant ?? 'ambience')
+        setAdvisorName(br.advisor_name ?? '')
+        setAdvisorEmail(br.advisor_email ?? '')
+        setAdvisorPhone(br.advisor_phone ?? '')
+        setShowAdvisorEmail((br as any).show_advisor_email ?? false)
+        setShowAdvisorPhone((br as any).show_advisor_phone ?? false)
         return
       }
       setPreparedFor(dossier.house?.display_name ?? '')
@@ -800,16 +859,30 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     }
   }
 
+  // S50 — Inline-save contacts on toggle change (no need to wait for Save All).
+  // Mirrors public_view pattern. Text inputs save on blur via handleSave.
+  async function persistContactsToggle(field: 'show_advisor_email' | 'show_advisor_phone', value: boolean) {
+    if (!trip || !house) return
+    try {
+      await upsertTripBrief(trip.id, house.id, { [field]: value } as any)
+    } catch { /* silent — UI already updated optimistically */ }
+  }
+
   async function handleSave() {
     if (!trip || !house) return
     setSaving(true); setSaveErr(null); setSaved(false)
     try {
       const patch: TripBriefPatch = {
-        brief_title:    briefTitle    || null,
-        brief_subtitle: briefSubtitle || null,
-        prepared_for:   preparedFor   || null,
-        hero_image_src: heroImageSrc  || null,
-        logo_variant:   logoVariant   || null,
+        brief_title:        briefTitle    || null,
+        brief_subtitle:     briefSubtitle || null,
+        prepared_for:       preparedFor   || null,
+        hero_image_src:     heroImageSrc  || null,
+        logo_variant:       logoVariant   || null,
+        advisor_name:       advisorName   || null,
+        advisor_email:      advisorEmail  || null,
+        advisor_phone:      advisorPhone  || null,
+        show_advisor_email: showAdvisorEmail,
+        show_advisor_phone: showAdvisorPhone,
       }
       const savedBrief = await upsertTripBrief(trip.id, house.id, patch)
       setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
@@ -882,7 +955,18 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
     handleDownloadBrief({
       trip:            mergedTrip,
-      brief:           trip.brief ?? ({ brief_title: briefTitle || null, brief_subtitle: briefSubtitle || null, prepared_for: preparedFor || null, hero_image_src: heroImageSrc || null, logo_variant: logoVariant || null } as any),
+      brief:           trip.brief ?? ({
+        brief_title:    briefTitle    || null,
+        brief_subtitle: briefSubtitle || null,
+        prepared_for:   preparedFor   || null,
+        hero_image_src: heroImageSrc  || null,
+        logo_variant:   logoVariant   || null,
+        advisor_name:   advisorName   || null,
+        advisor_email:  advisorEmail  || null,
+        advisor_phone:  advisorPhone  || null,
+        show_advisor_email: showAdvisorEmail,
+        show_advisor_phone: showAdvisorPhone,
+      } as any),
       house,
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
@@ -1053,6 +1137,60 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                   </div>
                 </div>
               </Field>
+            </div>
+          </section>
+
+          {/* S50 — Contacts section. advisor_* fields with inline visibility toggles. */}
+          <section>
+            <div style={sectionHeadStyle}>Contacts</div>
+            <p style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>
+              Travel advisor details shown on the public Contacts tab. Each field can be hidden independently — the name remains visible but email and phone are gated.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <Field label='Advisor Name'>
+                <input
+                  style={inputStyle}
+                  value={advisorName}
+                  onChange={e => setAdvisorName(e.target.value)}
+                  placeholder='Deron'
+                />
+              </Field>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <label style={labelStyle}>Advisor Email</label>
+                  <VisibilityToggle
+                    on={showAdvisorEmail}
+                    onChange={v => { setShowAdvisorEmail(v); persistContactsToggle('show_advisor_email', v) }}
+                    label='Show advisor email on Contacts tab'
+                  />
+                </div>
+                <input
+                  style={inputStyle}
+                  type='email'
+                  value={advisorEmail}
+                  onChange={e => setAdvisorEmail(e.target.value)}
+                  placeholder='advisor@ambience.travel'
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <label style={labelStyle}>Advisor Phone</label>
+                  <VisibilityToggle
+                    on={showAdvisorPhone}
+                    onChange={v => { setShowAdvisorPhone(v); persistContactsToggle('show_advisor_phone', v) }}
+                    label='Show advisor phone on Contacts tab'
+                  />
+                </div>
+                <input
+                  style={inputStyle}
+                  type='tel'
+                  value={advisorPhone}
+                  onChange={e => setAdvisorPhone(e.target.value)}
+                  placeholder='+1 555 0100'
+                />
+              </div>
             </div>
           </section>
 

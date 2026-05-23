@@ -7,7 +7,10 @@
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
-// Last updated: S48 — TripBrief gains 5 new columns: programme_show_images,
+// Last updated: S50 — TripBrief gains show_advisor_email. Mirrors migration
+//   s50_add_show_advisor_email. Gates advisor_email visibility on public
+//   Contacts tab, alongside the existing show_advisor_phone toggle.
+// Prior: S48 — TripBrief gains 5 new columns: programme_show_images,
 //   welcome_letter, show_tab_confirmation, show_tab_programme, show_tab_brief,
 //   show_tab_contacts. Mirrors migration s48_trip_page_controls.
 // Prior: S48 — url_id added to DossierTrip. Engagement join in fetchTripDossierForHouse.
@@ -83,6 +86,7 @@ export type TripBrief = {
   show_tab_brief:        boolean
   show_tab_contacts:     boolean
   show_advisor_phone:    boolean
+  show_advisor_email:    boolean   // S50 — gate advisor_email on public Contacts tab
   links:                 { label: string; url: string }[]
   programme_notes:       string | null
   created_at:            string
@@ -598,7 +602,7 @@ export async function autoDeriveTripItinerary(
         entry_date:          b.start_date,
         start_time:          null,
         end_time:            null,
-        title:               `Check-in — ${hotelName}`,
+        title:               `Check-in \u2014 ${hotelName}`,
         subtitle:            b.name ?? null,
         category:            'Hotel',
         booked_by:           b.booked_by ?? 'ambience',
@@ -619,7 +623,7 @@ export async function autoDeriveTripItinerary(
           entry_date:          b.end_date,
           start_time:          null,
           end_time:            null,
-          title:               `Check-out — ${hotelName}`,
+          title:               `Check-out \u2014 ${hotelName}`,
           subtitle:            null,
           category:            'Hotel',
           booked_by:           b.booked_by ?? 'ambience',
@@ -646,7 +650,7 @@ export async function autoDeriveTripItinerary(
       start_time:          aux.start_time,
       end_time:            aux.end_time,
       title:               aux.name ?? catIcon,
-      subtitle:            aux.origin && aux.destination ? `${aux.origin} → ${aux.destination}` : null,
+      subtitle:            aux.origin && aux.destination ? `${aux.origin} \u2192 ${aux.destination}` : null,
       category:            catIcon,
       booked_by:           aux.booked_by ?? 'Own Arrangements',
       confirmation_number: aux.confirmation_number,
