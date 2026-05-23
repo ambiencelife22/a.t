@@ -85,7 +85,7 @@ function buildDateRange(s: string | null, e: string | null): string {
 
 function bookedByLabel(bookedBy: string | null | undefined): string | null {
   if (!bookedBy || bookedBy === 'ambience') return 'Booked by ambience'
-  if (bookedBy === 'self') return 'Self-arranged'
+  if (bookedBy === 'self') return 'Own Arrangements'
   return `Booked by ${bookedBy}`
 }
 
