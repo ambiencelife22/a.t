@@ -20,7 +20,7 @@ import type { TripDay, TripDayEntry, TripAuxBooking } from '../../queries/querie
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost } from '../../utils/utilsImmersePath'
 
-const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-trip-programme`
+const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-programme`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 async function fetchTripProgrammeData(urlId: string): Promise<{

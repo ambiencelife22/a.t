@@ -374,7 +374,7 @@ export async function fetchPPDForHouse(
   const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl
     ?? import.meta.env.VITE_SUPABASE_URL
 
-  const res = await fetch(`${supabaseUrl}/functions/v1/get-ppd`, {
+  const res = await fetch(`${supabaseUrl}/functions/v1/a-get-ppd`, {
     method:  'POST',
     headers: {
       'Content-Type':  'application/json',

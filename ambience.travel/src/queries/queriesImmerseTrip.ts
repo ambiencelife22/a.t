@@ -40,7 +40,7 @@ export type TripClientData = {
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/get-trip-confirmation`
+const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/travel-get-trip-confirmation`
 
 export async function fetchTripClientData(urlId: string): Promise<TripClientData | null> {
   try {

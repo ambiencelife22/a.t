@@ -156,7 +156,7 @@ type EngagementStagePayload = {
 
 async function fetchEngagementStage(urlId: string): Promise<EngagementStagePayload | null> {
   try {
-    const { data, error } = await supabaseAnon.functions.invoke('get-engagement-stage', {
+    const { data, error } = await supabaseAnon.functions.invoke('travel-get-engagement-stage', {
       body: { url_id: urlId },
     })
 

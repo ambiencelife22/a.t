@@ -54,8 +54,8 @@ import { bookedByLabel }                      from '../../utils/utilsBooking'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
-const CONFIRMATION_FN   = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-trip-confirmation`
-const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-trip-programme`
+const CONFIRMATION_FN   = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-confirmation`
+const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-programme`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 // ── Data types ────────────────────────────────────────────────────────────────
