@@ -802,17 +802,24 @@ function TripBriefTab({ clientData, days, entries }: {
     )
   }
 
-  function BriefRow({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  function BriefRow({ label, value, sub, bookedBy }: { label: string; value: string; sub?: string; bookedBy?: string }) {
     return (
       <div style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
         {/* Fix: clamp label width so it doesn't crowd the value on narrow screens */}
         <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>{label}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>{value}</div>
-          {sub && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{sub}</div>}
+          {sub      && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{sub}</div>}
+          {bookedBy && <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 2, fontStyle: 'italic' }}>{bookedBy}</div>}
         </div>
       </div>
     )
+  }
+
+  function fmtBookedBy(val: string | null | undefined): string {
+    if (!val || val === 'ambience') return 'Booked by ambience'
+    if (val === 'self') return 'Self-arranged'
+    return `Booked by ${val}`
   }
 
   return (
@@ -834,6 +841,7 @@ function TripBriefTab({ clientData, days, entries }: {
               label={h.start_date ? fmtDate(h.start_date) : '\u2014'}
               value={h._hotel_name ?? h.name ?? 'Hotel'}
               sub={[h.name, h.nights ? `${h.nights} nights` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
+              bookedBy={fmtBookedBy(h.booked_by)}
             />
           ))}
         </BriefSection>
@@ -847,6 +855,7 @@ function TripBriefTab({ clientData, days, entries }: {
               label={f.start_date ? fmtDate(f.start_date) : '\u2014'}
               value={[f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
               sub={[f.origin, f.destination].filter(Boolean).join(' \u2192 ')}
+              bookedBy={fmtBookedBy(f.booked_by)}
             />
           ))}
         </BriefSection>
@@ -860,6 +869,7 @@ function TripBriefTab({ clientData, days, entries }: {
               label={t.start_date ? fmtDate(t.start_date) : '\u2014'}
               value={t.name ?? 'Transfer'}
               sub={[t.origin, t.destination].filter(Boolean).join(' \u2192 ')}
+              bookedBy={fmtBookedBy(t.booked_by)}
             />
           ))}
         </BriefSection>
