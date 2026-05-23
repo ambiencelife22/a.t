@@ -147,6 +147,16 @@ export type TripAuxBooking = {
   booked_by:           string | null   // S48 — migration added this column
   brief_show:          boolean
   sort_order:          number
+  // S50 — flight-specific columns. Populated only when isFlightType(booking_type).
+  airline_supplier_id: string | null   // FK travel_suppliers.id
+  airline_name:        string | null   // Free-text override / display fallback
+  flight_number:       string | null   // e.g. "BA 123", "EK 201"
+  depart_airport:      string | null   // IATA (3) or ICAO (4) — uppercase alpha
+  arrive_airport:      string | null   // IATA (3) or ICAO (4) — uppercase alpha
+  cabin_class:         string | null   // CABIN_CLASSES enum
+  seat_numbers:        string | null   // Free text — e.g. "12A, 12B, 12C"
+  seat_type:           string | null   // SEAT_TYPES enum
+  aircraft_type:       string | null   // AIRCRAFT_TYPES registry value
   created_at:          string
   updated_at:          string
 }

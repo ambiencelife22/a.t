@@ -41,7 +41,8 @@ import type {
   TripBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminTrip'
-import { getAuxTypeMeta, AUX_BOOKING_TYPES } from '../../types/typesAuxBookings'
+import { getAuxTypeMeta, AUX_BOOKING_TYPES, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
+import { fetchSuppliers, createSupplier, type Supplier } from '../../queries/queriesAdminSuppliers'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
 import { supabase } from '../../lib/supabase'
@@ -152,6 +153,16 @@ type AuxDraft = {
   guest_label:         string
   booked_by:           string
   notes:               string
+  // Flight-specific (rendered only when isFlightType(booking_type))
+  airline_supplier_id: string
+  airline_name:        string
+  flight_number:       string
+  depart_airport:      string
+  arrive_airport:      string
+  cabin_class:         string
+  seat_numbers:        string
+  seat_type:           string
+  aircraft_type:       string
 }
 
 interface PreviewFields {
@@ -390,6 +401,263 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
   )
 }
 
+// ── FlightDetailsSubsection ───────────────────────────────────────────────────
+// Rendered inside the aux card when booking_type is a flight type
+// (Flight or Private Jet / Charter). Provides:
+//   - Airline picker (filtered to Commercial Airline + Private Jet / Charter
+//     supplier types). Inline supplier creation if airline not yet in registry.
+//   - Validated flight_number (uppercase auto-transform, regex hint)
+//   - Validated depart/arrive airports (3 or 4 letter IATA/ICAO)
+//   - Cabin class dropdown (locked to CABIN_CLASSES)
+//   - Seat numbers (free text — formats vary too widely to validate)
+//   - Seat type dropdown (locked to SEAT_TYPES including 'Mixed')
+//   - Aircraft type grouped dropdown (locked to AIRCRAFT_TYPE_GROUPS)
+
+const FLIGHT_NUMBER_REGEX = /^[A-Z]{2,3}\d{1,4}[A-Z]?$/
+const AIRPORT_REGEX       = /^[A-Z]{3,4}$/
+
+function FlightDetailsSubsection({ aux, draft, patch, save, isMobile }: {
+  aux:    TripAuxBooking
+  draft:  AuxDraft
+  patch:  (id: string, aux: TripAuxBooking, field: keyof AuxDraft, value: string) => void
+  save:   (id: string, field: keyof AuxDraft, value: string) => Promise<void>
+  isMobile: boolean
+}) {
+  const [airlines,        setAirlines]        = useState<Supplier[]>([])
+  const [airlinesLoading, setAirlinesLoading] = useState(true)
+  const [creatingAirline, setCreatingAirline] = useState(false)
+  const [newAirlineName,  setNewAirlineName]  = useState('')
+
+  useEffect(() => {
+    fetchSuppliers(['Commercial Airline', 'Private Jet / Charter'])
+      .then(rows => setAirlines(rows))
+      .catch(() => setAirlines([]))
+      .finally(() => setAirlinesLoading(false))
+  }, [])
+
+  // Resolved airline name — supplier row takes precedence over free-text fallback.
+  const selectedSupplier = airlines.find(a => a.id === draft.airline_supplier_id) ?? null
+  const resolvedName     = selectedSupplier?.name ?? draft.airline_name
+
+  function handleAirlineChange(value: string) {
+    if (value === '__create__') {
+      setCreatingAirline(true)
+      return
+    }
+    patch(aux.id, aux, 'airline_supplier_id', value)
+    save(aux.id, 'airline_supplier_id', value)
+    // Clear free-text override when a supplier is picked
+    if (value && draft.airline_name) {
+      patch(aux.id, aux, 'airline_name', '')
+      save(aux.id, 'airline_name', '')
+    }
+  }
+
+  async function handleCreateAirline() {
+    const name = newAirlineName.trim()
+    if (!name) {
+      setCreatingAirline(false)
+      return
+    }
+    try {
+      // Default to Commercial Airline; admin can correct on supplier admin surface.
+      const supplierType = draft.booking_type === 'Private Jet / Charter'
+        ? 'Private Jet / Charter'
+        : 'Commercial Airline'
+      const created = await createSupplier(name, supplierType)
+      setAirlines(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+      patch(aux.id, aux, 'airline_supplier_id', created.id)
+      save(aux.id, 'airline_supplier_id', created.id)
+      setNewAirlineName('')
+      setCreatingAirline(false)
+    } catch {
+      // Silent — leave the create form open so user can retry
+    }
+  }
+
+  // Validation states for inline indicators (non-blocking)
+  const flightNumberValid = !draft.flight_number || FLIGHT_NUMBER_REGEX.test(draft.flight_number)
+  const departValid       = !draft.depart_airport || AIRPORT_REGEX.test(draft.depart_airport)
+  const arriveValid       = !draft.arrive_airport || AIRPORT_REGEX.test(draft.arrive_airport)
+
+  return (
+    <div style={{
+      marginTop: 12, paddingTop: 12,
+      borderTop: `1px dashed ${A.border}`,
+    }}>
+      <div style={{
+        fontSize: 9, fontWeight: 700, color: A.gold, fontFamily: A.font,
+        letterSpacing: '0.1em', textTransform: 'uppercase',
+        marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <span>{'\u2708'}</span>
+        <span>Flight Details</span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px' }}>
+
+        {/* Airline supplier picker */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={fieldLabelStyle}>Airline</label>
+          {creatingAirline ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                autoFocus
+                style={{ ...fieldStyle, flex: 1 }}
+                value={newAirlineName}
+                onChange={e => setNewAirlineName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleCreateAirline()
+                  if (e.key === 'Escape') { setCreatingAirline(false); setNewAirlineName('') }
+                }}
+                placeholder='New airline name'
+              />
+              <button onClick={handleCreateAirline}
+                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}>
+                Create
+              </button>
+              <button onClick={() => { setCreatingAirline(false); setNewAirlineName('') }}
+                style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <select
+              style={{ ...fieldStyle, cursor: airlinesLoading ? 'wait' : 'pointer' }}
+              value={draft.airline_supplier_id}
+              onChange={e => handleAirlineChange(e.target.value)}
+              disabled={airlinesLoading}
+            >
+              <option value=''>{airlinesLoading ? 'Loading\u2026' : '\u2014 Select airline \u2014'}</option>
+              {airlines.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+              <option value='__create__'>+ Add new airline\u2026</option>
+            </select>
+          )}
+          {resolvedName && !creatingAirline && (
+            <div style={{ fontSize: 9, color: A.faint, fontFamily: A.font, marginTop: 3, fontStyle: 'italic' }}>
+              Confirmed: {resolvedName}
+            </div>
+          )}
+        </div>
+
+        {/* Flight number */}
+        <div>
+          <label style={fieldLabelStyle}>Flight Number</label>
+          <input
+            style={{ ...fieldStyle, textTransform: 'uppercase', borderBottomColor: flightNumberValid ? A.border : '#f87171' }}
+            value={draft.flight_number}
+            onChange={e => patch(aux.id, aux, 'flight_number', e.target.value.toUpperCase())}
+            onBlur={e => save(aux.id, 'flight_number', e.target.value.toUpperCase())}
+            placeholder='BA123'
+          />
+          {!flightNumberValid && (
+            <div style={{ fontSize: 9, color: '#f87171', fontFamily: A.font, marginTop: 2 }}>
+              Format: 2{'\u2013'}3 letter code + 1{'\u2013'}4 digits (e.g. BA123, EK201)
+            </div>
+          )}
+        </div>
+
+        {/* Aircraft type — grouped dropdown */}
+        <div>
+          <label style={fieldLabelStyle}>Aircraft Type</label>
+          <select
+            style={{ ...fieldStyle, cursor: 'pointer' }}
+            value={draft.aircraft_type}
+            onChange={e => { patch(aux.id, aux, 'aircraft_type', e.target.value); save(aux.id, 'aircraft_type', e.target.value) }}
+          >
+            <option value=''>{'\u2014 Select aircraft \u2014'}</option>
+            {AIRCRAFT_TYPE_GROUPS.map(group => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
+        {/* Depart airport */}
+        <div>
+          <label style={fieldLabelStyle}>Depart Airport</label>
+          <input
+            style={{ ...fieldStyle, textTransform: 'uppercase', borderBottomColor: departValid ? A.border : '#f87171' }}
+            value={draft.depart_airport}
+            onChange={e => patch(aux.id, aux, 'depart_airport', e.target.value.toUpperCase())}
+            onBlur={e => save(aux.id, 'depart_airport', e.target.value.toUpperCase())}
+            placeholder='LAX or KLAX'
+            maxLength={4}
+          />
+          {!departValid && (
+            <div style={{ fontSize: 9, color: '#f87171', fontFamily: A.font, marginTop: 2 }}>
+              IATA (3) or ICAO (4) letters
+            </div>
+          )}
+        </div>
+
+        {/* Arrive airport */}
+        <div>
+          <label style={fieldLabelStyle}>Arrive Airport</label>
+          <input
+            style={{ ...fieldStyle, textTransform: 'uppercase', borderBottomColor: arriveValid ? A.border : '#f87171' }}
+            value={draft.arrive_airport}
+            onChange={e => patch(aux.id, aux, 'arrive_airport', e.target.value.toUpperCase())}
+            onBlur={e => save(aux.id, 'arrive_airport', e.target.value.toUpperCase())}
+            placeholder='JFK or KJFK'
+            maxLength={4}
+          />
+          {!arriveValid && (
+            <div style={{ fontSize: 9, color: '#f87171', fontFamily: A.font, marginTop: 2 }}>
+              IATA (3) or ICAO (4) letters
+            </div>
+          )}
+        </div>
+
+        {/* Cabin class */}
+        <div>
+          <label style={fieldLabelStyle}>Cabin Class</label>
+          <select
+            style={{ ...fieldStyle, cursor: 'pointer' }}
+            value={draft.cabin_class}
+            onChange={e => { patch(aux.id, aux, 'cabin_class', e.target.value); save(aux.id, 'cabin_class', e.target.value) }}
+          >
+            <option value=''>{'\u2014 Select cabin \u2014'}</option>
+            {CABIN_CLASSES.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Seat type */}
+        <div>
+          <label style={fieldLabelStyle}>Seat Type</label>
+          <select
+            style={{ ...fieldStyle, cursor: 'pointer' }}
+            value={draft.seat_type}
+            onChange={e => { patch(aux.id, aux, 'seat_type', e.target.value); save(aux.id, 'seat_type', e.target.value) }}
+          >
+            <option value=''>{'\u2014 Select seat type \u2014'}</option>
+            {SEAT_TYPES.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Seat numbers */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={fieldLabelStyle}>Seat Numbers</label>
+          <input style={fieldStyle} value={draft.seat_numbers}
+            onChange={e => patch(aux.id, aux, 'seat_numbers', e.target.value)}
+            onBlur={e => save(aux.id, 'seat_numbers', e.target.value)}
+            placeholder='12A, 12B, 12C' />
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
 // ── BriefAuxEditor ────────────────────────────────────────────────────────────
 
 function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }: {
@@ -433,6 +701,15 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
       guest_label:         aux.guest_label         ?? '',
       booked_by:           aux.booked_by           ?? '',
       notes:               aux.notes               ?? '',
+      airline_supplier_id: (aux as any).airline_supplier_id ?? '',
+      airline_name:        (aux as any).airline_name        ?? '',
+      flight_number:       (aux as any).flight_number       ?? '',
+      depart_airport:      (aux as any).depart_airport      ?? '',
+      arrive_airport:      (aux as any).arrive_airport      ?? '',
+      cabin_class:         (aux as any).cabin_class         ?? '',
+      seat_numbers:        (aux as any).seat_numbers        ?? '',
+      seat_type:           (aux as any).seat_type           ?? '',
+      aircraft_type:       (aux as any).aircraft_type       ?? '',
     }
   }
 
@@ -553,6 +830,17 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
                         placeholder='Any notes...' />
                     </div>
                   </div>
+
+                  {/* S50 — Flight Details subsection — rendered only for flight types */}
+                  {isFlightType(draft.booking_type) && (
+                    <FlightDetailsSubsection
+                      aux={aux}
+                      draft={draft}
+                      patch={patch}
+                      save={save}
+                      isMobile={isMobile}
+                    />
+                  )}
                 </div>
               )
             })}
@@ -950,6 +1238,15 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         guest_label:         d.guest_label         || aux.guest_label,
         booked_by:           d.booked_by           || aux.booked_by,
         notes:               d.notes               || aux.notes,
+        airline_supplier_id: d.airline_supplier_id || (aux as any).airline_supplier_id,
+        airline_name:        d.airline_name        || (aux as any).airline_name,
+        flight_number:       d.flight_number       || (aux as any).flight_number,
+        depart_airport:      d.depart_airport      || (aux as any).depart_airport,
+        arrive_airport:      d.arrive_airport      || (aux as any).arrive_airport,
+        cabin_class:         d.cabin_class         || (aux as any).cabin_class,
+        seat_numbers:        d.seat_numbers        || (aux as any).seat_numbers,
+        seat_type:           d.seat_type           || (aux as any).seat_type,
+        aircraft_type:       d.aircraft_type       || (aux as any).aircraft_type,
       }
     })
 
