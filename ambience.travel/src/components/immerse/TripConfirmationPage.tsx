@@ -15,10 +15,13 @@
 // What it does not own:
 //   - Route resolution (ImmerseEngagementRoute.tsx)
 //   - Data fetching primitives (tripClientQueries.ts, adminTripQueries.ts)
-//   - PDF generation (confirmationBriefPdf.ts)
+//   - PDF generation (pdfImmerseConfirmation.ts)
 //   - Programme page (TripProgrammePage.tsx)
 //
-// Last updated: S48 — initial ship. Extracted from BriefEditorPage.BriefPreview.
+// Last updated: S50 — bookedByLabel() canonical helper imported from
+//   utilsBooking. Replaces inline branches in room map and aux map.
+//   Resolves "Booked by ambience" / "Own Arrangements" drift.
+// Prior: S48 — initial ship. Extracted from BriefEditorPage.BriefPreview.
 //   Adds top bar, PDF download, standalone data fetch via tripClientQueries.
 
 import { useEffect, useState } from 'react'
@@ -27,6 +30,7 @@ import { fetchTripClientData, type TripClientData } from '../../queries/queriesI
 import type { TripBooking, TripAuxBooking } from '../../queries/queriesAdminTrip'
 import type { ConfirmationBriefData } from '../../pdf/pdfImmerseConfirmation'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
+import { bookedByLabel } from '../../utils/utilsBooking'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -147,7 +151,7 @@ function ConfirmationTopBar({ clientData, programmeUrl }: {
             ;(e.currentTarget as HTMLAnchorElement).style.borderColor = RULE
           }}
         >
-          Daily Programme →
+          Daily Programme \u2192
         </a>
       )}
 
@@ -165,7 +169,7 @@ function ConfirmationTopBar({ clientData, programmeUrl }: {
           transition: 'opacity 150ms',
         }}
       >
-        {pdfDownloading ? 'Generating…' : 'Download PDF'}
+        {pdfDownloading ? 'Generating\u2026' : 'Download PDF'}
       </button>
     </div>
   )
@@ -223,9 +227,9 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
     const last = auxSections[auxSections.length - 1]
     if (last && last.type === type) {
       last.items.push(aux)
-    } else {
-      auxSections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
+      continue
     }
+    auxSections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
   }
 
   return (
@@ -281,7 +285,8 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
         <Section label='ACCOMMODATION'>
           {allRooms.map(({ room, booking }, i) => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-            const bookedByText = (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+            // Per-room booked_by_label free-text override; fall back to canonical helper
+            const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
             const imgSrc       = room.brief_image_src
 
@@ -289,7 +294,7 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
             if (room.guest_name)              guestParts.push(room.guest_name)
             if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
             if (room.party_composition)       guestParts.push(room.party_composition)
-            const guestLine = guestParts.join(' · ')
+            const guestLine = guestParts.join(' \u00b7 ')
 
             return (
               <div key={room.id ?? i} style={{
@@ -334,14 +339,13 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
       {auxSections.map(section => (
         <Section key={section.type} label={section.label}>
           {section.items.map(aux => {
-            const bookedBy    = aux.booked_by?.trim() ?? null
-            const isAmbience  = !bookedBy || bookedBy.toLowerCase().includes('ambience')
-            const bookedByTxt = bookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+            const bookedByTxt = bookedByLabel(aux.booked_by)
+            const isAmbience  = !aux.booked_by || aux.booked_by === 'ambience'
             const pillColor   = isAmbience ? GOLD : FAINT
             const dep         = fmtTime(aux.start_time)
             const arr         = fmtTime(aux.end_time)
-            const timeStr     = dep && arr ? `${dep} – ${arr}` : dep || arr || ''
-            const route       = [aux.origin, aux.destination].filter(Boolean).join(' → ')
+            const timeStr     = dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || ''
+            const route       = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
               <div key={aux.id} style={{
@@ -399,7 +403,7 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
       <div style={{ padding: '40px clamp(20px,8vw,120px) 0', textAlign: 'center' }}>
         <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
         <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, letterSpacing: '0.08em' }}>
-          TAILORED TRAVEL DESIGN · CONCIERGE SUPPORT ·{' '}
+          TAILORED TRAVEL DESIGN \u00b7 CONCIERGE SUPPORT \u00b7{' '}
           <a href='https://ambience.travel' style={{ color: FAINT, textDecoration: 'none' }}>ambience.travel</a>
         </div>
       </div>
@@ -451,7 +455,7 @@ function ConfirmationNotFound() {
     }}>
       <div style={{ fontSize: 20, color: INK, fontFamily: 'Georgia, serif' }}>This confirmation is not available.</div>
       <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: 'none' }}>
-        Return to ambience.travel →
+        Return to ambience.travel \u2192
       </a>
     </div>
   )
