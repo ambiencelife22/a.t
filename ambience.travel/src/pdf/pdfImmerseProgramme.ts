@@ -1,33 +1,33 @@
-// dailyProgrammePdf.ts — Daily Programme PDF export for ambience.TRAVEL
+// pdfImmerseProgramme.ts — Daily Programme PDF export for ambience.TRAVEL
 //
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
-//   - Dark header: emblem + ambience_travel.svg logo, destination name,
-//     "DAILY PROGRAMME" eyebrow, "Prepared for" line
+//   - Page 1: hero cover-crop behind dark header overlay, emblem + logo,
+//     destination name, "DAILY PROGRAMME" eyebrow, "Prepared for" line
 //   - Per visible day: "DAY N" gold label + date header, rule beneath
-//   - Entry rows: time column (18mm), accent dot, title / subtitle /
-//     guest_label / confirmation_number, "Self-arranged" / "TBC" pill
+//   - Entry rows: time column, category accent left bar, image panel (optional),
+//     title / subtitle / guest_label / confirmation_number
 //   - Empty-day fallback: day_note or "No plans today"
-//   - Footer: ambience_travel.svg logo + tagline, hyperlinked via doc.link()
+//   - Programme notes section at end (when brief.programme_notes is set)
+//   - Footer: ambience_travel.svg logo + tagline, page numbers
 //   - Filename: "ambience · {TripCode} · Daily Programme · {dd Month yyyy}.pdf"
 //
 // What it does not own:
-//   - jsPDF script loading (useProgrammeDownload owns this)
-//   - Data fetching (ItineraryEditorPage passes current state)
-//   - Font loading (shared via guidePdfFonts.ts)
+//   - jsPDF script loading (useImmerseProgrammePdf owns this)
+//   - Data fetching (ImmerseTripPage passes current state)
+//   - Font loading (shared via pdfFonts.ts)
 //
-// Palette mirrors ItineraryPreview in ItineraryEditorPage.tsx exactly:
-//   CREAM #F7F5F0 · INK #1A1D1A · GOLD #C9A84C · MUTED #787060 · RULE #DCDBD5
+// Category accent: left vertical bar replacing the dot — cleaner at this scale.
+// Images: entry image panels render when image_src is present on the entry.
 //
-// Category accent colours mirror categoryColor() in ItineraryEditorPage.tsx.
-// All image ops route through pdfUtils.ts — no inline canvas logic.
-//
-// Last updated: S48 — initial ship.
+// Last updated: S49/S50 — hero image, logo fix, entry images, programme notes,
+//   category dot replaced with accent left bar, "Programme PDF" label.
+// Prior: S48 — initial ship.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
 import type { RGB } from './pdfUtils'
-import type { TripDay, TripDayEntry, DossierTrip, HouseProfile } from '../queries/queriesAdminTrip'
+import type { TripDay, TripDayEntry, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,6 @@ const T: Record<string, RGB> = {
   rule:    [220, 219, 213],
   cardBg:  [240, 237, 230],
   white:   [255, 255, 255],
-  // Category accents — mirror categoryColor() in ItineraryEditorPage
   catFlight:     [147, 197, 253],
   catTransfer:   [163, 230, 53],
   catHotel:      [201, 168, 76],
@@ -56,14 +55,17 @@ const T: Record<string, RGB> = {
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 const P = {
-  w:          210,
-  h:          297,
-  margin:     16,
-  headerH:    52,   // dark header block height
-  footerY:    282,
-  timeColW:   18,   // mm — time column width
-  dotW:       5,    // mm — accent dot column
-  entryPadV:  3.5,  // vertical padding per entry row
+  w:         210,
+  h:         297,
+  margin:    16,
+  heroH:     56,    // hero image height behind dark header
+  headerH:   56,    // dark header overlay height (same as heroH)
+  footerY:   282,
+  timeColW:  18,    // mm — time column
+  barW:      2,     // mm — category accent bar width
+  barGap:    3,     // mm — gap after bar before content
+  entryPadV: 3.5,
+  imgW:      36,    // mm — entry image panel width
 } as const
 
 const CW = P.w - P.margin * 2
@@ -73,16 +75,17 @@ const ASSET = {
   logoSvg: '/ambience_travel.svg',
 } as const
 
-const AMBIENCE_URL     = 'https://ambience.travel'
-const FOOTER_TAGLINE   = 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
+const AMBIENCE_URL   = 'https://ambience.travel'
+const FOOTER_TAGLINE = 'PRIVATE TRAVEL DESIGN  \u00b7  TAILORED SUPPORT  \u00b7  SEAMLESS EXECUTION'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface DailyProgrammeData {
-  trip:           DossierTrip
-  house:          HouseProfile | null
-  days:           TripDay[]
-  entriesByDate:  Record<string, TripDayEntry[]>
+  trip:          DossierTrip
+  brief:         TripBrief | null
+  house:         HouseProfile | null
+  days:          TripDay[]
+  entriesByDate: Record<string, TripDayEntry[]>
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,9 +100,7 @@ function fmtTime(t: string | null): string {
   if (!t) return ''
   const [h, m] = t.split(':')
   const hour   = parseInt(h, 10)
-  const ampm   = hour >= 12 ? 'PM' : 'AM'
-  const h12    = hour % 12 || 12
-  return `${h12}:${m} ${ampm}`
+  return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`
 }
 
 function categoryAccent(cat: string | null): RGB {
@@ -111,7 +112,6 @@ function categoryAccent(cat: string | null): RGB {
     Experience: T.catExperience,
     Leisure:    T.catLeisure,
     Note:       T.catNote,
-    Other:      T.catOther,
   }
   return map[cat ?? ''] ?? T.catOther
 }
@@ -124,27 +124,55 @@ function buildFilename(trip: DossierTrip): string {
   return `ambience \u00b7 ${trip.trip_code} \u00b7 Daily Programme \u00b7 ${dd} ${mon} ${yyyy}.pdf`
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ── Page management ───────────────────────────────────────────────────────────
+
+function stampCreamBackground(doc: any): void {
+  doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
+  doc.rect(0, 0, P.w, P.h, 'F')
+}
+
+function addPage(doc: any): number {
+  doc.addPage()
+  stampCreamBackground(doc)
+  return P.margin + 10
+}
+
+// ── Header (page 1) ───────────────────────────────────────────────────────────
 
 async function renderHeader(
-  doc:     any,
-  trip:    DossierTrip,
-  house:   HouseProfile | null,
-  emblem:  any,
-  logo:    any,
+  doc:    any,
+  trip:   DossierTrip,
+  brief:  TripBrief | null,
+  house:  HouseProfile | null,
+  emblem: any,
+  logo:   any,
+  heroImageData: string | null,
 ): Promise<void> {
-  // Dark header block
-  doc.setFillColor(T.ink[0], T.ink[1], T.ink[2])
-  doc.rect(0, 0, P.w, P.headerH, 'F')
+  // Hero image behind header
+  if (heroImageData) {
+    try {
+      const raw = await loadImg(heroImageData)
+      if (raw) {
+        const cropped = await makeCoverCropAsync(raw.data, raw.format, raw.nw, raw.nh, P.w, P.heroH)
+        doc.addImage(cropped.data, cropped.format, 0, 0, P.w, P.heroH, undefined, 'FAST')
+      }
+    } catch { /* silent */ }
+  }
 
-  // Emblem + logo centred row
-  const emblemS  = 9   // mm
-  const logoH    = 7   // mm
-  const logoW    = logoH * 3.0
-  const gap      = 4
-  const rowW     = emblemS + gap + logoW
-  const rowX     = (P.w - rowW) / 2
-  const rowY     = 9
+  // Dark overlay on top of hero (or solid dark block if no hero)
+  doc.setFillColor(T.ink[0], T.ink[1], T.ink[2])
+  doc.setGState(doc.GState({ opacity: heroImageData ? 0.72 : 1 }))
+  doc.rect(0, 0, P.w, P.headerH, 'F')
+  doc.setGState(doc.GState({ opacity: 1 }))
+
+  // Emblem + logo centred
+  const emblemS = 9
+  const logoH   = 7
+  const logoW   = logoH * 3.0
+  const gap     = 4
+  const rowW    = emblemS + gap + logoW
+  const rowX    = (P.w - rowW) / 2
+  const rowY    = 9
 
   if (emblem) {
     doc.addImage(emblem.data, emblem.format, rowX, rowY, emblemS, emblemS, undefined, 'FAST')
@@ -160,13 +188,13 @@ async function renderHeader(
   doc.setTextColor(T.cream[0], T.cream[1], T.cream[2])
   doc.text(destName, P.w / 2, 26, { align: 'center' })
 
-  // "DAILY PROGRAMME" eyebrow
+  // Eyebrow
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('DAILY PROGRAMME', P.w / 2, 33, { align: 'center', charSpace: 0.8 })
 
-  // "Prepared for" line
-  const preparedFor = house?.display_name ?? null
+  // Prepared for
+  const preparedFor = brief?.prepared_for ?? house?.display_name ?? null
   if (preparedFor) {
     sans(doc, 'italic', 8.5)
     doc.setTextColor(
@@ -180,39 +208,37 @@ async function renderHeader(
 
 // ── Entry row ─────────────────────────────────────────────────────────────────
 
-/**
- * Renders one itinerary entry row. Returns the height consumed (mm).
- * Layout: [timeColW] [dotW] [content flex]
- */
-function renderEntryRow(doc: any, entry: TripDayEntry, y: number, availW: number): number {
-  const accent    = categoryAccent(entry.category)
-  const contentX  = P.margin + P.timeColW + P.dotW
-  const contentW  = availW - P.timeColW - P.dotW
+async function renderEntryRow(
+  doc:   any,
+  entry: TripDayEntry & { image_src?: string | null },
+  y:     number,
+  availW: number,
+): Promise<number> {
+  const accent     = categoryAccent(entry.category)
   const isAmbience = entry.booked_by === 'ambience'
+  const hasImage   = !!(entry as any).image_src
 
-  // Measure content height first
+  // Content layout depends on whether there's an image
+  const imageColW  = hasImage ? P.imgW + 3 : 0
+  const accentX    = P.margin + P.timeColW
+  const contentX   = accentX + P.barW + P.barGap + imageColW
+  const contentW   = availW - P.timeColW - P.barW - P.barGap - imageColW
+
+  // Measure height
   let measuredH = P.entryPadV
-
   serif(doc, 'normal', 10.5)
   const titleLines = doc.splitTextToSize(entry.title, contentW - 2)
   measuredH += titleLines.length * 4.8
-
-  if (entry.subtitle) {
-    sans(doc, 'normal', 8.5)
-    measuredH += 4.5
-  }
-  if (entry.guest_label) {
-    measuredH += 4
-  }
-  if (entry.confirmation_number) {
-    measuredH += 4.5
-  }
-
+  if (entry.subtitle)           measuredH += 4.5
+  if (entry.guest_label)        measuredH += 4
+  if (entry.confirmation_number) measuredH += 4.5
+  if (!isAmbience)              measuredH += 5
   measuredH += P.entryPadV
-  const rowH = Math.max(measuredH, 10)
+
+  const rowH = Math.max(measuredH, hasImage ? P.imgW * 0.66 : 10)
 
   // Bottom rule
-  drawRule(doc, P.margin + P.timeColW + P.dotW, y + rowH, contentW, T.rule, 0.15)
+  drawRule(doc, contentX, y + rowH, contentW, T.rule, 0.15)
 
   // Time
   if (entry.start_time) {
@@ -221,39 +247,49 @@ function renderEntryRow(doc: any, entry: TripDayEntry, y: number, availW: number
     doc.text(fmtTime(entry.start_time), P.margin, y + P.entryPadV + 4, { align: 'left' })
   }
 
-  // Accent dot
-  const dotCX = P.margin + P.timeColW + 2.5
-  const dotCY = y + P.entryPadV + 3
+  // Category accent bar (replaces dot)
   doc.setFillColor(accent[0], accent[1], accent[2])
-  doc.circle(dotCX, dotCY, 1.6, 'F')
+  doc.rect(accentX, y + 1, P.barW, rowH - 2, 'F')
+
+  // Entry image panel
+  if (hasImage) {
+    const imgX = accentX + P.barW + P.barGap
+    const imgH = rowH
+    try {
+      const raw = await loadImg((entry as any).image_src)
+      if (raw) {
+        const cropped = await makeCoverCropAsync(raw.data, raw.format, raw.nw, raw.nh, P.imgW, imgH)
+        doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
+        doc.rect(imgX, y, P.imgW, imgH, 'F')
+        doc.addImage(cropped.data, cropped.format, imgX, y, P.imgW, imgH, undefined, 'FAST')
+      }
+    } catch {
+      doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
+      doc.rect(imgX, y, P.imgW, rowH, 'F')
+    }
+  }
 
   // Content
   let ty = y + P.entryPadV
 
-  // Title + non-ambience pill on same line if it fits
   serif(doc, 'normal', 10.5)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-  const titleLineH = 4.8
   for (const line of titleLines) {
-    doc.text(line, contentX, ty + titleLineH)
-    ty += titleLineH
+    doc.text(line, contentX, ty + 4.8)
+    ty += 4.8
   }
 
-  // Non-ambience pill
   if (!isAmbience) {
     const pillText = entry.booked_by === 'self' ? 'Self-arranged' : 'TBC'
     sans(doc, 'normal', 6.5)
-    const pillW   = doc.getTextWidth(pillText) + 6
-    const pillH   = 4
-    const pillX   = contentX
-    const pillY   = ty
-
+    const pillW = doc.getTextWidth(pillText) + 6
+    const pillH = 4
     doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
     doc.setDrawColor(T.faint[0], T.faint[1], T.faint[2])
     doc.setLineWidth(0.2)
-    doc.roundedRect(pillX, pillY, pillW, pillH, 1, 1, 'FD')
+    doc.roundedRect(contentX, ty, pillW, pillH, 1, 1, 'FD')
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(pillText, pillX + 3, pillY + pillH - 0.8)
+    doc.text(pillText, contentX + 3, ty + pillH - 0.8)
     ty += pillH + 1
   }
 
@@ -282,37 +318,26 @@ function renderEntryRow(doc: any, entry: TripDayEntry, y: number, availW: number
 
 // ── Day section ───────────────────────────────────────────────────────────────
 
-/**
- * Renders one day header + its entries.
- * Returns the final y cursor after all entries are drawn.
- * Handles page overflow — adds a new cream page when needed.
- */
-function renderDay(
+async function renderDay(
   doc:     any,
   day:     TripDay,
-  entries: TripDayEntry[],
+  entries: (TripDayEntry & { image_src?: string | null })[],
   dayIdx:  number,
   yIn:     number,
-): number {
-  const DAY_HEADER_H = 14  // mm including rule
+): Promise<number> {
+  const DAY_HEADER_H = 14
   const FOOTER_GUARD = P.footerY - 10
-
   let y = yIn
 
-  // Page break before day header if no room
-  if (y + DAY_HEADER_H > FOOTER_GUARD) {
-    y = addPage(doc)
-  }
+  if (y + DAY_HEADER_H > FOOTER_GUARD) y = addPage(doc)
 
-  // Day header
   sans(doc, 'bold', 7)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text(`DAY ${dayIdx + 1}`, P.margin, y + 5, { charSpace: 0.6 })
 
   serif(doc, 'normal', 13)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-  const dayLabel = day.day_label || fmtDate(day.entry_date)
-  doc.text(dayLabel, P.margin + P.timeColW, y + 5)
+  doc.text(day.day_label || fmtDate(day.entry_date), P.margin + P.timeColW, y + 5)
 
   y += 8
   drawRule(doc, P.margin, y, CW, T.rule, 0.25)
@@ -321,48 +346,64 @@ function renderDay(
   const visibleEntries = entries.filter(e => e.brief_show)
 
   if (visibleEntries.length === 0) {
-    // Empty day fallback
     sans(doc, 'italic', 9)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(day.day_note || 'No plans today', P.margin + P.timeColW + P.dotW, y + 3.5)
+    doc.text(day.day_note || 'No plans today', P.margin + P.timeColW + P.barW + P.barGap, y + 3.5)
     y += 10
     return y
   }
 
   for (const entry of visibleEntries) {
-    // Pre-measure to decide page break
-    sans(doc, 'normal', 10.5)
-    const titleLines = doc.splitTextToSize(entry.title, CW - P.timeColW - P.dotW - 2)
-    const estH = P.entryPadV * 2
-      + titleLines.length * 4.8
-      + (entry.subtitle          ? 4.5 : 0)
-      + (entry.guest_label       ? 4   : 0)
-      + (entry.confirmation_number ? 4.5 : 0)
-      + (entry.booked_by !== 'ambience' ? 5 : 0)
+    serif(doc, 'normal', 10.5)
+    const titleLines = doc.splitTextToSize(entry.title, CW - P.timeColW - P.barW - P.barGap - 2)
+    const hasImage = !!(entry as any).image_src
+    const imgH = hasImage ? P.imgW * 0.66 : 0
+    const estH = Math.max(
+      P.entryPadV * 2 + titleLines.length * 4.8
+        + (entry.subtitle ? 4.5 : 0)
+        + (entry.guest_label ? 4 : 0)
+        + (entry.confirmation_number ? 4.5 : 0)
+        + (entry.booked_by !== 'ambience' ? 5 : 0),
+      imgH,
+    )
 
-    if (y + Math.max(estH, 10) > FOOTER_GUARD) {
-      y = addPage(doc)
-    }
+    if (y + Math.max(estH, 10) > FOOTER_GUARD) y = addPage(doc)
 
-    const rowH = renderEntryRow(doc, entry, y, CW)
+    const rowH = await renderEntryRow(doc, entry, y, CW)
     y += rowH + 2
   }
 
-  y += 4  // breathing room between days
+  y += 4
   return y
 }
 
-// ── Page management ───────────────────────────────────────────────────────────
+// ── Programme notes section ───────────────────────────────────────────────────
 
-function stampCreamBackground(doc: any): void {
-  doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
-  doc.rect(0, 0, P.w, P.h, 'F')
-}
+function renderProgrammeNotes(doc: any, notes: string, yIn: number): number {
+  const FOOTER_GUARD = P.footerY - 10
+  let y = yIn
 
-function addPage(doc: any): number {
-  doc.addPage()
-  stampCreamBackground(doc)
-  return P.margin + 10
+  if (y + 20 > FOOTER_GUARD) y = addPage(doc)
+
+  y += 6
+  drawRule(doc, P.margin, y, CW, T.rule, 0.3)
+  y += 7
+
+  sans(doc, 'bold', 7)
+  doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+  doc.text('NOTES', P.margin, y, { charSpace: 0.5 })
+  y += 8
+
+  const lines = doc.splitTextToSize(notes, CW)
+  sans(doc, 'normal', 9)
+  doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+  for (const line of lines) {
+    if (y + 5 > FOOTER_GUARD) y = addPage(doc)
+    doc.text(line, P.margin, y)
+    y += 5
+  }
+
+  return y
 }
 
 // ── Footer chrome ─────────────────────────────────────────────────────────────
@@ -371,23 +412,18 @@ function stampFooterChrome(doc: any, logo: any): void {
   const count = doc.getNumberOfPages()
   for (let i = 1; i <= count; i++) {
     doc.setPage(i)
-
-    // Skip dark header page footer rule (page 1 has the header block)
     drawRule(doc, P.margin, P.footerY, CW, T.rule, 0.15)
 
-    // Logo left
     if (logo) {
       const logoH = 6; const logoW = logoH * 3.0
       doc.addImage(logo.data, logo.format, P.margin, P.footerY + 3, logoW, logoH, undefined, 'FAST')
       try { doc.link(P.margin, P.footerY + 2, logoW, logoH + 1, { url: AMBIENCE_URL }) } catch {}
     }
 
-    // Tagline centre
     sans(doc, 'normal', 6)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(FOOTER_TAGLINE, P.w / 2, P.footerY + 6.5, { align: 'center', charSpace: 0.3 })
 
-    // Page number right
     sans(doc, 'normal', 7)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(`${i} / ${count}`, P.w - P.margin, P.footerY + 6.5, { align: 'right' })
@@ -408,23 +444,37 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
     loadSvg(ASSET.logoSvg, 800),
   ])
 
-  // Page 1 — dark header
-  doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
-  doc.rect(0, 0, P.w, P.h, 'F')
+  // Resolve hero image — brief override || destination hero
+  let heroImageData: string | null = null
+  const heroSrc = data.brief?.hero_image_src || data.trip.destinations[0]?.hero_image_src || null
+  if (heroSrc) {
+    try {
+      const blob = await fetch(heroSrc).then(r => r.blob())
+      heroImageData = await new Promise(res => {
+        const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(blob)
+      })
+    } catch { /* silent */ }
+  }
 
-  await renderHeader(doc, data.trip, data.house, emblem, logo)
+  // Page 1
+  stampCreamBackground(doc)
+  await renderHeader(doc, data.trip, data.brief, data.house, emblem, logo, heroImageData)
 
-  // Content starts below header
   let y = P.headerH + 10
 
   const visibleDays = data.days.filter(d => d.show)
-
-  visibleDays.forEach((day, idx) => {
+  for (let idx = 0; idx < visibleDays.length; idx++) {
+    const day     = visibleDays[idx]
     const entries = (data.entriesByDate[day.entry_date] ?? [])
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
-    y = renderDay(doc, day, entries, idx, y)
-  })
+    y = await renderDay(doc, day, entries, idx, y)
+  }
+
+  // Programme notes
+  if (data.brief?.programme_notes?.trim()) {
+    y = renderProgrammeNotes(doc, data.brief.programme_notes, y)
+  }
 
   stampFooterChrome(doc, logo)
   doc.save(buildFilename(data.trip))

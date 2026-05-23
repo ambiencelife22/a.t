@@ -30,16 +30,15 @@
 // Last updated: S49 — mobile horizontal scroll + right-padding fixes.
 //               S49r2 — unified mobile nav bar: active day merged into sticky tab bar,
 //                        eliminating the stacked second nav row on Programme tab.
-//               S49r3 — full image overlay chain in ConfirmationTab:
-//                        room.brief_image_src ?? booking.brief_image_src ??
-//                        booking._hotel_image_src ?? destinations[0].hero_image_src.
-//               S49r4 — hero image fallback: brief.hero_image_src || destination hero.
-//                        ?? insufficient — brief.hero_image_src can be "" (empty string).
-//               S49r5 — Guides section in TripBriefTab: dining + experiences buttons,
-//                        conditional on guide availability flags from Edge Function.
-//               S49r6 — Brief PDF now calls exportTripBriefPdf (structured summary)
-//                        via handleDownloadTripBrief. Confirmation PDF unchanged.
-//                        Hero fetch uses || fallback to handle empty string src.
+//               S49r3 — full image overlay chain in ConfirmationTab.
+//               S49r4 — hero image fallback uses || not ??.
+//               S49r5 — Guides section in TripBriefTab.
+//               S49r6 — Brief PDF calls exportTripBriefPdf.
+//               S49r7 — unicode escape fixes in single-quoted strings.
+//               S50 — show_tab_itinerary renamed to show_tab_programme.
+//                      Matches migration s50_rename_show_tab_itinerary.
+//               S50r2 — duplicate Guides block removed from TripBriefTab.
+//                        All else statements eliminated.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -217,19 +216,19 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
       <button
         onClick={onClose}
         style={{
-          position:   'absolute',
-          top:        20,
-          right:      24,
-          background: 'rgba(255,255,255,0.1)',
-          border:     '1px solid rgba(255,255,255,0.2)',
-          borderRadius: '50%',
-          width:      40,
-          height:     40,
-          color:      '#fff',
-          fontSize:   20,
-          cursor:     'pointer',
-          display:    'flex',
-          alignItems: 'center',
+          position:       'absolute',
+          top:            20,
+          right:          24,
+          background:     'rgba(255,255,255,0.1)',
+          border:         '1px solid rgba(255,255,255,0.2)',
+          borderRadius:   '50%',
+          width:          40,
+          height:         40,
+          color:          '#fff',
+          fontSize:       20,
+          cursor:         'pointer',
+          display:        'flex',
+          alignItems:     'center',
           justifyContent: 'center',
         }}
       >
@@ -253,25 +252,25 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
       for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-    } else {
-      allRooms.push({
-        room: {
-          id: b.id, booking_id: b.id, room_name: b.name,
-          confirmation_number: b.confirmation_number,
-          guest_name: house?.display_name ?? null,
-          party_composition: b.party_composition,
-          notes: b.inclusions ?? null, nights: b.nights,
-          rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-          total: null,
-          // Full overlay chain: per-booking override ?? hotel canon ?? destination hero
-          brief_image_src: b.brief_image_src ?? b._hotel_image_src ?? destHero,
-          additional_guests: null, booked_by_label: null,
-          sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '',
-          updated_at: b.updated_at ?? '',
-        } as any,
-        booking: b,
-      })
+      continue
     }
+    allRooms.push({
+      room: {
+        id: b.id, booking_id: b.id, room_name: b.name,
+        confirmation_number: b.confirmation_number,
+        guest_name: house?.display_name ?? null,
+        party_composition: b.party_composition,
+        notes: b.inclusions ?? null, nights: b.nights,
+        rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
+        total: null,
+        // Full overlay chain: per-booking override ?? hotel canon ?? destination hero
+        brief_image_src: b.brief_image_src ?? b._hotel_image_src ?? destHero,
+        additional_guests: null, booked_by_label: null,
+        sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '',
+        updated_at: b.updated_at ?? '',
+      } as any,
+      booking: b,
+    })
   }
 
   const sortedAux = [...auxBookings]
@@ -290,9 +289,9 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
     const last = auxSections[auxSections.length - 1]
     if (last && last.type === (aux.booking_type ?? 'Other')) {
       last.items.push(aux)
-    } else {
-      auxSections.push({ type: aux.booking_type ?? 'Other', label: meta.label, icon: meta.icon, items: [aux] })
+      continue
     }
+    auxSections.push({ type: aux.booking_type ?? 'Other', label: meta.label, icon: meta.icon, items: [aux] })
   }
 
   return (
@@ -373,10 +372,10 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
       {auxSections.map(section => (
         <TabSection key={section.type} label={section.label}>
           {section.items.map(aux => {
-            const isAmbience  = !aux.booked_by || aux.booked_by.toLowerCase().includes('ambience')
-            const pillColor   = isAmbience ? GOLD : FAINT
-            const timeStr     = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' \u2013 ')
-            const route       = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
+            const isAmbience = !aux.booked_by || aux.booked_by.toLowerCase().includes('ambience')
+            const pillColor  = isAmbience ? GOLD : FAINT
+            const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' – ')
+            const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
               // Fix: right-aligned column removed — all content flows in the flex-1 div.
@@ -411,18 +410,18 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
 
 // ── Programme tab ─────────────────────────────────────────────────────────────
 
-function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
+function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: {
   days:               TripDay[]
   entries:            TripDayEntry[]
   auxBookings:        TripAuxBooking[]
-  // Callback so the parent sticky bar can show the active day label and open the sidebar
+  brief:              any
   onActiveDayChange?: (label: string, openSidebar: () => void) => void
 }) {
   const visibleDays = days.filter(d => d.show)
-  const [activeDate,    setActiveDate]    = useState(visibleDays[0]?.entry_date ?? null)
-  const [sidebarOpen,   setSidebarOpen]   = useState(true)
-  const [lightbox,      setLightbox]      = useState<{ src: string; alt: string } | null>(null)
-  const width = useWindowWidth()
+  const [activeDate,  setActiveDate]  = useState(visibleDays[0]?.entry_date ?? null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [lightbox,    setLightbox]    = useState<{ src: string; alt: string } | null>(null)
+  const width    = useWindowWidth()
   const isMobile = width < 768
 
   const activeDay = visibleDays.find(d => d.entry_date === activeDate) ?? null
@@ -430,9 +429,9 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
   // Notify parent whenever active day or sidebar-open function changes
   useEffect(() => {
     if (!onActiveDayChange) return
-    const idx   = visibleDays.findIndex(d => d.entry_date === activeDate)
-    const dayN  = idx >= 0 ? `Day ${idx + 1}` : null
-    const label = activeDay
+    const idx      = visibleDays.findIndex(d => d.entry_date === activeDate)
+    const dayN     = idx >= 0 ? `Day ${idx + 1}` : null
+    const label    = activeDay
       ? (activeDay.day_label || fmtDateShort(activeDay.entry_date))
       : 'Select day'
     const combined = dayN ? `${dayN} · ${label}` : label
@@ -456,11 +455,11 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
     ...entries
       .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
       .map(e => {
-        const isFlight = (e.category ?? '').toLowerCase() === 'flight'
+        const isFlight        = (e.category ?? '').toLowerCase() === 'flight'
         let flightOrigin:      string | null = null
         let flightDestination: string | null = null
         if (isFlight && e.subtitle) {
-          const parts = e.subtitle.split('→').map(s => s.trim())
+          const parts = e.subtitle.split('\u2192').map(s => s.trim())
           if (parts.length === 2) {
             flightOrigin      = parts[0] || null
             flightDestination = parts[1] || null
@@ -506,19 +505,19 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
       {/* ── Left sidebar ── */}
       {(!isMobile || sidebarOpen) && (
         <div style={{
-          width:           sidebarOpen ? SIDEBAR_W : 48,
-          flexShrink:      0,
-          borderRight:     `1px solid ${RULE}`,
-          background:      CREAM,
-          position:        isMobile ? 'fixed' : 'sticky',
-          top:             isMobile ? 0 : 0,
-          left:            isMobile ? 0 : 'auto',
-          height:          isMobile ? '100vh' : 'auto',
-          zIndex:          isMobile ? 100 : 1,
-          overflowY:       'auto',
-          transition:      'width 200ms ease',
-          display:         'flex',
-          flexDirection:   'column',
+          width:         sidebarOpen ? SIDEBAR_W : 48,
+          flexShrink:    0,
+          borderRight:   `1px solid ${RULE}`,
+          background:    CREAM,
+          position:      isMobile ? 'fixed' : 'sticky',
+          top:           isMobile ? 0 : 0,
+          left:          isMobile ? 0 : 'auto',
+          height:        isMobile ? '100vh' : 'auto',
+          zIndex:        isMobile ? 100 : 1,
+          overflowY:     'auto',
+          transition:    'width 200ms ease',
+          display:       'flex',
+          flexDirection: 'column',
         }}>
           {/* Sidebar toggle */}
           <div style={{
@@ -553,7 +552,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
               }}
               title={sidebarOpen ? 'Collapse' : 'Expand'}
             >
-              {sidebarOpen ? '‹' : '›'}
+              {sidebarOpen ? '\u2039' : '\u203a'}
             </button>
           </div>
 
@@ -567,14 +566,14 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
                     key={day.entry_date}
                     onClick={() => { setActiveDate(day.entry_date); if (isMobile) setSidebarOpen(false) }}
                     style={{
-                      width:          '100%',
-                      textAlign:      'left',
-                      padding:        '10px 16px',
-                      border:         'none',
-                      borderLeft:     `3px solid ${isActive ? GOLD : 'transparent'}`,
-                      background:     isActive ? `${GOLD}0A` : 'transparent',
-                      cursor:         'pointer',
-                      transition:     'all 120ms',
+                      width:      '100%',
+                      textAlign:  'left',
+                      padding:    '10px 16px',
+                      border:     'none',
+                      borderLeft: `3px solid ${isActive ? GOLD : 'transparent'}`,
+                      background: isActive ? `${GOLD}0A` : 'transparent',
+                      cursor:     'pointer',
+                      transition: 'all 120ms',
                     }}
                   >
                     <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isActive ? GOLD : FAINT, marginBottom: 2 }}>
@@ -759,6 +758,21 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange }: {
             No programme days available yet.
           </div>
         )}
+
+        {/* Programme notes — shown below all days */}
+        {brief?.programme_notes?.trim() && (
+          <div style={{
+            padding:   'clamp(20px,4vw,36px) clamp(20px,5vw,56px)',
+            borderTop: `1px solid ${RULE}`,
+          }}>
+            <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: 12 }}>
+              Notes
+            </div>
+            <div style={{ fontSize: 13, fontFamily: SANS, color: MUTED, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+              {brief.programme_notes}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -772,7 +786,6 @@ function TripBriefTab({ clientData, days, entries }: {
   entries:    TripDayEntry[]
 }) {
   const { trip, house, auxBookings } = clientData
-  const allEntries = entries
 
   const flights   = auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('flight'))
   const transfers = auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('transfer'))
@@ -805,11 +818,11 @@ function TripBriefTab({ clientData, days, entries }: {
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <BriefSection title='Overview'>
-        <BriefRow label='Guest'    value={house?.display_name ?? trip.trip_code} />
-        <BriefRow label='Trip'     value={trip.trip_code} />
-        {trip.start_date && <BriefRow label='Departure' value={fmtDate(trip.start_date)} />}
-        {trip.end_date   && <BriefRow label='Return'    value={fmtDate(trip.end_date)} />}
-        {trip.duration_nights && <BriefRow label='Duration' value={`${trip.duration_nights} nights`} />}
+        <BriefRow label='Guest'        value={house?.display_name ?? trip.trip_code} />
+        <BriefRow label='Trip'         value={trip.trip_code} />
+        {trip.start_date      && <BriefRow label='Departure'    value={fmtDate(trip.start_date)} />}
+        {trip.end_date        && <BriefRow label='Return'       value={fmtDate(trip.end_date)} />}
+        {trip.duration_nights && <BriefRow label='Duration'     value={`${trip.duration_nights} nights`} />}
         {trip.destinations.length > 0 && <BriefRow label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
       </BriefSection>
 
@@ -851,6 +864,7 @@ function TripBriefTab({ clientData, days, entries }: {
           ))}
         </BriefSection>
       )}
+
       {clientData.brief?.important_notes && (clientData.brief.important_notes as string[]).length > 0 && (
         <BriefSection title='Important Notes'>
           {(clientData.brief.important_notes as string[]).map((note, i) => (
@@ -887,15 +901,10 @@ function TripBriefTab({ clientData, days, entries }: {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>🍽</span>
                     <div>
-                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
-                        Dining Guide
-                      </div>
-                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>
-                        {clientData.destinationName}
-                      </div>
+                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>Dining Guide</div>
+                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{clientData.destinationName}</div>
                     </div>
                   </div>
-                  {/* External link icon */}
                   <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
                     <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
                     <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
@@ -924,12 +933,8 @@ function TripBriefTab({ clientData, days, entries }: {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>✦</span>
                     <div>
-                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
-                        Experiences Guide
-                      </div>
-                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>
-                        {clientData.destinationName}
-                      </div>
+                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>Experiences Guide</div>
+                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{clientData.destinationName}</div>
                     </div>
                   </div>
                   <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
@@ -939,6 +944,41 @@ function TripBriefTab({ clientData, days, entries }: {
                 </div>
               </a>
             )}
+          </div>
+        </BriefSection>
+      )}
+
+      {/* Links — structured external links with label + URL */}
+      {(clientData.brief?.links as any)?.length > 0 && (
+        <BriefSection title='Links'>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {((clientData.brief?.links as any) as { label: string; url: string }[]).map((link, i) => (
+              <a
+                key={i}
+                href={link.url}
+                target='_blank'
+                rel='noopener noreferrer'
+                style={{ textDecoration: 'none' }}
+              >
+                <div style={{
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'space-between',
+                  padding:        '14px 18px',
+                  borderRadius:   10,
+                  border:         `1px solid ${RULE}`,
+                  background:     '#fff',
+                  cursor:         'pointer',
+                  transition:     'border-color 150ms',
+                }}>
+                  <div style={{ fontSize: 13, fontFamily: SERIF, color: INK }}>{link.label}</div>
+                  <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
+                    <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                    <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                  </svg>
+                </div>
+              </a>
+            ))}
           </div>
         </BriefSection>
       )}
@@ -997,10 +1037,10 @@ function TabSection({ label, children }: { label: string; children: React.ReactN
   return (
     // Fix: added bottom padding + overflow:hidden to prevent child overflow escaping section boundary
     <div style={{
-      padding:    'clamp(20px,4vw,36px) clamp(20px,5vw,48px) clamp(20px,4vw,36px)',
-      boxSizing:  'border-box',
-      width:      '100%',
-      overflow:   'hidden',
+      padding:   'clamp(20px,4vw,36px) clamp(20px,5vw,48px) clamp(20px,4vw,36px)',
+      boxSizing: 'border-box',
+      width:     '100%',
+      overflow:  'hidden',
     }}>
       <div style={{ height: 1, background: RULE, marginBottom: 18 }} />
       <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, color: GOLD, letterSpacing: '0.14em', marginBottom: 14 }}>{label}</div>
@@ -1034,9 +1074,9 @@ function TripNotFound() {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function ImmerseTripPage({ urlId }: { urlId: string }) {
-  const [tripData,  setTripData]  = useState<TripData | null>(null)
-  const [notFound,  setNotFound]  = useState(false)
-  const [activeTab, setActiveTab] = useState<TabId | null>(null)
+  const [tripData,    setTripData]    = useState<TripData | null>(null)
+  const [notFound,    setNotFound]    = useState(false)
+  const [activeTab,   setActiveTab]   = useState<TabId | null>(null)
   const [tabMenuOpen, setTabMenuOpen] = useState(false)
   // Programme tab: active day label + sidebar opener — surfaced into the unified sticky bar
   const [activeDayLabel, setActiveDayLabel] = useState<string>('')
@@ -1056,14 +1096,14 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
       try {
         const [confRes, progRes] = await Promise.all([
           fetch(CONFIRMATION_FN, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-            body: JSON.stringify({ url_id: urlId }),
+            body:    JSON.stringify({ url_id: urlId }),
           }),
           fetch(PROGRAMME_FN, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-            body: JSON.stringify({ url_id: urlId }),
+            body:    JSON.stringify({ url_id: urlId }),
           }),
         ])
 
@@ -1093,15 +1133,12 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
         // Set default tab based on what's enabled + has data
         const brief = confPayload.brief
-        if (brief?.show_tab_brief !== false) {
-          setActiveTab('brief')
-        } else if (brief?.show_tab_programme !== false && (progPayload?.days?.length ?? 0) > 0) {
-          setActiveTab('programme')
-        } else if (brief?.show_tab_confirmation !== false) {
-          setActiveTab('confirmation')
-        } else {
-          setActiveTab('contacts')
-        }
+        const hasProgramme = brief?.show_tab_programme !== false && (progPayload?.days?.length ?? 0) > 0
+
+        if (brief?.show_tab_brief !== false)    { setActiveTab('brief');        return }
+        if (hasProgramme)                        { setActiveTab('programme');    return }
+        if (brief?.show_tab_confirmation !== false) { setActiveTab('confirmation'); return }
+        setActiveTab('contacts')
       } catch {
         setNotFound(true)
       }
@@ -1124,7 +1161,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
   // Hero data
   const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.trip_code
-  const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' · ')
+  const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   // Hero image: brief override ?? destination hero ?? empty.
   // Use || not ?? — brief.hero_image_src can be "" (empty string, not null),
   // which ?? passes through. || correctly falls back on any falsy value.
@@ -1272,7 +1309,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                     display:       'flex',
                     alignItems:    'center',
                     gap:           6,
-                    padding:       '6px 10px 6px 10px',
+                    padding:       '6px 10px',
                     border:        `1px solid ${GOLD}55`,
                     borderRadius:  20,
                     background:    `${GOLD}0D`,
@@ -1290,7 +1327,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                 >
                   <span style={{ fontSize: 11, color: GOLD, flexShrink: 0, lineHeight: 1 }}>☰</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeDayLabel}</span>
-                  <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>›</span>
+                  <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>\u203a</span>
                 </button>
               )}
             </div>
@@ -1340,17 +1377,17 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                   }
                   if (activeTab === 'brief') {
                     handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
-                  } else {
-                    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
+                    return
                   }
+                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
                 }}
                 style={{
-                  fontFamily: SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+                  fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
                   textTransform: 'uppercase', border: 'none', borderRadius: 6,
-                  padding: '5px 12px', cursor: briefPdfReady ? 'pointer' : 'not-allowed',
-                  background: GOLD, color: INK,
-                  opacity: briefPdfReady && !briefPdfDownloading ? 1 : 0.45,
-                  transition: 'opacity 150ms',
+                  padding:       '5px 12px', cursor: briefPdfReady ? 'pointer' : 'not-allowed',
+                  background:    GOLD, color: INK,
+                  opacity:       briefPdfReady && !briefPdfDownloading ? 1 : 0.45,
+                  transition:    'opacity 150ms',
                 }}
               >
                 {briefPdfDownloading ? 'Generating\u2026' : activeTab === 'confirmation' ? 'Confirmation PDF' : 'Brief PDF'}
@@ -1365,18 +1402,18 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                     if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
                     entriesByDate[e.entry_date].push(e)
                   }
-                  handleDownloadProgramme({ trip, house, days, entriesByDate })
+                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate })
                 }}
                 style={{
-                  fontFamily: SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+                  fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
                   textTransform: 'uppercase', border: 'none', borderRadius: 6,
-                  padding: '5px 12px', cursor: progPdfReady ? 'pointer' : 'not-allowed',
-                  background: GOLD, color: INK,
-                  opacity: progPdfReady && !progPdfDownloading ? 1 : 0.45,
-                  transition: 'opacity 150ms',
+                  padding:       '5px 12px', cursor: progPdfReady ? 'pointer' : 'not-allowed',
+                  background:    GOLD, color: INK,
+                  opacity:       progPdfReady && !progPdfDownloading ? 1 : 0.45,
+                  transition:    'opacity 150ms',
                 }}
               >
-                {progPdfDownloading ? 'Generating\u2026' : 'PDF'}
+                {progPdfDownloading ? 'Generating\u2026' : 'Programme PDF'}
               </button>
             )}
           </div>
@@ -1385,7 +1422,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         {/* Tab content */}
         <div style={{ background: CREAM, minHeight: '60vh' }}>
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
-          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} onActiveDayChange={handleActiveDayChange} />}
+          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} brief={brief} onActiveDayChange={handleActiveDayChange} />}
           {activeTab === 'brief'        && <TripBriefTab clientData={clientData} days={days} entries={entries} />}
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>

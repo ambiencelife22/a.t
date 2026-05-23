@@ -385,6 +385,31 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
       y += noteLines.length * 4.8 + 3
     }
   }
+  // ── Links ─────────────────────────────────────────────────────────────────
+
+  const links = (d.brief?.links as { label: string; url: string }[] | null) ?? []
+
+  if (links.length > 0) {
+    y = checkOverflow(doc, y, 20)
+    y = drawSectionHeader(doc, 'Links', y)
+
+    for (const link of links) {
+      y = checkOverflow(doc, y, 14)
+
+      doc.setFillColor(T.white[0], T.white[1], T.white[2])
+      doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
+      doc.setLineWidth(0.3)
+      doc.roundedRect(P.margin, y, CW, 12, 2, 2, 'FD')
+
+      serif(doc, 'normal', 10)
+      doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+      doc.text(link.label, P.margin + 8, y + 7.5)
+
+      try { doc.link(P.margin, y, CW, 12, { url: link.url }) } catch {}
+
+      y += 14
+    }
+  }
 }
 
 // ── Filename ──────────────────────────────────────────────────────────────────
