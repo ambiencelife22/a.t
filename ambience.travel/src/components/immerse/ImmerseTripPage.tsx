@@ -1014,7 +1014,7 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
           <ContactCard
             name={brief.advisor_name}
             role='Travel Advisor'
-            email={brief.advisor_email}
+            email={(brief as any).show_advisor_email ? brief.advisor_email : null}
             phone={(brief as any).show_advisor_phone ? (brief as any).advisor_phone : null}
           />
         )}
