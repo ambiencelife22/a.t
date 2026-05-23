@@ -17,17 +17,21 @@
 //   - Data fetching (ImmerseTripPage passes current state)
 //   - Font loading (shared via pdfFonts.ts)
 //
+// Aux bookings: merged into day entries per start_date, sorted by start_time.
+// Aux bookings have no image_src — image panel only applies to TripDayEntry rows.
+//
 // Category accent: left vertical bar replacing the dot — cleaner at this scale.
 // Images: entry image panels render when image_src is present on the entry.
 //
 // Last updated: S49/S50 — hero image, logo fix, entry images, programme notes,
 //   category dot replaced with accent left bar, "Programme PDF" label.
+//   S50r2 — aux bookings (flights, transfers etc) merged into programme PDF.
 // Prior: S48 — initial ship.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
 import type { RGB } from './pdfUtils'
-import type { TripDay, TripDayEntry, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
+import type { TripDay, TripDayEntry, TripAuxBooking, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -86,6 +90,24 @@ export interface DailyProgrammeData {
   house:         HouseProfile | null
   days:          TripDay[]
   entriesByDate: Record<string, TripDayEntry[]>
+  auxBookings:   TripAuxBooking[]
+}
+
+// ── Internal merged entry type ────────────────────────────────────────────────
+
+type ProgrammeEntry = {
+  id:                  string
+  category:            string | null
+  start_time:          string | null
+  end_time:            string | null
+  title:               string
+  subtitle:            string | null
+  guest_label:         string | null
+  confirmation_number: string | null
+  notes:               string | null
+  booked_by:           string | null
+  brief_show:          boolean
+  image_src:           string | null   // only TripDayEntry rows carry this
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -101,6 +123,12 @@ function fmtTime(t: string | null): string {
   const [h, m] = t.split(':')
   const hour   = parseInt(h, 10)
   return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`
+}
+
+function sortKey(time: string | null | undefined): number {
+  if (!time) return 9999
+  const [h, m] = time.split(':')
+  return parseInt(h, 10) * 60 + parseInt(m ?? '0', 10)
 }
 
 function categoryAccent(cat: string | null): RGB {
@@ -124,6 +152,65 @@ function buildFilename(trip: DossierTrip): string {
   return `ambience \u00b7 ${trip.trip_code} \u00b7 Daily Programme \u00b7 ${dd} ${mon} ${yyyy}.pdf`
 }
 
+// ── Merge day entries + aux bookings for a given date ────────────────────────
+
+function mergeDayEntries(
+  entries:     TripDayEntry[],
+  auxBookings: TripAuxBooking[],
+  date:        string,
+): ProgrammeEntry[] {
+  const fromEntries: ProgrammeEntry[] = entries
+    .filter(e => e.entry_date === date && e.brief_show)
+    .map(e => {
+      const isFlight = (e.category ?? '').toLowerCase() === 'flight'
+      let subtitle   = e.subtitle ?? null
+      // For flight entries derived from day entries, subtitle may encode "Origin → Dest"
+      // Leave as-is — no transformation needed at PDF layer.
+      if (isFlight && subtitle) {
+        // Already formatted by the entry creator — pass through
+      }
+      return {
+        id:                  e.id,
+        category:            e.category,
+        start_time:          e.start_time,
+        end_time:            e.end_time,
+        title:               e.title,
+        subtitle,
+        guest_label:         e.guest_label,
+        confirmation_number: e.confirmation_number,
+        notes:               e.notes,
+        booked_by:           e.booked_by,
+        brief_show:          e.brief_show,
+        image_src:           (e as any).image_src ?? null,
+      }
+    })
+
+  const fromAux: ProgrammeEntry[] = auxBookings
+    .filter(a => a.start_date === date && a.brief_show !== false)
+    .map(a => {
+      const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
+      const subtitle = isFlight
+        ? null
+        : (a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null)
+      return {
+        id:                  a.id,
+        category:            a.booking_type ?? 'Other',
+        start_time:          a.start_time,
+        end_time:            a.end_time,
+        title:               a.name ?? a.booking_type ?? 'Booking',
+        subtitle,
+        guest_label:         a.guest_label,
+        confirmation_number: a.confirmation_number,
+        notes:               a.notes,
+        booked_by:           a.booked_by,
+        brief_show:          a.brief_show,
+        image_src:           null,  // aux bookings carry no image
+      }
+    })
+
+  return [...fromEntries, ...fromAux].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time))
+}
+
 // ── Page management ───────────────────────────────────────────────────────────
 
 function stampCreamBackground(doc: any): void {
@@ -140,12 +227,12 @@ function addPage(doc: any): number {
 // ── Header (page 1) ───────────────────────────────────────────────────────────
 
 async function renderHeader(
-  doc:    any,
-  trip:   DossierTrip,
-  brief:  TripBrief | null,
-  house:  HouseProfile | null,
-  emblem: any,
-  logo:   any,
+  doc:           any,
+  trip:          DossierTrip,
+  brief:         TripBrief | null,
+  house:         HouseProfile | null,
+  emblem:        any,
+  logo:          any,
   heroImageData: string | null,
 ): Promise<void> {
   // Hero image behind header
@@ -209,30 +296,29 @@ async function renderHeader(
 // ── Entry row ─────────────────────────────────────────────────────────────────
 
 async function renderEntryRow(
-  doc:   any,
-  entry: TripDayEntry & { image_src?: string | null },
-  y:     number,
-  availW: number,
+  doc:     any,
+  entry:   ProgrammeEntry,
+  y:       number,
+  availW:  number,
 ): Promise<number> {
   const accent     = categoryAccent(entry.category)
-  const isAmbience = entry.booked_by === 'ambience'
-  const hasImage   = !!(entry as any).image_src
+  const isAmbience = !entry.booked_by || entry.booked_by === 'ambience'
+  const hasImage   = !!entry.image_src
 
-  // Content layout depends on whether there's an image
-  const imageColW  = hasImage ? P.imgW + 3 : 0
-  const accentX    = P.margin + P.timeColW
-  const contentX   = accentX + P.barW + P.barGap + imageColW
-  const contentW   = availW - P.timeColW - P.barW - P.barGap - imageColW
+  const imageColW = hasImage ? P.imgW + 3 : 0
+  const accentX   = P.margin + P.timeColW
+  const contentX  = accentX + P.barW + P.barGap + imageColW
+  const contentW  = availW - P.timeColW - P.barW - P.barGap - imageColW
 
   // Measure height
   let measuredH = P.entryPadV
   serif(doc, 'normal', 10.5)
   const titleLines = doc.splitTextToSize(entry.title, contentW - 2)
   measuredH += titleLines.length * 4.8
-  if (entry.subtitle)           measuredH += 4.5
-  if (entry.guest_label)        measuredH += 4
+  if (entry.subtitle)            measuredH += 4.5
+  if (entry.guest_label)         measuredH += 4
   if (entry.confirmation_number) measuredH += 4.5
-  if (!isAmbience)              measuredH += 5
+  if (!isAmbience)               measuredH += 5
   measuredH += P.entryPadV
 
   const rowH = Math.max(measuredH, hasImage ? P.imgW * 0.66 : 10)
@@ -247,16 +333,16 @@ async function renderEntryRow(
     doc.text(fmtTime(entry.start_time), P.margin, y + P.entryPadV + 4, { align: 'left' })
   }
 
-  // Category accent bar (replaces dot)
+  // Category accent bar
   doc.setFillColor(accent[0], accent[1], accent[2])
   doc.rect(accentX, y + 1, P.barW, rowH - 2, 'F')
 
-  // Entry image panel
+  // Entry image panel (TripDayEntry rows only — aux has no image)
   if (hasImage) {
     const imgX = accentX + P.barW + P.barGap
     const imgH = rowH
     try {
-      const raw = await loadImg((entry as any).image_src)
+      const raw = await loadImg(entry.image_src!)
       if (raw) {
         const cropped = await makeCoverCropAsync(raw.data, raw.format, raw.nw, raw.nh, P.imgW, imgH)
         doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
@@ -319,11 +405,11 @@ async function renderEntryRow(
 // ── Day section ───────────────────────────────────────────────────────────────
 
 async function renderDay(
-  doc:     any,
-  day:     TripDay,
-  entries: (TripDayEntry & { image_src?: string | null })[],
-  dayIdx:  number,
-  yIn:     number,
+  doc:         any,
+  day:         TripDay,
+  entries:     ProgrammeEntry[],
+  dayIdx:      number,
+  yIn:         number,
 ): Promise<number> {
   const DAY_HEADER_H = 14
   const FOOTER_GUARD = P.footerY - 10
@@ -356,14 +442,14 @@ async function renderDay(
   for (const entry of visibleEntries) {
     serif(doc, 'normal', 10.5)
     const titleLines = doc.splitTextToSize(entry.title, CW - P.timeColW - P.barW - P.barGap - 2)
-    const hasImage = !!(entry as any).image_src
-    const imgH = hasImage ? P.imgW * 0.66 : 0
-    const estH = Math.max(
+    const hasImage   = !!entry.image_src
+    const imgH       = hasImage ? P.imgW * 0.66 : 0
+    const estH       = Math.max(
       P.entryPadV * 2 + titleLines.length * 4.8
         + (entry.subtitle ? 4.5 : 0)
         + (entry.guest_label ? 4 : 0)
         + (entry.confirmation_number ? 4.5 : 0)
-        + (entry.booked_by !== 'ambience' ? 5 : 0),
+        + (!entry.booked_by || entry.booked_by !== 'ambience' ? 5 : 0),
       imgH,
     )
 
@@ -465,9 +551,12 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
   const visibleDays = data.days.filter(d => d.show)
   for (let idx = 0; idx < visibleDays.length; idx++) {
     const day     = visibleDays[idx]
-    const entries = (data.entriesByDate[day.entry_date] ?? [])
-      .slice()
-      .sort((a, b) => a.sort_order - b.sort_order)
+    // Merge day entries + aux bookings for this date, sorted by start_time
+    const entries = mergeDayEntries(
+      data.entriesByDate[day.entry_date] ?? [],
+      data.auxBookings,
+      day.entry_date,
+    )
     y = await renderDay(doc, day, entries, idx, y)
   }
 

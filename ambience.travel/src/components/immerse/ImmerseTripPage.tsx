@@ -1402,7 +1402,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                     if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
                     entriesByDate[e.entry_date].push(e)
                   }
-                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate })
+                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate, auxBookings: clientData.auxBookings })
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
