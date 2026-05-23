@@ -25,7 +25,7 @@
 //   Adds top bar, PDF download, standalone data fetch via tripClientQueries.
 
 import { useEffect, useState } from 'react'
-import { getAuxTypeMeta } from '../../types/typesAuxBooking'
+import { getAuxTypeMeta } from '../../types/typesAuxBookings'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripBooking, TripAuxBooking } from '../../queries/queriesAdminTrip'
 import type { ConfirmationBriefData } from '../../pdf/pdfImmerseConfirmation'

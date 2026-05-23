@@ -8,7 +8,7 @@
  * Prior: S23 — initial build.
  */
 
-import type { EventStatus } from './typesSuppliers'
+import type { EventStatus } from './typesEventStatus'
 export type { EventStatus }
 
 // ── Event types ───────────────────────────────────────────────────────────────

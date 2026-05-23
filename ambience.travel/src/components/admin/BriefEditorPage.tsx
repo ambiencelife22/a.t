@@ -41,7 +41,7 @@ import type {
   TripBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminTrip'
-import { getAuxTypeMeta, AUX_BOOKING_TYPES } from '../../types/typesAuxBooking'
+import { getAuxTypeMeta, AUX_BOOKING_TYPES } from '../../types/typesAuxBookings'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
 import { supabase } from '../../lib/supabase'
