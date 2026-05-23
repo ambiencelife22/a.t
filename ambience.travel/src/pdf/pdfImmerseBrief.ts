@@ -4,10 +4,11 @@
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Page 1: hero cover-crop + cream mask, frosted glass logo card, centred title.
 //   - Overview table: Guest, Trip, Departure, Return, Duration, Destinations
-//   - Accommodation section: date + hotel name + nights + conf# rows
-//   - Flights section: date + flight name + route rows
-//   - Transfers section: date + transfer name + route rows
+//   - Accommodation section: date + hotel name + nights + conf# + booked_by rows
+//   - Flights section: date + flight name + route + booked_by rows
+//   - Transfers section: date + transfer name + route + booked_by rows
 //   - Important Notes section: bulleted list
+//   - Links section: clickable cards
 //   - Filename: "Trip Brief - {ClientName} - {Destination} - {DateRange}.pdf"
 //
 // What it does not own:
@@ -19,6 +20,7 @@
 // Shares frosted logo card + footer chrome logic with pdfImmerseConfirmation.ts.
 //
 // Last updated: S49 — initial ship.
+//               S50 — booked_by added to Accommodation, Flights, Transfers sections.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
@@ -79,6 +81,12 @@ function buildDateRange(s: string | null, e: string | null): string {
   if (sm === em && sd.getFullYear() === ed.getFullYear())
     return `${sd.getDate()}\u2013${ed.getDate()} ${em} ${ed.getFullYear()}`
   return `${fmtDate(s)}\u2013${fmtDate(e)}`
+}
+
+function bookedByLabel(bookedBy: string | null | undefined): string | null {
+  if (!bookedBy || bookedBy === 'ambience') return 'Booked by ambience'
+  if (bookedBy === 'self') return 'Self-arranged'
+  return `Booked by ${bookedBy}`
 }
 
 // ── Page management ───────────────────────────────────────────────────────────
@@ -190,14 +198,13 @@ function drawOverviewRow(doc: any, label: string, value: string, y: number): num
   }
 
   const rowH = Math.max(valueLines.length * 5, 5)
-  // Light row rule
   drawRule(doc, P.margin, y + rowH + 1.5, CW, T.rule, 0.15)
   return rowH + 5
 }
 
 // ── Section data row (accommodation / flights / transfers) ────────────────────
 
-function drawDataRow(doc: any, date: string, name: string, sub: string | null, y: number): number {
+function drawDataRow(doc: any, date: string, name: string, sub: string | null, bookedBy: string | null, y: number): number {
   const nameX = P.margin + LABEL_W
   const nameW = CW - LABEL_W
 
@@ -218,6 +225,13 @@ function drawDataRow(doc: any, date: string, name: string, sub: string | null, y
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(sub, nameX, ty + 1)
     ty += 5
+  }
+
+  if (bookedBy) {
+    sans(doc, 'italic', 7)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text(bookedBy, nameX, ty + 1)
+    ty += 4.5
   }
 
   drawRule(doc, P.margin, ty + 2, CW, T.rule, 0.15)
@@ -287,12 +301,12 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   const overviewRows: { label: string; value: string }[] = []
   overviewRows.push({ label: 'Guest', value: house?.display_name ?? trip.trip_code })
-  overviewRows.push({ label: 'Trip', value: trip.trip_code })
-  if (trip.start_date) overviewRows.push({ label: 'Departure', value: fmtDate(trip.start_date) })
-  if (trip.end_date)   overviewRows.push({ label: 'Return',    value: fmtDate(trip.end_date) })
-  if (trip.duration_nights) overviewRows.push({ label: 'Duration', value: `${trip.duration_nights} nights` })
+  overviewRows.push({ label: 'Trip',  value: trip.trip_code })
+  if (trip.start_date)      overviewRows.push({ label: 'Departure',    value: fmtDate(trip.start_date) })
+  if (trip.end_date)        overviewRows.push({ label: 'Return',       value: fmtDate(trip.end_date) })
+  if (trip.duration_nights) overviewRows.push({ label: 'Duration',     value: `${trip.duration_nights} nights` })
   if (trip.destinations.length > 0) {
-    overviewRows.push({ label: 'Destinations', value: trip.destinations.map((d: any) => d.name).join(', ') })
+    overviewRows.push({ label: 'Destinations', value: trip.destinations.map((dest: any) => dest.name).join(', ') })
   }
 
   for (const row of overviewRows) {
@@ -312,14 +326,15 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
     for (const h of hotels) {
       y = checkOverflow(doc, y, 16)
-      const name = h._hotel_name ?? h.name ?? 'Hotel'
+      const name    = h._hotel_name ?? h.name ?? 'Hotel'
       const subParts = [
         h.name,
         h.nights ? `${h.nights} nights` : null,
         h.confirmation_number ? `Conf: ${h.confirmation_number}` : null,
       ].filter(Boolean)
-      const date = h.start_date ? fmtDate(h.start_date) : '\u2014'
-      y += drawDataRow(doc, date, name, subParts.join('  \u00b7  ') || null, y)
+      const date    = h.start_date ? fmtDate(h.start_date) : '\u2014'
+      const byLabel = bookedByLabel(h.booked_by)
+      y += drawDataRow(doc, date, name, subParts.join('  \u00b7  ') || null, byLabel, y)
     }
 
     y += 4
@@ -335,11 +350,12 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
     for (const f of flights) {
       y = checkOverflow(doc, y, 16)
-      const name = [f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null]
+      const name    = [f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null]
         .filter(Boolean).join('  \u00b7  ')
-      const sub  = [f.origin, f.destination].filter(Boolean).join('  \u2192  ') || null
-      const date = f.start_date ? fmtDate(f.start_date) : '\u2014'
-      y += drawDataRow(doc, date, name || 'Flight', sub, y)
+      const sub     = [f.origin, f.destination].filter(Boolean).join('  \u2192  ') || null
+      const date    = f.start_date ? fmtDate(f.start_date) : '\u2014'
+      const byLabel = bookedByLabel(f.booked_by)
+      y += drawDataRow(doc, date, name || 'Flight', sub, byLabel, y)
     }
 
     y += 4
@@ -355,9 +371,10 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
     for (const t of transfers) {
       y = checkOverflow(doc, y, 16)
-      const sub  = [t.origin, t.destination].filter(Boolean).join('  \u2192  ') || null
-      const date = t.start_date ? fmtDate(t.start_date) : '\u2014'
-      y += drawDataRow(doc, date, t.name ?? 'Transfer', sub, y)
+      const sub     = [t.origin, t.destination].filter(Boolean).join('  \u2192  ') || null
+      const date    = t.start_date ? fmtDate(t.start_date) : '\u2014'
+      const byLabel = bookedByLabel(t.booked_by)
+      y += drawDataRow(doc, date, t.name ?? 'Transfer', sub, byLabel, y)
     }
 
     y += 4
@@ -373,7 +390,6 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
     for (const note of notes) {
       y = checkOverflow(doc, y, 12)
       const noteLines = doc.splitTextToSize(note, CW - 6)
-      // Emblem bullet
       sans(doc, 'normal', 8.5)
       doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
       doc.text('\u2022', P.margin, y)
@@ -385,6 +401,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
       y += noteLines.length * 4.8 + 3
     }
   }
+
   // ── Links ─────────────────────────────────────────────────────────────────
 
   const links = (d.brief?.links as { label: string; url: string }[] | null) ?? []

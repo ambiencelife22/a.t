@@ -188,7 +188,7 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
       if (!entriesByDate[entry.entry_date]) entriesByDate[entry.entry_date] = []
       entriesByDate[entry.entry_date].push(entry)
     }
-    handleDownloadProgramme({ trip: clientData.trip, house: clientData.house, days, entriesByDate })
+    handleDownloadProgramme({ trip: clientData.trip, brief: clientData.brief ?? null, house: clientData.house, days, entriesByDate, auxBookings: clientData.auxBookings ?? [] })
   }
 
   return (
