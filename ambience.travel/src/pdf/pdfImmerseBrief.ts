@@ -29,6 +29,7 @@ import {
   type RGB, type Img,
 } from './pdfUtils'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, TripAuxBooking } from '../queries/queriesAdminTrip'
+import { bookedByLabel } from '../utils/utilsBooking'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -83,12 +84,6 @@ function buildDateRange(s: string | null, e: string | null): string {
   return `${fmtDate(s)}\u2013${fmtDate(e)}`
 }
 
-function bookedByLabel(bookedBy: string | null | undefined): string | null {
-  if (!bookedBy || bookedBy === 'ambience') return 'Booked by ambience'
-  if (bookedBy === 'self') return 'Own Arrangements'
-  return `Booked by ${bookedBy}`
-}
-
 // ── Page management ───────────────────────────────────────────────────────────
 
 function addPage(doc: any): number {
@@ -101,6 +96,30 @@ function addPage(doc: any): number {
 function checkOverflow(doc: any, y: number, needed: number): number {
   if (y + needed > FOOTER_GUARD) return addPage(doc)
   return y
+}
+
+// ── Section measurement for page-break decisions ──────────────────────────────
+// Estimate height of a data row (date + name + optional sub + optional bookedBy)
+// Used to decide whether a whole section fits on the current page.
+
+function estimateDataRowHeight(hasSub: boolean, hasBookedBy: boolean, nameLines: number): number {
+  return nameLines * 4.8 + (hasSub ? 5 : 0) + (hasBookedBy ? 4.5 : 0) + 6
+}
+
+function estimateSectionHeight(rowEstimates: number[]): number {
+  // Section header ≈ 14mm (rule + label + spacing)
+  return 14 + rowEstimates.reduce((sum, h) => sum + h, 0) + 4
+}
+
+// Break to a new page if the whole section won't fit.
+// Falls through to row-level checkOverflow inside loop if section is taller than a page.
+
+function ensureSectionFits(doc: any, y: number, sectionH: number): number {
+  if (y + sectionH <= FOOTER_GUARD) return y
+  // Section won't fit — but if it's larger than one full page, no point breaking
+  const fullPageH = FOOTER_GUARD - (P.margin + 10)
+  if (sectionH > fullPageH) return y  // let row-level overflow handle it
+  return addPage(doc)
 }
 
 // ── Frosted logo card (shared with pdfImmerseConfirmation) ────────────────────
@@ -198,7 +217,6 @@ function drawOverviewRow(doc: any, label: string, value: string, y: number): num
   }
 
   const rowH = Math.max(valueLines.length * 5, 5)
-  drawRule(doc, P.margin, y + rowH + 1.5, CW, T.rule, 0.15)
   return rowH + 5
 }
 
@@ -234,7 +252,6 @@ function drawDataRow(doc: any, date: string, name: string, sub: string | null, b
     ty += 4.5
   }
 
-  drawRule(doc, P.margin, ty + 2, CW, T.rule, 0.15)
   return ty - y + 6
 }
 
@@ -321,7 +338,9 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   const hotels = trip.bookings.filter((b: TripBooking) => b.booking_type === 'Hotel' && b.brief_show !== false)
 
   if (hotels.length > 0) {
-    y = checkOverflow(doc, y, 20)
+    // Estimate section height: each hotel row has name + sub + bookedBy (3 lines)
+    const rowEstimates = hotels.map(() => estimateDataRowHeight(true, true, 1))
+    y = ensureSectionFits(doc, y, estimateSectionHeight(rowEstimates))
     y = drawSectionHeader(doc, 'Accommodation', y)
 
     for (const h of hotels) {
@@ -345,7 +364,8 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   const flights = d.auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('flight'))
 
   if (flights.length > 0) {
-    y = checkOverflow(doc, y, 20)
+    const rowEstimates = flights.map(() => estimateDataRowHeight(true, true, 1))
+    y = ensureSectionFits(doc, y, estimateSectionHeight(rowEstimates))
     y = drawSectionHeader(doc, 'Flights', y)
 
     for (const f of flights) {
@@ -366,7 +386,8 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   const transfers = d.auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('transfer'))
 
   if (transfers.length > 0) {
-    y = checkOverflow(doc, y, 20)
+    const rowEstimates = transfers.map(() => estimateDataRowHeight(true, true, 1))
+    y = ensureSectionFits(doc, y, estimateSectionHeight(rowEstimates))
     y = drawSectionHeader(doc, 'Transfers', y)
 
     for (const t of transfers) {
@@ -384,7 +405,9 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   const notes = brief?.important_notes as string[] | null | undefined
   if (notes && notes.length > 0) {
-    y = checkOverflow(doc, y, 20)
+    // Estimate: each note averages ~2 lines + header ≈ 14mm
+    const notesH = 14 + notes.length * 12 + 4
+    y = ensureSectionFits(doc, y, notesH)
     y = drawSectionHeader(doc, 'Important Notes', y)
 
     for (const note of notes) {
@@ -407,7 +430,8 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   const links = (d.brief?.links as { label: string; url: string }[] | null) ?? []
 
   if (links.length > 0) {
-    y = checkOverflow(doc, y, 20)
+    const linksH = 14 + links.length * 14 + 4
+    y = ensureSectionFits(doc, y, linksH)
     y = drawSectionHeader(doc, 'Links', y)
 
     for (const link of links) {

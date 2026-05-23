@@ -50,6 +50,7 @@ import { getEventStatusMeta }                 from '../../types/typesSuppliers'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
+import { bookedByLabel }                      from '../../utils/utilsBooking'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
@@ -303,7 +304,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
         <TabSection label='ACCOMMODATION'>
           {allRooms.map(({ room, booking }, i) => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-            const bookedByText = (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+            const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
             // Full overlay chain: per-room ?? per-booking ?? hotel canon ?? destination hero
             const imgSrc       = (room as any).brief_image_src ?? booking.brief_image_src ?? booking._hotel_image_src ?? destHero
@@ -816,12 +817,6 @@ function TripBriefTab({ clientData, days, entries }: {
     )
   }
 
-  function fmtBookedBy(val: string | null | undefined): string {
-    if (!val || val === 'ambience') return 'Booked by ambience'
-    if (val === 'self') return 'Self-arranged'
-    return `Booked by ${val}`
-  }
-
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <BriefSection title='Overview'>
@@ -841,7 +836,7 @@ function TripBriefTab({ clientData, days, entries }: {
               label={h.start_date ? fmtDate(h.start_date) : '\u2014'}
               value={h._hotel_name ?? h.name ?? 'Hotel'}
               sub={[h.name, h.nights ? `${h.nights} nights` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
-              bookedBy={fmtBookedBy(h.booked_by)}
+              bookedBy={bookedByLabel(h.booked_by)}
             />
           ))}
         </BriefSection>
@@ -855,7 +850,7 @@ function TripBriefTab({ clientData, days, entries }: {
               label={f.start_date ? fmtDate(f.start_date) : '\u2014'}
               value={[f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
               sub={[f.origin, f.destination].filter(Boolean).join(' \u2192 ')}
-              bookedBy={fmtBookedBy(f.booked_by)}
+              bookedBy={bookedByLabel(f.booked_by)}
             />
           ))}
         </BriefSection>
@@ -869,7 +864,7 @@ function TripBriefTab({ clientData, days, entries }: {
               label={t.start_date ? fmtDate(t.start_date) : '\u2014'}
               value={t.name ?? 'Transfer'}
               sub={[t.origin, t.destination].filter(Boolean).join(' \u2192 ')}
-              bookedBy={fmtBookedBy(t.booked_by)}
+              bookedBy={bookedByLabel(t.booked_by)}
             />
           ))}
         </BriefSection>

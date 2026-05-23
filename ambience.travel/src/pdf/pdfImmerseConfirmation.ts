@@ -1,4 +1,4 @@
-// confirmationBriefPdf.ts — Trip Confirmation Brief PDF export
+// pdfImmerseConfirmation.ts — Trip Confirmation Brief PDF export
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Page 1: hero cover-crop + cream mask, frosted glass logo card, centred title.
@@ -12,12 +12,15 @@
 //
 // What it does not own:
 //   - Image loading, SVG rasterisation, cover crop, font helpers (pdfUtils.ts)
-//   - Font loading / registration (guidePdfFonts.ts)
-//   - jsPDF script loading (useBriefDownload hook)
+//   - Font loading / registration (pdfFonts.ts)
+//   - jsPDF script loading (useImmerseConfirmationPdf hook)
 //
-// Last updated: S48 — booked_by added to drawFlightCard. Renders italic
-//   "Booked by ..." / "Self-arranged" line below conf# pill, matching room
-//   card pattern exactly. auxBookings added to ConfirmationBriefData.
+// Last updated: S50 — bookedByLabel() canonical helper imported from utilsBooking.
+//   Replaces inline branches in drawRoomCard + drawFlightCard. Self-booked /
+//   Self-arranged inconsistency resolved — both now read "Own Arrangements".
+// Prior: S48 — booked_by added to drawFlightCard. Renders italic line below
+//   conf# pill, matching room card pattern exactly. auxBookings added to
+//   ConfirmationBriefData.
 // Prior: S48 — flight cards added, pdfUtils refactor.
 // Prior: S47 — booked_by_label wired. Logo card image-based. Footer hyperlinked.
 
@@ -28,6 +31,7 @@ import {
   type RGB, type Img,
 } from './pdfUtils'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
+import { bookedByLabel } from '../utils/utilsBooking'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -169,7 +173,8 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as RGB) : ([245, 245, 245] as RGB)
-  const bookedByText = room.booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Self-booked')
+  // booked_by_label is a per-room free-text override; fall back to canonical bookedByLabel()
+  const bookedByText = room.booked_by_label?.trim() || bookedByLabel(booking.booked_by)
   const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
 
   serif(doc, 'normal', 11)
@@ -253,10 +258,8 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const padV  = 6
   const padH  = 10
 
-  // Determine booked_by text — same logic as room card
-  const rawBookedBy  = aux.booked_by?.trim() ?? null
-  const isAmbience   = !rawBookedBy || rawBookedBy.toLowerCase().includes('ambience')
-  const bookedByText = rawBookedBy || (isAmbience ? 'Booked by ambience' : 'Self-arranged')
+  // Canonical bookedByLabel — same source as room card
+  const bookedByText = bookedByLabel(aux.booked_by)
 
   // Measure height: base layout + booked_by line
   const cardH = 34  // 28 base + 6 for booked_by line

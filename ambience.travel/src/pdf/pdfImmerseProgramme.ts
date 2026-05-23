@@ -32,6 +32,7 @@ import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
 import type { RGB } from './pdfUtils'
 import type { TripDay, TripDayEntry, TripAuxBooking, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
+import { bookedByLabel } from '../utils/utilsBooking'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -301,24 +302,24 @@ async function renderEntryRow(
   y:       number,
   availW:  number,
 ): Promise<number> {
-  const accent     = categoryAccent(entry.category)
-  const isAmbience = !entry.booked_by || entry.booked_by === 'ambience'
-  const hasImage   = !!entry.image_src
+  const accent      = categoryAccent(entry.category)
+  const bookedLabel = bookedByLabel(entry.booked_by)
+  const hasImage    = !!entry.image_src
 
   const imageColW = hasImage ? P.imgW + 3 : 0
   const accentX   = P.margin + P.timeColW
   const contentX  = accentX + P.barW + P.barGap + imageColW
   const contentW  = availW - P.timeColW - P.barW - P.barGap - imageColW
 
-  // Measure height
+  // Measure height — bookedLabel always renders, so always include it
   let measuredH = P.entryPadV
   serif(doc, 'normal', 10.5)
   const titleLines = doc.splitTextToSize(entry.title, contentW - 2)
   measuredH += titleLines.length * 4.8
+  measuredH += 4.5  // bookedLabel line
   if (entry.subtitle)            measuredH += 4.5
   if (entry.guest_label)         measuredH += 4
   if (entry.confirmation_number) measuredH += 4.5
-  if (!isAmbience)               measuredH += 5
   measuredH += P.entryPadV
 
   const rowH = Math.max(measuredH, hasImage ? P.imgW * 0.66 : 10)
@@ -365,19 +366,11 @@ async function renderEntryRow(
     ty += 4.8
   }
 
-  if (!isAmbience) {
-    const pillText = entry.booked_by === 'self' ? 'Self-arranged' : 'TBC'
-    sans(doc, 'normal', 6.5)
-    const pillW = doc.getTextWidth(pillText) + 6
-    const pillH = 4
-    doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
-    doc.setDrawColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.setLineWidth(0.2)
-    doc.roundedRect(contentX, ty, pillW, pillH, 1, 1, 'FD')
-    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(pillText, contentX + 3, ty + pillH - 0.8)
-    ty += pillH + 1
-  }
+  // Booked by — always renders, replaces TBC pill
+  sans(doc, 'italic', 7.5)
+  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+  doc.text(bookedLabel, contentX, ty + 3.5)
+  ty += 4.5
 
   if (entry.subtitle) {
     sans(doc, 'normal', 8.5)
@@ -446,10 +439,10 @@ async function renderDay(
     const imgH       = hasImage ? P.imgW * 0.66 : 0
     const estH       = Math.max(
       P.entryPadV * 2 + titleLines.length * 4.8
+        + 4.5  // bookedLabel — always renders
         + (entry.subtitle ? 4.5 : 0)
         + (entry.guest_label ? 4 : 0)
-        + (entry.confirmation_number ? 4.5 : 0)
-        + (!entry.booked_by || entry.booked_by !== 'ambience' ? 5 : 0),
+        + (entry.confirmation_number ? 4.5 : 0),
       imgH,
     )
 
