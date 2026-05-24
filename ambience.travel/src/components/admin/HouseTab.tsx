@@ -239,7 +239,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
   }
 
   async function removePPD(id: string) {
-    if (!window.confirm('Permanently delete this sensitive record?')) return
+    if (!window.confirm('Permanently delete this personal data record?')) return
     try { await deletePPDPeopleEntry(id); success('Deleted.'); await onReload() }
     catch (e) { error(e instanceof Error ? e.message : 'Failed') }
   }
@@ -298,7 +298,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
             Preferences {personPrefs.length > 0 && <span style={{ opacity: 0.6 }}>({personPrefs.length})</span>}
           </button>
           <button onClick={() => setTab('sensitive')}   style={tabStyle('sensitive')}>
-            Sensitive {personPPD.length > 0 && <span style={{ opacity: 0.6 }}>({personPPD.length})</span>}
+            Personal Data {personPPD.length > 0 && <span style={{ opacity: 0.6 }}>({personPPD.length})</span>}
           </button>
           <button onClick={() => setTab('profile')} style={tabStyle('profile')}>Profile</button>
         </div>
@@ -390,7 +390,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ padding: '8px 12px', background: '#f8717108', border: '1px solid #f8717125', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>🔒</span>
-              <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Sensitive data. Strict discretion required.</span>
+              <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Personal data. Handle with strict discretion.</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               {!addingPPD && <button onClick={() => setAddingPPD(true)} style={btnP}>+ Add Record</button>}
@@ -413,7 +413,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
               </AddFormShell>
             )}
             {personPPD.length === 0
-              ? <AdminEmptyState message='No sensitive records for this person.' />
+              ? <AdminEmptyState message='No personal data records for this person.' />
               : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {personPPD.map(entry => (
@@ -655,7 +655,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     { id: 'destinations', label: 'Destinations',  count: data.destinations.length },
     { id: 'contacts',     label: 'Contacts',      count: data.contacts.length },
     { id: 'requests',     label: 'Requests',      count: data.requests.length },
-    { id: 'sensitive',    label: 'Sensitive',     count: data.ppd.length },
+    { id: 'sensitive',    label: 'Personal Data',     count: data.ppd.length },
     { id: 'notes',        label: 'Notes' },
   ]
 
@@ -896,7 +896,7 @@ function SearchResults({ results, personRef, onClose }: {
       )}
       {results.ppd.length > 0 && (
         <div>
-          <AdminSection title='Sensitive' style={{ borderLeftColor: '#f8717150' }} />
+          <AdminSection title='Personal Data' style={{ borderLeftColor: '#f8717150' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
             {results.ppd.map(p => (
               <EntryCard key={p.id} danger>
@@ -1604,7 +1604,7 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ padding: '9px 14px', background: '#f8717108', border: '1px solid #f8717125', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span>🔒</span>
-        <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Sensitive personal data. Handle with strict discretion.</span>
+        <span style={{ fontSize: 11, color: '#f87171', fontFamily: A.font }}>Personal data. Handle with strict discretion.</span>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         {!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add Record</button>}
@@ -1629,7 +1629,7 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
         </AddFormShell>
       )}
       {data.ppd.length === 0
-        ? <AdminEmptyState message='No sensitive records yet.' />
+        ? <AdminEmptyState message='No personal data records yet.' />
         : Array.from(grouped.entries()).map(([key, rows]) => (
           <div key={key}>
             <AdminSection title={key === '__household__' ? 'Household' : personRef(rows[0].person_id) ?? 'Unknown'} style={{ borderLeftColor: '#f8717150' }} />
