@@ -4,6 +4,9 @@
  *
  * C is a stable mutable object. _setPalette() swaps values in place.
  * All C.* references in render functions pick up the current palette automatically.
+ *
+ * Last updated: S51 — DANGER consolidated in from tokensProgrammeColors.ts
+ *   (now deleted). One file for one product's colour tokens.
  */
 
 export interface Palette {
@@ -64,3 +67,9 @@ export function _setPalette(p: Palette): void {
 }
 
 export function useC(): Palette { return C }
+
+// ── Destructive / Danger ──────────────────────────────────────────────────────
+// Used for irreversible actions (delete, restore). Distinct from C.negative
+// (P&L loss in SPORTS-style displays).
+
+export const DANGER = '#ef4444'
