@@ -8,7 +8,10 @@
  *   < 768px (mobile): single column, horizontal pill nav, full-screen modal.
  *   >= 768px (desktop): two-panel layout, sticky sidebar nav.
  *
- * Last updated: S44 — refactor. Extracted section components + shared primitives.
+ * Last updated: S52 — PPD_KEYS removed (was inline at line 114, violation of
+ *   single-source rule). Now imported from typesPpd.ts as PPD_PEOPLE_KEYS,
+ *   aliased to PPD_KEYS locally to preserve all call sites.
+ * Prior: S44 — refactor. Extracted section components + shared primitives.
  *   Added Trip Dossier section (TripDossierSection) + adminTripQueries fetch.
  * Prior: S43 — Phase 4 redesign (useAdminToast, HouseCard, shared primitives).
  * Prior: S41 — Destinations + Contacts sections added.
@@ -50,6 +53,7 @@ import {
 import { TripDossierSection } from './TripDossierSection'
 import { RequestsSection } from './RequestsSection'
 import { fetchRequestsForHouse, type TravelRequest } from '../../queries/queriesAdminRequests'
+import { PPD_PEOPLE_KEYS as PPD_KEYS } from '../../types/typesPpd'
 
 // Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
 // They remain here because they are tightly coupled to AllData and house context.
@@ -111,16 +115,6 @@ const PREF_KEYS: Record<string, string[]> = {
   Service:       ['Salutation', 'Communication Style', 'Response Time Expectation', 'Point of Contact', 'Privacy Level', 'Photography Policy', 'Media Policy', 'Security Note', 'Gift Preference', 'Flowers', 'Home Scent', 'Fragrance Sensitivity', 'Anniversary', 'Occasion Note', 'VIP Protocol Note', 'Do Not Repeat', 'Staff Note'],
   Misc:          ['General Note', 'To Confirm', 'Open Item'],
 }
-
-const PPD_KEYS = [
-  'Date of Birth', 'Nationality', 'Passport Number', 'Passport Country',
-  'Passport Expiry', 'Passport Issue Date', 'Known Traveller Number',
-  'Global Entry', 'TSA PreCheck', 'Visa Notes',
-  'Frequent Flyer Program', 'Frequent Flyer Number',
-  'Hotel Loyalty Program', 'Hotel Loyalty Number',
-  'Mobile', 'Emergency Contact Name', 'Emergency Contact Mobile',
-  'Home Address', 'Dietary Medical Note',
-]
 
 const ROLES              = ['primary', 'spouse', 'partner', 'child', 'staff', 'other']
 const DEST_STATUSES: DestinationStatus[]     = ['visited', 'planned', 'avoided']

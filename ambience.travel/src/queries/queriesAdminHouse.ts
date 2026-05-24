@@ -7,20 +7,26 @@
 //   - Dining history CRUD (a_house_dininghistory)
 //   - Destinations CRUD (a_house_destinations)
 //   - Contacts CRUD (a_house_contacts)
-//   - PPD reads via Edge Function get-ppd (NOT direct table reads)
-//   - PPD writes: a_ppd_people + a_ppd_contacts (admin write, no direct read)
+//   - PPD reads via Edge Function a-get-ppd (NOT direct table reads)
+//   - PPD writes via Edge Function a-write-ppd (NOT direct table writes)
 //   - Profile link read (global_profiles.person_id)
 //
-// PPD read security model:
-//   a_ppd_people and a_ppd_contacts have no direct client read RLS policy.
-//   All reads go through the get-ppd Edge Function which verifies admin status
-//   server-side using the service role key.
-//   Writes (INSERT/DELETE) still go directly — the write RLS policy is admin-only.
+// PPD security model:
+//   a_ppd_people and a_ppd_contacts have no direct client read or write policy.
+//   All operations go through Edge Functions which verify admin status
+//   server-side using the service role key, validate data_key against the
+//   canonical PPD registries, and log every write with actor + action + id.
 //
-// Last updated: S40D — added destinations, contacts, a_ppd_* tables,
+// Last updated: S52 \u2014 PPD writes migrated to a-write-ppd Edge Function.
+//   The 4 direct .from('a_ppd_*') writes (createPPDPeopleEntry, deletePPDPeopleEntry,
+//   createPPDContactEntry, deletePPDContactEntry) replaced with a single
+//   writePpd() helper. Closes the highest-priority gap in the Client Data
+//   Edge Function Plan \u2014 PPD writes were previously RLS-only.
+// Prior: S40D \u2014 added destinations, contacts, a_ppd_* tables,
 //   Edge Function caller for PPD reads.
 
 import { supabase } from '../lib/supabase'
+import type { PpdPeopleKey, PpdContactKey } from '../types/typesPpd'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,7 +38,9 @@ export type DiningStatus     = 'favorite' | 'visited' | 'avoid' | 'to_try'
 export type DestinationStatus = 'visited' | 'planned' | 'avoided'
 export type DestinationTripType = 'family' | 'couple' | 'solo' | 'business' | 'other'
 export type ContactType      = 'pa' | 'driver' | 'fixer' | 'medical' | 'security' | 'concierge' | 'other'
-export type PPDContactKey    = 'Phone' | 'Email' | 'WhatsApp' | 'Address' | 'Other'
+
+// Back-compat alias \u2014 PpdContactKey is now canonical, lives in typesPpd.ts
+export type PPDContactKey = PpdContactKey
 
 export type PrefCategory =
   | 'Dining' | 'Accommodation' | 'Experiences' | 'Flight'
@@ -123,7 +131,7 @@ export interface HouseContact {
   updated_at:   string
 }
 
-// PPD types — returned by Edge Function, written directly
+// PPD types \u2014 returned by Edge Functions
 export interface PPDPeopleEntry {
   id:          string
   house_id:    string
@@ -139,7 +147,7 @@ export interface PPDContactEntry {
   id:          string
   house_id:    string
   contact_id:  string
-  data_key:    PPDContactKey
+  data_key:    PpdContactKey
   data_value:  string
   access_note: string | null
   created_at:  string
@@ -359,11 +367,13 @@ export async function deleteContact(id: string): Promise<void> {
   if (error) throw new Error(`Failed to delete contact: ${error.message}`)
 }
 
-// ── PPD reads — via Edge Function (never direct) ──────────────────────────────
+// ── PPD reads \u2014 via a-get-ppd Edge Function ──────────────────────────────────
 
-// Fetches both a_ppd_people and a_ppd_contacts for a house.
-// Passes the caller's JWT to the Edge Function for admin verification.
-// Optional person_id or contact_id to scope the response.
+/**
+ * Fetches both a_ppd_people and a_ppd_contacts for a house.
+ * Passes the caller's JWT to the Edge Function for admin verification.
+ * Optional person_id or contact_id to scope the response.
+ */
 export async function fetchPPDForHouse(
   houseId: string,
   opts: { personId?: string; contactId?: string } = {},
@@ -389,44 +399,100 @@ export async function fetchPPDForHouse(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(`get-ppd failed: ${err.error ?? res.statusText}`)
+    throw new Error(`a-get-ppd failed: ${err.error ?? res.statusText}`)
   }
 
   return res.json() as Promise<PPDResponse>
 }
 
-// ── PPD writes — direct to a_ppd_people (admin write RLS) ────────────────────
+// ── PPD writes \u2014 via a-write-ppd Edge Function ─────────────────────────────
+
+/**
+ * Single dispatcher for all PPD writes. Replaces the 4 direct table-write
+ * helpers (createPPDPeopleEntry, deletePPDPeopleEntry, createPPDContactEntry,
+ * deletePPDContactEntry). The Edge Function verifies admin, validates
+ * data_key against canonical PPD registries, and logs every write.
+ *
+ * Returns inserted row on insert, void on delete.
+ */
+type WritePpdBody =
+  | { action: 'insert'; table: 'people';   payload: { house_id: string; person_id: string | null; data_key: string;       data_value: string; access_note: string | null } }
+  | { action: 'insert'; table: 'contacts'; payload: { house_id: string; contact_id:  string;      data_key: PpdContactKey; data_value: string; access_note: string | null } }
+  | { action: 'delete'; table: 'people'   | 'contacts'; payload: { id: string } }
+
+async function writePpd<T extends WritePpdBody>(body: T): Promise<unknown> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No active session')
+
+  const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl
+    ?? import.meta.env.VITE_SUPABASE_URL
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/a-write-ppd`, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(`a-write-ppd failed: ${err.error ?? res.statusText}`)
+  }
+
+  return res.json()
+}
+
+// ── PPD write helpers \u2014 same signatures as before, now Edge-Function-backed ──
+// Existing callers in HouseTab.tsx work without changes.
 
 export async function createPPDPeopleEntry(
   houseId: string, personId: string | null,
   dataKey: string, dataValue: string, accessNote: string | null,
 ): Promise<void> {
-  const { error } = await supabase.from('a_ppd_people').insert({
-    house_id: houseId, person_id: personId,
-    data_key: dataKey, data_value: dataValue, access_note: accessNote,
+  await writePpd({
+    action:  'insert',
+    table:   'people',
+    payload: {
+      house_id:    houseId,
+      person_id:   personId,
+      data_key:    dataKey,
+      data_value:  dataValue,
+      access_note: accessNote,
+    },
   })
-  if (error) throw new Error(`Failed to create PPD entry: ${error.message}`)
 }
 
 export async function deletePPDPeopleEntry(id: string): Promise<void> {
-  const { error } = await supabase.from('a_ppd_people').delete().eq('id', id)
-  if (error) throw new Error(`Failed to delete PPD entry: ${error.message}`)
+  await writePpd({
+    action:  'delete',
+    table:   'people',
+    payload: { id },
+  })
 }
-
-// ── PPD writes — direct to a_ppd_contacts (admin write RLS) ──────────────────
 
 export async function createPPDContactEntry(
   houseId: string, contactId: string,
-  dataKey: PPDContactKey, dataValue: string, accessNote: string | null,
+  dataKey: PpdContactKey, dataValue: string, accessNote: string | null,
 ): Promise<void> {
-  const { error } = await supabase.from('a_ppd_contacts').insert({
-    house_id: houseId, contact_id: contactId,
-    data_key: dataKey, data_value: dataValue, access_note: accessNote,
+  await writePpd({
+    action:  'insert',
+    table:   'contacts',
+    payload: {
+      house_id:    houseId,
+      contact_id:  contactId,
+      data_key:    dataKey,
+      data_value:  dataValue,
+      access_note: accessNote,
+    },
   })
-  if (error) throw new Error(`Failed to create PPD contact entry: ${error.message}`)
 }
 
 export async function deletePPDContactEntry(id: string): Promise<void> {
-  const { error } = await supabase.from('a_ppd_contacts').delete().eq('id', id)
-  if (error) throw new Error(`Failed to delete PPD contact entry: ${error.message}`)
+  await writePpd({
+    action:  'delete',
+    table:   'contacts',
+    payload: { id },
+  })
 }
