@@ -24,6 +24,7 @@ export const supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON, {
     persistSession:    false,
     autoRefreshToken:  false,
     detectSessionInUrl: false,
+    storageKey:        'sb-anon',
   },
   global: {
     headers: {
