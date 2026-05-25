@@ -7,6 +7,14 @@
 //
 // Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
 //
+// S52 — All read and write paths routed through Edge Functions.
+//   travel-read-trip-admin: all 7 read paths.
+//   travel-write-trip: all 11 mutation paths + derive_itinerary orchestration.
+//   No direct supabase table reads or writes remain in this file.
+//   supabase (session client) used for all EF calls — JWT attached automatically.
+//   autoDeriveTripItinerary now fires a single EF call (derive_itinerary mode)
+//   replacing the prior multi-round-trip client-side loop.
+//
 // Last updated: S50 — TripBrief gains show_advisor_email. Mirrors migration
 //   s50_add_show_advisor_email. Gates advisor_email visibility on public
 //   Contacts tab, alongside the existing show_advisor_phone toggle.
@@ -59,25 +67,25 @@ export type JourneyStep = {
 }
 
 export type TripBrief = {
-  id:                   string
-  trip_id:              string
-  house_id:             string | null
-  brief_title:          string | null
-  brief_subtitle:       string | null
-  prepared_for:         string | null
-  hero_image_src:       string | null
-  hero_image_alt:       string | null
-  snapshot_destination: string | null
-  snapshot_dates:       string | null
-  snapshot_guests:      string | null
-  snapshot_status:      string | null
-  journey_steps:        JourneyStep[]
-  advisor_name:         string | null
-  advisor_email:        string | null
-  advisor_phone:        string | null
-  hotel_contact_note:   string | null
-  important_notes:      string[]
-  footer_tagline:       string | null
+  id:                    string
+  trip_id:               string
+  house_id:              string | null
+  brief_title:           string | null
+  brief_subtitle:        string | null
+  prepared_for:          string | null
+  hero_image_src:        string | null
+  hero_image_alt:        string | null
+  snapshot_destination:  string | null
+  snapshot_dates:        string | null
+  snapshot_guests:       string | null
+  snapshot_status:       string | null
+  journey_steps:         JourneyStep[]
+  advisor_name:          string | null
+  advisor_email:         string | null
+  advisor_phone:         string | null
+  hotel_contact_note:    string | null
+  important_notes:       string[]
+  footer_tagline:        string | null
   logo_variant:          string | null
   programme_show_images: boolean
   welcome_letter:        string | null
@@ -86,7 +94,7 @@ export type TripBrief = {
   show_tab_brief:        boolean
   show_tab_contacts:     boolean
   show_advisor_phone:    boolean
-  show_advisor_email:    boolean   // S50 — gate advisor_email on public Contacts tab
+  show_advisor_email:    boolean
   links:                 { label: string; url: string }[]
   programme_notes:       string | null
   created_at:            string
@@ -144,24 +152,22 @@ export type TripAuxBooking = {
   destination:         string | null
   notes:               string | null
   guest_label:         string | null
-  booked_by:           string | null   // S48 — migration added this column
+  booked_by:           string | null
   brief_show:          boolean
   sort_order:          number
-  // S50 — flight-specific columns. Populated only when isFlightType(booking_type).
-  airline_supplier_id: string | null   // FK travel_suppliers.id
-  airline_name:        string | null   // Free-text override / display fallback
-  flight_number:       string | null   // e.g. "BA 123", "EK 201"
-  depart_airport:      string | null   // IATA (3) or ICAO (4) — uppercase alpha
-  arrive_airport:      string | null   // IATA (3) or ICAO (4) — uppercase alpha
-  cabin_class:         string | null   // CABIN_CLASSES enum
-  seat_numbers:        string | null   // Free text — e.g. "12A, 12B, 12C"
-  seat_type:           string | null   // SEAT_TYPES enum
-  aircraft_type:       string | null   // AIRCRAFT_TYPES registry value
+  airline_supplier_id: string | null
+  airline_name:        string | null
+  flight_number:       string | null
+  depart_airport:      string | null
+  arrive_airport:      string | null
+  cabin_class:         string | null
+  seat_numbers:        string | null
+  seat_type:           string | null
+  aircraft_type:       string | null
   created_at:          string
   updated_at:          string
 }
 
-// TripAuxBookingPatch inherits booked_by automatically via Partial<Omit<...>>
 export type TripAuxBookingPatch = Partial<Omit<TripAuxBooking, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
 
 export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
@@ -180,7 +186,7 @@ export type BookingRoom = {
   total:               number | null
   brief_image_src:     string | null
   additional_guests:   string[] | null
-  booked_by_label:     string | null   // S47 — free-text override e.g. "Booked by Deron"
+  booked_by_label:     string | null
   sort_order:          number
   created_at:          string
   updated_at:          string
@@ -189,62 +195,62 @@ export type BookingRoom = {
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>
 
 export type TripBooking = {
-  id:                     string
-  trip_id:                string
-  house_id:               string | null
-  engagement_id:          string | null
-  booking_type:           string | null
-  name:                   string | null
-  status:                 string | null
-  confirmation_number:    string | null
-  start_date:             string | null
-  end_date:               string | null
-  nights:                 number | null
-  commissionable_rate:    number | null
-  total_rate:             number | null
-  taxes_and_fees:         number | null
-  currency:               string | null
-  rate_type:              string | null
-  inclusions:             string | null
-  price:                  number | null
-  deposit_amount:         number | null
-  deposit_due_date:       string | null
-  deposit_paid_at:        string | null
-  balance_amount:         number | null
-  balance_due_date:       string | null
-  balance_paid_at:        string | null
-  commission_pct:         number | null
-  commission_amount:      number | null
-  net_revenue:            number | null
-  commission_paid_at:     string | null
-  invoice_number:         string | null
-  iata_partner_id:        string | null
-  iata_share_pct:         number | null
-  iata_share_amt:         number | null
-  referral_partner_id:    string | null
-  referral_share_pct:     number | null
-  referral_share_amt:     number | null
-  individual_id:          string | null
-  individual_share_pct:   number | null
-  individual_share_amt:   number | null
-  accom_hotel_id:         string | null
-  supplier_id:            string | null
-  supplier_name_override: string | null
+  id:                        string
+  trip_id:                   string
+  house_id:                  string | null
+  engagement_id:             string | null
+  booking_type:              string | null
+  name:                      string | null
+  status:                    string | null
+  confirmation_number:       string | null
+  start_date:                string | null
+  end_date:                  string | null
+  nights:                    number | null
+  commissionable_rate:       number | null
+  total_rate:                number | null
+  taxes_and_fees:            number | null
+  currency:                  string | null
+  rate_type:                 string | null
+  inclusions:                string | null
+  price:                     number | null
+  deposit_amount:            number | null
+  deposit_due_date:          string | null
+  deposit_paid_at:           string | null
+  balance_amount:            number | null
+  balance_due_date:          string | null
+  balance_paid_at:           string | null
+  commission_pct:            number | null
+  commission_amount:         number | null
+  net_revenue:               number | null
+  commission_paid_at:        string | null
+  invoice_number:            string | null
+  iata_partner_id:           string | null
+  iata_share_pct:            number | null
+  iata_share_amt:            number | null
+  referral_partner_id:       string | null
+  referral_share_pct:        number | null
+  referral_share_amt:        number | null
+  individual_id:             string | null
+  individual_share_pct:      number | null
+  individual_share_amt:      number | null
+  accom_hotel_id:            string | null
+  supplier_id:               string | null
+  supplier_name_override:    string | null
   party_composition:         string | null
   primary_contact_name:      string | null
   primary_contact_role:      string | null
   supplier_contact_name:     string | null
   supplier_contact_whatsapp: string | null
-  brief_category:  string | null
-  brief_show:      boolean
-  brief_image_src: string | null
-  booked_by:       string | null
-  cancellation_policy:    string | null
-  booking_policy:         string | null
-  notes:                  string | null
-  sort_order:             number | null
-  created_at:             string | null
-  updated_at:             string | null
+  brief_category:            string | null
+  brief_show:                boolean
+  brief_image_src:           string | null
+  booked_by:                 string | null
+  cancellation_policy:       string | null
+  booking_policy:            string | null
+  notes:                     string | null
+  sort_order:                number | null
+  created_at:                string | null
+  updated_at:                string | null
   // Client-resolved
   _hotel_name:      string | null
   _hotel_image_src: string | null
@@ -264,7 +270,7 @@ export type DossierTrip = {
   guest_count_children: number | null
   bookings:             TripBooking[]
   brief:                TripBrief | null
-  url_id:               string | null   // from travel_immerse_engagements — first engagement for this trip
+  url_id:               string | null
 }
 
 export type TripDossierData = {
@@ -273,115 +279,65 @@ export type TripDossierData = {
   house:    HouseProfile | null
 }
 
-// ── Raw row shapes ────────────────────────────────────────────────────────────
+// ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
-type BookingTripRow = { trip_id: string }
-type TripRow        = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
-type BookingRow     = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>
-type HotelRow       = { id: string; name: string; hero_image_src: string | null }
-type PartnerRow     = TripPartner
-type HouseRow       = HouseProfile
-type BriefRow       = TripBrief
-type RoomRow        = BookingRoom
-type TripDestRow    = { id: string; trip_id: string; destination_id: string; sort_order: number; global_destinations: { slug: string; name: string; storage_path: string | null; hero_image_src: string | null } | { slug: string; name: string; storage_path: string | null; hero_image_src: string | null }[] }
+type TripRow     = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
+type BookingRow  = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>
+type HotelEntry  = { name: string; hero_image_src: string | null }
+type BriefRow    = TripBrief
+type RoomRow     = BookingRoom
+type TripDestRow = { id: string; trip_id: string; destination_id: string; sort_order: number; global_destinations: { slug: string; name: string; storage_path: string | null; hero_image_src: string | null } | { slug: string; name: string; storage_path: string | null; hero_image_src: string | null }[] }
+type EngRow      = { trip_id: string; url_id: string }
+
+// ── EF invoke helpers ─────────────────────────────────────────────────────────
+// supabase (session client) attaches the JWT automatically on every call.
+// Never use supabaseAnon here — these are admin-only operations.
+
+async function invokeReadTrip<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-trip-admin', { body })
+  if (error) throw new Error(`travel-read-trip-admin [${body.mode}]: ${error.message}`)
+  return data as T
+}
+
+async function invokeWriteTrip<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-write-trip', { body })
+  if (error) throw new Error(`travel-write-trip [${body.mode}]: ${error.message}`)
+  return data as T
+}
 
 // ── Main dossier query ────────────────────────────────────────────────────────
 
 export async function fetchTripDossierForHouse(houseId: string): Promise<TripDossierData> {
-  const { data: bookTripData, error: bookTripErr } = await supabase
-    .from('travel_bookings')
-    .select('trip_id')
-    .eq('house_id', houseId)
-    .not('trip_id', 'is', null)
+  const raw = await invokeReadTrip<{
+    tripRows:    TripRow[]
+    bookingRows: BookingRow[]
+    hotelMap:    Record<string, HotelEntry>
+    partners:    TripPartner[]
+    house:       HouseProfile | null
+    briefs:      BriefRow[]
+    rooms:       RoomRow[]
+    dests:       TripDestRow[]
+    engagements: EngRow[]
+  }>({ mode: 'dossier', house_id: houseId })
 
-  if (bookTripErr) throw new Error(bookTripErr.message)
-  const bookTripRows = (bookTripData ?? []) as BookingTripRow[]
-  if (bookTripRows.length === 0) return { trips: [], partners: {}, house: null }
+  const { tripRows, bookingRows, hotelMap, partners, house, briefs, rooms, dests, engagements } = raw
 
-  const tripIds = [...new Set(bookTripRows.map(r => r.trip_id))]
+  if (!tripRows || tripRows.length === 0) return { trips: [], partners: {}, house: null }
 
-  const { data: tripData, error: tripErr } = await supabase
-    .from('travel_trips')
-    .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
-    .in('id', tripIds)
-    .order('start_date', { ascending: false })
-
-  if (tripErr) throw new Error(tripErr.message)
-  const tripRows = (tripData ?? []) as TripRow[]
-  if (tripRows.length === 0) return { trips: [], partners: {}, house: null }
-
-  const { data: bookData, error: bookErr } = await supabase
-    .from('travel_bookings')
-    .select('id, trip_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
-    .eq('house_id', houseId)
-    .order('sort_order', { ascending: true })
-
-  if (bookErr) throw new Error(bookErr.message)
-  const bookingRows = (bookData ?? []) as BookingRow[]
-
-  const hotelIds = [...new Set(bookingRows.map(b => b.accom_hotel_id).filter((id): id is string => !!id))]
-  const hotelMap = new Map<string, { name: string; hero_image_src: string | null }>()
-  if (hotelIds.length > 0) {
-    const { data: hotelData } = await supabase
-      .from('travel_accom_hotels')
-      .select('id, name, hero_image_src')
-      .in('id', hotelIds)
-    for (const h of (hotelData ?? []) as HotelRow[]) {
-      hotelMap.set(h.id, { name: h.name, hero_image_src: h.hero_image_src })
-    }
-  }
-
-  const bookingIds = bookingRows.map(b => b.id)
-
-  const [partnerResult, houseResult, briefResult, roomResult, destResult, engResult] = await Promise.all([
-    supabase
-      .from('travel_partners')
-      .select('id, name, partner_type, default_share_pct, currency, is_active'),
-    supabase
-      .from('a_houses')
-      .select('id, display_name, salutation_rule, travel_style_notes, avoid_notes, service_notes')
-      .eq('id', houseId)
-      .single(),
-    supabase
-      .from('travel_trip_briefs')
-      .select('*')
-      .in('trip_id', tripIds),
-    bookingIds.length > 0
-      ? supabase
-          .from('travel_booking_rooms')
-          .select('*')
-          .in('booking_id', bookingIds)
-          .order('sort_order', { ascending: true })
-      : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from('travel_trip_destinations')
-      .select('id, trip_id, destination_id, sort_order, global_destinations!travel_trip_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
-      .in('trip_id', tripIds)
-      .order('sort_order', { ascending: true }),
-    supabase
-      .from('travel_immerse_engagements')
-      .select('trip_id, url_id')
-      .in('trip_id', tripIds)
-      .not('trip_id', 'is', null),
-  ])
-
-  if (partnerResult.error) throw new Error(partnerResult.error.message)
   const partnerMap: Record<string, TripPartner> = {}
-  for (const p of (partnerResult.data ?? []) as PartnerRow[]) partnerMap[p.id] = p
-
-  const house = houseResult.data ? (houseResult.data as HouseRow) : null
+  for (const p of partners) partnerMap[p.id] = p
 
   const briefMap = new Map<string, TripBrief>()
-  for (const br of (briefResult.data ?? []) as BriefRow[]) briefMap.set(br.trip_id, br)
+  for (const br of briefs) briefMap.set(br.trip_id, br)
 
   const roomsByBooking = new Map<string, BookingRoom[]>()
-  for (const r of (roomResult.data ?? []) as RoomRow[]) {
+  for (const r of rooms) {
     if (!roomsByBooking.has(r.booking_id)) roomsByBooking.set(r.booking_id, [])
     roomsByBooking.get(r.booking_id)!.push(r)
   }
 
   const destsByTrip = new Map<string, TripDestination[]>()
-  for (const row of ((destResult.data ?? []) as unknown as TripDestRow[])) {
+  for (const row of dests) {
     if (!destsByTrip.has(row.trip_id)) destsByTrip.set(row.trip_id, [])
     const gdRaw = row.global_destinations
     const gd = Array.isArray(gdRaw) ? gdRaw[0] : gdRaw
@@ -400,7 +356,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   const bookingsByTrip = new Map<string, TripBooking[]>()
   for (const b of bookingRows) {
     if (!bookingsByTrip.has(b.trip_id)) bookingsByTrip.set(b.trip_id, [])
-    const hotel = b.accom_hotel_id ? (hotelMap.get(b.accom_hotel_id) ?? null) : null
+    const hotel = b.accom_hotel_id ? (hotelMap[b.accom_hotel_id] ?? null) : null
     bookingsByTrip.get(b.trip_id)!.push({
       ...b,
       _hotel_name:      hotel?.name ?? null,
@@ -409,9 +365,8 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
     })
   }
 
-  // url_id from travel_immerse_engagements — first engagement per trip
   const urlIdByTrip = new Map<string, string>()
-  for (const row of ((engResult.data ?? []) as { trip_id: string; url_id: string }[])) {
+  for (const row of engagements) {
     if (!urlIdByTrip.has(row.trip_id)) urlIdByTrip.set(row.trip_id, row.url_id)
   }
 
@@ -434,273 +389,150 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   return { trips, partners: partnerMap, house }
 }
 
-// ── Brief CRUD ────────────────────────────────────────────────────────────────
+// ── Brief read ────────────────────────────────────────────────────────────────
 
 export async function fetchTripBrief(tripId: string): Promise<TripBrief | null> {
-  const { data, error } = await supabase
-    .from('travel_trip_briefs')
-    .select('*')
-    .eq('trip_id', tripId)
-    .maybeSingle()
-  if (error) throw new Error(error.message)
-  return data ? (data as TripBrief) : null
+  const { brief } = await invokeReadTrip<{ brief: TripBrief | null }>({
+    mode: 'brief', trip_id: tripId,
+  })
+  return brief
 }
 
+// ── Rooms read ────────────────────────────────────────────────────────────────
+
+export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[]> {
+  const { rooms } = await invokeReadTrip<{ rooms: BookingRoom[] }>({
+    mode: 'rooms', booking_id: bookingId,
+  })
+  return rooms
+}
+
+// ── Days read ─────────────────────────────────────────────────────────────────
+
+export async function fetchTripDays(tripId: string): Promise<TripDay[]> {
+  const { days } = await invokeReadTrip<{ days: TripDay[] }>({
+    mode: 'days', trip_id: tripId,
+  })
+  return days
+}
+
+// ── Day entries read ──────────────────────────────────────────────────────────
+
+export async function fetchTripDayEntries(tripId: string): Promise<TripDayEntry[]> {
+  const { dayEntries } = await invokeReadTrip<{ dayEntries: TripDayEntry[] }>({
+    mode: 'day_entries', trip_id: tripId,
+  })
+  return dayEntries
+}
+
+// ── Aux bookings read ─────────────────────────────────────────────────────────
+
+export async function fetchTripAuxBookings(tripId: string): Promise<TripAuxBooking[]> {
+  const { auxBookings } = await invokeReadTrip<{ auxBookings: TripAuxBooking[] }>({
+    mode: 'aux_bookings', trip_id: tripId,
+  })
+  return auxBookings
+}
+
+// ── Public view read ──────────────────────────────────────────────────────────
+
+export async function fetchEngagementPublicView(tripId: string): Promise<boolean> {
+  const { publicView } = await invokeReadTrip<{ publicView: boolean }>({
+    mode: 'public_view', trip_id: tripId,
+  })
+  return publicView
+}
+
+// ── Brief write ───────────────────────────────────────────────────────────────
+
 export async function upsertTripBrief(tripId: string, houseId: string, patch: TripBriefPatch): Promise<TripBrief> {
-  const { data, error } = await supabase
-    .from('travel_trip_briefs')
-    .upsert({ trip_id: tripId, house_id: houseId, ...patch }, { onConflict: 'trip_id' })
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as TripBrief
+  const { brief } = await invokeWriteTrip<{ brief: TripBrief }>({
+    mode: 'upsert_brief', trip_id: tripId, house_id: houseId, patch,
+  })
+  return brief
 }
 
 export async function updateBookingBriefFields(
   bookingId: string,
-  patch: { brief_category?: string | null; brief_show?: boolean; brief_image_src?: string | null; booked_by?: string | null }
+  patch: { brief_category?: string | null; brief_show?: boolean; brief_image_src?: string | null; booked_by?: string | null },
 ): Promise<void> {
-  const { error } = await supabase.from('travel_bookings').update(patch).eq('id', bookingId)
-  if (error) throw new Error(error.message)
+  await invokeWriteTrip({ mode: 'update_booking_brief', booking_id: bookingId, patch })
 }
 
 // ── Room CRUD ─────────────────────────────────────────────────────────────────
 
-export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[]> {
-  const { data, error } = await supabase
-    .from('travel_booking_rooms')
-    .select('*')
-    .eq('booking_id', bookingId)
-    .order('sort_order', { ascending: true })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as BookingRoom[]
-}
-
 export async function createBookingRoom(bookingId: string, patch: BookingRoomPatch): Promise<BookingRoom> {
-  const { data, error } = await supabase
-    .from('travel_booking_rooms')
-    .insert({ booking_id: bookingId, ...patch })
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as BookingRoom
+  const { room } = await invokeWriteTrip<{ room: BookingRoom }>({
+    mode: 'create_room', booking_id: bookingId, patch,
+  })
+  return room
 }
 
 export async function updateBookingRoom(roomId: string, patch: BookingRoomPatch): Promise<BookingRoom> {
-  const { data, error } = await supabase
-    .from('travel_booking_rooms')
-    .update(patch)
-    .eq('id', roomId)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as BookingRoom
+  const { room } = await invokeWriteTrip<{ room: BookingRoom }>({
+    mode: 'update_room', room_id: roomId, patch,
+  })
+  return room
 }
 
 export async function deleteBookingRoom(roomId: string): Promise<void> {
-  const { error } = await supabase.from('travel_booking_rooms').delete().eq('id', roomId)
-  if (error) throw new Error(error.message)
+  await invokeWriteTrip({ mode: 'delete_room', room_id: roomId })
 }
 
-// ── Aux booking CRUD ──────────────────────────────────────────────────────────
+// ── Aux booking write ─────────────────────────────────────────────────────────
 
 export async function updateTripAuxBooking(id: string, patch: TripAuxBookingPatch): Promise<TripAuxBooking> {
-  const { data, error } = await supabase
-    .from('travel_trip_aux_bookings')
-    .update(patch)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as TripAuxBooking
+  const { auxBooking } = await invokeWriteTrip<{ auxBooking: TripAuxBooking }>({
+    mode: 'update_aux_booking', id, patch,
+  })
+  return auxBooking
 }
 
 // ── Itinerary CRUD ────────────────────────────────────────────────────────────
 
-export async function fetchTripDays(tripId: string): Promise<TripDay[]> {
-  const { data, error } = await supabase
-    .from('travel_trip_days')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('entry_date', { ascending: true })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as TripDay[]
-}
-
-export async function fetchTripDayEntries(tripId: string): Promise<TripDayEntry[]> {
-  const { data, error } = await supabase
-    .from('travel_trip_day_entries')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('entry_date', { ascending: true })
-    .order('sort_order', { ascending: true })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as TripDayEntry[]
-}
-
-export async function fetchTripAuxBookings(tripId: string): Promise<TripAuxBooking[]> {
-  const { data, error } = await supabase
-    .from('travel_trip_aux_bookings')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('sort_order', { ascending: true })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as TripAuxBooking[]
-}
-
 export async function upsertTripDay(tripId: string, date: string, patch: TripDayPatch): Promise<TripDay> {
-  const { data, error } = await supabase
-    .from('travel_trip_days')
-    .upsert({ trip_id: tripId, entry_date: date, ...patch }, { onConflict: 'trip_id,entry_date' })
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as TripDay
+  const { day } = await invokeWriteTrip<{ day: TripDay }>({
+    mode: 'upsert_day', trip_id: tripId, entry_date: date, patch,
+  })
+  return day
 }
 
 export async function createTripDayEntry(tripId: string, entry: Omit<TripDayEntry, 'id' | 'created_at' | 'updated_at'>): Promise<TripDayEntry> {
-  const { data, error } = await supabase
-    .from('travel_trip_day_entries')
-    .insert({ ...entry, trip_id: tripId })
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as TripDayEntry
+  const { dayEntry } = await invokeWriteTrip<{ dayEntry: TripDayEntry }>({
+    mode: 'create_day_entry', trip_id: tripId, entry,
+  })
+  return dayEntry
 }
 
 export async function updateTripDayEntry(id: string, patch: TripDayEntryPatch): Promise<TripDayEntry> {
-  const { data, error } = await supabase
-    .from('travel_trip_day_entries')
-    .update(patch)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as TripDayEntry
+  const { dayEntry } = await invokeWriteTrip<{ dayEntry: TripDayEntry }>({
+    mode: 'update_day_entry', id, patch,
+  })
+  return dayEntry
 }
 
 export async function deleteTripDayEntry(id: string): Promise<void> {
-  const { error } = await supabase.from('travel_trip_day_entries').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  await invokeWriteTrip({ mode: 'delete_day_entry', id })
 }
+
+// ── autoDeriveTripItinerary — single EF call ──────────────────────────────────
+// Server-side orchestration via derive_itinerary mode.
+// Replaces the prior client-side loop — one network call regardless of trip
+// length. Partial derives are no longer possible.
 
 export async function autoDeriveTripItinerary(
   trip: DossierTrip,
   auxBookings: TripAuxBooking[],
 ): Promise<{ days: TripDay[]; entries: TripDayEntry[] }> {
   if (!trip.start_date || !trip.end_date) return { days: [], entries: [] }
-
-  const dates: string[] = []
-  const cursor = new Date(trip.start_date + 'T00:00:00')
-  const end    = new Date(trip.end_date   + 'T00:00:00')
-  while (cursor <= end) {
-    dates.push(cursor.toISOString().slice(0, 10))
-    cursor.setDate(cursor.getDate() + 1)
-  }
-
-  const dayPromises = dates.map((date, i) =>
-    upsertTripDay(trip.id, date, { sort_order: i, show: true })
-  )
-  const days = await Promise.all(dayPromises)
-
-  const entries: TripDayEntry[] = []
-
-  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
-    if (b.start_date && b.booking_type === 'Hotel') {
-      const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
-      const checkIn = await createTripDayEntry(trip.id, {
-        entry_date:          b.start_date,
-        start_time:          null,
-        end_time:            null,
-        title:               `Check-in \u2014 ${hotelName}`,
-        subtitle:            b.name ?? null,
-        category:            'Hotel',
-        booked_by:           b.booked_by ?? 'ambience',
-        confirmation_number: b.confirmation_number,
-        guest_label:         null,
-        notes:               b.inclusions ?? null,
-        brief_show:          true,
-        sort_order:          10,
-        is_auto_derived:     true,
-        source_booking_id:   b.id,
-        source_aux_id:       null,
-        trip_id:             trip.id,
-      })
-      entries.push(checkIn)
-
-      if (b.end_date) {
-        const checkOut = await createTripDayEntry(trip.id, {
-          entry_date:          b.end_date,
-          start_time:          null,
-          end_time:            null,
-          title:               `Check-out \u2014 ${hotelName}`,
-          subtitle:            null,
-          category:            'Hotel',
-          booked_by:           b.booked_by ?? 'ambience',
-          confirmation_number: b.confirmation_number,
-          guest_label:         null,
-          notes:               null,
-          brief_show:          true,
-          sort_order:          90,
-          is_auto_derived:     true,
-          source_booking_id:   b.id,
-          source_aux_id:       null,
-          trip_id:             trip.id,
-        })
-        entries.push(checkOut)
-      }
-    }
-  }
-
-  for (const aux of auxBookings) {
-    if (!aux.start_date) continue
-    const catIcon = aux.booking_type ?? 'Other'
-    const entry = await createTripDayEntry(trip.id, {
-      entry_date:          aux.start_date,
-      start_time:          aux.start_time,
-      end_time:            aux.end_time,
-      title:               aux.name ?? catIcon,
-      subtitle:            aux.origin && aux.destination ? `${aux.origin} \u2192 ${aux.destination}` : null,
-      category:            catIcon,
-      booked_by:           aux.booked_by ?? 'Own Arrangements',
-      confirmation_number: aux.confirmation_number,
-      guest_label:         aux.guest_label,
-      notes:               aux.notes,
-      brief_show:          true,
-      sort_order:          aux.start_time ? parseInt(aux.start_time.replace(':', ''), 10) : 50,
-      is_auto_derived:     true,
-      source_booking_id:   null,
-      source_aux_id:       aux.id,
-      trip_id:             trip.id,
-    })
-    entries.push(entry)
-  }
-
+  const { days, entries } = await invokeWriteTrip<{ days: TripDay[]; entries: TripDayEntry[] }>({
+    mode: 'derive_itinerary', trip, aux_bookings: auxBookings,
+  })
   return { days, entries }
 }
 
-// ── Append these two functions to the end of src/queries/queriesAdminTrip.ts ──
-// They share the same `supabase` import already present in that file.
-
 // ── Engagement public_view toggle ─────────────────────────────────────────────
-// S48 — Admin toggle for whether an engagement is visible to public anon
-// clients via the get-engagement-stage Edge Function. Default false at the
-// DB level; admin flips per engagement from the BriefEditorPage Cover section.
-
-export async function fetchEngagementPublicView(tripId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('travel_immerse_engagements')
-    .select('public_view')
-    .eq('trip_id', tripId)
-    .single()
-  if (error || !data) return false
-  return !!data.public_view
-}
 
 export async function setEngagementPublicView(tripId: string, publicView: boolean): Promise<void> {
-  const { error } = await supabase
-    .from('travel_immerse_engagements')
-    .update({ public_view: publicView })
-    .eq('trip_id', tripId)
-  if (error) throw error
+  await invokeWriteTrip({ mode: 'set_public_view', trip_id: tripId, public_view: publicView })
 }
