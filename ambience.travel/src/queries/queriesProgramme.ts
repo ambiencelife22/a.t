@@ -12,7 +12,10 @@
  *
  * DO NOT import supabase directly in components — always go through this file.
  *
- * Last updated: S23 — Renamed programme_guests → travel_programme_guests and
+* Last updated: S53 — GuestProgramme.programmeType narrowed to 'stay' only.
+ *   Journey programme surface retired (superseded by ImmerseTripPage +
+ *   Programme tab). S23 entry preserved below.
+ * Prior: S23 — Renamed programme_guests → travel_programme_guests and
  *   programmes → travel_programme_master with nested properties:travel_programme_properties
  *   alias to align with S17 table convention. support_tickets unchanged
  *   (cross-product table, not migrated).
@@ -32,7 +35,7 @@ export interface TravelProfile {
 export interface GuestProgramme {
   id:            string
   urlId:         string
-  programmeType: 'stay' | 'journey'
+  programmeType: 'stay'
   subPath:       string
   status:        string
   guestNames:    string
@@ -182,7 +185,7 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
       return {
         id:            p.id,
         urlId:         p.url_id,
-        programmeType: p.programme_type as 'stay' | 'journey',
+        programmeType: p.programme_type as 'stay',
         subPath:       p.sub_path,
         status:        p.status,
         guestNames:    p.guest_names,

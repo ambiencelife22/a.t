@@ -127,7 +127,7 @@ export default function ProgrammeList() {
                     textTransform: 'uppercase', color: C.gold,
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}>
-                    {p.programmeType === 'journey' ? 'Journey' : 'Stay'}
+                    Stay
                   </span>
                   <span style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',

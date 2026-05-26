@@ -78,10 +78,6 @@ function programmeProgrammeUrl(p: GuestProgramme): string {
   return `${base}/${p.subPath}/${p.urlId}`
 }
 
-function typeLabel(p: GuestProgramme): string {
-  return p.programmeType === 'journey' ? 'Journey' : 'Stay'
-}
-
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: string }) {
@@ -173,7 +169,7 @@ function ActiveCard({ p }: { p: GuestProgramme }) {
           color:         C.gold,
           fontFamily:    "'Plus Jakarta Sans', sans-serif",
         }}>
-          {typeLabel(p)}
+          Stay
         </span>
         <span style={{
           fontSize:      10,
@@ -294,7 +290,7 @@ function NextCard({ p }: { p: GuestProgramme }) {
         fontFamily:    "'Plus Jakarta Sans', sans-serif",
         marginBottom:  12,
       }}>
-        {typeLabel(p)}
+        Stay
       </div>
 
       {/* Property name */}
@@ -429,7 +425,7 @@ function PastRow({ p }: { p: GuestProgramme }) {
         fontFamily:    "'Plus Jakarta Sans', sans-serif",
         flexShrink:    0,
       }}>
-        {typeLabel(p)} →
+        Stay →
       </div>
     </a>
   )

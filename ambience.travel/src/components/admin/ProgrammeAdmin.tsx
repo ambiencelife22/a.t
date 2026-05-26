@@ -562,10 +562,9 @@ export function ProgrammesTab() {
               <select
                 style={inputStyle}
                 value={form.programme_type}
-                onChange={e => setForm(f => ({ ...f, programme_type: e.target.value, sub_path: e.target.value === 'stay' ? 'stays' : e.target.value === 'journey' ? 'journeys' : e.target.value }))}
+                onChange={e => setForm(f => ({ ...f, programme_type: e.target.value, sub_path: e.target.value === 'stay' ? 'stays' : e.target.value }))}
               >
                 <option value='stay'>Stay</option>
-                <option value='journey'>Journey</option>
                 <option value='concierge'>Concierge</option>
               </select>
             </Field>

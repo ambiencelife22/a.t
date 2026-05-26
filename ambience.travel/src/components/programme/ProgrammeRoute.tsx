@@ -1,10 +1,15 @@
 /* ProgrammeRoute.tsx
  * Resolves url_id from pathname and loads programme data from Supabase.
- * Branches on programme_type:
- *   stay    → ProgrammePage (property sections, listings)
- *   journey → JourneyPage  (programme days, events, contacts)
+ * Stay programmes only — renders ProgrammePage with property sections, listings.
  * No React Router — reads window.location.pathname directly.
- * Last updated: S17 — All table refs updated to travel_programme_* convention;
+ *
+ * Last updated: S53 — Journey programme branch retired. JourneyPage,
+ *   mapEvent, mapDays, DayRow, EventRow, ContactRow, JourneyLoaded all
+ *   removed. ProgrammeRoute now serves stay-type programmes exclusively.
+ *   Journey itinerary surfaces are superseded by ImmerseTripPage +
+ *   Programme tab. Unknown programme_type (incl. legacy 'journey' rows)
+ *   resolves to not-found.
+ * Prior: S17 — All table refs updated to travel_programme_* convention;
  *   joined resources aliased to preserve downstream mapper code unchanged.
  *   Popstate listener added for back/forward navigation re-resolution.
  */
@@ -14,10 +19,8 @@ import { supabase, supabaseAnon } from '../../lib/supabase'
 import { getSession } from '../../utils/utilsAuth'
 import ProgrammeAccessDenied from './ProgrammeAccessDenied'
 import ProgrammePage from './ProgrammePage'
-import JourneyPage from './JourneyPage'
 import ProgrammeLayout from '../layouts/ProgrammeLayout'
 import type { Booking, Property, ManualSection, Listing } from '../../types/typesProgramme'
-import type { JourneyDay, JourneyEvent, EventContact, EventType, EventStatus } from '../../types/typesJourney'
 
 // ── URL resolution ─────────────────────────────────────────────────────────────
 
@@ -103,51 +106,6 @@ type ListingRow = {
   favourite: boolean
 }
 
-type DayRow = {
-  id:         string
-  date:       string | null
-  title:      string | null
-  sort_order: number
-}
-
-type EventRow = {
-  id:                  string
-  day_id:              string
-  event_type:          string
-  status:              string
-  title:               string
-  time_local:          string | null
-  duration:            string | null
-  description:         string | null
-  confirmation_number: string | null
-  location:            string | null
-  sort_order:          number
-  airline:             string | null
-  flight_number:       string | null
-  departure_airport:   string | null
-  arrival_airport:     string | null
-  arrival_time:        string | null
-  flight_class:        string | null
-  seats:               string | null
-  terminal:            string | null
-  gate:                string | null
-  driver_name:         string | null
-  driver_phone:        string | null
-  room_type:           string | null
-  check_in_date:       string | null
-  check_out_date:      string | null
-  inclusions:          string | null
-  supplier_name:       string | null
-}
-
-type ContactRow = {
-  id:       string
-  event_id: string
-  name:     string
-  role:     string
-  phone:    string | null
-}
-
 // ── Data mappers ───────────────────────────────────────────────────────────────
 
 function mapBooking(row: ProgrammeRow): Booking {
@@ -229,59 +187,6 @@ function mapListings(rows: ListingRow[]): Listing[] {
   }))
 }
 
-function mapEvent(row: EventRow, contacts: ContactRow[]): JourneyEvent {
-  return {
-    id:                  row.id,
-    event_type:          row.event_type as EventType,
-    status:              row.status as EventStatus,
-    title:               row.title,
-    time_local:          row.time_local,
-    duration:            row.duration,
-    description:         row.description,
-    confirmation_number: row.confirmation_number,
-    location:            row.location,
-    supplier_name:       row.supplier_name,
-    sort_order:          row.sort_order,
-    airline:             row.airline,
-    flight_number:       row.flight_number,
-    departure_airport:   row.departure_airport,
-    arrival_airport:     row.arrival_airport,
-    arrival_time:        row.arrival_time,
-    flight_class:        row.flight_class,
-    seats:               row.seats,
-    terminal:            row.terminal,
-    gate:                row.gate,
-    driver_name:         row.driver_name,
-    driver_phone:        row.driver_phone,
-    room_type:           row.room_type,
-    check_in_date:       row.check_in_date,
-    check_out_date:      row.check_out_date,
-    inclusions:          row.inclusions,
-    image_src:           null,
-    contacts:            contacts
-      .filter(c => c.event_id === row.id)
-      .map(c => ({
-        id:    c.id,
-        name:  c.name,
-        role:  c.role,
-        phone: c.phone,
-      } as EventContact)),
-  }
-}
-
-function mapDays(dayRows: DayRow[], eventRows: EventRow[], contactRows: ContactRow[]): JourneyDay[] {
-  return dayRows.map(day => ({
-    id:         day.id,
-    date:       day.date,
-    title:      day.title,
-    sort_order: day.sort_order,
-    events:     eventRows
-      .filter(e => e.day_id === day.id)
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(e => mapEvent(e, contactRows)),
-  }))
-}
-
 // ── Loading / error states ────────────────────────────────────────────────────
 
 function LoadingScreen() {
@@ -319,7 +224,7 @@ function NotFound({ message }: { message: string }) {
 
 // ── Loaded state types ────────────────────────────────────────────────────────
 
-type StayLoaded = {
+type LoadedState = {
   type:               'stay'
   booking:            Booking
   property:           Property
@@ -333,20 +238,6 @@ type StayLoaded = {
   noAlarm:            boolean
   publicArrival: boolean
 }
-
-type JourneyLoaded = {
-  type:               'journey'
-  booking:            Booking
-  property:           Property
-  days:               JourneyDay[]
-  isPublic:           boolean
-  publicWifi:         boolean
-  publicAlarm:        boolean
-  publicOwnerPhone:   boolean
-  publicManagerPhone: boolean
-}
-
-type LoadedState = StayLoaded | JourneyLoaded
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -554,87 +445,7 @@ export default function ProgrammeRoute() {
         return
       }
 
-      // ── Journey branch ───────────────────────────────────────────────────────
-
-      if (row.programme_type === 'journey') {
-        const programmeId = row.id
-
-        const { data: dayData, error: dayErr } = await supabase
-          .from('travel_programme_days')
-          .select('id, date, title, sort_order')
-          .eq('programme_id', programmeId)
-          .order('sort_order')
-
-        if (dayErr) {
-          setError('load-failed')
-          setLoading(false)
-          return
-        }
-
-        const dayRows = (dayData ?? []) as DayRow[]
-        const dayIds  = dayRows.map(d => d.id)
-
-        if (dayIds.length === 0) {
-          setLoaded({ type: 'journey', booking, property, days: [], isPublic,
-            publicWifi:         row.public_wifi,
-            publicAlarm:        row.public_alarm,
-            publicOwnerPhone:   row.public_owner_phone,
-            publicManagerPhone: row.public_manager_phone,
-          })
-          setLoading(false)
-          return
-        }
-
-        const { data: evData, error: evErr } = await supabase
-          .from('travel_programme_events')
-          .select(`
-            id, day_id, event_type, status, title,
-            time_local, duration, description, confirmation_number,
-            location, sort_order,
-            airline, flight_number, departure_airport, arrival_airport,
-            arrival_time, flight_class, seats, terminal, gate,
-            driver_name, driver_phone,
-            room_type, check_in_date, check_out_date, inclusions,
-            supplier_name
-          `)
-          .in('day_id', dayIds)
-
-        if (evErr) {
-          setError('load-failed')
-          setLoading(false)
-          return
-        }
-
-        const eventRows = (evData ?? []) as EventRow[]
-        const eventIds  = eventRows.map(e => e.id)
-
-        const { data: ctData, error: ctErr } = eventIds.length > 0
-          ? await supabase
-              .from('travel_programme_event_contacts')
-              .select('id, event_id, name, role, phone')
-              .in('event_id', eventIds)
-          : { data: [], error: null }
-
-        if (ctErr) {
-          setError('load-failed')
-          setLoading(false)
-          return
-        }
-
-        const contactRows = (ctData ?? []) as ContactRow[]
-        const days        = mapDays(dayRows, eventRows, contactRows)
-
-        setLoaded({ type: 'journey', booking, property, days, isPublic,
-          publicWifi:         row.public_wifi,
-          publicAlarm:        row.public_alarm,
-          publicOwnerPhone:   row.public_owner_phone,
-          publicManagerPhone: row.public_manager_phone,
-        })
-        setLoading(false)
-        return
-      }
-
-      // Unknown programme type
+      // Unknown programme type (incl. legacy 'journey' rows — surface retired S53)
       setError('not-found')
       setLoading(false)
     }
@@ -678,33 +489,20 @@ export default function ProgrammeRoute() {
     )
   }
 
-  if (loaded.type === 'stay') {
-    return (
-      <ProgrammeLayout guestNames={loaded.booking.guestNames}>
-        <ProgrammePage
-          booking={loaded.booking}
-          property={loaded.property}
-          manual={loaded.manual}
-          listings={loaded.listings}
-          isPublic={loaded.isPublic}
-          publicWifi={loaded.publicWifi}
-          publicAlarm={loaded.publicAlarm}
-          publicOwnerPhone={loaded.publicOwnerPhone}
-          publicManagerPhone={loaded.publicManagerPhone}
-          noAlarm={loaded.noAlarm}
-          publicArrival={loaded.publicArrival}
-        />
-      </ProgrammeLayout>
-    )
-  }
-
   return (
     <ProgrammeLayout guestNames={loaded.booking.guestNames}>
-      <JourneyPage
+      <ProgrammePage
         booking={loaded.booking}
         property={loaded.property}
-        days={loaded.days}
+        manual={loaded.manual}
+        listings={loaded.listings}
         isPublic={loaded.isPublic}
+        publicWifi={loaded.publicWifi}
+        publicAlarm={loaded.publicAlarm}
+        publicOwnerPhone={loaded.publicOwnerPhone}
+        publicManagerPhone={loaded.publicManagerPhone}
+        noAlarm={loaded.noAlarm}
+        publicArrival={loaded.publicArrival}
       />
     </ProgrammeLayout>
   )

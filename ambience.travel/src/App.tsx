@@ -21,7 +21,6 @@
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin (existing, untouched)
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
- *   programme.ambience.travel/journeys/:id               → Auth → full-page ProgrammeRoute
  *   programme.ambience.travel/ (root)                    → Auth → Layout (Dashboard/List/Profile)
  *
  * Local dev routes:
@@ -31,7 +30,6 @@
  *   localhost:5173/#admin                                → AmbienceAdmin (new shell, S33)
  *   localhost:5173/programme/#admin                      → ProgrammeAdmin (existing)
  *   localhost:5173/programme/stays/:id                   → Auth → full-page ProgrammeRoute
- *   localhost:5173/programme/journeys/:id                → Auth → full-page ProgrammeRoute
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
@@ -54,6 +52,9 @@
  *   depending on programme.ambience.travel for session establishment.
  *   Signup mode (?signup=1) is unaffected — remains programme-context only.
  *
+ * Prior: S53 — Journey programme surface retired. Superseded by ImmerseTripPage
+ *   + Programme tab. /journeys/:id routes and 'preview-journey' route removed.
+ *   ProgrammeRoute now serves only stay-type programmes.
  * Prior: S48 — Added confirmation + programme routes under immerse surface.
  *   Handled inside ImmerseEngagementRoute via RESERVED_SEGMENTS intercept —
  *   no changes to App.tsx routing logic required.
@@ -103,7 +104,6 @@ const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/Immerse
 const DiningGuideRoute         = lazy(() => import('./components/guides/DiningGuideRoute'))
 const HotelGuideRoute          = lazy(() => import('./components/guides/HotelGuideRoute'))
 const ExperiencesGuideRoute    = lazy(() => import('./components/guides/ExperiencesGuideRoute'))
-const JourneyPreview = lazy(() => import('./components/immerse/JourneyPreview'))
 
 type Route =
   | 'landing'
@@ -118,7 +118,6 @@ type Route =
   | 'guides-dining'
   | 'guides-hotels'
   | 'guides-experiences'
-  | 'preview-journey'
 
 
 function hasUrlId(): boolean {
@@ -126,10 +125,10 @@ function hasUrlId(): boolean {
   const pathname = window.location.pathname
 
   if (hostname === 'programme.ambience.travel') {
-    return /^\/(stays|journeys)\/.+/.test(pathname)
+    return /^\/stays\/.+/.test(pathname)
   }
 
-  return /^\/programme\/(stays|journeys)\/.+/.test(pathname)
+  return /^\/programme\/stays\/.+/.test(pathname)
 }
 
 function isExperienceRoute(): boolean {
@@ -236,7 +235,6 @@ function resolveRoute(): Route {
     return 'app'
   }
 
-  if (pathname === '/preview/journey') return 'preview-journey'
   if (isImmerseRoute())    return 'immerse'
   if (isExperienceRoute()) return 'experience'
 
@@ -350,13 +348,6 @@ export default function App() {
     )
   }
 
-  if (route === 'preview-journey') {
-    return (
-      <Suspense fallback={<RouteLoading />}>
-        <JourneyPreview />
-      </Suspense>
-    )
-  }
   if (route === 'programme-detail') {
     return (
       <Suspense fallback={<RouteLoading />}>
