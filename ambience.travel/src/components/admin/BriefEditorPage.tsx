@@ -2,7 +2,13 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S50 — Contacts section added. Editable advisor_name,
+ * Last updated: S54 — Tabs section added. Four show_tab_* booleans
+ *   (confirmation, programme, brief, contacts) now wired into the admin UI
+ *   with inline-save toggles, mirroring the public_view + advisor visibility
+ *   pattern. Each toggle gates whether the corresponding tab renders on the
+ *   public ImmerseTripPage. persistContactsToggle generalised to persistToggle
+ *   to handle both advisor and tab visibility fields.
+ * Prior: S50 — Contacts section added. Editable advisor_name,
  *   advisor_email, advisor_phone with inline show_advisor_email +
  *   show_advisor_phone visibility toggles. Each toggle gates whether
  *   the corresponding field renders on the public Contacts tab via
@@ -1082,6 +1088,12 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const [showAdvisorEmail, setShowAdvisorEmail] = useState(false)
   const [showAdvisorPhone, setShowAdvisorPhone] = useState(false)
 
+  // S54 — Tab visibility toggles. Defaults match DB (all true).
+  const [showTabConfirmation, setShowTabConfirmation] = useState(true)
+  const [showTabProgramme,    setShowTabProgramme]    = useState(true)
+  const [showTabBrief,        setShowTabBrief]        = useState(true)
+  const [showTabContacts,     setShowTabContacts]     = useState(true)
+
   const [roomImageSrcs, setRoomImageSrcs] = useState<Record<string, string>>({})
   const [roomDrafts,    setRoomDrafts]    = useState<Record<string, RoomDraft>>({})
   const [auxDrafts,     setAuxDrafts]     = useState<Record<string, AuxDraft>>({})
@@ -1126,6 +1138,10 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         setAdvisorPhone(br.advisor_phone ?? '')
         setShowAdvisorEmail((br as any).show_advisor_email ?? false)
         setShowAdvisorPhone((br as any).show_advisor_phone ?? false)
+        setShowTabConfirmation(br.show_tab_confirmation ?? true)
+        setShowTabProgramme(br.show_tab_programme       ?? true)
+        setShowTabBrief(br.show_tab_brief               ?? true)
+        setShowTabContacts(br.show_tab_contacts         ?? true)
         return
       }
       setPreparedFor(dossier.house?.display_name ?? '')
@@ -1147,9 +1163,14 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     }
   }
 
-  // S50 — Inline-save contacts on toggle change (no need to wait for Save All).
-  // Mirrors public_view pattern. Text inputs save on blur via handleSave.
-  async function persistContactsToggle(field: 'show_advisor_email' | 'show_advisor_phone', value: boolean) {
+  // S50 — Inline-save toggle on change. Mirrors public_view pattern.
+  // S54 — Generalised to handle tab visibility toggles alongside advisor visibility.
+  async function persistToggle(
+    field: 'show_advisor_email' | 'show_advisor_phone'
+         | 'show_tab_confirmation' | 'show_tab_programme'
+         | 'show_tab_brief'        | 'show_tab_contacts',
+    value: boolean,
+  ) {
     if (!trip || !house) return
     try {
       await upsertTripBrief(trip.id, house.id, { [field]: value } as any)
@@ -1161,16 +1182,20 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     setSaving(true); setSaveErr(null); setSaved(false)
     try {
       const patch: TripBriefPatch = {
-        brief_title:        briefTitle    || null,
-        brief_subtitle:     briefSubtitle || null,
-        prepared_for:       preparedFor   || null,
-        hero_image_src:     heroImageSrc  || null,
-        logo_variant:       logoVariant   || null,
-        advisor_name:       advisorName   || null,
-        advisor_email:      advisorEmail  || null,
-        advisor_phone:      advisorPhone  || null,
-        show_advisor_email: showAdvisorEmail,
-        show_advisor_phone: showAdvisorPhone,
+        brief_title:           briefTitle    || null,
+        brief_subtitle:        briefSubtitle || null,
+        prepared_for:          preparedFor   || null,
+        hero_image_src:        heroImageSrc  || null,
+        logo_variant:          logoVariant   || null,
+        advisor_name:          advisorName   || null,
+        advisor_email:         advisorEmail  || null,
+        advisor_phone:         advisorPhone  || null,
+        show_advisor_email:    showAdvisorEmail,
+        show_advisor_phone:    showAdvisorPhone,
+        show_tab_confirmation: showTabConfirmation,
+        show_tab_programme:    showTabProgramme,
+        show_tab_brief:        showTabBrief,
+        show_tab_contacts:     showTabContacts,
       }
       const savedBrief = await upsertTripBrief(trip.id, house.id, patch)
       setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
@@ -1437,6 +1462,32 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
             </div>
           </section>
 
+          {/* S54 — Tabs section. Per-trip control of which tabs render on the
+              public ImmerseTripPage. All default to true (visible). */}
+          <section>
+            <div style={sectionHeadStyle}>Tabs</div>
+            <p style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>
+              Controls which tabs are visible on the public trip page. Hide any tab that's not yet ready or not relevant for this trip.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {([
+                { key: 'confirmation', label: 'Confirmation', value: showTabConfirmation, setter: setShowTabConfirmation, field: 'show_tab_confirmation' as const },
+                { key: 'programme',    label: 'Programme',    value: showTabProgramme,    setter: setShowTabProgramme,    field: 'show_tab_programme'    as const },
+                { key: 'brief',        label: 'Brief',        value: showTabBrief,        setter: setShowTabBrief,        field: 'show_tab_brief'        as const },
+                { key: 'contacts',     label: 'Contacts',     value: showTabContacts,     setter: setShowTabContacts,     field: 'show_tab_contacts'     as const },
+              ]).map(t => (
+                <div key={t.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>{t.label}</label>
+                  <VisibilityToggle
+                    on={t.value}
+                    onChange={v => { t.setter(v); persistToggle(t.field, v) }}
+                    label={`Show ${t.label} tab on the public trip page`}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* S50 — Contacts section. advisor_* fields with inline visibility toggles. */}
           <section>
             <div style={sectionHeadStyle}>Contacts</div>
@@ -1458,7 +1509,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                   <label style={labelStyle}>Advisor Email</label>
                   <VisibilityToggle
                     on={showAdvisorEmail}
-                    onChange={v => { setShowAdvisorEmail(v); persistContactsToggle('show_advisor_email', v) }}
+                    onChange={v => { setShowAdvisorEmail(v); persistToggle('show_advisor_email', v) }}
                     label='Show advisor email on Contacts tab'
                   />
                 </div>
@@ -1476,7 +1527,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                   <label style={labelStyle}>Advisor Phone</label>
                   <VisibilityToggle
                     on={showAdvisorPhone}
-                    onChange={v => { setShowAdvisorPhone(v); persistContactsToggle('show_advisor_phone', v) }}
+                    onChange={v => { setShowAdvisorPhone(v); persistToggle('show_advisor_phone', v) }}
                     label='Show advisor phone on Contacts tab'
                   />
                 </div>
