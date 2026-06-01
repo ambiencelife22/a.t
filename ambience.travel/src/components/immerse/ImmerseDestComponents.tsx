@@ -85,6 +85,10 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
+  // S55 — Hide section entirely when no items. Completes the S37 audit:
+  // "Same pattern should apply to other section bodies as a follow-up."
+  if (!items || items.length === 0) return null
+
   const eyebrowColor = dark ? ID.gold : C.faint
   const titleColor   = dark ? ID.text : C.text
   const bodyColor    = dark ? ID.muted : C.muted
