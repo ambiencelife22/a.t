@@ -288,7 +288,9 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
             // Per-room booked_by_label free-text override; fall back to canonical helper
             const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
-            const imgSrc       = room.brief_image_src
+            // S53 Add 4: prefer EF-resolved canon image, fall back to per-room override for editor preview mode
+            const imgSrc       = (room as any).resolved_image_src ?? room.brief_image_src
+            const imgAlt       = (room as any).resolved_image_alt ?? room.room_name ?? ''
 
             const guestParts: string[] = []
             if (room.guest_name)              guestParts.push(room.guest_name)
@@ -304,7 +306,7 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
                 boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
               }}>
                 <div style={{ width: 'clamp(120px,35%,220px)', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
-                  {imgSrc && <img src={imgSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
+                  {imgSrc && <img src={imgSrc} alt={imgAlt} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
                 </div>
                 <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
