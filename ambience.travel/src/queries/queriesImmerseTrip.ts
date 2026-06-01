@@ -44,8 +44,6 @@ const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/travel-get-trip-confirmation`
 
 export async function fetchTripClientData(urlId: string): Promise<TripClientData | null> {
   try {
-    console.log('FUNCTION_URL:', FUNCTION_URL)
-    console.log('ANON_KEY:', SUPABASE_ANON_KEY?.slice(0, 20))
     const res = await fetch(FUNCTION_URL, {
       method:  'POST',
       headers: {
