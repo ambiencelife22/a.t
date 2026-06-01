@@ -289,8 +289,8 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
             const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
             // S53 Add 4: prefer EF-resolved canon image, fall back to per-room override for editor preview mode
-            const imgSrc       = (room as any).resolved_image_src ?? room.brief_image_src
-            const imgAlt       = (room as any).resolved_image_alt ?? room.room_name ?? ''
+            const imgSrc = room.resolved_image_src ?? room.brief_image_src
+            const imgAlt = room.resolved_image_alt ?? room.room_name ?? ''
 
             const guestParts: string[] = []
             if (room.guest_name)              guestParts.push(room.guest_name)
