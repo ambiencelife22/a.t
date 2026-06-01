@@ -1,16 +1,32 @@
-// adminEngagementQueries.ts — Supabase reads/writes for AmbienceAdmin
+// queriesAdminEngagements.ts — Supabase reads/writes for AmbienceAdmin
 // Engagement list (trip-grouped), detail, update, create, delete + status
 // lookups + person/trip typeahead. Single source of truth for admin-side
 // engagement data access. Components call these — never .from() inline.
 //
-// Last updated: S33B — Added trip + person inline-edit + drag-and-drop
-//   re-parenting writes. New: updateTrip, createTrip, updatePerson,
-//   reassignEngagementTrip. Pre-flight verified shapes for travel_trips
-//   (27 cols), global_people (10 cols), engagements.trip_id (uuid nullable).
-// Prior: S33 — Added iteration_label (s33_01). List query joins
-//   travel_trips + global_people for trip-group rendering.
+// Last updated: S54 — All 11 read paths migrated to travel-read-engagement-admin
+//   Edge Function. Function signatures preserved identically; callers unchanged.
+//   Writes still use direct supabase client — migrate in travel-write-engagement
+//   pass (next).
+// Prior: S33B — Added trip + person inline-edit + drag-and-drop re-parenting
+//   writes. New: updateTrip, createTrip, updatePerson, reassignEngagementTrip.
+// Prior: S33 — Added iteration_label. List query joins travel_trips +
+//   global_people for trip-group rendering.
 
 import { supabase } from '../lib/supabase'
+
+const READ_EF = 'travel-read-engagement-admin'
+
+// Thin invoke wrapper — centralises the error shape so call sites stay clean.
+async function invokeRead<T>(mode: string, params: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(READ_EF, {
+    body: { mode, ...params },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error((data as { error: string }).error)
+  }
+  return data as T
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -169,50 +185,8 @@ export type TripGroup = {
 // ── List ──────────────────────────────────────────────────────────────────────
 
 export async function fetchEngagementList(): Promise<EngagementListRow[]> {
-  const { data, error } = await supabase
-    .from('travel_immerse_engagements')
-    .select(`
-      id, url_id, title, audience, is_public_template,
-      engagement_status_id, itinerary_status_id, sort_order, created_at,
-      iteration_label, trip_id,
-      engagement_status:travel_engagement_statuses(slug, label),
-      itinerary_status:travel_itinerary_statuses(slug, label),
-      trip:travel_trips(
-        trip_code, public_title, start_date, primary_client_id,
-        primary_client:global_people!travel_trips_primary_client_id_fkey(
-          id, first_name, last_name, nickname
-        )
-      )
-    `)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-
-  return (data ?? []).map((r: any) => ({
-    id:                      r.id,
-    url_id:                  r.url_id,
-    title:                   r.title,
-    audience:                r.audience,
-    is_public_template:      r.is_public_template,
-    engagement_status_id:    r.engagement_status_id,
-    itinerary_status_id:     r.itinerary_status_id,
-    sort_order:              r.sort_order,
-    created_at:              r.created_at,
-    iteration_label:         r.iteration_label ?? '',
-    engagement_status_slug:  r.engagement_status?.slug  ?? null,
-    engagement_status_label: r.engagement_status?.label ?? null,
-    itinerary_status_slug:   r.itinerary_status?.slug   ?? null,
-    itinerary_status_label:  r.itinerary_status?.label  ?? null,
-    trip_id:                 r.trip_id,
-    trip_code:               r.trip?.trip_code         ?? null,
-    trip_public_title:       r.trip?.public_title      ?? null,
-    trip_start_date:         r.trip?.start_date        ?? null,
-    client_first_name:       r.trip?.primary_client?.first_name ?? null,
-    client_last_name:        r.trip?.primary_client?.last_name  ?? null,
-    client_nickname:         r.trip?.primary_client?.nickname   ?? null,
-    client_id:               r.trip?.primary_client?.id         ?? null,
-  }))
+  const { rows } = await invokeRead<{ rows: EngagementListRow[] }>('list')
+  return rows
 }
 
 // Group engagements by trip_id. Orphans (NULL trip_id) into a synthetic
@@ -287,46 +261,15 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
 // ── Detail ────────────────────────────────────────────────────────────────────
 
 export async function fetchEngagementDetail(urlId: string): Promise<EngagementDetailRow | null> {
-  const { data, error } = await supabase
-    .from('travel_immerse_engagements')
-    .select('*')
-    .eq('url_id', urlId)
-    .maybeSingle()
-
-  if (error) throw error
-  return (data ?? null) as EngagementDetailRow | null
+  const { row } = await invokeRead<{ row: EngagementDetailRow | null }>('detail', { url_id: urlId })
+  return row
 }
 
 // ── Child counts (read-only summary for detail page) ──────────────────────────
 
 export async function fetchChildCounts(engagementId: string): Promise<ChildCounts> {
-  const tables = [
-    'travel_immerse_trip_destination_rows',
-    'travel_immerse_trip_pricing_rows',
-    'travel_immerse_trip_destination_hotels',
-    'travel_immerse_trip_region_hotels',
-    'travel_immerse_route_stops',
-    'travel_immerse_trip_content_card_selections',
-    'travel_immerse_trip_content_card_overrides',
-    'travel_immerse_rooms',
-  ] as const
-
-  const results = await Promise.all(
-    tables.map(t =>
-      supabase.from(t).select('id', { count: 'exact', head: true }).eq('trip_id', engagementId),
-    ),
-  )
-
-  return {
-    destination_rows:   results[0].count ?? 0,
-    pricing_rows:       results[1].count ?? 0,
-    destination_hotels: results[2].count ?? 0,
-    region_hotels:      results[3].count ?? 0,
-    route_stops:        results[4].count ?? 0,
-    card_selections:    results[5].count ?? 0,
-    card_overrides:     results[6].count ?? 0,
-    rooms:              results[7].count ?? 0,
-  }
+  const { counts } = await invokeRead<{ counts: ChildCounts }>('child_counts', { engagement_id: engagementId })
+  return counts
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -393,77 +336,33 @@ export async function deleteEngagement(id: string): Promise<void> {
 // ── Lookups ───────────────────────────────────────────────────────────────────
 
 export async function fetchEngagementStatuses(): Promise<StatusLookup[]> {
-  const { data, error } = await supabase
-    .from('travel_engagement_statuses')
-    .select('id, slug, label, sort_order')
-    .order('sort_order', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as StatusLookup[]
+  const { rows } = await invokeRead<{ rows: StatusLookup[] }>('engagement_statuses')
+  return rows
 }
 
 export async function fetchItineraryStatuses(): Promise<StatusLookup[]> {
-  const { data, error } = await supabase
-    .from('travel_itinerary_statuses')
-    .select('id, slug, label, sort_order')
-    .order('sort_order', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as StatusLookup[]
+  const { rows } = await invokeRead<{ rows: StatusLookup[] }>('itinerary_statuses')
+  return rows
 }
 
 export async function fetchPeople(query: string): Promise<PersonOption[]> {
-  let q = supabase
-    .from('global_people')
-    .select('id, first_name, last_name, nickname')
-    .order('first_name', { ascending: true })
-    .limit(20)
-
-  const trimmed = query.trim()
-  if (trimmed) {
-    q = q.or(
-      `first_name.ilike.%${trimmed}%,last_name.ilike.%${trimmed}%,nickname.ilike.%${trimmed}%`,
-    )
-  }
-
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []) as PersonOption[]
+  const { rows } = await invokeRead<{ rows: PersonOption[] }>('people', { query })
+  return rows
 }
 
 export async function fetchTrips(query: string): Promise<TripOption[]> {
-  let q = supabase
-    .from('travel_trips')
-    .select('id, trip_code, start_date')
-    .order('start_date', { ascending: false, nullsFirst: false })
-    .limit(20)
-
-  const trimmed = query.trim()
-  if (trimmed) {
-    q = q.ilike('trip_code', `%${trimmed}%`)
-  }
-
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []) as TripOption[]
+  const { rows } = await invokeRead<{ rows: TripOption[] }>('trips', { query })
+  return rows
 }
 
 export async function fetchPersonById(id: string): Promise<PersonOption | null> {
-  const { data, error } = await supabase
-    .from('global_people')
-    .select('id, first_name, last_name, nickname')
-    .eq('id', id)
-    .maybeSingle()
-  if (error) throw error
-  return (data ?? null) as PersonOption | null
+  const { row } = await invokeRead<{ row: PersonOption | null }>('person_by_id', { id })
+  return row
 }
 
 export async function fetchTripById(id: string): Promise<TripOption | null> {
-  const { data, error } = await supabase
-    .from('travel_trips')
-    .select('id, trip_code, start_date')
-    .eq('id', id)
-    .maybeSingle()
-  if (error) throw error
-  return (data ?? null) as TripOption | null
+  const { row } = await invokeRead<{ row: TripOption | null }>('trip_by_id', { id })
+  return row
 }
 
 // ── Welcome letter canonical singleton (read-only for placeholder display) ────
@@ -477,26 +376,15 @@ export type WelcomeLetterCanonical = {
 }
 
 export async function fetchWelcomeLetterCanonical(): Promise<WelcomeLetterCanonical | null> {
-  const { data, error } = await supabase
-    .from('travel_immerse_welcome_letter')
-    .select('eyebrow, title, body, signoff_body, signoff_name')
-    .limit(1)
-    .maybeSingle()
-  if (error) throw error
-  return (data ?? null) as WelcomeLetterCanonical | null
+  const { row } = await invokeRead<{ row: WelcomeLetterCanonical | null }>('welcome_letter')
+  return row
 }
 
 // ── Max sort_order (for create defaults) ──────────────────────────────────────
 
 export async function fetchMaxSortOrder(): Promise<number> {
-  const { data, error } = await supabase
-    .from('travel_immerse_engagements')
-    .select('sort_order')
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  if (error) throw error
-  return (data?.sort_order ?? -1) + 1
+  const { next } = await invokeRead<{ next: number }>('max_sort_order')
+  return next
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
