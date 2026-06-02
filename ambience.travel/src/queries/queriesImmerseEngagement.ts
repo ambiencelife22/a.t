@@ -1,9 +1,17 @@
 // queriesImmerseEngagement.ts — Supabase query layer for immerse engagement master data
 // Owns:
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
-// Does not own: destination subpage data (see queriesImmerseDestination.ts).
+// Does not own: destination subpage data (see queriesImmerseDestCore.ts).
 //
-// Last updated: S48 — engagement primary fetch routed through the
+// Last updated: S53B Closing — destination row card hero now resolves via
+//   canon-fallback chain: engagement row image_src → template hero
+//   (travel_immerse_destinations.hero_image_src on the canonical template,
+//   url_slug IS NULL) → geography canon (global_destinations.hero_image_src).
+//   Same architectural pattern as the subpage core hero fix.
+//   Implementation: fetchDestinationHeroFallbacks() returns a Map keyed by
+//   destination slug, parallelized inside the existing Promise.all so no
+//   added latency.
+// Prior: S48 — engagement primary fetch routed through the
 //   get-engagement-stage Edge Function. The Edge Function uses the service
 //   role key to bypass RLS on the engagement row + operational tables, and
 //   gates exposure on the engagement.public_view flag. This means:
@@ -144,6 +152,78 @@ type PricingRowRow = {
   global_destinations: GlobalDestinationDisplayJoin | null
 }
 
+// ── Destination hero canon-fallback (S53B Closing) ──────────────────────────
+// For each destination on the engagement, build a Map keyed by destination
+// slug holding template + geography canon hero candidates. The mapper then
+// resolves engagement override → template → geography canon for each row.
+
+type DestinationHeroFallback = {
+  template_hero: string | null
+  template_alt:  string | null
+  global_hero:   string | null
+  global_alt:    string | null
+}
+
+async function fetchDestinationHeroFallbacks(
+  slugs: string[],
+): Promise<Map<string, DestinationHeroFallback>> {
+  const map = new Map<string, DestinationHeroFallback>()
+  if (slugs.length === 0) return map
+
+  // Step 1 — geography canon (global_destinations) by slug
+  const { data: globalRows } = await supabaseAnon
+    .from('global_destinations')
+    .select('slug, id, hero_image_src, hero_image_alt')
+    .in('slug', slugs)
+
+  const idsBySlug = new Map<string, string>()
+  for (const row of (globalRows ?? []) as Array<{
+    slug: string
+    id: string
+    hero_image_src: string | null
+    hero_image_alt: string | null
+  }>) {
+    map.set(row.slug, {
+      template_hero: null,
+      template_alt:  null,
+      global_hero:   row.hero_image_src,
+      global_alt:    row.hero_image_alt,
+    })
+    idsBySlug.set(row.slug, row.id)
+  }
+
+  // Step 2 — canonical immerse templates by global_destination_id
+  const ids = Array.from(idsBySlug.values())
+  if (ids.length === 0) return map
+
+  const { data: templateRows } = await supabaseAnon
+    .from('travel_immerse_destinations')
+    .select('global_destination_id, hero_image_src, hero_image_alt')
+    .in('global_destination_id', ids)
+    .is('url_slug', null)  // canonical templates only — variants are subpage-only
+
+  const slugByGlobalId = new Map<string, string>()
+  for (const [slug, id] of idsBySlug.entries()) slugByGlobalId.set(id, slug)
+
+  for (const row of (templateRows ?? []) as Array<{
+    global_destination_id: string
+    hero_image_src: string | null
+    hero_image_alt: string | null
+  }>) {
+    const slug = slugByGlobalId.get(row.global_destination_id)
+    if (!slug) continue
+    const existing = map.get(slug)
+    if (!existing) continue
+    map.set(slug, {
+      ...existing,
+      template_hero: row.hero_image_src,
+      template_alt:  row.hero_image_alt,
+    })
+  }
+
+  return map
+}
+
 // ── Edge Function gateway ─────────────────────────────────────────────────────
 // S48 — Primary engagement fetch goes through this Edge Function so we can
 // bypass RLS on the engagement row and operational tables with the service
@@ -234,6 +314,12 @@ async function hydrateEngagement(
   const destRows   = (destsRes.data    ?? []) as unknown as DestinationRowRow[]
   const priceRows  = (pricingRes.data  ?? []) as unknown as PricingRowRow[]
 
+  // ── Destination hero canon-fallback (after we know destination slugs) ─────
+  const destinationSlugs = destRows
+    .map(r => r.global_destinations?.slug)
+    .filter((s): s is string => !!s)
+  const heroFallbacks = await fetchDestinationHeroFallbacks(destinationSlugs)
+
   // ── Compute engagement stage ──────────────────────────────────────────────
   // hasTripContent comes from the Edge Function (service-role count check).
   // hasProposalContent is derivable from the engagement row + dest rows here.
@@ -281,19 +367,36 @@ async function hydrateEngagement(
     imageAlt:  r.image_alt  ?? '',
   }))
 
-  const destinationRows: ImmerseDestinationRow[] = destRows.map(r => ({
-    id:              r.id,
-    numberLabel:     r.number_label ?? '',
-    title:           r.title        ?? '',
-    mood:            r.mood         ?? '',
-    summary:         r.summary      ?? '',
-    stayLabel:       r.stay_label   ?? '',
-    imageSrc:        rewriteImageUrl(r.image_src),
-    imageAlt:        r.image_alt    ?? '',
-    destinationSlug:    r.global_destinations?.slug    ?? null,
-    destinationUrlSlug: r.destination_url_slug         ?? null,
-    subpageStatus:      normalizeSubpageStatus(r.subpage_status),
-  }))
+  const destinationRows: ImmerseDestinationRow[] = destRows.map(r => {
+    const globalSlug = r.global_destinations?.slug ?? null
+    const fallback   = globalSlug ? heroFallbacks.get(globalSlug) : null
+
+    const resolvedImageSrc =
+      r.image_src
+      ?? fallback?.template_hero
+      ?? fallback?.global_hero
+      ?? null
+
+    const resolvedImageAlt =
+      r.image_alt
+      ?? fallback?.template_alt
+      ?? fallback?.global_alt
+      ?? ''
+
+    return {
+      id:              r.id,
+      numberLabel:     r.number_label ?? '',
+      title:           r.title        ?? '',
+      mood:            r.mood         ?? '',
+      summary:         r.summary      ?? '',
+      stayLabel:       r.stay_label   ?? '',
+      imageSrc:        rewriteImageUrl(resolvedImageSrc),
+      imageAlt:        resolvedImageAlt,
+      destinationSlug:    globalSlug,
+      destinationUrlSlug: r.destination_url_slug ?? null,
+      subpageStatus:      normalizeSubpageStatus(r.subpage_status),
+    }
+  })
 
   const tripPricingRows: ImmerseTripPricingRow[] = priceRows.map(r => ({
     id:               r.id,
