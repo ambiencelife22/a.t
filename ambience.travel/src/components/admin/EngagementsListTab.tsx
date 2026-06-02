@@ -667,7 +667,7 @@ function TripGroupBlock({
         background:   A.bgCard,
         border:       `1px solid ${showDropHighlight ? A.borderGold : A.border}`,
         borderRadius: 14,
-        overflow:     'hidden',
+        overflow: 'visible',
         boxShadow:    showDropHighlight ? '0 0 0 3px rgba(216,181,106,0.15)' : 'none',
         transition:   'border-color 0.15s ease, box-shadow 0.15s ease',
       }}
