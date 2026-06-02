@@ -4,6 +4,13 @@
 //   into the original bundled ImmerseDestinationData shape (parallel fan-out).
 //   Also owns: slug resolution cache, fetchEngagementOverride, ImmerseDestinationCore type.
 //
+// Last updated: S53B Closing — geography canon fallback for hero image.
+//   Fallback chain extended: engagement override → template → global_destinations.
+//   When a destination's hero lives only in geography canon (e.g. newly
+//   seeded destinations with light templates), the subpage now renders
+//   correctly. Mission alignment: canon describes the place; overlays
+//   describe page-specific or engagement-specific framing.
+//
 // Prior: S42 Add 3 — getImmerseDestination back-compat wrapper now
 //   passes core.destinationUrlSlug to getImmerseDestinationHotels so variant
 //   pages scope their room overlays correctly.
@@ -106,6 +113,30 @@ async function resolveSlug(slug: string): Promise<SlugResolution | null> {
   }
   slugResolutionCache.set(slug, resolution)
   return resolution
+}
+
+// ─── Geography canon fetch (S53B Closing) ────────────────────────────────────
+// Final fallback layer for hero image. Geography canon lives in
+// global_destinations.hero_image_src / hero_image_alt — the canonical truth
+// about the place itself. Template and engagement overrides take precedence,
+// but when both are NULL we read the canonical hero rather than rendering
+// empty.
+
+type GlobalDestinationHero = {
+  hero_image_src: string | null
+  hero_image_alt: string | null
+}
+
+async function fetchGlobalDestinationHero(
+  globalDestinationId: string,
+): Promise<GlobalDestinationHero | null> {
+  const { data, error } = await supabase
+    .from('global_destinations')
+    .select('hero_image_src, hero_image_alt')
+    .eq('id', globalDestinationId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as GlobalDestinationHero
 }
 
 // ─── Per-engagement destination override ─────────────────────────────────────
@@ -214,11 +245,15 @@ export async function getImmerseDestinationCore(
     dest = data as Record<string, unknown>
   }
 
-  const overrideResult = await fetchEngagementOverride(
-    engagementId,
-    globalDestinationId,
-    resolution.kind === 'variant' ? urlSlug : null,
-  )
+  const [overrideResult, globalDest] = await Promise.all([
+    fetchEngagementOverride(
+      engagementId,
+      globalDestinationId,
+      resolution.kind === 'variant' ? urlSlug : null,
+    ),
+    fetchGlobalDestinationHero(globalDestinationId),
+  ])
+
   if (!overrideResult) return null
 
   const ov     = overrideResult
@@ -241,10 +276,16 @@ export async function getImmerseDestinationCore(
     title:        (dest!.title     as string | null) ?? '',
     subtitle:     (dest!.subtitle  as string | null) ?? '',
     heroImageSrc: rewriteImageUrl(
-                    (ov?.hero_image_src_override ?? dest!.hero_image_src) as string | null
+                    (
+                      ov?.hero_image_src_override
+                      ?? (dest!.hero_image_src as string | null)
+                      ?? globalDest?.hero_image_src
+                    ) as string | null
                   ),
     heroImageAlt:  ov?.hero_image_alt_override
-                     ?? (dest!.hero_image_alt  as string | null) ?? '',
+                     ?? (dest!.hero_image_alt as string | null)
+                     ?? globalDest?.hero_image_alt
+                     ?? '',
     heroImageSrc2: heroSrc2Resolved || undefined,
     heroImageAlt2: ov?.hero_image_alt_2_override
                      ?? (dest!.hero_image_alt_2 as string | null) ?? undefined,
