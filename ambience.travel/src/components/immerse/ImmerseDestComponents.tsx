@@ -142,7 +142,7 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
           ...immerseFadeUp(visible, 80),
         }}
       >
-        {items.map((item, i) => (
+        {items.slice(0, 3).map((item, i) => (
           <ContentCard key={item.id} item={item} index={i} inverted={dark} />
         ))}
       </div>
