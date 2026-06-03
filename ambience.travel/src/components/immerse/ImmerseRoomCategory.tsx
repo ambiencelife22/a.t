@@ -3,38 +3,23 @@
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
 //
-// Last updated: S32K — Replaced hardcoded "/ night" rate suffix with data-
-//   driven room.rateCadence. Cadence comes from travel_immerse_rate_cadences
+// Last updated: S53B Closing+3 — Public rate pill now only renders with
+//   strikethrough + "PUBLIC" prefix when at least one comparison rate
+//   (nonNegotiatedNightlyRate or ambienceNightlyRate) is set. When public
+//   is alone, it renders as a neutral rate pill (no strikethrough, no
+//   "Public" label) since strikethrough without a comparison reads as a
+//   bug, not as savings context.
+// Prior: S32K — Replaced hardcoded "/ night" rate suffix with data-driven
+//   room.rateCadence. Cadence comes from travel_immerse_rate_cadences
 //   reference table (Per Night, Per Stay, Per Week, Per Month — extensible).
-//   No hardcoded cadence text in this component anymore. The leading slash
-//   was dropped because cadence labels are self-contained ("Per Night").
 // Prior: S32K — Room name rendering fixed. Eyebrow now shows tierLabel
 //   (engagement-specific tier: "Highlighted", "Alternative 1"), title shows
 //   levelLabel (room name: "Oceanfront One Bedroom Suite", "Corner Suite").
-//   Prior bug: was rendering roomBasis ("Room Only") as title.
 // S32: detect numeric rate strings ($1,200 / €420 / EURO 5,400 / GBP 800 / 1500).
-// is treated as informational copy and rendered without the cadence suffix.
-// S32 — Three rendering fixes on the chip row:
-//   (1) Square footage range collapses when min === max (was: '678–678 SQ FT'
-//       now: '678 SQ FT'). Same for sqm. Was caused by sqftMax being truthy
-//       even when equal to sqftMin.
-//   (2) Rate chips (Non-Negotiated, Ambience) detect non-numeric rate strings
-//       (e.g. 'Winter Pricing Not Yet Available') and switch to a single-line
-//       label-and-copy layout. The '/ night' suffix is suppressed for non-
-//       numeric rates because '<message> / night' reads as gibberish.
-//   (3) Non-numeric rate chips drop white-space: nowrap so the long copy can
-//       wrap on narrow viewports instead of bleeding off the card edge.
-//   Detection: rate string starts with currency symbol ($/€/£/¥) or digit →
-//   numeric.
-// Prior: S31 — Room transition animation swapped from immerseFadeIn
-//   (fade + slide-up 8px) to immerseFadeOnly (pure fade). Slide felt like
-//   a page jump on room switch.
-// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; no
-//   behaviour change.
-// Prior: S30G — Mobile NavRow renders between content panel and hero.
-// Prior: S30G — Restored <a opening tag on RoomCategory floorplan link.
-// Prior: S30F — Replaced hardcoded "+ Taxes & Fees" / "+ tax" rate suffixes
-//   with reads from room.rateSuffix.
+//   non-numeric is treated as informational copy.
+// Prior: S31 — Animation swapped to immerseFadeOnly.
+// Prior: S30G — Mobile NavRow between content and hero.
+// Prior: S30F — rateSuffix data-driven.
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
@@ -78,6 +63,11 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
   const nonNegIsNumeric  = room.nonNegotiatedNightlyRate ? isNumericRate(room.nonNegotiatedNightlyRate) : false
   const ambienceIsNumeric = room.ambienceNightlyRate     ? isNumericRate(room.ambienceNightlyRate)     : false
 
+  // S53B Closing+3: only treat public as a strikethrough comparison if a
+  // comparison rate is actually present.
+  const publicIsNumeric  = room.publicNightlyRate ? isNumericRate(room.publicNightlyRate) : false
+  const hasComparisonRate = Boolean(room.nonNegotiatedNightlyRate || room.ambienceNightlyRate)
+
   const contentPanel = (
     <ImmersePanel
       style={{
@@ -118,11 +108,49 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
             </div>
           )}
 
-          {room.publicNightlyRate && (
+          {/* S53B Closing+3 — public rate pill:
+              • With a comparison rate (non-negotiated or ambience) present:
+                strikethrough + "PUBLIC" prefix to read as the crossed-out
+                pre-negotiation reference.
+              • Without a comparison rate: render as a plain neutral rate pill
+                with no strikethrough and no label — the price IS the price. */}
+          {room.publicNightlyRate && hasComparisonRate && (
             <div style={{ position: 'relative', padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, opacity: 0.55, fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', gap: 5, alignItems: 'center', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', left: '-10%', top: '50%', width: '120%', height: 1, background: `linear-gradient(90deg, transparent, ${ID.dim}77, transparent)`, transform: 'rotate(-18deg)', pointerEvents: 'none' }} />
               <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Public</span>
               <span style={{ opacity: 0.8 }}>{room.publicNightlyRate}</span>
+            </div>
+          )}
+
+          {room.publicNightlyRate && !hasComparisonRate && (
+            <div style={{
+              padding: '7px 13px',
+              borderRadius: publicIsNumeric ? 999 : 14,
+              border: `1px solid ${ID.line}`,
+              background: ID.panel2,
+              color: ID.muted,
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              fontWeight: 500,
+              whiteSpace: publicIsNumeric ? 'nowrap' : 'normal',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              alignItems: 'flex-start',
+              maxWidth: '100%',
+              minWidth: 0,
+            }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: publicIsNumeric ? 'nowrap' : 'wrap' }}>
+                <span>{room.publicNightlyRate}</span>
+                {publicIsNumeric && room.rateCadence && (
+                  <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{room.rateCadence}</span>
+                )}
+              </div>
+              {showRateSuffix && publicIsNumeric && (
+                <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+                  {room.rateSuffix}
+                </div>
+              )}
             </div>
           )}
 
