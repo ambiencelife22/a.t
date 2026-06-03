@@ -4,16 +4,13 @@
 // Renders hero + welcome letter + route strip + (optional) secondary hero + destination rows + pricing
 // Does not own destination subpages (see DestinationPage)
 //
-// Last updated: S30E stage 2 — File renamed ImmerseTripPage.tsx →
-//   ImmerseEngagementPage.tsx. Component renamed ImmerseTripPage →
-//   ImmerseEngagementPage. Imports updated for renamed
-//   ImmerseEngagementComponents + ImmerseEngagementRoute. Internal pricing
-//   import renamed ImmerseTripPricing → ImmerseEngagementPricing.
+// Last updated: S53B Closing — hero eyebrow now respects
+//   engagement.heroEyebrowOverride. When populated, replaces guestName
+//   with a single elegant line ("For Safiya & Family"). NULL preserves
+//   the existing clientName fallback ("Our VIP Guest").
+// Prior: S30E stage 2 — File renamed ImmerseTripPage.tsx → ImmerseEngagementPage.tsx.
 // Prior: S30E stage 1 — Type rename ImmerseTripData → ImmerseEngagementData.
 // Prior: S30 — Welcome letter wired between Hero 1 and Route Strip.
-//   Canonical singleton (travel_immerse_welcome_letter) + per-engagement
-//   overrides (welcome_*_override columns). Component hides if all 5 fields
-//   resolve empty.
 
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
@@ -34,10 +31,14 @@ export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagemen
     ? `/${data.urlId}`
     : `/immerse/${data.urlId}`
 
+  // S53B Closing — eyebrow override. When populated, replaces clientName
+  // with a single elegant tailored line (e.g. "For Safiya & Family").
+  const guestNameRendered = data.heroEyebrowOverride ?? data.clientName
+
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>
       <ImmerseHero
-        guestName={data.clientName}
+        guestName={guestNameRendered}
         titlePrefix=''
         title={data.title}
         dateLabel={data.statusLabel}

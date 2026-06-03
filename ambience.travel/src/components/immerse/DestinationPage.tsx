@@ -3,7 +3,11 @@
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S42 Add 3 — getImmerseDestinationHotels now receives
+// Last updated: S53B Closing — hero eyebrow now respects
+//   engagement.heroEyebrowOverride. When populated, a single elegant line
+//   ("For Safiya & Family") replaces both the gold "guestName" zone and
+//   the italic "titlePrefix" zone. Behavior unchanged when override is null.
+// Prior: S42 Add 3 — getImmerseDestinationHotels now receives
 //   coreResult.destinationUrlSlug so variant pages scope room overlays
 //   correctly via travel_immerse_rooms.destination_url_slug.
 
@@ -210,16 +214,28 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
 
   const data        = composeData(core, hotels, cards, pricing)
   const dateLabel   = deriveDateLabel(engagement.statusLabel)
-  const titlePrefix = deriveTitlePrefix(engagement.journeyTypes)
   const nightsLabel = deriveNightsLabel(engagement, destinationSlug)
+
+  // S53B Closing — single-line eyebrow override.
+  // When the engagement has heroEyebrowOverride set, render it as the
+  // elegant single-line eyebrow (gold zone) and suppress the italic
+  // titlePrefix beneath. Otherwise compose the legacy guestName +
+  // titlePrefix pair.
+  const hasEyebrowOverride = !!engagement.heroEyebrowOverride
+  const guestNameRendered  = hasEyebrowOverride
+    ? engagement.heroEyebrowOverride!
+    : engagement.clientName
+  const titlePrefixRendered = hasEyebrowOverride
+    ? undefined
+    : deriveTitlePrefix(engagement.journeyTypes)
 
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>
       <ImmerseStructuredData data={data} />
 
       <ImmerseHero
-        guestName={engagement.clientName}
-        titlePrefix={titlePrefix}
+        guestName={guestNameRendered}
+        titlePrefix={titlePrefixRendered}
         title={data.title}
         dateLabel={dateLabel}
         nightsLabel={nightsLabel}

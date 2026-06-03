@@ -3,24 +3,17 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see queriesImmerseDestCore.ts).
 //
-// Last updated: S53B Closing — destination row card hero now resolves via
+// Last updated: S53B Closing — hero_eyebrow_override added. When populated
+//   on the engagement, it replaces the composed guestName + titlePrefix
+//   on both the overview hero and destination subpage hero, giving every
+//   engagement an elegant, tailorable single-line eyebrow. NULL preserves
+//   existing behavior (guestName from trip_display + derived titlePrefix).
+// Prior: S53B Closing — destination row card hero now resolves via
 //   canon-fallback chain: engagement row image_src → template hero
 //   (travel_immerse_destinations.hero_image_src on the canonical template,
 //   url_slug IS NULL) → geography canon (global_destinations.hero_image_src).
-//   Same architectural pattern as the subpage core hero fix.
-//   Implementation: fetchDestinationHeroFallbacks() returns a Map keyed by
-//   destination slug, parallelized inside the existing Promise.all so no
-//   added latency.
 // Prior: S48 — engagement primary fetch routed through the
-//   get-engagement-stage Edge Function. The Edge Function uses the service
-//   role key to bypass RLS on the engagement row + operational tables, and
-//   gates exposure on the engagement.public_view flag. This means:
-//     - Anon clients never query travel_immerse_engagements directly here
-//     - Anon never touches admin-protected operational tables
-//     - Hidden engagements are indistinguishable from non-existent ones
-//   The hydration logic (route stops, destination rows, pricing rows) still
-//   uses anon supabase calls because those tables have public read RLS for
-//   live engagements.
+//   get-engagement-stage Edge Function.
 // Prior: S32K — Pricing rows + destination rows select destination NAME.
 
 import { supabaseAnon } from '../lib/supabase'
@@ -79,6 +72,7 @@ type EngagementRow = {
   hero_title_2:                    string | null
   hero_subtitle_2:                 string | null
   hero_pills:                      string[] | null
+  hero_eyebrow_override:           string | null   // S53B Closing
   welcome_eyebrow_override:        string | null
   welcome_title_override:          string | null
   welcome_body_override:           string | null
@@ -152,10 +146,7 @@ type PricingRowRow = {
   global_destinations: GlobalDestinationDisplayJoin | null
 }
 
-// ── Destination hero canon-fallback (S53B Closing) ──────────────────────────
-// For each destination on the engagement, build a Map keyed by destination
-// slug holding template + geography canon hero candidates. The mapper then
-// resolves engagement override → template → geography canon for each row.
+// ── Destination hero canon-fallback ─────────────────────────────────────────
 
 type DestinationHeroFallback = {
   template_hero: string | null
@@ -170,7 +161,6 @@ async function fetchDestinationHeroFallbacks(
   const map = new Map<string, DestinationHeroFallback>()
   if (slugs.length === 0) return map
 
-  // Step 1 — geography canon (global_destinations) by slug
   const { data: globalRows } = await supabaseAnon
     .from('global_destinations')
     .select('slug, id, hero_image_src, hero_image_alt')
@@ -192,7 +182,6 @@ async function fetchDestinationHeroFallbacks(
     idsBySlug.set(row.slug, row.id)
   }
 
-  // Step 2 — canonical immerse templates by global_destination_id
   const ids = Array.from(idsBySlug.values())
   if (ids.length === 0) return map
 
@@ -200,7 +189,7 @@ async function fetchDestinationHeroFallbacks(
     .from('travel_immerse_destinations')
     .select('global_destination_id, hero_image_src, hero_image_alt')
     .in('global_destination_id', ids)
-    .is('url_slug', null)  // canonical templates only — variants are subpage-only
+    .is('url_slug', null)
 
   const slugByGlobalId = new Map<string, string>()
   for (const [slug, id] of idsBySlug.entries()) slugByGlobalId.set(id, slug)
@@ -225,9 +214,6 @@ async function fetchDestinationHeroFallbacks(
 }
 
 // ── Edge Function gateway ─────────────────────────────────────────────────────
-// S48 — Primary engagement fetch goes through this Edge Function so we can
-// bypass RLS on the engagement row and operational tables with the service
-// role key, while gating exposure on the public_view flag.
 
 type EngagementStagePayload = {
   engagement:     EngagementRow
@@ -314,15 +300,11 @@ async function hydrateEngagement(
   const destRows   = (destsRes.data    ?? []) as unknown as DestinationRowRow[]
   const priceRows  = (pricingRes.data  ?? []) as unknown as PricingRowRow[]
 
-  // ── Destination hero canon-fallback (after we know destination slugs) ─────
   const destinationSlugs = destRows
     .map(r => r.global_destinations?.slug)
     .filter((s): s is string => !!s)
   const heroFallbacks = await fetchDestinationHeroFallbacks(destinationSlugs)
 
-  // ── Compute engagement stage ──────────────────────────────────────────────
-  // hasTripContent comes from the Edge Function (service-role count check).
-  // hasProposalContent is derivable from the engagement row + dest rows here.
   const hasProposalContent = !!(
     engagementRow.hero_tagline    ||
     engagementRow.route_body      ||
@@ -420,6 +402,7 @@ async function hydrateEngagement(
     clientName,
     statusLabel:     engagementRow.status_label ?? '',
     heroTagline:     engagementRow.hero_tagline ?? undefined,
+    heroEyebrowOverride: engagementRow.hero_eyebrow_override ?? undefined,
 
     engagementStatus,
     itineraryStatus,

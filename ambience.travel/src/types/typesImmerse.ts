@@ -253,6 +253,7 @@ export type ImmerseEngagementData = {
   statusLabel:     string
   stage:           EngagementStage
   heroTagline?:    string
+  heroEyebrowOverride?: string;
   engagementStatus:  EngagementStatus
   itineraryStatus:   ItineraryStatus
   welcomeLetter:   ImmerseWelcomeLetter
