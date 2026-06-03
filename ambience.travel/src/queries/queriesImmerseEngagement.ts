@@ -3,18 +3,19 @@
 //   - getImmerseEngagement(urlId) — full ImmerseEngagementData fetch by url_id
 // Does not own: destination subpage data (see queriesImmerseDestCore.ts).
 //
-// Last updated: S53B Closing — hero_eyebrow_override added. When populated
-//   on the engagement, it replaces the composed guestName + titlePrefix
-//   on both the overview hero and destination subpage hero, giving every
-//   engagement an elegant, tailorable single-line eyebrow. NULL preserves
-//   existing behavior (guestName from trip_display + derived titlePrefix).
+// Last updated: S53B Closing+1 — destination_row.hero_eyebrow_override
+//   added. Surfaces per-subpage tailored hero eyebrow. Resolved in
+//   DestinationPage.tsx via:
+//     destination_row.heroEyebrowOverride
+//     → engagement.heroEyebrowOverride
+//     → composed guestName + titlePrefix (legacy)
+// Prior: S53B Closing — engagement.hero_eyebrow_override added. When
+//   populated, replaces composed guestName + titlePrefix on both the
+//   overview hero and destination subpage hero.
 // Prior: S53B Closing — destination row card hero now resolves via
-//   canon-fallback chain: engagement row image_src → template hero
-//   (travel_immerse_destinations.hero_image_src on the canonical template,
-//   url_slug IS NULL) → geography canon (global_destinations.hero_image_src).
+//   canon-fallback chain.
 // Prior: S48 — engagement primary fetch routed through the
 //   get-engagement-stage Edge Function.
-// Prior: S32K — Pricing rows + destination rows select destination NAME.
 
 import { supabaseAnon } from '../lib/supabase'
 import { rewriteImageUrl } from '../utils/utilsImageUrl'
@@ -72,7 +73,7 @@ type EngagementRow = {
   hero_title_2:                    string | null
   hero_subtitle_2:                 string | null
   hero_pills:                      string[] | null
-  hero_eyebrow_override:           string | null   // S53B Closing
+  hero_eyebrow_override:           string | null
   welcome_eyebrow_override:        string | null
   welcome_title_override:          string | null
   welcome_body_override:           string | null
@@ -123,18 +124,19 @@ type GlobalDestinationDisplayJoin = {
 }
 
 type DestinationRowRow = {
-  id:                   string
-  sort_order:           number
-  number_label:         string | null
-  title:                string | null
-  mood:                 string | null
-  summary:              string | null
-  stay_label:           string | null
-  image_src:            string | null
-  image_alt:            string | null
-  global_destinations:  GlobalDestinationDisplayJoin | null
-  subpage_status:       string | null
-  destination_url_slug: string | null
+  id:                     string
+  sort_order:             number
+  number_label:           string | null
+  title:                  string | null
+  mood:                   string | null
+  summary:                string | null
+  stay_label:             string | null
+  image_src:              string | null
+  image_alt:              string | null
+  global_destinations:    GlobalDestinationDisplayJoin | null
+  subpage_status:         string | null
+  destination_url_slug:   string | null
+  hero_eyebrow_override:  string | null   // S53B Closing+1
 }
 
 type PricingRowRow = {
@@ -279,6 +281,7 @@ async function hydrateEngagement(
       .select(`
         id, sort_order, number_label, title, mood, summary, stay_label,
         image_src, image_alt, subpage_status, destination_url_slug,
+        hero_eyebrow_override,
         global_destinations ( slug, name )
       `)
       .eq('trip_id', engagementId)
@@ -366,17 +369,18 @@ async function hydrateEngagement(
       ?? ''
 
     return {
-      id:              r.id,
-      numberLabel:     r.number_label ?? '',
-      title:           r.title        ?? '',
-      mood:            r.mood         ?? '',
-      summary:         r.summary      ?? '',
-      stayLabel:       r.stay_label   ?? '',
-      imageSrc:        rewriteImageUrl(resolvedImageSrc),
-      imageAlt:        resolvedImageAlt,
-      destinationSlug:    globalSlug,
-      destinationUrlSlug: r.destination_url_slug ?? null,
-      subpageStatus:      normalizeSubpageStatus(r.subpage_status),
+      id:                  r.id,
+      numberLabel:         r.number_label ?? '',
+      title:               r.title        ?? '',
+      mood:                r.mood         ?? '',
+      summary:             r.summary      ?? '',
+      stayLabel:           r.stay_label   ?? '',
+      imageSrc:            rewriteImageUrl(resolvedImageSrc),
+      imageAlt:            resolvedImageAlt,
+      destinationSlug:     globalSlug,
+      destinationUrlSlug:  r.destination_url_slug  ?? null,
+      subpageStatus:       normalizeSubpageStatus(r.subpage_status),
+      heroEyebrowOverride: r.hero_eyebrow_override  ?? undefined,
     }
   })
 

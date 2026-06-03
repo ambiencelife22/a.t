@@ -2,12 +2,14 @@
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
 //
-// Last updated: S48 — EngagementStage added as a first-class computed property
-//   on ImmerseEngagementData. Drives bare-URL routing decisions, admin badges,
-//   and future automation. Replaces ad-hoc tripId nullable presence checks.
+// Last updated: S53B Closing+1 — ImmerseHeroProps moved here from inline
+//   declaration in ImmerseHero.tsx, per standing rule: renderers render,
+//   types files own data and types.
+// Prior: S53B Closing+1 — heroEyebrowOverride added to ImmerseDestinationRow.
+// Prior: S53B Closing — heroEyebrowOverride added to ImmerseEngagementData.
+// Prior: S48 — EngagementStage added as a first-class computed property
+//   on ImmerseEngagementData.
 // Prior: S42 Add 3 — resort_map_src added to ImmerseHotelOption.
-//   Sourced from travel_immerse_trip_destination_hotels.resort_map_src.
-//   Rendered as a downloadable link below the hotel gallery in HotelDetailPanel.
 
 export type EngagementType =
   | 'journey'
@@ -190,6 +192,7 @@ export type ImmerseDestinationRow = {
   destinationUrlSlug?: string | null
   anchorId?:           string
   subpageStatus:       ImmerseSubpageStatus
+  heroEyebrowOverride?: string    // S53B Closing+1 — per-destination_row eyebrow
 }
 
 export type ImmerseTripPricingRow = {
@@ -201,32 +204,22 @@ export type ImmerseTripPricingRow = {
 }
 
 // ─── Engagement stage ─────────────────────────────────────────────────────────
-// S48 — Computed lifecycle state for an engagement. Drives routing decisions,
-// admin UI badges, and future automation.
-//
-// Derived from two signals:
-//   1. The advisor's declared engagement_status_id (intent)
-//   2. The actual data presence on the linked trip (system truth)
-//
-// Status alone can lie (an advisor might mark something "confirmed" before
-// bookings land). Data alone is too raw. Stage combines both into the single
-// source of truth for routing.
 
 export type EngagementStage =
-  | 'draft'                  // No proposal content, no trip content
-  | 'proposal'               // Proposal narrative only
-  | 'proposal_with_pending'  // Proposal narrative + trip content forming
-  | 'trip'                   // Trip content present; live for the client
-  | 'completed'              // Trip exists AND status declared completed/archived
-  | 'cancelled'              // Status declared cancelled/lost
+  | 'draft'
+  | 'proposal'
+  | 'proposal_with_pending'
+  | 'trip'
+  | 'completed'
+  | 'cancelled'
 
 const COMPLETED_STATUS_SLUGS = new Set<string>(['completed', 'archived'])
 const CANCELLED_STATUS_SLUGS = new Set<string>(['cancelled', 'lost'])
 
 export type EngagementStageInputs = {
-  statusSlug:         string  // engagement_status.slug
-  hasProposalContent: boolean // any narrative or destination_rows
-  hasTripContent:     boolean // any bookings, days, or aux bookings on linked trip
+  statusSlug:         string
+  hasProposalContent: boolean
+  hasTripContent:     boolean
 }
 
 export function computeEngagementStage(input: EngagementStageInputs): EngagementStage {
@@ -253,7 +246,7 @@ export type ImmerseEngagementData = {
   statusLabel:     string
   stage:           EngagementStage
   heroTagline?:    string
-  heroEyebrowOverride?: string;
+  heroEyebrowOverride?: string
   engagementStatus:  EngagementStatus
   itineraryStatus:   ItineraryStatus
   welcomeLetter:   ImmerseWelcomeLetter
@@ -326,4 +319,32 @@ export type ImmerseDestinationData = {
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        string[]
+}
+
+// ─── Component prop types ────────────────────────────────────────────────────
+// Renderer prop contracts. Live here per standing rule:
+// renderers render, types files own data and types.
+
+export type ImmerseHeroProps = {
+  // Personalisation
+  guestName:       string
+  titlePrefix?:    string   // renders in Cormorant Garamond italic — e.g. "Honeymoon in"
+  dateLabel?:      string   // renders in gold below title — e.g. "January 2027"
+  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5–6 Nights"
+  itineraryStage?: string   // small italic line — e.g. "Refined Proposal"
+
+  // Content
+  title:           string
+  subtitle:        string
+  pills?:          string[]
+  heroImageSrc:    string
+  heroImageAlt:    string
+
+  // CTAs
+  primaryHref?:    string
+  primaryLabel?:   string
+  diningHref?:     string   // optional third CTA — "Dining + Experiences"
+  diningLabel?:    string
+  secondaryHref?:  string
+  secondaryLabel?: string
 }

@@ -2,32 +2,29 @@
 // Owns the full-bleed glass-card hero. Used by both journey overview and destination subpages.
 // Hero image is the first element — no brand strip above it.
 //
-// Last updated: S32F — Token + style extraction. All hardcoded rgba/hex
-//   literals lifted to IMMERSE_HERO + FONTS tokens in landingColors.ts per
-//   Dev Standards §II "no hardcoded hex strings in component files". Layout-
-//   shape constants (heights, parallax magnitude, image overscan) consolidated
-//   into HERO_LAYOUT config block at top of file. No visual change — same
-//   hex values, sourced from tokens. Cormorant Garamond fontFamily promoted
-//   to FONTS.serif (used here + ImmerseDestComponents). PARALLAX_MAGNITUDE
-//   moved into HERO_LAYOUT alongside related layout constants.
+// Last updated: S53B Closing+1 — ImmerseHeroProps lifted to typesImmerse.ts
+//   per standing rule: renderers render, types files own data and types.
+//   This file now only owns layout config + render. No inline type decls.
+// Prior: S32F — Token + style extraction. All hardcoded rgba/hex literals
+//   lifted to IMMERSE_HERO + FONTS tokens in landingColors.ts per Dev
+//   Standards §II. Layout-shape constants consolidated into HERO_LAYOUT
+//   config block at top of file.
 // Prior: S32E (Add 1 perf fix) — Path A refactor: hero image now renders as
 //   real <img> with fetchpriority="high" instead of CSS background-image stack.
-//   3 gradient layers become absolutely-positioned overlay divs sitting between
-//   image and glass card. Parallax preserved via JS transform on the <img>
-//   (PARALLAX_MAGNITUDE constant — tune as needed). Targets LCP fix from 5.3s.
-//   Visual output preserved; paint pipeline fundamentally different.
+//   Parallax preserved via JS transform on the <img>.
 // Prior: S32 (Add 1) — Optional itinerary status line. Renders below
-//   the date+nights label as small italic dim text. Subtle marker for guests
-//   so they understand which stage of the proposal lifecycle they're seeing.
+//   the date+nights label as small italic dim text.
 
 import { useEffect, useRef, useState } from 'react'
 import { ID, IMMERSE_HERO, FONTS } from '../../tokens/tokensLanding'
 import { useImmerseMobile } from './ImmerseComponents'
 import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../utils/utilsAnimations'
+import type { ImmerseHeroProps } from '../../types/typesImmerse'
 
 // ─── Layout config ───────────────────────────────────────────────────────────
-// All hero shape/motion constants live here. Visual chrome (colors, gradients,
-// borders) lives in IMMERSE_HERO tokens. Typography fontFamily is FONTS.serif.
+// Hero shape/motion constants — local to this renderer, not a data type.
+// Visual chrome (colors, gradients, borders) lives in IMMERSE_HERO tokens.
+// Typography fontFamily is FONTS.serif.
 
 const HERO_LAYOUT = {
   // Section minimum height — desktop is taller for cinematic effect.
@@ -48,27 +45,6 @@ const HERO_LAYOUT = {
   cardFadeMax:    0.82,
 } as const
 
-type Props = {
-  // Personalisation
-  guestName:       string
-  titlePrefix?:    string   // renders in Cormorant Garamond italic — e.g. "Honeymoon in"
-  dateLabel?:      string   // renders in gold below title — e.g. "January 2027"
-  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5–6 Nights"
-  itineraryStage?: string   // S32: small italic line — e.g. "Refined Proposal"
-  // Content
-  title:           string
-  subtitle:        string
-  pills?:          string[]
-  heroImageSrc:    string
-  heroImageAlt:    string
-  primaryHref?:    string
-  primaryLabel?:   string
-  diningHref?:     string   // optional third CTA — "Dining + Experiences"
-  diningLabel?:    string
-  secondaryHref?:  string
-  secondaryLabel?: string
-}
-
 export default function ImmerseHero({
   guestName,
   titlePrefix,
@@ -86,7 +62,7 @@ export default function ImmerseHero({
   diningLabel    = 'Dining + Experiences',
   secondaryHref  = '#pricing',
   secondaryLabel = 'Pricing',
-}: Props) {
+}: ImmerseHeroProps) {
   const { ref, visible } = useImmerseVisible(0.05)
   const isMobile         = useImmerseMobile()
   const sectionRef       = useRef<HTMLElement>(null)
@@ -316,7 +292,7 @@ export default function ImmerseHero({
               </div>
             )}
 
-            {/* S32: Itinerary stage indicator — italic, dim, subtle */}
+            {/* Itinerary stage indicator — italic, dim, subtle */}
             {itineraryStage && (
               <div
                 style={{
