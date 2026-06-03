@@ -3,10 +3,13 @@
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
-// Last updated: S53B Closing — hero eyebrow now respects
-//   engagement.heroEyebrowOverride. When populated, a single elegant line
-//   ("For Safiya & Family") replaces both the gold "guestName" zone and
-//   the italic "titlePrefix" zone. Behavior unchanged when override is null.
+// Last updated: S53B Closing+1 — per-destination_row hero_eyebrow_override.
+//   Resolver chain: destination_row.heroEyebrowOverride
+//     → engagement.heroEyebrowOverride
+//     → composed guestName + titlePrefix (legacy).
+//   Matched via destination_slug + destination_url_slug pair so variants
+//   like grossarl2 resolve to their own override row.
+// Prior: S53B Closing — engagement.heroEyebrowOverride support added.
 // Prior: S42 Add 3 — getImmerseDestinationHotels now receives
 //   coreResult.destinationUrlSlug so variant pages scope room overlays
 //   correctly via travel_immerse_rooms.destination_url_slug.
@@ -60,6 +63,21 @@ function deriveTitlePrefix(journeyTypes: string[]): string {
 function deriveNightsLabel(engagement: ImmerseEngagementData, destinationSlug: string): string {
   const row = engagement.destinationRows.find(r => r.destinationSlug === destinationSlug)
   return row?.stayLabel ?? ''
+}
+
+// S53B Closing+1 — resolve per-subpage hero eyebrow.
+// Match the destination row by slug + url_slug pair so variant pages
+// (e.g. grossarl2) get their own scoped override.
+function resolveDestinationRowEyebrow(
+  engagement: ImmerseEngagementData,
+  destinationSlug: string,
+  urlSlugContext: string | null,
+): string | undefined {
+  const match = engagement.destinationRows.find(r =>
+    r.destinationSlug === destinationSlug
+    && (r.destinationUrlSlug ?? null) === urlSlugContext,
+  )
+  return match?.heroEyebrowOverride
 }
 
 // ── Compose ImmerseDestinationData ───────────────────────────────────────────
@@ -216,15 +234,22 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
   const dateLabel   = deriveDateLabel(engagement.statusLabel)
   const nightsLabel = deriveNightsLabel(engagement, destinationSlug)
 
-  // S53B Closing — single-line eyebrow override.
-  // When the engagement has heroEyebrowOverride set, render it as the
-  // elegant single-line eyebrow (gold zone) and suppress the italic
-  // titlePrefix beneath. Otherwise compose the legacy guestName +
-  // titlePrefix pair.
-  const hasEyebrowOverride = !!engagement.heroEyebrowOverride
-  const guestNameRendered  = hasEyebrowOverride
-    ? engagement.heroEyebrowOverride!
-    : engagement.clientName
+  // S53B Closing+1 — resolver chain for hero eyebrow:
+  // 1. destination_row.heroEyebrowOverride (per-subpage)
+  // 2. engagement.heroEyebrowOverride (proposal-wide)
+  // 3. legacy composed guestName + titlePrefix
+  //
+  // When either override level is set, render as single elegant line and
+  // suppress the italic titlePrefix sub-line.
+  const rowEyebrow = resolveDestinationRowEyebrow(
+    engagement,
+    destinationSlug,
+    core.destinationUrlSlug ?? null,
+  )
+  const resolvedEyebrow = rowEyebrow ?? engagement.heroEyebrowOverride ?? null
+
+  const hasEyebrowOverride  = !!resolvedEyebrow
+  const guestNameRendered   = hasEyebrowOverride ? resolvedEyebrow! : engagement.clientName
   const titlePrefixRendered = hasEyebrowOverride
     ? undefined
     : deriveTitlePrefix(engagement.journeyTypes)
