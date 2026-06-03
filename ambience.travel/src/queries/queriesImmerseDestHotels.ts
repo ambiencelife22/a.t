@@ -3,10 +3,15 @@
 //   Internal: fetchHotelsShape, fetchFlatHotels, fetchRegionGroups,
 //   fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery.
 //
-// Last updated: S42 Add 3 — resort_map_src fetched from
+// Last updated: S53B Closing+2 — fetchAllGallery now engagement-aware.
+//   Pulls canon gallery rows + engagement-scoped overlay rows from
+//   travel_immerse_trip_hotel_gallery_overrides in parallel. For each
+//   (accom_hotel_id, sort_order) slot, an overlay image wins over the
+//   canon image. Overlay table can be sparse — slots without an override
+//   render canon as normal. No new table dependency at canon level;
+//   no changes to existing canon seeds.
+// Prior: S42 Add 3 — resort_map_src fetched from
 //   travel_immerse_trip_destination_hotels and mapped to ImmerseHotelOption.resortMapSrc.
-//   Rendered as a downloadable link below the hotel gallery in HotelDetailPanel.
-//   destinationUrlSlug scoping for room overlays also added this session.
 
 import { supabase } from '../lib/supabase'
 import { rewriteImageUrl, rewriteImageUrls } from '../utils/utilsImageUrl'
@@ -88,7 +93,7 @@ async function fetchFlatHotels(
 
   const [roomsByHotel, galleryByHotel] = await Promise.all([
     fetchRoomsForHotels(engagementId, canonicalHotelIds, destinationUrlSlug),
-    fetchAllGallery(canonicalHotelIds),
+    fetchAllGallery(engagementId, canonicalHotelIds),
   ])
 
   return data.map(r => {
@@ -196,7 +201,7 @@ async function fetchRegionGroups(
 
   const [roomsByHotel, galleryByHotel] = await Promise.all([
     fetchRoomsForHotels(engagementId, canonicalHotelIds, destinationUrlSlug),
-    fetchAllGallery(canonicalHotelIds),
+    fetchAllGallery(engagementId, canonicalHotelIds),
   ])
 
   const hotelsByRegionId = new Map<string, ImmerseHotelOption[]>()
@@ -266,8 +271,6 @@ async function fetchRegionGroups(
 }
 
 // ─── Rooms (engagement-scoped overlay + canonical join) ──────────────────────
-// destinationUrlSlug scoping: when non-null, returns overlay rows where
-// destination_url_slug matches OR is NULL (unscoped rows show everywhere).
 
 async function fetchRoomsForHotels(
   engagementId:       string,
@@ -383,27 +386,53 @@ async function fetchRoomsForHotels(
   return grouped
 }
 
-// ─── Hotel gallery (canonical) ────────────────────────────────────────────────
+// ─── Hotel gallery (canon + engagement overlay) ───────────────────────────────
+// S53B Closing+2 — Pulls canon gallery + engagement-scoped overlay rows
+// from travel_immerse_trip_hotel_gallery_overrides in parallel. For each
+// canon (accom_hotel_id, sort_order) slot, an overlay row at the same
+// slot wins. Empty overlay table = canon-only rendering (zero overhead).
 
 async function fetchAllGallery(
+  engagementId:      string,
   canonicalHotelIds: string[],
 ): Promise<Record<string, string[]>> {
   if (canonicalHotelIds.length === 0) return {}
 
-  const { data: rows, error } = await supabase
-    .from('travel_accom_hotel_gallery')
-    .select('accom_hotel_id, image_src')
-    .in('accom_hotel_id', canonicalHotelIds)
-    .order('sort_order', { ascending: true })
+  const [canonRes, overlayRes] = await Promise.all([
+    supabase
+      .from('travel_accom_hotel_gallery')
+      .select('accom_hotel_id, sort_order, image_src')
+      .in('accom_hotel_id', canonicalHotelIds)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('travel_immerse_trip_hotel_gallery_overrides')
+      .select('accom_hotel_id, sort_order, image_src')
+      .eq('trip_id', engagementId)
+      .in('accom_hotel_id', canonicalHotelIds),
+  ])
 
-  if (error || !rows) return {}
+  const canonRows   = canonRes.data   ?? []
+  const overlayRows = overlayRes.data ?? []
 
-  const grouped: Record<string, string[]> = {}
-  for (const r of rows) {
-    const key = r.accom_hotel_id as string
-    if (!grouped[key]) grouped[key] = []
-    grouped[key].push(rewriteImageUrl(r.image_src as string))
+  // Build (hotel_id, sort_order) -> overlay_image_src map
+  const overlayBySlot = new Map<string, string>()
+  for (const o of overlayRows) {
+    const key = `${o.accom_hotel_id}::${o.sort_order}`
+    overlayBySlot.set(key, o.image_src as string)
   }
+
+  // Walk canon ordered, swap in overlay where present
+  const grouped: Record<string, string[]> = {}
+  for (const r of canonRows) {
+    const hotelId = r.accom_hotel_id as string
+    const slotKey = `${hotelId}::${r.sort_order}`
+    const overlay = overlayBySlot.get(slotKey)
+    const resolved = overlay ?? (r.image_src as string)
+
+    if (!grouped[hotelId]) grouped[hotelId] = []
+    grouped[hotelId].push(rewriteImageUrl(resolved))
+  }
+
   return grouped
 }
 
