@@ -2,7 +2,20 @@
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestinationComponents)
 //
-// Last updated: S32K — ImmerseEngagementPricing now renders a 3-column table
+// Last updated: S53B+ — Mobile pricing table now shows Basis instead of Item.
+//   On mobile only two columns render; the previous mapping (Item + Range)
+//   was insufficient when two pricing rows shared a destination (e.g. two
+//   Großarl options on the Mohammed engagement both displayed as "Großarl").
+//   Basis carries hotel + room + meal-plan info, which differentiates rows
+//   and reads more usefully at-a-glance. Desktop layout unchanged.
+//   - PricingTable: mobile headers swap from ['Item', 'Indicative range']
+//     to ['Basis', 'Indicative range'].
+//   - Td: on mobile, col 1 (Item) is hidden instead of col 2 (Basis).
+//   - TotalTd: on mobile, cols 1 and 3 hidden (was 2 and 3). Mohammed-style
+//     multi-destination engagements have empty pricing_total_label so the
+//     visual impact on the total row is null; single-destination engagements
+//     already drop Item on desktop via hideItem and don't render col 1.
+// Prior: S32K — ImmerseEngagementPricing now renders a 3-column table
 //   when all rows share a destination (Basis, Stay, Range) — drops the
 //   redundant Item column rather than repeating the destination name on
 //   every row. Multi-destination engagements still render the 4-column
@@ -615,6 +628,8 @@ function CornerBadge({ isLive, isPreview }: { isLive: boolean; isPreview: boolea
 // S32K: when all rows share a destination, drops the redundant Item column.
 // Single-destination engagements render Basis · Stay · Range. Multi-destination
 // renders Item · Basis · Stay · Range exactly as before.
+// S53B+: mobile now shows Basis (not Item) for better differentiation when
+// two rows share the same destination name (e.g. two Großarl options).
 
 export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
@@ -697,16 +712,23 @@ export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData
 // when the engagement has a single destination. The Td/TotalTd helpers remain
 // stable; rendering caller is responsible for conditionally including the
 // col=1 Td when hideItem is true.
+// S53B+: mobile mapping swap — Basis takes the visible slot on mobile, Item
+// is hidden. Improves at-a-glance differentiation when two rows share the
+// same destination name.
 
 export function PricingTable({ children, hideItem = false }: { children: React.ReactNode; hideItem?: boolean }) {
   const isMobile = window.innerWidth < 768
 
+  // S53B+: mobile shows Basis instead of Item. Item column (destination
+  // name) can be ambiguous when multiple rows share a destination; Basis
+  // carries hotel + room + meal-plan info which differentiates rows.
   const baseHeaders = isMobile
-    ? ['Item', 'Indicative range']
+    ? ['Basis', 'Indicative range']
     : ['Item', 'Basis', 'Stay', 'Indicative range']
 
-  // hideItem only takes effect on desktop. On mobile only Item + Range render
-  // already; suppressing Item there would hide the entire labeling.
+  // hideItem only takes effect on desktop. On mobile the Item column is
+  // already suppressed (Basis takes its slot); the hideItem flag is a no-op
+  // for mobile rendering.
   const headers = (hideItem && !isMobile)
     ? baseHeaders.slice(1)   // drop 'Item', keep 'Basis', 'Stay', 'Indicative range'
     : baseHeaders
@@ -742,13 +764,12 @@ export function PricingTable({ children, hideItem = false }: { children: React.R
 export function Td({ children, col }: { children: React.ReactNode; col?: number }) {
   const isMobile = window.innerWidth < 768
 
-  // On mobile, col 2 (basis) folds into col 1 as a sub-label.
-  // Col 3 (stay) is suppressed entirely on mobile.
+  // S53B+: on mobile, visible columns are Basis (col 2) and Range (col 4).
+  // Item (col 1) and Stay (col 3) are hidden — Stay because there's no
+  // room for it, Item because Basis is more useful at-a-glance.
+  if (isMobile && col === 1) return null
   if (isMobile && col === 3) return null
-  if (isMobile && col === 2) return null  // rendered inline by col 1
 
-  // Col 1 on mobile: render basis as a dim sub-line beneath the main value.
-  // This requires col 1 to know col 2's content — handled at the row level below.
   return (
     <td
       style={{
@@ -767,7 +788,14 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
 
 export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode; col?: number; colSpan?: number }) {
   const isMobile = window.innerWidth < 768
-  const hidden = isMobile && (col === 2 || col === 3)
+
+  // S53B+: same mobile visibility mapping as Td — hide cols 1 (Item) and
+  // 3 (Stay). Total label in multi-destination engagements lives at col 1
+  // and is therefore hidden on mobile; Mohammed-style multi-destination
+  // engagements typically have an empty pricing_total_label so the impact
+  // is null. For single-destination engagements the label lives at col 2
+  // (set by the caller) and renders correctly.
+  const hidden = isMobile && (col === 1 || col === 3)
   if (hidden) return null
 
   return (
