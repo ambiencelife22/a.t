@@ -40,6 +40,7 @@ type SidebarLink =
   | { kind: 'house-households' }
   | { kind: 'operations-bookings' }
   | { kind: 'time-entries' } // S53C
+  | { kind: 'time-analytics' } // S53C
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
@@ -84,7 +85,8 @@ const OPERATIONS_ITEMS: SidebarItem[] = [
 
 // S53C: Time tracking group
 const TIME_ITEMS: SidebarItem[] = [
-  { key: 'time-entries', label: 'Effort Log', link: { kind: 'time-entries' } },
+  { key: 'time-entries',   label: 'Effort Log', link: { kind: 'time-entries' } },
+  { key: 'time-analytics', label: 'Analytics',  link: { kind: 'time-analytics' } },
 ]
 
 const PROGRAMME_ITEMS: SidebarItem[] = [
@@ -140,7 +142,10 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
     return current.product === 'operations'
   }
   if (item.link.kind === 'time-entries') { // S53C
-    return current.product === 'time'
+    return current.product === 'time' && current.tab === 'entries'
+  }
+  if (item.link.kind === 'time-analytics') { // S53C
+    return current.product === 'time' && current.tab === 'analytics'
   }
   return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
 }
@@ -176,6 +181,9 @@ function hashFor(item: SidebarItem): string {
   }
   if (item.link.kind === 'time-entries') { // S53C
     return buildAdminHash({ product: 'time', tab: 'entries' })
+  }
+  if (item.link.kind === 'time-analytics') { // S53C
+    return buildAdminHash({ product: 'time', tab: 'analytics' })
   }
   return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
 }

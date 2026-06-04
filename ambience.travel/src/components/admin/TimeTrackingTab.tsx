@@ -166,6 +166,7 @@ function TimeEntryForm({
   const [hours, setHours]           = useState<number>(0.25)
   const [activityId, setActivity]   = useState<string | null>(null)
   const [entryType, setEntryType]   = useState<'billable' | 'proactive'>('billable')
+  const [isInvoiceable, setInvoiceable] = useState<boolean>(false)
   const [rateId, setRateId]         = useState<string | null>(null)
   const [team, setTeam]             = useState<TeamMember[]>([])
   const [performedById, setPerformedById] = useState<string | null>(null)  // global_people id
@@ -231,13 +232,14 @@ function TimeEntryForm({
         activity_id: activityId,
         notes: notes.trim() || null,
         entry_type: entryType,
+        is_invoiceable: isInvoiceable,
         performed_by_person_id: performedById,
         rate_id: rateId,
       }
       await createTimeEntry(input)
       toast.success('Time entry logged.')
       // Reset the variable fields, keep house/engagement scope for fast repeat entry
-      setHours(0.25); setActivity(null); setNotes(''); setEntryType('billable')
+      setHours(0.25); setActivity(null); setNotes(''); setEntryType('billable'); setInvoiceable(false)
       onSaved()
     } catch (e: any) {
       toast.error(`Failed: ${e.message ?? 'unknown error'}`)
@@ -335,6 +337,23 @@ function TimeEntryForm({
               </option>
             ))}
           </select>
+        </Field>
+
+        <Field label='Invoiceable to client?'>
+          <select style={inputStyle} value={isInvoiceable ? 'yes' : 'no'} onChange={e => setInvoiceable(e.target.value === 'yes')}>
+            <option value='no'>Tracked value only (not invoiced)</option>
+            <option value='yes'>Invoiceable (bill to client)</option>
+          </select>
+          {(() => {
+            const r = rates.find(x => x.id === rateId)
+            if (!r) return null
+            const val = (r.hourly_rate * hours)
+            return (
+              <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
+                Effort value: {r.currency} {val.toFixed(2)} · {isInvoiceable ? `invoiced: ${r.currency} ${val.toFixed(2)}` : 'invoiced: 0'}
+              </div>
+            )
+          })()}
         </Field>
 
         <Field label='Notes (optional)'>

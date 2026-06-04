@@ -49,6 +49,7 @@ export type AdminTab =
   | { product: 'house';      tab: 'households' }
   | { product: 'operations'; tab: 'bookings' }
   | { product: 'time';       tab: 'entries' } // S53C
+  | { product: 'time';       tab: 'analytics' } // S53C analytics surface
   | { product: 'trips';      tab: 'brief';      tripId: string }
   | { product: 'trips';      tab: 'itinerary';  tripId: string }
   | { product: 'programme';  tab: ProgrammeTabId }
@@ -118,6 +119,7 @@ export function parseAdminHash(hash: string): AdminTab {
 
   // S53C: time tracking — single-segment route, mirrors 'house'
   if (product === 'time') {
+    if (tab === 'analytics') return { product: 'time', tab: 'analytics' }
     return { product: 'time', tab: 'entries' }
   }
 
@@ -170,7 +172,7 @@ export function buildAdminHash(target: AdminTab): string {
   }
   // S53C: time tracking
   if (target.product === 'time') {
-    return '#admin/time'
+    return target.tab === 'analytics' ? '#admin/time/analytics' : '#admin/time'
   }
   if (target.product === 'trips') {
     return `#admin/trips/${target.tripId}/${target.tab}`

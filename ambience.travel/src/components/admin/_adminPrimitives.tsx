@@ -77,14 +77,17 @@ export function AdminCard({
 }
 
 // ─── AdminSection ─────────────────────────────────────────────────────────────
-// 2px gold left bar + 9pt tracked gold caps title. Wraps a content block.
+// 2px gold left bar + 9pt tracked gold caps title. Optional muted subtitle line.
+// Wraps a content block.
 
 export function AdminSection({
   title,
+  subtitle,
   children,
   style,
 }: {
   title?:    string
+  subtitle?: string
   children?: ReactNode
   style?:    CSSProperties
 }) {
@@ -102,9 +105,19 @@ export function AdminSection({
           textTransform: 'uppercase',
           color:         A.gold,
           fontFamily:    A.font,
-          marginBottom:  10,
+          marginBottom:  subtitle ? 4 : 10,
         }}>
           {title}
+        </div>
+      )}
+      {subtitle && (
+        <div style={{
+          fontSize:     12,
+          color:        A.muted,
+          fontFamily:   A.font,
+          marginBottom: 10,
+        }}>
+          {subtitle}
         </div>
       )}
       {children}
