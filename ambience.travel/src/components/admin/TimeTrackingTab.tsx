@@ -252,7 +252,7 @@ function TimeEntryForm({
               <option value=''>Whole house</option>
               {members.map(m => (
                 <option key={m.id} value={m.id}>
-                  {m.member_ref ?? '(member)'}{m.role ? ` (${m.role})` : ''}
+                  {m.display_name ?? m.member_ref ?? '(member)'}{m.role ? ` (${m.role})` : ''}
                 </option>
               ))}
             </select>

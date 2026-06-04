@@ -107,7 +107,8 @@ export interface HouseOption {
   id: string; a_house_id: string | null; display_name: string | null;
 }
 export interface HouseMember {
-  id: string; house_id: string; member_ref: string | null; role: string | null;
+  id: string; house_id: string; person_id: string | null;
+  member_ref: string | null; role: string | null; display_name: string | null;
 }
 export interface EngagementOption {
   id: string; url_id: string | null; title: string | null; iteration_label: string | null;
