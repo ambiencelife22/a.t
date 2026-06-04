@@ -85,7 +85,8 @@ export interface TimeEntryInput {
   activity_id?: string | null;
   notes?: string | null;
   entry_type?: 'billable' | 'proactive';
-  performed_by?: string | null;
+  performed_by?: string | null;             // deprecated free-text, retained for legacy rows
+  performed_by_person_id?: string | null;   // global_people id — the performer
   rate_id?: string | null;      // billable_amount computed server-side
   started_at?: string | null;
   ended_at?: string | null;
@@ -100,6 +101,7 @@ export interface TimeEntry extends TimeEntryInput {
   created_at: string; updated_at: string;
   travel_time_activities?: { slug: string; label: string } | null;
   travel_time_rates?: { slug: string; role_label: string; hourly_rate: number; currency: string } | null;
+  performer?: { first_name: string | null; last_name: string | null; nickname: string | null } | null;
 }
 export interface TimeSummary { hours: number; amount: number; }
 

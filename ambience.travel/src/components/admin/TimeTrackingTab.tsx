@@ -24,6 +24,11 @@ import {
   type TimeActivity, type TimeRate, type TimeEntry, type TimeEntryInput,
   type HouseOption, type HouseMember, type EngagementOption, type TimeSummary,
 } from '../../queries/queriesTime'
+import {
+  fetchTeamMembers, fetchTeamMemberByPerson,
+  type TeamMember,
+} from '../../queries/queriesTeam'
+import { supabase } from '../../lib/supabase'
 
 // ── Shared styles (mirrors EngagementDetailTab grammar) ───────────────────────
 
@@ -162,7 +167,8 @@ function TimeEntryForm({
   const [activityId, setActivity]   = useState<string | null>(null)
   const [entryType, setEntryType]   = useState<'billable' | 'proactive'>('billable')
   const [rateId, setRateId]         = useState<string | null>(null)
-  const [performedBy, setPerformed] = useState<string>('')
+  const [team, setTeam]             = useState<TeamMember[]>([])
+  const [performedById, setPerformedById] = useState<string | null>(null)  // global_people id
   const [notes, setNotes]           = useState<string>('')
   const [saving, setSaving]         = useState(false)
 
@@ -172,6 +178,35 @@ function TimeEntryForm({
     fetchEngagementsForHouse(houseId).then(setEngs).catch(() => setEngs([]))
     fetchHousePeople(houseId).then(setMembers).catch(() => setMembers([]))
   }, [houseId])
+
+  // Load active team for the Performed By picker; default to the logged-in
+  // admin's own team person (the eventual auth-driven default, modelled now).
+  useEffect(() => {
+    let alive = true
+    fetchTeamMembers().then(t => { if (alive) setTeam(t) }).catch(() => {})
+    ;(async () => {
+      const { data } = await supabase.auth.getSession()
+      const uid = data.session?.user?.id
+      if (!uid) return
+      const { data: prof } = await supabase
+        .from('global_profiles').select('person_id').eq('id', uid).maybeSingle()
+      const pid = prof?.person_id ?? null
+      if (!pid) return
+      const me = await fetchTeamMemberByPerson(pid).catch(() => null)
+      if (alive && me) {
+        setPerformedById(me.person_id)
+        if (me.default_rate_id) setRateId(prev => prev ?? me.default_rate_id)
+      }
+    })()
+    return () => { alive = false }
+  }, [])
+
+  // Selecting a performer auto-fills their default rate (overridable).
+  function selectPerformer(personId: string | null) {
+    setPerformedById(personId)
+    const m = team.find(t => t.person_id === personId)
+    if (m?.default_rate_id) setRateId(m.default_rate_id)
+  }
 
   // Engagement selected without a house -> auto-resolve house via bookings hub
   function selectEngagement(id: string | null) {
@@ -196,7 +231,7 @@ function TimeEntryForm({
         activity_id: activityId,
         notes: notes.trim() || null,
         entry_type: entryType,
-        performed_by: performedBy.trim() || null,
+        performed_by_person_id: performedById,
         rate_id: rateId,
       }
       await createTimeEntry(input)
@@ -291,8 +326,15 @@ function TimeEntryForm({
           </Field>
         </div>
 
-        <Field label='Performed By (optional)'>
-          <input style={inputStyle} value={performedBy} onChange={e => setPerformed(e.target.value)} placeholder='Name (until auth-linked)' />
+        <Field label='Performed By'>
+          <select style={inputStyle} value={performedById ?? ''} onChange={e => selectPerformer(e.target.value || null)}>
+            <option value=''>Unassigned</option>
+            {team.map(m => (
+              <option key={m.person_id} value={m.person_id}>
+                {m.display_name}{m.role !== 'member' ? ` (${m.role})` : ''}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <Field label='Notes (optional)'>
@@ -367,7 +409,13 @@ function TimeEntriesList({
               </div>
               <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
                 {e.work_date}
-                {e.performed_by ? ` · ${e.performed_by}` : ''}
+                {(() => {
+                  const p = e.performer
+                  const name = p
+                    ? (p.nickname || [p.first_name, p.last_name].filter(Boolean).join(' '))
+                    : e.performed_by
+                  return name ? ` · ${name}` : ''
+                })()}
               </div>
               {e.notes && (
                 <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.5 }}>
