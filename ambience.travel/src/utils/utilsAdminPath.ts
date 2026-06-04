@@ -12,6 +12,7 @@
 //   #admin/library/dining/<dest-uuid>            → dining venues scoped to destination
 //   #admin/house                                 → household list
 //   #admin/operations/bookings                   → operations console (cross-client)
+//   #admin/time                                  → time tracking (effort log)
 //   #admin/trips/<trip-uuid>/brief               → dedicated brief editor for a trip
 //   #admin/trips/<trip-uuid>/itinerary           → dedicated itinerary editor for a trip
 //   #admin/programme/programmes                  → wrapped existing tab
@@ -22,7 +23,9 @@
 //   #admin/programme/access-denied               → wrapped existing tab
 //   #admin/programme/client-profile              → wrapped existing tab
 //
-// Last updated: S47 — trips union extended with 'itinerary' tab variant.
+// Last updated: S53C — Added 'time' product (time tracking effort log).
+//   Single-segment route #admin/time, mirrors 'house'.
+// Prior: S47 — trips union extended with 'itinerary' tab variant.
 //   parseAdminHash and buildAdminHash updated to handle both brief + itinerary.
 // Prior: S45 — Added 'operations' product with 'bookings' tab.
 // Prior: S41 — Added 'experiences' guide tab.
@@ -33,7 +36,7 @@
 
 import { isTripUrlId } from '../utils/utilsImmersePath'
 
-export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips'
+export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips' | 'time' // S53C: + 'time'
 
 export type AdminTab =
   | { product: 'immerse';    tab: 'engagements'; urlId: string | null }
@@ -45,6 +48,7 @@ export type AdminTab =
   | { product: 'library';    tab: 'hotels'; destinationId: string | null }
   | { product: 'house';      tab: 'households' }
   | { product: 'operations'; tab: 'bookings' }
+  | { product: 'time';       tab: 'entries' } // S53C
   | { product: 'trips';      tab: 'brief';      tripId: string }
   | { product: 'trips';      tab: 'itinerary';  tripId: string }
   | { product: 'programme';  tab: ProgrammeTabId }
@@ -112,6 +116,11 @@ export function parseAdminHash(hash: string): AdminTab {
     return { product: 'operations', tab: 'bookings' }
   }
 
+  // S53C: time tracking — single-segment route, mirrors 'house'
+  if (product === 'time') {
+    return { product: 'time', tab: 'entries' }
+  }
+
   if (product === 'trips') {
     // #admin/trips/<trip-uuid>/brief   OR   #admin/trips/<trip-uuid>/itinerary
     const tripId = tab        // second segment is the trip UUID
@@ -158,6 +167,10 @@ export function buildAdminHash(target: AdminTab): string {
   }
   if (target.product === 'operations') {
     return '#admin/operations/bookings'
+  }
+  // S53C: time tracking
+  if (target.product === 'time') {
+    return '#admin/time'
   }
   if (target.product === 'trips') {
     return `#admin/trips/${target.tripId}/${target.tab}`

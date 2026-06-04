@@ -1,8 +1,10 @@
 /* AdminSidebar.tsx
  * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Guides,
- * Library, House, Operations, Programme). Future products (LIFE, MONEY) shown disabled.
+ * Library, House, Operations, Time, Programme). Future products (LIFE, MONEY) shown disabled.
  *
- * Last updated: S44 — Added Operations group (Bookings tab).
+ * Last updated: S53C — Added Time group (Effort Log tab). Reuses LayoutGrid
+ *   icon pending a dedicated Clock icon in _adminIcons.
+ * Prior: S44 — Added Operations group (Bookings tab).
  * Prior: S43 — Phase 1 redesign: custom SVG icons, no group headers,
  *   hover states, bottom wordmark, motion system aligned.
  * Prior: S40D — Added HOUSE group (ambience.HOUSE CRM).
@@ -37,6 +39,7 @@ type SidebarLink =
   | { kind: 'library-hotels' }
   | { kind: 'house-households' }
   | { kind: 'operations-bookings' }
+  | { kind: 'time-entries' } // S53C
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
@@ -79,6 +82,11 @@ const OPERATIONS_ITEMS: SidebarItem[] = [
   { key: 'operations-bookings', label: 'Bookings', link: { kind: 'operations-bookings' } },
 ]
 
+// S53C: Time tracking group
+const TIME_ITEMS: SidebarItem[] = [
+  { key: 'time-entries', label: 'Effort Log', link: { kind: 'time-entries' } },
+]
+
 const PROGRAMME_ITEMS: SidebarItem[] = [
   { key: 'p-programmes',    label: 'Programmes',        link: { kind: 'programme', tab: 'programmes' } },
   { key: 'p-letters',       label: 'Welcome Letters',   link: { kind: 'programme', tab: 'letters' } },
@@ -100,6 +108,7 @@ const GROUPS: SidebarGroup[] = [
   { key: 'library',    icon: Library,    items: LIBRARY_ITEMS    },
   { key: 'house',      icon: Home,       items: HOUSE_ITEMS      },
   { key: 'operations', icon: LayoutGrid, items: OPERATIONS_ITEMS },
+  { key: 'time',       icon: LayoutGrid, items: TIME_ITEMS       }, // S53C
   { key: 'programme',  icon: LayoutGrid, items: PROGRAMME_ITEMS  },
 ]
 
@@ -129,6 +138,9 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   }
   if (item.link.kind === 'operations-bookings') {
     return current.product === 'operations'
+  }
+  if (item.link.kind === 'time-entries') { // S53C
+    return current.product === 'time'
   }
   return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
 }
@@ -161,6 +173,9 @@ function hashFor(item: SidebarItem): string {
   }
   if (item.link.kind === 'operations-bookings') {
     return buildAdminHash({ product: 'operations', tab: 'bookings' })
+  }
+  if (item.link.kind === 'time-entries') { // S53C
+    return buildAdminHash({ product: 'time', tab: 'entries' })
   }
   return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
 }
@@ -369,6 +384,7 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     ...LIBRARY_ITEMS,
     ...HOUSE_ITEMS,
     ...OPERATIONS_ITEMS,
+    ...TIME_ITEMS, // S53C
     ...PROGRAMME_ITEMS,
   ]
 
@@ -416,6 +432,9 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         </optgroup>
         <optgroup label='Operations'>
           {OPERATIONS_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+        </optgroup>
+        <optgroup label='Time'>
+          {TIME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
         <optgroup label='Programme'>
           {PROGRAMME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}

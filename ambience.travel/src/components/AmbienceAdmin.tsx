@@ -31,6 +31,7 @@ import BriefEditorPage        from './admin/BriefEditorPage'
 import ItineraryEditorPage    from './admin/ItineraryEditorPage'
 import { AdminToastProvider } from './admin/_adminPrimitives'
 import { OperationsTab }      from './admin/OperationsTab'
+import TimeTrackingTab        from './admin/TimeTrackingTab'
 
 import {
   ProgrammesTab,
@@ -137,6 +138,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
 
   if (tab.product === 'house')      return <HouseTab />
   if (tab.product === 'operations') return <OperationsTab />
+  if (tab.product === 'time')       return <TimeTrackingTab />
 
   if (tab.product === 'programme') {
     if (tab.tab === 'programmes')     return <ProgrammesTab />
