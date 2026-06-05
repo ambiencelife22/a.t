@@ -163,7 +163,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
   const [profileLoaded, setProfileLoaded]   = useState(false)
 
   const personPrefs = useMemo(() => allPreferences.filter(p => p.person_id === person.id), [allPreferences, person.id])
-  const personPPD   = useMemo(() => allPPD.filter(p => p.person_id === person.id), [allPPD, person.id])
+  const personPPD   = useMemo(() => allPPD.filter(p => p.person_id === person.person_id), [allPPD, person.person_id])
 
   const [addingPref, setAddingPref] = useState(false)
   const [prefCat, setPrefCat]       = useState<PrefCategory>('Dining')
@@ -229,7 +229,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
     if (!ppdDraft.data_key.trim() || !ppdDraft.data_value.trim()) return
     setPpdSaving(true)
     try {
-      await createPPDPeopleEntry(houseId, person.id, ppdDraft.data_key.trim(), ppdDraft.data_value.trim(), ppdDraft.access_note.trim() || null)
+      await createPPDPeopleEntry(houseId, person.person_id, ppdDraft.data_key.trim(), ppdDraft.data_value.trim(), ppdDraft.access_note.trim() || null)
       success('Added.')
       setAddingPPD(false)
       setPpdDraft({ data_key: '', data_value: '', access_note: '' })
@@ -1614,7 +1614,7 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
           <Field label='Person'>
             <select style={inputStyle} value={draft.person_id} onChange={e => setDraft(d => ({ ...d, person_id: e.target.value }))}>
               <option value=''>Household</option>
-              {data.people.map(p => <option key={p.id} value={p.id}>{p.member_ref} ({p.role})</option>)}
+              {data.people.map(p => <option key={p.id} value={p.person_id ?? ''}>{p.member_ref} ({p.role})</option>)}
             </select>
           </Field>
           <Field label='Field'>
@@ -1632,7 +1632,7 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
         ? <AdminEmptyState message='No personal data records yet.' />
         : Array.from(grouped.entries()).map(([key, rows]) => (
           <div key={key}>
-            <AdminSection title={key === '__household__' ? 'Household' : personRef(rows[0].person_id) ?? 'Unknown'} style={{ borderLeftColor: '#f8717150' }} />
+            <AdminSection title={key === '__household__' ? 'Household' : (data.people.find(pe => pe.person_id === rows[0].person_id)?.member_ref ?? 'Unknown')} style={{ borderLeftColor: '#f8717150' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
               {rows.map(entry => (
                 <EntryCard key={entry.id} danger>

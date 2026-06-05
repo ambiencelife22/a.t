@@ -66,6 +66,7 @@ export interface House {
 export interface HousePerson {
   id:         string
   house_id:   string
+  person_id:  string | null
   member_ref: string
   role:       HouseRole
   notes:      string | null
