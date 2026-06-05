@@ -585,7 +585,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
     return (
       <div style={{ minHeight: '100vh', background: A.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 13, color: '#f87171', fontFamily: A.font }}>{loadErr}</div>
-        <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: A.bgCard, color: A.gold, border: `1px solid ${A.border}` }}>
+        <button onClick={() => navigateAdmin({ product: 'house', tab: 'houses' })} style={{ ...btnBase, background: A.bgCard, color: A.gold, border: `1px solid ${A.border}` }}>
           ← Back to Houses
         </button>
       </div>
@@ -606,7 +606,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
       {/* Top bar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#EDE9E2', borderBottom: `1px solid ${RULE}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
         <button
-          onClick={() => navigateAdmin({ product: 'house', tab: 'households' })}
+          onClick={() => navigateAdmin({ product: 'house', tab: 'houses' })}
           style={{ ...btnBase, background: 'transparent', color: MUTED, border: `1px solid ${RULE}`, padding: '4px 10px', fontSize: 10 }}
         >← Houses</button>
         <button

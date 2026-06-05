@@ -1318,7 +1318,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   if (loadErr) return (
     <div style={{ minHeight: '100vh', background: A.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
       <div style={{ fontSize: 13, color: '#f87171', fontFamily: A.font }}>{loadErr}</div>
-      <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: A.bgCard, color: A.gold, border: `1px solid ${A.border}` }}>← Back to Houses</button>
+      <button onClick={() => navigateAdmin({ product: 'house', tab: 'houses' })} style={{ ...btnBase, background: A.bgCard, color: A.gold, border: `1px solid ${A.border}` }}>← Back to Houses</button>
     </div>
   )
 
@@ -1334,7 +1334,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
 
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: A.bgCard, borderBottom: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
-        <button onClick={() => navigateAdmin({ product: 'house', tab: 'households' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
+        <button onClick={() => navigateAdmin({ product: 'house', tab: 'houses' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
           <span style={{ fontSize: 10, color: A.muted }}>Confirmation Brief</span>

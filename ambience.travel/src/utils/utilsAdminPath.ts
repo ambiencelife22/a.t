@@ -46,7 +46,7 @@ export type AdminTab =
   | { product: 'guides';     tab: 'hotels' }
   | { product: 'library';    tab: 'dining'; destinationId: string | null }
   | { product: 'library';    tab: 'hotels'; destinationId: string | null }
-  | { product: 'house';      tab: 'households' }
+  | { product: 'house';      tab: 'houses' }
   | { product: 'operations'; tab: 'bookings' }
   | { product: 'time';       tab: 'entries' } // S53C
   | { product: 'time';       tab: 'analytics' } // S53C analytics surface
@@ -110,7 +110,7 @@ export function parseAdminHash(hash: string): AdminTab {
   }
 
   if (product === 'house') {
-    return { product: 'house', tab: 'households' }
+    return { product: 'house', tab: 'houses' }
   }
 
   if (product === 'operations') {

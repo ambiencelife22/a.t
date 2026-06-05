@@ -37,7 +37,7 @@ type SidebarLink =
   | { kind: 'guides-experiences' }
   | { kind: 'library-dining' }
   | { kind: 'library-hotels' }
-  | { kind: 'house-households' }
+  | { kind: 'house-houses' }
   | { kind: 'operations-bookings' }
   | { kind: 'time-entries' } // S53C
   | { kind: 'time-analytics' } // S53C
@@ -76,7 +76,7 @@ const LIBRARY_ITEMS: SidebarItem[] = [
 ]
 
 const HOUSE_ITEMS: SidebarItem[] = [
-  { key: 'house-households', label: 'Households', link: { kind: 'house-households' } },
+  { key: 'house-houses', label: 'Houses', link: { kind: 'house-houses' } },
 ]
 
 const OPERATIONS_ITEMS: SidebarItem[] = [
@@ -135,7 +135,7 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   if (item.link.kind === 'library-hotels') {
     return current.product === 'library' && current.tab === 'hotels'
   }
-  if (item.link.kind === 'house-households') {
+  if (item.link.kind === 'house-houses') {
     return current.product === 'house'
   }
   if (item.link.kind === 'operations-bookings') {
@@ -173,8 +173,8 @@ function hashFor(item: SidebarItem): string {
   if (item.link.kind === 'library-hotels') {
     return buildAdminHash({ product: 'library', tab: 'hotels', destinationId: null })
   }
-  if (item.link.kind === 'house-households') {
-    return buildAdminHash({ product: 'house', tab: 'households' })
+  if (item.link.kind === 'house-houses') {
+    return buildAdminHash({ product: 'house', tab: 'houses' })
   }
   if (item.link.kind === 'operations-bookings') {
     return buildAdminHash({ product: 'operations', tab: 'bookings' })
