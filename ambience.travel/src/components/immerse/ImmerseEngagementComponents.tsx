@@ -75,21 +75,19 @@ function getDestinationAnchorId(row: ImmerseDestinationRow) {
   return `dest-${row.id}`
 }
 
-// S32C: title-match resolver. Route stops and destination rows have
-// different cardinalities (stops include origin/return, rows do not), so
-// indexing one by the other's position drifts. Match on title instead;
-// stops without a matching row (origin/return) return null → non-clickable.
+// S53C: UUID match. A route stop links to its destination row by
+// destinationRowId (FK), not by title text. Identity is the UUID, never the
+// string — a stop title ("Option 1 · Leogang · Hotel") may differ freely from
+// its row title ("Leogang · Hotel"). Origin/return stops have a null
+// destinationRowId → no match → correctly non-clickable.
 function findDestinationRowForStop(
   stop: ImmerseRouteStop,
   rows: ImmerseDestinationRow[],
 ): ImmerseDestinationRow | null {
-  const stopTitle = stop.title?.trim()
-  if (!stopTitle) return null
+  if (!stop.destinationRowId) return null
 
   for (const row of rows) {
-    const rowTitle = row.title?.trim()
-    if (!rowTitle) continue
-    if (rowTitle === stopTitle) return row
+    if (row.id === stop.destinationRowId) return row
   }
 
   return null

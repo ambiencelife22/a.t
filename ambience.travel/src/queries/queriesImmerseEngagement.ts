@@ -109,13 +109,14 @@ type WelcomeLetterRow = {
 }
 
 type RouteStopRow = {
-  id:         string
-  sort_order: number
-  title:      string | null
-  stay_label: string | null
-  note:       string | null
-  image_src:  string | null
-  image_alt:  string | null
+  id:                 string
+  sort_order:         number
+  title:              string | null
+  stay_label:         string | null
+  note:               string | null
+  image_src:          string | null
+  image_alt:          string | null
+  destination_row_id: string | null
 }
 
 type GlobalDestinationDisplayJoin = {
@@ -273,7 +274,7 @@ async function hydrateEngagement(
       .maybeSingle(),
     supabaseAnon
       .from('travel_immerse_route_stops')
-      .select('id, sort_order, title, stay_label, note, image_src, image_alt')
+      .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id')
       .eq('trip_id', engagementId)
       .order('sort_order'),
     supabaseAnon
@@ -344,12 +345,13 @@ async function hydrateEngagement(
   }
 
   const routeStops: ImmerseRouteStop[] = stopRows.map(r => ({
-    id:        r.id,
-    title:     r.title      ?? '',
-    stayLabel: r.stay_label ?? '',
-    note:      r.note       ?? '',
-    imageSrc:  rewriteImageUrl(r.image_src),
-    imageAlt:  r.image_alt  ?? '',
+    id:              r.id,
+    title:           r.title      ?? '',
+    stayLabel:       r.stay_label ?? '',
+    note:            r.note       ?? '',
+    imageSrc:        rewriteImageUrl(r.image_src),
+    imageAlt:        r.image_alt  ?? '',
+    destinationRowId: r.destination_row_id ?? null,
   }))
 
   const destinationRows: ImmerseDestinationRow[] = destRows.map(r => {
