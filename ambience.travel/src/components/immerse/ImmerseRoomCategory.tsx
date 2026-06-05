@@ -3,7 +3,10 @@
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
 //
-// Last updated: S53B Closing+3 — Public rate pill now only renders with
+// Last updated: S53C — room alert badge (roomAlert/roomAlertLevel), connecting
+//   note line (connectingNote), and tax treatment preferred over legacy
+//   rateSuffix. Rate-suffix display now resolves taxTreatment ?? rateSuffix.
+// Prior: S53B Closing+3 — Public rate pill now only renders with
 //   strikethrough + "PUBLIC" prefix when at least one comparison rate
 //   (nonNegotiatedNightlyRate or ambienceNightlyRate) is set. When public
 //   is alone, it renders as a neutral rate pill (no strikethrough, no
@@ -39,6 +42,13 @@ function formatSqRange(min: number | undefined, max: number | undefined, unit: s
   return `${min.toLocaleString()}–${max.toLocaleString()} ${unit}`
 }
 
+// S53C — alert badge palette by level.
+function alertPalette(level: string | undefined): { border: string; bg: string; fg: string } {
+  if (level === 'warning') return { border: 'rgba(214,108,90,0.5)',  bg: 'rgba(214,108,90,0.12)',  fg: '#e8a08f' }
+  if (level === 'pending') return { border: 'rgba(216,181,106,0.5)', bg: 'rgba(216,181,106,0.10)', fg: ID.gold }
+  return { border: 'rgba(120,150,190,0.45)', bg: 'rgba(120,150,190,0.10)', fg: '#9db4d4' } // info / default
+}
+
 export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrowsAndDots }: {
   room: ImmerseRoomOption
   hotel: ImmerseHotelOption
@@ -53,7 +63,9 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
   const isActive = !isMobile && hovered
   const scale    = pressed ? 0.99 : 1
 
-  const showRateSuffix = !room.taxInclusive && Boolean(room.rateSuffix)
+  // S53C — prefer structured tax treatment over legacy free-text rate suffix.
+  const rateTaxLabel  = room.taxTreatment ?? room.rateSuffix
+  const showRateSuffix = !room.taxInclusive && Boolean(rateTaxLabel)
 
   // S32: collapsed sq ranges + numeric vs copy rate detection
   const sqftPart = formatSqRange(room.sqftMin, room.sqftMax, 'sq ft')
@@ -67,6 +79,8 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
   // comparison rate is actually present.
   const publicIsNumeric  = room.publicNightlyRate ? isNumericRate(room.publicNightlyRate) : false
   const hasComparisonRate = Boolean(room.nonNegotiatedNightlyRate || room.ambienceNightlyRate)
+
+  const alert = room.roomAlert ? alertPalette(room.roomAlertLevel) : null
 
   const contentPanel = (
     <ImmersePanel
@@ -148,7 +162,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               </div>
               {showRateSuffix && publicIsNumeric && (
                 <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                  {room.rateSuffix}
+                  {rateTaxLabel}
                 </div>
               )}
             </div>
@@ -181,7 +195,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               </div>
               {showRateSuffix && nonNegIsNumeric && (
                 <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                  {room.rateSuffix}
+                  {rateTaxLabel}
                 </div>
               )}
             </div>
@@ -215,7 +229,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               </div>
               {showRateSuffix && ambienceIsNumeric && (
                 <div style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
-                  {room.rateSuffix}
+                  {rateTaxLabel}
                 </div>
               )}
             </div>
@@ -262,6 +276,55 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
             </a>
           )}
         </div>
+
+        {/* S53C — connecting-rooms note. Renders when this room is part of a
+            connecting pair. Sits below the chips as a single descriptor line. */}
+        {room.connectingNote && (
+          <div style={{
+            marginTop: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '9px 13px',
+            borderRadius: 12,
+            border: `1px solid rgba(216,181,106,0.28)`,
+            background: 'rgba(216,181,106,0.06)',
+            color: ID.muted,
+            fontSize: 12,
+            lineHeight: 1.5,
+          }}>
+            <svg width='13' height='13' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true' style={{ flexShrink: 0 }}>
+              <path d='M6 8h4M5 5.5a2.5 2.5 0 000 5h1M11 5.5a2.5 2.5 0 010 5h-1' stroke={ID.gold} strokeWidth='1.2' strokeLinecap='round' />
+            </svg>
+            <span>{room.connectingNote}</span>
+          </div>
+        )}
+
+        {/* S53C — room alert badge. Distinct from amenities; styled by level
+            (pending / warning / info). Renders only when roomAlert is set. */}
+        {alert && (
+          <div style={{
+            marginTop: room.connectingNote ? 10 : 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '9px 13px',
+            borderRadius: 12,
+            border: `1px solid ${alert.border}`,
+            background: alert.bg,
+            color: alert.fg,
+            fontSize: 12,
+            letterSpacing: '0.02em',
+            lineHeight: 1.5,
+            fontWeight: 600,
+          }}>
+            <svg width='13' height='13' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true' style={{ flexShrink: 0 }}>
+              <circle cx='8' cy='8' r='6.4' stroke='currentColor' strokeWidth='1.2' />
+              <path d='M8 4.6v4.2M8 11.1h.01' stroke='currentColor' strokeWidth='1.4' strokeLinecap='round' />
+            </svg>
+            <span>{room.roomAlert}</span>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>

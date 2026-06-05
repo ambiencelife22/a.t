@@ -1,9 +1,14 @@
 // immerseDestinationHotels.ts — Hotel selector + room overlay + galleries for /immerse/ subpages.
 // Owns: getImmerseDestinationHotels — single canonical hotels fetcher.
 //   Internal: fetchHotelsShape, fetchFlatHotels, fetchRegionGroups,
-//   fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery.
+//   fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery, fetchRoomConnections.
 //
-// Last updated: S53B Closing+2 — fetchAllGallery now engagement-aware.
+// Last updated: S53C — rooms now carry: resolved rate cadence + tax treatment
+//   labels (joined from travel_immerse_rate_cadences / travel_immerse_tax_treatments),
+//   per-booking room_alert + room_alert_level, and connecting-room linkage
+//   (roomId / connectedRoomId / connectingNote) resolved from the catalog
+//   travel_accom_room_connections table. All additive; existing behaviour intact.
+// Prior: S53B Closing+2 — fetchAllGallery now engagement-aware.
 //   Pulls canon gallery rows + engagement-scoped overlay rows from
 //   travel_immerse_trip_hotel_gallery_overrides in parallel. For each
 //   (accom_hotel_id, sort_order) slot, an overlay image wins over the
@@ -300,6 +305,8 @@ async function fetchRoomsForHotels(
   let overlayQuery = supabase
     .from('travel_immerse_rooms')
     .select(`
+      id,
+      connected_overlay_id,
       room_id, level_label, room_name_override, room_basis, room_benefits, room_inclusions,
       hero_image_src_override,
       floorplan_src_override,
@@ -308,6 +315,10 @@ async function fetchRoomsForHotels(
       rate_suffix_override,
       rate_cadence_id,
       travel_immerse_rate_cadences ( label ),
+      tax_treatment_id,
+      travel_immerse_tax_treatments ( label ),
+      room_alert,
+      room_alert_level,
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
       sort_order
@@ -327,7 +338,10 @@ async function fetchRoomsForHotels(
 
   if (!overlayRooms || overlayRooms.length === 0) return {}
 
-  const galleryByRoom = await fetchAllRoomGallery(canonIds)
+  const [galleryByRoom, connectionByRoom] = await Promise.all([
+    fetchAllRoomGallery(canonIds),
+    fetchRoomConnections(canonIds),   // S53C — connecting rooms (catalog-level)
+  ])
 
   const grouped: Record<string, ImmerseRoomOption[]> = {}
 
@@ -358,6 +372,11 @@ async function fetchRoomsForHotels(
     const cadenceJoin = o.travel_immerse_rate_cadences as unknown as { label: string | null } | null
     const rateCadence = cadenceJoin?.label ?? undefined
 
+    const taxJoin      = o.travel_immerse_tax_treatments as unknown as { label: string | null } | null
+    const taxTreatment = taxJoin?.label ?? undefined
+
+    const connection = connectionByRoom[canon.id as string]
+
     const roomName  = o.room_name_override ?? canon.room_name ?? ''
     const tierLabel = o.level_label ?? ''
 
@@ -379,6 +398,14 @@ async function fetchRoomsForHotels(
       taxInclusive:             o.tax_inclusive               ?? false,
       rateSuffix,
       rateCadence,
+      taxTreatment,
+      roomAlert:                o.room_alert       ?? undefined,
+      roomAlertLevel:           o.room_alert_level ?? undefined,
+      roomId:                   canon.id as string,
+      overlayId:                o.id as string,
+      connectedOverlayId:       (o.connected_overlay_id as string | null) ?? undefined,
+      connectedRoomId:          connection?.partnerId,
+      connectingNote:           o.connected_overlay_id ? connection?.note : undefined,
       sqftMin, sqftMax, sqmMin, sqmMax,
     })
   }
@@ -458,4 +485,42 @@ async function fetchAllRoomGallery(
     grouped[key].push(rewriteImageUrl(r.image_src as string))
   }
   return grouped
+}
+
+// ─── Room connections (catalog: travel_accom_room_connections) ────────────────
+// S53C — connecting rooms. A connection row links room_a_id <-> room_b_id at the
+// CATALOG level (property truth that two rooms physically connect). Bidirectional:
+// for each catalog room id we return its partner id + the connection note, so the
+// renderer can pair connecting rooms (e.g. "Connecting suites, private entryway").
+// Two simple .in() queries merged in JS (no .or() string interpolation).
+
+async function fetchRoomConnections(
+  canonicalRoomIds: string[],
+): Promise<Record<string, { partnerId: string; note?: string }>> {
+  if (canonicalRoomIds.length === 0) return {}
+
+  const [aRes, bRes] = await Promise.all([
+    supabase
+      .from('travel_accom_room_connections')
+      .select('room_a_id, room_b_id, notes')
+      .in('room_a_id', canonicalRoomIds),
+    supabase
+      .from('travel_accom_room_connections')
+      .select('room_a_id, room_b_id, notes')
+      .in('room_b_id', canonicalRoomIds),
+  ])
+
+  const rows = [...(aRes.data ?? []), ...(bRes.data ?? [])]
+  const map: Record<string, { partnerId: string; note?: string }> = {}
+
+  for (const row of rows) {
+    const a    = row.room_a_id as string
+    const b    = row.room_b_id as string
+    const note = (row.notes as string | null) ?? undefined
+    // Bidirectional: each side points at the other.
+    if (!map[a]) map[a] = { partnerId: b, note }
+    if (!map[b]) map[b] = { partnerId: a, note }
+  }
+
+  return map
 }

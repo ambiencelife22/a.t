@@ -117,6 +117,7 @@ type RouteStopRow = {
   image_src:          string | null
   image_alt:          string | null
   destination_row_id: string | null
+  nights:             number | null
 }
 
 type GlobalDestinationDisplayJoin = {
@@ -132,6 +133,7 @@ type DestinationRowRow = {
   mood:                   string | null
   summary:                string | null
   stay_label:             string | null
+  nights:                 number | null
   image_src:              string | null
   image_alt:              string | null
   global_destinations:    GlobalDestinationDisplayJoin | null
@@ -274,13 +276,13 @@ async function hydrateEngagement(
       .maybeSingle(),
     supabaseAnon
       .from('travel_immerse_route_stops')
-      .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id')
+      .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id, nights')
       .eq('trip_id', engagementId)
       .order('sort_order'),
     supabaseAnon
       .from('travel_immerse_trip_destination_rows')
       .select(`
-        id, sort_order, number_label, title, mood, summary, stay_label,
+        id, sort_order, number_label, title, mood, summary, stay_label, nights,
         image_src, image_alt, subpage_status, destination_url_slug,
         hero_eyebrow_override,
         global_destinations ( slug, name )
@@ -352,6 +354,7 @@ async function hydrateEngagement(
     imageSrc:        rewriteImageUrl(r.image_src),
     imageAlt:        r.image_alt  ?? '',
     destinationRowId: r.destination_row_id ?? null,
+    nights:           r.nights ?? undefined,
   }))
 
   const destinationRows: ImmerseDestinationRow[] = destRows.map(r => {
@@ -377,6 +380,7 @@ async function hydrateEngagement(
       mood:                r.mood         ?? '',
       summary:             r.summary      ?? '',
       stayLabel:           r.stay_label   ?? '',
+      nights:              r.nights        ?? undefined,
       imageSrc:            rewriteImageUrl(resolvedImageSrc),
       imageAlt:            resolvedImageAlt,
       destinationSlug:     globalSlug,

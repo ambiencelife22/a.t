@@ -77,6 +77,14 @@ export type ImmerseRoomOption = {
   taxInclusive?:              boolean
   rateSuffix?:                string
   rateCadence?:               string
+  taxTreatment?:              string   // S53C — resolved tax_treatments.label
+  roomAlert?:                 string   // S53C — per-booking alert message
+  roomAlertLevel?:            string   // S53C — info | warning | pending
+  roomId?:                    string   // S53C — catalog room id (for connection matching)
+  overlayId?:                 string   // S53C — overlay row id (unique per offer; canon room may repeat)
+  connectedOverlayId?:        string   // S53C — overlay id of connecting partner offer (per-offer connection)
+  connectedRoomId?:           string   // S53C — catalog id of connecting partner room
+  connectingNote?:            string   // S53C — connection descriptor (e.g. private entryway)
   sqftMin?:                   number
   sqftMax?:                   number
   sqmMin?:                    number
@@ -177,6 +185,7 @@ export type ImmerseRouteStop = {
   destinationSlug?: string | null
   anchorId?:        string
   destinationRowId?: string | null
+  nights?:          number   // S53C — explicit night count (stayLabel = date range)
 }
 
 export type ImmerseDestinationRow = {
@@ -188,6 +197,7 @@ export type ImmerseDestinationRow = {
   imageSrc:            string
   imageAlt:            string
   stayLabel:           string
+  nights?:             number   // S53C — explicit night count
   destinationSlug?:    string | null
   destinationUrlSlug?: string | null
   anchorId?:           string
