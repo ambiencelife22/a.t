@@ -133,6 +133,11 @@ export type ImmersePricingRow = {
   isTotal?:        boolean
 }
 
+export type ImmersePricingNote = {
+  text:        string
+  highlighted: boolean
+}
+
 export type ImmersePricingCloser = {
   item:            string | null
   basis:           string | null
@@ -286,7 +291,7 @@ export type ImmerseEngagementData = {
   pricingTotalValue:   string
   pricingNotesHeading: string
   pricingNotesTitle:   string
-  pricingNotes:        string[]
+  pricingNotes:        ImmersePricingNote[]
 }
 
 // ─── Destination subpage ──────────────────────────────────────────────────────
@@ -328,7 +333,7 @@ export type ImmerseDestinationData = {
   pricingCloser:       ImmersePricingCloser
   pricingNotesHeading: string
   pricingNotesTitle:   string
-  pricingNotes:        string[]
+  pricingNotes:        ImmersePricingNote[]
 }
 
 // ─── Component prop types ────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import { rewriteImageUrl } from '../utils/utilsImageUrl'
 import { mapEngagementStatus, mapItineraryStatus } from '../queries/queriesStatus'
 import type {
   ImmerseEngagementData,
+  ImmersePricingNote,
   ImmerseTripFormat,
   ImmerseRouteStop,
   ImmerseDestinationRow,
@@ -448,7 +449,7 @@ async function hydrateEngagement(
     pricingTotalValue:   engagementRow.pricing_total_value   ?? '',
     pricingNotesHeading: engagementRow.pricing_notes_heading ?? '',
     pricingNotesTitle:   engagementRow.pricing_notes_title   ?? '',
-    pricingNotes:        engagementRow.pricing_notes         ?? [],
+    pricingNotes:        normalizePricingNotes(engagementRow.pricing_notes),
   }
 }
 
@@ -457,6 +458,15 @@ function normalizeSubpageStatus(value: string | null): ImmerseSubpageStatus {
   if (value === 'preview') return 'preview'
   if (value === 'hidden')  return 'hidden'
   return 'live'
+}
+
+function normalizePricingNotes(raw: unknown): ImmersePricingNote[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(n =>
+    typeof n === 'string'
+      ? { text: n, highlighted: false }
+      : { text: String((n as { text?: unknown }).text ?? ''), highlighted: Boolean((n as { highlighted?: unknown }).highlighted) }
+  )
 }
 
 function normalizeAudience(value: string | null): EngagementAudience {

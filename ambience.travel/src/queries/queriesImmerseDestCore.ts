@@ -20,7 +20,18 @@ import { rewriteImageUrl } from '../utils/utilsImageUrl'
 import { getImmerseDestinationHotels }   from '../queries/queriesImmerseDestHotels'
 import { getImmerseDestinationCards }    from '../queries/queriesImmerseDestCards'
 import { getImmerseDestinationPricing }  from '../queries/queriesImmerseDestPricing'
-import type { ImmerseDestinationData }   from '../types/typesImmerse'
+import type { ImmerseDestinationData, ImmersePricingNote } from '../types/typesImmerse'
+
+// S53C — pricing notes may be plain strings (legacy) or {text, highlighted}
+// objects (highlighted callouts). Normalize both to ImmersePricingNote[].
+function normalizePricingNotes(raw: unknown): ImmersePricingNote[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(n =>
+    typeof n === 'string'
+      ? { text: n, highlighted: false }
+      : { text: String((n as { text?: unknown }).text ?? ''), highlighted: Boolean((n as { highlighted?: unknown }).highlighted) }
+  )
+}
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -65,7 +76,7 @@ export interface ImmerseDestinationCore {
   }
   pricingNotesHeading:  string
   pricingNotesTitle:    string
-  pricingNotes:         string[]
+  pricingNotes:         ImmersePricingNote[]
 }
 
 // ─── Slug resolution ──────────────────────────────────────────────────────────
@@ -325,9 +336,10 @@ export async function getImmerseDestinationCore(
                            ?? (dest!.pricing_notes_heading as string | null) ?? '',
     pricingNotesTitle:   ov?.pricing_notes_title_override
                            ?? (dest!.pricing_notes_title   as string | null) ?? '',
-    pricingNotes:        (ov?.pricing_notes_override as string[] | null)
-                           ?? (dest!.pricing_notes as string[] | null)
-                           ?? [],
+    pricingNotes:        normalizePricingNotes(
+                           (ov?.pricing_notes_override as unknown)
+                           ?? (dest!.pricing_notes as unknown)
+                         ),
   }
 }
 

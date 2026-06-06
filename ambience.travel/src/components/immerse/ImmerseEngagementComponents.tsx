@@ -56,7 +56,7 @@ import {
 } from './ImmerseComponents'
 import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../utils/utilsAnimations'
 import { IMMERSE } from '../../tokens/tokensLanding'
-import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow } from '../../types/typesImmerse'
+import type { ImmerseEngagementData, ImmerseRouteStop, ImmerseDestinationRow, ImmersePricingNote } from '../../types/typesImmerse'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -814,34 +814,59 @@ export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode
   )
 }
 
-export function NotesList({ notes }: { notes: string[] }) {
+export function NotesList({ notes }: { notes: ImmersePricingNote[] }) {
   return (
     <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
-      {notes.map(note => (
-        <div
-          key={note}
-          style={{
-            color: ID.muted,
-            fontSize: 14,
-            lineHeight: 1.72,
-            paddingLeft: 16,
-            position: 'relative',
-          }}
-        >
-          <span
+      {notes.map((note, i) => (
+        note.highlighted ? (
+          <div
+            key={i}
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 9,
-              width: 5,
-              height: 5,
-              borderRadius: '50%',
-              background: ID.gold,
-              display: 'block',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: '13px 15px',
+              borderRadius: 12,
+              border: `1px solid rgba(216,181,106,0.45)`,
+              background: 'rgba(216,181,106,0.10)',
+              color: ID.gold,
+              fontSize: 14,
+              lineHeight: 1.6,
+              fontWeight: 600,
             }}
-          />
-          {note}
-        </div>
+          >
+            <svg width='14' height='14' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true' style={{ flexShrink: 0, marginTop: 2 }}>
+              <circle cx='8' cy='8' r='6.4' stroke='currentColor' strokeWidth='1.2' />
+              <path d='M8 4.6v4.2M8 11.1h.01' stroke='currentColor' strokeWidth='1.4' strokeLinecap='round' />
+            </svg>
+            <span>{note.text}</span>
+          </div>
+        ) : (
+          <div
+            key={i}
+            style={{
+              color: ID.muted,
+              fontSize: 14,
+              lineHeight: 1.72,
+              paddingLeft: 16,
+              position: 'relative',
+            }}
+          >
+            <span
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 9,
+                width: 5,
+                height: 5,
+                borderRadius: '50%',
+                background: ID.gold,
+                display: 'block',
+              }}
+            />
+            {note.text}
+          </div>
+        )
       ))}
     </div>
   )

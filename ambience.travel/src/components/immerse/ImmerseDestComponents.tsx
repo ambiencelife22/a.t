@@ -359,7 +359,7 @@ export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
             <ImmerseTitle serif style={{ fontSize: 'clamp(28px,3.6vw,44px)' }}>
               {data.pricingNotesTitle || TBA}
             </ImmerseTitle>
-            <NotesList notes={data.pricingNotes.length > 0 ? data.pricingNotes : [TBA]} />
+            <NotesList notes={data.pricingNotes.length > 0 ? data.pricingNotes : [{ text: TBA, highlighted: false }]} />
           </PricingPanel>
         </div>
       </div>
