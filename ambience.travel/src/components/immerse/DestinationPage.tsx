@@ -62,7 +62,9 @@ function deriveTitlePrefix(journeyTypes: string[]): string {
 
 function deriveNightsLabel(engagement: ImmerseEngagementData, destinationSlug: string): string {
   const row = engagement.destinationRows.find(r => r.destinationSlug === destinationSlug)
-  return row?.stayLabel ?? ''
+  if (!row) return ''
+  if (row.nights && row.nights > 0) return `${row.nights} ${row.nights === 1 ? 'Night' : 'Nights'}`
+  return row.stayLabel ?? ''
 }
 
 // S53B Closing+1 — resolve per-subpage hero eyebrow.
