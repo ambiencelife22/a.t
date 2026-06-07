@@ -8,6 +8,8 @@
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - Reads execute via service role to bypass RLS uniformly
+//   Auth is enforced via the shared requireAdmin gate (_shared/auth.ts) —
+//   the inline JWT->is_admin->serviceClient preamble was extracted S54.
 //
 // Request body:
 //   { mode: ReadMode, ...mode-specific params }
@@ -28,13 +30,11 @@
 // First ship: S54
 // S54 cleanup: removed max_sort_order mode (sort_order now computed server-side
 //   inside travel-write-engagement.create_engagement; no remaining caller).
+// S54 shared-auth: migrated to requireAdmin (_shared/auth.ts) + corsHeaders/json/
+//   preflight (_shared/http.ts). First EF on the shared-auth pattern.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { requireAdmin } from '../_shared/auth.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 type ReadMode =
   | 'list'
@@ -48,12 +48,6 @@ type ReadMode =
   | 'trip_by_id'
   | 'welcome_letter'
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-
 const childCountTables = [
   'travel_immerse_trip_destination_rows',
   'travel_immerse_trip_pricing_rows',
@@ -65,9 +59,38 @@ const childCountTables = [
   'travel_immerse_rooms',
 ] as const
 
+// Shape of a row from the `list` query (engagement + nested status/trip joins).
+type EngagementListQueryRow = {
+  id: string
+  url_id: string | null
+  title: string | null
+  audience: string | null
+  is_public_template: boolean | null
+  engagement_status_id: string
+  itinerary_status_id: string
+  sort_order: number
+  created_at: string
+  iteration_label: string | null
+  trip_id: string | null
+  engagement_status: { slug: string | null; label: string | null } | null
+  itinerary_status:  { slug: string | null; label: string | null } | null
+  trip: {
+    trip_code: string | null
+    public_title: string | null
+    start_date: string | null
+    primary_client_id: string | null
+    primary_client: {
+      id: string | null
+      first_name: string | null
+      last_name: string | null
+      nickname: string | null
+    } | null
+  } | null
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   try {
@@ -79,39 +102,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'mode is required' }, 400)
     }
 
-    // ── 2. Verify caller is authenticated ────────────────────────────────────
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return json({ error: 'Unauthorized' }, 401)
-    }
-
-    const anonClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: userError } = await anonClient.auth.getUser()
-    if (userError || !user) {
-      return json({ error: 'Unauthorized' }, 401)
-    }
-
-    // ── 3. Verify caller is admin ─────────────────────────────────────────────
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const { data: profile, error: profileError } = await serviceClient
-      .from('global_profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (profileError || !profile || profile.is_admin !== true) {
-      return json({ error: 'Forbidden' }, 403)
-    }
+    // ── 2-3. Verify caller is an authenticated admin ─────────────────────────
+    const gate = await requireAdmin(req)
+    if (!gate.ok) return gate.response
+    const { serviceClient } = gate
 
     // ── 4. Mode dispatch ─────────────────────────────────────────────────────
 
@@ -139,7 +133,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to fetch engagement list' }, 500)
       }
 
-      const rows = (data ?? []).map((r: any) => ({
+      const rows = ((data ?? []) as unknown as EngagementListQueryRow[]).map((r) => ({
         id:                      r.id,
         url_id:                  r.url_id,
         title:                   r.title,
