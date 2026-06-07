@@ -61,3 +61,5 @@ yarn-error.log*
 next-env.d.ts
 supabase/.env
 .env
+!.vscode/settings.json
+!.vscode/settings.json

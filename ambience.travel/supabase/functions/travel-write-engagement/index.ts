@@ -51,7 +51,7 @@
 // Deployed at: /functions/v1/travel-write-engagement
 // First ship: S54 (this file)
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from '@supabase/supabase-js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -157,20 +157,22 @@ Deno.serve(async (req: Request) => {
     // ── Helpers (closure over serviceClient) ─────────────────────────────────
 
     // Resolve an engagement status slug -> id. Returns null if not found.
-    async function engagementStatusId(slug: string): Promise<string | null> {
+    // (const arrow expressions, not function declarations, so they may close
+    //  over the request-scoped serviceClient without tripping no-inner-declarations.)
+    const engagementStatusId = async (slug: string): Promise<string | null> => {
       const { data } = await serviceClient
         .from('travel_engagement_statuses').select('id').eq('slug', slug).maybeSingle()
       return data?.id ?? null
     }
 
-    async function itineraryStatusId(slug: string): Promise<string | null> {
+    const itineraryStatusId = async (slug: string): Promise<string | null> => {
       const { data } = await serviceClient
         .from('travel_itinerary_statuses').select('id').eq('slug', slug).maybeSingle()
       return data?.id ?? null
     }
 
     // Pick only whitelisted scalar keys from an input object.
-    function pickEditable(src: Record<string, unknown>): Record<string, unknown> {
+    const pickEditable = (src: Record<string, unknown>): Record<string, unknown> => {
       const out: Record<string, unknown> = {}
       for (const k of EDITABLE_SCALARS) {
         if (Object.prototype.hasOwnProperty.call(src, k)) out[k] = src[k]
@@ -179,7 +181,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Return the full engagement row by id (post-write echo).
-    async function rowById(id: string) {
+    const rowById = async (id: string) => {
       const { data } = await serviceClient
         .from('travel_immerse_engagements').select('*').eq('id', id).maybeSingle()
       return data ?? null
@@ -227,7 +229,7 @@ Deno.serve(async (req: Request) => {
         if (!error && data) return json({ row: data })
 
         // 23505 = unique_violation; only retry if it's the url_id collision.
-        if (error && (error as any).code === '23505') { lastErr = error; continue }
+        if (error && (error as { code?: string }).code === '23505') { lastErr = error; continue }
         console.error('create_engagement error:', error)
         return json({ error: 'Failed to create engagement' }, 500)
       }
