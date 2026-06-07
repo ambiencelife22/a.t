@@ -1,12 +1,20 @@
 /* EngagementDetailTab.tsx
  * Engagement detail/edit view for AmbienceAdmin.
  * Sectioned form mapping to all columns of travel_immerse_engagements.
- * Person/Trip linkage via typeahead. Welcome letter overrides surface
- * canonical placeholder. Danger zone delete with CASCADE warning.
+* Person/Trip linkage via typeahead. Welcome letter overrides surface
+ * canonical placeholder. Two removal paths: Archive (reversible, calm) and
+ * Delete (irreversible, Danger Zone, financial-guarded via EF).
  *
  * Out of scope (read-only summary only): pricing rows, rooms, hotels.
  *
- * Last updated: S334 — Replace window.confirm-based handleDelete with
+ * Last updated: S54 — All writes migrated to travel-write-engagement EF.
+ *   Status changes routed through setEngagementStatus/setItineraryStatus
+ *   (two independent axes). Added reversible Archive section; Delete now
+ *   EF-backed and refuses when bookings/time_entries/requests exist
+ *   (Retention Spec v1). is_public / is_public_template made read-only
+ *   (template-library concern, not live visibility — deferred to a future
+ *   template surface). public_view is the live gate (set_visibility).
+ * Prior: S334 — Replace window.confirm-based handleDelete with
  *   DeleteEngagementModal (4-step destructive confirmation, mirrors SPORTS
  *   DeleteSystemSection pattern). Engagement title type-to-confirm gate.
  * Prior: S334 — Replace CardOverridesEditor with CardsEditor.
@@ -34,6 +42,10 @@ import {
   fetchTripById,
   fetchWelcomeLetterCanonical,
   updateEngagement,
+  setEngagementStatus,
+  setItineraryStatus,
+  setEngagementVisibility,
+  archiveEngagement,
   deleteEngagement,
   type EngagementDetailRow,
   type StatusLookup,
@@ -536,6 +548,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
   const [saving, setSaving]                        = useState(false)
   const [showLegacy, setShowLegacy]                = useState(false)
   const [deleteOpen, setDeleteOpen]                = useState(false)
+  const [archiving, setArchiving]                  = useState(false)
   const { toast, showToast }                       = useToast()
 
   async function load() {
@@ -576,19 +589,44 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
     if (!row || !draft) return
     setSaving(true)
     try {
-      const payload: Partial<EngagementDetailRow> = {}
-      ;(Object.keys(draft) as (keyof EngagementDetailRow)[]).forEach(k => {
-        if (JSON.stringify(draft[k]) !== JSON.stringify(row[k])) {
-          ;(payload as any)[k] = draft[k]
+      // Columns handled by dedicated EF modes — excluded from the scalar patch.
+      const STATUS_KEYS = new Set<keyof EngagementDetailRow>([
+        'engagement_status_id', 'itinerary_status_id',
+      ])
+
+      const patch: Record<string, unknown> = {}
+      let statusOps = 0
+      let scalarOps = 0
+
+      for (const k of Object.keys(draft) as (keyof EngagementDetailRow)[]) {
+        if (JSON.stringify(draft[k]) === JSON.stringify(row[k])) continue
+        if (STATUS_KEYS.has(k)) { statusOps++; continue }      // routed below
+        ;(patch as any)[k] = draft[k]
+        scalarOps++
+      }
+
+      // Resolve status ids -> slugs for the status modes (two independent axes).
+      async function applyStatusChanges() {
+        if (draft!.engagement_status_id !== row!.engagement_status_id) {
+          const slug = engagementStatuses.find(s => s.id === draft!.engagement_status_id)?.slug
+          if (slug) await setEngagementStatus(row!.id, slug as any)
         }
-      })
-      if (Object.keys(payload).length === 0) {
+        if (draft!.itinerary_status_id !== row!.itinerary_status_id) {
+          const slug = itineraryStatuses.find(s => s.id === draft!.itinerary_status_id)?.slug
+          if (slug) await setItineraryStatus(row!.id, slug as any)
+        }
+      }
+
+      if (scalarOps === 0 && statusOps === 0) {
         showToast('No changes.', 'success')
         setSaving(false)
         return
       }
-      await updateEngagement(row.id, payload)
-      showToast(`Saved ${Object.keys(payload).length} field(s).`, 'success')
+
+      if (scalarOps > 0) await updateEngagement(row.id, patch)
+      if (statusOps > 0) await applyStatusChanges()
+
+      showToast(`Saved ${scalarOps + statusOps} change(s).`, 'success')
       load()
     } catch (e: any) {
       showToast(`Failed: ${e.message ?? 'unknown error'}`, 'error')
@@ -596,12 +634,29 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
     setSaving(false)
   }
 
+  // Delete = irreversible hard delete, through the EF. The EF refuses (409)
+  // if any financial/operational record exists, surfacing a friendly message
+  // that steers to Archive instead. Only record-free engagements delete.
   async function handleDeleteConfirm() {
     if (!row) throw new Error('No engagement loaded.')
     await deleteEngagement(row.id)
-    // Success: do NOT redirect here — modal shows success state and the
-    // user clicks "Back to engagements" which closes the modal and triggers
-    // the navigation via handleDeleteClose below.
+    // Success: modal shows success state; handleDeleteClose navigates away.
+  }
+
+  // Archive = reversible. Calm single confirm, sets status -> cancelled,
+  // itinerary -> archived. Content preserved; reactivatable via status.
+  async function handleArchive() {
+    if (!row) return
+    if (!window.confirm('Archive this engagement? It will be set to Cancelled and can be reactivated later.')) return
+    setArchiving(true)
+    try {
+      await archiveEngagement(row.id, 'cancelled')
+      showToast('Engagement archived.', 'success')
+      load()
+    } catch (e: any) {
+      showToast(`Failed: ${e.message ?? 'unknown error'}`, 'error')
+    }
+    setArchiving(false)
   }
 
   function handleDeleteClose() {
@@ -702,15 +757,12 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
               <option value='public'>public</option>
             </select>
           </Field>
-          <Field label='Public Template?'>
-            <select
-              style={inputStyle}
-              value={String(draft.is_public_template ?? false)}
-              onChange={e => patch('is_public_template', e.target.value === 'true')}
-            >
-              <option value='false'>No</option>
-              <option value='true'>Yes</option>
-            </select>
+          <Field label='Public Template? (read-only)'>
+            <input
+              style={{ ...inputStyle, opacity: 0.6 }}
+              value={draft.is_public_template ? 'Yes' : 'No'}
+              disabled
+            />
           </Field>
           <Field label='Engagement Type'>
             <select style={inputStyle} value={draft.engagement_type} onChange={e => patch('engagement_type', e.target.value)}>
@@ -726,15 +778,12 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
               <option value='experience'>experience</option>
             </select>
           </Field>
-          <Field label='is_public'>
-            <select
-              style={inputStyle}
+          <Field label='is_public (read-only)'>
+            <input
+              style={{ ...inputStyle, opacity: 0.6 }}
               value={String(draft.is_public)}
-              onChange={e => patch('is_public', e.target.value === 'true')}
-            >
-              <option value='false'>false</option>
-              <option value='true'>true</option>
-            </select>
+              disabled
+            />
           </Field>
         </div>
 
@@ -975,11 +1024,25 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </span>
       </div>
 
-      {/* Danger zone */}
+      {/* Archive — reversible, calm */}
+      <Section title='Archive'>
+        <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
+          Archiving sets this engagement to Cancelled and its itinerary to Archived.
+          Nothing is deleted — all content is preserved and it can be reactivated
+          later by changing its status.
+        </div>
+        <button onClick={handleArchive} disabled={archiving} style={{ ...btnGhost, opacity: archiving ? 0.5 : 1 }}>
+          {archiving ? 'Archiving…' : 'Archive Engagement'}
+        </button>
+      </Section>
+
+      {/* Danger Zone — irreversible delete */}
       <Section title='Danger Zone'>
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
-          Deletion cascades through 10 child tables. There is no undo.
-          You will be asked to confirm in three steps before anything is deleted.
+          Deletion permanently removes this engagement and cascades through its
+          content tables. There is no undo. Engagements with bookings, time
+          entries, or requests cannot be deleted — archive them instead.
+          You will be asked to confirm in several steps before anything is deleted.
         </div>
         <button onClick={() => setDeleteOpen(true)} style={btnDanger}>Delete Engagement</button>
       </Section>

@@ -363,3 +363,87 @@ export type ImmerseHeroProps = {
   secondaryHref?:  string
   secondaryLabel?: string
 }
+
+// ─── Engagement admin WRITES (travel-write-engagement EF, S54) ────────────────
+// Write-side contracts for the 8 EF modes. Reuses the slug unions + enums above.
+// Payloads are snake_case: they map 1:1 to DB columns the EF writes, NOT to the
+// camelCase view-model (ImmerseEngagementData). Keep the two shapes distinct.
+
+export type EngagementWriteMode =
+  | 'create_engagement'
+  | 'update_engagement'
+  | 'set_engagement_status'
+  | 'set_itinerary_status'
+  | 'reorder'
+  | 'set_visibility'
+  | 'update_welcome_letter'
+  | 'archive'
+
+// Editable scalar columns (create + update). Mirrors EDITABLE_SCALARS in the EF.
+export interface EngagementWritableFields {
+  title:                          string | null
+  audience:                       EngagementAudience
+  engagement_type:                EngagementType
+  trip_format:                    ImmerseTripFormat
+  journey_types:                  string[]
+  iteration_label:                string
+  trip_id:                        string | null
+  person_id:                      string | null
+  slug:                           string | null
+  status_label:                   string | null
+  eyebrow:                        string | null
+  hero_tagline:                   string | null
+  subtitle:                       string | null
+  hero_image_src:                 string | null
+  hero_image_alt:                 string | null
+  hero_image_src_2:               string | null
+  hero_image_alt_2:               string | null
+  hero_title_2:                   string | null
+  hero_subtitle_2:                string | null
+  hero_pills:                     string[]
+  hero_eyebrow_override:          string | null
+  welcome_eyebrow_override:       string | null
+  welcome_title_override:         string | null
+  welcome_body_override:          string | null
+  welcome_signoff_body_override:  string | null
+  welcome_signoff_name_override:  string | null
+  route_heading:                  string | null
+  route_body:                     string | null
+  route_eyebrow:                  string | null
+  destination_heading:            string | null
+  destination_subtitle:           string | null
+  destination_body:               string | null
+  pricing_heading:                string | null
+  pricing_title:                  string | null
+  pricing_body:                   string | null
+  pricing_total_label:            string | null
+  pricing_total_value:            string | null
+  pricing_notes_heading:          string | null
+  pricing_notes_title:            string | null
+  pricing_notes:                  ImmersePricingNote[]
+  public_journey_slug:            string | null
+}
+
+export type EngagementPatch = Partial<EngagementWritableFields>
+
+export interface CreateEngagementInput {
+  engagement?:             EngagementPatch
+  engagement_status_slug?: EngagementStatusSlug   // default 'new_request'
+  itinerary_status_slug?:  ItineraryStatusSlug    // default 'draft'
+}
+
+export interface ReorderItem {
+  id:         string
+  sort_order: number
+}
+
+export interface WelcomeLetterPatch {
+  eyebrow?:      string
+  title?:        string
+  body?:         string
+  signoff_body?: string
+  signoff_name?: string
+}
+
+// Terminal engagement status for archive (itinerary always → 'archived').
+export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 'lost'>

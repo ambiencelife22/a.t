@@ -48,8 +48,8 @@ import {
   fetchEngagementList,
   fetchEngagementStatuses,
   fetchItineraryStatuses,
-  updateEngagementStatus,
-  fetchMaxSortOrder,
+  setEngagementStatus,
+  setItineraryStatus,
   createEngagement,
   groupByTrip,
   updateTrip,
@@ -74,7 +74,7 @@ import {
   AdminEmptyState,
   useAdminToast,
 } from './_adminPrimitives'
-import type { EngagementStatusSlug } from '../../types/typesImmerse'
+import type { EngagementStatusSlug, ItineraryStatusSlug } from '../../types/typesImmerse'
 import TripCreateModal from './TripCreateModal'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
@@ -942,22 +942,25 @@ function CreateModal({
     if (!engagementStatusId || !itineraryStatusId) { error('Statuses are required.');   return }
     setSaving(true)
     try {
-      const sortOrder = await fetchMaxSortOrder()
-      const newUrlId  = await createEngagement({
-        url_id:               urlId,
-        title:                title.trim(),
-        audience,
-        is_public_template:   isPublicTemplate,
-        engagement_type:      engagementType,
-        trip_format:          tripFormat,
-        journey_types:        [],
-        engagement_status_id: engagementStatusId,
-        itinerary_status_id:  itineraryStatusId,
-        sort_order:           sortOrder,
-        iteration_label:      iterationLabel.trim(),
+      // EF generates url_id + sort_order and seeds statuses by slug.
+      // The user's chosen statuses are passed as slugs; scalar fields go
+      // in the engagement patch.
+      const engSlug = engagementStatuses.find(s => s.id === engagementStatusId)?.slug
+      const itSlug  = itineraryStatuses.find(s => s.id === itineraryStatusId)?.slug
+      const created = await createEngagement({
+        engagement: {
+          title:              title.trim(),
+          audience,
+          engagement_type:    engagementType as any,
+          trip_format:        tripFormat as any,
+          journey_types:      [],
+          iteration_label:    iterationLabel.trim(),
+        },
+        engagement_status_slug: engSlug as EngagementStatusSlug | undefined,
+        itinerary_status_slug:  itSlug as ItineraryStatusSlug | undefined,
       })
       success('Engagement created.')
-      onCreated(newUrlId)
+      onCreated(created.url_id ?? '')
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'
       error(`Failed to create: ${message}`)
@@ -1107,7 +1110,15 @@ export default function EngagementsListTab() {
   ) {
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, [field]: value } : r))
     try {
-      await updateEngagementStatus(row.id, field, value)
+      // Two independent axes, each its own EF mode. Resolve the chosen
+      // status id -> slug, then call the matching setter.
+      if (field === 'engagement_status_id') {
+        const slug = engagementStatuses.find(s => s.id === value)?.slug as EngagementStatusSlug | undefined
+        if (slug) await setEngagementStatus(row.id, slug)
+      } else {
+        const slug = itineraryStatuses.find(s => s.id === value)?.slug as ItineraryStatusSlug | undefined
+        if (slug) await setItineraryStatus(row.id, slug)
+      }
       success('Status updated.')
       load()
     } catch (e: unknown) {

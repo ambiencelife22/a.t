@@ -3,18 +3,30 @@
 // lookups + person/trip typeahead. Single source of truth for admin-side
 // engagement data access. Components call these — never .from() inline.
 //
-// Last updated: S54 — All 11 read paths migrated to travel-read-engagement-admin
-//   Edge Function. Function signatures preserved identically; callers unchanged.
-//   Writes still use direct supabase client — migrate in travel-write-engagement
-//   pass (next).
+// Last updated: S54 — Engagement writes migrated to travel-write-engagement EF
+//   (create/update/status/visibility/welcome/archive/delete via invokeWrite).
+//   Status split into setEngagementStatus + setItineraryStatus (two axes).
+//   Archive (reversible) and Delete (EF-backed, financial-guarded) are distinct.
+//   Trip/person inline-edit writes remain direct supabase (not engagement scope).
+// Prior: S54 — All 11 read paths migrated to travel-read-engagement-admin EF.
 // Prior: S33B — Added trip + person inline-edit + drag-and-drop re-parenting
 //   writes. New: updateTrip, createTrip, updatePerson, reassignEngagementTrip.
 // Prior: S33 — Added iteration_label. List query joins travel_trips +
 //   global_people for trip-group rendering.
 
 import { supabase } from '../lib/supabase'
+import type {
+  EngagementPatch,
+  CreateEngagementInput,
+  ReorderItem,
+  WelcomeLetterPatch,
+  EngagementStatusSlug,
+  ItineraryStatusSlug,
+  ArchiveEngagementSlug,
+} from '../types/typesImmerse'
 
-const READ_EF = 'travel-read-engagement-admin'
+const READ_EF  = 'travel-read-engagement-admin'
+const WRITE_EF = 'travel-write-engagement'
 
 // Thin invoke wrapper — centralises the error shape so call sites stay clean.
 async function invokeRead<T>(mode: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -24,6 +36,19 @@ async function invokeRead<T>(mode: string, params: Record<string, unknown> = {})
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) {
     throw new Error((data as { error: string }).error)
+  }
+  return data as T
+}
+
+// Thin invoke wrapper — twin of invokeRead, for the write EF.
+async function invokeWrite<T>(mode: string, params: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
+    body: { mode, ...params },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    const d = data as { error: string; message?: string }
+    throw new Error(d.message ?? d.error)
   }
   return data as T
 }
@@ -274,63 +299,76 @@ export async function fetchChildCounts(engagementId: string): Promise<ChildCount
 
 // ── Update ────────────────────────────────────────────────────────────────────
 
-export async function updateEngagementStatus(
-  id: string,
-  field: 'engagement_status_id' | 'itinerary_status_id',
-  value: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from('travel_immerse_engagements')
-    .update({ [field]: value })
-    .eq('id', id)
-  if (error) throw error
+// Status writes — two independent axes; neither gates the other.
+// setEngagementStatus is the canonical "commit"/"promote" action (Engagement
+// Model canon §V). Forward AND backward transitions allowed (re-proposal loop).
+
+export async function setEngagementStatus(id: string, slug: EngagementStatusSlug): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('set_engagement_status', { id, slug })
+  return row
 }
 
-export async function updateEngagement(
-  id: string,
-  payload: Partial<EngagementDetailRow>,
-): Promise<void> {
-  const { error } = await supabase
-    .from('travel_immerse_engagements')
-    .update(payload)
-    .eq('id', id)
-  if (error) throw error
+export async function setItineraryStatus(id: string, slug: ItineraryStatusSlug): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('set_itinerary_status', { id, slug })
+  return row
+}
+
+export async function updateEngagement(id: string, patch: EngagementPatch): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('update_engagement', { id, patch })
+  return row
 }
 
 // ── Create ────────────────────────────────────────────────────────────────────
+// EF seeds new_request / draft, generates url_id, computes sort_order.
+// Caller passes only the scalar fields it wants set. Returns the full new row.
 
-export type EngagementCreatePayload = {
-  url_id:               string
-  title:                string
-  audience:             'private' | 'public'
-  is_public_template:   boolean
-  engagement_type:      string
-  trip_format:          string
-  journey_types:        string[]
-  engagement_status_id: string
-  itinerary_status_id:  string
-  sort_order:           number
-  iteration_label:      string
+export async function createEngagement(input: CreateEngagementInput = {}): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('create_engagement', {
+    engagement:             input.engagement ?? {},
+    engagement_status_slug: input.engagement_status_slug,
+    itinerary_status_slug:  input.itinerary_status_slug,
+  })
+  return row
 }
 
-export async function createEngagement(payload: EngagementCreatePayload): Promise<string> {
-  const { data, error } = await supabase
-    .from('travel_immerse_engagements')
-    .insert(payload)
-    .select('id, url_id')
-    .single()
-  if (error) throw error
-  return data.url_id as string
+// ── Reorder (batch) ───────────────────────────────────────────────────────────
+
+export async function reorderEngagements(items: ReorderItem[]): Promise<number> {
+  const { updated } = await invokeWrite<{ updated: number }>('reorder', { items })
+  return updated
 }
 
-// ── Delete ────────────────────────────────────────────────────────────────────
+// ── Visibility ────────────────────────────────────────────────────────────────
+// Toggles public_view — the live show/hide gate the public stage EF checks.
+// NOT is_public / is_public_template (those govern the template library).
+
+export async function setEngagementVisibility(id: string, publicView: boolean): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('set_visibility', { id, public_view: publicView })
+  return row
+}
+
+// ── Archive (reversible; distinct from delete) ────────────────────────────────
+// Sets engagement_status -> cancelled|lost, itinerary_status -> archived.
+// Content preserved, reactivatable. Delete (below) is the irreversible path.
+
+export async function archiveEngagement(
+  id: string,
+  engagementSlug: ArchiveEngagementSlug = 'cancelled',
+): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('archive', {
+    id,
+    engagement_slug: engagementSlug,
+  })
+  return row
+}
+
+// ── Delete (hard, EF-backed, financial-guarded) ───────────────────────────────
+// EF refuses with 409 CANNOT_DELETE_HAS_RECORDS if bookings/time_entries/
+// requests exist (Retention Spec v1). invokeWrite surfaces the friendly
+// message. On success the 12 travel_immerse_* content tables cascade.
 
 export async function deleteEngagement(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_immerse_engagements')
-    .delete()
-    .eq('id', id)
-  if (error) throw error
+  await invokeWrite<{ deleted: boolean }>('delete_engagement', { id })
 }
 
 // ── Lookups ───────────────────────────────────────────────────────────────────
@@ -380,11 +418,9 @@ export async function fetchWelcomeLetterCanonical(): Promise<WelcomeLetterCanoni
   return row
 }
 
-// ── Max sort_order (for create defaults) ──────────────────────────────────────
-
-export async function fetchMaxSortOrder(): Promise<number> {
-  const { next } = await invokeRead<{ next: number }>('max_sort_order')
-  return next
+export async function updateWelcomeLetter(patch: WelcomeLetterPatch): Promise<WelcomeLetterCanonical> {
+  const { row } = await invokeWrite<{ row: WelcomeLetterCanonical }>('update_welcome_letter', { patch })
+  return row
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
