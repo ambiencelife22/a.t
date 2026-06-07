@@ -51,7 +51,7 @@
 // Deployed at: /functions/v1/travel-write-engagement
 // First ship: S54 (this file)
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
