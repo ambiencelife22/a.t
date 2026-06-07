@@ -1,5 +1,5 @@
 {
-  "$schema": "./.schemas/config-file.v1.json",
+  "$schema": "./.schemas/deno-config.v1.json",
   "lint": {
     "rules": {
       "exclude": ["no-import-prefix"]
