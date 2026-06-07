@@ -9,8 +9,7 @@
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - Writes execute via service role to bypass RLS uniformly
-//   - SERVICE_ROLE_KEY (canon S66F; the read mirror still carries the
-//     SUPABASE_SERVICE_ROLE_KEY drift — fix it there in the same pass).
+//   - SERVICE_ROLE_KEY (canon S66F; read mirror verified clean S54).
 //
 // Request body:
 //   { mode: WriteMode, ...mode-specific params }
@@ -100,7 +99,11 @@ const WELCOME_LETTER_FIELDS = [
   'eyebrow', 'title', 'body', 'signoff_body', 'signoff_name',
 ] as const
 
-const URL_ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+// No-ambiguous-chars set (excludes I, O, l, 0, 1) — url_ids are client-facing
+// access tokens, often read aloud or typed from a screenshot. Mirrors the
+// original client generateUrlId alphabet (preserved when generation moved
+// server-side S54).
+const URL_ID_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
 
 function generateUrlId(): string {
   let out = ''
