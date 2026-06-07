@@ -1,11 +1,18 @@
-// RecognitionKey.tsx — shared recognition definitions for dining guide
+// RecognitionKey.tsx — shared recognition definitions for dining guide + hotel keys
 // What it owns:
 //   - The single source of truth for what each recognition mark means
-//     (★ stars, BIB Gourmand, Green Star, 50 Best, ambience Pick)
-//   - <RecognitionKeyStrip /> — discreet page-top legend
-//   - <RecognitionMark /> — single-mark pill with hover tooltip
+//     (◆ ambience Pick, ★ stars, BIB Gourmand, Green Star, 50 Best, Michelin Keys)
+//   - <RecognitionKeyStrip /> — discreet page-top legend (dining)
+//   - <RecognitionMark /> — single-mark pill with hover tooltip (dining + hotels)
 //
-// Last updated: S40B — Added 'highlighted' kind. ambience Pick pill renders
+// Last updated: S53C — Added 'keys' kind. Michelin Keys (hotel distinction,
+//   1–3) render as N gold key glyphs, matching the stars idiom (keyCount mirrors
+//   starCount). Consumed by the hotel cards (ImmerseHotelOptions) the same way
+//   dining cards consume the restaurant marks. NOTE: this file lives in the
+//   dining module and imports DiningVenue for the dining-only helper; the mark
+//   renderer itself is generic. Follow-up: lift RecognitionMark/MarkGlyph/defs
+//   into a neutral shared module so dining + hotels both import it cleanly.
+// Prior: S40B — Added 'highlighted' kind. ambience Pick pill renders
 //   for venues where is_highlighted = true. Serif italic 'a' glyph, gold border.
 // Prior: S37 — Initial ship.
 
@@ -16,7 +23,7 @@ export const GREEN_STAR_COLOR = '#3aa55a'
 
 // ── Definitions ───────────────────────────────────────────────────────────────
 
-export type RecognitionKind = 'highlighted' | 'stars' | 'bib' | 'green' | 'fifty_best'
+export type RecognitionKind = 'highlighted' | 'stars' | 'bib' | 'green' | 'fifty_best' | 'keys'
 
 interface RecognitionDef {
   kind:        RecognitionKind
@@ -50,6 +57,11 @@ const RECOGNITION_DEFS: Record<RecognitionKind, RecognitionDef> = {
     shortLabel:  'World\u2019s 50 Best',
     description: 'Listed on The World\u2019s 50 Best Restaurants guide.',
   },
+  keys: {
+    kind:        'keys',
+    shortLabel:  'Michelin Keys',
+    description: 'The MICHELIN Key distinguishes the most outstanding hotels. One to three Keys.',
+  },
 }
 
 // ── Single mark renderer ──────────────────────────────────────────────────────
@@ -57,20 +69,32 @@ const RECOGNITION_DEFS: Record<RecognitionKind, RecognitionDef> = {
 interface RecognitionMarkProps {
   kind:       RecognitionKind
   starCount?: number
+  keyCount?:  number
 }
 
-export function RecognitionMark({ kind, starCount }: RecognitionMarkProps) {
+export function RecognitionMark({ kind, starCount, keyCount }: RecognitionMarkProps) {
   const def         = RECOGNITION_DEFS[kind]
   const tooltipText = `${def.shortLabel}: ${def.description}`
 
   return (
     <span style={markWrapperStyle} title={tooltipText} aria-label={tooltipText}>
-      <MarkGlyph kind={kind} starCount={starCount} />
+      <MarkGlyph kind={kind} starCount={starCount} keyCount={keyCount} />
     </span>
   )
 }
 
-function MarkGlyph({ kind, starCount }: { kind: RecognitionKind; starCount?: number }) {
+// Single Michelin Key glyph — a small key drawn in gold, matched to the
+// existing icon weight (cf. the connecting-suites svg in ImmerseHotelOptions).
+function KeyGlyph() {
+  return (
+    <svg width='13' height='13' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true' style={{ display: 'block' }}>
+      <circle cx='5' cy='5' r='3.1' stroke={ID.gold} strokeWidth='1.3' />
+      <path d='M7.2 7.2L13 13M11 11l1.4-1.4M9.4 9.4l1.2-1.2' stroke={ID.gold} strokeWidth='1.3' strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+  )
+}
+
+function MarkGlyph({ kind, starCount, keyCount }: { kind: RecognitionKind; starCount?: number; keyCount?: number }) {
   if (kind === 'highlighted') {
     return <span style={ambiencePillStyle}>◆</span>
   }
@@ -86,6 +110,14 @@ function MarkGlyph({ kind, starCount }: { kind: RecognitionKind; starCount?: num
   }
   if (kind === 'fifty_best') {
     return <span style={fiftyPillStyle}>50 BEST</span>
+  }
+  if (kind === 'keys') {
+    const count = Math.max(1, Math.min(3, keyCount ?? 1))
+    return (
+      <span style={keysGlyphStyle}>
+        {Array.from({ length: count }).map((_, i) => <KeyGlyph key={i} />)}
+      </span>
+    )
   }
   return null
 }
@@ -193,6 +225,18 @@ const fiftyPillStyle: React.CSSProperties = {
   color:         ID.text,
   background:    'rgba(255,255,255,0.04)',
   fontWeight:    600,
+}
+
+// Michelin Keys — N key glyphs in a gold-tinted pill, mirroring the stars idiom.
+const keysGlyphStyle: React.CSSProperties = {
+  display:      'inline-flex',
+  alignItems:   'center',
+  gap:          3,
+  borderRadius: 999,
+  padding:      '5px 9px',
+  border:       `1px solid ${IMMERSE.goldBorder}`,
+  background:   IMMERSE.goldTint,
+  lineHeight:   1,
 }
 
 const keyStripStyle: React.CSSProperties = {

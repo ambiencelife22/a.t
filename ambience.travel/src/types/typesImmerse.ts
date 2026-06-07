@@ -107,6 +107,7 @@ export type ImmerseHotelOption = {
   imageCreditUrl?: string
   imageLicense?:  string
   resortMapSrc?:  string
+  michelinKeys?:  number   // S53C — canon travel_accom_hotels.michelin_keys (1-3)
 }
 
 export type ImmerseContentCard = {

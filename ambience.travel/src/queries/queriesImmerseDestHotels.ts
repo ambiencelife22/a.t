@@ -3,7 +3,12 @@
 //   Internal: fetchHotelsShape, fetchFlatHotels, fetchRegionGroups,
 //   fetchRoomsForHotels, fetchAllGallery, fetchAllRoomGallery, fetchRoomConnections.
 //
-// Last updated: S53C — rooms now carry: resolved rate cadence + tax treatment
+// Last updated: S53C — michelin_keys surfaced from canon travel_accom_hotels
+//   onto ImmerseHotelOption.michelinKeys (flat + regioned paths). Rendered by
+//   the hotel card via the shared RecognitionMark (kind="keys"), matching the
+//   dining-guide accolade idiom. Keys live on the canon hotel, so they appear
+//   on every proposal featuring that hotel automatically.
+// Prior: S53C — rooms now carry: resolved rate cadence + tax treatment
 //   labels (joined from travel_immerse_rate_cadences / travel_immerse_tax_treatments),
 //   per-booking room_alert + room_alert_level, and connecting-room linkage
 //   (roomId / connectedRoomId / connectingNote) resolved from the catalog
@@ -79,7 +84,7 @@ async function fetchFlatHotels(
       travel_accom_hotels (
         id, name, short_slug,
         hero_image_src, hero_image_alt, image_credit,
-        bullets
+        bullets, michelin_keys
       )
     `)
     .eq('trip_id', engagementId)
@@ -110,6 +115,7 @@ async function fetchFlatHotels(
       hero_image_alt: string | null
       image_credit:   string | null
       bullets:        string[] | null
+      michelin_keys:  number | null
     } | null
     const hotelId         = h?.id ?? r.hotel_id
     const hotelSlug       = h?.short_slug ?? ''
@@ -132,6 +138,7 @@ async function fetchFlatHotels(
       rooms:        roomsByHotel[hotelId]   ?? [],
       gallery:      galleryByHotel[hotelId] ?? [],
       resortMapSrc: (r.resort_map_src as string | null) ?? undefined,
+      michelinKeys: h?.michelin_keys ?? undefined,
     }
   })
 }
@@ -172,7 +179,7 @@ async function fetchRegionGroups(
         travel_accom_hotels (
           id, name, short_slug,
           hero_image_src, hero_image_alt, image_credit,
-          bullets
+          bullets, michelin_keys
         )
       `)
       .eq('trip_id', engagementId)
@@ -219,6 +226,7 @@ async function fetchRegionGroups(
       hero_image_alt: string | null
       image_credit:   string | null
       bullets:        string[] | null
+      michelin_keys:  number | null
     } | null
     const hotelId         = h?.id ?? r.hotel_id
     const hotelSlug       = h?.short_slug ?? ''
@@ -240,6 +248,7 @@ async function fetchRegionGroups(
       stayLabel:   r.stay_label  ?? '',
       rooms:       roomsByHotel[hotelId]   ?? [],
       gallery:     galleryByHotel[hotelId] ?? [],
+      michelinKeys: h?.michelin_keys ?? undefined,
     }
 
     const bucket = hotelsByRegionId.get(r.region_id as string) ?? []

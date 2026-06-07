@@ -3,7 +3,12 @@
 //   HotelWithRooms, SelectorAndCarousel scaffolding, HotelButton, HotelDetailPanel,
 //   LightboxOverlay, buildRoomSlides, ConnectedPairSlide
 //
-// Last updated: S53C — connecting-room pairs. Rooms are grouped into "slides":
+// Last updated: S53C — Michelin Keys. HotelDetailPanel renders the hotel's
+//   michelinKeys (1–3) under the hotel name via the shared RecognitionMark
+//   (kind="keys"), matching the dining-guide accolade idiom. The value comes
+//   from the canon hotel (travel_accom_hotels.michelin_keys) via the hotels
+//   query, so it shows on every proposal featuring that hotel.
+// Prior: S53C — connecting-room pairs. Rooms are grouped into "slides":
 //   a slide is either a single room or a connected pair (two rooms sharing a
 //   travel_accom_room_connections link, surfaced as room.connectedRoomId). A
 //   pair renders as ONE carousel slide: both RoomCategory panels stacked under a
@@ -20,6 +25,7 @@ import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../
 import { C } from '../../types/typesLanding'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
+import { RecognitionMark } from '../guides/RecognitionKey'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption } from '../../types/typesImmerse'
 
 // ─── Room slide model (S53C) ──────────────────────────────────────────────────
@@ -830,6 +836,11 @@ function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots, hotelDesktopArrows
           <div style={{ fontSize: isMobile ? 28 : 'clamp(44px,5vw,72px)', lineHeight: isMobile ? 1.02 : 0.95, letterSpacing: '-0.03em', fontWeight: 400, fontFamily: '"Cormorant Garamond", "Cormorant", "Times New Roman", serif', color: ID.text }}>
             {hotel.name}
           </div>
+          {hotel.michelinKeys ? (
+            <div style={{ marginTop: 10, display: 'flex' }}>
+              <RecognitionMark kind='keys' keyCount={hotel.michelinKeys} />
+            </div>
+          ) : null}
         </div>
       </div>
 
