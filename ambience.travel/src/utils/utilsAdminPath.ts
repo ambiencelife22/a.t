@@ -218,14 +218,3 @@ export function buildGuideUrl(
   }
   return `https://${GUIDES_HOST}/${destinationSlug}/${surface}`
 }
-
-export function generateUrlId(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
-  let out = ''
-  const arr = new Uint32Array(11)
-  crypto.getRandomValues(arr)
-  for (let i = 0; i < 11; i += 1) {
-    out += alphabet[arr[i] % alphabet.length]
-  }
-  return out
-}

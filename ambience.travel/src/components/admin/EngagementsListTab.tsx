@@ -26,7 +26,12 @@
  *   - Card list stagger: 40ms per item, capped at 8.
  *   - CreateModal upgraded to AdminModal primitive.
  *
- * Last updated: S43
+ * S54: Writes migrated to travel-write-engagement EF. Status pills route via
+ *   setEngagementStatus / setItineraryStatus (two independent axes). CreateModal
+ *   simplified — url_id and is_public_template controls removed (EF generates
+ *   url_id; is_public_template is a template-library concern, not set here).
+ *
+ * Last updated: S54
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -65,7 +70,6 @@ import {
 import {
   buildEngagementUrl,
   navigateAdmin,
-  generateUrlId,
 } from '../../utils/utilsAdminPath'
 import { A } from '../../tokens/tokensAdmin'
 import {
@@ -926,11 +930,9 @@ function CreateModal({
   const newRequestStatus = engagementStatuses.find(s => s.slug === 'new_request')
   const draftStatus      = itineraryStatuses.find(s => s.slug === 'draft')
 
-  const [urlId, setUrlId]                           = useState(() => generateUrlId())
   const [title, setTitle]                           = useState('')
   const [iterationLabel, setIterationLabel]         = useState('')
   const [audience, setAudience]                     = useState<'private' | 'public'>('private')
-  const [isPublicTemplate, setIsPublicTemplate]     = useState(false)
   const [engagementType, setEngagementType]         = useState('journey')
   const [tripFormat, setTripFormat]                 = useState('journey')
   const [engagementStatusId, setEngagementStatusId] = useState(newRequestStatus?.id ?? '')
@@ -979,18 +981,6 @@ function CreateModal({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
-          <label style={labelStyle}>url_id</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              style={{ ...inputStyle, fontFamily: "'DM Mono', monospace", flex: 1 }}
-              value={urlId}
-              onChange={e => setUrlId(e.target.value)}
-              maxLength={11}
-            />
-            <button onClick={() => setUrlId(generateUrlId())} style={btnGhost}>↻ Regen</button>
-          </div>
-        </div>
-        <div>
           <label style={labelStyle}>Title</label>
           <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder='e.g. Honeymoon' />
         </div>
@@ -1004,13 +994,6 @@ function CreateModal({
             <select style={inputStyle} value={audience} onChange={e => setAudience(e.target.value as 'private' | 'public')}>
               <option value='private'>private</option>
               <option value='public'>public</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Public Template?</label>
-            <select style={inputStyle} value={String(isPublicTemplate)} onChange={e => setIsPublicTemplate(e.target.value === 'true')}>
-              <option value='false'>No</option>
-              <option value='true'>Yes</option>
             </select>
           </div>
           <div>

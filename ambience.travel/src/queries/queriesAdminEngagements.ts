@@ -8,7 +8,8 @@
 //   Status split into setEngagementStatus + setItineraryStatus (two axes).
 //   Archive (reversible) and Delete (EF-backed, financial-guarded) are distinct.
 //   Trip/person inline-edit writes remain direct supabase (not engagement scope).
-// Prior: S54 — All 11 read paths migrated to travel-read-engagement-admin EF.
+// Prior: S54 — Read paths migrated to travel-read-engagement-admin EF
+//   (max_sort_order later removed — sort_order computed server-side on create).
 // Prior: S33B — Added trip + person inline-edit + drag-and-drop re-parenting
 //   writes. New: updateTrip, createTrip, updatePerson, reassignEngagementTrip.
 // Prior: S33 — Added iteration_label. List query joins travel_trips +
