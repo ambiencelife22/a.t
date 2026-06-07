@@ -1,7 +1,7 @@
 // immerseDestinationCards.ts — Dining + Experience content cards for /immerse/ subpages.
 // Owns: getImmerseDestinationCards — single canonical cards fetcher.
 // Does not own: canonical dining/experience seeding (lives in DB migrations),
-//   trip overview content (lives in immerseEngagementQueries).
+//   Overview content (lives in immerseEngagementQueries).
 //
 // Read shape (S32C cards refactor):
 //   travel_immerse_trip_content_card_selections is engagement-scoped curation.

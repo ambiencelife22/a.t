@@ -77,7 +77,7 @@ export function buildImmerseNavItems(
 
   const items: ImmerseNavItem[] = [
     {
-      label:    'Trip Overview',
+      label:    'Overview',
       href:     base,
       isActive: currentDestinationSlug === null,
     },

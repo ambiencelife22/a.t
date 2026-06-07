@@ -25,7 +25,7 @@ import type { ImmerseEngagementData } from '../../types/typesImmerse'
 export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagementData | null }) {
   if (!data) return null
 
-  // Trip Overview is always the active item here (this IS the overview route).
+  // Overview is always the active item here (this IS the overview route).
   const navItems = buildImmerseNavItems(data, null)
   const logoHref = window.location.hostname === 'immerse.ambience.travel'
     ? `/${data.urlId}`
