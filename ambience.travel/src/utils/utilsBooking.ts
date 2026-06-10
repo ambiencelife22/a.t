@@ -15,5 +15,7 @@
 export function bookedByLabel(bookedBy: string | null | undefined): string {
   if (!bookedBy || bookedBy === 'ambience') return 'Booked by ambience'
   if (bookedBy === 'self') return 'Own Arrangements'
+  if (bookedBy === 'requested') return 'Requested'
+  if (bookedBy === 'tbc') return 'To be confirmed'
   return `Booked by ${bookedBy}`
 }
