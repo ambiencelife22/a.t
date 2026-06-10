@@ -992,34 +992,63 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
 
   const roleLabel = (role: string | null): string => (role === 'staff' ? 'Staff' : 'Guest')
 
+  const all      = contacts ?? []
+  const guests   = all.filter(c => c.role !== 'staff')
+  const staff    = all.filter(c => c.role === 'staff')
+  const hasAny   = all.length > 0
+
+  function ContactBlock({ label, people }: { label: string; people: TripContact[] }) {
+    if (people.length === 0) return null
+    return (
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 12 }}>
+          {label}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+          {people.map(c => (
+            <ContactCard key={c.id} name={c.name} role={roleLabel(c.role)} email={c.email} phone={c.phone} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-        {brief?.advisor_name && (
-          <ContactCard
-            name={brief.advisor_name}
-            role='Travel Advisor'
-            email={(brief as any).show_advisor_email ? brief.advisor_email : null}
-            phone={(brief as any).show_advisor_phone ? (brief as any).advisor_phone : null}
-          />
-        )}
+      {/* Advisor */}
+      {brief?.advisor_name && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 12 }}>
+            Travel Advisor
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            <ContactCard
+              name={brief.advisor_name}
+              role='Travel Advisor'
+              email={(brief as any).show_advisor_email ? brief.advisor_email : null}
+              phone={(brief as any).show_advisor_phone ? (brief as any).advisor_phone : null}
+            />
+          </div>
+        </div>
+      )}
 
-        {/* Selected house people (S54) */}
-        {(contacts ?? []).map(c => (
-          <ContactCard
-            key={c.id}
-            name={c.name}
-            role={roleLabel(c.role)}
-            email={c.email}
-            phone={c.phone}
-          />
-        ))}
+      {/* Guests */}
+      <ContactBlock label={guests.length === 1 ? 'Guest' : 'Guests'} people={guests} />
 
-        {/* Fallback: no people selected -> show house display name */}
-        {(contacts ?? []).length === 0 && house?.display_name && (
-          <ContactCard name={house.display_name} role='Guest' />
-        )}
-      </div>
+      {/* Staff (only if any selected) */}
+      <ContactBlock label={staff.length === 1 ? 'Staff' : 'Staff'} people={staff} />
+
+      {/* Fallback: no people selected -> house display name */}
+      {!hasAny && house?.display_name && (
+        <div>
+          <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 12 }}>
+            Guest
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            <ContactCard name={house.display_name} role='Guest' />
+          </div>
+        </div>
+      )}
 
       {brief?.hotel_contact_note && (
         <div style={{ marginTop: 28, padding: '16px 20px', borderRadius: 10, background: `${GOLD}08`, border: `1px solid ${GOLD}25` }}>
