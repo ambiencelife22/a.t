@@ -11,7 +11,7 @@
 //       Confirmation — accommodation cards + aux bookings (flights, transfers etc)
 //       Programme    — day-by-day with collapsible left sidebar day navigator
 //       Trip Brief   — structured summary (flights, hotels, transfers, contacts)
-//       Contacts     — advisor + property + key trip contacts
+//       Contacts     — advisor + selected house people
 //   - Collapsible left sidebar day navigator on Programme tab (desktop + mobile)
 //   - Status pills: Recommended / Awaiting Decision / Pending / Confirmed / Paid / Cancelled
 //   - Clickable image gallery on event cards
@@ -23,22 +23,18 @@
 //   - PDF generation (pdfImmerseConfirmation.ts, pdfImmerseProgramme.ts)
 //   - Edge Functions (get-trip-confirmation, get-trip-programme)
 //
-// Data model: unified — fetches both confirmation + programme data in parallel.
-// Tab visibility: driven by show_tab_* booleans on travel_trip_briefs.
-// Tab renders only when: (a) admin enabled it AND (b) relevant data exists.
-//
-// Last updated: S49 — mobile horizontal scroll + right-padding fixes.
-//               S49r2 — unified mobile nav bar: active day merged into sticky tab bar,
-//                        eliminating the stacked second nav row on Programme tab.
+// Last updated: S54 — Contacts tab renders selected house people from the EF
+//   `contacts` array (brief.contact_person_ids + contact_name_format). Falls back
+//   to house.display_name when none selected.
+//               S49 — mobile horizontal scroll + right-padding fixes.
+//               S49r2 — unified mobile nav bar.
 //               S49r3 — full image overlay chain in ConfirmationTab.
 //               S49r4 — hero image fallback uses || not ??.
 //               S49r5 — Guides section in TripBriefTab.
 //               S49r6 — Brief PDF calls exportTripBriefPdf.
 //               S49r7 — unicode escape fixes in single-quoted strings.
 //               S50 — show_tab_itinerary renamed to show_tab_programme.
-//                      Matches migration s50_rename_show_tab_itinerary.
 //               S50r2 — duplicate Guides block removed from TripBriefTab.
-//                        All else statements eliminated.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -67,6 +63,15 @@ type TripData = {
 }
 
 type TabId = 'confirmation' | 'programme' | 'brief' | 'contacts'
+
+// S54 — resolved house contact (from travel-get-trip-confirmation `contacts`)
+type TripContact = {
+  id:    string
+  name:  string
+  role:  string | null
+  email: string | null
+  phone: string | null
+}
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -245,8 +250,6 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
   const { trip, brief, house, auxBookings } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
-  // Destination hero is the final fallback in the image overlay chain when no
-  // room, booking, or hotel canon image exists (e.g. experience-only trips).
   const destHero = trip.destinations[0]?.hero_image_src ?? null
 
   const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
@@ -264,7 +267,6 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
         notes: b.inclusions ?? null, nights: b.nights,
         rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
         total: null,
-        // Full overlay chain: per-booking override ?? hotel canon ?? destination hero
         brief_image_src: b.brief_image_src ?? b._hotel_image_src ?? destHero,
         additional_guests: null, booked_by_label: null,
         sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '',
@@ -306,7 +308,6 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
             const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
-            // Full overlay chain: per-room ?? per-booking ?? hotel canon ?? destination hero
             const imgSrc       = (room as any).brief_image_src ?? booking.brief_image_src ?? booking._hotel_image_src ?? destHero
             const guests       = [room.guest_name, room.party_composition].filter(Boolean).join(' · ')
 
@@ -379,8 +380,6 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
-              // Fix: right-aligned column removed — all content flows in the flex-1 div.
-              // Previously a flexShrink:0 right column caused horizontal scroll on mobile.
               <div key={aux.id} style={{
                 background: '#fff', border: `0.5px solid ${RULE}`,
                 borderRadius: 12, padding: '16px 20px',
@@ -427,7 +426,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
 
   const activeDay = visibleDays.find(d => d.entry_date === activeDate) ?? null
 
-  // Notify parent whenever active day or sidebar-open function changes
   useEffect(() => {
     if (!onActiveDayChange) return
     const idx      = visibleDays.findIndex(d => d.entry_date === activeDate)
@@ -503,7 +501,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
     <div style={{ display: 'flex', minHeight: '60vh', position: 'relative' }}>
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
 
-      {/* ── Left sidebar ── */}
       {(!isMobile || sidebarOpen) && (
         <div style={{
           width:         sidebarOpen ? SIDEBAR_W : 48,
@@ -520,7 +517,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           display:       'flex',
           flexDirection: 'column',
         }}>
-          {/* Sidebar toggle */}
           <div style={{
             display:        'flex',
             alignItems:     'center',
@@ -557,7 +553,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
             </button>
           </div>
 
-          {/* Day list */}
           {sidebarOpen && (
             <nav style={{ flex: 1, padding: '8px 0', overflowY: 'auto' }}>
               {visibleDays.map((day, i) => {
@@ -591,7 +586,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
         </div>
       )}
 
-      {/* Mobile sidebar overlay backdrop */}
       {isMobile && sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -599,12 +593,9 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
         />
       )}
 
-      {/* ── Day content ── */}
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-
         {activeDay ? (
           <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)' }}>
-            {/* Day header */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: 6 }}>
                 {activeDay.day_label || ''}
@@ -620,7 +611,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
               <div style={{ height: 1, background: RULE }} />
             </div>
 
-            {/* Event cards */}
             {cards.length === 0 ? (
               <div style={{ fontSize: 13, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>Nothing planned today.</div>
             ) : (
@@ -642,7 +632,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                       minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
                       boxSizing: 'border-box',
                     }}>
-                      {/* Image panel */}
                       {item.image_src && (
                         <div
                           style={{
@@ -658,13 +647,11 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                         </div>
                       )}
 
-                      {/* Content */}
                       <div style={{
                         flex: 1, padding: '16px 20px', display: 'flex',
                         flexDirection: 'column', minWidth: 0,
                         borderLeft: (!stackLayout && !item.image_src) ? `3px solid ${accent}` : 'none',
                       }}>
-                        {/* Category + time + status */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
@@ -678,12 +665,10 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                           </div>
                         </div>
 
-                        {/* Title */}
                         <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 4 }}>
                           {item.title}
                         </div>
 
-                        {/* Flight: Departure / Arrival as two clear lines */}
                         {isFlight && (item.flightOrigin || item.flightDestination) && (
                           <div style={{
                             marginTop: 10, marginBottom: 8,
@@ -735,11 +720,9 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                           </div>
                         )}
 
-                        {/* Subtitle + notes */}
                         {item.subtitle && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: 4 }}>{item.subtitle}</div>}
                         {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', lineHeight: 1.5 }}>{item.notes}</div>}
 
-                        {/* Footer */}
                         {item.confirmation_number && (
                           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${RULE}` }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>
@@ -760,7 +743,6 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           </div>
         )}
 
-        {/* Programme notes — shown below all days */}
         {brief?.programme_notes?.trim() && (
           <div style={{
             padding:   'clamp(20px,4vw,36px) clamp(20px,5vw,56px)',
@@ -806,7 +788,6 @@ function TripBriefTab({ clientData, days, entries }: {
   function BriefRow({ label, value, sub, bookedBy }: { label: string; value: string; sub?: string; bookedBy?: string }) {
     return (
       <div style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
-        {/* Fix: clamp label width so it doesn't crowd the value on narrow screens */}
         <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>{label}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>{value}</div>
@@ -881,7 +862,6 @@ function TripBriefTab({ clientData, days, entries }: {
         </BriefSection>
       )}
 
-      {/* Guides — only renders when dining or experiences guide exists for this destination */}
       {(clientData.guides?.hasDining || clientData.guides?.hasExperiences) && (
         <BriefSection title='Guides'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -953,7 +933,6 @@ function TripBriefTab({ clientData, days, entries }: {
         </BriefSection>
       )}
 
-      {/* Links — structured external links with label + URL */}
       {(clientData.brief?.links as any)?.length > 0 && (
         <BriefSection title='Links'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -992,9 +971,13 @@ function TripBriefTab({ clientData, days, entries }: {
 }
 
 // ── Contacts tab ──────────────────────────────────────────────────────────────
+// S54 — renders advisor + selected house people (clientData.contacts), resolved
+// server-side from brief.contact_person_ids + contact_name_format. Falls back to
+// house.display_name when no people are selected.
 
 function ContactsTab({ clientData }: { clientData: TripClientData }) {
   const { brief, house } = clientData
+  const contacts = (clientData as any).contacts as TripContact[] | undefined
 
   function ContactCard({ name, role, email, phone }: { name: string; role: string; email?: string | null; phone?: string | null }) {
     return (
@@ -1007,6 +990,8 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
     )
   }
 
+  const roleLabel = (role: string | null): string => (role === 'staff' ? 'Staff' : 'Guest')
+
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
@@ -1018,11 +1003,21 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
             phone={(brief as any).show_advisor_phone ? (brief as any).advisor_phone : null}
           />
         )}
-        {house?.display_name && (
+
+        {/* Selected house people (S54) */}
+        {(contacts ?? []).map(c => (
           <ContactCard
-            name={house.display_name}
-            role='Guest'
+            key={c.id}
+            name={c.name}
+            role={roleLabel(c.role)}
+            email={c.email}
+            phone={c.phone}
           />
+        ))}
+
+        {/* Fallback: no people selected -> show house display name */}
+        {(contacts ?? []).length === 0 && house?.display_name && (
+          <ContactCard name={house.display_name} role='Guest' />
         )}
       </div>
 
@@ -1040,7 +1035,6 @@ function ContactsTab({ clientData }: { clientData: TripClientData }) {
 
 function TabSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    // Fix: added bottom padding + overflow:hidden to prevent child overflow escaping section boundary
     <div style={{
       padding:   'clamp(20px,4vw,36px) clamp(20px,5vw,48px) clamp(20px,4vw,36px)',
       boxSizing: 'border-box',
@@ -1083,7 +1077,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   const [notFound,    setNotFound]    = useState(false)
   const [activeTab,   setActiveTab]   = useState<TabId | null>(null)
   const [tabMenuOpen, setTabMenuOpen] = useState(false)
-  // Programme tab: active day label + sidebar opener — surfaced into the unified sticky bar
   const [activeDayLabel, setActiveDayLabel] = useState<string>('')
   const [openDayNav,     setOpenDayNav]     = useState<(() => void) | null>(null)
   const width = useWindowWidth()
@@ -1122,11 +1115,12 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           trip:            confPayload.trip,
           brief:           confPayload.brief,
           house:           confPayload.house,
+          contacts:        confPayload.contacts ?? [],
           destinationName: confPayload.destinationName,
           auxBookings:     confPayload.auxBookings ?? [],
           guides:          confPayload.guides ?? { hasDining: false, hasExperiences: false, destinationSlug: null },
           urlId,
-        }
+        } as TripClientData
 
         const data: TripData = {
           clientData,
@@ -1136,7 +1130,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
         setTripData(data)
 
-        // Set default tab based on what's enabled + has data
         const brief = confPayload.brief
         const hasProgramme = brief?.show_tab_programme !== false && (progPayload?.days?.length ?? 0) > 0
 
@@ -1157,29 +1150,22 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   const { clientData, days, entries } = tripData
   const { trip, brief, house } = clientData
 
-  // Determine which tabs are visible
   const tabs: { id: TabId; label: string }[] = []
   if (brief?.show_tab_brief        !== false) tabs.push({ id: 'brief',        label: 'Trip Brief' })
   if (brief?.show_tab_programme    !== false) tabs.push({ id: 'programme',    label: 'Programme' })
   if (brief?.show_tab_confirmation !== false) tabs.push({ id: 'confirmation', label: 'Confirmation' })
   if (brief?.show_tab_contacts     !== false) tabs.push({ id: 'contacts',     label: 'Contacts' })
 
-  // Hero data
   const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.trip_code
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
-  // Hero image: brief override ?? destination hero ?? empty.
-  // Use || not ?? — brief.hero_image_src can be "" (empty string, not null),
-  // which ?? passes through. || correctly falls back on any falsy value.
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
   const guestName    = house?.display_name ?? brief?.prepared_for ?? ''
   const dateLabel    = buildDateRange(trip.start_date, trip.end_date) || undefined
 
-  // Welcome letter
   const welcomeLetter = (brief as any)?.welcome_letter ?? null
 
   return (
     <ImmerseLayout>
-      {/* Hero */}
       <ImmerseHero
         guestName={guestName}
         title={heroTitle}
@@ -1193,7 +1179,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         secondaryLabel={tabs[1]?.label}
       />
 
-      {/* Welcome letter */}
       {welcomeLetter && (
         <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: CREAM }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -1214,7 +1199,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
         </section>
       )}
 
-      {/* Tab bar */}
       <div style={{ background: CREAM }} id='tabs'>
         <div style={{
           position:       'sticky',
@@ -1229,10 +1213,8 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           justifyContent: 'space-between',
           gap:            16,
         }}>
-          {/* Tabs — hamburger drawer on mobile, tab strip on desktop */}
           {width < 640 ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1, minWidth: 0 }}>
-              {/* Left: active tab picker */}
               <div style={{ position: 'relative' }}>
                 <button
                   onClick={() => setTabMenuOpen(o => !o)}
@@ -1306,7 +1288,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                 )}
               </div>
 
-              {/* Right: active day selector — only on Programme tab */}
               {activeTab === 'programme' && activeDayLabel && (
                 <button
                   onClick={() => openDayNav?.()}
@@ -1366,7 +1347,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
             </div>
           )}
 
-          {/* PDF actions */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             {(activeTab === 'confirmation' || activeTab === 'brief') && (
               <button
@@ -1424,7 +1404,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           </div>
         </div>
 
-        {/* Tab content */}
         <div style={{ background: CREAM, minHeight: '60vh' }}>
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
           {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} brief={brief} onActiveDayChange={handleActiveDayChange} />}
@@ -1432,7 +1411,6 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>
 
-        {/* Footer */}
         <div style={{ padding: '40px clamp(20px,6vw,80px)', textAlign: 'center', borderTop: `1px solid ${RULE}` }}>
           <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Tailored Travel Design &nbsp;&middot;&nbsp; Concierge Support &nbsp;&middot;&nbsp;
