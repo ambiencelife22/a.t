@@ -833,7 +833,7 @@ function TripBriefTab({ clientData, days, entries }: {
           {hotels.map(h => (
             <BriefRow
               key={h.id}
-              label={h.start_date ? fmtDate(h.start_date) : '\u2014'}
+              label={buildDateRange(h.start_date, h.end_date) || '\u2014'}
               value={h._hotel_name ?? h.name ?? 'Hotel'}
               sub={[h.name, h.nights ? `${h.nights} nights` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
               bookedBy={bookedByLabel(h.booked_by)}
