@@ -238,9 +238,12 @@ export type EngagementStageInputs = {
   hasTripContent:     boolean
 }
 
+const TRIP_STATUS_SLUGS = new Set<string>(['booked', 'in_travel'])
+
 export function computeEngagementStage(input: EngagementStageInputs): EngagementStage {
   if (CANCELLED_STATUS_SLUGS.has(input.statusSlug)) return 'cancelled'
   if (COMPLETED_STATUS_SLUGS.has(input.statusSlug) && input.hasTripContent) return 'completed'
+  if (TRIP_STATUS_SLUGS.has(input.statusSlug)) return 'trip'
 
   if (input.hasTripContent && input.hasProposalContent) return 'proposal_with_pending'
   if (input.hasTripContent)     return 'trip'
