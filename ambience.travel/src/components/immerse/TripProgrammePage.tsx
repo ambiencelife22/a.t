@@ -6,10 +6,9 @@
 //   - Data fetch: resolves urlId → TripClientData + TripDayEntries.
 //   - PDF download: calls exportDailyProgrammePdf.
 //
-// Last updated: S43 Add 1 — bookedByLabel() imported from utilsBooking.
-//   EntryCard footer now uses canonical label instead of inline isAmbience
-//   branch. Fixes 'Requested' / 'Pending' / 'TBA' rendering as 'Own Arrangements'.
-// Prior: S49 — added guides default to clientData construction.
+// Last updated: S49 — added guides default to clientData construction.
+//   TripClientData.guides is required; programme Edge Function does not return
+//   guide data so a safe default is supplied here.
 // Prior: S48 — auxBookings merged into DayContent alongside day entries.
 // Prior: S48 — visual-first entry cards with CRM image resolution.
 // Prior: S48 — load rewritten to call get-trip-programme Edge Function.
@@ -20,7 +19,6 @@ import type { TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripDay, TripDayEntry, TripAuxBooking } from '../../queries/queriesAdminTrip'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost } from '../../utils/utilsImmersePath'
-import { bookedByLabel } from '../../utils/utilsBooking'
 
 const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-programme`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -63,7 +61,7 @@ async function fetchTripProgrammeData(urlId: string): Promise<{
   }
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
+// ── Hooks ────────────────────────────────────────────────────────────────────
 
 function useWindowWidth(): number {
   const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
@@ -77,14 +75,15 @@ function useWindowWidth(): number {
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
-const CREAM   = '#F7F5F0'
-const CARD_BG = '#F0EDE6'
-const INK     = '#1A1D1A'
-const GOLD    = '#C9A84C'
-const MUTED   = '#787060'
-const FAINT   = '#B4AFA5'
-const RULE    = '#DCDBD5'
+const CREAM    = '#F7F5F0'
+const CARD_BG  = '#F0EDE6'
+const INK      = '#1A1D1A'
+const GOLD     = '#C9A84C'
+const MUTED    = '#787060'
+const FAINT    = '#B4AFA5'
+const RULE     = '#DCDBD5'
 
+// Category accent colours — mirror dailyProgrammePdf.ts + ItineraryEditorPage
 function categoryAccent(category: string | null): string {
   switch (category) {
     case 'Flight':     return '#93C5FD'
@@ -121,6 +120,7 @@ function sortKey(time: string | null | undefined): number {
 }
 
 // ── Unified card item ─────────────────────────────────────────────────────────
+// Normalises a TripDayEntry or TripAuxBooking into one shape for rendering.
 
 type CardItem = {
   id:                  string
@@ -153,7 +153,7 @@ function entryToCard(e: TripDayEntry): CardItem {
 }
 
 function auxToCard(a: TripAuxBooking): CardItem {
-  const route = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
+  const route = a.origin && a.destination ? `${a.origin} → ${a.destination}` : null
   return {
     id:                  a.id,
     category:            a.booking_type ?? 'Other',
@@ -165,7 +165,7 @@ function auxToCard(a: TripAuxBooking): CardItem {
     confirmation_number: a.confirmation_number ?? null,
     guest_label:         a.guest_label ?? null,
     booked_by:           a.booked_by ?? null,
-    image_src:           null,
+    image_src:           null, // aux bookings have no images
   }
 }
 
@@ -188,14 +188,7 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
       if (!entriesByDate[entry.entry_date]) entriesByDate[entry.entry_date] = []
       entriesByDate[entry.entry_date].push(entry)
     }
-    handleDownloadProgramme({
-      trip:        clientData.trip,
-      brief:       clientData.brief ?? null,
-      house:       clientData.house,
-      days,
-      entriesByDate,
-      auxBookings: clientData.auxBookings ?? [],
-    })
+    handleDownloadProgramme({ trip: clientData.trip, brief: clientData.brief ?? null, house: clientData.house, days, entriesByDate, auxBookings: clientData.auxBookings ?? [] })
   }
 
   return (
@@ -204,10 +197,12 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
       background: 'rgba(250,247,242,0.96)', backdropFilter: 'blur(12px)',
       borderBottom: `1px solid ${RULE}`,
     }}>
+      {/* Main bar */}
       <div style={{
         height: 56, display: 'flex', alignItems: 'center',
         padding: '0 clamp(16px,5vw,48px)', gap: 8, overflow: 'hidden',
       }}>
+        {/* Logo — emblem only on mobile, full logo on wider screens */}
         <a href='https://ambience.travel' style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}>
           <img src='/emblem.png' alt='' style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }} />
           <img src='/ambience_travel.svg' alt='ambience travel' style={{ height: 28, objectFit: 'contain', display: 'block', maxWidth: 'clamp(80px, 20vw, 160px)' }} />
@@ -215,6 +210,7 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
 
         <div style={{ flex: 1, minWidth: 0 }} />
 
+        {/* Confirmation link — text hidden on small screens */}
         {confirmationUrl && (
           <a
             href={confirmationUrl}
@@ -236,7 +232,7 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
               ;(e.currentTarget as HTMLAnchorElement).style.borderColor = RULE
             }}
           >
-            Confirmation \u2192
+            Confirmation →
           </a>
         )}
 
@@ -253,10 +249,11 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
             transition: 'opacity 150ms', flexShrink: 0, whiteSpace: 'nowrap',
           }}
         >
-          {pdfDownloading ? 'Generating\u2026' : 'PDF'}
+          {pdfDownloading ? 'Generating…' : 'PDF'}
         </button>
       </div>
 
+      {/* Day tab strip */}
       {days.length > 0 && (
         <div style={{
           display: 'flex', overflowX: 'auto', gap: 2,
@@ -290,15 +287,17 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
 // ── Entry card ────────────────────────────────────────────────────────────────
 
 function EntryCard({ item }: { item: CardItem }) {
-  const accent       = categoryAccent(item.category)
-  const dep          = fmtTime(item.start_time)
-  const arr          = fmtTime(item.end_time)
-  const timeStr      = dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || null
-  const bookedByText = bookedByLabel(item.booked_by)
-  const isAmbience   = !item.booked_by || item.booked_by === 'ambience'
-  const width        = useWindowWidth()
-  const isMobile     = width < 600
-  const stackLayout  = isMobile && !!item.image_src
+  const accent     = categoryAccent(item.category)
+  const dep        = fmtTime(item.start_time)
+  const arr        = fmtTime(item.end_time)
+  const timeStr    = dep && arr ? `${dep} – ${arr}` : dep || arr || null
+  const isAmbience = !item.booked_by || item.booked_by.toLowerCase().includes('ambience')
+  const width      = useWindowWidth()
+  const isMobile   = width < 600
+
+  // On mobile: stack vertically (image top, content below)
+  // On desktop: image left panel, content right
+  const stackLayout = isMobile && !!item.image_src
 
   return (
     <div style={{
@@ -310,24 +309,29 @@ function EntryCard({ item }: { item: CardItem }) {
       flexDirection: stackLayout ? 'column' : 'row',
       minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
     }}>
+      {/* Image panel */}
       {item.image_src && (
         <div style={{
-          width:      stackLayout ? '100%' : 'clamp(120px, 28%, 200px)',
-          height:     stackLayout ? 200    : 'auto',
+          width:     stackLayout ? '100%' : 'clamp(120px, 28%, 200px)',
+          height:    stackLayout ? 200    : 'auto',
           flexShrink: 0,
           background: CARD_BG,
-          position:   'relative',
-          overflow:   'hidden',
+          position: 'relative',
+          overflow: 'hidden',
         }}>
           <img
             src={item.image_src}
             alt=''
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
           />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accent }} />
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: 3, background: accent,
+          }} />
         </div>
       )}
 
+      {/* Content */}
       <div style={{
         flex: 1,
         padding: '16px 20px',
@@ -338,6 +342,7 @@ function EntryCard({ item }: { item: CardItem }) {
         borderLeft: (!stackLayout && !item.image_src) ? `3px solid ${accent}` : 'none',
       }}>
         <div>
+          {/* Category + time */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             marginBottom: 8, gap: 8,
@@ -362,6 +367,7 @@ function EntryCard({ item }: { item: CardItem }) {
             )}
           </div>
 
+          {/* Title */}
           <div style={{
             fontSize: 'clamp(14px,1.8vw,17px)',
             fontFamily: 'Georgia, serif',
@@ -370,6 +376,7 @@ function EntryCard({ item }: { item: CardItem }) {
             {item.title}
           </div>
 
+          {/* Subtitle */}
           {item.subtitle && (
             <div style={{
               fontSize: 12, fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -379,6 +386,7 @@ function EntryCard({ item }: { item: CardItem }) {
             </div>
           )}
 
+          {/* Notes */}
           {item.notes && (
             <div style={{
               fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -389,6 +397,7 @@ function EntryCard({ item }: { item: CardItem }) {
           )}
         </div>
 
+        {/* Footer */}
         {(item.confirmation_number || item.guest_label || !isAmbience) && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -422,7 +431,7 @@ function EntryCard({ item }: { item: CardItem }) {
                 fontWeight: 600, letterSpacing: '0.08em',
                 textTransform: 'uppercase', color: FAINT,
               }}>
-                {bookedByText}
+                Own Arrangements
               </span>
             )}
           </div>
@@ -507,7 +516,7 @@ function ProgrammeNotFound() {
     <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: '0 24px', textAlign: 'center' }}>
       <div style={{ fontSize: 20, color: INK, fontFamily: 'Georgia, serif' }}>This programme is not available.</div>
       <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: "'Plus Jakarta Sans', sans-serif", textDecoration: 'none' }}>
-        Return to ambience.travel \u2192
+        Return to ambience.travel →
       </a>
     </div>
   )
@@ -566,9 +575,10 @@ export default function TripProgrammePage({ urlId }: { urlId: string }) {
         </div>
       )}
 
+      {/* Footer */}
       <div style={{ padding: '40px clamp(20px,8vw,120px)', textAlign: 'center', borderTop: `1px solid ${RULE}` }}>
         <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: FAINT, letterSpacing: '0.08em' }}>
-          TAILORED TRAVEL DESIGN \u00b7 CONCIERGE SUPPORT \u00b7{' '}
+          TAILORED TRAVEL DESIGN · CONCIERGE SUPPORT ·{' '}
           <a href='https://ambience.travel' style={{ color: FAINT, textDecoration: 'none' }}>ambience.travel</a>
         </div>
       </div>
