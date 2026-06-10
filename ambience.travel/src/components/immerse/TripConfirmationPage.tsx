@@ -18,6 +18,7 @@
 //   - PDF generation (pdfImmerseConfirmation.ts)
 //   - Programme page (TripProgrammePage.tsx)
 //
+//
 // Last updated: S50 — bookedByLabel() canonical helper imported from
 //   utilsBooking. Replaces inline branches in room map and aux map.
 //   Resolves "Booked by ambience" / "Own Arrangements" drift.
