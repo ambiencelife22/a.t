@@ -7,6 +7,9 @@
 //     Conf #: pill + booked_by_label italic. Section header: "ACCOMMODATION".
 //   - Flight cards — no image, ✈ icon, route line, times, conf# pill,
 //     booked_by italic line. Section header: "FLIGHTS".
+//   - Contact cards — advisor + selected house guests/staff. Same `contacts`
+//     source as the web Contacts tab (no second list). Sections: "TRAVEL
+//     ADVISOR", "GUEST"/"GUESTS", "STAFF". Mission: screen and PDF are one trip.
 //   - Future sections: Car Services and others follow same pattern.
 //   - Fallback: if no rooms on a booking, one synthetic card from the booking.
 //
@@ -15,12 +18,12 @@
 //   - Font loading / registration (pdfFonts.ts)
 //   - jsPDF script loading (useImmerseConfirmationPdf hook)
 //
-// Last updated: S50 — bookedByLabel() canonical helper imported from utilsBooking.
-//   Replaces inline branches in drawRoomCard + drawFlightCard. Self-booked /
-//   Self-arranged inconsistency resolved — both now read "Own Arrangements".
-// Prior: S48 — booked_by added to drawFlightCard. Renders italic line below
-//   conf# pill, matching room card pattern exactly. auxBookings added to
-//   ConfirmationBriefData.
+// Last updated: S54 — Contacts section. `contacts` added to ConfirmationBriefData
+//   (same array the travel-get-trip-confirmation EF returns + the web Contacts
+//   tab renders). drawContactRow + a grouped Advisor / Guests / Staff render.
+//   One source of truth: the PDF guest list IS the web guest list.
+// Prior: S50 — bookedByLabel() canonical helper imported from utilsBooking.
+// Prior: S48 — booked_by added to drawFlightCard; auxBookings added.
 // Prior: S48 — flight cards added, pdfUtils refactor.
 // Prior: S47 — booked_by_label wired. Logo card image-based. Footer hyperlinked.
 
@@ -52,6 +55,15 @@ const CW = P.w - P.margin * 2
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
+// S54 — resolved contact (same shape the EF returns + web Contacts tab consumes)
+export interface ConfirmationContact {
+  id:    string
+  name:  string
+  role:  string | null
+  email: string | null
+  phone: string | null
+}
+
 export interface ConfirmationBriefData {
   trip:            DossierTrip
   brief:           TripBrief | null
@@ -59,6 +71,7 @@ export interface ConfirmationBriefData {
   destinationName: string
   heroImageData:   string | null
   auxBookings:     TripAuxBooking[]
+  contacts?:       ConfirmationContact[]   // S54 — house guests/staff (optional)
 }
 
 const ASSETS = { emblem: '/emblem.png', logoSvg: '/ambience_travel.svg' } as const
@@ -173,7 +186,6 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as RGB) : ([245, 245, 245] as RGB)
-  // booked_by_label is a per-room free-text override; fall back to canonical bookedByLabel()
   const bookedByText = room.booked_by_label?.trim() || bookedByLabel(booking.booked_by)
   const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
 
@@ -247,41 +259,28 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
 
 // ── Flight card ───────────────────────────────────────────────────────────────
 
-// Layout:
-//   Left:   ✈ icon (gold) + booking_type label (faint caps)
-//   Centre: name (serif) + route (muted) + date (faint)
-//   Right:  times (bold) + guest label (italic faint)
-//   Bottom-right: Conf# pill (gold)
-//   Below pill: booked_by italic line — matches room card pattern exactly
-
 function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const padV  = 6
   const padH  = 10
 
-  // Canonical bookedByLabel — same source as room card
   const bookedByText = bookedByLabel(aux.booked_by)
-
-  // Measure height: base layout + booked_by line
-  const cardH = 34  // 28 base + 6 for booked_by line
+  const cardH = 34
 
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
   doc.setLineWidth(0.3)
   doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'FD')
 
-  // ✈ icon
   const iconX = P.margin + padH
   sans(doc, 'normal', 13)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('\u2708', iconX, y + padV + 5)
 
-  // Type label
   const typeLabel = (aux.booking_type ?? 'Flight').toUpperCase()
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
   doc.text(typeLabel, iconX, y + padV + 11, { charSpace: 0.3 })
 
-  // Centre column
   const centreX = P.margin + CW * 0.28
 
   if (aux.name) {
@@ -303,7 +302,6 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.text(fmtDate(aux.start_date), centreX, y + padV + 17)
   }
 
-  // Right column
   const rightX = P.margin + CW - padH
 
   const dep = fmtTime(aux.start_time)
@@ -321,7 +319,6 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.text(aux.guest_label, rightX, y + padV + 11, { align: 'right' })
   }
 
-  // Conf# pill
   if (aux.confirmation_number) {
     const confText = `Conf #:  ${aux.confirmation_number}`
     sans(doc, 'normal', 8)
@@ -338,12 +335,83 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.text(confText, pillX + ppx, pillY - 0.2)
   }
 
-  // Booked-by line — bottom left, italic faint, matching room card exactly
   sans(doc, 'italic', 7.5)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
   doc.text(bookedByText, P.margin + padH, y + cardH - 4)
 
   return cardH
+}
+
+// ── Contact card (S54) ────────────────────────────────────────────────────────
+// Single card: role caps (faint), name serif, phone (gold) + email (muted) lines.
+// Half-width so two sit per row. Height fixed; caller lays out the grid.
+
+const CONTACT_CARD_H = 30
+const CONTACT_GAP    = 4
+const CONTACT_COL_W  = (CW - CONTACT_GAP) / 2
+
+function drawContactCard(doc: any, c: ConfirmationContact, roleLabel: string, x: number, y: number) {
+  const padH = 8; const padV = 7
+  doc.setFillColor(T.white[0], T.white[1], T.white[2])
+  doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
+  doc.setLineWidth(0.3)
+  doc.roundedRect(x, y, CONTACT_COL_W, CONTACT_CARD_H, 2, 2, 'FD')
+
+  let ty = y + padV
+  sans(doc, 'bold', 6)
+  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+  doc.text(roleLabel.toUpperCase(), x + padH, ty, { charSpace: 0.4 })
+  ty += 6
+
+  serif(doc, 'normal', 12)
+  doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+  doc.text(c.name, x + padH, ty)
+  ty += 6
+
+  if (c.phone) {
+    sans(doc, 'normal', 8)
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.text(c.phone, x + padH, ty)
+    ty += 4.5
+  }
+  if (c.email) {
+    sans(doc, 'normal', 7.5)
+    doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    doc.text(c.email, x + padH, ty)
+  }
+}
+
+// Draws a labelled block of contact cards in a 2-col grid. Returns new y.
+function drawContactBlock(
+  doc: any, label: string, people: { c: ConfirmationContact; roleLabel: string }[],
+  y: number, footerMargin: number,
+): number {
+  if (people.length === 0) return y
+
+  // Section header (page-break if needed)
+  if (y + 8 + CONTACT_CARD_H > P.h - footerMargin) {
+    doc.addPage()
+    doc.setFillColor(T.cream[0], T.cream[1], T.cream[2]); doc.rect(0, 0, P.w, P.h, 'F')
+    y = 26
+  }
+  drawRule(doc, P.margin, y, CW); y += 8
+  sans(doc, 'bold', 7)
+  doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+  doc.text(label.toUpperCase(), P.margin, y, { charSpace: 0.5 }); y += 7
+
+  for (let i = 0; i < people.length; i += 2) {
+    if (y + CONTACT_CARD_H > P.h - footerMargin) {
+      doc.addPage()
+      doc.setFillColor(T.cream[0], T.cream[1], T.cream[2]); doc.rect(0, 0, P.w, P.h, 'F')
+      y = 26
+    }
+    drawContactCard(doc, people[i].c, people[i].roleLabel, P.margin, y)
+    if (people[i + 1]) {
+      drawContactCard(doc, people[i + 1].c, people[i + 1].roleLabel, P.margin + CONTACT_COL_W + CONTACT_GAP, y)
+    }
+    y += CONTACT_CARD_H + CONTACT_GAP
+  }
+  return y
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
@@ -491,6 +559,44 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
       const drawn = drawFlightCard(doc, aux, y)
       y += drawn + 4
     }
+  }
+
+  // ── Contacts (S54) — same source as web Contacts tab ───────────────────────
+
+  const allContacts = d.contacts ?? []
+  const guests = allContacts.filter(c => c.role !== 'staff')
+  const staff  = allContacts.filter(c => c.role === 'staff')
+
+  // Advisor (from brief) — its own block, only when present
+  if (brief?.advisor_name) {
+    const advisor: ConfirmationContact = {
+      id:    'advisor',
+      name:  brief.advisor_name,
+      role:  'advisor',
+      email: (brief as any).show_advisor_email ? (brief.advisor_email ?? null) : null,
+      phone: (brief as any).show_advisor_phone ? ((brief as any).advisor_phone ?? null) : null,
+    }
+    y += 6
+    y = drawContactBlock(doc, 'Travel Advisor', [{ c: advisor, roleLabel: 'Travel Advisor' }], y, FOOTER_MARGIN)
+  }
+
+  if (guests.length > 0) {
+    y += 6
+    y = drawContactBlock(
+      doc,
+      guests.length === 1 ? 'Guest' : 'Guests',
+      guests.map(c => ({ c, roleLabel: 'Guest' })),
+      y, FOOTER_MARGIN,
+    )
+  }
+
+  if (staff.length > 0) {
+    y += 6
+    y = drawContactBlock(
+      doc, 'Staff',
+      staff.map(c => ({ c, roleLabel: 'Staff' })),
+      y, FOOTER_MARGIN,
+    )
   }
 }
 
