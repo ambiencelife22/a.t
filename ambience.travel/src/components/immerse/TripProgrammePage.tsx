@@ -50,8 +50,8 @@ async function fetchTripProgrammeData(urlId: string): Promise<{
         house:           payload.house,
         destinationName: payload.destinationName,
         auxBookings:     payload.auxBookings,
-        // Programme Edge Function does not return guide data — safe default.
-        // Guide availability is only needed on the Trip Brief tab (ImmerseTripPage).
+        // Programme EF does not return contacts — safe default (contacts render on ImmerseTripPage only).
+        contacts:        [],
         guides: { hasDining: false, hasExperiences: false, destinationSlug: null },
         urlId,
       },
