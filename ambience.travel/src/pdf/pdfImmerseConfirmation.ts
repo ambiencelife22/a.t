@@ -198,7 +198,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const cardH        = Math.max(minCardH, contentH)
 
   let croppedImg: { data: string; format: 'PNG' | 'JPEG' } | null = null
-  const imgSrc = (room as any).resolved_image_src ?? room.brief_image_src
+  const imgSrc = room.resolved_image_src ?? room.brief_image_src
     if (imgSrc) {
     try {
       const raw = await loadImg(imgSrc)

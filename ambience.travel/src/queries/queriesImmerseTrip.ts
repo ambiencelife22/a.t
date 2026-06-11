@@ -27,6 +27,14 @@ export type TripGuides = {
   destinationSlug: string | null
 }
 
+export type TripContact = {
+  id:    string
+  name:  string
+  role:  string | null
+  email: string | null
+  phone: string | null
+}
+
 export type TripClientData = {
   trip:            DossierTrip
   brief:           TripBrief | null
@@ -34,6 +42,7 @@ export type TripClientData = {
   destinationName: string
   auxBookings:     TripAuxBooking[]
   guides:          TripGuides
+  contacts:        TripContact[]
   urlId:           string
 }
 

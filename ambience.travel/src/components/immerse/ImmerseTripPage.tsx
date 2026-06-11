@@ -1393,7 +1393,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
                     handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
                     return
                   }
-                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
+                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts })
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
