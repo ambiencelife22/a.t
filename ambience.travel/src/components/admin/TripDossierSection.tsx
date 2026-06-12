@@ -15,7 +15,7 @@
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
-import { AdminEmptyState } from './_adminPrimitives'
+import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
@@ -230,6 +230,7 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
   const [newGuestName, setNewGuestName] = useState('')
   const [newPartyComp, setNewPartyComp] = useState('')
   const [newNotes,     setNewNotes]     = useState('')
+  const { success, error } = useAdminToast()
 
   async function handleAdd() {
     setSaving('add')
@@ -242,14 +243,15 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
       setRooms(prev => [...prev, r])
       setAdding(false)
       setNewRoomName(''); setNewConfNum(''); setNewGuestName(''); setNewPartyComp(''); setNewNotes('')
-    } catch { /* silent */ }
+      success('Room added')
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to add room') }
     finally { setSaving(null) }
   }
 
   async function handleDelete(roomId: string) {
     setSaving(roomId)
-    try { await deleteBookingRoom(roomId); setRooms(prev => prev.filter(r => r.id !== roomId)) }
-    catch { /* silent */ }
+    try { await deleteBookingRoom(roomId); setRooms(prev => prev.filter(r => r.id !== roomId)); success('Room removed') }
+    catch (e) { error(e instanceof Error ? e.message : 'Failed to delete room') }
     finally { setSaving(null) }
   }
 
@@ -486,12 +488,13 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
   const [editId,  setEditId]  = useState<string | null>(null)
   const [draft,   setDraft]   = useState<AuxDraft>(emptyAuxDraft(0))
   const [saving,  setSaving]  = useState(false)
+  const { success, error } = useAdminToast()
 
   function load() {
     setLoading(true)
     fetchTripAuxBookings(tripId)
       .then(rows => setAux(rows.sort((a, b) => a.sort_order - b.sort_order)))
-      .catch(() => setAux([]))
+      .catch(e => { setAux([]); error(e instanceof Error ? e.message : 'Failed to load flights') })
       .finally(() => setLoading(false))
   }
 
@@ -515,12 +518,14 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
         const updated = await updateTripAuxBooking(editId, patch)
         setAux(prev => (prev ?? []).map(a => a.id === editId ? updated : a).sort((x, y) => x.sort_order - y.sort_order))
         setEditId(null)
+        success('Flight updated')
       } else {
         const created = await createTripAuxBooking(tripId, patch)
         setAux(prev => [...(prev ?? []), created].sort((x, y) => x.sort_order - y.sort_order))
         setAdding(false)
+        success('Flight added')
       }
-    } catch { /* silent */ }
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to save flight') }
     finally { setSaving(false) }
   }
 
@@ -529,7 +534,8 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
     try {
       await deleteTripAuxBooking(id)
       setAux(prev => (prev ?? []).filter(a => a.id !== id))
-    } catch { /* silent */ }
+      success('Flight removed')
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to delete flight') }
     finally { setSaving(false) }
   }
 
