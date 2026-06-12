@@ -12,7 +12,7 @@
  * Prior: S44 — initial ship.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { AdminEmptyState } from './_adminPrimitives'
@@ -20,8 +20,8 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminTrip'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings } from '../../queries/queriesAdminTrip'
-import type { BookingRoom } from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
+import type { BookingRoom, TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
@@ -297,6 +297,302 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
   )
 }
 
+// ── AuxBookingsEditor ─────────────────────────────────────────────────────────
+// Trip-level flights / transfers / car services. Sibling to RoomsEditor.
+// Writes every editable column on travel_trip_aux_bookings (airline_supplier_id
+// deferred — needs a supplier picker, airline_name covers display).
+
+const AUX_TYPES = ['Flight', 'Transfer', 'Car Service', 'Rail', 'Ferry', 'Other']
+
+type AuxDraft = {
+  booking_type:        string
+  name:                string
+  confirmation_number: string
+  start_date:          string
+  start_time:          string
+  end_date:            string
+  end_time:            string
+  origin:              string
+  destination:         string
+  airline_name:        string
+  flight_number:       string
+  depart_airport:      string
+  arrive_airport:      string
+  cabin_class:         string
+  seat_numbers:        string
+  seat_type:           string
+  aircraft_type:       string
+  booked_by:           string
+  guest_label:         string
+  notes:               string
+  brief_show:          boolean
+  sort_order:          number
+}
+
+function emptyAuxDraft(sortOrder: number): AuxDraft {
+  return {
+    booking_type: 'Flight', name: '', confirmation_number: '',
+    start_date: '', start_time: '', end_date: '', end_time: '',
+    origin: '', destination: '', airline_name: '', flight_number: '',
+    depart_airport: '', arrive_airport: '', cabin_class: '', seat_numbers: '',
+    seat_type: '', aircraft_type: '', booked_by: '', guest_label: '', notes: '',
+    brief_show: true, sort_order: sortOrder,
+  }
+}
+
+function auxToDraft(a: TripAuxBooking): AuxDraft {
+  return {
+    booking_type:        a.booking_type        ?? 'Flight',
+    name:                a.name                ?? '',
+    confirmation_number: a.confirmation_number ?? '',
+    start_date:          a.start_date          ?? '',
+    start_time:          a.start_time          ?? '',
+    end_date:            a.end_date            ?? '',
+    end_time:            a.end_time            ?? '',
+    origin:              a.origin              ?? '',
+    destination:         a.destination         ?? '',
+    airline_name:        a.airline_name        ?? '',
+    flight_number:       a.flight_number       ?? '',
+    depart_airport:      a.depart_airport      ?? '',
+    arrive_airport:      a.arrive_airport      ?? '',
+    cabin_class:         a.cabin_class         ?? '',
+    seat_numbers:        a.seat_numbers        ?? '',
+    seat_type:           a.seat_type           ?? '',
+    aircraft_type:       a.aircraft_type       ?? '',
+    booked_by:           a.booked_by           ?? '',
+    guest_label:         a.guest_label         ?? '',
+    notes:               a.notes               ?? '',
+    brief_show:          a.brief_show,
+    sort_order:          a.sort_order,
+  }
+}
+
+// Map draft -> patch. Empty strings on nullable text columns become null.
+function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
+  const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
+  return {
+    booking_type:        orNull(d.booking_type),
+    name:                orNull(d.name),
+    confirmation_number: orNull(d.confirmation_number),
+    start_date:          orNull(d.start_date),
+    start_time:          orNull(d.start_time),
+    end_date:            orNull(d.end_date),
+    end_time:            orNull(d.end_time),
+    origin:              orNull(d.origin),
+    destination:         orNull(d.destination),
+    airline_name:        orNull(d.airline_name),
+    flight_number:       orNull(d.flight_number),
+    depart_airport:      orNull(d.depart_airport),
+    arrive_airport:      orNull(d.arrive_airport),
+    cabin_class:         orNull(d.cabin_class),
+    seat_numbers:        orNull(d.seat_numbers),
+    seat_type:           orNull(d.seat_type),
+    aircraft_type:       orNull(d.aircraft_type),
+    booked_by:           orNull(d.booked_by),
+    guest_label:         orNull(d.guest_label),
+    notes:               orNull(d.notes),
+    brief_show:          d.brief_show,
+    sort_order:          d.sort_order,
+  }
+}
+
+function AuxField({ label, value, onChange, placeholder, type = 'text', span }: {
+  label: string; value: string; onChange: (v: string) => void
+  placeholder?: string; type?: string; span?: boolean
+}) {
+  return (
+    <div style={span ? { gridColumn: '1 / -1' } : undefined}>
+      <label style={labelStyle}>{label}</label>
+      <input style={inputStyle} type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </div>
+  )
+}
+
+function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
+  draft: AuxDraft; setDraft: (d: AuxDraft) => void
+  onSave: () => void; onCancel: () => void; saving: boolean; saveLabel: string
+}) {
+  const set = <K extends keyof AuxDraft>(k: K, v: AuxDraft[K]) => setDraft({ ...draft, [k]: v })
+  const isFlight = draft.booking_type === 'Flight'
+
+  return (
+    <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Core */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div>
+          <label style={labelStyle}>Type</label>
+          <select style={inputStyle} value={draft.booking_type} onChange={e => set('booking_type', e.target.value)}>
+            {AUX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <AuxField label='Name' value={draft.name} onChange={v => set('name', v)} placeholder='Emirates EK 824' />
+        <AuxField label='Confirmation #' value={draft.confirmation_number} onChange={v => set('confirmation_number', v)} placeholder='XR7K2P' />
+        <AuxField label='Booked By' value={draft.booked_by} onChange={v => set('booked_by', v)} placeholder='ambience' />
+        <AuxField label='Start Date' type='date' value={draft.start_date} onChange={v => set('start_date', v)} />
+        <AuxField label='Start Time' type='time' value={draft.start_time} onChange={v => set('start_time', v)} />
+        <AuxField label='End Date' type='date' value={draft.end_date} onChange={v => set('end_date', v)} />
+        <AuxField label='End Time' type='time' value={draft.end_time} onChange={v => set('end_time', v)} />
+        <AuxField label='Origin' value={draft.origin} onChange={v => set('origin', v)} placeholder='Riyadh' />
+        <AuxField label='Destination' value={draft.destination} onChange={v => set('destination', v)} placeholder='Salzburg' />
+      </div>
+
+      {/* Flight detail — only for Flight type */}
+      {isFlight && (
+        <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Flight Detail</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <AuxField label='Airline' value={draft.airline_name} onChange={v => set('airline_name', v)} placeholder='Emirates' />
+            <AuxField label='Flight #' value={draft.flight_number} onChange={v => set('flight_number', v)} placeholder='EK 824' />
+            <AuxField label='Depart Airport' value={draft.depart_airport} onChange={v => set('depart_airport', v)} placeholder='RUH' />
+            <AuxField label='Arrive Airport' value={draft.arrive_airport} onChange={v => set('arrive_airport', v)} placeholder='SZG' />
+            <AuxField label='Cabin Class' value={draft.cabin_class} onChange={v => set('cabin_class', v)} placeholder='Business' />
+            <AuxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => set('seat_numbers', v)} placeholder='5F, 5E, 4D, 4G' />
+            <AuxField label='Seat Type' value={draft.seat_type} onChange={v => set('seat_type', v)} placeholder='Lie-flat' />
+            <AuxField label='Aircraft' value={draft.aircraft_type} onChange={v => set('aircraft_type', v)} placeholder='Boeing 777-300ER' />
+          </div>
+        </div>
+      )}
+
+      {/* Display */}
+      <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Display</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <AuxField label='Guest Label' value={draft.guest_label} onChange={v => set('guest_label', v)} placeholder='Al Suwaidi Family' />
+          <AuxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => set('sort_order', parseInt(v, 10) || 0)} />
+          <AuxField label='Notes' value={draft.notes} onChange={v => set('notes', v)} span />
+        </div>
+        <label style={{ ...labelStyle, marginTop: 10, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type='checkbox' checked={draft.brief_show} onChange={e => set('brief_show', e.target.checked)} />
+          Show in brief
+        </label>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button onClick={onCancel} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>
+          Cancel
+        </button>
+        <button onClick={onSave} disabled={saving} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving...' : saveLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function AuxBookingsEditor({ tripId }: { tripId: string }) {
+  const [aux,     setAux]     = useState<TripAuxBooking[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [adding,  setAdding]  = useState(false)
+  const [editId,  setEditId]  = useState<string | null>(null)
+  const [draft,   setDraft]   = useState<AuxDraft>(emptyAuxDraft(0))
+  const [saving,  setSaving]  = useState(false)
+
+  function load() {
+    setLoading(true)
+    fetchTripAuxBookings(tripId)
+      .then(rows => setAux(rows.sort((a, b) => a.sort_order - b.sort_order)))
+      .catch(() => setAux([]))
+      .finally(() => setLoading(false))
+  }
+
+  function beginAdd() {
+    setEditId(null)
+    setDraft(emptyAuxDraft(aux?.length ?? 0))
+    setAdding(true)
+  }
+
+  function beginEdit(a: TripAuxBooking) {
+    setAdding(false)
+    setEditId(a.id)
+    setDraft(auxToDraft(a))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const patch = draftToPatch(draft)
+      if (editId) {
+        const updated = await updateTripAuxBooking(editId, patch)
+        setAux(prev => (prev ?? []).map(a => a.id === editId ? updated : a).sort((x, y) => x.sort_order - y.sort_order))
+        setEditId(null)
+      } else {
+        const created = await createTripAuxBooking(tripId, patch)
+        setAux(prev => [...(prev ?? []), created].sort((x, y) => x.sort_order - y.sort_order))
+        setAdding(false)
+      }
+    } catch { /* silent */ }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(id: string) {
+    setSaving(true)
+    try {
+      await deleteTripAuxBooking(id)
+      setAux(prev => (prev ?? []).filter(a => a.id !== id))
+    } catch { /* silent */ }
+    finally { setSaving(false) }
+  }
+
+  // Load once on mount (editor only mounts when the trip block is expanded)
+  useEffect(() => { load() }, [tripId])
+
+  const rowLine = (a: TripAuxBooking): string => {
+    const route = [a.origin, a.destination].filter(Boolean).join(' \u2192 ')
+    const seats = [a.cabin_class, a.seat_numbers ? `Seats ${a.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')
+    return [route, seats].filter(Boolean).join('  \u00b7  ')
+  }
+
+  return (
+    <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
+          Flights & Transfers ({aux?.length ?? 0})
+        </div>
+        {!adding && !editId && (
+          <button onClick={beginAdd} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}>
+            + Add Flight / Transfer
+          </button>
+        )}
+      </div>
+
+      {loading && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Loading...</div>}
+
+      {(aux ?? []).map(a => (
+        editId === a.id ? (
+          <div key={a.id} style={{ marginBottom: 8 }}>
+            <AuxForm draft={draft} setDraft={setDraft} onSave={handleSave} onCancel={() => setEditId(null)} saving={saving} saveLabel='Save Changes' />
+          </div>
+        ) : (
+          <div key={a.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.booking_type ?? 'Other'}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{a.name ?? 'Booking'}</span>
+                {!a.brief_show && <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>hidden</span>}
+              </div>
+              {rowLine(a) && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{rowLine(a)}</div>}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                {a.start_date && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.start_date}{a.start_time ? ` ${a.start_time.slice(0, 5)}` : ''}</span>}
+                {a.confirmation_number && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{a.confirmation_number}</span>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              <button onClick={() => beginEdit(a)} style={{ fontFamily: A.font, fontSize: 10, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>Edit</button>
+              <button onClick={() => handleDelete(a.id)} disabled={saving} style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>×</button>
+            </div>
+          </div>
+        )
+      ))}
+
+      {adding && (
+        <div style={{ marginTop: 4 }}>
+          <AuxForm draft={draft} setDraft={setDraft} onSave={handleSave} onCancel={() => setAdding(false)} saving={saving} saveLabel='Add' />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── BookingCard ───────────────────────────────────────────────────────────────
 
 function BookingCard({ booking: b, partners, mobile, house }: {
@@ -548,6 +844,8 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
               </div>
             )
           }
+
+          <AuxBookingsEditor tripId={trip.id} />
         </div>
       )}
     </div>
