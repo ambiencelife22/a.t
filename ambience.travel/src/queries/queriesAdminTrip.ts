@@ -483,11 +483,22 @@ export async function deleteBookingRoom(roomId: string): Promise<void> {
 
 // ── Aux booking write ─────────────────────────────────────────────────────────
 
+export async function createTripAuxBooking(tripId: string, patch: TripAuxBookingPatch): Promise<TripAuxBooking> {
+  const { auxBooking } = await invokeWriteTrip<{ auxBooking: TripAuxBooking }>({
+    mode: 'create_aux_booking', trip_id: tripId, patch,
+  })
+  return auxBooking
+}
+
 export async function updateTripAuxBooking(id: string, patch: TripAuxBookingPatch): Promise<TripAuxBooking> {
   const { auxBooking } = await invokeWriteTrip<{ auxBooking: TripAuxBooking }>({
     mode: 'update_aux_booking', id, patch,
   })
   return auxBooking
+}
+
+export async function deleteTripAuxBooking(id: string): Promise<void> {
+  await invokeWriteTrip({ mode: 'delete_aux_booking', id })
 }
 
 // ── Itinerary CRUD ────────────────────────────────────────────────────────────
