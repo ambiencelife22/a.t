@@ -368,6 +368,11 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
                       {fmtDate(aux.start_date)}
                     </div>
                   )}
+                  {(aux.cabin_class || aux.seat_numbers) && (
+                    <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED, marginTop: 4 }}>
+                      {[aux.cabin_class, aux.seat_numbers ? `Seats ${aux.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')}
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   {timeStr && (

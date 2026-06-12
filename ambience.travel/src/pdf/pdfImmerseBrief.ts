@@ -370,11 +370,13 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
     for (const f of flights) {
       y = checkOverflow(doc, y, 16)
-      const name    = [f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null]
+      const name     = [f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null]
         .filter(Boolean).join('  \u00b7  ')
-      const sub     = [f.origin, f.destination].filter(Boolean).join('  \u2192  ') || null
-      const date    = f.start_date ? fmtDate(f.start_date) : '\u2014'
-      const byLabel = bookedByLabel(f.booked_by)
+      const route    = [f.origin, f.destination].filter(Boolean).join('  \u2192  ')
+      const seatLine = [f.cabin_class, f.seat_numbers ? `Seats ${f.seat_numbers}` : null].filter(Boolean).join('  \u00b7  ')
+      const sub      = [route, seatLine].filter(Boolean).join('   \u00b7   ') || null
+      const date     = f.start_date ? fmtDate(f.start_date) : '\u2014'
+      const byLabel  = bookedByLabel(f.booked_by)
       y += drawDataRow(doc, date, name || 'Flight', sub, byLabel, y)
     }
 

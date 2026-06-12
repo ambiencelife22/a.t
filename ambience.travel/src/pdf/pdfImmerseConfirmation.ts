@@ -303,6 +303,13 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.text(fmtDate(aux.start_date), centreX, y + padV + 17)
   }
 
+  const seatLine = [aux.cabin_class, aux.seat_numbers ? `Seats ${aux.seat_numbers}` : null].filter(Boolean).join('  \u00b7  ')
+  if (seatLine) {
+    sans(doc, 'normal', 7.5)
+    doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    doc.text(seatLine, centreX, y + padV + 23)
+  }
+
   const rightX = P.margin + CW - padH
 
   const dep = fmtTime(aux.start_time)

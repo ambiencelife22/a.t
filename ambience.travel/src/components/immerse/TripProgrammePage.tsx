@@ -154,13 +154,15 @@ function entryToCard(e: TripDayEntry): CardItem {
 
 function auxToCard(a: TripAuxBooking): CardItem {
   const route = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
+  const seatLine = [a.cabin_class, a.seat_numbers ? `Seats ${a.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')
+  const subtitle = [route, seatLine || null].filter(Boolean).join('  \u00b7  ')
   return {
     id:                  a.id,
     category:            a.booking_type ?? 'Other',
     start_time:          a.start_time ?? null,
     end_time:            a.end_time ?? null,
     title:               a.name ?? a.booking_type ?? 'Booking',
-    subtitle:            route,
+    subtitle:            subtitle || null,
     notes:               a.notes ?? null,
     confirmation_number: a.confirmation_number ?? null,
     guest_label:         a.guest_label ?? null,

@@ -190,9 +190,11 @@ function mergeDayEntries(
     .filter(a => a.start_date === date && a.brief_show !== false)
     .map(a => {
       const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
+      const route    = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
+      const seatLine = [a.cabin_class, a.seat_numbers ? `Seats ${a.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')
       const subtitle = isFlight
-        ? null
-        : (a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null)
+        ? ([route, seatLine || null].filter(Boolean).join('  \u00b7  ') || null)
+        : route
       return {
         id:                  a.id,
         category:            a.booking_type ?? 'Other',

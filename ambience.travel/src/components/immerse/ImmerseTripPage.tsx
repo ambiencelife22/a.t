@@ -392,6 +392,11 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                   {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{fmtDate(aux.start_date)}</div>}
                   {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 4 }}>{timeStr}</div>}
+                  {(aux.cabin_class || aux.seat_numbers) && (
+                    <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>
+                      {[aux.cabin_class, aux.seat_numbers ? `Seats ${aux.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')}
+                    </div>
+                  )}
                   {aux.guest_label && <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{aux.guest_label}</div>}
                   {aux.confirmation_number && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 5, padding: '2px 8px', marginTop: 6, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
@@ -448,6 +453,8 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
     flightDestination: string | null
     flightDepartTime:  string | null
     flightArriveTime:  string | null
+    seatNumbers:       string | null
+    cabinClass:        string | null
   }
 
   const cards: CardItem[] = activeDay ? [
@@ -475,6 +482,8 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           flightDestination,
           flightDepartTime: isFlight ? (e.start_time ?? null) : null,
           flightArriveTime: isFlight ? (e.end_time   ?? null) : null,
+          seatNumbers: null,
+          cabinClass: null,
         }
       }),
     ...auxBookings
@@ -493,6 +502,8 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           flightDestination: isFlight ? (a.destination ?? null) : null,
           flightDepartTime:  isFlight ? (a.start_time  ?? null) : null,
           flightArriveTime:  isFlight ? (a.end_time    ?? null) : null,
+          seatNumbers:       isFlight ? (a.seat_numbers ?? null) : null,
+          cabinClass:        isFlight ? (a.cabin_class  ?? null) : null,
         }
       }),
   ].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time)) : []
@@ -717,6 +728,21 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                                 )}
                               </div>
                             )}
+                            {(item.cabinClass || item.seatNumbers) && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+                                <div style={{
+                                  width: 64, flexShrink: 0,
+                                  fontSize: 9, fontFamily: SANS, fontWeight: 700,
+                                  letterSpacing: '0.12em', textTransform: 'uppercase',
+                                  color: FAINT,
+                                }}>
+                                  Seats
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                  {[item.cabinClass, item.seatNumbers].filter(Boolean).join(' \u00b7 ')}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -830,7 +856,10 @@ function TripBriefTab({ clientData, days, entries }: {
               key={f.id}
               label={f.start_date ? fmtDate(f.start_date) : '\u2014'}
               value={[f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
-              sub={[f.origin, f.destination].filter(Boolean).join(' \u2192 ')}
+              sub={[
+                [f.origin, f.destination].filter(Boolean).join(' \u2192 '),
+                [f.cabin_class, f.seat_numbers ? `Seats ${f.seat_numbers}` : null].filter(Boolean).join(' \u00b7 '),
+              ].filter(Boolean).join('  \u2014  ')}
               bookedBy={bookedByLabel(f.booked_by)}
             />
           ))}
