@@ -15,19 +15,28 @@
 // Response:
 //   { trip, brief, house, destinationName, auxBookings, urlId, days, entries }
 //   entries include resolved image_src from source CRM record:
-//     source_booking_id  → travel_booking_rooms.brief_image_src
-//                          | travel_bookings.brief_image_src
-//                          | travel_accom_hotels.hero_image_src
+//     source_booking_id  → travel_booking_rooms.brief_image_src (per-room override)
+//                          | travel_accom_rooms.room_image_src  (canon default, S43 Add 1)
+//                          | travel_bookings.brief_image_src    (booking override)
+//                          | travel_accom_hotels.hero_image_src (hotel hero fallback)
 //     source_aux_id      → no image (flights/transfers)
 //     source_dining_id   → travel_dining_venues.image_src
 //     source_experience_id → travel_experiences.image_src
 //
-// Last updated: S50 — show_advisor_email + show_advisor_phone + advisor_phone
-//   added to brief SELECT list. Brings parity with get-trip-confirmation.
-//   advisor_phone is still gated client-side by show_advisor_phone — DB column
-//   value is returned so the gate has data to read.
-// Prior: S48 — explicit column list on travel_trip_briefs excludes
-//   advisor_phone. Matches get-trip-confirmation.
+// Image resolution chain (canon-default, override-first) — parity with
+// travel-get-trip-confirmation S53 Add 4:
+//   1. travel_booking_rooms.brief_image_src  — explicit per-room override (rare)
+//   2. travel_accom_rooms.room_image_src     — CANON DEFAULT (via room_id FK)
+//   3. travel_bookings.brief_image_src       — booking-level override
+//   4. travel_accom_hotels.hero_image_src    — hotel hero fallback
+//   5. null                                  — content-only card
+//
+// Last updated: S43 Add 1 — canon room image resolution added (parity with
+//   travel-get-trip-confirmation S53 Add 4). travel_booking_rooms.room_id
+//   → travel_accom_rooms.room_image_src is now the default image source.
+//   Closes the gap where hotel check-in entries had no image on programme tab.
+// Prior: S50 — show_advisor_email + show_advisor_phone + advisor_phone
+//   added to brief SELECT list.
 // Prior: S48 — image resolution via all four source FK chains.
 // Prior: S48 — initial ship.
 
@@ -139,7 +148,7 @@ Deno.serve(async (req: Request) => {
         .order('sort_order', { ascending: true }),
 
       db.from('travel_trip_aux_bookings')
-        .select('id, trip_id, booking_type, name, confirmation_number, start_date, start_time, end_date, end_time, origin, destination, notes, guest_label, booked_by, brief_show, sort_order, created_at, updated_at')
+        .select('id, trip_id, booking_type, name, confirmation_number, start_date, start_time, end_date, end_time, origin, destination, notes, guest_label, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_numbers, seat_type, aircraft_type, depart_airport, arrive_airport')
         .eq('trip_id', tripId)
         .order('sort_order', { ascending: true }),
 
@@ -171,9 +180,9 @@ Deno.serve(async (req: Request) => {
     // ── 6. Resolve images for all entries ─────────────────────────────────────
     // Collect distinct source IDs by type, then batch-fetch images.
 
-    const bookingIds    = [...new Set(entries.map((e: any) => e.source_booking_id).filter(Boolean))]
-    const diningIds     = [...new Set(entries.map((e: any) => e.source_dining_id).filter(Boolean))]
-    const experienceIds = [...new Set(entries.map((e: any) => e.source_experience_id).filter(Boolean))]
+    const bookingIds    = [...new Set(entries.map((e: any) => e.source_booking_id).filter(Boolean))] as string[]
+    const diningIds     = [...new Set(entries.map((e: any) => e.source_dining_id).filter(Boolean))] as string[]
+    const experienceIds = [...new Set(entries.map((e: any) => e.source_experience_id).filter(Boolean))] as string[]
 
     const [bookingImgResult, roomImgResult, diningImgResult, expImgResult, hotelImgResult] =
       await Promise.all([
@@ -184,12 +193,11 @@ Deno.serve(async (req: Request) => {
               .in('id', bookingIds)
           : Promise.resolve({ data: [], error: null }),
 
-        // Room-level image (first room per booking, prefer over booking-level)
+        // Room-level image (all rooms per booking, includes room_id for canon lookup)
         bookingIds.length > 0
           ? db.from('travel_booking_rooms')
-              .select('booking_id, brief_image_src')
+              .select('booking_id, room_id, brief_image_src')
               .in('booking_id', bookingIds)
-              .not('brief_image_src', 'is', null)
               .order('sort_order', { ascending: true })
           : Promise.resolve({ data: [], error: null }),
 
@@ -216,24 +224,46 @@ Deno.serve(async (req: Request) => {
           : Promise.resolve({ data: [], error: null }),
       ])
 
-    // Build lookup maps
-    // Room image: first room per booking
-    const roomImgByBooking: Record<string, string> = {}
-    for (const r of (roomImgResult.data ?? []) as any[]) {
-      if (!roomImgByBooking[r.booking_id]) {
-        roomImgByBooking[r.booking_id] = r.brief_image_src
+    // ── 6a. Canon room image resolution (S43 Add 1) ───────────────────────────
+    // Collect distinct room_ids from booking_rooms, fetch canon images,
+    // build a booking_id → canon_image_src map (first room per booking wins).
+    const bookingRoomRows = (roomImgResult.data ?? []) as any[]
+    const roomIds = [...new Set(
+      bookingRoomRows.map((r: any) => r.room_id).filter(Boolean)
+    )] as string[]
+
+    const canonRoomById: Record<string, string | null> = {}
+    if (roomIds.length > 0) {
+      const { data: canonRooms } = await db
+        .from('travel_accom_rooms')
+        .select('id, room_image_src')
+        .in('id', roomIds)
+      for (const r of (canonRooms ?? []) as any[]) {
+        canonRoomById[r.id] = r.room_image_src ?? null
       }
     }
 
-    // Booking image (fallback to hotel hero)
+    // Build lookup maps
+    // Room image: first room per booking.
+    // Resolution order per room: per-room override → canon room image.
+    const roomImgByBooking: Record<string, string | null> = {}
+    for (const r of bookingRoomRows) {
+      if (roomImgByBooking[r.booking_id] !== undefined) continue // first room wins
+      const resolved =
+        r.brief_image_src                          // 1. per-room explicit override
+        ?? (r.room_id ? canonRoomById[r.room_id] : null) // 2. canon room image
+        ?? null
+      roomImgByBooking[r.booking_id] = resolved
+    }
+
+    // Booking image map (booking override → hotel hero fallback)
     const bookingImgMap: Record<string, string | null> = {}
     for (const b of (hotelImgResult.data ?? []) as any[]) {
       const hotel = Array.isArray(b.travel_accom_hotels) ? b.travel_accom_hotels[0] : b.travel_accom_hotels
-      bookingImgMap[b.id] = (bookingImgResult.data as any[])?.find((bi: any) => bi.id === b.id)?.brief_image_src
-        ?? hotel?.hero_image_src
-        ?? null
+      const bookingRow = (bookingImgResult.data as any[])?.find((bi: any) => bi.id === b.id)
+      bookingImgMap[b.id] = bookingRow?.brief_image_src ?? hotel?.hero_image_src ?? null
     }
-    // Also cover bookings without a hotel link
+    // Cover bookings without a hotel link
     for (const b of (bookingImgResult.data ?? []) as any[]) {
       if (!(b.id in bookingImgMap)) {
         bookingImgMap[b.id] = b.brief_image_src ?? null
@@ -251,13 +281,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // Attach resolved image_src to each entry
+    // Full chain: room override → canon room → booking override → hotel hero
     const enrichedEntries = entries.map((entry: any) => {
       let image_src: string | null = null
 
       if (entry.source_booking_id) {
-        // Room image first, then booking/hotel fallback
-        image_src = roomImgByBooking[entry.source_booking_id]
-          ?? bookingImgMap[entry.source_booking_id]
+        image_src =
+          roomImgByBooking[entry.source_booking_id]   // covers override + canon room
+          ?? bookingImgMap[entry.source_booking_id]    // booking override + hotel hero
           ?? null
       } else if (entry.source_dining_id) {
         image_src = diningImgMap[entry.source_dining_id] ?? null

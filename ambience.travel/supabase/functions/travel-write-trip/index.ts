@@ -21,7 +21,9 @@
 //   create_room           { booking_id, patch }
 //   update_room           { room_id, patch }
 //   delete_room           { room_id }
+//   create_aux_booking    { trip_id, patch }
 //   update_aux_booking    { id, patch }
+//   delete_aux_booking    { id }
 //   upsert_day            { trip_id, entry_date, patch }
 //   create_day_entry      { trip_id, entry }
 //   update_day_entry      { id, patch }
@@ -51,7 +53,9 @@ type Mode =
   | 'create_room'
   | 'update_room'
   | 'delete_room'
+  | 'create_aux_booking'
   | 'update_aux_booking'
+  | 'delete_aux_booking'
   | 'upsert_day'
   | 'create_day_entry'
   | 'update_day_entry'
@@ -185,6 +189,20 @@ async function handleDeleteRoom(db: SupabaseClient, roomId: string): Promise<Res
   return ok({ success: true })
 }
 
+async function handleCreateAuxBooking(
+  db: SupabaseClient,
+  tripId: string,
+  patch: Record<string, unknown>,
+): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_trip_aux_bookings')
+    .insert({ trip_id: tripId, ...patch })
+    .select()
+    .single()
+  if (error) return err('Failed to create aux booking', 500)
+  return ok({ auxBooking: data })
+}
+
 async function handleUpdateAuxBooking(
   db: SupabaseClient,
   id: string,
@@ -198,6 +216,15 @@ async function handleUpdateAuxBooking(
     .single()
   if (error) return err('Failed to update aux booking', 500)
   return ok({ auxBooking: data })
+}
+
+async function handleDeleteAuxBooking(db: SupabaseClient, id: string): Promise<Response> {
+  const { error } = await db
+    .from('travel_trip_aux_bookings')
+    .delete()
+    .eq('id', id)
+  if (error) return err('Failed to delete aux booking', 500)
+  return ok({ success: true })
 }
 
 async function handleUpsertDay(
@@ -503,10 +530,22 @@ Deno.serve(async (req: Request) => {
         return handleDeleteRoom(serviceClient, room_id)
       }
 
+      case 'create_aux_booking': {
+        const { trip_id, patch } = body as { trip_id?: string; patch?: Record<string, unknown> }
+        if (!trip_id || !patch) return err('trip_id, patch required', 400)
+        return handleCreateAuxBooking(serviceClient, trip_id, patch)
+      }
+
       case 'update_aux_booking': {
         const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
         if (!id || !patch) return err('id, patch required', 400)
         return handleUpdateAuxBooking(serviceClient, id, patch)
+      }
+
+      case 'delete_aux_booking': {
+        const { id } = body as { id?: string }
+        if (!id) return err('id required', 400)
+        return handleDeleteAuxBooking(serviceClient, id)
       }
 
       case 'upsert_day': {
