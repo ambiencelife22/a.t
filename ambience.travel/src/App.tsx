@@ -79,7 +79,7 @@
 
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'
 import RouteLoading from './components/RouteLoading'
-import { getSession } from './utils/utilsAuth'
+import { getSession, signOut } from './utils/utilsAuth'
 import { getProfile } from './queries/queriesProgramme'
 import { _setPalette, darkPalette, lightPalette } from './tokens/tokensProgramme'
 import { ThemeContext } from './context/contextTheme'
@@ -406,7 +406,6 @@ function AuthenticatedApp() {
   }, [])
 
   async function handleSignOut() {
-    const { signOut } = await import('./utils/utilsAuth')
     await signOut()
     window.location.reload()
   }

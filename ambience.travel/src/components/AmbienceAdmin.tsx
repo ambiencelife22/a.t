@@ -2,8 +2,10 @@
  * Top-level admin shell for ambience.travel/#admin (and localhost:5173/#admin).
  * Mounts both the Immerse and Programme product groups behind a single sidebar.
  *
- * Last updated: S49 — import programme tabs directly from ProgrammeAdmin.tsx.
- *   ProgrammeAdminTabs.ts shim deleted — no longer needed.
+ * Last updated: S43 Add 2 — all tab imports converted to lazy() for code
+ *   splitting. AmbienceAdmin chunk: 541KB → distributed across per-tab chunks.
+ *   Suspense wrapper added around TabContent with AdminLoading fallback.
+ * Prior: S49 — import programme tabs directly from ProgrammeAdmin.tsx.
  * Prior: S45 — Added ItineraryEditorPage at #admin/trips/{tripId}/itinerary.
  * Prior: S46 — Added BriefEditorPage at #admin/trips/{tripId}/brief.
  * Prior: S40D — Added House product group (HouseTab).
@@ -11,38 +13,46 @@
  * Prior: S33
  */
 
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getSession } from '../utils/utilsAuth'
 import { parseAdminHash, type AdminTab } from '../utils/utilsAdminPath'
 import { A } from '../tokens/tokensAdmin'
-
-import AdminSidebar           from './admin/AdminSidebar'
-import EngagementsListTab     from './admin/EngagementsListTab'
-import EngagementDetailTab    from './admin/EngagementDetailTab'
-import ShowcasesListTab       from './admin/ShowcasesListTab'
-import LibraryDiningTab       from './admin/LibraryDiningTab'
-import GuidesDiningTab        from './admin/GuidesDiningTab'
-import GuidesHotelsTab        from './admin/GuidesHotelsTab'
-import LibraryHotelsTab       from './admin/LibraryHotelsTab'
-import GuidesExperiencesTab   from './admin/GuidesExperiencesTab'
-import HouseTab               from './admin/HouseTab'
-import BriefEditorPage        from './admin/BriefEditorPage'
-import ItineraryEditorPage    from './admin/ItineraryEditorPage'
 import { AdminToastProvider } from './admin/_adminPrimitives'
-import { OperationsTab }      from './admin/OperationsTab'
-import TimeTrackingTab  from './admin/TimeTrackingTab'
-import TimeAnalyticsTab from './admin/TimeAnalyticsTab'
 
-import {
-  ProgrammesTab,
-  WelcomeLettersTab,
-  ListingsTab,
-  PropertySectionsTab,
-  PropertiesTab,
-  AccessDeniedPageTab,
-} from './admin/ProgrammeAdmin'
-import ClientProfilePage from './admin/ClientProfilePage'
+const AdminSidebar         = lazy(() => import('./admin/AdminSidebar'))
+const EngagementsListTab   = lazy(() => import('./admin/EngagementsListTab'))
+const EngagementDetailTab  = lazy(() => import('./admin/EngagementDetailTab'))
+const ShowcasesListTab     = lazy(() => import('./admin/ShowcasesListTab'))
+const LibraryDiningTab     = lazy(() => import('./admin/LibraryDiningTab'))
+const GuidesDiningTab      = lazy(() => import('./admin/GuidesDiningTab'))
+const GuidesHotelsTab      = lazy(() => import('./admin/GuidesHotelsTab'))
+const LibraryHotelsTab     = lazy(() => import('./admin/LibraryHotelsTab'))
+const GuidesExperiencesTab = lazy(() => import('./admin/GuidesExperiencesTab'))
+const HouseTab             = lazy(() => import('./admin/HouseTab'))
+const BriefEditorPage      = lazy(() => import('./admin/BriefEditorPage'))
+const ItineraryEditorPage  = lazy(() => import('./admin/ItineraryEditorPage'))
+const OperationsTab        = lazy(() => import('./admin/OperationsTab').then(m => ({ default: m.OperationsTab })))
+const TimeTrackingTab      = lazy(() => import('./admin/TimeTrackingTab'))
+const TimeAnalyticsTab     = lazy(() => import('./admin/TimeAnalyticsTab'))
+const ClientProfilePage    = lazy(() => import('./admin/ClientProfilePage'))
+
+const ProgrammesTab        = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
+const WelcomeLettersTab    = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.WelcomeLettersTab })))
+const ListingsTab          = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ListingsTab })))
+const PropertySectionsTab  = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertySectionsTab })))
+const PropertiesTab        = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertiesTab })))
+const AccessDeniedPageTab  = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.AccessDeniedPageTab })))
+
+// ── Loading fallback ──────────────────────────────────────────────────────────
+
+function AdminLoading() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+      <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, letterSpacing: '0.06em' }}>Loading…</div>
+    </div>
+  )
+}
 
 // ── Access denied ─────────────────────────────────────────────────────────────
 
@@ -82,10 +92,18 @@ function AdminShell() {
 
   // Full-page cream editors — bypass standard admin chrome
   if (tab.product === 'trips' && tab.tab === 'brief') {
-    return <BriefEditorPage tripId={tab.tripId} />
+    return (
+      <Suspense fallback={<AdminLoading />}>
+        <BriefEditorPage tripId={tab.tripId} />
+      </Suspense>
+    )
   }
   if (tab.product === 'trips' && tab.tab === 'itinerary') {
-    return <ItineraryEditorPage tripId={tab.tripId} />
+    return (
+      <Suspense fallback={<AdminLoading />}>
+        <ItineraryEditorPage tripId={tab.tripId} />
+      </Suspense>
+    )
   }
 
   return (
@@ -105,10 +123,16 @@ function AdminShell() {
       </div>
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 52px)' }}>
-        {!isMobile && <AdminSidebar tab={tab} />}
+        <Suspense fallback={null}>
+          {!isMobile && <AdminSidebar tab={tab} />}
+        </Suspense>
         <div style={{ flex: 1, padding: `clamp(24px, 4vw, 40px) clamp(16px, 4vw, 32px)`, maxWidth: isMobile ? '100%' : 1100, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-          {isMobile && <AdminSidebar tab={tab} mobile />}
-          <TabContent tab={tab} />
+          <Suspense fallback={null}>
+            {isMobile && <AdminSidebar tab={tab} mobile />}
+          </Suspense>
+          <Suspense fallback={<AdminLoading />}>
+            <TabContent tab={tab} />
+          </Suspense>
         </div>
       </div>
     </div>
@@ -140,9 +164,9 @@ function TabContent({ tab }: { tab: AdminTab }) {
   if (tab.product === 'house')      return <HouseTab />
   if (tab.product === 'operations') return <OperationsTab />
   if (tab.product === 'time') {
-  if (tab.tab === 'analytics') return <TimeAnalyticsTab />
-  return <TimeTrackingTab />
-}
+    if (tab.tab === 'analytics') return <TimeAnalyticsTab />
+    return <TimeTrackingTab />
+  }
 
   if (tab.product === 'programme') {
     if (tab.tab === 'programmes')     return <ProgrammesTab />
