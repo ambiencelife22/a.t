@@ -3,6 +3,7 @@
 // What it owns:
 //   - fetchActiveHappeningsForDestination — reads travel_happenings filtered
 //     by destination + future-or-current end_date.
+//   - Optional startDate/endDate narrowing for trip-aware callers.
 //   - Type Happening for consumer surfaces.
 //
 // What it does not own:
@@ -15,11 +16,16 @@
 //   - Admin clients see all rows (via separate RLS policy)
 //   - Industry-data classification — no Edge Function needed
 //
-// Last updated: S52 — initial ship for the What's On section on the
-//   experiences guide. Les Grimaldines (28 July 2026 St Tropez) is the
-//   first seeded happening.
+// Last updated: S52 — optional startDate/endDate args added for future
+//   trip-aware callers (immerse pages that know the guest's stay window).
+//   The current ExperiencesGuidePage caller does not pass dates and gets
+//   all future happenings for the destination.
+// Prior: S52 — initial ship for the What's On section on the experiences
+//   guide. Les Grimaldines (28 July 2026 St Tropez) is the first seeded
+//   happening.
 
 import { supabase } from '../lib/supabase'
+import type { HappeningCategory } from '../types/typesHappenings'
 
 // ── Type ──────────────────────────────────────────────────────────────────────
 
@@ -27,7 +33,7 @@ export interface Happening {
   id:                    string
   global_destination_id: string
   name:                  string
-  category:              string | null
+  category:              HappeningCategory | null
   tagline:               string | null
   body:                  string | null
   bullets:               string[] | Array<{ text: string }>
@@ -52,23 +58,38 @@ export interface Happening {
 // ── Reads ─────────────────────────────────────────────────────────────────────
 
 /**
- * Fetch active happenings for a destination that have not yet ended.
- * Filters server-side on end_date >= today (UTC) so past happenings are
- * never sent to the client.
+ * Fetch active happenings for a destination.
  *
- * Sort order: ascending by start_date, then sort_order, then name.
- * (Soonest-first, with admin-controlled tiebreaker via sort_order.)
+ * Default behaviour (no opts): returns happenings whose end_date is today
+ * or later (i.e. not yet past). Used by destination guides that have no
+ * trip context.
+ *
+ * With opts.startDate/endDate: returns happenings whose time window overlaps
+ * with the given window. Used by trip-aware surfaces (immerse pages) to
+ * narrow to "happenings during your stay."
+ *
+ * Sort: ascending start_date, then sort_order, then name.
  */
 export async function fetchActiveHappeningsForDestination(
   globalDestinationId: string,
+  opts: { startDate?: string; endDate?: string } = {},
 ): Promise<Happening[]> {
-  const today = new Date().toISOString().slice(0, 10)
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('travel_happenings')
     .select('*')
     .eq('global_destination_id', globalDestinationId)
-    .gte('end_date', today)
+
+  if (opts.startDate || opts.endDate) {
+    // Window-overlap: happening.start_date <= window.end AND happening.end_date >= window.start
+    if (opts.endDate)   query = query.lte('start_date', opts.endDate)
+    if (opts.startDate) query = query.gte('end_date',   opts.startDate)
+  } else {
+    // Default: not yet past
+    const today = new Date().toISOString().slice(0, 10)
+    query = query.gte('end_date', today)
+  }
+
+  const { data, error } = await query
     .order('start_date', { ascending: true })
     .order('sort_order', { ascending: true })
     .order('name',       { ascending: true })

@@ -5,6 +5,8 @@
 //   - Welcome page (welcome copy + at-a-glance bullets)
 //   - Contents page (auto-generated from sections present)
 //   - Card list section (manual layout, page-break-aware)
+//   - Happenings section (S52 — time-bound destination content, snapshot at
+//     PDF generation time)
 //   - Closing chrome (logo + restriction notice + copyright per page)
 //   - Accuracy disclaimer block (gated on accuracyDate non-null)
 //   - Filename construction
@@ -18,8 +20,13 @@
 //   dining      — DiningVenue[], recognition marks, cuisine/neighborhood meta
 //   experiences — ExperienceVenue[], no recognition marks, kicker in eyebrow slot,
 //                 at_a_glance_bullets from overlay on welcome page
+//   Both variants accept optional happenings[] — rendered as its own page
+//   between Cards and Closing, snapshot of future happenings at generation time.
 //
-// Last updated: S48 — refactored to import shared primitives from pdfUtils.ts.
+// Last updated: S52 — happenings section added. Renders own page when caller
+//   provides happenings[]. Filters to future-only (end_date >= today) at
+//   generation time. Mirrors venue card row pattern for visual cohesion.
+// Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
 //   Removed: setSerif, setSans, drawStar, drawStarRow, loadImageAsDataUrl,
 //   rasterizeSvgAsDataUrl, local ImageData interface, inline jsPDF guard.
 //   All replaced by imports from pdfUtils. RenderCtx emblem/logo now typed as Img.
@@ -29,6 +36,7 @@
 
 import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
 import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
+import type { Happening } from '../queries/queriesGuidesHappenings'
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,
@@ -75,6 +83,7 @@ export type ExportGuidePdfOptions =
       variant:      'dining'
       destination:  GuideDestination
       venues:       DiningVenue[]
+      happenings?:  Happening[]
       copy:         { eyebrow: string; headline: string; intro: string }
       heroImageSrc?: string | null
       guideYear:    number
@@ -85,6 +94,7 @@ export type ExportGuidePdfOptions =
       variant:      'experiences'
       destination:  ExperiencesGuideDestination
       venues:       ExperienceVenue[]
+      happenings?:  Happening[]
       copy:         { eyebrow: string; headline: string; intro: string }
       heroImageSrc?: string | null
       guideYear:    number
@@ -106,6 +116,11 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
 
   const overlay = opts.destination.overlay as any
 
+  // Snapshot semantics: filter happenings to future-only at generation time.
+  // The PDF is a dated artifact (filename has date); a happening that's already
+  // passed shouldn't appear in a guide downloaded today.
+  const happenings = filterFutureHappenings(opts.happenings ?? [])
+
   const ctx: RenderCtx = {
     doc,
     destination:  opts.destination as any,
@@ -116,14 +131,20 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
     guideVersion: opts.guideVersion,
     emblem,
     logo,
-    sections:     buildSections(opts),
+    sections:     buildSections(opts, happenings.length > 0),
     venues:       opts.venues as any[],
+    happenings,
     accuracyDate: opts.accuracyDate,
   }
 
   await renderCoverPage(ctx)
   doc.addPage(); renderWelcomePage(ctx)
   doc.addPage(); await renderCardsSection(ctx, opts.venues as any[])
+
+  if (happenings.length > 0) {
+    doc.addPage()
+    await renderHappeningsSection(ctx)
+  }
 
   if (planYourVisitHasContent(overlay)) {
     doc.addPage()
@@ -137,6 +158,18 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
 function planYourVisitHasContent(overlay: any): boolean {
   if (!overlay) return false
   return !!(overlay.plan_your_visit_intro?.trim()) || !!(overlay.plan_your_visit_bullets?.length)
+}
+
+function filterFutureHappenings(happenings: Happening[]): Happening[] {
+  const today = new Date().toISOString().slice(0, 10)
+  return happenings
+    .filter(h => h.end_date >= today)
+    .slice()
+    .sort((a, b) => {
+      if (a.start_date !== b.start_date) return a.start_date < b.start_date ? -1 : 1
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+      return a.name.localeCompare(b.name)
+    })
 }
 
 // ── Render context ────────────────────────────────────────────────────────────
@@ -153,6 +186,7 @@ interface RenderCtx {
   logo:         Img | null
   sections:     ContentsSection[]
   venues:       any[]
+  happenings:   Happening[]
   accuracyDate: string | null
 }
 
@@ -162,7 +196,7 @@ interface ContentsSection {
   blurb: string
 }
 
-function buildSections(opts: ExportGuidePdfOptions): ContentsSection[] {
+function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): ContentsSection[] {
   const overlay  = opts.destination.overlay as any
   const destName = opts.destination.name
   const isExp    = opts.variant === 'experiences'
@@ -172,6 +206,9 @@ function buildSections(opts: ExportGuidePdfOptions): ContentsSection[] {
     { page: 3, title: isExp ? `${destName} Experiences` : `${capitalize(opts.variant)} Highlights`,
                       blurb: isExp ? 'Our curated selection of standout experiences' : 'Our curated selection of standout tables' },
   ]
+  if (hasHappenings) {
+    items.push({ page: -1, title: `Coming up in ${destName}`, blurb: 'Time-bound programme during the season' })
+  }
   if (planYourVisitHasContent(overlay)) {
     const heading = overlay?.plan_your_visit_heading?.trim() || 'Plan Your Visit'
     items.push({ page: -1, title: heading, blurb: 'Insider tips for a seamless experience' })
@@ -421,7 +458,7 @@ function renderContentsBlock(ctx: RenderCtx, startY: number): number {
   y += 12
 
   for (const section of sections) {
-    const pageStr = section.page > 0 ? String(section.page).padStart(2, '0') : '··'
+    const pageStr = section.page > 0 ? String(section.page).padStart(2, '0') : '\u00b7\u00b7'
     sans(doc, 'normal', 10); doc.setTextColor(...THEME.gold)
     doc.text(pageStr, PAGE.margin, y)
     sans(doc, 'normal', 11); doc.setTextColor(...THEME.ink)
@@ -488,7 +525,10 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
     y += cardHeight + CARD.rowGap
   }
 
-  if (ctx.accuracyDate && !planYourVisitHasContent(ctx.destination.overlay)) {
+  // Disclaimer rendered here only if no closing page AND no happenings page
+  // (happenings page will render disclaimer if it's the last content page).
+  const hasFollowingPages = ctx.happenings.length > 0 || planYourVisitHasContent(ctx.destination.overlay)
+  if (ctx.accuracyDate && !hasFollowingPages) {
     const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
     renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
   }
@@ -631,6 +671,214 @@ function drawImageFallback(doc: any, x: number, y: number, name: string) {
   doc.text(letter, x + CARD.imageWidth / 2, y + CARD.imageHeight / 2 + 3, { align: 'center' })
 }
 
+// ── Happenings section ────────────────────────────────────────────────────────
+// Mirrors the cards section pattern: section title + subline, then a list of
+// happening rows. Each row has image left, content right. Page-break aware.
+
+async function renderHappeningsSection(ctx: RenderCtx) {
+  const { doc, destination, happenings } = ctx
+
+  doc.setFillColor(...THEME.white)
+  doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+
+  let y = PAGE.bodyTop + 12
+
+  serif(doc, 'normal', 26)
+  doc.setTextColor(...THEME.ink)
+  doc.text(`Coming up in ${destination.name}`, PAGE.margin, y)
+  y += 5
+
+  sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.gold)
+  doc.text('A SNAPSHOT OF WHAT\u2019S ON THIS SEASON', PAGE.margin, y, { charSpace: 0.4 })
+  y += 12
+
+  for (const happening of happenings) {
+    const cardHeight = computeHappeningCardHeight(doc, happening)
+    if (y + cardHeight > PAGE.footerY - 10) {
+      doc.addPage()
+      doc.setFillColor(...THEME.white)
+      doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+      y = PAGE.bodyTop + 8
+    }
+    await renderHappeningCard(doc, happening, y)
+    y += cardHeight + CARD.rowGap
+  }
+
+  // Disclaimer here if happenings is the last content page (no closing page).
+  if (ctx.accuracyDate && !planYourVisitHasContent(ctx.destination.overlay)) {
+    const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
+    renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
+  }
+}
+
+function computeHappeningCardHeight(doc: any, h: Happening): number {
+  const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
+  let textHeight  = 0
+
+  textHeight += 6 // eyebrow (ONE EVENING · CATEGORY)
+  textHeight += 5 // date line
+  textHeight += 6 // name
+
+  if (h.tagline) {
+    sans(doc, 'italic', 9.5)
+    const taglineLines = doc.splitTextToSize(h.tagline, textWidth)
+    textHeight += taglineLines.length * 4.2 + 2
+  }
+
+  if (h.body) {
+    sans(doc, 'normal', 9.5)
+    const bodyLines = doc.splitTextToSize(h.body, textWidth)
+    textHeight += bodyLines.length * 4.4 + 2
+  }
+
+  const bullets = normalizeHappeningBullets(h.bullets)
+  if (bullets.length > 0) {
+    sans(doc, 'normal', 9)
+    for (const b of bullets) {
+      const lines = doc.splitTextToSize(b, textWidth - 6)
+      textHeight += lines.length * 4.2 + 1
+    }
+    textHeight += 2
+  }
+
+  if (h.venue_name) textHeight += 5
+  if (h.address)    textHeight += 5
+
+  return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
+}
+
+async function renderHappeningCard(doc: any, h: Happening, top: number) {
+  const cardHeight = computeHappeningCardHeight(doc, h)
+
+  doc.setDrawColor(...THEME.rule); doc.setLineWidth(0.15)
+  doc.line(PAGE.margin, top + cardHeight + CARD.rowGap / 2,
+           PAGE.width - PAGE.margin, top + cardHeight + CARD.rowGap / 2)
+
+  const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
+  let cardImgDrawn = false
+  if (h.image_src) {
+    try {
+      const imgData = await loadImg(h.image_src)
+      if (imgData) {
+        doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
+        cardImgDrawn = true
+      }
+    } catch { /* fall through */ }
+  }
+  if (!cardImgDrawn) { drawImageFallback(doc, imgX, imgY, h.name) }
+
+  const textX     = imgX + CARD.imageWidth + 8
+  const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
+  let ty = top + CARD.rowPadding + 4
+
+  // Eyebrow: "ONE EVENING · MUSIC" (or "LIMITED DATES · MUSIC")
+  const isSingleDay = h.start_date === h.end_date
+  const tag = isSingleDay ? 'ONE EVENING' : 'LIMITED DATES'
+  const eyebrowText = h.category ? `${tag} \u00b7 ${h.category.toUpperCase()}` : tag
+  sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
+  doc.text(eyebrowText, textX, ty, { charSpace: 0.4 })
+  ty += 6
+
+  // Date line — italic gold serif
+  serif(doc, 'italic', 11); doc.setTextColor(...THEME.gold)
+  doc.text(formatHappeningDateRange(h.start_date, h.end_date), textX, ty)
+  ty += 5
+
+  // Name
+  serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
+  const nameLines = doc.splitTextToSize(h.name, textWidth)
+  doc.text(nameLines[0], textX, ty)
+  ty += 6
+
+  // Tagline — italic with thin gold bar on left
+  if (h.tagline) {
+    sans(doc, 'italic', 9.5); doc.setTextColor(...THEME.inkSoft)
+    const taglineLines = doc.splitTextToSize(h.tagline, textWidth - 4)
+    const taglineStartY = ty - 3
+    for (const line of taglineLines) { doc.text(line, textX + 4, ty); ty += 4.2 }
+    const taglineEndY = ty
+    doc.setDrawColor(...THEME.gold); doc.setLineWidth(0.6)
+    doc.line(textX, taglineStartY, textX, taglineEndY - 1)
+    ty += 2
+  }
+
+  // Body
+  if (h.body) {
+    sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
+    const bodyLines = doc.splitTextToSize(h.body, textWidth)
+    for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
+    ty += 1
+  }
+
+  // Bullets
+  const bullets = normalizeHappeningBullets(h.bullets)
+  if (bullets.length > 0) {
+    for (const b of bullets) {
+      sans(doc, 'bold', 11); doc.setTextColor(...THEME.gold)
+      doc.text('\u00b7', textX, ty)
+      sans(doc, 'normal', 9); doc.setTextColor(...THEME.inkSoft)
+      const lines = doc.splitTextToSize(b, textWidth - 6)
+      for (let i = 0; i < lines.length; i++) {
+        doc.text(lines[i], textX + 4, ty)
+        ty += 4.2
+      }
+      ty += 1
+    }
+    ty += 1
+  }
+
+  // Venue + address
+  if (h.venue_name) {
+    sans(doc, 'bold', 8.5); doc.setTextColor(...THEME.muted)
+    doc.text(h.venue_name, textX, ty)
+    ty += 5
+  }
+  if (h.address) {
+    sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.faint)
+    const addrLines  = doc.splitTextToSize(h.address, textWidth)
+    const addrStartY = ty
+    for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
+    if (h.maps_url) {
+      const linkH = ty - addrStartY
+      const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: h.maps_url }) } catch {}
+    }
+  }
+}
+
+function normalizeHappeningBullets(bullets: Happening['bullets']): string[] {
+  if (!Array.isArray(bullets)) return []
+  return bullets
+    .map(b => typeof b === 'string' ? b : (b?.text ?? ''))
+    .filter(Boolean)
+}
+
+// Date range formatting — single day: "28 July 2026"; same month: "28-30 July 2026";
+// same year, different month: "28 July - 2 August 2026"; cross-year: "28 Dec 2026 - 3 Jan 2027".
+function formatHappeningDateRange(startISO: string, endISO: string): string {
+  const start = parseISODate(startISO)
+  const end   = parseISODate(endISO)
+  if (startISO === endISO) return formatFullDate(start)
+  if (start.year === end.year && start.month === end.month) {
+    return `${start.day}\u2013${end.day} ${MONTHS[start.month]} ${start.year}`
+  }
+  if (start.year === end.year) {
+    return `${start.day} ${MONTHS[start.month]} \u2013 ${end.day} ${MONTHS[end.month]} ${start.year}`
+  }
+  return `${formatFullDate(start)} \u2013 ${formatFullDate(end)}`
+}
+
+function parseISODate(iso: string): { year: number; month: number; day: number } {
+  const [y, m, d] = iso.split('-').map(Number)
+  return { year: y, month: m - 1, day: d }
+}
+
+function formatFullDate(d: { year: number; month: number; day: number }): string {
+  return `${d.day} ${MONTHS[d.month]} ${d.year}`
+}
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
 // ── Closing page ──────────────────────────────────────────────────────────────
 
 function renderClosingPage(ctx: RenderCtx) {
@@ -733,6 +981,6 @@ function stampPageChrome(ctx: RenderCtx) {
     doc.text(RESTRICTION_NOTICE, PAGE.width / 2, PAGE.footerY + 7.5, { align: 'center' })
 
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.faint)
-    doc.text(`© ${guideYear} ambience.travel`, PAGE.width - PAGE.margin, PAGE.footerY + 7.5, { align: 'right' })
+    doc.text(`\u00a9 ${guideYear} ambience.travel`, PAGE.width - PAGE.margin, PAGE.footerY + 7.5, { align: 'right' })
   }
 }

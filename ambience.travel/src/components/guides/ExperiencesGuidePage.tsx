@@ -1,12 +1,14 @@
 // ExperiencesGuidePage.tsx — public experiences guide for a destination
 // What it owns:
 //   - Venue data fetch
+//   - Happenings data fetch (S52 — time-bound destination content)
 //   - Filter state (experience_category)
 //   - Frontend default copy + ?? resolution against overlay overrides
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error + empty states
 //   - PDF download trigger (usePdfDownload hook, calls exportGuidePdf)
 //   - At-a-glance bullets block
+//   - "Coming Up" happenings block (S52)
 //   - Plan Your Visit block
 //   - Accuracy disclaimer block
 //
@@ -14,7 +16,7 @@
 //   - Path parsing (ExperiencesGuideRoute)
 //   - Destination validation (ExperiencesGuideRoute)
 //   - Page chrome (GuideLayout)
-//   - Card rendering (ExperienceCard), hero (GuideHero)
+//   - Card rendering (ExperienceCard, HappeningCard), hero (GuideHero)
 //   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
 //   - PDF library loading (lib/usePdfDownload.ts owns this)
 //   - Style objects (lib/guidePageStyles.ts)
@@ -25,7 +27,13 @@
 //
 // PDF download gated on hasFullAccess — teaser users cannot download.
 //
-// Last updated: S41 — PDF download added via usePdfDownload hook.
+// Happenings section: gated on hasFullAccess + only renders when happenings
+// exist. This page has no trip context so passes no date narrowing — all
+// future happenings for the destination are returned by the query.
+//
+// Last updated: S52 — "Coming Up" happenings section added below the
+//   at-a-glance block. Renders silently when no happenings exist.
+// Prior: S41 — PDF download added via usePdfDownload hook.
 // Prior: S40B — experience_category filter added. Category chips
 //   render above the grid when multiple categories are present.
 // Prior: S41 — initial build.
@@ -37,8 +45,13 @@ import {
   type ExperienceVenue,
   type ExperiencesGuideDestination,
 } from '../../queries/queriesGuidesExperiences'
+import {
+  fetchActiveHappeningsForDestination,
+  type Happening,
+} from '../../queries/queriesGuidesHappenings'
 import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { ExperienceCard } from './ExperienceCard'
+import { HappeningCard } from './HappeningCard'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
@@ -122,12 +135,50 @@ function AtAGlance({ bullets }: { bullets: string[] }) {
       }}>
         {bullets.map((b, i) => (
           <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ color: ID.gold, fontSize: 10, marginTop: 4, flexShrink: 0 }}>◆</span>
+            <span style={{ color: ID.gold, fontSize: 10, marginTop: 4, flexShrink: 0 }}>{'\u25C6'}</span>
             <span style={{ fontSize: 14, color: ID.text, lineHeight: 1.6 }}>{b}</span>
           </li>
         ))}
       </ul>
     </div>
+  )
+}
+
+// ── Coming Up (happenings) block ─────────────────────────────────────────────
+
+function ComingUp({
+  happenings, hasFullAccess, destinationName,
+}: {
+  happenings:      Happening[]
+  hasFullAccess:   boolean
+  destinationName: string
+}) {
+  if (happenings.length === 0) return null
+  return (
+    <section style={{ marginBottom: 40 }} aria-label={`Time-bound happenings in ${destinationName}`}>
+      <div style={sectionTitleStyle}>
+        <div>
+          <h2 style={sectionTitleH2Style}>Coming up in {destinationName}</h2>
+          <p style={sectionTitleCountStyle}>
+            {happenings.length}{' '}
+            {happenings.length === 1 ? 'happening' : 'happenings'}
+          </p>
+        </div>
+      </div>
+      <div style={{
+        ...gridStyle,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 540px), 1fr))',
+      }}>
+        {happenings.map(h => (
+          <HappeningCard
+            key={h.id}
+            happening={h}
+            hasFullAccess={hasFullAccess}
+            destinationName={destinationName}
+          />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -211,6 +262,7 @@ export default function ExperiencesGuidePage({
   const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
 
   const [venues,         setVenues]         = useState<ExperienceVenue[]>([])
+  const [happenings,     setHappenings]     = useState<Happening[]>([])
   const [loading,        setLoading]        = useState(true)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
@@ -231,22 +283,44 @@ export default function ExperiencesGuidePage({
     async function load() {
       setLoading(true)
       try {
-        const items = await getExperienceVenuesByDestination(destination.slug)
+        // Parallel fetch — happenings query failure should not block experiences render.
+        const [venuesResult, happeningsResult] = await Promise.allSettled([
+          getExperienceVenuesByDestination(destination.slug),
+          fetchActiveHappeningsForDestination(destination.id),
+        ])
         if (cancelled) return
-        setVenues(items)
+
+        if (venuesResult.status === 'fulfilled') {
+          setVenues(venuesResult.value)
+        } else {
+          console.error('ExperiencesGuidePage: failed to load venues', venuesResult.reason)
+          const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
+          toastRef.current.error(`Couldn't load experiences: ${msg}`)
+          setVenues([])
+        }
+
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
+        } else {
+          // Soft-fail — happenings are supplementary. Log only.
+          console.error('ExperiencesGuidePage: failed to load happenings', happeningsResult.reason)
+          setHappenings([])
+        }
+
         setLoading(false)
       } catch (err) {
         if (cancelled) return
-        console.error('ExperiencesGuidePage: failed to load venues', err)
+        console.error('ExperiencesGuidePage: unexpected load error', err)
         const msg = err instanceof Error ? err.message : 'Unknown error'
         toastRef.current.error(`Couldn't load experiences: ${msg}`)
         setVenues([])
+        setHappenings([])
         setLoading(false)
       }
     }
     load()
     return () => { cancelled = true }
-  }, [destination.slug])
+  }, [destination.slug, destination.id])
 
   const availableCategories = useMemo(() => {
     const seen    = new Set<string>()
@@ -305,7 +379,8 @@ export default function ExperiencesGuidePage({
                   onClick={() => handleDownloadPdf({
                     variant:      'experiences',
                     destination,
-                    venues,
+                   venues,
+                    happenings,
                     copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
                     heroImageSrc,
                     guideYear:    resolveGuideYear(overlay?.guide_year),
@@ -317,10 +392,10 @@ export default function ExperiencesGuidePage({
                     ...downloadBtnStyle,
                     ...(pdfReady && !pdfDownloading ? {} : downloadBtnDisabledStyle),
                   }}
-                  title={pdfReady ? 'Download this guide as a PDF' : 'PDF library loading…'}
+                  title={pdfReady ? 'Download this guide as a PDF' : 'PDF library loading\u2026'}
                 >
-                  <span aria-hidden style={downloadIconStyle}>↓</span>
-                  {pdfDownloading ? 'Preparing…' : 'Download PDF'}
+                  <span aria-hidden style={downloadIconStyle}>{'\u2193'}</span>
+                  {pdfDownloading ? 'Preparing\u2026' : 'Download PDF'}
                 </button>
               )}
             </div>
@@ -349,13 +424,21 @@ export default function ExperiencesGuidePage({
             )}
 
             {hasFullAccess && (
+              <ComingUp
+                happenings={happenings}
+                hasFullAccess={hasFullAccess}
+                destinationName={destination.name}
+              />
+            )}
+
+            {hasFullAccess && (
               <PlanYourVisit overlay={overlay} variant="experiences" />
             )}
 
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
-                  The experiences listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability, pricing, and operators change — ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
+                  The experiences listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability, pricing, and operators change, ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
                 </p>
               </div>
             )}
@@ -390,7 +473,7 @@ function EditorialPrompt({ destinationName }: { destinationName: string }) {
         textTransform: 'uppercase' as const,
         color:         ID.gold,
       }}>
-        {destinationName} · Experiences Guide
+        {destinationName} {'\u00B7'} Experiences Guide
       </div>
       <p style={{
         fontSize:   'clamp(22px, 3.5vw, 32px)',
