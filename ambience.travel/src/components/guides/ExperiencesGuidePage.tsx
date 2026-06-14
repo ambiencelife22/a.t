@@ -49,6 +49,11 @@ import {
   fetchActiveHappeningsForDestination,
   type Happening,
 } from '../../queries/queriesGuidesHappenings'
+import {
+  fetchShoppingForDestination,
+  type Shop,
+} from '../../queries/queriesGuidesShopping'
+import { ShopCard } from './ShoppingCard'
 import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { ExperienceCard } from './ExperienceCard'
 import { HappeningCard } from './HappeningCard'
@@ -249,6 +254,44 @@ const filtersStyle: React.CSSProperties = {
   marginBottom: 26,
 }
 
+// ── Selected shopping block ──────────────────────────────────────────────────
+
+function SelectedShopping({
+  shops, hasFullAccess, destinationName,
+}: {
+  shops:           Shop[]
+  hasFullAccess:   boolean
+  destinationName: string
+}) {
+  if (shops.length === 0) return null
+  return (
+    <section style={{ marginBottom: 40 }} aria-label={`Selected shopping in ${destinationName}`}>
+      <div style={sectionTitleStyle}>
+        <div>
+          <h2 style={sectionTitleH2Style}>Selected shopping</h2>
+          <p style={sectionTitleCountStyle}>
+            {shops.length}{' '}
+            {shops.length === 1 ? 'address' : 'addresses'}
+          </p>
+        </div>
+      </div>
+      <div style={{
+        ...gridStyle,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
+      }}>
+        {shops.map(s => (
+          <ShopCard
+            key={s.id}
+            shop={s}
+            hasFullAccess={hasFullAccess}
+            destinationName={destinationName}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ── Page component ───────────────────────────────────────────────────────────
 
 export default function ExperiencesGuidePage({
@@ -263,6 +306,7 @@ export default function ExperiencesGuidePage({
 
   const [venues,         setVenues]         = useState<ExperienceVenue[]>([])
   const [happenings,     setHappenings]     = useState<Happening[]>([])
+  const [shops,          setShops]          = useState<Shop[]>([])
   const [loading,        setLoading]        = useState(true)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
@@ -284,9 +328,10 @@ export default function ExperiencesGuidePage({
       setLoading(true)
       try {
         // Parallel fetch — happenings query failure should not block experiences render.
-        const [venuesResult, happeningsResult] = await Promise.allSettled([
+        const [venuesResult, happeningsResult, shopsResult] = await Promise.allSettled([
           getExperienceVenuesByDestination(destination.slug),
           fetchActiveHappeningsForDestination(destination.id),
+          fetchShoppingForDestination(destination.id),
         ])
         if (cancelled) return
 
@@ -307,6 +352,13 @@ export default function ExperiencesGuidePage({
           setHappenings([])
         }
 
+        if (shopsResult.status === 'fulfilled') {
+          setShops(shopsResult.value)
+        } else {
+          console.error('ExperiencesGuidePage: failed to load shopping', shopsResult.reason)
+          setShops([])
+        }
+
         setLoading(false)
       } catch (err) {
         if (cancelled) return
@@ -315,6 +367,7 @@ export default function ExperiencesGuidePage({
         toastRef.current.error(`Couldn't load experiences: ${msg}`)
         setVenues([])
         setHappenings([])
+        setShops([])
         setLoading(false)
       }
     }
@@ -381,6 +434,7 @@ export default function ExperiencesGuidePage({
                     destination,
                    venues,
                     happenings,
+                    shopping:     shops,
                     copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
                     heroImageSrc,
                     guideYear:    resolveGuideYear(overlay?.guide_year),
@@ -421,6 +475,14 @@ export default function ExperiencesGuidePage({
                   <EditorialPrompt destinationName={destination.name} />
                 )}
               </>
+            )}
+
+            {hasFullAccess && (
+              <SelectedShopping
+                shops={shops}
+                hasFullAccess={hasFullAccess}
+                destinationName={destination.name}
+              />
             )}
 
             {hasFullAccess && (

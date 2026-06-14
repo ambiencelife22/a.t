@@ -37,6 +37,7 @@
 import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
 import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
 import type { Happening } from '../queries/queriesGuidesHappenings'
+import type { Shop } from '../queries/queriesGuidesShopping'
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,
@@ -84,6 +85,7 @@ export type ExportGuidePdfOptions =
       destination:  GuideDestination
       venues:       DiningVenue[]
       happenings?:  Happening[]
+      shopping?:    Shop[]
       copy:         { eyebrow: string; headline: string; intro: string }
       heroImageSrc?: string | null
       guideYear:    number
@@ -95,6 +97,7 @@ export type ExportGuidePdfOptions =
       destination:  ExperiencesGuideDestination
       venues:       ExperienceVenue[]
       happenings?:  Happening[]
+      shopping?:    Shop[]
       copy:         { eyebrow: string; headline: string; intro: string }
       heroImageSrc?: string | null
       guideYear:    number
@@ -120,6 +123,7 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   // The PDF is a dated artifact (filename has date); a happening that's already
   // passed shouldn't appear in a guide downloaded today.
   const happenings = filterFutureHappenings(opts.happenings ?? [])
+  const shopping   = opts.shopping ?? []
 
   const ctx: RenderCtx = {
     doc,
@@ -131,15 +135,21 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
     guideVersion: opts.guideVersion,
     emblem,
     logo,
-    sections:     buildSections(opts, happenings.length > 0),
+    sections:     buildSections(opts, happenings.length > 0, shopping.length > 0),
     venues:       opts.venues as any[],
     happenings,
+    shopping,
     accuracyDate: opts.accuracyDate,
   }
 
   await renderCoverPage(ctx)
   doc.addPage(); renderWelcomePage(ctx)
   doc.addPage(); await renderCardsSection(ctx, opts.venues as any[])
+
+  if (shopping.length > 0) {
+    doc.addPage()
+    await renderShoppingSection(ctx)
+  }
 
   if (happenings.length > 0) {
     doc.addPage()
@@ -187,6 +197,7 @@ interface RenderCtx {
   sections:     ContentsSection[]
   venues:       any[]
   happenings:   Happening[]
+  shopping:     Shop[]
   accuracyDate: string | null
 }
 
@@ -196,7 +207,7 @@ interface ContentsSection {
   blurb: string
 }
 
-function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): ContentsSection[] {
+function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean, hasShopping: boolean): ContentsSection[] {
   const overlay  = opts.destination.overlay as any
   const destName = opts.destination.name
   const isExp    = opts.variant === 'experiences'
@@ -206,6 +217,9 @@ function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): Con
     { page: 3, title: isExp ? `${destName} Experiences` : `${capitalize(opts.variant)} Highlights`,
                       blurb: isExp ? 'Our curated selection of standout experiences' : 'Our curated selection of standout tables' },
   ]
+  if (hasShopping) {
+    items.push({ page: -1, title: `Selected shopping in ${destName}`, blurb: 'Curated boutiques, maisons, and ateliers' })
+  }
   if (hasHappenings) {
     items.push({ page: -1, title: `Coming up in ${destName}`, blurb: 'Time-bound programme during the season' })
   }
@@ -527,7 +541,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
 
   // Disclaimer rendered here only if no closing page AND no happenings page
   // (happenings page will render disclaimer if it's the last content page).
-  const hasFollowingPages = ctx.happenings.length > 0 || planYourVisitHasContent(ctx.destination.overlay)
+  const hasFollowingPages = ctx.shopping.length > 0 || ctx.happenings.length > 0 || planYourVisitHasContent(ctx.destination.overlay)
   if (ctx.accuracyDate && !hasFollowingPages) {
     const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
     renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
@@ -669,6 +683,155 @@ function drawImageFallback(doc: any, x: number, y: number, name: string) {
   serif(doc, 'italic', 12); doc.setTextColor(...THEME.muted)
   const letter = (name?.[0] ?? '\u00b7').toUpperCase()
   doc.text(letter, x + CARD.imageWidth / 2, y + CARD.imageHeight / 2 + 3, { align: 'center' })
+}
+
+// ── Shopping section ──────────────────────────────────────────────────────────
+// Mirrors cards section: image left, content right. Page-break aware.
+
+async function renderShoppingSection(ctx: RenderCtx) {
+  const { doc, destination, shopping } = ctx
+
+  doc.setFillColor(...THEME.white)
+  doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+
+  let y = PAGE.bodyTop + 12
+
+  serif(doc, 'normal', 26)
+  doc.setTextColor(...THEME.ink)
+  doc.text(`Selected shopping in ${destination.name}`, PAGE.margin, y)
+  y += 5
+
+  sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.gold)
+  doc.text('CURATED BOUTIQUES, MAISONS, AND ATELIERS', PAGE.margin, y, { charSpace: 0.4 })
+  y += 12
+
+  for (const shop of shopping) {
+    const cardHeight = computeShopCardHeight(doc, shop)
+    if (y + cardHeight > PAGE.footerY - 10) {
+      doc.addPage()
+      doc.setFillColor(...THEME.white)
+      doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+      y = PAGE.bodyTop + 8
+    }
+    await renderShopCard(doc, shop, y)
+    y += cardHeight + CARD.rowGap
+  }
+
+  const hasFollowingPages = ctx.happenings.length > 0 || planYourVisitHasContent(ctx.destination.overlay)
+  if (ctx.accuracyDate && !hasFollowingPages) {
+    const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
+    renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
+  }
+}
+
+function computeShopCardHeight(doc: any, s: Shop): number {
+  const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
+  let textHeight = 0
+
+  textHeight += 6  // eyebrow
+  textHeight += 6  // name
+
+  if (s.body) {
+    sans(doc, 'normal', 9.5)
+    const bodyLines = doc.splitTextToSize(s.body, textWidth)
+    textHeight += bodyLines.length * 4.4 + 2
+  }
+
+  const bullets = normalizeShopBullets(s.bullets)
+  if (bullets.length > 0) {
+    sans(doc, 'normal', 9)
+    for (const b of bullets) {
+      const lines = doc.splitTextToSize(b, textWidth - 6)
+      textHeight += lines.length * 4.2 + 1
+    }
+    textHeight += 2
+  }
+
+  if (s.address) textHeight += 5
+
+  return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
+}
+
+async function renderShopCard(doc: any, s: Shop, top: number) {
+  const cardHeight = computeShopCardHeight(doc, s)
+
+  doc.setDrawColor(...THEME.rule); doc.setLineWidth(0.15)
+  doc.line(PAGE.margin, top + cardHeight + CARD.rowGap / 2,
+           PAGE.width - PAGE.margin, top + cardHeight + CARD.rowGap / 2)
+
+  const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
+  let cardImgDrawn = false
+  if (s.image_src) {
+    try {
+      const imgData = await loadImg(s.image_src)
+      if (imgData) {
+        doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
+        cardImgDrawn = true
+      }
+    } catch { /* fall through */ }
+  }
+  if (!cardImgDrawn) { drawImageFallback(doc, imgX, imgY, s.brand ?? s.name) }
+
+  const textX = imgX + CARD.imageWidth + 8
+  const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
+  let ty = top + CARD.rowPadding + 4
+
+  // Eyebrow: "FASHION · BY APPOINTMENT"
+  const eyebrowParts: string[] = []
+  if (s.shop_type)      eyebrowParts.push(s.shop_type.toUpperCase())
+  if (s.by_appointment) eyebrowParts.push('BY APPOINTMENT')
+  if (eyebrowParts.length > 0) {
+    sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
+    doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
+    ty += 6
+  }
+
+  serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
+  const nameLines = doc.splitTextToSize(s.name, textWidth)
+  doc.text(nameLines[0], textX, ty)
+  ty += 6
+
+  if (s.body) {
+    sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
+    const bodyLines = doc.splitTextToSize(s.body, textWidth)
+    for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
+    ty += 1
+  }
+
+  const bullets = normalizeShopBullets(s.bullets)
+  if (bullets.length > 0) {
+    for (const b of bullets) {
+      sans(doc, 'bold', 11); doc.setTextColor(...THEME.gold)
+      doc.text('\u00b7', textX, ty)
+      sans(doc, 'normal', 9); doc.setTextColor(...THEME.inkSoft)
+      const lines = doc.splitTextToSize(b, textWidth - 6)
+      for (let i = 0; i < lines.length; i++) {
+        doc.text(lines[i], textX + 4, ty)
+        ty += 4.2
+      }
+      ty += 1
+    }
+    ty += 1
+  }
+
+  if (s.address) {
+    sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.faint)
+    const addrLines = doc.splitTextToSize(s.address, textWidth)
+    const addrStartY = ty
+    for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
+    if (s.maps_url) {
+      const linkH = ty - addrStartY
+      const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: s.maps_url }) } catch {}
+    }
+  }
+}
+
+function normalizeShopBullets(bullets: Shop['bullets']): string[] {
+  if (!Array.isArray(bullets)) return []
+  return bullets
+    .map(b => typeof b === 'string' ? b : (b?.text ?? ''))
+    .filter(Boolean)
 }
 
 // ── Happenings section ────────────────────────────────────────────────────────
