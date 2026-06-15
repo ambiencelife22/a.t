@@ -186,7 +186,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as RGB) : ([245, 245, 245] as RGB)
-  const bookedByText = room.booked_by_label?.trim() || bookedByLabel(booking.booked_by)
+  const bookedByText = bookedByLabel(booking.booked_by)
   const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
 
   serif(doc, 'normal', 11)
@@ -499,7 +499,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         notes: b.inclusions ?? null, nights: b.nights,
         rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
         total: null, brief_image_src: b.brief_image_src,
-        additional_guests: null, booked_by_label: null,
+        additional_guests: null,
         sort_order: b.sort_order ?? 0,
         created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
       },

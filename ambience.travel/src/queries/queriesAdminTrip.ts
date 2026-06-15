@@ -186,7 +186,6 @@ export type BookingRoom = {
   total:               number | null
   brief_image_src:     string | null
   additional_guests:   string[] | null
-  booked_by_label:     string | null
   sort_order:          number
   created_at:          string
   updated_at:          string

@@ -3,15 +3,12 @@
 // Edge Function: travel-get-trip-confirmation
 // Resolves a trip confirmation brief for client-facing pages.
 //
-// Last updated: S54 — Contacts people. Brief now carries contact_person_ids
+// Last updated: S43 Add 2 — deposit_paid_at + balance_paid_at added to
+//   bookings select and passed through in fullBookings. Enables "Paid in Full"
+//   badge on confirmation tab + brief tab + PDF. Previously both fields were
+//   nulled out in the EF response, blocking the frontend from reading them.
+// Prior: S54 — Contacts people. Brief now carries contact_person_ids
 //   (uuid[] of a_house_people.person_id) + contact_name_format ('first'|'full').
-//   The EF resolves those into a `contacts` array (name + role + email/phone,
-//   name rendered per format) by joining a_house_people -> global_people for the
-//   booking's house. The Contacts tab renders these instead of a single guest
-//   card. Privacy: last_initial used when format='first' has no nickname; raw
-//   email/phone only included when present (advisor gates unchanged).
-// Prior: S53 Addendum 4 — canon room link. (unchanged below)
-// [older header notes omitted for brevity — no functional change to them]
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -124,8 +121,9 @@ Deno.serve(async (req: Request) => {
         .eq('id', houseId)
         .single(),
 
+      // S43 Add 2: deposit_paid_at + balance_paid_at added to select
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, created_at, updated_at')
+        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, created_at, updated_at')
         .eq('house_id', houseId)
         .eq('trip_id', tripId)
         .order('sort_order', { ascending: true }),
@@ -162,7 +160,7 @@ Deno.serve(async (req: Request) => {
     const bookingIds = bookings.map((b: any) => b.id)
     const roomsResult = bookingIds.length > 0
       ? await db.from('travel_booking_rooms')
-          .select('id, booking_id, room_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, booked_by_label, sort_order, created_at, updated_at')
+          .select('id, booking_id, room_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, sort_order, created_at, updated_at')
           .in('booking_id', bookingIds)
           .order('sort_order', { ascending: true })
       : { data: [], error: null }
@@ -194,8 +192,6 @@ Deno.serve(async (req: Request) => {
     const auxBookings = auxResult.data ?? []
 
     // ── Contacts: resolve brief.contact_person_ids → house people (S54) ───────
-    // Joins a_house_people (role + ref) -> global_people (name + email/phone) for
-    // the booking's house, filtered to the selected person ids, in array order.
     let contacts: Array<{
       id: string; name: string; role: string | null
       email: string | null; phone: string | null
@@ -214,7 +210,6 @@ Deno.serve(async (req: Request) => {
       const byId: Record<string, any> = {}
       for (const row of (hp ?? [])) byId[row.person_id] = row
 
-      // preserve the order chosen in contact_person_ids
       for (const pid of selectedIds) {
         const row = byId[pid]
         if (!row) continue
@@ -265,22 +260,23 @@ Deno.serve(async (req: Request) => {
       })
       return {
         ...b,
-        _hotel_name: hotel?.name ?? null,
+        _hotel_name:      hotel?.name ?? null,
         _hotel_image_src: hotel?.hero_image_src ?? null,
-        _rooms: enrichedRooms,
-        engagement_id: null, total_rate: null, currency: null, rate_type: null,
-        price: null, deposit_amount: null, deposit_due_date: null, deposit_paid_at: null,
-        balance_amount: null, balance_due_date: null, balance_paid_at: null,
-        commission_pct: null, commission_amount: null, net_revenue: null,
+        _rooms:           enrichedRooms,
+        engagement_id:    null, total_rate: null, currency: null, rate_type: null,
+        price:            null, deposit_amount: null, deposit_due_date: null,
+        // S43 Add 2: deposit_paid_at + balance_paid_at passed through from DB (not nulled)
+        balance_amount:   null, balance_due_date: null,
+        commission_pct:   null, commission_amount: null, net_revenue: null,
         commission_paid_at: null, invoice_number: null,
-        iata_partner_id: null, iata_share_pct: null, iata_share_amt: null,
+        iata_partner_id:  null, iata_share_pct: null, iata_share_amt: null,
         referral_partner_id: null, referral_share_pct: null, referral_share_amt: null,
-        individual_id: null, individual_share_pct: null, individual_share_amt: null,
-        supplier_id: null, supplier_name_override: null,
+        individual_id:    null, individual_share_pct: null, individual_share_amt: null,
+        supplier_id:      null, supplier_name_override: null,
         primary_contact_name: null, primary_contact_role: null,
         supplier_contact_name: null, supplier_contact_whatsapp: null,
         cancellation_policy: null, booking_policy: null, notes: null,
-        brief_category: null,
+        brief_category:   null,
       }
     })
 
@@ -288,14 +284,14 @@ Deno.serve(async (req: Request) => {
       trip: { ...trip, destinations, bookings: fullBookings, brief },
       brief,
       house,
-      contacts,                                  // S54 — resolved house contacts
+      contacts,
       destinationName: destinations[0]?.name ?? trip.trip_code,
       auxBookings,
       urlId: url_id,
       guides: {
-        hasDining: !!diningGuideResult.data,
-        hasExperiences: !!experiencesGuideResult.data,
-        destinationSlug: destinations[0]?.slug ?? null,
+        hasDining:         !!diningGuideResult.data,
+        hasExperiences:    !!experiencesGuideResult.data,
+        destinationSlug:   destinations[0]?.slug ?? null,
       },
     }
 

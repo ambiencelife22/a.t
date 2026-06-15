@@ -51,6 +51,7 @@ import { getAuxTypeMeta, AUX_BOOKING_TYPES, isFlightType, CABIN_CLASSES, SEAT_TY
 import { fetchSuppliers, createSupplier, type Supplier } from '../../queries/queriesAdminSuppliers'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
+import { bookedByLabel } from '../../utils/utilsBooking'
 import { supabase } from '../../lib/supabase'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -143,7 +144,6 @@ type RoomDraft = {
   party_composition: string
   notes:             string
   additional_guests: string[]
-  booked_by_label:   string
 }
 
 type AuxDraft = {
@@ -256,7 +256,6 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
       party_composition: room.party_composition ?? '',
       notes:             room.notes             ?? '',
       additional_guests: room.additional_guests ?? [],
-      booked_by_label:   (room as any).booked_by_label ?? '',
     }
   }
 
@@ -354,13 +353,6 @@ function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, o
                     onChange={e => patch(room.id, room, 'notes', e.target.value)}
                     onBlur={e => saveField(room.id, 'notes', e.target.value)}
                     placeholder='Complimentary rollaway bed' />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={fieldLabelStyle}>Booked By</label>
-                  <input style={fieldStyle} value={draft.booked_by_label}
-                    onChange={e => patch(room.id, room, 'booked_by_label', e.target.value)}
-                    onBlur={e => saveField(room.id, 'booked_by_label', e.target.value)}
-                    placeholder='Booked by Deron' />
                 </div>
               </div>
 
@@ -882,7 +874,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
         notes: b.inclusions ?? null, nights: b.nights,
         rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
         total: null, brief_image_src: b.brief_image_src,
-        additional_guests: null, booked_by_label: null,
+        additional_guests: null,
         sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
       } as any,
       booking: b,
@@ -946,7 +938,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
               const imgSrc           = roomImageSrcs[room.id] || room.brief_image_src
               const isAmbience       = (booking.booked_by ?? 'ambience') === 'ambience'
-              const bookedByText     = d?.booked_by_label?.trim() || (room as any).booked_by_label?.trim() || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+              const bookedByText     = bookedByLabel(booking.booked_by)
               const pillColor        = isAmbience ? GOLD : FAINT
 
               const guestParts: string[] = []
@@ -1000,8 +992,8 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const endTime    = d?.end_time   || aux.end_time?.slice(0, 5)   || null
               const startDate  = d?.start_date || aux.start_date              || null
 
-              const isAmbience  = !bookedBy || bookedBy.toLowerCase().includes('ambience')
-              const bookedByTxt = bookedBy || (isAmbience ? 'Booked by ambience' : 'Own Arrangements')
+              const isAmbience  = !bookedBy || bookedBy === 'ambience'
+              const bookedByTxt = bookedByLabel(bookedBy)
               const pillColor   = isAmbience ? GOLD : FAINT
 
               const dep = fmtTime(startTime)
@@ -1123,7 +1115,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         party_composition: r.party_composition ?? '',
         notes:             r.notes             ?? '',
         additional_guests: r.additional_guests ?? [],
-        booked_by_label:   (r as any).booked_by_label ?? '',
       }])))
 
       const br = found.brief
@@ -1238,7 +1229,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
               party_composition: draft.party_composition || r.party_composition,
               notes:             draft.notes             || r.notes,
               additional_guests: draft.additional_guests.length ? draft.additional_guests : r.additional_guests,
-              booked_by_label:   draft.booked_by_label   || r.booked_by_label,
             } : {}),
             ...(imgSrc ? { brief_image_src: imgSrc } : {}),
           }
