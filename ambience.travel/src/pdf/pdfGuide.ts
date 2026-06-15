@@ -98,7 +98,6 @@ export type ExportGuidePdfOptions =
       variant:     'experiences'
       destination: ExperiencesGuideDestination
       venues:      ExperienceVenue[]
-      shopping?:   Shop[]
     })
   | (BaseGuidePdfOptions & {
       variant:     'shopping'
@@ -124,7 +123,6 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   // The PDF is a dated artifact (filename has date); a happening that's already
   // passed shouldn't appear in a guide downloaded today.
   const happenings = filterFutureHappenings(opts.happenings ?? [])
-  const shopping   = opts.variant === 'experiences' ? (opts.shopping ?? []) : []
 
   const ctx: RenderCtx = {
     doc,
@@ -136,21 +134,15 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
     guideVersion: opts.guideVersion,
     emblem,
     logo,
-    sections:     buildSections(opts, happenings.length > 0, shopping.length > 0),
+    sections:     buildSections(opts, happenings.length > 0),
     venues:       opts.venues as any[],
     happenings,
-    shopping,
     accuracyDate: opts.accuracyDate,
   }
 
   await renderCoverPage(ctx)
   doc.addPage(); renderWelcomePage(ctx)
   doc.addPage(); await renderCardsSection(ctx, opts.venues as any[])
-
-  if (opts.variant !== 'shopping' && shopping.length > 0) {
-    doc.addPage()
-    await renderShoppingSection(ctx)
-  }
 
   if (happenings.length > 0) {
     doc.addPage()
@@ -198,7 +190,6 @@ interface RenderCtx {
   sections:     ContentsSection[]
   venues:       any[]
   happenings:   Happening[]
-  shopping:     Shop[]
   accuracyDate: string | null
 }
 
@@ -208,7 +199,7 @@ interface ContentsSection {
   blurb: string
 }
 
-function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean, hasShopping: boolean): ContentsSection[] {
+function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): ContentsSection[] {
   const overlay    = opts.destination.overlay as any
   const destName   = opts.destination.name
   const isExp      = opts.variant === 'experiences'
@@ -230,9 +221,6 @@ function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean, hasS
     { page: 2, title: `Welcome to ${destName}`, blurb: 'A note on the destination and our selection' },
     { page: 3, title: mainTitle, blurb: mainBlurb },
   ]
-  if (!isShopping && hasShopping) {
-    items.push({ page: -1, title: `Selected shopping in ${destName}`, blurb: 'Curated boutiques, maisons, and ateliers' })
-  }
   if (hasHappenings) {
     items.push({ page: -1, title: `Coming up in ${destName}`, blurb: 'Time-bound programme during the season' })
   }
@@ -569,7 +557,6 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
 
   // Disclaimer rendered here only if no closing page AND no following section.
   const hasFollowingPages =
-    (variant !== 'shopping' && ctx.shopping.length > 0) ||
     ctx.happenings.length > 0 ||
     planYourVisitHasContent(ctx.destination.overlay)
   if (ctx.accuracyDate && !hasFollowingPages) {
@@ -713,45 +700,6 @@ function drawImageFallback(doc: any, x: number, y: number, name: string) {
   serif(doc, 'italic', 12); doc.setTextColor(...THEME.muted)
   const letter = (name?.[0] ?? '\u00b7').toUpperCase()
   doc.text(letter, x + CARD.imageWidth / 2, y + CARD.imageHeight / 2 + 3, { align: 'center' })
-}
-
-// ── Shopping section ──────────────────────────────────────────────────────────
-// Mirrors cards section: image left, content right. Page-break aware.
-
-async function renderShoppingSection(ctx: RenderCtx) {
-  const { doc, destination, shopping } = ctx
-
-  doc.setFillColor(...THEME.white)
-  doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
-
-  let y = PAGE.bodyTop + 12
-
-  serif(doc, 'normal', 26)
-  doc.setTextColor(...THEME.ink)
-  doc.text(`Selected shopping in ${destination.name}`, PAGE.margin, y)
-  y += 5
-
-  sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.gold)
-  doc.text('CURATED BOUTIQUES, MAISONS, AND ATELIERS', PAGE.margin, y, { charSpace: 0.4 })
-  y += 12
-
-  for (const shop of shopping) {
-    const cardHeight = computeShopCardHeight(doc, shop)
-    if (y + cardHeight > PAGE.footerY - 10) {
-      doc.addPage()
-      doc.setFillColor(...THEME.white)
-      doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
-      y = PAGE.bodyTop + 8
-    }
-    await renderShopCard(doc, shop, y)
-    y += cardHeight + CARD.rowGap
-  }
-
-  const hasFollowingPages = ctx.happenings.length > 0 || planYourVisitHasContent(ctx.destination.overlay)
-  if (ctx.accuracyDate && !hasFollowingPages) {
-    const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
-    renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
-  }
 }
 
 function computeShopCardHeight(doc: any, s: Shop): number {
