@@ -59,3 +59,20 @@ export function isValidHappeningCategory(value: unknown): value is HappeningCate
   return typeof value === 'string'
     && (HAPPENING_CATEGORIES as readonly string[]).includes(value)
 }
+
+// ── Surfaces ──────────────────────────────────────────────────────────────────
+// A happening can be surfaced on one or more guide pages. Mirror of DB CHECK
+// constraint on travel_happenings.surfaces.
+
+export const HAPPENING_SURFACES = [
+  'experiences',
+  'dining',
+  'shopping',
+] as const
+
+export type HappeningSurface = typeof HAPPENING_SURFACES[number]
+
+export function isValidHappeningSurface(value: unknown): value is HappeningSurface {
+  return typeof value === 'string'
+    && (HAPPENING_SURFACES as readonly string[]).includes(value)
+}

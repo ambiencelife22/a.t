@@ -25,7 +25,7 @@
 //   happening.
 
 import { supabase } from '../lib/supabase'
-import type { HappeningCategory } from '../types/typesHappenings'
+import type { HappeningCategory, HappeningSurface } from '../types/typesHappenings'
 
 // ── Type ──────────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,7 @@ export interface Happening {
   is_active:             boolean
   is_public:             boolean
   sort_order:            number
+  surfaces:              HappeningSurface[]
   created_at:            string
   updated_at:            string
 }
@@ -72,12 +73,16 @@ export interface Happening {
  */
 export async function fetchActiveHappeningsForDestination(
   globalDestinationId: string,
-  opts: { startDate?: string; endDate?: string } = {},
+  opts: { surface?: HappeningSurface; startDate?: string; endDate?: string } = {},
 ): Promise<Happening[]> {
   let query = supabase
     .from('travel_happenings')
     .select('*')
     .eq('global_destination_id', globalDestinationId)
+
+  if (opts.surface) {
+    query = query.contains('surfaces', [opts.surface])
+  }
 
   if (opts.startDate || opts.endDate) {
     // Window-overlap: happening.start_date <= window.end AND happening.end_date >= window.start

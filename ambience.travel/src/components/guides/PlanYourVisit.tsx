@@ -48,7 +48,7 @@ import {
 
 // ── Guide variant type ────────────────────────────────────────────────────────
 
-export type GuideVariant = 'dining' | 'experiences' | 'accommodation'
+export type GuideVariant = 'dining' | 'experiences' | 'accommodation' | 'shopping'
 
 // ── Fallback copy ─────────────────────────────────────────────────────────────
 // Used when overlay fields are null. Destination-agnostic.
@@ -90,6 +90,17 @@ const FALLBACK_COPY: Record<GuideVariant, {
       'For properties with limited connectivity, download any offline maps or reading material before you arrive.',
       'Concierge teams at smaller properties can arrange things that are not listed anywhere. Ask early in your stay, not the night before.',
       'Late check-out is often available if the room is not needed immediately. A quiet word the evening before is usually enough.',
+    ],
+  },
+  shopping: {
+    heading: 'Plan Your Visit',
+    intro:   'A few notes to help you get the most from these addresses.',
+    bullets: [
+      'Several maisons offer private viewings or after-hours appointments. Pre-arrange where the visit warrants it -- the experience is markedly different from a walk-in.',
+      'Stock rotates with the season. If a specific piece matters, call ahead to confirm availability before making the journey.',
+      'For ateliers offering made-to-measure or private fittings (sandals, jewellery, tailoring), book ahead -- workshop schedules fill weeks in advance during peak season.',
+      'Mid-week mornings are calmer than weekend afternoons in any luxury village. Staff have more time and the room is yours.',
+      'For purchases made outside your home country, ask about tax refund schemes at the till -- most require paperwork and a stamp at departure.',
     ],
   },
 }

@@ -37,7 +37,7 @@
 import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
 import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
 import type { Happening } from '../queries/queriesGuidesHappenings'
-import type { Shop } from '../queries/queriesGuidesShopping'
+import type { Shop, ShoppingGuideDestination } from '../queries/queriesGuidesShopping'
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,
@@ -79,31 +79,32 @@ const RESTRICTION_NOTICE = 'This guide is for ambience and its guests only.'
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+interface BaseGuidePdfOptions {
+  happenings?:   Happening[]
+  copy:          { eyebrow: string; headline: string; intro: string }
+  heroImageSrc?: string | null
+  guideYear:     number
+  guideVersion:  string
+  accuracyDate:  string | null
+}
+
 export type ExportGuidePdfOptions =
-  | {
-      variant:      'dining'
-      destination:  GuideDestination
-      venues:       DiningVenue[]
-      happenings?:  Happening[]
-      shopping?:    Shop[]
-      copy:         { eyebrow: string; headline: string; intro: string }
-      heroImageSrc?: string | null
-      guideYear:    number
-      guideVersion: string
-      accuracyDate: string | null
-    }
-  | {
-      variant:      'experiences'
-      destination:  ExperiencesGuideDestination
-      venues:       ExperienceVenue[]
-      happenings?:  Happening[]
-      shopping?:    Shop[]
-      copy:         { eyebrow: string; headline: string; intro: string }
-      heroImageSrc?: string | null
-      guideYear:    number
-      guideVersion: string
-      accuracyDate: string | null
-    }
+  | (BaseGuidePdfOptions & {
+      variant:     'dining'
+      destination: GuideDestination
+      venues:      DiningVenue[]
+    })
+  | (BaseGuidePdfOptions & {
+      variant:     'experiences'
+      destination: ExperiencesGuideDestination
+      venues:      ExperienceVenue[]
+      shopping?:   Shop[]
+    })
+  | (BaseGuidePdfOptions & {
+      variant:     'shopping'
+      destination: ShoppingGuideDestination
+      venues:      Shop[]
+    })
 
 export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void> {
   const jsPDF = assertJsPdf()
@@ -123,7 +124,7 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   // The PDF is a dated artifact (filename has date); a happening that's already
   // passed shouldn't appear in a guide downloaded today.
   const happenings = filterFutureHappenings(opts.happenings ?? [])
-  const shopping   = opts.shopping ?? []
+  const shopping   = opts.variant === 'experiences' ? (opts.shopping ?? []) : []
 
   const ctx: RenderCtx = {
     doc,
@@ -146,7 +147,7 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   doc.addPage(); renderWelcomePage(ctx)
   doc.addPage(); await renderCardsSection(ctx, opts.venues as any[])
 
-  if (shopping.length > 0) {
+  if (opts.variant !== 'shopping' && shopping.length > 0) {
     doc.addPage()
     await renderShoppingSection(ctx)
   }
@@ -187,7 +188,7 @@ function filterFutureHappenings(happenings: Happening[]): Happening[] {
 interface RenderCtx {
   doc:          any
   destination:  any
-  variant:      'dining' | 'experiences'
+  variant:      'dining' | 'experiences' | 'shopping'
   copy:         { eyebrow: string; headline: string; intro: string }
   heroImageSrc: string | null
   guideYear:    number
@@ -208,16 +209,28 @@ interface ContentsSection {
 }
 
 function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean, hasShopping: boolean): ContentsSection[] {
-  const overlay  = opts.destination.overlay as any
-  const destName = opts.destination.name
-  const isExp    = opts.variant === 'experiences'
+  const overlay    = opts.destination.overlay as any
+  const destName   = opts.destination.name
+  const isExp      = opts.variant === 'experiences'
+  const isShopping = opts.variant === 'shopping'
+
+  const mainTitle = isShopping
+    ? `Selected shopping in ${destName}`
+    : isExp
+      ? `${destName} Experiences`
+      : `${capitalize(opts.variant)} Highlights`
+
+  const mainBlurb = isShopping
+    ? 'Curated boutiques, maisons, and ateliers'
+    : isExp
+      ? 'Our curated selection of standout experiences'
+      : 'Our curated selection of standout tables'
 
   const items: ContentsSection[] = [
     { page: 2, title: `Welcome to ${destName}`, blurb: 'A note on the destination and our selection' },
-    { page: 3, title: isExp ? `${destName} Experiences` : `${capitalize(opts.variant)} Highlights`,
-                      blurb: isExp ? 'Our curated selection of standout experiences' : 'Our curated selection of standout tables' },
+    { page: 3, title: mainTitle, blurb: mainBlurb },
   ]
-  if (hasShopping) {
+  if (!isShopping && hasShopping) {
     items.push({ page: -1, title: `Selected shopping in ${destName}`, blurb: 'Curated boutiques, maisons, and ateliers' })
   }
   if (hasHappenings) {
@@ -507,17 +520,19 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
 
   serif(doc, 'normal', 26)
   doc.setTextColor(...THEME.ink)
-  const sectionTitle = variant === 'experiences'
-    ? `${destination.name} Experiences`
-    : `${capitalize(variant)} Highlights`
+  const sectionTitle =
+    variant === 'shopping'    ? `Selected shopping in ${destination.name}` :
+    variant === 'experiences' ? `${destination.name} Experiences` :
+                                `${capitalize(variant)} Highlights`
   doc.text(sectionTitle, PAGE.margin, y)
   y += 5
 
   sans(doc, 'normal', 8.5)
   doc.setTextColor(...THEME.gold)
-  const subline = variant === 'experiences'
-    ? 'OUR CURATED SELECTION OF STANDOUT EXPERIENCES'
-    : 'OUR CURATED SELECTION OF STANDOUT TABLES'
+  const subline =
+    variant === 'shopping'    ? 'CURATED BOUTIQUES, MAISONS, AND ATELIERS' :
+    variant === 'experiences' ? 'OUR CURATED SELECTION OF STANDOUT EXPERIENCES' :
+                                'OUR CURATED SELECTION OF STANDOUT TABLES'
   doc.text(subline, PAGE.margin, y, { charSpace: 0.4 })
   y += 12
 
@@ -527,21 +542,36 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
     return
   }
 
-  for (const venue of venues) {
-    const cardHeight = computeCardHeight(doc, venue, variant)
+  for (const item of venues) {
+    if (variant === 'shopping') {
+      const cardHeight = computeShopCardHeight(doc, item as Shop)
+      if (y + cardHeight > PAGE.footerY - 10) {
+        doc.addPage()
+        doc.setFillColor(...THEME.white)
+        doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+        y = PAGE.bodyTop + 8
+      }
+      await renderShopCard(doc, item as Shop, y)
+      y += cardHeight + CARD.rowGap
+      continue
+    }
+
+    const cardHeight = computeCardHeight(doc, item, variant)
     if (y + cardHeight > PAGE.footerY - 10) {
       doc.addPage()
       doc.setFillColor(...THEME.white)
       doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
       y = PAGE.bodyTop + 8
     }
-    await renderCard(doc, venue, y, variant)
+    await renderCard(doc, item, y, variant)
     y += cardHeight + CARD.rowGap
   }
 
-  // Disclaimer rendered here only if no closing page AND no happenings page
-  // (happenings page will render disclaimer if it's the last content page).
-  const hasFollowingPages = ctx.shopping.length > 0 || ctx.happenings.length > 0 || planYourVisitHasContent(ctx.destination.overlay)
+  // Disclaimer rendered here only if no closing page AND no following section.
+  const hasFollowingPages =
+    (variant !== 'shopping' && ctx.shopping.length > 0) ||
+    ctx.happenings.length > 0 ||
+    planYourVisitHasContent(ctx.destination.overlay)
   if (ctx.accuracyDate && !hasFollowingPages) {
     const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
     renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
