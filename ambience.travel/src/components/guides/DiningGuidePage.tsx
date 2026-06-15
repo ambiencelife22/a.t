@@ -50,11 +50,16 @@ import {
   type DiningVenue,
   type GuideDestination,
 } from '../../queries/queriesGuidesDining'
+import {
+  fetchActiveHappeningsForDestination,
+  type Happening,
+} from '../../queries/queriesGuidesHappenings'
 import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
 import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
+import { ComingUpSection } from './ComingUpSection'
 import { PlanYourVisit } from './PlanYourVisit'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import {
@@ -139,6 +144,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
 
   const [venues,      setVenues]      = useState<DiningVenue[]>([])
+  const [happenings,  setHappenings]  = useState<Happening[]>([])
   const [loading,     setLoading]     = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
 
@@ -160,22 +166,43 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
     async function load() {
       setLoading(true)
       try {
-        const items = await getDiningVenuesByDestination(destination.slug)
+        const [venuesResult, happeningsResult] = await Promise.allSettled([
+          getDiningVenuesByDestination(destination.slug),
+          fetchActiveHappeningsForDestination(destination.id, { surface: 'dining' }),
+        ])
         if (cancelled) return
-        setVenues(items)
+
+        if (venuesResult.status === 'fulfilled') {
+          setVenues(venuesResult.value)
+        } else {
+          console.error('DiningGuidePage: failed to load venues', venuesResult.reason)
+          const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
+          toastRef.current.error(`Couldn't load dining venues: ${msg}`)
+          setVenues([])
+        }
+
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
+        } else {
+          // Soft-fail — happenings are supplementary. Log only.
+          console.error('DiningGuidePage: failed to load happenings', happeningsResult.reason)
+          setHappenings([])
+        }
+
         setLoading(false)
       } catch (err) {
         if (cancelled) return
-        console.error('DiningGuidePage: failed to load venues', err)
+        console.error('DiningGuidePage: unexpected load error', err)
         const msg = err instanceof Error ? err.message : 'Unknown error'
         toastRef.current.error(`Couldn't load dining venues: ${msg}`)
         setVenues([])
+        setHappenings([])
         setLoading(false)
       }
     }
     load()
     return () => { cancelled = true }
-  }, [destination.slug])
+  }, [destination.slug, destination.id])
 
   useEffect(() => { writeFilterStateToUrl(filterState) }, [filterState])
 
@@ -263,8 +290,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   variant:      'dining',
                   destination,
                   venues,
-                  copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
-                  heroImageSrc,
+                  happenings,
+                  copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },                  heroImageSrc,
                   guideYear:    resolveGuideYear(overlay?.guide_year),
                   guideVersion: resolveGuideVersion(overlay?.guide_version),
                   accuracyDate: overlay?.accuracy_date ?? null,
@@ -306,6 +333,14 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   <EditorialPrompt destinationName={destination.name} />
                 )}
               </>
+            )}
+
+            {hasFullAccess && (
+              <ComingUpSection
+                happenings={happenings}
+                hasFullAccess={hasFullAccess}
+                destinationName={destination.name}
+              />
             )}
 
             {hasFullAccess && <PlanYourVisit overlay={overlay} variant="dining" />}
