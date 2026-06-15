@@ -18,12 +18,11 @@
 //   - PDF generation (pdfImmerseConfirmation.ts)
 //   - Programme page (TripProgrammePage.tsx)
 //
-//
-// Last updated: S50 — bookedByLabel() canonical helper imported from
-//   utilsBooking. Replaces inline branches in room map and aux map.
-//   Resolves "Booked by ambience" / "Own Arrangements" drift.
-// Prior: S48 — initial ship. Extracted from BriefEditorPage.BriefPreview.
-//   Adds top bar, PDF download, standalone data fetch via tripClientQueries.
+// Last updated: S43 Add 2 — "Paid in Full" badge on accommodation cards.
+//   Reads booking.balance_paid_at ?? booking.deposit_paid_at. Faint green
+//   pill rendered below bookedByText when either field is non-null. Requires
+//   EF to pass through payment fields (also updated this session).
+// Prior: S50 — bookedByLabel() canonical helper imported from utilsBooking.
 
 import { useEffect, useState } from 'react'
 import { getAuxTypeMeta } from '../../types/typesAuxBookings'
@@ -74,8 +73,6 @@ function buildDateRange(start: string | null, end: string | null): string {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
-// Live route: provide urlId — component fetches its own data.
-// Editor preview: provide data directly — no fetch.
 type Props =
   | { urlId: string;  data?: never }
   | { data: TripClientData; urlId?: never }
@@ -111,19 +108,18 @@ function ConfirmationTopBar({ clientData, programmeUrl }: {
 
   return (
     <div style={{
-      position:      'sticky',
-      top:           0,
-      zIndex:        50,
-      height:        56,
-      background:    'rgba(250,247,242,0.96)',
+      position:       'sticky',
+      top:            0,
+      zIndex:         50,
+      height:         56,
+      background:     'rgba(250,247,242,0.96)',
       backdropFilter: 'blur(12px)',
-      borderBottom:  `1px solid ${RULE}`,
-      display:       'flex',
-      alignItems:    'center',
-      padding:       '0 clamp(16px,5vw,48px)',
-      gap:           12,
+      borderBottom:   `1px solid ${RULE}`,
+      display:        'flex',
+      alignItems:     'center',
+      padding:        '0 clamp(16px,5vw,48px)',
+      gap:            12,
     }}>
-      {/* Logo */}
       <a href='https://ambience.travel' style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}>
         <img src='/emblem.png' alt='' style={{ width: 24, height: 24, borderRadius: '50%' }} />
         <img src='/ambience_travel.svg' alt='ambience travel' style={{ height: 32, objectFit: 'contain' }} />
@@ -131,7 +127,6 @@ function ConfirmationTopBar({ clientData, programmeUrl }: {
 
       <div style={{ flex: 1 }} />
 
-      {/* Programme link */}
       {programmeUrl && (
         <a
           href={programmeUrl}
@@ -156,7 +151,6 @@ function ConfirmationTopBar({ clientData, programmeUrl }: {
         </a>
       )}
 
-      {/* PDF download */}
       <button
         onClick={handlePdf}
         disabled={!pdfReady || pdfDownloading || !clientData}
@@ -188,7 +182,6 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
   const heroSrc     = brief?.hero_image_src ?? ''
   const dates       = buildDateRange(trip.start_date, trip.end_date)
 
-  // Build room list
   const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
   for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
     if (b._rooms.length > 0) {
@@ -211,7 +204,6 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
     })
   }
 
-  // Group aux by type
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
@@ -239,8 +231,6 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
       {/* Hero */}
       <div style={{ position: 'relative', height: 'clamp(220px, 38vw, 360px)', background: CARD_BG, overflow: 'hidden' }}>
         {heroSrc && <img src={heroSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-
-        {/* Frosted logo card */}
         {logoVariant !== 'unbranded' && (
           <div style={{
             position: 'absolute', top: 16, left: 16,
@@ -286,17 +276,17 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
         <Section label='ACCOMMODATION'>
           {allRooms.map(({ room, booking }, i) => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-            // Per-room booked_by_label free-text override; fall back to canonical helper
             const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
-            // S53 Add 4: prefer EF-resolved canon image, fall back to per-room override for editor preview mode
-            const imgSrc = room.resolved_image_src ?? room.brief_image_src
-            const imgAlt = room.resolved_image_alt ?? room.room_name ?? ''
+            const imgSrc       = room.resolved_image_src ?? room.brief_image_src
+            const imgAlt       = room.resolved_image_alt ?? room.room_name ?? ''
+            // S43 Add 2: paid in full — balance_paid_at takes precedence, deposit_paid_at as fallback
+            const paidInFull   = !!(booking.balance_paid_at ?? booking.deposit_paid_at)
 
             const guestParts: string[] = []
-            if (room.guest_name)              guestParts.push(room.guest_name)
+            if (room.guest_name)               guestParts.push(room.guest_name)
             if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
-            if (room.party_composition)       guestParts.push(room.party_composition)
+            if (room.party_composition)        guestParts.push(room.party_composition)
             const guestLine = guestParts.join(' \u00b7 ')
 
             return (
@@ -330,6 +320,23 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
                     <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", fontStyle: 'italic', color: FAINT }}>
                       {bookedByText}
                     </div>
+                    {paidInFull && (
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        marginTop: 6, padding: '3px 10px',
+                        background: 'rgba(74,222,128,0.08)',
+                        border: '1px solid rgba(74,222,128,0.25)',
+                        borderRadius: 5,
+                      }}>
+                        <span style={{ fontSize: 10, color: '#4ade80', lineHeight: 1 }}>✓</span>
+                        <span style={{
+                          fontSize: 10, fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          color: '#4ade80', fontWeight: 600, letterSpacing: '0.06em',
+                        }}>
+                          Paid in Full
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -482,7 +489,6 @@ export default function TripConfirmationPage({ urlId, data }: Props) {
       .catch(() => setNotFound(true))
   }, [urlId, data])
 
-  // Derive programme URL from urlId
   const programmeUrl = clientData
     ? (typeof window !== 'undefined' && window.location.hostname === 'immerse.ambience.travel'
         ? `/${clientData.urlId}/programme`
@@ -492,10 +498,8 @@ export default function TripConfirmationPage({ urlId, data }: Props) {
   if (notFound) return <ConfirmationNotFound />
   if (!clientData) return <ConfirmationLoading />
 
-  // Editor preview mode — no top bar, no chrome
   if (data) return <TripConfirmationDocument clientData={clientData} />
 
-  // Live route mode — full chrome
   return (
     <div style={{ minHeight: '100vh', background: CREAM }}>
       <ConfirmationTopBar clientData={clientData} programmeUrl={programmeUrl} />
