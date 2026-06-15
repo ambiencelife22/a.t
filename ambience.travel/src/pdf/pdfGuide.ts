@@ -1,10 +1,10 @@
-// guidePdf.ts — PDF export for guide pages (dining + experiences)
+// guidePdf.ts — PDF export for guide pages (dining + experiences + shopping)
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Cover page (full-bleed hero image, big title with year + version, emblem)
 //   - Welcome page (welcome copy + at-a-glance bullets)
 //   - Contents page (auto-generated from sections present)
-//   - Card list section (manual layout, page-break-aware)
+//   - Card list section (manual layout, page-break-aware, variant dispatch)
 //   - Happenings section (S52 — time-bound destination content, snapshot at
 //     PDF generation time)
 //   - Closing chrome (logo + restriction notice + copyright per page)
@@ -20,13 +20,18 @@
 //   dining      — DiningVenue[], recognition marks, cuisine/neighborhood meta
 //   experiences — ExperienceVenue[], no recognition marks, kicker in eyebrow slot,
 //                 at_a_glance_bullets from overlay on welcome page
-//   Both variants accept optional happenings[] — rendered as its own page
+//   shopping    — Shop[], shop_type · by_appointment eyebrow, bullet list,
+//                 maps_url link on address row
+//   All variants accept optional happenings[] — rendered as its own page
 //   between Cards and Closing, snapshot of future happenings at generation time.
+//   BaseGuidePdfOptions hoists shared fields off the variant union.
 //
-// Last updated: S52 — happenings section added. Renders own page when caller
+// Last updated: S52 — shopping variant added; BaseGuidePdfOptions hoist for
+//   shared fields (happenings, copy, hero, year/version, accuracyDate);
+//   renderShoppingSection removed (was used by experiences pre-/shopping route).
+// Prior: S52 — happenings section added. Renders own page when caller
 //   provides happenings[]. Filters to future-only (end_date >= today) at
-//   generation time. Mirrors venue card row pattern for visual cohesion.
-// Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
+//   generation time. Mirrors venue card row pattern for visual cohesion.// Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
 //   Removed: setSerif, setSans, drawStar, drawStarRow, loadImageAsDataUrl,
 //   rasterizeSvgAsDataUrl, local ImageData interface, inline jsPDF guard.
 //   All replaced by imports from pdfUtils. RenderCtx emblem/logo now typed as Img.

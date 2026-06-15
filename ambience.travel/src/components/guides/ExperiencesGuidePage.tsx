@@ -31,7 +31,11 @@
 // exist. This page has no trip context so passes no date narrowing — all
 // future happenings for the destination are returned by the query.
 //
-// Last updated: S52 — "Coming Up" happenings section added below the
+// Last updated: S52 — SelectedShopping section removed (shopping moved to
+//   its own /shopping route with travel_shopping_guides overlay).
+//   ComingUp swapped to shared ComingUpSection component. Happenings fetch
+//   passes surface='experiences' (defensive cross-cutting filter).
+// Prior: S52 — "Coming Up" happenings section added below the
 //   at-a-glance block. Renders silently when no happenings exist.
 // Prior: S41 — PDF download added via usePdfDownload hook.
 // Prior: S40B — experience_category filter added. Category chips

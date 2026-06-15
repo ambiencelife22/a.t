@@ -26,7 +26,7 @@
 //   Locked taxonomy from typesShopping.ts SHOP_TYPES.
 //
 // PDF download gated on hasFullAccess — teaser users cannot download.
-//   Requires pdfGuide.ts to define a 'shopping' variant (added in next step).
+//   pdfGuide.ts 'shopping' variant handles the rendering.
 //
 // Happenings section: gated on hasFullAccess + only renders when shopping-
 // surfaced happenings exist. Page has no trip context — fetches all future

@@ -1,11 +1,14 @@
 // DiningGuidePage.tsx — public dining guide for a destination
 // What it owns:
 //   - Venue data fetch
+//   - Happenings data fetch (S52 — surface='dining' for pop-ups, chef
+//     residencies, wine festivals)
 //   - Filter state + URL param sync (cuisine, michelin)
 //   - Frontend default copy + ?? resolution against overlay overrides
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error+empty states for the data load
 //   - PDF download trigger (usePdfDownload hook, calls exportGuidePdf)
+//   - "Coming Up" happenings block (S52)
 //   - Plan Your Visit block (always renders — fallback copy when overlay null)
 //   - Accuracy disclaimer block (gated on overlay.accuracy_date non-null)
 //   - Editorial prompt (hasFullAccess=false — teaser state, below grid)
@@ -14,7 +17,8 @@
 //   - Path parsing (DiningGuideRoute)
 //   - Destination validation (DiningGuideRoute)
 //   - Page chrome (GuideLayout)
-//   - Card rendering (DiningCard), filter chips (DiningGuideFilters), hero (GuideHero)
+//   - Card rendering (DiningCard, HappeningCard), filter chips (DiningGuideFilters), hero (GuideHero)
+//   - ComingUp section chrome (ComingUpSection.tsx)
 //   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
 //   - PDF library loading (lib/usePdfDownload.ts owns this)
 //   - Style objects (lib/guidePageStyles.ts)
@@ -29,7 +33,11 @@
 //   A subtle divider renders above the first supplementary venue in the grid.
 //   public_preview_rank is a gating mechanism only — no sort influence.
 //
-// Last updated: S41 — jsPDF load + handleDownloadPdf extracted to
+// Last updated: S52 — happenings infrastructure added. Parallel
+//   Promise.allSettled fetch (venues + happenings with surface='dining').
+//   ComingUpSection renders above PlanYourVisit. Happenings passed to PDF
+//   handler. Soft-fail on happenings query (supplementary content).
+// Prior: S41 — jsPDF load + handleDownloadPdf extracted to
 //   usePdfDownload hook. No functional changes.
 // Prior: S40C — hasFullAccess prop added. Ungated users see venues
 //   where public_preview_rank IS NOT NULL (teaser cards). Editorial prompt
@@ -291,7 +299,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   destination,
                   venues,
                   happenings,
-                  copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },                  heroImageSrc,
+                  copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
+                  heroImageSrc,
                   guideYear:    resolveGuideYear(overlay?.guide_year),
                   guideVersion: resolveGuideVersion(overlay?.guide_version),
                   accuracyDate: overlay?.accuracy_date ?? null,
