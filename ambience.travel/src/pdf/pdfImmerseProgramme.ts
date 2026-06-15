@@ -150,7 +150,7 @@ function buildFilename(trip: DossierTrip): string {
   const dd    = String(today.getDate()).padStart(2, '0')
   const mon   = today.toLocaleDateString('en-US', { month: 'long' })
   const yyyy  = today.getFullYear()
-  return `ambience \u00b7 ${trip.trip_code} \u00b7 Daily Programme \u00b7 ${dd} ${mon} ${yyyy}.pdf`
+  return `ambience \u00b7 ${trip.destinations[0]?.name ?? 'Programme'} \u00b7 Daily Programme \u00b7 ${dd} ${mon} ${yyyy}.pdf`
 }
 
 // ── Merge day entries + aux bookings for a given date ────────────────────────
@@ -273,7 +273,7 @@ async function renderHeader(
   }
 
   // Destination name
-  const destName = trip.destinations[0]?.name ?? trip.trip_code
+  const destName = trip.destinations[0]?.name ?? ''
   serif(doc, 'normal', 20)
   doc.setTextColor(T.cream[0], T.cream[1], T.cream[2])
   doc.text(destName, P.w / 2, 26, { align: 'center' })

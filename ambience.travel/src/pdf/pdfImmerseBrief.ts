@@ -317,8 +317,8 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   y = drawSectionHeader(doc, 'Overview', y)
 
   const overviewRows: { label: string; value: string }[] = []
-  overviewRows.push({ label: 'Guest', value: house?.display_name ?? trip.trip_code })
-  overviewRows.push({ label: 'Trip',  value: trip.trip_code })
+  overviewRows.push({ label: 'Guest', value: house?.display_name ?? trip.destinations[0]?.name ?? '' })
+  overviewRows.push({ label: 'Trip',  value: d.brief?.brief_title ?? trip.destinations[0]?.name ?? '' })
   if (trip.start_date)      overviewRows.push({ label: 'Departure',    value: fmtDate(trip.start_date) })
   if (trip.end_date)        overviewRows.push({ label: 'Return',       value: fmtDate(trip.end_date) })
   if (trip.duration_nights) overviewRows.push({ label: 'Duration',     value: `${trip.duration_nights} nights` })
@@ -459,7 +459,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
 function buildFilename(d: TripBriefPdfData): string {
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const clientName  = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.trip_code
+  const clientName  = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
   const dateRange   = buildDateRange(d.trip.start_date, d.trip.end_date)
   return ['Trip Brief', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'

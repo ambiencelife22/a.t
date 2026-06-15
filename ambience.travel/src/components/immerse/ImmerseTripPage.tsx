@@ -268,7 +268,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
         rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
         total: null,
         brief_image_src: b.brief_image_src ?? b._hotel_image_src ?? destHero,
-        additional_guests: null, booked_by_label: null,
+        additional_guests: null,
         sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '',
         updated_at: b.updated_at ?? '',
       } as any,
@@ -306,7 +306,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
         <TabSection label='ACCOMMODATION'>
           {allRooms.map(({ room, booking }, i) => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-            const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
+            const bookedByText = bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
             const imgSrc       = (room as any).brief_image_src ?? booking.brief_image_src ?? booking._hotel_image_src ?? destHero
             const guests       = [room.guest_name, room.party_composition].filter(Boolean).join(' · ')
@@ -827,7 +827,7 @@ function TripBriefTab({ clientData, days, entries }: {
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <BriefSection title='Overview'>
-        <BriefRow label='Guest'        value={house?.display_name ?? trip.trip_code} />
+        <BriefRow label='Guest'        value={house?.display_name ?? trip.destinations[0]?.name ?? ''} />
         <BriefRow label='Trip'         value={trip.trip_code} />
         {trip.start_date      && <BriefRow label='Departure'    value={fmtDate(trip.start_date)} />}
         {trip.end_date        && <BriefRow label='Return'       value={fmtDate(trip.end_date)} />}
@@ -1214,7 +1214,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   if (brief?.show_tab_confirmation !== false) tabs.push({ id: 'confirmation', label: 'Confirmation' })
   if (brief?.show_tab_contacts     !== false) tabs.push({ id: 'contacts',     label: 'Contacts' })
 
-  const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.trip_code
+  const heroTitle = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
   const guestName    = house?.display_name ?? brief?.prepared_for ?? ''

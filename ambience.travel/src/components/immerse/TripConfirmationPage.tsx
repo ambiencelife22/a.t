@@ -197,7 +197,7 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
         notes: b.inclusions ?? null, nights: b.nights,
         rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
         total: null, brief_image_src: b.brief_image_src,
-        additional_guests: null, booked_by_label: null,
+        additional_guests: null,
         sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
       } as any,
       booking: b,
@@ -276,7 +276,7 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
         <Section label='ACCOMMODATION'>
           {allRooms.map(({ room, booking }, i) => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-            const bookedByText = (room as any).booked_by_label?.trim() || bookedByLabel(booking.booked_by)
+            const bookedByText = bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
             const imgSrc       = room.resolved_image_src ?? room.brief_image_src
             const imgAlt       = room.resolved_image_alt ?? room.room_name ?? ''

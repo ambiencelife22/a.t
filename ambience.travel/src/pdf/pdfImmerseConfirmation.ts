@@ -612,7 +612,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 
 function buildFilename(d: ConfirmationBriefData): string {
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const clientName  = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.trip_code
+  const clientName  = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
   const dateRange = (() => {
     const s = d.trip.start_date; const e = d.trip.end_date

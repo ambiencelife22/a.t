@@ -1136,6 +1136,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         return
       }
       setPreparedFor(dossier.house?.display_name ?? '')
+      setBriefTitle(found.destinations[0]?.name ?? '')
     }
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
   }, [tripId])
@@ -1374,8 +1375,8 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
             <div style={sectionHeadStyle}>Cover</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 768 ? '1fr' : '1fr 1fr', gap: 10 }}>
-                <Field label='Trip Title'>
-                  <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || trip.trip_code} />
+                <Field label='Client-Facing Title'>
+                  <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || 'e.g. Maldives Family Escape'} />
                 </Field>
                 <Field label='Subtitle'>
                   <input style={inputStyle} value={briefSubtitle} onChange={e => setBriefSubtitle(e.target.value)} placeholder='Trip Confirmation Brief' />
