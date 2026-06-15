@@ -47,7 +47,7 @@ import {
 } from '../../queries/queriesGuidesHappenings'
 import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { ShopCard } from './ShoppingCard'
-import { HappeningCard } from './HappeningCard'
+import { ComingUpSection } from './ComingUpSection'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
@@ -137,44 +137,6 @@ function AtAGlance({ bullets }: { bullets: string[] }) {
         ))}
       </ul>
     </div>
-  )
-}
-
-// ── Coming Up (happenings) block ─────────────────────────────────────────────
-
-function ComingUp({
-  happenings, hasFullAccess, destinationName,
-}: {
-  happenings:      Happening[]
-  hasFullAccess:   boolean
-  destinationName: string
-}) {
-  if (happenings.length === 0) return null
-  return (
-    <section style={{ marginBottom: 40 }} aria-label={`Time-bound happenings in ${destinationName}`}>
-      <div style={sectionTitleStyle}>
-        <div>
-          <h2 style={sectionTitleH2Style}>Coming up in {destinationName}</h2>
-          <p style={sectionTitleCountStyle}>
-            {happenings.length}{' '}
-            {happenings.length === 1 ? 'happening' : 'happenings'}
-          </p>
-        </div>
-      </div>
-      <div style={{
-        ...gridStyle,
-        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 540px), 1fr))',
-      }}>
-        {happenings.map(h => (
-          <HappeningCard
-            key={h.id}
-            happening={h}
-            hasFullAccess={hasFullAccess}
-            destinationName={destinationName}
-          />
-        ))}
-      </div>
-    </section>
   )
 }
 
@@ -422,7 +384,7 @@ export default function ShoppingGuidePage({
             )}
 
             {hasFullAccess && (
-              <ComingUp
+              <ComingUpSection
                 happenings={happenings}
                 hasFullAccess={hasFullAccess}
                 destinationName={destination.name}
