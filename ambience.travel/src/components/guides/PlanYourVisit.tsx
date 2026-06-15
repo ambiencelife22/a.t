@@ -94,7 +94,7 @@ const FALLBACK_COPY: Record<GuideVariant, {
   },
   shopping: {
     heading: 'Plan Your Visit',
-    intro:   'A few notes to help you get the most from these addresses.',
+    intro:   'A few notes to help you get the most from these venues.',
     bullets: [
       'Several maisons offer private viewings or after-hours appointments. Pre-arrange where the visit warrants it -- the experience is markedly different from a walk-in.',
       'Stock rotates with the season. If a specific piece matters, call ahead to confirm availability before making the journey.',

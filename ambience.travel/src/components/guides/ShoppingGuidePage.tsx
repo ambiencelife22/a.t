@@ -365,7 +365,7 @@ export default function ShoppingGuidePage({
                 <h2 style={sectionTitleH2Style}>Selected shopping</h2>
                 <p style={sectionTitleCountStyle}>
                   {visibleShops.length}{' '}
-                  {visibleShops.length === 1 ? 'address' : 'addresses'}
+                  {visibleShops.length === 1 ? 'venue' : 'venues'}
                 </p>
               </div>
               {hasFullAccess && (
@@ -436,7 +436,7 @@ export default function ShoppingGuidePage({
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
-                  The addresses listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability and operators change, ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
+                  The venues listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability and operators change, ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
                 </p>
               </div>
             )}
