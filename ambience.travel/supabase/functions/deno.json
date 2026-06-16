@@ -2,7 +2,7 @@
   "$schema": "./.schemas/deno-config.v1.json",
   "lint": {
     "rules": {
-      "exclude": ["no-import-prefix"]
+      "exclude": ["no-import-prefix", "no-explicit-any", "no-inner-declarations", "no-unversioned-import"]
     }
   },
   "imports": {

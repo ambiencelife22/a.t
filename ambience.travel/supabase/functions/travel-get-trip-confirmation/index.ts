@@ -192,7 +192,7 @@ Deno.serve(async (req: Request) => {
     const auxBookings = auxResult.data ?? []
 
     // ── Contacts: resolve brief.contact_person_ids → house people (S54) ───────
-    let contacts: Array<{
+    const contacts: Array<{
       id: string; name: string; role: string | null
       email: string | null; phone: string | null
     }> = []

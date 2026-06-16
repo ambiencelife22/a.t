@@ -12,12 +12,12 @@
 // To go live: set STRIPE_MODE=live in Supabase secrets. No other changes needed.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14?target=deno&no-check&deno-std=0.177.0'
+import Stripe from 'npm:stripe@14'
 
 const mode   = (Deno.env.get('STRIPE_MODE') ?? 'test').toUpperCase() as 'TEST' | 'LIVE'
 
 const stripe = new Stripe(Deno.env.get(`STRIPE_SECRET_KEY`) ?? '', {
-  apiVersion: '2022-11-15',
+  apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('create-checkout-session error:', err)
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

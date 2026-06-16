@@ -12,12 +12,12 @@
 // ambience products under the same Stripe customer.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14?target=deno&no-check&deno-std=0.177.0'
+import Stripe from 'npm:stripe@14'
 
 type Product = 'sports' | 'life' | 'travel'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-  apiVersion: '2022-11-15',
+  apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('create-setup-intent error:', err)
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
