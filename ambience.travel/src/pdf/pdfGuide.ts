@@ -26,7 +26,12 @@
 //   between Cards and Closing, snapshot of future happenings at generation time.
 //   BaseGuidePdfOptions hoists shared fields off the variant union.
 //
-// Last updated: S52 — shopping variant added; BaseGuidePdfOptions hoist for
+// Last updated: S51 — logoVariant option ('ambience' | 'alfaone' | 'unbranded')
+//   threaded through. Cover branding, footer logo, restriction notice,
+//   copyright, and filename suffix all branch on the variant. AlfaOne uses
+//   gold serif 'AlfaOne Concierge' wordmark for visual cohesion with
+//   pdfImmerseBrief.ts. Per-download admin choice — no DB column.
+// Prior: S52 — shopping variant added; BaseGuidePdfOptions hoist for
 //   shared fields (happenings, copy, hero, year/version, accuracyDate);
 //   renderShoppingSection removed (was used by experiences pre-/shopping route).
 // Prior: S52 — happenings section added. Renders own page when caller
@@ -91,6 +96,7 @@ interface BaseGuidePdfOptions {
   guideYear:     number
   guideVersion:  string
   accuracyDate:  string | null
+  logoVariant?:  'ambience' | 'alfaone' | 'unbranded'
 }
 
 export type ExportGuidePdfOptions =
@@ -143,6 +149,7 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
     venues:       opts.venues as any[],
     happenings,
     accuracyDate: opts.accuracyDate,
+    logoVariant:  opts.logoVariant ?? 'ambience',
   }
 
   await renderCoverPage(ctx)
@@ -160,7 +167,7 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   }
 
   stampPageChrome(ctx)
-  doc.save(buildFilename(opts.destination.slug, opts.variant, opts.guideYear, opts.guideVersion))
+  doc.save(buildFilename(opts.destination.slug, opts.variant, opts.guideYear, opts.guideVersion, opts.logoVariant ?? 'ambience'))
 }
 
 function planYourVisitHasContent(overlay: any): boolean {
@@ -196,6 +203,7 @@ interface RenderCtx {
   venues:       any[]
   happenings:   Happening[]
   accuracyDate: string | null
+  logoVariant:  'ambience' | 'alfaone' | 'unbranded'
 }
 
 interface ContentsSection {
@@ -242,13 +250,14 @@ function capitalize(s: string): string {
 
 // ── Filename ──────────────────────────────────────────────────────────────────
 
-function buildFilename(slug: string, variant: string, year: number, version: string): string {
+function buildFilename(slug: string, variant: string, year: number, version: string, logoVariant: string = 'ambience'): string {
   const today = new Date()
   const dd    = String(today.getDate()).padStart(2, '0')
   const mm    = String(today.getMonth() + 1).padStart(2, '0')
   const yyyy  = today.getFullYear()
   const safeV = version.replace(/[^a-zA-Z0-9.]/g, '')
-  return `ambienceTRAVEL-${slug}-${variant}-guide-${year}-v${safeV}-${dd}${mm}${yyyy}.pdf`
+  const suffix = logoVariant === 'ambience' ? '' : `-${logoVariant}`
+  return `ambienceTRAVEL-${slug}-${variant}-guide-${year}-v${safeV}-${dd}${mm}${yyyy}${suffix}.pdf`
 }
 
 // ── Cover page ────────────────────────────────────────────────────────────────
@@ -259,14 +268,23 @@ async function renderCoverPage(ctx: RenderCtx) {
   doc.setFillColor(...THEME.cream)
   doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
 
-  if (emblem) {
-    const size = 14
-    doc.addImage(emblem.data, emblem.format, PAGE.width / 2 - size / 2, 18, size, size, undefined, 'FAST')
+  // Logo variant: ambience (emblem + logo), alfaone (gold serif wordmark), unbranded (nothing)
+  if (ctx.logoVariant === 'alfaone') {
+    serif(doc, 'normal', 18)
+    doc.setTextColor(...THEME.gold)
+    doc.text('AlfaOne Concierge', PAGE.width / 2, 44, { align: 'center' })
   }
-  if (logo) {
-    const logoH = 12; const logoW = logoH * 3.0
-    doc.addImage(logo.data, logo.format, PAGE.width / 2 - logoW / 2, 36, logoW, logoH, undefined, 'FAST')
+  if (ctx.logoVariant === 'ambience') {
+    if (emblem) {
+      const size = 14
+      doc.addImage(emblem.data, emblem.format, PAGE.width / 2 - size / 2, 18, size, size, undefined, 'FAST')
+    }
+    if (logo) {
+      const logoH = 12; const logoW = logoH * 3.0
+      doc.addImage(logo.data, logo.format, PAGE.width / 2 - logoW / 2, 36, logoW, logoH, undefined, 'FAST')
+    }
   }
+  // unbranded: no rendering
 
   const titleY = 74
   serif(doc, 'normal', 42)
@@ -1116,17 +1134,26 @@ function stampPageChrome(ctx: RenderCtx) {
 
     drawRule(doc, PAGE.margin, PAGE.footerY, PAGE.width - PAGE.margin * 2, THEME.rule, 0.15)
 
-    if (logo) {
+    if (ctx.logoVariant === 'alfaone') {
+      serif(doc, 'normal', 9)
+      doc.setTextColor(...THEME.gold)
+      doc.text('AlfaOne Concierge', PAGE.margin, PAGE.footerY + 8)
+      try { doc.link(PAGE.margin, PAGE.footerY + 3, 40, 7, { url: AMBIENCE_URL }) } catch {}
+    }
+    if (ctx.logoVariant === 'ambience' && logo) {
       const logoH = 7; const logoW = logoH * 3.0
       const logoX = PAGE.margin; const logoY = PAGE.footerY + 3
       doc.addImage(logo.data, logo.format, logoX, logoY, logoW, logoH, undefined, 'FAST')
       try { doc.link(logoX, logoY, logoW, logoH, { url: AMBIENCE_URL }) } catch {}
     }
+    // unbranded: no rendering
 
-    sans(doc, 'italic', 7.5); doc.setTextColor(...THEME.muted)
-    doc.text(RESTRICTION_NOTICE, PAGE.width / 2, PAGE.footerY + 7.5, { align: 'center' })
+    if (ctx.logoVariant !== 'unbranded') {
+      sans(doc, 'italic', 7.5); doc.setTextColor(...THEME.muted)
+      doc.text(RESTRICTION_NOTICE, PAGE.width / 2, PAGE.footerY + 7.5, { align: 'center' })
 
-    sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.faint)
-    doc.text(`\u00a9 ${guideYear} ambience.travel`, PAGE.width - PAGE.margin, PAGE.footerY + 7.5, { align: 'right' })
+      sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.faint)
+      doc.text(`\u00a9 ${guideYear} ambience.travel`, PAGE.width - PAGE.margin, PAGE.footerY + 7.5, { align: 'right' })
+    }
   }
 }
