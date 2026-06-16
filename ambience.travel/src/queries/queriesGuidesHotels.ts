@@ -41,11 +41,18 @@ export interface HotelVenue {
 }
 
 export interface HotelGuideOverlay {
-  hero_image_src: string | null
-  hero_image_alt: string | null
-  headline_override: string | null
-  intro_override: string | null
-  eyebrow_override: string | null
+  hero_image_src:          string | null
+  hero_image_alt:          string | null
+  headline_override:       string | null
+  intro_override:          string | null
+  eyebrow_override:        string | null
+  guide_year:              number | null
+  guide_version:           string | null
+  accuracy_date:           string | null
+  at_a_glance_bullets:     string[] | null
+  plan_your_visit_heading: string | null
+  plan_your_visit_intro:   string | null
+  plan_your_visit_bullets: string[] | null
 }
 
 export interface HotelGuideDestination {
@@ -124,7 +131,14 @@ export async function getHotelGuideDestination(
         hero_image_alt,
         headline_override,
         intro_override,
-        eyebrow_override
+        eyebrow_override,
+        guide_year,
+        guide_version,
+        accuracy_date,
+        at_a_glance_bullets,
+        plan_your_visit_heading,
+        plan_your_visit_intro,
+        plan_your_visit_bullets
       )
     `)
     .eq('slug', destinationSlug)

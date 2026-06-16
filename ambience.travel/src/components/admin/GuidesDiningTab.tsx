@@ -54,7 +54,7 @@ import {
   getGuideDestination,
   getDiningVenuesByDestination,
 } from '../../queries/queriesGuidesDining'
-import { exportGuidePdf } from '../../pdf/pdfGuide'
+import { useGuidePdf } from '../../hooks/useGuidePdf'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -295,9 +295,14 @@ function DownloadTab({
   destinationName: string
 }) {
   const { toast } = useToast()
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
   const [downloading, setDownloading] = useState<LogoVariant | null>(null)
 
   async function handleDownload(logoVariant: LogoVariant) {
+    if (!pdfReady) {
+      toast.info('PDF library is still loading. Try again in a moment.')
+      return
+    }
     setDownloading(logoVariant)
     try {
       const [destination, venues] = await Promise.all([
@@ -314,7 +319,7 @@ function DownloadTab({
       const overlay = destination.overlay
       const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
 
-      await exportGuidePdf({
+      await handleDownloadPdf({
         variant:      'dining',
         destination,
         venues,
@@ -357,7 +362,7 @@ function DownloadTab({
         <button
           key={variant}
           onClick={() => handleDownload(variant)}
-          disabled={downloading !== null}
+          disabled={downloading !== null || !pdfReady || pdfDownloading}
           style={{
             display:       'flex',
             alignItems:    'center',

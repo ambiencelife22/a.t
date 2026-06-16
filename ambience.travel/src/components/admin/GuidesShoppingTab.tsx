@@ -16,13 +16,6 @@
  * hardcodes hasFullAccess=true. Grants migration is a separate P1 carry;
  * Access tab to be added when shopping_guide_grants ships.
  *
- * Differences from experiences tab:
- *   - No grants / access management
- *   - Reads from travel_shopping_guides + travel_shopping
- *   - buildGuideUrl uses 'shopping' surface
- *
- * UUID-keyed throughout. Slug for display + URL only.
- *
  * Last updated: S51 — initial build.
  */
 
@@ -51,7 +44,7 @@ import {
   getShoppingGuideDestination,
   fetchShoppingForDestination,
 } from '../../queries/queriesGuidesShopping'
-import { exportGuidePdf } from '../../pdf/pdfGuide'
+import { useGuidePdf } from '../../hooks/useGuidePdf'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Download Tab ─────────────────────────────────────────────────────────────
@@ -68,9 +61,14 @@ function DownloadTab({
   destinationId:   string
 }) {
   const { toast } = useToast()
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
   const [downloading, setDownloading] = useState<LogoVariant | null>(null)
 
   async function handleDownload(logoVariant: LogoVariant) {
+    if (!pdfReady) {
+      toast.info('PDF library is still loading. Try again in a moment.')
+      return
+    }
     setDownloading(logoVariant)
     try {
       const [destination, venues] = await Promise.all([
@@ -87,7 +85,7 @@ function DownloadTab({
       const overlay = destination.overlay
       const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
 
-      await exportGuidePdf({
+      await handleDownloadPdf({
         variant:      'shopping',
         destination,
         venues,
@@ -130,7 +128,7 @@ function DownloadTab({
         <button
           key={variant}
           onClick={() => handleDownload(variant)}
-          disabled={downloading !== null}
+          disabled={downloading !== null || !pdfReady || pdfDownloading}
           style={{
             display:        'flex',
             alignItems:     'center',

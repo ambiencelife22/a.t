@@ -48,6 +48,7 @@ import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDini
 import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
 import type { Happening } from '../queries/queriesGuidesHappenings'
 import type { Shop, ShoppingGuideDestination } from '../queries/queriesGuidesShopping'
+import type { HotelVenue, HotelGuideDestination } from '../queries/queriesGuidesHotels'
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,
@@ -114,6 +115,11 @@ export type ExportGuidePdfOptions =
       variant:     'shopping'
       destination: ShoppingGuideDestination
       venues:      Shop[]
+    })
+  | (BaseGuidePdfOptions & {
+      variant:     'hotels'
+      destination: HotelGuideDestination
+      venues:      HotelVenue[]
     })
 
 export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void> {
@@ -192,7 +198,7 @@ function filterFutureHappenings(happenings: Happening[]): Happening[] {
 interface RenderCtx {
   doc:          any
   destination:  any
-  variant:      'dining' | 'experiences' | 'shopping'
+  variant:      'dining' | 'experiences' | 'shopping' | 'hotels'
   copy:         { eyebrow: string; headline: string; intro: string }
   heroImageSrc: string | null
   guideYear:    number
@@ -217,18 +223,23 @@ function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): Con
   const destName   = opts.destination.name
   const isExp      = opts.variant === 'experiences'
   const isShopping = opts.variant === 'shopping'
+  const isHotels   = opts.variant === 'hotels'
 
   const mainTitle = isShopping
     ? `Selected shopping in ${destName}`
-    : isExp
-      ? `${destName} Experiences`
-      : `${capitalize(opts.variant)} Highlights`
+    : isHotels
+      ? `${destName} Hotels`
+      : isExp
+        ? `${destName} Experiences`
+        : `${capitalize(opts.variant)} Highlights`
 
   const mainBlurb = isShopping
     ? 'Curated boutiques, maisons, and ateliers'
-    : isExp
-      ? 'Our curated selection of standout experiences'
-      : 'Our curated selection of standout tables'
+    : isHotels
+      ? 'Our curated selection of standout stays'
+      : isExp
+        ? 'Our curated selection of standout experiences'
+        : 'Our curated selection of standout tables'
 
   const items: ContentsSection[] = [
     { page: 2, title: `Welcome to ${destName}`, blurb: 'A note on the destination and our selection' },
@@ -533,6 +544,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
   doc.setTextColor(...THEME.ink)
   const sectionTitle =
     variant === 'shopping'    ? `Selected shopping in ${destination.name}` :
+    variant === 'hotels'      ? `${destination.name} Hotels` :
     variant === 'experiences' ? `${destination.name} Experiences` :
                                 `${capitalize(variant)} Highlights`
   doc.text(sectionTitle, PAGE.margin, y)
@@ -542,6 +554,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
   doc.setTextColor(...THEME.gold)
   const subline =
     variant === 'shopping'    ? 'CURATED BOUTIQUES, MAISONS, AND ATELIERS' :
+    variant === 'hotels'      ? 'OUR CURATED SELECTION OF STANDOUT STAYS' :
     variant === 'experiences' ? 'OUR CURATED SELECTION OF STANDOUT EXPERIENCES' :
                                 'OUR CURATED SELECTION OF STANDOUT TABLES'
   doc.text(subline, PAGE.margin, y, { charSpace: 0.4 })
@@ -567,6 +580,19 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
       continue
     }
 
+    if (variant === 'hotels') {
+      const cardHeight = computeHotelCardHeight(doc, item as HotelVenue)
+      if (y + cardHeight > PAGE.footerY - 10) {
+        doc.addPage()
+        doc.setFillColor(...THEME.white)
+        doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+        y = PAGE.bodyTop + 8
+      }
+      await renderHotelCard(doc, item as HotelVenue, y)
+      y += cardHeight + CARD.rowGap
+      continue
+    }
+
     const cardHeight = computeCardHeight(doc, item, variant)
     if (y + cardHeight > PAGE.footerY - 10) {
       doc.addPage()
@@ -574,7 +600,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
       doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
       y = PAGE.bodyTop + 8
     }
-    await renderCard(doc, item, y, variant)
+    await renderCard(doc, item, y, variant as 'dining' | 'experiences')
     y += cardHeight + CARD.rowGap
   }
 
@@ -833,6 +859,174 @@ function normalizeShopBullets(bullets: Shop['bullets']): string[] {
   return bullets
     .map(b => typeof b === 'string' ? b : (b?.text ?? ''))
     .filter(Boolean)
+}
+
+// ── Hotel card ────────────────────────────────────────────────────────────────
+
+function normalizeHotelBullets(bullets: HotelVenue['bullets']): string[] {
+  if (!Array.isArray(bullets)) return []
+  return bullets
+    .map(b => typeof b === 'string' ? b : (b && typeof b === 'object' && 'text' in b ? (b as { text: string }).text : ''))
+    .filter(Boolean)
+}
+
+function computeHotelCardHeight(doc: any, h: HotelVenue): number {
+  const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
+  let textHeight = 0
+
+  textHeight += 6  // eyebrow (PREFERRED PARTNER / etc.)
+  textHeight += 6  // name
+
+  const hasRecognition =
+    (h.stars && h.stars > 0) ||
+    (h.michelin_keys && h.michelin_keys > 0) ||
+    (h.forbes_rating && h.forbes_rating > 0)
+  if (hasRecognition) textHeight += 6
+
+  if (h.city) textHeight += 5
+
+  if (h.description) {
+    sans(doc, 'normal', 9.5)
+    const bodyLines = doc.splitTextToSize(h.description, textWidth)
+    textHeight += bodyLines.length * 4.4 + 2
+  }
+
+  const bullets = normalizeHotelBullets(h.bullets)
+  if (bullets.length > 0) {
+    sans(doc, 'normal', 9)
+    for (const b of bullets) {
+      const lines = doc.splitTextToSize(b, textWidth - 6)
+      textHeight += lines.length * 4.2 + 1
+    }
+    textHeight += 2
+  }
+
+  if (h.address) textHeight += 5
+
+  return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
+}
+
+async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
+  const cardHeight = computeHotelCardHeight(doc, h)
+
+  doc.setDrawColor(...THEME.rule); doc.setLineWidth(0.15)
+  doc.line(PAGE.margin, top + cardHeight + CARD.rowGap / 2,
+           PAGE.width - PAGE.margin, top + cardHeight + CARD.rowGap / 2)
+
+  const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
+  let cardImgDrawn = false
+  if (h.hero_image_src) {
+    try {
+      const imgData = await loadImg(h.hero_image_src)
+      if (imgData) {
+        doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
+        cardImgDrawn = true
+      }
+    } catch { /* fall through */ }
+  }
+  if (!cardImgDrawn) { drawImageFallback(doc, imgX, imgY, h.name) }
+
+  const textX = imgX + CARD.imageWidth + 8
+  const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
+  let ty = top + CARD.rowPadding + 4
+
+  // Eyebrow: "PREFERRED PARTNER" or empty
+  const eyebrowParts: string[] = []
+  if (h.is_preferred_partner) eyebrowParts.push('PREFERRED PARTNER')
+  if (eyebrowParts.length > 0) {
+    sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
+    doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
+    ty += 6
+  } else {
+    ty += 6
+  }
+
+  // Name
+  serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
+  const nameLines = doc.splitTextToSize(h.name, textWidth)
+  doc.text(nameLines[0], textX, ty)
+  ty += 6
+
+  // Recognition row: stars (filled stars), michelin keys (gold pill), forbes (gold pill)
+  const starCount    = h.stars ?? 0
+  const michelinKeys = h.michelin_keys ?? 0
+  const forbesRating = h.forbes_rating ?? 0
+  if (starCount > 0 || michelinKeys > 0 || forbesRating > 0) {
+    let markX = textX
+
+    if (starCount > 0) {
+      const starRadius = 1.7
+      const rowW = drawStarRow(doc, markX, ty - 1.7, starCount, starRadius, THEME.gold)
+      markX += rowW + 6
+    }
+    if (michelinKeys > 0) {
+      const t = `${michelinKeys} ${michelinKeys === 1 ? 'KEY' : 'KEYS'}`
+      const cs = 0.4; const px = 3.5
+      sans(doc, 'bold', 7); doc.setTextColor(...THEME.gold)
+      const baseW = doc.getTextWidth(t); const trackW = cs * (t.length - 1)
+      const pillW = baseW + trackW + px * 2
+      doc.setDrawColor(...THEME.gold); doc.setLineWidth(0.3)
+      doc.roundedRect(markX, ty - 3.2, pillW, 4.4, 1, 1)
+      doc.text(t, markX + px, ty + 0.2, { charSpace: cs })
+      markX += pillW + 6
+    }
+    if (forbesRating > 0) {
+      const t = `FORBES ${forbesRating}`
+      const cs = 0.4; const px = 3.5
+      sans(doc, 'bold', 7); doc.setTextColor(...THEME.ink)
+      const baseW = doc.getTextWidth(t); const trackW = cs * (t.length - 1)
+      const pillW = baseW + trackW + px * 2
+      doc.setDrawColor(...THEME.rule); doc.setLineWidth(0.3)
+      doc.roundedRect(markX, ty - 3.2, pillW, 4.4, 1, 1)
+      doc.text(t, markX + px, ty + 0.2, { charSpace: cs })
+    }
+    ty += 6
+  }
+
+  // City
+  if (h.city) {
+    sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.muted)
+    doc.text(h.city, textX, ty)
+    ty += 5
+  }
+
+  // Description
+  if (h.description) {
+    sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
+    const bodyLines = doc.splitTextToSize(h.description, textWidth)
+    for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
+    ty += 1
+  }
+
+  // Bullets
+  const bullets = normalizeHotelBullets(h.bullets)
+  if (bullets.length > 0) {
+    for (const b of bullets) {
+      sans(doc, 'bold', 11); doc.setTextColor(...THEME.gold)
+      doc.text('\u00b7', textX, ty)
+      sans(doc, 'normal', 9); doc.setTextColor(...THEME.inkSoft)
+      const lines = doc.splitTextToSize(b, textWidth - 6)
+      for (let i = 0; i < lines.length; i++) {
+        doc.text(lines[i], textX + 4, ty)
+        ty += 4.2
+      }
+      ty += 1
+    }
+    ty += 1
+  }
+
+  // Address
+  if (h.address) {
+    sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.faint)
+    const addrLines  = doc.splitTextToSize(h.address, textWidth)
+    const addrStartY = ty
+    for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
+    if (h.google_maps_url) {
+      const linkH = ty - addrStartY
+      const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: h.google_maps_url }) } catch {}
+    }
+  }
 }
 
 // ── Happenings section ────────────────────────────────────────────────────────

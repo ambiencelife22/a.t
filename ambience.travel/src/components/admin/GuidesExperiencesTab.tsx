@@ -2,23 +2,8 @@
  * Per-destination experiences guide overlay editor + access management.
  * Mirrors GuidesDiningTab.tsx exactly — same structure, same patterns.
  *
- * Shows two sections:
- *   - Active guides (destinations with travel_experiences_guides row)
- *   - Destinations without overlay (offers "Create guide" action)
- *
- * Click an active guide row → modal with two tabs:
- *   - Overlay: edits hero, eyebrow, headline, intro, at_a_glance_bullets,
- *              accuracy_date, is_active
- *   - Access: shows current grantees, assign new via people picker, revoke
- *
- * Differences from dining tab:
- *   - at_a_glance_bullets field (experiences-specific)
- *   - Reads from travel_experiences_guides + experiences_guide_grants
- *   - buildGuideUrl uses 'experiences' surface
- *
- * UUID-keyed throughout. Slug for display + URL only.
- *
- * Last updated: S41 — initial build.
+ * Last updated: S51 — Download tab uses useGuidePdf hook.
+ * Prior: S41 — initial build.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -31,7 +16,6 @@ import {
 import { Field } from './adminUi'
 import { buildGuideUrl } from '../../utils/utilsAdminPath'
 import {
-  fetchDestinationOptions,
   fetchDestinationsWithExperiences,
   fetchExperiencesGuides,
   fetchExperiencesGrantsForDestination,
@@ -49,11 +33,12 @@ import {
   type ExperiencesGuidePatch,
   type GlobalPerson,
 } from '../../queries/queriesAdminGuides'
+import { fetchDestinationOptions } from '../../queries/queriesAdminGuides'
 import {
   getExperiencesGuideDestination,
   getExperienceVenuesByDestination,
 } from '../../queries/queriesGuidesExperiences'
-import { exportGuidePdf } from '../../pdf/pdfGuide'
+import { useGuidePdf } from '../../hooks/useGuidePdf'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -99,8 +84,8 @@ function AccessTab({ globalDestinationId }: { globalDestinationId: string }) {
 
   useEffect(() => { load() }, [globalDestinationId])
 
-  const grantedUserIds   = useMemo(() => new Set(grants.map(g => g.user_id)),                              [grants])
-  const grantedPersonIds = useMemo(() => new Set(grants.map(g => g.person?.id).filter(Boolean)),          [grants])
+  const grantedUserIds   = useMemo(() => new Set(grants.map(g => g.user_id)),                     [grants])
+  const grantedPersonIds = useMemo(() => new Set(grants.map(g => g.person?.id).filter(Boolean)), [grants])
 
   const filteredPeople = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -281,9 +266,14 @@ function DownloadTab({
   destinationName: string
 }) {
   const { toast } = useToast()
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
   const [downloading, setDownloading] = useState<LogoVariant | null>(null)
 
   async function handleDownload(logoVariant: LogoVariant) {
+    if (!pdfReady) {
+      toast.info('PDF library is still loading. Try again in a moment.')
+      return
+    }
     setDownloading(logoVariant)
     try {
       const [destination, venues] = await Promise.all([
@@ -300,7 +290,7 @@ function DownloadTab({
       const overlay = destination.overlay
       const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
 
-      await exportGuidePdf({
+      await handleDownloadPdf({
         variant:      'experiences',
         destination,
         venues,
@@ -343,7 +333,7 @@ function DownloadTab({
         <button
           key={variant}
           onClick={() => handleDownload(variant)}
-          disabled={downloading !== null}
+          disabled={downloading !== null || !pdfReady || pdfDownloading}
           style={{
             display:        'flex',
             alignItems:     'center',
@@ -402,11 +392,10 @@ function EditGuideModal({
   onSaved:         () => void
 }) {
   const { toast } = useToast()
-  const [draft,     setDraft]    = useState<AdminExperiencesGuide>(guide)
-  const [saving,    setSaving]   = useState(false)
-  const [modalTab,  setModalTab] = useState<ModalTab>('overlay')
+  const [draft,    setDraft]    = useState<AdminExperiencesGuide>(guide)
+  const [saving,   setSaving]   = useState(false)
+  const [modalTab, setModalTab] = useState<ModalTab>('overlay')
 
-  // at_a_glance_bullets as newline-separated textarea
   const [bulletsText, setBulletsText] = useState(
     (guide.at_a_glance_bullets ?? []).join('\n')
   )
@@ -493,7 +482,6 @@ function EditGuideModal({
         borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 16,
       }}>
 
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
@@ -515,14 +503,12 @@ function EditGuideModal({
           </div>
         </div>
 
-        {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 8, paddingBottom: 4, borderBottom: `1px solid ${A.border}` }}>
           <button onClick={() => setModalTab('overlay')}  style={tabBtn('overlay')}>Overlay</button>
           <button onClick={() => setModalTab('access')}   style={tabBtn('access')}>Access</button>
           <button onClick={() => setModalTab('download')} style={tabBtn('download')}>Download</button>
         </div>
 
-        {/* Overlay tab */}
         {modalTab === 'overlay' && (
           <>
             <Field label='Hero Image Src'>
@@ -574,12 +560,10 @@ function EditGuideModal({
           </>
         )}
 
-        {/* Access tab */}
         {modalTab === 'access' && (
           <AccessTab globalDestinationId={guide.global_destination_id} />
         )}
 
-        {/* Download tab */}
         {modalTab === 'download' && (
           <DownloadTab
             destinationSlug={destinationSlug}
@@ -595,12 +579,12 @@ function EditGuideModal({
 
 export default function GuidesExperiencesTab() {
   const { toast } = useToast()
-  const [guides,                    setGuides]                    = useState<AdminExperiencesGuide[]>([])
-  const [destinationsWithCounts,    setDestinationsWithCounts]    = useState<DestinationWithExperiencesCounts[]>([])
-  const [destinationOptions,        setDestinationOptions]        = useState<DestinationOption[]>([])
-  const [loading,                   setLoading]                   = useState(true)
-  const [editing,                   setEditing]                   = useState<AdminExperiencesGuide | null>(null)
-  const [creating,                  setCreating]                  = useState(false)
+  const [guides,                 setGuides]                 = useState<AdminExperiencesGuide[]>([])
+  const [destinationsWithCounts, setDestinationsWithCounts] = useState<DestinationWithExperiencesCounts[]>([])
+  const [destinationOptions,     setDestinationOptions]     = useState<DestinationOption[]>([])
+  const [loading,                setLoading]                = useState(true)
+  const [editing,                setEditing]                = useState<AdminExperiencesGuide | null>(null)
+  const [creating,               setCreating]               = useState(false)
 
   const destinationsById = useMemo(() => {
     const m = new Map<string, DestinationOption>()

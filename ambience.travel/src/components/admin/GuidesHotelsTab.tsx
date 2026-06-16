@@ -1,19 +1,18 @@
 /* GuidesHotelsTab.tsx
- * Per-destination hotel guide overlay editor.
- * Mirrors GuidesDiningTab — overlay only, no access/grants tab (no hotel
- * grant system exists).
+ * Per-destination hotel guide overlay editor + per-download branding.
  *
- * Shows two sections:
- *   - Active guides (destinations with travel_hotel_guides row)
- *   - Destinations without overlay (offers "Create guide" action)
+ * Click an active guide row → modal with two tabs:
+ *   - Overlay: hero, eyebrow, headline, intro, at_a_glance_bullets,
+ *              accuracy_date, is_active
+ *   - Download: PDF download with logo variant picker
+ *              (ambience / alfaone / unbranded)
  *
- * Click an active guide row → modal: hero, eyebrow, headline, intro, is_active.
- * No accuracy_date — travel_hotel_guides does not have that column.
- * No access tab — no hotel_guide_grants table.
+ * No Access tab — no hotel_guide_grants table.
  *
- * UUID-keyed throughout. Slug for display + URL only.
- *
- * Last updated: S41 — initial build.
+ * Last updated: S51 — Download tab added, overlay extended to match
+ *   canonical guide shape (accuracy_date, guide_year, guide_version,
+ *   at_a_glance_bullets, plan_your_visit_*).
+ * Prior: S41 — initial build.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -37,9 +36,136 @@ import {
   type DestinationOption,
   type HotelGuidePatch,
 } from '../../queries/queriesAdminGuides'
+import {
+  getHotelGuideDestination,
+  getHotelsByDestination,
+} from '../../queries/queriesGuidesHotels'
+import { useGuidePdf } from '../../hooks/useGuidePdf'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
-// ── Edit Modal ────────────────────────────────────────────────────────────────
+// ── Download Tab ─────────────────────────────────────────────────────────────
+
+type LogoVariant = 'ambience' | 'alfaone' | 'unbranded'
+
+function DownloadTab({
+  destinationSlug,
+  destinationName,
+}: {
+  destinationSlug: string
+  destinationName: string
+}) {
+  const { toast } = useToast()
+  const { pdfReady, pdfDownloading, handleDownloadPdf } = useGuidePdf()
+  const [downloading, setDownloading] = useState<LogoVariant | null>(null)
+
+  async function handleDownload(logoVariant: LogoVariant) {
+    if (!pdfReady) {
+      toast.info('PDF library is still loading. Try again in a moment.')
+      return
+    }
+    setDownloading(logoVariant)
+    try {
+      const [destination, venues] = await Promise.all([
+        getHotelGuideDestination(destinationSlug),
+        getHotelsByDestination(destinationSlug),
+      ])
+
+      if (!destination) {
+        toast.error('Destination not found.')
+        setDownloading(null)
+        return
+      }
+
+      const overlay = destination.overlay
+      const heroImageSrc = overlay?.hero_image_src ?? null
+
+      await handleDownloadPdf({
+        variant:      'hotels',
+        destination,
+        venues,
+        copy: {
+          eyebrow:  overlay?.eyebrow_override  ?? 'Curated Hotels',
+          headline: overlay?.headline_override ?? `${destinationName} Hotels`,
+          intro:    overlay?.intro_override    ?? '',
+        },
+        heroImageSrc,
+        guideYear:    overlay?.guide_year    ?? new Date().getFullYear(),
+        guideVersion: overlay?.guide_version ?? '1',
+        accuracyDate: overlay?.accuracy_date ?? null,
+        logoVariant,
+      })
+
+      toast.success(`Downloaded ${logoVariant} variant.`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error'
+      toast.error(`Download failed: ${msg}`)
+    }
+    setDownloading(null)
+  }
+
+  const variants: { variant: LogoVariant; label: string; description: string }[] = [
+    { variant: 'ambience',  label: 'Ambience',  description: 'Default branding — emblem + ambience.travel logo' },
+    { variant: 'alfaone',   label: 'AlfaOne',   description: 'AlfaOne Concierge wordmark, gold serif' },
+    { variant: 'unbranded', label: 'Unbranded', description: 'No logo, no restriction notice, no copyright' },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 4 }}>
+        Download PDF
+      </div>
+      <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginBottom: 8 }}>
+        Choose the branding variant for this download. The guide content is identical across all variants.
+      </div>
+
+      {variants.map(({ variant, label, description }) => (
+        <button
+          key={variant}
+          onClick={() => handleDownload(variant)}
+          disabled={downloading !== null || !pdfReady || pdfDownloading}
+          style={{
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'space-between',
+            padding:        '14px 18px',
+            background:     A.bgCard,
+            border:         `1px solid ${A.border}`,
+            borderRadius:   10,
+            cursor:         downloading !== null ? 'not-allowed' : 'pointer',
+            textAlign:      'left',
+            fontFamily:     A.font,
+            opacity:        downloading !== null && downloading !== variant ? 0.4 : 1,
+            transition:     'border-color 150ms, opacity 150ms',
+          }}
+          onMouseEnter={e => {
+            if (downloading === null) {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = A.borderGold
+            }
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = A.border
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: A.text, marginBottom: 4 }}>
+              {label}
+            </div>
+            <div style={{ fontSize: 11, color: A.muted }}>
+              {description}
+            </div>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.gold, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>
+            {downloading === variant ? 'Generating…' : 'Download ↓'}
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Edit Modal ───────────────────────────────────────────────────────────────
+
+type ModalTab = 'overlay' | 'download'
 
 function EditGuideModal({
   guide,
@@ -55,8 +181,13 @@ function EditGuideModal({
   onSaved:         () => void
 }) {
   const { toast } = useToast()
-  const [draft, setDraft]   = useState<AdminHotelGuide>(guide)
-  const [saving, setSaving] = useState(false)
+  const [draft,    setDraft]    = useState<AdminHotelGuide>(guide)
+  const [saving,   setSaving]   = useState(false)
+  const [modalTab, setModalTab] = useState<ModalTab>('overlay')
+
+  const [bulletsText, setBulletsText] = useState(
+    (guide.at_a_glance_bullets ?? []).join('\n')
+  )
 
   function patch<K extends keyof AdminHotelGuide>(k: K, v: AdminHotelGuide[K]) {
     setDraft(prev => ({ ...prev, [k]: v }))
@@ -65,17 +196,27 @@ function EditGuideModal({
   async function handleSave() {
     setSaving(true)
     try {
+      const parsedBullets = bulletsText
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+      const bulletsFinal = parsedBullets.length > 0 ? parsedBullets : null
+
       const payload: HotelGuidePatch = {}
-      const fields: (keyof HotelGuidePatch)[] = [
+      const scalarFields: (keyof HotelGuidePatch)[] = [
         'hero_image_src', 'hero_image_alt',
         'eyebrow_override', 'headline_override', 'intro_override',
-        'is_active',
+        'is_active', 'accuracy_date',
       ]
-      for (const f of fields) {
+      for (const f of scalarFields) {
         if (JSON.stringify(draft[f]) !== JSON.stringify(guide[f])) {
           (payload as Record<string, unknown>)[f] = draft[f]
         }
       }
+      if (JSON.stringify(bulletsFinal) !== JSON.stringify(guide.at_a_glance_bullets ?? null)) {
+        payload.at_a_glance_bullets = bulletsFinal
+      }
+
       if (Object.keys(payload).length === 0) {
         toast.success('No changes.')
         setSaving(false)
@@ -104,6 +245,19 @@ function EditGuideModal({
     }
     setSaving(false)
   }
+
+  const tabBtn = (t: ModalTab): React.CSSProperties => ({
+    padding:       '6px 16px',
+    background:    modalTab === t ? 'rgba(216,181,106,0.12)' : 'transparent',
+    color:         modalTab === t ? A.gold : A.muted,
+    border:        modalTab === t ? '1px solid rgba(216,181,106,0.30)' : `1px solid ${A.border}`,
+    borderRadius:  8,
+    fontSize:      12,
+    fontWeight:    700,
+    fontFamily:    A.font,
+    cursor:        'pointer',
+    letterSpacing: '0.04em',
+  })
 
   return (
     <div style={{
@@ -138,37 +292,68 @@ function EditGuideModal({
           </div>
         </div>
 
-        <Field label='Hero Image Src'>
-          <ImageFieldWithUploader value={draft.hero_image_src} onChange={v => patch('hero_image_src', v)} />
-        </Field>
-        <Field label='Hero Image Alt'>
-          <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
-        </Field>
-        <Field label='Eyebrow override (NULL = "Curated Hotels" default)'>
-          <input style={inputStyle} value={draft.eyebrow_override ?? ''} onChange={e => patch('eyebrow_override', e.target.value || null)} />
-        </Field>
-        <Field label='Headline override (NULL = default)'>
-          <input style={inputStyle} value={draft.headline_override ?? ''} onChange={e => patch('headline_override', e.target.value || null)} />
-        </Field>
-        <Field label='Intro override (NULL = default intro paragraph)'>
-          <textarea style={textareaStyle} value={draft.intro_override ?? ''} onChange={e => patch('intro_override', e.target.value || null)} />
-        </Field>
-        <Field label='Active'>
-          <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
-            <option value='true'>Yes</option>
-            <option value='false'>No</option>
-          </select>
-        </Field>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 16, borderTop: `1px solid ${A.border}` }}>
-          <button onClick={handleDelete} style={btnDanger} disabled={saving}>Delete overlay</button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} style={btnGhost} disabled={saving}>Cancel</button>
-            <button onClick={handleSave} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }} disabled={saving}>
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
+        <div style={{ display: 'flex', gap: 8, paddingBottom: 4, borderBottom: `1px solid ${A.border}` }}>
+          <button onClick={() => setModalTab('overlay')}  style={tabBtn('overlay')}>Overlay</button>
+          <button onClick={() => setModalTab('download')} style={tabBtn('download')}>Download</button>
         </div>
+
+        {modalTab === 'overlay' && (
+          <>
+            <Field label='Hero Image Src'>
+              <ImageFieldWithUploader value={draft.hero_image_src} onChange={v => patch('hero_image_src', v)} />
+            </Field>
+            <Field label='Hero Image Alt'>
+              <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
+            </Field>
+            <Field label='Eyebrow override (NULL = "Curated Hotels" default)'>
+              <input style={inputStyle} value={draft.eyebrow_override ?? ''} onChange={e => patch('eyebrow_override', e.target.value || null)} />
+            </Field>
+            <Field label='Headline override (NULL = default)'>
+              <input style={inputStyle} value={draft.headline_override ?? ''} onChange={e => patch('headline_override', e.target.value || null)} />
+            </Field>
+            <Field label='Intro override (NULL = default intro paragraph)'>
+              <textarea style={textareaStyle} value={draft.intro_override ?? ''} onChange={e => patch('intro_override', e.target.value || null)} />
+            </Field>
+            <Field label='At a Glance bullets (one per line — leave empty to hide block)'>
+              <textarea
+                style={{ ...textareaStyle, minHeight: 120, fontFamily: 'DM Mono, monospace', fontSize: 12 }}
+                value={bulletsText}
+                onChange={e => setBulletsText(e.target.value)}
+                placeholder={'First bullet\nSecond bullet\nThird bullet'}
+              />
+            </Field>
+            <Field label='Accuracy Date (e.g. "May 2026" — leave empty to hide disclaimer)'>
+              <input
+                style={inputStyle}
+                value={draft.accuracy_date ?? ''}
+                onChange={e => patch('accuracy_date', e.target.value || null)}
+                placeholder='e.g. May 2026'
+              />
+            </Field>
+            <Field label='Active'>
+              <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
+                <option value='true'>Yes</option>
+                <option value='false'>No</option>
+              </select>
+            </Field>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 16, borderTop: `1px solid ${A.border}` }}>
+              <button onClick={handleDelete} style={btnDanger} disabled={saving}>Delete overlay</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={onClose} style={btnGhost} disabled={saving}>Cancel</button>
+                <button onClick={handleSave} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {modalTab === 'download' && (
+          <DownloadTab
+            destinationSlug={destinationSlug}
+            destinationName={destinationName}
+          />
+        )}
       </div>
     </div>
   )
@@ -237,7 +422,7 @@ export default function GuidesHotelsTab() {
           Hotel Guides
         </div>
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-          Per-destination overlay (hero, eyebrow, headline, intro).
+          Per-destination overlay (hero, eyebrow, headline, intro, at-a-glance bullets, accuracy date) and per-download branding.
         </div>
       </div>
 
@@ -261,7 +446,8 @@ export default function GuidesHotelsTab() {
                       key={g.id}
                       onClick={() => setEditing(g)}
                       style={{
-                        display: 'grid', gridTemplateColumns: '1fr 2fr 100px 80px',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 2fr 100px 100px 80px',
                         gap: 12, padding: '12px 14px',
                         background: A.bgCard, border: `1px solid ${A.border}`,
                         borderRadius: 10, cursor: 'pointer', alignItems: 'center',
@@ -280,6 +466,9 @@ export default function GuidesHotelsTab() {
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
                         {hotelCount} {hotelCount === 1 ? 'hotel' : 'hotels'}
+                      </div>
+                      <div style={{ fontSize: 11, color: g.accuracy_date ? A.gold : A.faint, fontFamily: A.font }}>
+                        {g.accuracy_date ?? 'No date set'}
                       </div>
                       <div style={{ fontSize: 11, color: g.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
                         {g.is_active ? 'Active' : 'Hidden'}
