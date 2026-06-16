@@ -285,7 +285,7 @@ Deno.serve(async (req: Request) => {
       brief,
       house,
       contacts,
-      destinationName: destinations[0]?.name ?? trip.trip_code,
+      destinationName: destinations[0]?.name ?? '',
       auxBookings,
       urlId: url_id,
       guides: {
