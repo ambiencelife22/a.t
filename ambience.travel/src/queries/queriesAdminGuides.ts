@@ -98,7 +98,6 @@ export interface AdminGrant {
   global_destination_id: string
   granted_at:            string
   person:                GlobalPerson | null  // null = profile not linked to a person
-  display_name:          string | null        // from global_profiles directly
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────────
@@ -192,7 +191,6 @@ export async function fetchGrantsForDestination(
     .select(`
       id, user_id, global_destination_id, granted_at,
       profile:global_profiles!user_id (
-        display_name,
         person_id
       )
     `)
@@ -203,14 +201,15 @@ export async function fetchGrantsForDestination(
 
   // dining_guide_grants.user_id → global_profiles.id is many-to-one (child → parent).
   // PostgREST returns this join as a single object, not an array.
+  // S51: display_name dropped from global_profiles spine — name resolves
+  // exclusively via the profile → person link.
   const rows = (data ?? []) as unknown as Array<{
     id:                    string
     user_id:               string
     global_destination_id: string
     granted_at:            string
     profile: {
-      display_name: string | null
-      person_id:    string | null
+      person_id: string | null
     } | null
   }>
 
@@ -236,7 +235,6 @@ export async function fetchGrantsForDestination(
     user_id:               r.user_id,
     global_destination_id: r.global_destination_id,
     granted_at:            r.granted_at,
-    display_name:          r.profile?.display_name ?? null,
     person:                r.profile?.person_id
       ? (peopleById.get(r.profile.person_id) ?? null)
       : null,
@@ -254,19 +252,20 @@ export async function fetchAllPeople(): Promise<GlobalPerson[]> {
   return (data ?? []) as GlobalPerson[]
 }
 
-// Given a global_people UUID, find the linked global_profiles row
+// Given a global_people UUID, find the linked global_profiles row.
+// S51: display_name dropped from global_profiles spine — only id is returned now.
 export async function fetchProfileByPersonId(
   personId: string,
-): Promise<{ id: string; display_name: string | null } | null> {
+): Promise<{ id: string } | null> {
   const { data, error } = await supabase
     .from('global_profiles')
-    .select('id, display_name')
+    .select('id')
     .eq('person_id', personId)
     .maybeSingle()
 
   if (error) throw new Error(`Failed to fetch profile: ${error.message}`)
   if (!data) return null
-  return data as { id: string; display_name: string | null }
+  return data as { id: string }
 }
 
 // ── Writes — venues (UUID-keyed) ─────────────────────────────────────────────
@@ -364,7 +363,6 @@ export interface AdminExperiencesGrant {
   global_destination_id: string
   granted_at:            string
   person:                GlobalPerson | null
-  display_name:          string | null
 }
 
 export interface DestinationWithExperiencesCounts {
@@ -428,7 +426,6 @@ export async function fetchExperiencesGrantsForDestination(
     .select(`
       id, user_id, global_destination_id, granted_at,
       profile:global_profiles!user_id (
-        display_name,
         person_id
       )
     `)
@@ -437,14 +434,15 @@ export async function fetchExperiencesGrantsForDestination(
 
   if (error) throw new Error(`Failed to fetch grants: ${error.message}`)
 
+  // S51: display_name dropped from global_profiles spine — name resolves
+  // exclusively via the profile → person link.
   const rows = (data ?? []) as unknown as Array<{
     id:                    string
     user_id:               string
     global_destination_id: string
     granted_at:            string
     profile: {
-      display_name: string | null
-      person_id:    string | null
+      person_id: string | null
     } | null
   }>
 
@@ -469,7 +467,6 @@ export async function fetchExperiencesGrantsForDestination(
     user_id:               r.user_id,
     global_destination_id: r.global_destination_id,
     granted_at:            r.granted_at,
-    display_name:          r.profile?.display_name ?? null,
     person:                r.profile?.person_id
       ? (peopleById.get(r.profile.person_id) ?? null)
       : null,
@@ -812,4 +809,134 @@ export async function deleteHotelGuide(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   if (error) throw new Error(`Failed to delete hotel guide: ${error.message}`)
+}
+
+// ── Shopping guide types ──────────────────────────────────────────────────────
+
+export interface AdminShop {
+  id:                    string
+  global_destination_id: string
+  name:                  string
+  brand:                 string | null
+  shop_type:             string | null
+  tagline:               string | null
+  body:                  string | null
+  bullets:               unknown
+  address:               string | null
+  maps_url:              string | null
+  by_appointment:        boolean
+  image_src:             string | null
+  image_alt:             string | null
+  image_credit:          string | null
+  image_credit_url:      string | null
+  image_license:         string | null
+  is_active:             boolean
+  is_public:             boolean
+  sort_order:            number
+}
+
+export interface AdminShoppingGuide {
+  id:                      string
+  global_destination_id:   string
+  hero_image_src:          string | null
+  hero_image_alt:          string | null
+  eyebrow_override:        string | null
+  headline_override:       string | null
+  intro_override:          string | null
+  is_active:               boolean
+  accuracy_date:           string | null
+  at_a_glance_bullets:     string[] | null
+  guide_year:              number | null
+  guide_version:           string | null
+  plan_your_visit_heading: string | null
+  plan_your_visit_intro:   string | null
+  plan_your_visit_bullets: string[] | null
+}
+
+export interface DestinationWithShoppingCounts {
+  id:          string
+  shop_count:  number
+  has_overlay: boolean
+}
+
+export type ShoppingGuidePatch = Partial<Omit<AdminShoppingGuide, 'id' | 'global_destination_id'>>
+
+// ── Shopping reads ────────────────────────────────────────────────────────────
+
+export async function fetchDestinationsWithShopping(): Promise<DestinationWithShoppingCounts[]> {
+  const [shopsRes, guidesRes] = await Promise.all([
+    supabase
+      .from('travel_shopping')
+      .select('global_destination_id')
+      .eq('is_active', true),
+    supabase
+      .from('travel_shopping_guides')
+      .select('global_destination_id'),
+  ])
+
+  if (shopsRes.error)  throw new Error(`shops: ${shopsRes.error.message}`)
+  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
+
+  const shopCountByDest = new Map<string, number>()
+  for (const s of shopsRes.data ?? []) {
+    const id = (s as { global_destination_id: string }).global_destination_id
+    shopCountByDest.set(id, (shopCountByDest.get(id) ?? 0) + 1)
+  }
+
+  const overlaySet = new Set<string>(
+    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
+  )
+
+  const out: DestinationWithShoppingCounts[] = []
+  for (const [id, count] of shopCountByDest.entries()) {
+    out.push({ id, shop_count: count, has_overlay: overlaySet.has(id) })
+  }
+  return out
+}
+
+export async function fetchShoppingGuides(): Promise<AdminShoppingGuide[]> {
+  const { data, error } = await supabase
+    .from('travel_shopping_guides')
+    .select(`
+      id, global_destination_id,
+      hero_image_src, hero_image_alt,
+      eyebrow_override, headline_override, intro_override,
+      is_active, accuracy_date, at_a_glance_bullets,
+      guide_year, guide_version,
+      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
+    `)
+
+  if (error) throw new Error(`Failed to fetch shopping guides: ${error.message}`)
+  return (data ?? []) as AdminShoppingGuide[]
+}
+
+// ── Shopping writes ───────────────────────────────────────────────────────────
+
+export async function updateShoppingGuide(id: string, patch: ShoppingGuidePatch): Promise<void> {
+  const { error } = await supabase
+    .from('travel_shopping_guides')
+    .update(patch)
+    .eq('id', id)
+  if (error) throw new Error(`Failed to update shopping guide: ${error.message}`)
+}
+
+export async function createShoppingGuide(globalDestinationId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('travel_shopping_guides')
+    .insert({
+      global_destination_id: globalDestinationId,
+      is_active: true,
+    })
+    .select('id')
+    .single()
+  if (error) throw new Error(`Failed to create shopping guide: ${error.message}`)
+  return (data as { id: string }).id
+}
+
+export async function deleteShoppingGuide(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('travel_shopping_guides')
+    .delete()
+    .eq('id', id)
+  if (error) throw new Error(`Failed to delete shopping guide: ${error.message}`)
 }

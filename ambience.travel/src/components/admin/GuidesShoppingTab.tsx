@@ -1,25 +1,29 @@
-/* GuidesDiningTab.tsx
- * Per-destination dining guide overlay editor + access management.
+/* GuidesShoppingTab.tsx
+ * Per-destination shopping guide overlay editor + per-download branding.
+ * Mirrors GuidesDiningTab.tsx / GuidesExperiencesTab.tsx structure.
  *
  * Shows two sections:
- *   - Active guides (destinations with travel_dining_guides row)
+ *   - Active guides (destinations with travel_shopping_guides row)
  *   - Destinations without overlay (offers "Create guide" action)
  *
  * Click an active guide row → modal with two tabs:
- *   - Overlay: edits hero, eyebrow, headline, intro, accuracy_date, is_active
- *   - Access: shows current grantees, assign new via people picker, revoke
+ *   - Overlay: edits hero, eyebrow, headline, intro, at_a_glance_bullets,
+ *              accuracy_date, is_active
+ *   - Download: PDF download with logo variant picker
+ *              (ambience / alfaone / unbranded)
  *
- * UUID-keyed throughout. Destination name + slug for display only.
- * Slug used only for buildGuideUrl (URL routing, the one allowed slug surface).
+ * No Access tab — shopping has no grants table yet. Public route currently
+ * hardcodes hasFullAccess=true. Grants migration is a separate P1 carry;
+ * Access tab to be added when shopping_guide_grants ships.
  *
- * Last updated: S41 — Refactored to shared adminStyles + adminUi. Removed
- *   local Toast, useToast, inputStyle, textareaStyle, labelStyle, btnPrimary,
- *   btnGhost, btnDanger, Field definitions. Now imported from canonical sources.
- * Prior: S40C — Access tab added. Grant assign/revoke via
- *   fetchGrantsForDestination, fetchAllPeople, fetchProfileByPersonId,
- *   createGrant, deleteGrant. People with no linked profile shown greyed out.
- * Prior: S39 — Added accuracy_date field to edit modal and handleSave.
- * Prior: S36 — initial ship.
+ * Differences from experiences tab:
+ *   - No grants / access management
+ *   - Reads from travel_shopping_guides + travel_shopping
+ *   - buildGuideUrl uses 'shopping' surface
+ *
+ * UUID-keyed throughout. Slug for display + URL only.
+ *
+ * Last updated: S51 — initial build.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -32,256 +36,23 @@ import {
 import { Field } from './adminUi'
 import { buildGuideUrl } from '../../utils/utilsAdminPath'
 import {
-  fetchDiningGuides,
-  fetchDestinationsWithDining,
   fetchDestinationOptions,
-  updateDiningGuide,
-  createDiningGuide,
-  deleteDiningGuide,
-  fetchGrantsForDestination,
-  fetchAllPeople,
-  fetchProfileByPersonId,
-  createGrant,
-  deleteGrant,
-  type AdminDiningGuide,
-  type DestinationWithDiningCounts,
+  fetchDestinationsWithShopping,
+  fetchShoppingGuides,
+  updateShoppingGuide,
+  createShoppingGuide,
+  deleteShoppingGuide,
+  type AdminShoppingGuide,
+  type DestinationWithShoppingCounts,
   type DestinationOption,
-  type DiningGuidePatch,
-  type AdminGrant,
-  type GlobalPerson,
+  type ShoppingGuidePatch,
 } from '../../queries/queriesAdminGuides'
 import {
-  getGuideDestination,
-  getDiningVenuesByDestination,
-} from '../../queries/queriesGuidesDining'
+  getShoppingGuideDestination,
+  fetchShoppingForDestination,
+} from '../../queries/queriesGuidesShopping'
 import { exportGuidePdf } from '../../pdf/pdfGuide'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function personDisplayName(person: GlobalPerson): string {
-  const parts = [person.first_name, person.last_name].filter(Boolean)
-  if (parts.length > 0) return parts.join(' ')
-  return person.nickname ?? person.email ?? '(unnamed)'
-}
-
-function grantDisplayName(grant: AdminGrant): string {
-  if (grant.person) return personDisplayName(grant.person)
-  return '(unknown user)'
-}
-
-// ── Access Tab ───────────────────────────────────────────────────────────────
-
-function AccessTab({
-  globalDestinationId,
-}: {
-  globalDestinationId: string
-}) {
-  const { toast } = useToast()
-  const [grants, setGrants]   = useState<AdminGrant[]>([])
-  const [people, setPeople]   = useState<GlobalPerson[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch]   = useState('')
-  const [assigning, setAssigning] = useState(false)
-  const [revoking, setRevoking]   = useState<string | null>(null)
-
-  const [profileCache, setProfileCache] = useState<Map<string, string | null>>(new Map())
-
-  async function load() {
-    setLoading(true)
-    try {
-      const [g, p] = await Promise.all([
-        fetchGrantsForDestination(globalDestinationId),
-        fetchAllPeople(),
-      ])
-      setGrants(g)
-      setPeople(p)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed to load access: ${msg}`)
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [globalDestinationId])
-
-  const grantedUserIds = useMemo(() => new Set(grants.map(g => g.user_id)), [grants])
-
-  const grantedPersonIds = useMemo(
-    () => new Set(grants.map(g => g.person?.id).filter(Boolean)),
-    [grants],
-  )
-
-  const filteredPeople = useMemo(() => {
-    const q = search.toLowerCase().trim()
-    if (!q) return people
-    return people.filter(p => {
-      const name  = personDisplayName(p).toLowerCase()
-      const email = (p.email ?? '').toLowerCase()
-      return name.includes(q) || email.includes(q)
-    })
-  }, [people, search])
-
-  async function handleAssign(person: GlobalPerson) {
-    setAssigning(true)
-    try {
-      let profileId = profileCache.get(person.id)
-      if (profileId === undefined) {
-        const profile = await fetchProfileByPersonId(person.id)
-        profileId = profile?.id ?? null
-        setProfileCache(prev => new Map(prev).set(person.id, profileId ?? null))
-      }
-
-      if (!profileId) {
-        toast.error(`${personDisplayName(person)} has no login yet. They must create an account first.`)
-        setAssigning(false)
-        return
-      }
-
-      if (grantedUserIds.has(profileId)) {
-        toast.error('Already granted.')
-        setAssigning(false)
-        return
-      }
-
-      await createGrant(profileId, globalDestinationId)
-      toast.success(`Access granted to ${personDisplayName(person)}.`)
-      setSearch('')
-      await load()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed: ${msg}`)
-    }
-    setAssigning(false)
-  }
-
-  async function handleRevoke(grant: AdminGrant) {
-    setRevoking(grant.id)
-    try {
-      await deleteGrant(grant.id)
-      toast.success('Access revoked.')
-      await load()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed: ${msg}`)
-    }
-    setRevoking(null)
-  }
-
-  if (loading) {
-    return <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-      {/* Current grantees */}
-      <div>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 10 }}>
-          Current Access ({grants.length})
-        </div>
-        {grants.length === 0 ? (
-          <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
-            No one has been granted access yet.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {grants.map(g => (
-              <div
-                key={g.id}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px', background: A.bgCard,
-                  border: `1px solid ${A.border}`, borderRadius: 10, gap: 12,
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
-                    {grantDisplayName(g)}
-                  </div>
-                  {g.person?.email && (
-                    <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                      {g.person.email}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2 }}>
-                    Granted {new Date(g.granted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRevoke(g)}
-                  style={{ ...btnDanger, opacity: revoking === g.id ? 0.5 : 1, flexShrink: 0 }}
-                  disabled={revoking === g.id}
-                >
-                  Revoke
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Assign picker */}
-      <div>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 10 }}>
-          Assign Access
-        </div>
-        <input
-          style={{ ...inputStyle, marginBottom: 10 }}
-          placeholder='Search by name or email…'
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        {search.trim().length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
-            {filteredPeople.length === 0 && (
-              <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic', padding: '8px 0' }}>
-                No matches.
-              </div>
-            )}
-            {filteredPeople.map(p => {
-              const alreadyGranted = grantedPersonIds.has(p.id)
-              const noLogin        = profileCache.get(p.id) === null
-              const isDisabled     = alreadyGranted || noLogin || assigning
-
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '9px 12px', background: A.bgCard,
-                    border: `1px solid ${A.border}`, borderRadius: 8, gap: 12,
-                    opacity: (alreadyGranted || noLogin) ? 0.45 : 1,
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
-                      {personDisplayName(p)}
-                    </div>
-                    <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                      {p.email ?? '(no email)'}
-                      {alreadyGranted && <span style={{ marginLeft: 8, color: A.positive }}>· granted</span>}
-                      {noLogin        && <span style={{ marginLeft: 8, color: A.danger  }}>· no login</span>}
-                    </div>
-                  </div>
-                  {!alreadyGranted && (
-                    <button
-                      onClick={() => handleAssign(p)}
-                      style={{ ...btnPrimary, opacity: isDisabled ? 0.4 : 1, flexShrink: 0 }}
-                      disabled={isDisabled}
-                    >
-                      Grant
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 // ── Download Tab ─────────────────────────────────────────────────────────────
 
@@ -290,9 +61,11 @@ type LogoVariant = 'ambience' | 'alfaone' | 'unbranded'
 function DownloadTab({
   destinationSlug,
   destinationName,
+  destinationId,
 }: {
   destinationSlug: string
   destinationName: string
+  destinationId:   string
 }) {
   const { toast } = useToast()
   const [downloading, setDownloading] = useState<LogoVariant | null>(null)
@@ -301,8 +74,8 @@ function DownloadTab({
     setDownloading(logoVariant)
     try {
       const [destination, venues] = await Promise.all([
-        getGuideDestination(destinationSlug),
-        getDiningVenuesByDestination(destinationSlug),
+        getShoppingGuideDestination(destinationSlug),
+        fetchShoppingForDestination(destinationId),
       ])
 
       if (!destination) {
@@ -315,12 +88,12 @@ function DownloadTab({
       const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
 
       await exportGuidePdf({
-        variant:      'dining',
+        variant:      'shopping',
         destination,
         venues,
         copy: {
-          eyebrow:  overlay?.eyebrow_override  ?? 'Curated dining',
-          headline: overlay?.headline_override ?? `${destinationName} dining`,
+          eyebrow:  overlay?.eyebrow_override  ?? 'Selected Shopping',
+          headline: overlay?.headline_override ?? `${destinationName} Shopping`,
           intro:    overlay?.intro_override    ?? '',
         },
         heroImageSrc,
@@ -359,18 +132,18 @@ function DownloadTab({
           onClick={() => handleDownload(variant)}
           disabled={downloading !== null}
           style={{
-            display:       'flex',
-            alignItems:    'center',
+            display:        'flex',
+            alignItems:     'center',
             justifyContent: 'space-between',
-            padding:       '14px 18px',
-            background:    A.bgCard,
-            border:        `1px solid ${A.border}`,
-            borderRadius:  10,
-            cursor:        downloading !== null ? 'not-allowed' : 'pointer',
-            textAlign:     'left',
-            fontFamily:    A.font,
-            opacity:       downloading !== null && downloading !== variant ? 0.4 : 1,
-            transition:    'border-color 150ms, opacity 150ms',
+            padding:        '14px 18px',
+            background:     A.bgCard,
+            border:         `1px solid ${A.border}`,
+            borderRadius:   10,
+            cursor:         downloading !== null ? 'not-allowed' : 'pointer',
+            textAlign:      'left',
+            fontFamily:     A.font,
+            opacity:        downloading !== null && downloading !== variant ? 0.4 : 1,
+            transition:     'border-color 150ms, opacity 150ms',
           }}
           onMouseEnter={e => {
             if (downloading === null) {
@@ -400,7 +173,7 @@ function DownloadTab({
 
 // ── Edit Modal ───────────────────────────────────────────────────────────────
 
-type ModalTab = 'overlay' | 'access' | 'download'
+type ModalTab = 'overlay' | 'download'
 
 function EditGuideModal({
   guide,
@@ -409,76 +182,88 @@ function EditGuideModal({
   onClose,
   onSaved,
 }: {
-  guide:           AdminDiningGuide
+  guide:           AdminShoppingGuide
   destinationName: string
   destinationSlug: string
   onClose:         () => void
   onSaved:         () => void
 }) {
   const { toast } = useToast()
-  const [draft, setDraft]       = useState<AdminDiningGuide>(guide)
-  const [saving, setSaving]     = useState(false)
+  const [draft,    setDraft]    = useState<AdminShoppingGuide>(guide)
+  const [saving,   setSaving]   = useState(false)
   const [modalTab, setModalTab] = useState<ModalTab>('overlay')
 
-  function patch<K extends keyof AdminDiningGuide>(k: K, v: AdminDiningGuide[K]) {
+  const [bulletsText, setBulletsText] = useState(
+    (guide.at_a_glance_bullets ?? []).join('\n')
+  )
+
+  function patch<K extends keyof AdminShoppingGuide>(k: K, v: AdminShoppingGuide[K]) {
     setDraft(prev => ({ ...prev, [k]: v }))
   }
 
   async function handleSave() {
     setSaving(true)
     try {
-      const payload: DiningGuidePatch = {}
-      const fields: (keyof DiningGuidePatch)[] = [
+      const parsedBullets = bulletsText
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+      const bulletsFinal = parsedBullets.length > 0 ? parsedBullets : null
+
+      const payload: ShoppingGuidePatch = {}
+      const scalarFields: (keyof ShoppingGuidePatch)[] = [
         'hero_image_src', 'hero_image_alt',
         'eyebrow_override', 'headline_override', 'intro_override',
         'is_active', 'accuracy_date',
       ]
-      for (const f of fields) {
+      for (const f of scalarFields) {
         if (JSON.stringify(draft[f]) !== JSON.stringify(guide[f])) {
           (payload as Record<string, unknown>)[f] = draft[f]
         }
       }
+      if (JSON.stringify(bulletsFinal) !== JSON.stringify(guide.at_a_glance_bullets ?? null)) {
+        payload.at_a_glance_bullets = bulletsFinal
+      }
+
       if (Object.keys(payload).length === 0) {
         toast.success('No changes.')
         setSaving(false)
         return
       }
-      await updateDiningGuide(guide.id, payload)
+      await updateShoppingGuide(guide.id, payload)
       toast.success(`Saved ${Object.keys(payload).length} field(s).`)
       onSaved()
       onClose()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed: ${msg}`)
+      toast.error(`Failed: ${e instanceof Error ? e.message : 'unknown error'}`)
     }
     setSaving(false)
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Delete the guide overlay for ${destinationName}? Venues remain; only the per-destination hero/headline/intro is removed.`)) return
+    if (!window.confirm(`Delete the guide overlay for ${destinationName}? Shops remain; only the per-destination overlay is removed.`)) return
     setSaving(true)
     try {
-      await deleteDiningGuide(guide.id)
+      await deleteShoppingGuide(guide.id)
       toast.success('Overlay deleted.')
       onSaved()
       onClose()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed: ${msg}`)
+      toast.error(`Failed: ${e instanceof Error ? e.message : 'unknown error'}`)
     }
     setSaving(false)
   }
 
   const tabBtn = (t: ModalTab): React.CSSProperties => ({
-    padding:      '6px 16px',
-    background:   modalTab === t ? 'rgba(216,181,106,0.12)' : 'transparent',
-    color:        modalTab === t ? A.gold : A.muted,
-    border:       modalTab === t ? '1px solid rgba(216,181,106,0.30)' : `1px solid ${A.border}`,
-    borderRadius: 8,
-    fontSize:     12,
-    fontWeight:   700,
-    fontFamily:   A.font,
-    cursor:       'pointer',
+    padding:       '6px 16px',
+    background:    modalTab === t ? 'rgba(216,181,106,0.12)' : 'transparent',
+    color:         modalTab === t ? A.gold : A.muted,
+    border:        modalTab === t ? '1px solid rgba(216,181,106,0.30)' : `1px solid ${A.border}`,
+    borderRadius:  8,
+    fontSize:      12,
+    fontWeight:    700,
+    fontFamily:    A.font,
+    cursor:        'pointer',
     letterSpacing: '0.04em',
   })
 
@@ -498,14 +283,14 @@ function EditGuideModal({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
-              Dining Guide
+              Shopping Guide
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>{destinationName}</div>
             <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 4 }}>{destinationSlug}</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <a
-              href={buildGuideUrl(destinationSlug)}
+              href={buildGuideUrl(destinationSlug, 'shopping')}
               target='_blank'
               rel='noopener noreferrer'
               style={{ ...btnGhost, color: A.gold, borderColor: A.borderGold, textDecoration: 'none' }}
@@ -519,7 +304,6 @@ function EditGuideModal({
         {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 8, paddingBottom: 4, borderBottom: `1px solid ${A.border}` }}>
           <button onClick={() => setModalTab('overlay')}  style={tabBtn('overlay')}>Overlay</button>
-          <button onClick={() => setModalTab('access')}   style={tabBtn('access')}>Access</button>
           <button onClick={() => setModalTab('download')} style={tabBtn('download')}>Download</button>
         </div>
 
@@ -532,7 +316,7 @@ function EditGuideModal({
             <Field label='Hero Image Alt'>
               <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
             </Field>
-            <Field label='Eyebrow override (NULL = "Curated dining" default)'>
+            <Field label='Eyebrow override (NULL = "Selected Shopping" default)'>
               <input style={inputStyle} value={draft.eyebrow_override ?? ''} onChange={e => patch('eyebrow_override', e.target.value || null)} />
             </Field>
             <Field label='Headline override (NULL = default)'>
@@ -540,6 +324,14 @@ function EditGuideModal({
             </Field>
             <Field label='Intro override (NULL = default intro paragraph)'>
               <textarea style={textareaStyle} value={draft.intro_override ?? ''} onChange={e => patch('intro_override', e.target.value || null)} />
+            </Field>
+            <Field label='At a Glance bullets (one per line — leave empty to hide block)'>
+              <textarea
+                style={{ ...textareaStyle, minHeight: 120, fontFamily: 'DM Mono, monospace', fontSize: 12 }}
+                value={bulletsText}
+                onChange={e => setBulletsText(e.target.value)}
+                placeholder={'First bullet\nSecond bullet\nThird bullet'}
+              />
             </Field>
             <Field label='Accuracy Date (e.g. "May 2026" — leave empty to hide disclaimer)'>
               <input
@@ -567,16 +359,12 @@ function EditGuideModal({
           </>
         )}
 
-        {/* Access tab */}
-        {modalTab === 'access' && (
-          <AccessTab globalDestinationId={guide.global_destination_id} />
-        )}
-
         {/* Download tab */}
         {modalTab === 'download' && (
           <DownloadTab
             destinationSlug={destinationSlug}
             destinationName={destinationName}
+            destinationId={guide.global_destination_id}
           />
         )}
       </div>
@@ -586,14 +374,14 @@ function EditGuideModal({
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-export default function GuidesDiningTab() {
+export default function GuidesShoppingTab() {
   const { toast } = useToast()
-  const [guides, setGuides]                           = useState<AdminDiningGuide[]>([])
-  const [destinationsWithCounts, setDestinationsWithCounts] = useState<DestinationWithDiningCounts[]>([])
-  const [destinationOptions, setDestinationOptions]   = useState<DestinationOption[]>([])
-  const [loading, setLoading]                         = useState(true)
-  const [editing, setEditing]                         = useState<AdminDiningGuide | null>(null)
-  const [creating, setCreating]                       = useState(false)
+  const [guides,                 setGuides]                 = useState<AdminShoppingGuide[]>([])
+  const [destinationsWithCounts, setDestinationsWithCounts] = useState<DestinationWithShoppingCounts[]>([])
+  const [destinationOptions,     setDestinationOptions]     = useState<DestinationOption[]>([])
+  const [loading,                setLoading]                = useState(true)
+  const [editing,                setEditing]                = useState<AdminShoppingGuide | null>(null)
+  const [creating,               setCreating]               = useState(false)
 
   const destinationsById = useMemo(() => {
     const m = new Map<string, DestinationOption>()
@@ -605,16 +393,15 @@ export default function GuidesDiningTab() {
     setLoading(true)
     try {
       const [g, d, opts] = await Promise.all([
-        fetchDiningGuides(),
-        fetchDestinationsWithDining(),
+        fetchShoppingGuides(),
+        fetchDestinationsWithShopping(),
         fetchDestinationOptions(),
       ])
       setGuides(g)
       setDestinationsWithCounts(d)
       setDestinationOptions(opts)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed to load: ${msg}`)
+      toast.error(`Failed to load: ${e instanceof Error ? e.message : 'unknown error'}`)
     }
     setLoading(false)
   }
@@ -624,13 +411,12 @@ export default function GuidesDiningTab() {
   async function handleCreate(destId: string) {
     setCreating(true)
     try {
-      await createDiningGuide(destId)
+      await createShoppingGuide(destId)
       const name = destinationsById.get(destId)?.name ?? '(destination)'
       toast.success(`Guide created for ${name}. Click to edit.`)
       await load()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'unknown error'
-      toast.error(`Failed: ${msg}`)
+      toast.error(`Failed: ${e instanceof Error ? e.message : 'unknown error'}`)
     }
     setCreating(false)
   }
@@ -646,10 +432,10 @@ export default function GuidesDiningTab() {
           Guides
         </div>
         <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>
-          Dining Guides
+          Shopping Guides
         </div>
         <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-          Per-destination overlay (hero, eyebrow, headline, intro, accuracy date) and access management.
+          Per-destination overlay (hero, eyebrow, headline, intro, at-a-glance bullets, accuracy date) and per-download branding.
         </div>
       </div>
 
@@ -666,8 +452,8 @@ export default function GuidesDiningTab() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {guides.map(g => {
-                  const dest       = destinationsById.get(g.global_destination_id)
-                  const venueCount = destinationsWithCounts.find(d => d.id === g.global_destination_id)?.venue_count ?? 0
+                  const dest      = destinationsById.get(g.global_destination_id)
+                  const shopCount = destinationsWithCounts.find(d => d.id === g.global_destination_id)?.shop_count ?? 0
                   return (
                     <div
                       key={g.id}
@@ -692,7 +478,7 @@ export default function GuidesDiningTab() {
                         {g.headline_override ?? <span style={{ color: A.faint, fontStyle: 'normal' }}>(default headline)</span>}
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-                        {venueCount} {venueCount === 1 ? 'venue' : 'venues'}
+                        {shopCount} {shopCount === 1 ? 'shop' : 'shops'}
                       </div>
                       <div style={{ fontSize: 11, color: g.accuracy_date ? A.gold : A.faint, fontFamily: A.font }}>
                         {g.accuracy_date ?? 'No date set'}
@@ -713,7 +499,7 @@ export default function GuidesDiningTab() {
                 Destinations Without Overlay ({destinationsWithoutOverlay.length})
               </div>
               <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginBottom: 10 }}>
-                These have dining venues but no per-destination guide row. Create one to set hero / eyebrow / headline / intro.
+                These have shops but no per-destination guide row. Create one to set hero / eyebrow / headline / intro.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {destinationsWithoutOverlay.map(d => {
@@ -733,7 +519,7 @@ export default function GuidesDiningTab() {
                         {dest?.name ?? '(unknown)'}
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-                        {d.venue_count} {d.venue_count === 1 ? 'venue' : 'venues'}
+                        {d.shop_count} {d.shop_count === 1 ? 'shop' : 'shops'}
                       </div>
                       <button
                         onClick={() => handleCreate(d.id)}

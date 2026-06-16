@@ -49,6 +49,11 @@ import {
   type ExperiencesGuidePatch,
   type GlobalPerson,
 } from '../../queries/queriesAdminGuides'
+import {
+  getExperiencesGuideDestination,
+  getExperienceVenuesByDestination,
+} from '../../queries/queriesGuidesExperiences'
+import { exportGuidePdf } from '../../pdf/pdfGuide'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -61,7 +66,6 @@ function personDisplayName(person: GlobalPerson): string {
 
 function grantDisplayName(grant: AdminExperiencesGrant): string {
   if (grant.person) return personDisplayName(grant.person)
-  if (grant.display_name) return grant.display_name
   return '(unknown user)'
 }
 
@@ -265,9 +269,124 @@ function AccessTab({ globalDestinationId }: { globalDestinationId: string }) {
   )
 }
 
+// ── Download Tab ─────────────────────────────────────────────────────────────
+
+type LogoVariant = 'ambience' | 'alfaone' | 'unbranded'
+
+function DownloadTab({
+  destinationSlug,
+  destinationName,
+}: {
+  destinationSlug: string
+  destinationName: string
+}) {
+  const { toast } = useToast()
+  const [downloading, setDownloading] = useState<LogoVariant | null>(null)
+
+  async function handleDownload(logoVariant: LogoVariant) {
+    setDownloading(logoVariant)
+    try {
+      const [destination, venues] = await Promise.all([
+        getExperiencesGuideDestination(destinationSlug),
+        getExperienceVenuesByDestination(destinationSlug),
+      ])
+
+      if (!destination) {
+        toast.error('Destination not found.')
+        setDownloading(null)
+        return
+      }
+
+      const overlay = destination.overlay
+      const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
+
+      await exportGuidePdf({
+        variant:      'experiences',
+        destination,
+        venues,
+        copy: {
+          eyebrow:  overlay?.eyebrow_override  ?? 'Curated Experiences',
+          headline: overlay?.headline_override ?? `${destinationName} experiences`,
+          intro:    overlay?.intro_override    ?? '',
+        },
+        heroImageSrc,
+        guideYear:    overlay?.guide_year    ?? new Date().getFullYear(),
+        guideVersion: overlay?.guide_version ?? '1',
+        accuracyDate: overlay?.accuracy_date ?? null,
+        logoVariant,
+      })
+
+      toast.success(`Downloaded ${logoVariant} variant.`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error'
+      toast.error(`Download failed: ${msg}`)
+    }
+    setDownloading(null)
+  }
+
+  const variants: { variant: LogoVariant; label: string; description: string }[] = [
+    { variant: 'ambience',  label: 'Ambience',  description: 'Default branding — emblem + ambience.travel logo' },
+    { variant: 'alfaone',   label: 'AlfaOne',   description: 'AlfaOne Concierge wordmark, gold serif' },
+    { variant: 'unbranded', label: 'Unbranded', description: 'No logo, no restriction notice, no copyright' },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 4 }}>
+        Download PDF
+      </div>
+      <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginBottom: 8 }}>
+        Choose the branding variant for this download. The guide content is identical across all variants.
+      </div>
+
+      {variants.map(({ variant, label, description }) => (
+        <button
+          key={variant}
+          onClick={() => handleDownload(variant)}
+          disabled={downloading !== null}
+          style={{
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'space-between',
+            padding:        '14px 18px',
+            background:     A.bgCard,
+            border:         `1px solid ${A.border}`,
+            borderRadius:   10,
+            cursor:         downloading !== null ? 'not-allowed' : 'pointer',
+            textAlign:      'left',
+            fontFamily:     A.font,
+            opacity:        downloading !== null && downloading !== variant ? 0.4 : 1,
+            transition:     'border-color 150ms, opacity 150ms',
+          }}
+          onMouseEnter={e => {
+            if (downloading === null) {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = A.borderGold
+            }
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = A.border
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: A.text, marginBottom: 4 }}>
+              {label}
+            </div>
+            <div style={{ fontSize: 11, color: A.muted }}>
+              {description}
+            </div>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: A.gold, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>
+            {downloading === variant ? 'Generating…' : 'Download ↓'}
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── Edit Modal ───────────────────────────────────────────────────────────────
 
-type ModalTab = 'overlay' | 'access'
+type ModalTab = 'overlay' | 'access' | 'download'
 
 function EditGuideModal({
   guide,
@@ -398,8 +517,9 @@ function EditGuideModal({
 
         {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 8, paddingBottom: 4, borderBottom: `1px solid ${A.border}` }}>
-          <button onClick={() => setModalTab('overlay')} style={tabBtn('overlay')}>Overlay</button>
-          <button onClick={() => setModalTab('access')}  style={tabBtn('access')}>Access</button>
+          <button onClick={() => setModalTab('overlay')}  style={tabBtn('overlay')}>Overlay</button>
+          <button onClick={() => setModalTab('access')}   style={tabBtn('access')}>Access</button>
+          <button onClick={() => setModalTab('download')} style={tabBtn('download')}>Download</button>
         </div>
 
         {/* Overlay tab */}
@@ -457,6 +577,14 @@ function EditGuideModal({
         {/* Access tab */}
         {modalTab === 'access' && (
           <AccessTab globalDestinationId={guide.global_destination_id} />
+        )}
+
+        {/* Download tab */}
+        {modalTab === 'download' && (
+          <DownloadTab
+            destinationSlug={destinationSlug}
+            destinationName={destinationName}
+          />
         )}
       </div>
     </div>

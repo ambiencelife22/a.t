@@ -29,6 +29,7 @@ const GuidesDiningTab      = lazy(() => import('./admin/GuidesDiningTab'))
 const GuidesHotelsTab      = lazy(() => import('./admin/GuidesHotelsTab'))
 const LibraryHotelsTab     = lazy(() => import('./admin/LibraryHotelsTab'))
 const GuidesExperiencesTab = lazy(() => import('./admin/GuidesExperiencesTab'))
+const GuidesShoppingTab    = lazy(() => import('./admin/GuidesShoppingTab'))
 const HouseTab             = lazy(() => import('./admin/HouseTab'))
 const BriefEditorPage      = lazy(() => import('./admin/BriefEditorPage'))
 const ItineraryEditorPage  = lazy(() => import('./admin/ItineraryEditorPage'))
@@ -154,6 +155,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'dining')      return <GuidesDiningTab />
     if (tab.tab === 'experiences') return <GuidesExperiencesTab />
     if (tab.tab === 'hotels')      return <GuidesHotelsTab />
+    if (tab.tab === 'shopping')    return <GuidesShoppingTab />
   }
 
   if (tab.product === 'library') {

@@ -8,6 +8,8 @@
 //   #admin/immerse/showcases                     → showcases (skeleton)
 //   #admin/guides/dining                         → dining guides overlay list
 //   #admin/guides/experiences                    → experiences guides overlay list
+//   #admin/guides/hotels                         → hotels guides overlay list
+//   #admin/guides/shopping                       → shopping guides overlay list
 //   #admin/library/dining                        → all dining venues
 //   #admin/library/dining/<dest-uuid>            → dining venues scoped to destination
 //   #admin/house                                 → household list
@@ -44,6 +46,7 @@ export type AdminTab =
   | { product: 'guides';     tab: 'dining' }
   | { product: 'guides';     tab: 'experiences' }
   | { product: 'guides';     tab: 'hotels' }
+  | { product: 'guides';     tab: 'shopping' }
   | { product: 'library';    tab: 'dining'; destinationId: string | null }
   | { product: 'library';    tab: 'hotels'; destinationId: string | null }
   | { product: 'house';      tab: 'houses' }
@@ -95,6 +98,7 @@ export function parseAdminHash(hash: string): AdminTab {
     if (tab === 'dining')      return { product: 'guides', tab: 'dining' }
     if (tab === 'experiences') return { product: 'guides', tab: 'experiences' }
     if (tab === 'hotels')      return { product: 'guides', tab: 'hotels' }
+    if (tab === 'shopping')    return { product: 'guides', tab: 'shopping' }
     return DEFAULT_TAB
   }
 
@@ -156,6 +160,7 @@ export function buildAdminHash(target: AdminTab): string {
   if (target.product === 'guides') {
     if (target.tab === 'experiences') return '#admin/guides/experiences'
     if (target.tab === 'hotels')      return '#admin/guides/hotels'
+    if (target.tab === 'shopping')    return '#admin/guides/shopping'
     return '#admin/guides/dining'
   }
   if (target.product === 'library') {
@@ -204,7 +209,7 @@ const GUIDES_HOST = 'guides.ambience.travel'
 
 export function buildGuideUrl(
   destinationSlug: string,
-  surface: 'dining' | 'experiences' | 'hotels' = 'dining',
+  surface: 'dining' | 'experiences' | 'hotels' | 'shopping' = 'dining',
 ): string {
   if (typeof window === 'undefined') {
     return `https://${GUIDES_HOST}/${destinationSlug}/${surface}`

@@ -35,6 +35,8 @@ type SidebarLink =
   | { kind: 'immerse-showcases' }
   | { kind: 'guides-dining' }
   | { kind: 'guides-experiences' }
+  | { kind: 'guides-hotels' }
+  | { kind: 'guides-shopping' }
   | { kind: 'library-dining' }
   | { kind: 'library-hotels' }
   | { kind: 'house-houses' }
@@ -68,6 +70,8 @@ const IMMERSE_ITEMS: SidebarItem[] = [
 const GUIDES_ITEMS: SidebarItem[] = [
   { key: 'guides-dining',      label: 'Dining',       link: { kind: 'guides-dining' } },
   { key: 'guides-experiences', label: 'Experiences',  link: { kind: 'guides-experiences' } },
+  { key: 'guides-hotels',      label: 'Hotels',       link: { kind: 'guides-hotels' } },
+  { key: 'guides-shopping',    label: 'Shopping',     link: { kind: 'guides-shopping' } },
 ]
 
 const LIBRARY_ITEMS: SidebarItem[] = [
@@ -129,6 +133,12 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   if (item.link.kind === 'guides-experiences') {
     return current.product === 'guides' && current.tab === 'experiences'
   }
+  if (item.link.kind === 'guides-hotels') {
+    return current.product === 'guides' && current.tab === 'hotels'
+  }
+  if (item.link.kind === 'guides-shopping') {
+    return current.product === 'guides' && current.tab === 'shopping'
+  }
   if (item.link.kind === 'library-dining') {
     return current.product === 'library' && current.tab === 'dining'
   }
@@ -166,6 +176,12 @@ function hashFor(item: SidebarItem): string {
   }
   if (item.link.kind === 'guides-experiences') {
     return buildAdminHash({ product: 'guides', tab: 'experiences' })
+  }
+  if (item.link.kind === 'guides-hotels') {
+    return buildAdminHash({ product: 'guides', tab: 'hotels' })
+  }
+  if (item.link.kind === 'guides-shopping') {
+    return buildAdminHash({ product: 'guides', tab: 'shopping' })
   }
   if (item.link.kind === 'library-dining') {
     return buildAdminHash({ product: 'library', tab: 'dining', destinationId: null })
