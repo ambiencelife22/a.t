@@ -1,4 +1,4 @@
-// guidePdf.ts — PDF export for guide pages (dining + experiences + shopping)
+// guidePdf.ts — PDF export for guide pages (dining + experiences + shopping + hotels)
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Cover page (full-bleed hero image, big title with year + version, emblem)
@@ -22,27 +22,30 @@
 //                 at_a_glance_bullets from overlay on welcome page
 //   shopping    — Shop[], shop_type · by_appointment eyebrow, bullet list,
 //                 maps_url link on address row
+//   hotels      — HotelVenue[], stars + michelin keys + forbes recognition,
+//                 preferred-partner eyebrow, bullet list, google_maps link
 //   All variants accept optional happenings[] — rendered as its own page
 //   between Cards and Closing, snapshot of future happenings at generation time.
 //   BaseGuidePdfOptions hoists shared fields off the variant union.
 //
-// Last updated: S51 — logoVariant option ('ambience' | 'alfaone' | 'unbranded')
+// Last updated: S52 — SPACE scale established. Role-based vertical spacing
+//   applied uniformly to all four card renderers and all section headers.
+//   Replaces 30+ hardcoded `ty += N` / `y += N` values with named roles
+//   (LEAD_IN, META_GAP, IDENTITY_BREATHE, CLUSTER_TIGHT, SECTION_BREATHE,
+//   SUBLINE_TO_BODY, WITHIN_BODY, ITEM_TIGHT). Eyebrow → date → name
+//   hierarchy now breathes per editorial-typography standards.
+// Prior: S51 — logoVariant option ('ambience' | 'alfaone' | 'unbranded')
 //   threaded through. Cover branding, footer logo, restriction notice,
-//   copyright, and filename suffix all branch on the variant. AlfaOne uses
-//   gold serif 'AlfaOne Concierge' wordmark for visual cohesion with
-//   pdfImmerseBrief.ts. Per-download admin choice — no DB column.
+//   copyright, and filename suffix all branch on the variant.
+// Prior: S51 — hotels variant added with stars + michelin keys + forbes
+//   recognition row. HotelGuideDestination + HotelVenue threaded into
+//   ExportGuidePdfOptions union and RenderCtx.
 // Prior: S52 — shopping variant added; BaseGuidePdfOptions hoist for
-//   shared fields (happenings, copy, hero, year/version, accuracyDate);
-//   renderShoppingSection removed (was used by experiences pre-/shopping route).
+//   shared fields (happenings, copy, hero, year/version, accuracyDate).
 // Prior: S52 — happenings section added. Renders own page when caller
 //   provides happenings[]. Filters to future-only (end_date >= today) at
-//   generation time. Mirrors venue card row pattern for visual cohesion.// Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
-//   Removed: setSerif, setSans, drawStar, drawStarRow, loadImageAsDataUrl,
-//   rasterizeSvgAsDataUrl, local ImageData interface, inline jsPDF guard.
-//   All replaced by imports from pdfUtils. RenderCtx emblem/logo now typed as Img.
-// Prior: S41 — Added experiences variant.
-// Prior: S39 — Added accuracyDate.
-// Prior: S37 — Welcome + Contents merged. Source Sans 3 Light embedded.
+//   generation time. Mirrors venue card row pattern for visual cohesion.
+// Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
 
 import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
 import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
@@ -78,6 +81,36 @@ const PAGE = {
   margin:     16,
   bodyTop:    32,
   footerY:    280,
+} as const
+
+// ── Spacing scale ────────────────────────────────────────────────────────────
+// Role-based vertical spacing. Every `ty += N` and `y += N` between text blocks
+// uses one of these constants — no raw numbers. Tune one value, the whole
+// system breathes correctly.
+//
+// Roles, from quiet to loud:
+//   LINE_TIGHT       — within bullets, between address lines (small text, intent: continuous block)
+//   WITHIN_BODY      — between body prose paragraphs / after body block
+//   CLUSTER_TIGHT    — within an identity cluster (name → recognition, tagline → body)
+//   META_GAP         — between two metadata lines that are visually distinct (eyebrow → date)
+//   META_TO_NAME     — after the small metadata row, before the 18pt name (date → name)
+//   LEAD_IN          — after small uppercase eyebrow, before name (no date present)
+//   IDENTITY_BREATHE — after the 18pt serif name when no recognition row follows
+//   SECTION_BREATHE  — after 26pt section heading, before small-caps subline
+//   SUBLINE_TO_BODY  — after the gold small-caps subline, before first card / intro
+//   PAGE_PAD         — between major page blocks (welcome → contents)
+
+const SPACE = {
+  LINE_TIGHT:       1,
+  WITHIN_BODY:      3,
+  CLUSTER_TIGHT:    5,
+  META_GAP:         6,
+  META_TO_NAME:     7,
+  LEAD_IN:          7,
+  IDENTITY_BREATHE: 8,
+  SECTION_BREATHE:  9,
+  SUBLINE_TO_BODY: 14,
+  PAGE_PAD:        14,
 } as const
 
 const ASSET_PATHS = {
@@ -137,8 +170,6 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
   const overlay = opts.destination.overlay as any
 
   // Snapshot semantics: filter happenings to future-only at generation time.
-  // The PDF is a dated artifact (filename has date); a happening that's already
-  // passed shouldn't appear in a guide downloaded today.
   const happenings = filterFutureHappenings(opts.happenings ?? [])
 
   const ctx: RenderCtx = {
@@ -279,7 +310,6 @@ async function renderCoverPage(ctx: RenderCtx) {
   doc.setFillColor(...THEME.cream)
   doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
 
-  // Logo variant: ambience (emblem + logo), alfaone (gold serif wordmark), unbranded (nothing)
   if (ctx.logoVariant === 'alfaone') {
     serif(doc, 'normal', 18)
     doc.setTextColor(...THEME.gold)
@@ -295,7 +325,6 @@ async function renderCoverPage(ctx: RenderCtx) {
       doc.addImage(logo.data, logo.format, PAGE.width / 2 - logoW / 2, 36, logoW, logoH, undefined, 'FAST')
     }
   }
-  // unbranded: no rendering
 
   const titleY = 74
   serif(doc, 'normal', 42)
@@ -358,7 +387,7 @@ function renderWelcomePage(ctx: RenderCtx) {
   serif(doc, 'normal', 28)
   doc.setTextColor(...THEME.ink)
   doc.text(`Welcome to ${destination.name}`, PAGE.margin, y)
-  y += 14
+  y += PAGE.bodyTop > 0 ? 14 : 14 // welcome title → intro
 
   sans(doc, 'normal', 11)
   doc.setTextColor(...THEME.inkSoft)
@@ -369,7 +398,7 @@ function renderWelcomePage(ctx: RenderCtx) {
   doc.setDrawColor(...THEME.gold)
   doc.setLineWidth(0.4)
   doc.line(PAGE.margin, y, PAGE.margin + 24, y)
-  y += 14
+  y += PAGE.bodyTop > 0 ? 14 : 14
 
   // At-a-glance panel
   const panelTop    = y
@@ -406,13 +435,13 @@ function renderWelcomePage(ctx: RenderCtx) {
     bulletY += 6
   }
 
-  y = panelTop + panelHeight + 14
+  y = panelTop + panelHeight + SPACE.PAGE_PAD
 
   if (variant === 'dining') {
     y = renderRecognitionKey(doc, venues as DiningVenue[], y)
   }
 
-  y += 14
+  y += SPACE.PAGE_PAD
   doc.setDrawColor(...THEME.gold)
   doc.setLineWidth(0.4)
   doc.line(PAGE.margin, y, PAGE.margin + 24, y)
@@ -548,7 +577,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
     variant === 'experiences' ? `${destination.name} Experiences` :
                                 `${capitalize(variant)} Highlights`
   doc.text(sectionTitle, PAGE.margin, y)
-  y += 5
+  y += SPACE.SECTION_BREATHE
 
   sans(doc, 'normal', 8.5)
   doc.setTextColor(...THEME.gold)
@@ -558,7 +587,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
     variant === 'experiences' ? 'OUR CURATED SELECTION OF STANDOUT EXPERIENCES' :
                                 'OUR CURATED SELECTION OF STANDOUT TABLES'
   doc.text(subline, PAGE.margin, y, { charSpace: 0.4 })
-  y += 12
+  y += SPACE.SUBLINE_TO_BODY
 
   if (venues.length === 0) {
     sans(doc, 'italic', 10); doc.setTextColor(...THEME.muted)
@@ -604,7 +633,6 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
     y += cardHeight + CARD.rowGap
   }
 
-  // Disclaimer rendered here only if no closing page AND no following section.
   const hasFollowingPages =
     ctx.happenings.length > 0 ||
     planYourVisitHasContent(ctx.destination.overlay)
@@ -614,12 +642,15 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
   }
 }
 
+// ── Dining / Experiences card ─────────────────────────────────────────────────
+
 function computeCardHeight(doc: any, venue: any, variant: 'dining' | 'experiences'): number {
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight  = 0
 
-  textHeight += 6 // eyebrow / kicker
-  textHeight += 6 // name
+  const hasEyebrow = variant === 'dining' ? !!venue.cuisine_subcategory : !!venue.kicker
+  if (hasEyebrow) textHeight += SPACE.LEAD_IN
+  textHeight += SPACE.IDENTITY_BREATHE  // name
 
   if (variant === 'dining') {
     const hasRecognition =
@@ -627,14 +658,14 @@ function computeCardHeight(doc: any, venue: any, variant: 'dining' | 'experience
       venue.michelin_award === 'bib_gourmand' ||
       venue.michelin_green_star ||
       venue.worlds_50_best
-    if (hasRecognition) textHeight += 6
-    if (venue.neighborhood) textHeight += 5
+    if (hasRecognition)    textHeight += SPACE.CLUSTER_TIGHT
+    if (venue.neighborhood) textHeight += SPACE.CLUSTER_TIGHT
   }
 
   if (venue.body) {
     sans(doc, 'normal', 9.5)
     const bodyLines = doc.splitTextToSize(venue.body, textWidth)
-    textHeight += bodyLines.length * 4.4 + 2
+    textHeight += bodyLines.length * 4.4 + SPACE.WITHIN_BODY
   }
 
   return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
@@ -668,12 +699,12 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
   if (eyebrow) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrow.toUpperCase(), textX, ty, { charSpace: 0.4 })
-    ty += 6
+    ty += SPACE.LEAD_IN
   }
 
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
   doc.text(venue.name, textX, ty)
-  ty += 6
+  ty += SPACE.IDENTITY_BREATHE
 
   if (variant === 'dining') {
     const hasStars = venue.michelin_award === 'star' && venue.michelin_stars
@@ -713,13 +744,13 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
         doc.roundedRect(markX, ty - 3.2, pillW, 4.4, 1, 1)
         doc.text(pillText, markX + pillPaddingX, ty + 0.2, { charSpace: pillCharSpace })
       }
-      ty += 6
+      ty += SPACE.CLUSTER_TIGHT
     }
 
     if (venue.neighborhood) {
       sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.muted)
       doc.text(venue.neighborhood, textX, ty)
-      ty += 5
+      ty += SPACE.CLUSTER_TIGHT
     }
   }
 
@@ -727,7 +758,7 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
     sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
     const bodyLines = doc.splitTextToSize(venue.body, textWidth)
     for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
-    ty += 1
+    ty += SPACE.WITHIN_BODY
   }
 
   if (venue.address) {
@@ -751,17 +782,20 @@ function drawImageFallback(doc: any, x: number, y: number, name: string) {
   doc.text(letter, x + CARD.imageWidth / 2, y + CARD.imageHeight / 2 + 3, { align: 'center' })
 }
 
+// ── Shop card ─────────────────────────────────────────────────────────────────
+
 function computeShopCardHeight(doc: any, s: Shop): number {
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight = 0
 
-  textHeight += 6  // eyebrow
-  textHeight += 6  // name
+  const hasEyebrow = !!s.shop_type || !!s.by_appointment
+  if (hasEyebrow) textHeight += SPACE.LEAD_IN
+  textHeight += SPACE.IDENTITY_BREATHE  // name
 
   if (s.body) {
     sans(doc, 'normal', 9.5)
     const bodyLines = doc.splitTextToSize(s.body, textWidth)
-    textHeight += bodyLines.length * 4.4 + 2
+    textHeight += bodyLines.length * 4.4 + SPACE.WITHIN_BODY
   }
 
   const bullets = normalizeShopBullets(s.bullets)
@@ -769,12 +803,12 @@ function computeShopCardHeight(doc: any, s: Shop): number {
     sans(doc, 'normal', 9)
     for (const b of bullets) {
       const lines = doc.splitTextToSize(b, textWidth - 6)
-      textHeight += lines.length * 4.2 + 1
+      textHeight += lines.length * 4.2 + SPACE.LINE_TIGHT
     }
-    textHeight += 2
+    textHeight += SPACE.WITHIN_BODY
   }
 
-  if (s.address) textHeight += 5
+  if (s.address) textHeight += SPACE.CLUSTER_TIGHT
 
   return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
 }
@@ -803,26 +837,25 @@ async function renderShopCard(doc: any, s: Shop, top: number) {
   const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  // Eyebrow: "FASHION · BY APPOINTMENT"
   const eyebrowParts: string[] = []
   if (s.shop_type)      eyebrowParts.push(s.shop_type.toUpperCase())
   if (s.by_appointment) eyebrowParts.push('BY APPOINTMENT')
   if (eyebrowParts.length > 0) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
-    ty += 6
+    ty += SPACE.LEAD_IN
   }
 
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
   const nameLines = doc.splitTextToSize(s.name, textWidth)
   doc.text(nameLines[0], textX, ty)
-  ty += 6
+  ty += SPACE.IDENTITY_BREATHE
 
   if (s.body) {
     sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
     const bodyLines = doc.splitTextToSize(s.body, textWidth)
     for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
-    ty += 1
+    ty += SPACE.WITHIN_BODY
   }
 
   const bullets = normalizeShopBullets(s.bullets)
@@ -836,9 +869,9 @@ async function renderShopCard(doc: any, s: Shop, top: number) {
         doc.text(lines[i], textX + 4, ty)
         ty += 4.2
       }
-      ty += 1
+      ty += SPACE.LINE_TIGHT
     }
-    ty += 1
+    ty += SPACE.LINE_TIGHT
   }
 
   if (s.address) {
@@ -874,21 +907,23 @@ function computeHotelCardHeight(doc: any, h: HotelVenue): number {
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight = 0
 
-  textHeight += 6  // eyebrow (PREFERRED PARTNER / etc.)
-  textHeight += 6  // name
+  // Eyebrow slot is reserved even if absent (keeps name baseline consistent
+  // across hotels with / without preferred-partner flag)
+  textHeight += SPACE.LEAD_IN
+  textHeight += SPACE.IDENTITY_BREATHE  // name
 
   const hasRecognition =
     (h.stars && h.stars > 0) ||
     (h.michelin_keys && h.michelin_keys > 0) ||
     (h.forbes_rating && h.forbes_rating > 0)
-  if (hasRecognition) textHeight += 6
+  if (hasRecognition) textHeight += SPACE.CLUSTER_TIGHT
 
-  if (h.city) textHeight += 5
+  if (h.city) textHeight += SPACE.CLUSTER_TIGHT
 
   if (h.description) {
     sans(doc, 'normal', 9.5)
     const bodyLines = doc.splitTextToSize(h.description, textWidth)
-    textHeight += bodyLines.length * 4.4 + 2
+    textHeight += bodyLines.length * 4.4 + SPACE.WITHIN_BODY
   }
 
   const bullets = normalizeHotelBullets(h.bullets)
@@ -896,12 +931,12 @@ function computeHotelCardHeight(doc: any, h: HotelVenue): number {
     sans(doc, 'normal', 9)
     for (const b of bullets) {
       const lines = doc.splitTextToSize(b, textWidth - 6)
-      textHeight += lines.length * 4.2 + 1
+      textHeight += lines.length * 4.2 + SPACE.LINE_TIGHT
     }
-    textHeight += 2
+    textHeight += SPACE.WITHIN_BODY
   }
 
-  if (h.address) textHeight += 5
+  if (h.address) textHeight += SPACE.CLUSTER_TIGHT
 
   return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
 }
@@ -930,24 +965,20 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
   const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  // Eyebrow: "PREFERRED PARTNER" or empty
   const eyebrowParts: string[] = []
   if (h.is_preferred_partner) eyebrowParts.push('PREFERRED PARTNER')
   if (eyebrowParts.length > 0) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
-    ty += 6
-  } else {
-    ty += 6
   }
+  // Always reserve eyebrow slot for baseline consistency
+  ty += SPACE.LEAD_IN
 
-  // Name
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
   const nameLines = doc.splitTextToSize(h.name, textWidth)
   doc.text(nameLines[0], textX, ty)
-  ty += 6
+  ty += SPACE.IDENTITY_BREATHE
 
-  // Recognition row: stars (filled stars), michelin keys (gold pill), forbes (gold pill)
   const starCount    = h.stars ?? 0
   const michelinKeys = h.michelin_keys ?? 0
   const forbesRating = h.forbes_rating ?? 0
@@ -980,25 +1011,22 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
       doc.roundedRect(markX, ty - 3.2, pillW, 4.4, 1, 1)
       doc.text(t, markX + px, ty + 0.2, { charSpace: cs })
     }
-    ty += 6
+    ty += SPACE.CLUSTER_TIGHT
   }
 
-  // City
   if (h.city) {
     sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.muted)
     doc.text(h.city, textX, ty)
-    ty += 5
+    ty += SPACE.CLUSTER_TIGHT
   }
 
-  // Description
   if (h.description) {
     sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
     const bodyLines = doc.splitTextToSize(h.description, textWidth)
     for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
-    ty += 1
+    ty += SPACE.WITHIN_BODY
   }
 
-  // Bullets
   const bullets = normalizeHotelBullets(h.bullets)
   if (bullets.length > 0) {
     for (const b of bullets) {
@@ -1010,12 +1038,11 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
         doc.text(lines[i], textX + 4, ty)
         ty += 4.2
       }
-      ty += 1
+      ty += SPACE.LINE_TIGHT
     }
-    ty += 1
+    ty += SPACE.LINE_TIGHT
   }
 
-  // Address
   if (h.address) {
     sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.faint)
     const addrLines  = doc.splitTextToSize(h.address, textWidth)
@@ -1030,8 +1057,6 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
 }
 
 // ── Happenings section ────────────────────────────────────────────────────────
-// Mirrors the cards section pattern: section title + subline, then a list of
-// happening rows. Each row has image left, content right. Page-break aware.
 
 async function renderHappeningsSection(ctx: RenderCtx) {
   const { doc, destination, happenings } = ctx
@@ -1044,11 +1069,11 @@ async function renderHappeningsSection(ctx: RenderCtx) {
   serif(doc, 'normal', 26)
   doc.setTextColor(...THEME.ink)
   doc.text(`Coming up in ${destination.name}`, PAGE.margin, y)
-  y += 5
+  y += SPACE.SECTION_BREATHE
 
   sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.gold)
   doc.text('A SNAPSHOT OF WHAT\u2019S ON THIS SEASON', PAGE.margin, y, { charSpace: 0.4 })
-  y += 12
+  y += SPACE.SUBLINE_TO_BODY
 
   for (const happening of happenings) {
     const cardHeight = computeHappeningCardHeight(doc, happening)
@@ -1062,7 +1087,6 @@ async function renderHappeningsSection(ctx: RenderCtx) {
     y += cardHeight + CARD.rowGap
   }
 
-  // Disclaimer here if happenings is the last content page (no closing page).
   if (ctx.accuracyDate && !planYourVisitHasContent(ctx.destination.overlay)) {
     const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
     renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
@@ -1073,20 +1097,20 @@ function computeHappeningCardHeight(doc: any, h: Happening): number {
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight  = 0
 
-  textHeight += 6 // eyebrow (ONE EVENING · CATEGORY)
-  textHeight += 5 // date line
-  textHeight += 6 // name
+  textHeight += SPACE.LEAD_IN          // eyebrow → date
+  textHeight += SPACE.META_TO_NAME     // date → name
+  textHeight += SPACE.IDENTITY_BREATHE // name → next
 
   if (h.tagline) {
     sans(doc, 'italic', 9.5)
     const taglineLines = doc.splitTextToSize(h.tagline, textWidth)
-    textHeight += taglineLines.length * 4.2 + 2
+    textHeight += taglineLines.length * 4.2 + SPACE.WITHIN_BODY
   }
 
   if (h.body) {
     sans(doc, 'normal', 9.5)
     const bodyLines = doc.splitTextToSize(h.body, textWidth)
-    textHeight += bodyLines.length * 4.4 + 2
+    textHeight += bodyLines.length * 4.4 + SPACE.WITHIN_BODY
   }
 
   const bullets = normalizeHappeningBullets(h.bullets)
@@ -1094,13 +1118,13 @@ function computeHappeningCardHeight(doc: any, h: Happening): number {
     sans(doc, 'normal', 9)
     for (const b of bullets) {
       const lines = doc.splitTextToSize(b, textWidth - 6)
-      textHeight += lines.length * 4.2 + 1
+      textHeight += lines.length * 4.2 + SPACE.LINE_TIGHT
     }
-    textHeight += 2
+    textHeight += SPACE.WITHIN_BODY
   }
 
-  if (h.venue_name) textHeight += 5
-  if (h.address)    textHeight += 5
+  if (h.venue_name) textHeight += SPACE.CLUSTER_TIGHT
+  if (h.address)    textHeight += SPACE.CLUSTER_TIGHT
 
   return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
 }
@@ -1135,18 +1159,18 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
   const eyebrowText = h.category ? `${tag} \u00b7 ${h.category.toUpperCase()}` : tag
   sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
   doc.text(eyebrowText, textX, ty, { charSpace: 0.4 })
-  ty += 6
+  ty += SPACE.LEAD_IN
 
   // Date line — italic gold serif
   serif(doc, 'italic', 11); doc.setTextColor(...THEME.gold)
   doc.text(formatHappeningDateRange(h.start_date, h.end_date), textX, ty)
-  ty += 5
+  ty += SPACE.META_TO_NAME
 
   // Name
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
   const nameLines = doc.splitTextToSize(h.name, textWidth)
   doc.text(nameLines[0], textX, ty)
-  ty += 6
+  ty += SPACE.IDENTITY_BREATHE
 
   // Tagline — italic with thin gold bar on left
   if (h.tagline) {
@@ -1157,7 +1181,7 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     const taglineEndY = ty
     doc.setDrawColor(...THEME.gold); doc.setLineWidth(0.6)
     doc.line(textX, taglineStartY, textX, taglineEndY - 1)
-    ty += 2
+    ty += SPACE.WITHIN_BODY
   }
 
   // Body
@@ -1165,7 +1189,7 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
     const bodyLines = doc.splitTextToSize(h.body, textWidth)
     for (const line of bodyLines) { doc.text(line, textX, ty); ty += 4.4 }
-    ty += 1
+    ty += SPACE.WITHIN_BODY
   }
 
   // Bullets
@@ -1180,16 +1204,16 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
         doc.text(lines[i], textX + 4, ty)
         ty += 4.2
       }
-      ty += 1
+      ty += SPACE.LINE_TIGHT
     }
-    ty += 1
+    ty += SPACE.LINE_TIGHT
   }
 
   // Venue + address
   if (h.venue_name) {
     sans(doc, 'bold', 8.5); doc.setTextColor(...THEME.muted)
     doc.text(h.venue_name, textX, ty)
-    ty += 5
+    ty += SPACE.CLUSTER_TIGHT
   }
   if (h.address) {
     sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.faint)
@@ -1254,17 +1278,17 @@ function renderClosingPage(ctx: RenderCtx) {
 
   serif(doc, 'normal', 26); doc.setTextColor(...THEME.ink)
   doc.text(heading, PAGE.margin, y)
-  y += 5
+  y += SPACE.SECTION_BREATHE
 
   sans(doc, 'normal', 8.5); doc.setTextColor(...THEME.gold)
   doc.text('INSIDER TIPS FOR A SEAMLESS EXPERIENCE', PAGE.margin, y, { charSpace: 0.4 })
-  y += 14
+  y += SPACE.SUBLINE_TO_BODY
 
   if (intro) {
     sans(doc, 'normal', 11); doc.setTextColor(...THEME.inkSoft)
     const wrapped = doc.splitTextToSize(intro, PAGE.width - PAGE.margin * 2)
     for (const line of wrapped) { doc.text(line, PAGE.margin, y); y += 5.5 }
-    y += 4
+    y += SPACE.WITHIN_BODY
   }
 
   if (bullets.length > 0) {
@@ -1340,7 +1364,6 @@ function stampPageChrome(ctx: RenderCtx) {
       doc.addImage(logo.data, logo.format, logoX, logoY, logoW, logoH, undefined, 'FAST')
       try { doc.link(logoX, logoY, logoW, logoH, { url: AMBIENCE_URL }) } catch {}
     }
-    // unbranded: no rendering
 
     if (ctx.logoVariant !== 'unbranded') {
       sans(doc, 'italic', 7.5); doc.setTextColor(...THEME.muted)

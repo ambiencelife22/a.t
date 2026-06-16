@@ -40,6 +40,7 @@ import {
   getShoppingGuideDestination,
   fetchShoppingForDestination,
 } from '../../../queries/queriesGuidesShopping'
+import { fetchActiveHappeningsForDestination } from '../../../queries/queriesGuidesHappenings'
 import {
   type GuideVariant,
   GUIDE_COPY,
@@ -77,13 +78,25 @@ export default function GuideDownloadTab({
     }
     setDownloading(logoVariant)
     try {
+      // Happenings are destination-level, not guide-variant-level — fetched
+      // in parallel with the variant-specific data. Soft-fail: a happenings
+      // query failure should not block the PDF.
+      const happeningsPromise = fetchActiveHappeningsForDestination(
+        destinationId,
+        { surface: variant },
+      ).catch(err => {
+        console.error('GuideDownloadTab: happenings fetch failed', err)
+        return []
+      })
+
       // Variant-discriminated fetch. Each branch resolves to the right
       // (destination, venues) pair for ExportGuidePdfOptions.
       let payload
       if (variant === 'dining') {
-        const [destination, venues] = await Promise.all([
+        const [destination, venues, happenings] = await Promise.all([
           getGuideDestination(destinationSlug),
           getDiningVenuesByDestination(destinationSlug),
+          happeningsPromise,
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
@@ -92,6 +105,7 @@ export default function GuideDownloadTab({
           variant:      'dining' as const,
           destination,
           venues,
+          happenings,
           copy: {
             eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
             headline: overlay?.headline_override ?? `${destinationName} dining`,
@@ -104,9 +118,10 @@ export default function GuideDownloadTab({
           logoVariant,
         }
       } else if (variant === 'experiences') {
-        const [destination, venues] = await Promise.all([
+        const [destination, venues, happenings] = await Promise.all([
           getExperiencesGuideDestination(destinationSlug),
           getExperienceVenuesByDestination(destinationSlug),
+          happeningsPromise,
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
@@ -115,6 +130,7 @@ export default function GuideDownloadTab({
           variant:      'experiences' as const,
           destination,
           venues,
+          happenings,
           copy: {
             eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
             headline: overlay?.headline_override ?? `${destinationName} experiences`,
@@ -127,9 +143,10 @@ export default function GuideDownloadTab({
           logoVariant,
         }
       } else if (variant === 'hotels') {
-        const [destination, venues] = await Promise.all([
+        const [destination, venues, happenings] = await Promise.all([
           getHotelGuideDestination(destinationSlug),
           getHotelsByDestination(destinationSlug),
+          happeningsPromise,
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
@@ -138,6 +155,7 @@ export default function GuideDownloadTab({
           variant:      'hotels' as const,
           destination,
           venues,
+          happenings,
           copy: {
             eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
             headline: overlay?.headline_override ?? `${destinationName} Hotels`,
@@ -151,9 +169,10 @@ export default function GuideDownloadTab({
         }
       } else {
         // shopping
-        const [destination, venues] = await Promise.all([
+        const [destination, venues, happenings] = await Promise.all([
           getShoppingGuideDestination(destinationSlug),
           fetchShoppingForDestination(destinationId),
+          happeningsPromise,
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
@@ -162,6 +181,7 @@ export default function GuideDownloadTab({
           variant:      'shopping' as const,
           destination,
           venues,
+          happenings,
           copy: {
             eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
             headline: overlay?.headline_override ?? `${destinationName} Shopping`,

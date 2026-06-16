@@ -15,7 +15,11 @@
 //   3. Add a HAPPENING_CATEGORY_META entry
 //   4. Future Edge Function happenings writer revalidates from this registry
 //
-// Last updated: S52 — initial registry. Six categories cover the v1 VVIP
+// Last updated: S52B — 'hotels' added to HAPPENING_SURFACES. Happenings
+//   are destination-level (mission) — every guide variant for a destination
+//   surfaces the same future-happenings list. DB CHECK constraint
+//   travel_happenings_surfaces_values updated to match (S52B migration).
+// Prior: S52 — initial registry. Six categories cover the v1 VVIP
 //   happening taxonomy: music concerts/festivals, cultural exhibitions,
 //   sport events, culinary pop-ups/residencies, fashion runway/launches,
 //   wellness retreats.
@@ -68,6 +72,7 @@ export const HAPPENING_SURFACES = [
   'experiences',
   'dining',
   'shopping',
+  'hotels',
 ] as const
 
 export type HappeningSurface = typeof HAPPENING_SURFACES[number]
