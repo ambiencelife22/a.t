@@ -111,8 +111,9 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 }
 
 // Resolve account id (auth email lookup needs it) per person_id.
+// deno-lint-ignore no-explicit-any
 async function accountIdsByPerson(
-  serviceClient: ReturnType<typeof createClient>,
+  serviceClient: any,
   personIds: string[],
 ): Promise<Record<string, string>> {
   if (personIds.length === 0) return {}
