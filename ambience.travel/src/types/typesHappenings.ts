@@ -37,7 +37,7 @@ export type HappeningCategory = typeof HAPPENING_CATEGORIES[number]
 
 // ── Meta ──────────────────────────────────────────────────────────────────────
 // Per-category display metadata. Description is for admin form helper text;
-// not currently surfaced on client UI.
+// not currently surfaced on client UI
 
 export interface HappeningCategoryMeta {
   label:       string
