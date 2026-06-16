@@ -73,15 +73,21 @@ export interface AdminDiningVenue {
 }
 
 export interface AdminDiningGuide {
-  id:                    string
-  global_destination_id: string
-  hero_image_src:        string | null
-  hero_image_alt:        string | null
-  eyebrow_override:      string | null
-  headline_override:     string | null
-  intro_override:        string | null
-  is_active:             boolean
-  accuracy_date:         string | null
+  id:                      string
+  global_destination_id:   string
+  hero_image_src:          string | null
+  hero_image_alt:          string | null
+  eyebrow_override:        string | null
+  headline_override:       string | null
+  intro_override:          string | null
+  is_active:               boolean
+  accuracy_date:           string | null
+  at_a_glance_bullets:     string[] | null
+  guide_year:              number | null
+  guide_version:           string | null
+  plan_your_visit_heading: string | null
+  plan_your_visit_intro:   string | null
+  plan_your_visit_bullets: string[] | null
 }
 
 export interface GlobalPerson {
@@ -176,7 +182,9 @@ export async function fetchDiningGuides(): Promise<AdminDiningGuide[]> {
       id, global_destination_id,
       hero_image_src, hero_image_alt,
       eyebrow_override, headline_override, intro_override,
-      is_active, accuracy_date
+      is_active, accuracy_date, at_a_glance_bullets,
+      guide_year, guide_version,
+      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
     `)
 
   if (error) throw new Error(`Failed to fetch guides: ${error.message}`)
@@ -355,6 +363,11 @@ export interface AdminExperiencesGuide {
   is_active:               boolean
   accuracy_date:           string | null
   at_a_glance_bullets:     string[] | null
+  guide_year:              number | null
+  guide_version:           string | null
+  plan_your_visit_heading: string | null
+  plan_your_visit_intro:   string | null
+  plan_your_visit_bullets: string[] | null
 }
 
 export interface AdminExperiencesGrant {
@@ -411,7 +424,9 @@ export async function fetchExperiencesGuides(): Promise<AdminExperiencesGuide[]>
       id, global_destination_id,
       hero_image_src, hero_image_alt,
       eyebrow_override, headline_override, intro_override,
-      is_active, accuracy_date, at_a_glance_bullets
+      is_active, accuracy_date, at_a_glance_bullets,
+      guide_year, guide_version,
+      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
     `)
 
   if (error) throw new Error(`Failed to fetch experiences guides: ${error.message}`)
