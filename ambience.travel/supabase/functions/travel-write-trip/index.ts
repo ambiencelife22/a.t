@@ -129,6 +129,32 @@ async function handleUpsertBrief(
   houseId: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
+  // Auto-seed brief_title from primary destination on first create
+  // Only when caller didn't explicitly set brief_title in the patch
+  if (!patch.brief_title) {
+    const { data: existing } = await db
+      .from('travel_trip_briefs')
+      .select('id')
+      .eq('trip_id', tripId)
+      .maybeSingle()
+
+    if (!existing) {
+      const { data: dest } = await db
+        .from('travel_trip_destinations')
+        .select('global_destinations!travel_trip_destinations_dest_fkey(name)')
+        .eq('trip_id', tripId)
+        .order('sort_order', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      const gd = dest?.global_destinations
+      const destName = Array.isArray(gd) ? gd[0]?.name : (gd as any)?.name
+      if (destName) {
+        patch.brief_title = destName
+      }
+    }
+  }
+
   const { data, error } = await db
     .from('travel_trip_briefs')
     .upsert({ trip_id: tripId, house_id: houseId, ...patch }, { onConflict: 'trip_id' })
