@@ -477,7 +477,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           subtitle: isFlight ? null : (e.subtitle ?? null),
           notes: e.notes ?? null, confirmation_number: e.confirmation_number ?? null,
           guest_label: e.guest_label ?? null, booked_by: e.booked_by ?? null,
-          image_src: (e as any).image_src ?? null, status: null, description: null,
+          image_src: (e as any).image_src ?? null, status: (e as any).booking_status ?? null, description: null,
           flightOrigin,
           flightDestination,
           flightDepartTime: isFlight ? (e.start_time ?? null) : null,

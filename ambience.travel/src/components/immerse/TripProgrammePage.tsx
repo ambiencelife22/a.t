@@ -134,6 +134,7 @@ type CardItem = {
   guest_label:         string | null
   booked_by:           string | null
   image_src:           string | null
+  booking_status:      string | null
 }
 
 function entryToCard(e: TripDayEntry): CardItem {
@@ -149,6 +150,7 @@ function entryToCard(e: TripDayEntry): CardItem {
     guest_label:         e.guest_label ?? null,
     booked_by:           e.booked_by ?? null,
     image_src:           (e as any).image_src ?? null,
+    booking_status:      (e as any).booking_status ?? null,
   }
 }
 
@@ -168,6 +170,7 @@ function auxToCard(a: TripAuxBooking): CardItem {
     guest_label:         a.guest_label ?? null,
     booked_by:           a.booked_by ?? null,
     image_src:           null,
+    booking_status:      null,
   }
 }
 
@@ -354,6 +357,19 @@ function EntryCard({ item }: { item: CardItem }) {
                 {item.category ?? 'Other'}
               </span>
             </div>
+            {item.booking_status && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase' as const,
+                padding: '2px 8px', borderRadius: 100,
+                border: `1px solid ${GOLD}50`,
+                color: GOLD, background: `${GOLD}14`,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                flexShrink: 0, whiteSpace: 'nowrap' as const,
+              }}>
+                {item.booking_status}
+              </span>
+            )}
             {timeStr && (
               <span style={{
                 fontSize: 11, fontFamily: 'DM Mono, monospace',

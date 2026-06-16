@@ -189,7 +189,7 @@ Deno.serve(async (req: Request) => {
         // Booking-level image
         bookingIds.length > 0
           ? db.from('travel_bookings')
-              .select('id, brief_image_src, accom_hotel_id')
+              .select('id, brief_image_src, accom_hotel_id, status')
               .in('id', bookingIds)
           : Promise.resolve({ data: [], error: null }),
 
@@ -270,6 +270,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const bookingStatusMap: Record<string, string | null> = {}
+    for (const b of (bookingImgResult.data ?? []) as any[]) {
+      bookingStatusMap[b.id] = b.status ?? null
+    }
     const diningImgMap: Record<string, string | null> = {}
     for (const d of (diningImgResult.data ?? []) as any[]) {
       diningImgMap[d.id] = d.image_src ?? null
@@ -297,7 +301,11 @@ Deno.serve(async (req: Request) => {
       }
       // source_aux_id → no image
 
-      return { ...entry, image_src }
+      const booking_status = entry.source_booking_id
+        ? (bookingStatusMap[entry.source_booking_id] ?? null)
+        : null
+
+      return { ...entry, image_src, booking_status }
     })
 
     // ── 7. Assemble destinations ──────────────────────────────────────────────
