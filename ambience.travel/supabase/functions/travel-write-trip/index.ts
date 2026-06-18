@@ -18,6 +18,7 @@
 // Modes:
 //   upsert_brief          { trip_id, house_id, patch }
 //   update_booking_brief  { booking_id, patch }
+//   create_booking        { trip_id, patch }
 //   create_room           { booking_id, patch }
 //   update_room           { room_id, patch }
 //   delete_room           { room_id }
@@ -53,6 +54,7 @@ const corsHeaders = {
 type Mode =
   | 'upsert_brief'
   | 'update_booking_brief'
+  | 'create_booking'
   | 'create_room'
   | 'update_room'
   | 'delete_room'
@@ -181,6 +183,20 @@ async function handleUpdateBookingBrief(
     .eq('id', bookingId)
   if (error) return err('Failed to update booking', 500)
   return ok({ success: true })
+}
+
+async function handleCreateBooking(
+  db: SupabaseClient,
+  tripId: string,
+  patch: Record<string, unknown>,
+): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_bookings')
+    .insert({ trip_id: tripId, ...patch })
+    .select()
+    .single()
+  if (error) return err('Failed to create booking', 500)
+  return ok({ booking: data })
 }
 
 async function handleCreateRoom(
@@ -580,6 +596,12 @@ Deno.serve(async (req: Request) => {
         const { booking_id, patch } = body as { booking_id?: string; patch?: Record<string, unknown> }
         if (!booking_id || !patch) return err('booking_id, patch required', 400)
         return handleUpdateBookingBrief(serviceClient, booking_id, patch)
+      }
+
+      case 'create_booking': {
+        const { trip_id, patch } = body as { trip_id?: string; patch?: Record<string, unknown> }
+        if (!trip_id || !patch) return err('trip_id, patch required', 400)
+        return handleCreateBooking(serviceClient, trip_id, patch)
       }
 
       case 'create_room': {

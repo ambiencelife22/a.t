@@ -20,13 +20,14 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminTrip'
-import { updateBookingBriefFields, createBookingRoom, updateBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBooking, createBookingRoom, updateBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
 import type { BookingRoom, BookingRoomPatch, TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { AirlinePicker } from './AirlinePicker'
+import { HotelPicker } from './HotelPicker'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -957,6 +958,172 @@ function BookingCard({ booking: b, partners, mobile, house }: {
   )
 }
 
+// ── BookingCreator ────────────────────────────────────────────────────────────
+// Create a new travel_bookings row on a trip. Closes the SQL-only booking gap.
+// Core identity + dates + the validated rate fields; commission internals are
+// editable after creation via the booking card (update_booking_brief is
+// generic-patch). Hotel link via HotelPicker when type === 'Hotel'.
+
+const BOOKING_TYPES  = ['Hotel', 'Flight', 'Transfer', 'Restaurant', 'Experience', 'Other']
+const BOOKING_STATUS = ['Quoted', 'Confirmed', 'Pending', 'Cancelled', 'Completed']
+
+type BookingDraft = {
+  booking_type:        string
+  name:                string
+  status:              string
+  confirmation_number: string
+  accom_hotel_id:      string
+  start_date:          string
+  end_date:            string
+  nights:              string
+  currency:            string
+  commissionable_rate: string
+  total_rate:          string
+  taxes_and_fees:      string
+  rate_type:           string
+  booked_by:           string
+  brief_category:      string
+  cancellation_policy: string
+  inclusions:          string
+  notes:               string
+}
+
+function emptyBookingDraft(): BookingDraft {
+  return {
+    booking_type: 'Hotel', name: '', status: 'Confirmed', confirmation_number: '',
+    accom_hotel_id: '', start_date: '', end_date: '', nights: '',
+    currency: 'EUR', commissionable_rate: '', total_rate: '', taxes_and_fees: '',
+    rate_type: '', booked_by: 'ambience', brief_category: '', cancellation_policy: '',
+    inclusions: '', notes: '',
+  }
+}
+
+function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
+  const orNull    = (s: string): string | null => (s.trim() === '' ? null : s.trim())
+  const numOrNull = (s: string): number | null => {
+    const t = s.trim()
+    if (t === '') return null
+    const n = Number(t)
+    return Number.isFinite(n) ? n : null
+  }
+  return {
+    booking_type:        orNull(d.booking_type),
+    name:                orNull(d.name),
+    status:              orNull(d.status),
+    confirmation_number: orNull(d.confirmation_number),
+    accom_hotel_id:      d.booking_type === 'Hotel' ? orNull(d.accom_hotel_id) : null,
+    start_date:          orNull(d.start_date),
+    end_date:            orNull(d.end_date),
+    nights:              numOrNull(d.nights),
+    currency:            orNull(d.currency),
+    commissionable_rate: numOrNull(d.commissionable_rate),
+    total_rate:          numOrNull(d.total_rate),
+    taxes_and_fees:      numOrNull(d.taxes_and_fees),
+    rate_type:           orNull(d.rate_type),
+    booked_by:           orNull(d.booked_by),
+    brief_category:      orNull(d.brief_category),
+    cancellation_policy: orNull(d.cancellation_policy),
+    inclusions:          orNull(d.inclusions),
+    notes:               orNull(d.notes),
+  }
+}
+
+function BookingCreator({ tripId, onCreated }: {
+  tripId:    string
+  onCreated: (booking: TripBooking) => void
+}) {
+  const [open,   setOpen]   = useState(false)
+  const [draft,  setDraft]  = useState<BookingDraft>(emptyBookingDraft())
+  const [saving, setSaving] = useState(false)
+  const { success, error } = useAdminToast()
+
+  const set = <K extends keyof BookingDraft>(k: K, v: BookingDraft[K]) => setDraft({ ...draft, [k]: v })
+  const isHotel = draft.booking_type === 'Hotel'
+
+  async function handleCreate() {
+    setSaving(true)
+    try {
+      const raw = await createBooking(tripId, bookingDraftToPatch(draft))
+      const hydrated: TripBooking = { ...raw, _hotel_name: null, _hotel_image_src: null, _rooms: [] }
+      onCreated(hydrated)
+      setOpen(false)
+      setDraft(emptyBookingDraft())
+      success('Booking created')
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to create booking') }
+    finally { setSaving(false) }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '6px 14px', cursor: 'pointer', alignSelf: 'flex-start', marginTop: 6 }}>
+        + New Booking
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ background: A.bgCard, border: `1px solid ${A.gold}40`, borderRadius: 10, padding: 14, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>New Booking</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div>
+          <label style={labelStyle}>Type</label>
+          <select style={inputStyle} value={draft.booking_type} onChange={e => set('booking_type', e.target.value)}>
+            {BOOKING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Status</label>
+          <select style={inputStyle} value={draft.status} onChange={e => set('status', e.target.value)}>
+            {BOOKING_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {isHotel && (
+        <HotelPicker
+          hotelId={draft.accom_hotel_id}
+          onChange={(id, hotel) => setDraft({ ...draft, accom_hotel_id: id, name: draft.name || (hotel?.name ?? '') })}
+        />
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div><label style={labelStyle}>Name</label><input style={inputStyle} value={draft.name} onChange={e => set('name', e.target.value)} placeholder={isHotel ? 'Hotel Goldener Hirsch' : 'Booking name'} /></div>
+        <div><label style={labelStyle}>Confirmation #</label><input style={inputStyle} value={draft.confirmation_number} onChange={e => set('confirmation_number', e.target.value)} placeholder='74373105' /></div>
+        <div><label style={labelStyle}>Start Date</label><input style={inputStyle} type='date' value={draft.start_date} onChange={e => set('start_date', e.target.value)} /></div>
+        <div><label style={labelStyle}>End Date</label><input style={inputStyle} type='date' value={draft.end_date} onChange={e => set('end_date', e.target.value)} /></div>
+        <div><label style={labelStyle}>Nights</label><input style={inputStyle} type='number' value={draft.nights} onChange={e => set('nights', e.target.value)} placeholder='3' /></div>
+        <div><label style={labelStyle}>Currency</label><input style={inputStyle} value={draft.currency} onChange={e => set('currency', e.target.value)} placeholder='EUR' /></div>
+      </div>
+
+      <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Rate Detail</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div><label style={labelStyle}>Commissionable Rate / night</label><input style={inputStyle} type='number' value={draft.commissionable_rate} onChange={e => set('commissionable_rate', e.target.value)} placeholder='1305.00' /></div>
+          <div><label style={labelStyle}>Total Rate / night</label><input style={inputStyle} type='number' value={draft.total_rate} onChange={e => set('total_rate', e.target.value)} placeholder='' /></div>
+          <div><label style={labelStyle}>Taxes & Fees %</label><input style={inputStyle} type='number' value={draft.taxes_and_fees} onChange={e => set('taxes_and_fees', e.target.value)} placeholder='' /></div>
+          <div><label style={labelStyle}>Rate Type</label><input style={inputStyle} value={draft.rate_type} onChange={e => set('rate_type', e.target.value)} placeholder='Per night, per room' /></div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div><label style={labelStyle}>Booked By</label><input style={inputStyle} value={draft.booked_by} onChange={e => set('booked_by', e.target.value)} placeholder='ambience' /></div>
+        <div><label style={labelStyle}>Brief Category</label><input style={inputStyle} value={draft.brief_category} onChange={e => set('brief_category', e.target.value)} placeholder='Accommodation' /></div>
+        <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Inclusions</label><input style={inputStyle} value={draft.inclusions} onChange={e => set('inclusions', e.target.value)} placeholder='Breakfast included' /></div>
+        <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Cancellation Policy</label><input style={inputStyle} value={draft.cancellation_policy} onChange={e => set('cancellation_policy', e.target.value)} placeholder='Free cancellation until 30 days prior' /></div>
+        <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Notes</label><input style={inputStyle} value={draft.notes} onChange={e => set('notes', e.target.value)} placeholder='Internal notes' /></div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button onClick={() => { setOpen(false); setDraft(emptyBookingDraft()) }} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Cancel</button>
+        <button onClick={handleCreate} disabled={saving} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Creating...' : 'Create Booking'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── TripBlock ─────────────────────────────────────────────────────────────────
 
 function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
@@ -967,10 +1134,11 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
   onToggle: () => void
   house:    HouseProfile | null
 }) {
+  const [bookings, setBookings] = useState<TripBooking[]>(trip.bookings)
   const statusColor: Record<string, string> = { active: '#4ade80', completed: '#86efac', cancelled: '#f87171', draft: A.faint }
   const tripColor       = statusColor[trip.status ?? ''] ?? A.gold
-  const totalCommission = trip.bookings.reduce((s, b) => s + (b.commission_amount ?? 0), 0)
-  const totalGross      = trip.bookings.reduce((s, b) => s + (b.commissionable_rate ?? b.price ?? 0) * (b.nights ?? 1), 0)
+  const totalCommission = bookings.reduce((s, b) => s + (b.commission_amount ?? 0), 0)
+  const totalGross      = bookings.reduce((s, b) => s + (b.commissionable_rate ?? b.price ?? 0) * (b.nights ?? 1), 0)
 
   return (
     <div style={{ background: A.bgCard, border: `1px solid ${expanded ? A.gold + '40' : A.border}`, borderRadius: 12, overflow: 'hidden', transition: 'border-color 150ms ease' }}>
@@ -1010,14 +1178,16 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
 
           <TripActionPanel trip={trip} house={house} />
 
-          {trip.bookings.length === 0
+          {bookings.length === 0
             ? <AdminEmptyState message='No bookings on this trip yet.' />
             : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {trip.bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} />)}
+                {bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} />)}
               </div>
             )
           }
+
+          <BookingCreator tripId={trip.id} onCreated={b => setBookings(prev => [...prev, b])} />
 
           <AuxBookingsEditor tripId={trip.id} />
         </div>

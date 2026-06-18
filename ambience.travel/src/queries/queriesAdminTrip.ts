@@ -469,6 +469,25 @@ export async function updateBookingBriefFields(
   await invokeWriteTrip({ mode: 'update_booking_brief', booking_id: bookingId, patch })
 }
 
+// Generic booking-field update — update_booking_brief is generic-patch server-side,
+// so this writes any travel_bookings column. Returns nothing (EF returns {success}).
+export async function updateBookingFields(bookingId: string, patch: Partial<TripBooking>): Promise<void> {
+  await invokeWriteTrip({ mode: 'update_booking_brief', booking_id: bookingId, patch })
+}
+
+// Create a new travel_bookings row on a trip. patch may set any column;
+// trip_id is supplied separately (NOT NULL). Returns the raw inserted row
+// (without the client-resolved _hotel_name/_hotel_image_src/_rooms fields).
+export async function createBooking(
+  tripId: string,
+  patch: Partial<Omit<TripBooking, 'id' | 'trip_id' | '_hotel_name' | '_hotel_image_src' | '_rooms'>>,
+): Promise<Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>> {
+  const { booking } = await invokeWriteTrip<{ booking: Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'> }>({
+    mode: 'create_booking', trip_id: tripId, patch,
+  })
+  return booking
+}
+
 // ── Room CRUD ─────────────────────────────────────────────────────────────────
 
 export async function createBookingRoom(bookingId: string, patch: BookingRoomPatch): Promise<BookingRoom> {

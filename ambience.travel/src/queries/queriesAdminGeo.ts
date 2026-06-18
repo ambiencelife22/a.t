@@ -129,3 +129,23 @@ export async function fetchHotelsByDestination(destinationId: string): Promise<G
   if (error) throw error
   return (data ?? []) as GeoHotel[]
 }
+
+// Global hotel search for the booking-create picker. Catalog data (the public
+// hotel library), read directly — consistent with queriesGuidesHotels and the
+// other direct travel_accom_hotels reads. Not client-private, so no EF needed.
+export type HotelPick = { id: string; name: string; city: string | null }
+
+export async function fetchHotels(search?: string): Promise<HotelPick[]> {
+  let q = supabase
+    .from('travel_accom_hotels')
+    .select('id, name, city')
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+    .limit(50)
+  if (search && search.trim()) {
+    q = q.ilike('name', `%${search.trim()}%`)
+  }
+  const { data, error } = await q
+  if (error) throw error
+  return (data ?? []) as HotelPick[]
+}
