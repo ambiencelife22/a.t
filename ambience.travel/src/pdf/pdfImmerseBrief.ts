@@ -134,7 +134,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
-  const preparedFor = brief?.prepared_for ?? house?.display_name ?? null
+  const preparedFor = brief?.prepared_for ?? null
 
   let y = await drawPdfHero(doc, {
     title,

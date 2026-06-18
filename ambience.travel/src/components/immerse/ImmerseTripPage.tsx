@@ -1311,7 +1311,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
   const heroTitle = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
-  const guestName    = house?.display_name ?? brief?.prepared_for ?? ''
+  const guestName    = brief?.prepared_for ?? ''
   const dateLabel    = buildDateRange(trip.start_date, trip.end_date) || undefined
 
   const welcomeLetter = (brief as any)?.welcome_letter ?? null

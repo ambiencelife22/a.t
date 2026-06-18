@@ -177,7 +177,7 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
   const logoVariant = brief?.logo_variant ?? 'ambience'
   const title       = brief?.brief_title ?? clientData.destinationName
   const subtitle    = (brief?.brief_subtitle ?? 'TRIP CONFIRMATION BRIEF').toUpperCase()
-  const pfor        = brief?.prepared_for ?? house?.display_name ?? ''
+  const pfor        = brief?.prepared_for ?? ''
   const heroSrc     = brief?.hero_image_src ?? ''
   const dates       = buildDateRange(trip.start_date, trip.end_date)
 

@@ -355,7 +355,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
-  const preparedFor = brief?.prepared_for ?? house?.display_name ?? null
+  const preparedFor = brief?.prepared_for ?? null
   const dateRange   = brief?.snapshot_dates ?? buildDateRange(trip.start_date, trip.end_date)
 
   let y = await drawPdfHero(doc, {

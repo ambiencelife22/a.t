@@ -354,7 +354,7 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
     } catch { /* silent */ }
   }
 
-  const preparedFor = data.brief?.prepared_for ?? data.house?.display_name ?? null
+  const preparedFor = data.brief?.prepared_for ?? null
   const title       = data.brief?.brief_title ?? data.trip.destinations[0]?.name ?? ''
 
   let y = await drawPdfHero(doc, {
