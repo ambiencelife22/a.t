@@ -341,7 +341,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                 {rooms.length > 0 && (
                   <div style={{ borderTop: `0.5px solid ${RULE}` }}>
                     {rooms.map((room, ri) => {
-                      const guests = [room.guest_name, room.party_composition].filter(Boolean).join(' · ')
+                      const guests = [room.resolved_guest_name || room.guest_name, room.party_composition].filter(Boolean).join(' · ')
                       return (
                         <div key={room.id ?? ri} style={{
                           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
@@ -415,7 +415,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                           ].filter(Boolean).join('  \u00b7  ')
                           return (
                             <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{p.passenger_label ?? 'Guest'}</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
                               {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{detail}</span>}
                             </div>
                           )
@@ -475,7 +475,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
     flightArriveTime:  string | null
     seatNumbers:       string | null
     cabinClass:        string | null
-    passengers:        { id: string; passenger_label: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
+    passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
   }
 
   const cards: CardItem[] = activeDay ? [
@@ -778,7 +778,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                                       Guest
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                      <span style={{ fontWeight: 600 }}>{p.passenger_label ?? 'Guest'}</span>
+                                      <span style={{ fontWeight: 600 }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
                                       {detail && <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED }}>{`  ${detail}`}</span>}
                                     </div>
                                   </div>
@@ -936,7 +936,7 @@ function TripBriefTab({ clientData, days, entries }: {
                         return (
                           <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>
-                              {p.passenger_label ?? 'Guest'}
+                              {p.resolved_passenger_label || p.passenger_label || 'Guest'}
                             </div>
                             {detail && (
                               <div style={{ fontSize: 11, color: MUTED, fontFamily: 'DM Mono, monospace' }}>

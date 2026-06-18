@@ -19,7 +19,30 @@ const corsHeaders = {
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
-async function attachPassengers(db: any, aux: any[]): Promise<any[]> {
+// ── Name resolution (S53G single-source) ──────────────────────────────────────
+// Precedence: linked person (global_people) → free-text override → party label
+// (brief.prepared_for). A person is the source when linked; the override is a
+// deliberate one-off; the party label is the trip's single client address.
+function formatPersonName(gp: any | null | undefined): string {
+  if (!gp) return ''
+  const first = (gp.first_name ?? '').trim()
+  const last  = (gp.last_name ?? '').trim()
+  const full  = [first, last].filter(Boolean).join(' ').trim()
+  return (gp.nickname?.trim() || full || first || '').trim()
+}
+function resolvePartyName(
+  person:     any | null | undefined,
+  override:   string | null | undefined,
+  partyLabel: string | null | undefined,
+): string {
+  const p = formatPersonName(person)
+  if (p) return p
+  const o = (override ?? '').trim()
+  if (o) return o
+  return (partyLabel ?? '').trim()
+}
+
+async function attachPassengers(db: any, aux: any[], partyLabel: string | null): Promise<any[]> {
   if (aux.length === 0) return aux
   const ids = aux.map(a => a.id)
   const { data: pax } = await db
@@ -27,8 +50,23 @@ async function attachPassengers(db: any, aux: any[]): Promise<any[]> {
     .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
     .in('aux_booking_id', ids)
     .order('sort_order', { ascending: true })
+
+  // batch-resolve linked people
+  const personIds = [...new Set((pax ?? []).map((p: any) => p.person_id).filter(Boolean))] as string[]
+  const peopleById: Record<string, any> = {}
+  if (personIds.length > 0) {
+    const { data: gp } = await db
+      .from('global_people')
+      .select('id, first_name, last_name, nickname')
+      .in('id', personIds)
+    for (const g of (gp ?? [])) peopleById[g.id] = g
+  }
+
   const byAux: Record<string, any[]> = {}
-  for (const p of (pax ?? [])) (byAux[p.aux_booking_id] ??= []).push(p)
+  for (const p of (pax ?? [])) {
+    const resolved = resolvePartyName(p.person_id ? peopleById[p.person_id] : null, p.passenger_label, partyLabel)
+    ;(byAux[p.aux_booking_id] ??= []).push({ ...p, resolved_passenger_label: resolved })
+  }
   return aux.map(a => ({ ...a, passengers: byAux[a.id] ?? [] }))
 }
 
@@ -50,7 +88,7 @@ Deno.serve(async (req: Request) => {
 
     const db = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
@@ -173,7 +211,7 @@ Deno.serve(async (req: Request) => {
     const bookingIds = bookings.map((b: any) => b.id)
     const roomsResult = bookingIds.length > 0
       ? await db.from('travel_booking_rooms')
-          .select('id, booking_id, room_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, sort_order, created_at, updated_at')
+          .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, sort_order, created_at, updated_at')
           .in('booking_id', bookingIds)
           .order('sort_order', { ascending: true })
       : { data: [], error: null }
@@ -246,6 +284,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // resolve room guest people (S53G single-source)
+    const roomPersonIds = [...new Set(rooms.map((r: any) => r.person_id).filter(Boolean))] as string[]
+    const roomPeopleById: Record<string, any> = {}
+    if (roomPersonIds.length > 0) {
+      const { data: rp } = await db
+        .from('global_people')
+        .select('id, first_name, last_name, nickname')
+        .in('id', roomPersonIds)
+      for (const g of (rp ?? [])) roomPeopleById[g.id] = g
+    }
+    const partyLabel = brief?.prepared_for ?? null
+
     const roomsByBooking: Record<string, any[]> = {}
     for (const r of rooms) {
       if (!roomsByBooking[r.booking_id]) roomsByBooking[r.booking_id] = []
@@ -268,6 +318,7 @@ Deno.serve(async (req: Request) => {
         const canon = r.room_id ? canonRoomById[r.room_id] : null
         return {
           ...r,
+          resolved_guest_name: resolvePartyName(r.person_id ? roomPeopleById[r.person_id] : null, r.guest_name, partyLabel),
           resolved_image_src:
             r.brief_image_src ?? canon?.image_src ?? b.brief_image_src ?? hotel?.hero_image_src ?? null,
           resolved_image_alt: canon?.image_alt ?? r.room_name ?? null,
@@ -301,7 +352,7 @@ Deno.serve(async (req: Request) => {
       house,
       contacts,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings: await attachPassengers(db, auxBookings),
+      auxBookings: await attachPassengers(db, auxBookings, brief?.prepared_for ?? null),
       urlId: url_id,
       guides: {
         hasDining:         !!diningGuideResult.data,

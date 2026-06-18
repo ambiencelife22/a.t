@@ -84,7 +84,8 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
   // ── Measure room rows ──
   const roomRowH = (room: BookingRoom): number => {
     const gp: string[] = []
-    if (room.guest_name) gp.push(room.guest_name)
+    const rGuest = (room as any).resolved_guest_name || room.guest_name
+    if (rGuest) gp.push(rGuest)
     if (room.additional_guests?.length) gp.push(...room.additional_guests)
     if (room.party_composition) gp.push(room.party_composition)
     const nameH  = room.room_name ? 5 : 0
@@ -170,7 +171,8 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
       drawRule(doc, contentX, ry, contentW, T.rule, 0.3)
 
       const gp: string[] = []
-      if (room.guest_name) gp.push(room.guest_name)
+      const rGuest = (room as any).resolved_guest_name || room.guest_name
+      if (rGuest) gp.push(rGuest)
       if (room.additional_guests?.length) gp.push(...room.additional_guests)
       if (room.party_composition) gp.push(room.party_composition)
       const guestLine = gp.join('  \u00b7  ')
@@ -399,7 +401,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
         + padV)
       const roomsH = rooms.reduce((sum, r) => {
-        const gp = !!(r.guest_name || r.additional_guests?.length || r.party_composition)
+        const gp = !!((r as any).resolved_guest_name || r.guest_name || r.additional_guests?.length || r.party_composition)
         return sum + padV + (r.room_name ? 5 : 0) + (gp ? 4.5 : 0) + padV
       }, 0)
       const cardH = headerH + (rooms.length > 0 ? roomsH : 0)

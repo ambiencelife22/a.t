@@ -167,13 +167,15 @@ export type TripAuxBooking = {
 }
 
 export type TripAuxPassenger = {
-  id:                  string
-  aux_booking_id:      string
-  person_id:           string | null
-  passenger_label:     string | null
-  confirmation_number: string | null
-  seat_numbers:        string | null
-  sort_order:          number
+  id:                       string
+  aux_booking_id:           string
+  person_id:                string | null
+  passenger_label:          string | null
+  confirmation_number:      string | null
+  seat_numbers:             string | null
+  sort_order:               number
+  // EF-resolved (S53G single-source): person → override → prepared_for
+  resolved_passenger_label?: string | null
 }
 
 export type TripAuxBookingPatch = Partial<Omit<TripAuxBooking, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
@@ -195,11 +197,13 @@ export type BookingRoom = {
   extra_person_fee:    number | null
   brief_image_src:     string | null
   additional_guests:   string[] | null
+  person_id:           string | null
   sort_order:          number
   created_at:          string
   updated_at:          string
-  resolved_image_src?: string | null
-  resolved_image_alt?: string | null
+  resolved_image_src?:  string | null
+  resolved_image_alt?:  string | null
+  resolved_guest_name?: string | null
 }
 
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>

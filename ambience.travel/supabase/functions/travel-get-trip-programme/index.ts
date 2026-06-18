@@ -49,7 +49,30 @@ const corsHeaders = {
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
-async function attachPassengers(db: any, aux: any[]): Promise<any[]> {
+// ── Name resolution (S53G single-source) ──────────────────────────────────────
+// Precedence: linked person (global_people) → free-text override → party label
+// (brief.prepared_for). A person is the source when linked; the override is a
+// deliberate one-off; the party label is the trip's single client address.
+function formatPersonName(gp: any | null | undefined): string {
+  if (!gp) return ''
+  const first = (gp.first_name ?? '').trim()
+  const last  = (gp.last_name ?? '').trim()
+  const full  = [first, last].filter(Boolean).join(' ').trim()
+  return (gp.nickname?.trim() || full || first || '').trim()
+}
+function resolvePartyName(
+  person:     any | null | undefined,
+  override:   string | null | undefined,
+  partyLabel: string | null | undefined,
+): string {
+  const p = formatPersonName(person)
+  if (p) return p
+  const o = (override ?? '').trim()
+  if (o) return o
+  return (partyLabel ?? '').trim()
+}
+
+async function attachPassengers(db: any, aux: any[], partyLabel: string | null): Promise<any[]> {
   if (aux.length === 0) return aux
   const ids = aux.map(a => a.id)
   const { data: pax } = await db
@@ -57,8 +80,23 @@ async function attachPassengers(db: any, aux: any[]): Promise<any[]> {
     .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
     .in('aux_booking_id', ids)
     .order('sort_order', { ascending: true })
+
+  // batch-resolve linked people
+  const personIds = [...new Set((pax ?? []).map((p: any) => p.person_id).filter(Boolean))] as string[]
+  const peopleById: Record<string, any> = {}
+  if (personIds.length > 0) {
+    const { data: gp } = await db
+      .from('global_people')
+      .select('id, first_name, last_name, nickname')
+      .in('id', personIds)
+    for (const g of (gp ?? [])) peopleById[g.id] = g
+  }
+
   const byAux: Record<string, any[]> = {}
-  for (const p of (pax ?? [])) (byAux[p.aux_booking_id] ??= []).push(p)
+  for (const p of (pax ?? [])) {
+    const resolved = resolvePartyName(p.person_id ? peopleById[p.person_id] : null, p.passenger_label, partyLabel)
+    ;(byAux[p.aux_booking_id] ??= []).push({ ...p, resolved_passenger_label: resolved })
+  }
   return aux.map(a => ({ ...a, passengers: byAux[a.id] ?? [] }))
 }
 
@@ -82,7 +120,7 @@ Deno.serve(async (req: Request) => {
     // ── 2. Service role client ────────────────────────────────────────────────
     const db = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
@@ -204,13 +242,19 @@ Deno.serve(async (req: Request) => {
           ? db.from('travel_bookings')
               .select('id, brief_image_src, accom_hotel_id, status')
               .in('id', bookingIds)
+          : Promise.resolve({ data: [], error: null }),// Room-level image (all rooms per booking, includes room_id for canon lookup)
+        bookingIds.length > 0
+          ? db.from('travel_booking_rooms')
+              .select('id, booking_id, room_id, brief_image_src')
+              .in('booking_id', bookingIds)
+              .order('sort_order', { ascending: true })
           : Promise.resolve({ data: [], error: null }),
 
         // Room-level image (all rooms per booking, includes room_id for canon lookup)
         bookingIds.length > 0
-          ? db.from('travel_booking_rooms')
-              .select('booking_id, room_id, brief_image_src')
-              .in('booking_id', bookingIds)
+          ? await db.from('travel_booking_rooms')
+          .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, sort_order, created_at, updated_at')
+          .in('booking_id', bookingIds)
               .order('sort_order', { ascending: true })
           : Promise.resolve({ data: [], error: null }),
 
@@ -346,7 +390,7 @@ Deno.serve(async (req: Request) => {
       brief:           briefResult.data ?? null,
       house:           houseResult.data ?? null,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings:     await attachPassengers(db, auxResult.data ?? []),
+      auxBookings:     await attachPassengers(db, auxResult.data ?? [], briefResult.data?.prepared_for ?? null),
       urlId:           url_id,
       days:            daysResult.data ?? [],
       entries:         enrichedEntries,

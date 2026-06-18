@@ -305,10 +305,12 @@ export function stampPageChrome(doc: any, brief: TripBrief | null): void {
 // Returns one display line per passenger: "Label · Conf X · Seats Y".
 
 export interface AuxPassengerLike {
-  passenger_label:     string | null
-  confirmation_number: string | null
-  seat_numbers:        string | null
-  sort_order:          number
+  person_id?:               string | null
+  passenger_label:          string | null
+  resolved_passenger_label?: string | null
+  confirmation_number:      string | null
+  seat_numbers:             string | null
+  sort_order:               number
 }
 
 export interface AuxLike {
@@ -318,7 +320,7 @@ export interface AuxLike {
 export function passengerLines(aux: AuxLike): string[] {
   const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   return pax.map(p => [
-    p.passenger_label ?? 'Guest',
+    p.resolved_passenger_label || p.passenger_label || 'Guest',
     p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
     p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
   ].filter(Boolean).join('  \u00b7  '))
