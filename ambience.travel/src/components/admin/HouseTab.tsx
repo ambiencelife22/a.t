@@ -52,6 +52,8 @@ import {
 } from './houseUi'
 import { TripDossierSection } from './TripDossierSection'
 import { RequestsSection } from './RequestsSection'
+import { PersonLinkPicker } from './PersonLinkPicker'
+import { createPerson as createGlobalPerson } from '../../queries/queriesGlobalPeople'
 import { fetchRequestsForHouse, type TravelRequest } from '../../queries/queriesAdminRequests'
 import { PPD_PEOPLE_KEYS as PPD_KEYS } from '../../types/typesPpd'
 
@@ -315,6 +317,17 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
                 </select>
               </Field>
             </div>
+            <PersonLinkPicker
+              label='Linked Person (global registry)'
+              personId={person.person_id}
+              onChange={async (pid) => {
+                try {
+                  await updatePerson(person.id, { person_id: pid })
+                  success(pid ? 'Linked.' : 'Unlinked.')
+                  await onReload()
+                } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
+              }}
+            />
             <Field label='Notes (internal)'>
               <textarea style={{ ...textareaStyle, minHeight: 72 }} value={identityDraft.notes} onChange={e => setIdentityDraft(d => ({ ...d, notes: e.target.value }))} placeholder='Any notes about this person...' />
             </Field>
@@ -638,7 +651,11 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     if (!pd.member_ref.trim()) return
     setAddSaving(true)
     try {
-      await createPerson(house.id, pd.member_ref.trim(), pd.role, null)
+      // Mint a linked global_people row so the house-person is born linked,
+      // not orphaned. member_ref doubles as the new person's nickname for
+      // display until richer identity fields are filled in.
+      const gp = await createGlobalPerson({ nickname: pd.member_ref.trim() })
+      await createPerson(house.id, pd.member_ref.trim(), pd.role, null, gp.id)
       success('Added.')
       setAddingPerson(false)
       setPd({ member_ref: '', role: 'primary' })

@@ -17,6 +17,7 @@
 import { useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { useAdminToast } from './_adminPrimitives'
+import { PersonLinkPicker } from './PersonLinkPicker'
 import {
   createAuxPassenger, updateAuxPassenger, deleteAuxPassenger,
 } from '../../queries/queriesAdminTrip'
@@ -51,6 +52,7 @@ function PaxField({ label, value, onChange, placeholder, type = 'text' }: {
 // ── Draft + mappers ─────────────────────────────────────────────────────────────
 
 type PaxDraft = {
+  person_id:           string | null
   passenger_label:     string
   confirmation_number: string
   seat_numbers:        string
@@ -58,11 +60,12 @@ type PaxDraft = {
 }
 
 function emptyPaxDraft(sortOrder: number): PaxDraft {
-  return { passenger_label: '', confirmation_number: '', seat_numbers: '', sort_order: sortOrder }
+  return { person_id: null, passenger_label: '', confirmation_number: '', seat_numbers: '', sort_order: sortOrder }
 }
 
 function paxToDraft(p: TripAuxPassenger): PaxDraft {
   return {
+    person_id:           p.person_id            ?? null,
     passenger_label:     p.passenger_label     ?? '',
     confirmation_number: p.confirmation_number  ?? '',
     seat_numbers:        p.seat_numbers         ?? '',
@@ -73,6 +76,7 @@ function paxToDraft(p: TripAuxPassenger): PaxDraft {
 function paxDraftToPatch(d: PaxDraft): TripAuxPassengerPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
+    person_id:           d.person_id,
     passenger_label:     orNull(d.passenger_label),
     confirmation_number: orNull(d.confirmation_number),
     seat_numbers:        orNull(d.seat_numbers),
@@ -134,8 +138,15 @@ export function AuxPassengersEditor({ auxBookingId, initial }: { auxBookingId: s
 
   const form = (
     <div style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <PersonLinkPicker
+          label='Passenger (global registry)'
+          personId={draft.person_id}
+          onChange={pid => setDraft({ ...draft, person_id: pid })}
+        />
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <PaxField label='Passenger' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder='May Amin' />
+        <PaxField label='Label (override)' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder='May Amin' />
         <PaxField label='Confirmation #' value={draft.confirmation_number} onChange={v => setDraft({ ...draft, confirmation_number: v })} placeholder='PVJZEW' />
         <PaxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => setDraft({ ...draft, seat_numbers: v })} placeholder='5F, 5E' />
         <PaxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => setDraft({ ...draft, sort_order: parseInt(v, 10) || 0 })} />

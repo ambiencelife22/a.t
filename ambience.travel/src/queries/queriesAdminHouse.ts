@@ -205,13 +205,13 @@ export async function fetchPeopleForHouse(houseId: string): Promise<HousePerson[
   return (data ?? []) as HousePerson[]
 }
 
-export async function createPerson(houseId: string, memberRef: string, role: string, notes: string | null): Promise<void> {
+export async function createPerson(houseId: string, memberRef: string, role: string, notes: string | null, personId: string | null = null): Promise<void> {
   const { error } = await supabase
-    .from('a_house_people').insert({ house_id: houseId, member_ref: memberRef, role, notes })
+    .from('a_house_people').insert({ house_id: houseId, member_ref: memberRef, role, notes, person_id: personId })
   if (error) throw new Error(`Failed to create person: ${error.message}`)
 }
 
-export async function updatePerson(id: string, patch: Partial<Pick<HousePerson, 'member_ref' | 'role' | 'notes'>>): Promise<void> {
+export async function updatePerson(id: string, patch: Partial<Pick<HousePerson, 'member_ref' | 'role' | 'notes' | 'person_id'>>): Promise<void> {
   const { error } = await supabase.from('a_house_people').update(patch).eq('id', id)
   if (error) throw new Error(`Failed to update person: ${error.message}`)
 }
