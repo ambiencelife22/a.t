@@ -192,6 +192,7 @@ export type BookingRoom = {
   rate:                number | null
   tax_pct:             number | null
   total:               number | null
+  extra_person_fee:    number | null
   brief_image_src:     string | null
   additional_guests:   string[] | null
   sort_order:          number

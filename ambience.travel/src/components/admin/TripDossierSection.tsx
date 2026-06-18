@@ -20,8 +20,8 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminTrip'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
-import type { BookingRoom, TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBookingRoom, updateBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
+import type { BookingRoom, BookingRoomPatch, TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
@@ -222,31 +222,189 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 // ── RoomsEditor ───────────────────────────────────────────────────────────────
+// Full-coverage room editor: create + edit + delete, all operator-relevant
+// columns on travel_booking_rooms. Edit mode mirrors AuxBookingsEditor's
+// begin/save/cancel pattern. brief_image_src is owned by BriefRoomEditor
+// (not duplicated here); tax_pct/sort_order omitted as low operator value.
+
+type RoomDraft = {
+  room_name:           string
+  confirmation_number: string
+  guest_name:          string
+  party_composition:   string
+  notes:               string
+  nights:              string   // numeric-as-string for the input
+  rate:                string
+  total:               string
+  extra_person_fee:    string
+  additional_guests:   string[]
+}
+
+function emptyRoomDraft(): RoomDraft {
+  return {
+    room_name: '', confirmation_number: '', guest_name: '', party_composition: '',
+    notes: '', nights: '', rate: '', total: '', extra_person_fee: '', additional_guests: [],
+  }
+}
+
+function roomToDraft(r: BookingRoom): RoomDraft {
+  const numStr = (n: number | null): string => (n == null ? '' : String(n))
+  return {
+    room_name:           r.room_name           ?? '',
+    confirmation_number: r.confirmation_number  ?? '',
+    guest_name:          r.guest_name           ?? '',
+    party_composition:   r.party_composition    ?? '',
+    notes:               r.notes                ?? '',
+    nights:              numStr(r.nights),
+    rate:                numStr(r.rate),
+    total:               numStr(r.total),
+    extra_person_fee:    numStr(r.extra_person_fee),
+    additional_guests:   r.additional_guests    ?? [],
+  }
+}
+
+function roomDraftToPatch(d: RoomDraft): BookingRoomPatch {
+  const orNull    = (s: string): string | null => (s.trim() === '' ? null : s.trim())
+  const numOrNull = (s: string): number | null => {
+    const t = s.trim()
+    if (t === '') return null
+    const n = Number(t)
+    return Number.isFinite(n) ? n : null
+  }
+  const guests = d.additional_guests.map(g => g.trim()).filter(Boolean)
+  return {
+    room_name:           orNull(d.room_name),
+    confirmation_number: orNull(d.confirmation_number),
+    guest_name:          orNull(d.guest_name),
+    party_composition:   orNull(d.party_composition),
+    notes:               orNull(d.notes),
+    nights:              numOrNull(d.nights),
+    rate:                numOrNull(d.rate),
+    total:               numOrNull(d.total),
+    extra_person_fee:    numOrNull(d.extra_person_fee),
+    additional_guests:   guests.length > 0 ? guests : null,
+  }
+}
+
+function RoomField({ label, value, onChange, placeholder, type = 'text', span }: {
+  label: string; value: string; onChange: (v: string) => void
+  placeholder?: string; type?: string; span?: boolean
+}) {
+  return (
+    <div style={span ? { gridColumn: '1 / -1' } : undefined}>
+      <label style={labelStyle}>{label}</label>
+      <input style={inputStyle} type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </div>
+  )
+}
+
+function RoomForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
+  draft: RoomDraft; setDraft: (d: RoomDraft) => void
+  onSave: () => void; onCancel: () => void; saving: boolean; saveLabel: string
+}) {
+  const set = <K extends keyof RoomDraft>(k: K, v: RoomDraft[K]) => setDraft({ ...draft, [k]: v })
+
+  return (
+    <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <RoomField label='Guest Name' value={draft.guest_name} onChange={v => set('guest_name', v)} placeholder='Princess Nouf' />
+        <RoomField label='Confirmation #' value={draft.confirmation_number} onChange={v => set('confirmation_number', v)} placeholder='4375602759' />
+        <RoomField label='Party Composition' value={draft.party_composition} onChange={v => set('party_composition', v)} placeholder='2 Adults, 2 Children' />
+        <RoomField label='Room Name' value={draft.room_name} onChange={v => set('room_name', v)} placeholder='Two-Bedroom Suite' />
+      </div>
+
+      {/* Additional guests — repeatable rows */}
+      <div>
+        <label style={labelStyle}>Additional Guests</label>
+        {draft.additional_guests.map((g, idx) => (
+          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <input
+              style={{ ...inputStyle, flex: 1 }}
+              value={g}
+              placeholder='Additional guest name'
+              onChange={e => {
+                const next = [...draft.additional_guests]
+                next[idx] = e.target.value
+                set('additional_guests', next)
+              }}
+            />
+            <button
+              onClick={() => set('additional_guests', draft.additional_guests.filter((_, i) => i !== idx))}
+              style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}
+            >×</button>
+          </div>
+        ))}
+        <button
+          onClick={() => set('additional_guests', [...draft.additional_guests, ''])}
+          style={{ fontFamily: A.font, fontSize: 9, fontWeight: 600, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 0 0', letterSpacing: '0.04em' }}
+        >+ Add'l Guest</button>
+      </div>
+
+      {/* Rate detail */}
+      <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Rate Detail</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <RoomField label='Nights' type='number' value={draft.nights} onChange={v => set('nights', v)} placeholder='3' />
+          <RoomField label='Rate / night' type='number' value={draft.rate} onChange={v => set('rate', v)} placeholder='1305.00' />
+          <RoomField label='Total' type='number' value={draft.total} onChange={v => set('total', v)} placeholder='4347.60' />
+          <RoomField label='Extra Person Fee' type='number' value={draft.extra_person_fee} onChange={v => set('extra_person_fee', v)} placeholder='390.00' />
+        </div>
+      </div>
+
+      <RoomField label='Notes' value={draft.notes} onChange={v => set('notes', v)} placeholder='Includes rollaway bed' span />
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button onClick={onCancel} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Cancel</button>
+        <button onClick={onSave} disabled={saving} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving...' : saveLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function RoomsEditor({ booking }: { booking: TripBooking }) {
   const [rooms,  setRooms]  = useState<BookingRoom[]>(booking._rooms)
   const [adding, setAdding] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [draft,  setDraft]  = useState<RoomDraft>(emptyRoomDraft())
   const [saving, setSaving] = useState<string | null>(null)
-  const [newRoomName,  setNewRoomName]  = useState('')
-  const [newConfNum,   setNewConfNum]   = useState('')
-  const [newGuestName, setNewGuestName] = useState('')
-  const [newPartyComp, setNewPartyComp] = useState('')
-  const [newNotes,     setNewNotes]     = useState('')
   const { success, error } = useAdminToast()
+
+  function beginAdd() {
+    setEditId(null)
+    setDraft(emptyRoomDraft())
+    setAdding(true)
+  }
+
+  function beginEdit(r: BookingRoom) {
+    setAdding(false)
+    setEditId(r.id)
+    setDraft(roomToDraft(r))
+  }
 
   async function handleAdd() {
     setSaving('add')
     try {
-      const r = await createBookingRoom(booking.id, {
-        room_name: newRoomName || null, confirmation_number: newConfNum || null,
-        guest_name: newGuestName || null, party_composition: newPartyComp || null,
-        notes: newNotes || null, sort_order: rooms.length,
-      })
+      const r = await createBookingRoom(booking.id, { ...roomDraftToPatch(draft), sort_order: rooms.length })
       setRooms(prev => [...prev, r])
       setAdding(false)
-      setNewRoomName(''); setNewConfNum(''); setNewGuestName(''); setNewPartyComp(''); setNewNotes('')
+      setDraft(emptyRoomDraft())
       success('Room added')
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to add room') }
+    finally { setSaving(null) }
+  }
+
+  async function handleSaveEdit() {
+    if (!editId) return
+    setSaving(editId)
+    try {
+      const updated = await updateBookingRoom(editId, roomDraftToPatch(draft))
+      setRooms(prev => prev.map(r => r.id === editId ? updated : r))
+      setEditId(null)
+      setDraft(emptyRoomDraft())
+      success('Room updated')
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to update room') }
     finally { setSaving(null) }
   }
 
@@ -261,41 +419,45 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
     <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>Rooms ({rooms.length})</div>
-        <button onClick={() => setAdding(o => !o)} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}>
-          {adding ? 'Cancel' : '+ Add Room'}
-        </button>
+        {!adding && !editId && (
+          <button onClick={beginAdd} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}>
+            + Add Room
+          </button>
+        )}
       </div>
 
       {rooms.map(r => (
-        <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {r.confirmation_number && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>}
-            {r.guest_name         && <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>}
-            {r.party_composition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>}
-            {r.room_name          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
-            {r.notes              && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>}
+        editId === r.id ? (
+          <div key={r.id} style={{ marginBottom: 6 }}>
+            <RoomForm draft={draft} setDraft={setDraft} onSave={handleSaveEdit} onCancel={() => { setEditId(null); setDraft(emptyRoomDraft()) }} saving={saving === r.id} saveLabel='Save Changes' />
           </div>
-          <button onClick={() => handleDelete(r.id)} disabled={saving === r.id} style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>
-            {saving === r.id ? '...' : '×'}
-          </button>
-        </div>
+        ) : (
+          <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {r.confirmation_number && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>}
+              {r.guest_name         && <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.guest_name}</div>}
+              {r.additional_guests?.length ? <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.additional_guests.join(', ')}</div> : null}
+              {r.party_composition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>}
+              {r.room_name          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
+              {(r.total != null || r.rate != null) && (
+                <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+                  {r.rate != null ? `${r.rate}/night` : ''}{r.rate != null && r.total != null ? '  ·  ' : ''}{r.total != null ? `${r.total} total` : ''}{r.extra_person_fee != null ? `  ·  +${r.extra_person_fee} extra person` : ''}
+                </div>
+              )}
+              {r.notes              && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>}
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              <button onClick={() => beginEdit(r)} style={{ fontFamily: A.font, fontSize: 10, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>Edit</button>
+              <button onClick={() => handleDelete(r.id)} disabled={saving === r.id} style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+                {saving === r.id ? '...' : '×'}
+              </button>
+            </div>
+          </div>
+        )
       ))}
 
       {adding && (
-        <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div><label style={labelStyle}>Guest Name</label><input style={inputStyle} value={newGuestName} onChange={e => setNewGuestName(e.target.value)} placeholder='Princess Nouf' /></div>
-            <div><label style={labelStyle}>Confirmation #</label><input style={inputStyle} value={newConfNum} onChange={e => setNewConfNum(e.target.value)} placeholder='4375602759' /></div>
-            <div><label style={labelStyle}>Party Composition</label><input style={inputStyle} value={newPartyComp} onChange={e => setNewPartyComp(e.target.value)} placeholder='2 Adults, 2 Children' /></div>
-            <div><label style={labelStyle}>Room Name</label><input style={inputStyle} value={newRoomName} onChange={e => setNewRoomName(e.target.value)} placeholder='Two-Bedroom Suite' /></div>
-            <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Notes</label><input style={inputStyle} value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder='Includes rollaway bed' /></div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={handleAdd} disabled={saving === 'add'} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 14px', cursor: 'pointer' }}>
-              {saving === 'add' ? 'Adding...' : 'Add Room'}
-            </button>
-          </div>
-        </div>
+        <RoomForm draft={draft} setDraft={setDraft} onSave={handleAdd} onCancel={() => { setAdding(false); setDraft(emptyRoomDraft()) }} saving={saving === 'add'} saveLabel='Add Room' />
       )}
     </div>
   )
