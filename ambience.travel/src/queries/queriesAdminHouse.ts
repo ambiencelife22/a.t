@@ -351,25 +351,27 @@ export async function createContact(
   role: string | null, company: string | null,
   isPrimary: boolean, notes: string | null, personId: string | null,
 ): Promise<string> {
-  const { data, error } = await supabase
-    .from('a_house_contacts')
-    .insert({
-      house_id: houseId, contact_type: contactType, name, role,
+  const { data, error } = await supabase.functions.invoke('a-write-house-contacts', {
+    body: {
+      mode: 'create', house_id: houseId, contact_type: contactType, name, role,
       company, is_primary: isPrimary, notes, person_id: personId,
-    })
-    .select('id')
-    .single()
+    },
+  })
   if (error) throw new Error(`Failed to create contact: ${error.message}`)
-  return data.id
+  return (data as { contact: { id: string } }).contact.id
 }
 
 export async function updateContact(id: string, patch: Partial<Omit<HouseContact, 'id' | 'house_id' | 'created_at' | 'updated_at'>>): Promise<void> {
-  const { error } = await supabase.from('a_house_contacts').update(patch).eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-contacts', {
+    body: { mode: 'update', id, ...patch },
+  })
   if (error) throw new Error(`Failed to update contact: ${error.message}`)
 }
 
 export async function deleteContact(id: string): Promise<void> {
-  const { error } = await supabase.from('a_house_contacts').delete().eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-contacts', {
+    body: { mode: 'delete', id },
+  })
   if (error) throw new Error(`Failed to delete contact: ${error.message}`)
 }
 
