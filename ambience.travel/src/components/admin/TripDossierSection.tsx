@@ -20,8 +20,8 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminTrip'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
-import type { BookingRoom, TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking, createAuxPassenger, updateAuxPassenger, deleteAuxPassenger } from '../../queries/queriesAdminTrip'
+import type { BookingRoom, TripAuxBooking, TripAuxBookingPatch, TripAuxPassenger, TripAuxPassengerPatch } from '../../queries/queriesAdminTrip'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
@@ -295,6 +295,147 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── PassengersSubEditor ───────────────────────────────────────────────────────
+// Per-flight passenger list (nested inside AuxBookingsEditor's flight rows).
+// Each passenger: label + conf + seats. person_id wiring deferred to a picker;
+// label is the operator-facing field for now.
+
+type PaxDraft = {
+  passenger_label:     string
+  confirmation_number: string
+  seat_numbers:        string
+  sort_order:          number
+}
+
+function emptyPaxDraft(sortOrder: number): PaxDraft {
+  return { passenger_label: '', confirmation_number: '', seat_numbers: '', sort_order: sortOrder }
+}
+
+function paxToDraft(p: TripAuxPassenger): PaxDraft {
+  return {
+    passenger_label:     p.passenger_label     ?? '',
+    confirmation_number: p.confirmation_number  ?? '',
+    seat_numbers:        p.seat_numbers         ?? '',
+    sort_order:          p.sort_order,
+  }
+}
+
+function paxDraftToPatch(d: PaxDraft): TripAuxPassengerPatch {
+  const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
+  return {
+    passenger_label:     orNull(d.passenger_label),
+    confirmation_number: orNull(d.confirmation_number),
+    seat_numbers:        orNull(d.seat_numbers),
+    sort_order:          d.sort_order,
+  }
+}
+
+function PassengersSubEditor({ auxBookingId, initial }: { auxBookingId: string; initial: TripAuxPassenger[] }) {
+  const [pax,    setPax]    = useState<TripAuxPassenger[]>(initial)
+  const [adding, setAdding] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [draft,  setDraft]  = useState<PaxDraft>(emptyPaxDraft(0))
+  const [saving, setSaving] = useState(false)
+  const { success, error } = useAdminToast()
+
+  const sorted = [...pax].sort((a, b) => a.sort_order - b.sort_order)
+
+  function beginAdd() {
+    setEditId(null)
+    setDraft(emptyPaxDraft(pax.length))
+    setAdding(true)
+  }
+  function beginEdit(p: TripAuxPassenger) {
+    setAdding(false)
+    setEditId(p.id)
+    setDraft(paxToDraft(p))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const patch = paxDraftToPatch(draft)
+      if (editId) {
+        const updated = await updateAuxPassenger(editId, patch)
+        setPax(prev => prev.map(p => p.id === editId ? updated : p))
+        setEditId(null)
+        success('Passenger updated')
+      } else {
+        const created = await createAuxPassenger(auxBookingId, patch)
+        setPax(prev => [...prev, created])
+        setAdding(false)
+        success('Passenger added')
+      }
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to save passenger') }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(id: string) {
+    setSaving(true)
+    try {
+      await deleteAuxPassenger(id)
+      setPax(prev => prev.filter(p => p.id !== id))
+      success('Passenger removed')
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed to delete passenger') }
+    finally { setSaving(false) }
+  }
+
+  const form = (
+    <div style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <AuxField label='Passenger' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder='May Amin' />
+        <AuxField label='Confirmation #' value={draft.confirmation_number} onChange={v => setDraft({ ...draft, confirmation_number: v })} placeholder='PVJZEW' />
+        <AuxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => setDraft({ ...draft, seat_numbers: v })} placeholder='5F, 5E' />
+        <AuxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => setDraft({ ...draft, sort_order: parseInt(v, 10) || 0 })} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button onClick={() => { setAdding(false); setEditId(null) }} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}>
+          Cancel
+        </button>
+        <button onClick={handleSave} disabled={saving} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 5, padding: '4px 12px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving...' : (editId ? 'Save' : 'Add')}
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: `2px solid ${A.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
+          Passengers ({pax.length})
+        </div>
+        {!adding && !editId && (
+          <button onClick={beginAdd} style={{ fontFamily: A.font, fontSize: 9, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>
+            + Passenger
+          </button>
+        )}
+      </div>
+
+      {sorted.map(p => (
+        editId === p.id ? (
+          <div key={p.id} style={{ marginBottom: 6 }}>{form}</div>
+        ) : (
+          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 0' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.passenger_label ?? 'Guest'}</span>
+              <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginLeft: 8 }}>
+                {[p.confirmation_number, p.seat_numbers ? `Seats ${p.seat_numbers}` : null].filter(Boolean).join('  ·  ')}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              <button onClick={() => beginEdit(p)} style={{ fontFamily: A.font, fontSize: 9, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>Edit</button>
+              <button onClick={() => handleDelete(p.id)} disabled={saving} style={{ fontFamily: A.font, fontSize: 9, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>×</button>
+            </div>
+          </div>
+        )
+      ))}
+
+      {adding && <div style={{ marginTop: 6 }}>{form}</div>}
     </div>
   )
 }
@@ -579,8 +720,10 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
               {rowLine(a) && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{rowLine(a)}</div>}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
                 {a.start_date && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.start_date}{a.start_time ? ` ${a.start_time.slice(0, 5)}` : ''}</span>}
-                {a.confirmation_number && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{a.confirmation_number}</span>}
               </div>
+              {(a.booking_type ?? '').toLowerCase().includes('flight') && (
+                <PassengersSubEditor auxBookingId={a.id} initial={a.passengers ?? []} />
+              )}
             </div>
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
               <button onClick={() => beginEdit(a)} style={{ fontFamily: A.font, fontSize: 10, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>Edit</button>

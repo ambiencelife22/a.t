@@ -255,7 +255,25 @@ async function handleAuxBookings(db: SupabaseClient, tripId: string): Promise<Re
     .eq('trip_id', tripId)
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch aux bookings', 500)
-  return ok({ auxBookings: data ?? [] })
+
+  const aux = (data ?? []) as Record<string, unknown>[]
+  if (aux.length === 0) return ok({ auxBookings: [] })
+
+  const ids = aux.map(a => a.id as string)
+  const { data: pax } = await db
+    .from('travel_trip_aux_passengers')
+    .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
+    .in('aux_booking_id', ids)
+    .order('sort_order', { ascending: true })
+
+  const byAux: Record<string, unknown[]> = {}
+  for (const p of (pax ?? []) as Record<string, unknown>[]) {
+    const k = p.aux_booking_id as string
+    ;(byAux[k] ??= []).push(p)
+  }
+
+  const withPax = aux.map(a => ({ ...a, passengers: byAux[a.id as string] ?? [] }))
+  return ok({ auxBookings: withPax })
 }
 
 async function handlePublicView(db: SupabaseClient, tripId: string): Promise<Response> {

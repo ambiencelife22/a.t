@@ -24,6 +24,9 @@
 //   create_aux_booking    { trip_id, patch }
 //   update_aux_booking    { id, patch }
 //   delete_aux_booking    { id }
+//   create_aux_passenger  { aux_booking_id, patch }
+//   update_aux_passenger  { id, patch }
+//   delete_aux_passenger  { id }
 //   upsert_day            { trip_id, entry_date, patch }
 //   create_day_entry      { trip_id, entry }
 //   update_day_entry      { id, patch }
@@ -56,6 +59,9 @@ type Mode =
   | 'create_aux_booking'
   | 'update_aux_booking'
   | 'delete_aux_booking'
+  | 'create_aux_passenger'
+  | 'update_aux_passenger'
+  | 'delete_aux_passenger'
   | 'upsert_day'
   | 'create_day_entry'
   | 'update_day_entry'
@@ -250,6 +256,44 @@ async function handleDeleteAuxBooking(db: SupabaseClient, id: string): Promise<R
     .delete()
     .eq('id', id)
   if (error) return err('Failed to delete aux booking', 500)
+  return ok({ success: true })
+}
+
+async function handleCreateAuxPassenger(
+  db: SupabaseClient,
+  auxBookingId: string,
+  patch: Record<string, unknown>,
+): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_trip_aux_passengers')
+    .insert({ aux_booking_id: auxBookingId, ...patch })
+    .select()
+    .single()
+  if (error) return err('Failed to create aux passenger', 500)
+  return ok({ auxPassenger: data })
+}
+
+async function handleUpdateAuxPassenger(
+  db: SupabaseClient,
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_trip_aux_passengers')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) return err('Failed to update aux passenger', 500)
+  return ok({ auxPassenger: data })
+}
+
+async function handleDeleteAuxPassenger(db: SupabaseClient, id: string): Promise<Response> {
+  const { error } = await db
+    .from('travel_trip_aux_passengers')
+    .delete()
+    .eq('id', id)
+  if (error) return err('Failed to delete aux passenger', 500)
   return ok({ success: true })
 }
 
@@ -572,6 +616,24 @@ Deno.serve(async (req: Request) => {
         const { id } = body as { id?: string }
         if (!id) return err('id required', 400)
         return handleDeleteAuxBooking(serviceClient, id)
+      }
+
+      case 'create_aux_passenger': {
+        const { aux_booking_id, patch } = body as { aux_booking_id?: string; patch?: Record<string, unknown> }
+        if (!aux_booking_id || !patch) return err('aux_booking_id, patch required', 400)
+        return handleCreateAuxPassenger(serviceClient, aux_booking_id, patch)
+      }
+
+      case 'update_aux_passenger': {
+        const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
+        if (!id || !patch) return err('id, patch required', 400)
+        return handleUpdateAuxPassenger(serviceClient, id, patch)
+      }
+
+      case 'delete_aux_passenger': {
+        const { id } = body as { id?: string }
+        if (!id) return err('id required', 400)
+        return handleDeleteAuxPassenger(serviceClient, id)
       }
 
       case 'upsert_day': {

@@ -511,6 +511,28 @@ export async function deleteTripAuxBooking(id: string): Promise<void> {
   await invokeWriteTrip({ mode: 'delete_aux_booking', id })
 }
 
+// ── Aux passenger write ───────────────────────────────────────────────────────
+
+export type TripAuxPassengerPatch = Partial<Omit<TripAuxPassenger, 'id' | 'aux_booking_id'>>
+
+export async function createAuxPassenger(auxBookingId: string, patch: TripAuxPassengerPatch): Promise<TripAuxPassenger> {
+  const { auxPassenger } = await invokeWriteTrip<{ auxPassenger: TripAuxPassenger }>({
+    mode: 'create_aux_passenger', aux_booking_id: auxBookingId, patch,
+  })
+  return auxPassenger
+}
+
+export async function updateAuxPassenger(id: string, patch: TripAuxPassengerPatch): Promise<TripAuxPassenger> {
+  const { auxPassenger } = await invokeWriteTrip<{ auxPassenger: TripAuxPassenger }>({
+    mode: 'update_aux_passenger', id, patch,
+  })
+  return auxPassenger
+}
+
+export async function deleteAuxPassenger(id: string): Promise<void> {
+  await invokeWriteTrip({ mode: 'delete_aux_passenger', id })
+}
+
 // ── Itinerary CRUD ────────────────────────────────────────────────────────────
 
 export async function upsertTripDay(tripId: string, date: string, patch: TripDayPatch): Promise<TripDay> {
