@@ -22,7 +22,7 @@ import { assertJsPdf, loadImg, loadSvg, serif, sans, drawRule } from './pdfUtils
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, buildDateRange,
+  fmtDate, buildDateRange, passengerLines,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -197,11 +197,17 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
     y = drawSectionHeader(doc, 'Flights', y)
     for (const f of flights) {
       y = checkOverflow(doc, y, 16)
-      const name    = [f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join('  \u00b7  ')
-      const route   = [f.origin, f.destination].filter(Boolean).join('  \u2192  ')
-      const seatLine = [f.cabin_class, f.seat_numbers ? `Seats ${f.seat_numbers}` : null].filter(Boolean).join('  \u00b7  ')
-      const sub     = [route, seatLine].filter(Boolean).join('   \u00b7   ') || null
-      y += drawDataRow(doc, f.start_date ? fmtDate(f.start_date) : '\u2014', name || 'Flight', sub, bookedByLabel(f.booked_by), y)
+      const route    = [f.origin, f.destination].filter(Boolean).join('  \u2192  ')
+      const meta     = [route, f.cabin_class, f.aircraft_type].filter(Boolean).join('   \u00b7   ') || null
+      const paxLines = passengerLines(f)
+      y += drawDataRow(doc, f.start_date ? fmtDate(f.start_date) : '\u2014', f.name ?? 'Flight', meta, bookedByLabel(f.booked_by), y)
+      for (const line of paxLines) {
+        y = checkOverflow(doc, y, 8)
+        sans(doc, 'normal', 7.5)
+        doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+        doc.text(line, P.margin + LABEL_W, y); y += 5
+      }
+      if (paxLines.length > 0) y += 2
     }
     y += 4
   }

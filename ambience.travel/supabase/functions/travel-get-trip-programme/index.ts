@@ -49,6 +49,19 @@ const corsHeaders = {
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
+async function attachPassengers(db: any, aux: any[]): Promise<any[]> {
+  if (aux.length === 0) return aux
+  const ids = aux.map(a => a.id)
+  const { data: pax } = await db
+    .from('travel_trip_aux_passengers')
+    .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
+    .in('aux_booking_id', ids)
+    .order('sort_order', { ascending: true })
+  const byAux: Record<string, any[]> = {}
+  for (const p of (pax ?? [])) (byAux[p.aux_booking_id] ??= []).push(p)
+  return aux.map(a => ({ ...a, passengers: byAux[a.id] ?? [] }))
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -333,7 +346,7 @@ Deno.serve(async (req: Request) => {
       brief:           briefResult.data ?? null,
       house:           houseResult.data ?? null,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings:     auxResult.data ?? [],
+      auxBookings:     await attachPassengers(db, auxResult.data ?? []),
       urlId:           url_id,
       days:            daysResult.data ?? [],
       entries:         enrichedEntries,

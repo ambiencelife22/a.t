@@ -122,6 +122,14 @@ function sortKey(time: string | null | undefined): number {
 
 // ── Unified card item ─────────────────────────────────────────────────────────
 
+type CardPassenger = {
+  id:                  string
+  passenger_label:     string | null
+  confirmation_number: string | null
+  seat_numbers:        string | null
+  sort_order:          number
+}
+
 type CardItem = {
   id:                  string
   category:            string | null
@@ -135,6 +143,7 @@ type CardItem = {
   booked_by:           string | null
   image_src:           string | null
   booking_status:      string | null
+  passengers:          CardPassenger[]
 }
 
 function entryToCard(e: TripDayEntry): CardItem {
@@ -151,13 +160,22 @@ function entryToCard(e: TripDayEntry): CardItem {
     booked_by:           e.booked_by ?? null,
     image_src:           (e as any).image_src ?? null,
     booking_status:      (e as any).booking_status ?? null,
+    passengers:          [],
   }
 }
 
 function auxToCard(a: TripAuxBooking): CardItem {
   const route = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
-  const seatLine = [a.cabin_class, a.seat_numbers ? `Seats ${a.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')
-  const subtitle = [route, seatLine || null].filter(Boolean).join('  \u00b7  ')
+  const meta  = [a.cabin_class, a.aircraft_type].filter(Boolean).join(' \u00b7 ')
+  const subtitle = [route, meta || null].filter(Boolean).join('  \u00b7  ')
+  const pax = (a.passengers ?? []).slice().sort((x, y) => x.sort_order - y.sort_order)
+    .map(p => ({
+      id:                  p.id,
+      passenger_label:     p.passenger_label,
+      confirmation_number: p.confirmation_number,
+      seat_numbers:        p.seat_numbers,
+      sort_order:          p.sort_order,
+    }))
   return {
     id:                  a.id,
     category:            a.booking_type ?? 'Other',
@@ -166,11 +184,13 @@ function auxToCard(a: TripAuxBooking): CardItem {
     title:               a.name ?? a.booking_type ?? 'Booking',
     subtitle:            subtitle || null,
     notes:               a.notes ?? null,
-    confirmation_number: a.confirmation_number ?? null,
-    guest_label:         a.guest_label ?? null,
+    // legacy fallback when no passenger rows
+    confirmation_number: pax.length > 0 ? null : (a.confirmation_number ?? null),
+    guest_label:         pax.length > 0 ? null : (a.guest_label ?? null),
     booked_by:           a.booked_by ?? null,
     image_src:           null,
     booking_status:      null,
+    passengers:          pax,
   }
 }
 
@@ -403,6 +423,29 @@ function EntryCard({ item }: { item: CardItem }) {
               color: FAINT, fontStyle: 'italic', lineHeight: 1.5,
             }}>
               {item.notes}
+            </div>
+          )}
+
+          {item.passengers.length > 0 && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {item.passengers.map(p => {
+                const detail = [
+                  p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+                  p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                ].filter(Boolean).join('  \u00b7  ')
+                return (
+                  <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                      {p.passenger_label ?? 'Guest'}
+                    </span>
+                    {detail && (
+                      <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>
+                        {detail}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

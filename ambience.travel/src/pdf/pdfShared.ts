@@ -299,3 +299,41 @@ export function stampPageChrome(doc: any, brief: TripBrief | null): void {
     doc.text(`PAGE ${i} OF ${count}`, P.w - P.margin, P.h - 5.5, { align: 'right' })
   }
 }
+
+// ── Passenger formatting — shared across all trip PDFs ────────────────────────
+// An aux flight may carry N passengers, each with own conf + seats.
+// Returns one display line per passenger: "Label · Conf X · Seats Y".
+// Falls back to legacy row-level guest_label/confirmation_number/seat_numbers
+// when no passenger rows exist (un-migrated flights).
+
+export interface AuxPassengerLike {
+  passenger_label:     string | null
+  confirmation_number: string | null
+  seat_numbers:        string | null
+  sort_order:          number
+}
+
+export interface AuxLike {
+  passengers?:         AuxPassengerLike[] | null
+  guest_label:         string | null
+  confirmation_number: string | null
+  seat_numbers:        string | null
+}
+
+export function passengerLines(aux: AuxLike): string[] {
+  const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+  if (pax.length > 0) {
+    return pax.map(p => [
+      p.passenger_label ?? 'Guest',
+      p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+      p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+    ].filter(Boolean).join('  \u00b7  '))
+  }
+  // Legacy fallback — single row-level line
+  const legacy = [
+    aux.guest_label ?? null,
+    aux.confirmation_number ? `Conf ${aux.confirmation_number}` : null,
+    aux.seat_numbers ? `Seats ${aux.seat_numbers}` : null,
+  ].filter(Boolean).join('  \u00b7  ')
+  return legacy ? [legacy] : []
+}

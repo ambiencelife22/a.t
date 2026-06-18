@@ -22,7 +22,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, fmtTime, buildDateRange,
+  fmtDate, fmtTime, buildDateRange, passengerLines,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -142,7 +142,10 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
 function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const padV = 6; const padH = 10
   const bookedByText = bookedByLabel(aux.booked_by)
-  const cardH = 34
+  const paxLines = passengerLines(aux)
+  // Base block holds name/route/date/cabin; passenger lines extend height.
+  const baseH = 30
+  const cardH = Math.max(34, baseH + paxLines.length * 5 + 4)
 
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
@@ -172,16 +175,20 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(route, centreX, y + padV + 11)
   }
-  if (aux.start_date) {
+  const metaLine = [aux.start_date ? fmtDate(aux.start_date) : null, aux.cabin_class, aux.aircraft_type].filter(Boolean).join('  \u00b7  ')
+  if (metaLine) {
     sans(doc, 'normal', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(fmtDate(aux.start_date), centreX, y + padV + 17)
+    doc.text(metaLine, centreX, y + padV + 17)
   }
-  const seatLine = [aux.cabin_class, aux.seat_numbers ? `Seats ${aux.seat_numbers}` : null].filter(Boolean).join('  \u00b7  ')
-  if (seatLine) {
-    sans(doc, 'normal', 7.5)
-    doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-    doc.text(seatLine, centreX, y + padV + 23)
+
+  // Passenger lines — each "Label · Conf · Seats"
+  let py = y + padV + 23
+  for (const line of paxLines) {
+    sans(doc, 'normal', 8)
+    doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+    doc.text(line, centreX, py)
+    py += 5
   }
 
   const rightX = P.margin + CW - padH
@@ -191,24 +198,6 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     sans(doc, 'bold', 9)
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
     doc.text(timeStr, rightX, y + padV + 5, { align: 'right' })
-  }
-  if (aux.guest_label) {
-    sans(doc, 'italic', 7.5)
-    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(aux.guest_label, rightX, y + padV + 11, { align: 'right' })
-  }
-  if (aux.confirmation_number) {
-    const confText = `Conf #:  ${aux.confirmation_number}`
-    sans(doc, 'normal', 8)
-    const pillTextW = doc.getTextWidth(confText)
-    const ppx = 5; const pillW = pillTextW + ppx * 2; const pillH = 6
-    const pillX = P.margin + CW - padH - pillW; const pillY = y + cardH - 10
-    doc.setFillColor(250, 247, 240)
-    doc.setDrawColor(T.gold[0], T.gold[1], T.gold[2])
-    doc.setLineWidth(0.3)
-    doc.roundedRect(pillX, pillY - pillH + 2, pillW, pillH, 1.5, 1.5, 'FD')
-    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-    doc.text(confText, pillX + ppx, pillY - 0.2)
   }
 
   sans(doc, 'italic', 7.5)
@@ -371,7 +360,8 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.text('FLIGHTS', P.margin, y, { charSpace: 0.5 }); y += 7
 
     for (const aux of visibleFlights) {
-      if (y + 34 > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
+      const estPax = (aux.passengers ?? []).length || 1
+      if (y + (30 + estPax * 5 + 8) > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
       y += drawFlightCard(doc, aux, y) + 4
     }
   }

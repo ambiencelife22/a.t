@@ -392,17 +392,43 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                   {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{fmtDate(aux.start_date)}</div>}
                   {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 4 }}>{timeStr}</div>}
-                  {(aux.cabin_class || aux.seat_numbers) && (
+                  {[aux.cabin_class, aux.aircraft_type].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>
-                      {[aux.cabin_class, aux.seat_numbers ? `Seats ${aux.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')}
+                      {[aux.cabin_class, aux.aircraft_type].filter(Boolean).join(' \u00b7 ')}
                     </div>
                   )}
-                  {aux.guest_label && <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{aux.guest_label}</div>}
-                  {aux.confirmation_number && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 5, padding: '2px 8px', marginTop: 6, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
-                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #: {aux.confirmation_number}</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+                    if (pax.length > 0) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {pax.map(p => {
+                            const detail = [
+                              p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+                              p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                            ].filter(Boolean).join('  \u00b7  ')
+                            return (
+                              <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{p.passenger_label ?? 'Guest'}</span>
+                                {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{detail}</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    }
+                    return (
+                      <>
+                        {aux.seat_numbers && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>{`Seats ${aux.seat_numbers}`}</div>}
+                        {aux.guest_label && <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{aux.guest_label}</div>}
+                        {aux.confirmation_number && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 5, padding: '2px 8px', marginTop: 6, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #: {aux.confirmation_number}</span>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             )
@@ -455,6 +481,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
     flightArriveTime:  string | null
     seatNumbers:       string | null
     cabinClass:        string | null
+    passengers:        { id: string; passenger_label: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
   }
 
   const cards: CardItem[] = activeDay ? [
@@ -484,6 +511,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           flightArriveTime: isFlight ? (e.end_time   ?? null) : null,
           seatNumbers: null,
           cabinClass: null,
+          passengers: [],
         }
       }),
     ...auxBookings
@@ -504,6 +532,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           flightArriveTime:  isFlight ? (a.end_time    ?? null) : null,
           seatNumbers:       isFlight ? (a.seat_numbers ?? null) : null,
           cabinClass:        isFlight ? (a.cabin_class  ?? null) : null,
+          passengers:        (a.passengers ?? []).slice().sort((x, y) => x.sort_order - y.sort_order),
         }
       }),
   ].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time)) : []
@@ -728,7 +757,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                                 )}
                               </div>
                             )}
-                            {(item.cabinClass || item.seatNumbers) && (
+                            {item.cabinClass && (
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
@@ -736,12 +765,42 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                                   letterSpacing: '0.12em', textTransform: 'uppercase',
                                   color: FAINT,
                                 }}>
-                                  Seats
+                                  Cabin
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                  {[item.cabinClass, item.seatNumbers].filter(Boolean).join(' \u00b7 ')}
+                                  {item.cabinClass}
                                 </div>
                               </div>
+                            )}
+                            {item.passengers.length > 0 ? (
+                              item.passengers.map(p => {
+                                const detail = [
+                                  p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+                                  p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                                ].filter(Boolean).join('  \u00b7  ')
+                                return (
+                                  <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
+                                      Guest
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                      <span style={{ fontWeight: 600 }}>{p.passenger_label ?? 'Guest'}</span>
+                                      {detail && <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED }}>{`  ${detail}`}</span>}
+                                    </div>
+                                  </div>
+                                )
+                              })
+                            ) : (
+                              item.seatNumbers && (
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+                                  <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
+                                    Seats
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                    {item.seatNumbers}
+                                  </div>
+                                </div>
+                              )
                             )}
                           </div>
                         )}
@@ -851,18 +910,70 @@ function TripBriefTab({ clientData, days, entries }: {
 
       {flights.length > 0 && (
         <BriefSection title='Flights'>
-          {flights.map(f => (
-            <BriefRow
-              key={f.id}
-              label={f.start_date ? fmtDate(f.start_date) : '\u2014'}
-              value={[f.name, f.confirmation_number ? `Conf: ${f.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
-              sub={[
-                [f.origin, f.destination].filter(Boolean).join(' \u2192 '),
-                [f.cabin_class, f.seat_numbers ? `Seats ${f.seat_numbers}` : null].filter(Boolean).join(' \u00b7 '),
-              ].filter(Boolean).join('  \u2014  ')}
-              bookedBy={bookedByLabel(f.booked_by)}
-            />
-          ))}
+          {flights.map(f => {
+            const route = [f.origin, f.destination].filter(Boolean).join(' \u2192 ')
+            const cabin = f.cabin_class ?? null
+            const aircraft = f.aircraft_type ?? null
+            const flightMeta = [route, cabin, aircraft].filter(Boolean).join('  \u00b7  ')
+            const pax = (f.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+
+            return (
+              <div key={f.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
+                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
+                  {f.start_date ? fmtDate(f.start_date) : '\u2014'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
+                    {f.name ?? 'Flight'}
+                  </div>
+                  {flightMeta && (
+                    <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>
+                      {flightMeta}
+                    </div>
+                  )}
+
+                  {pax.length > 0 ? (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {pax.map(p => {
+                        const detail = [
+                          p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+                          p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                        ].filter(Boolean).join('  \u00b7  ')
+                        return (
+                          <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>
+                              {p.passenger_label ?? 'Guest'}
+                            </div>
+                            {detail && (
+                              <div style={{ fontSize: 11, color: MUTED, fontFamily: 'DM Mono, monospace' }}>
+                                {detail}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    // Fallback: no passenger rows — show legacy row-level conf/seats
+                    (f.confirmation_number || f.seat_numbers) && (
+                      <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 6 }}>
+                        {[
+                          f.confirmation_number ? `Conf ${f.confirmation_number}` : null,
+                          f.seat_numbers ? `Seats ${f.seat_numbers}` : null,
+                        ].filter(Boolean).join('  \u00b7  ')}
+                      </div>
+                    )
+                  )}
+
+                  {bookedByLabel(f.booked_by) && (
+                    <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 4, fontStyle: 'italic' }}>
+                      {bookedByLabel(f.booked_by)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </BriefSection>
       )}
 

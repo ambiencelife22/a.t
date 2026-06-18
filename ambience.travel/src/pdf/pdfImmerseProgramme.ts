@@ -22,7 +22,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { RGB } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage,
+  fmtTime, buildDateRange, passengerLines, drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripDay, TripDayEntry, TripAuxBooking, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 import { bookedByLabel } from '../utils/utilsBooking'
@@ -53,6 +53,7 @@ type ProgrammeEntry = {
   booked_by:           string | null
   brief_show:          boolean
   image_src:           string | null
+  passengerLines:      string[]
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ function mergeDayEntries(
       booked_by:           e.booked_by,
       brief_show:          e.brief_show,
       image_src:           (e as any).image_src ?? null,
+      passengerLines:      [],
     }))
 
   const fromAux: ProgrammeEntry[] = auxBookings
@@ -132,20 +134,23 @@ function mergeDayEntries(
     .map(a => {
       const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
       const route    = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
-      const seatLine = [a.cabin_class, a.seat_numbers ? `Seats ${a.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')
+      const meta     = isFlight ? [route, a.cabin_class, a.aircraft_type].filter(Boolean).join('  \u00b7  ') : route
+      const paxLines = isFlight ? passengerLines(a) : []
       return {
         id:                  a.id,
         category:            a.booking_type ?? 'Other',
         start_time:          a.start_time,
         end_time:            a.end_time,
         title:               a.name ?? a.booking_type ?? 'Booking',
-        subtitle:            isFlight ? ([route, seatLine || null].filter(Boolean).join('  \u00b7  ') || null) : route,
-        guest_label:         a.guest_label,
-        confirmation_number: a.confirmation_number,
+        subtitle:            meta || null,
+        // when passenger rows exist they replace the single guest_label/conf line
+        guest_label:         paxLines.length > 0 ? null : a.guest_label,
+        confirmation_number: paxLines.length > 0 ? null : a.confirmation_number,
         notes:               a.notes,
         booked_by:           a.booked_by,
         brief_show:          a.brief_show,
         image_src:           null,
+        passengerLines:      paxLines,
       }
     })
 
@@ -168,6 +173,7 @@ async function renderEntryRow(doc: any, entry: ProgrammeEntry, y: number): Promi
   const titleLines = doc.splitTextToSize(entry.title, contentW - 2)
   let measuredH = PROG.entryPadV + titleLines.length * 4.8 + 4.5
   if (entry.subtitle)            measuredH += 4.5
+  measuredH += entry.passengerLines.length * 4.5
   if (entry.guest_label)         measuredH += 4
   if (entry.confirmation_number) measuredH += 4.5
   measuredH += PROG.entryPadV
@@ -215,6 +221,11 @@ async function renderEntryRow(doc: any, entry: ProgrammeEntry, y: number): Promi
     sans(doc, 'normal', 8.5)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(entry.subtitle, contentX, ty + 4); ty += 4.5
+  }
+  for (const line of entry.passengerLines) {
+    sans(doc, 'normal', 8)
+    doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+    doc.text(line, contentX, ty + 4); ty += 4.5
   }
   if (entry.guest_label) {
     sans(doc, 'italic', 7.5)
@@ -266,6 +277,7 @@ async function renderDay(doc: any, day: TripDay, entries: ProgrammeEntry[], dayI
     const estH = Math.max(
       PROG.entryPadV * 2 + titleLines.length * 4.8 + 4.5
         + (entry.subtitle ? 4.5 : 0)
+        + entry.passengerLines.length * 4.5
         + (entry.guest_label ? 4 : 0)
         + (entry.confirmation_number ? 4.5 : 0),
       hasImage ? PROG.imgW * 0.66 : 0,

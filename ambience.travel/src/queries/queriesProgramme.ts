@@ -1,4 +1,4 @@
-/* lib/queries.ts
+/* queries/queriesProgramme.ts
  * All Supabase query functions for ambience.travel programme product.
  * Single source of truth for DB reads and writes.
  *

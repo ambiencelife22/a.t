@@ -164,8 +164,19 @@ export type TripAuxBooking = {
   seat_numbers:        string | null
   seat_type:           string | null
   aircraft_type:       string | null
+  passengers?:         TripAuxPassenger[]
   created_at:          string
   updated_at:          string
+}
+
+export type TripAuxPassenger = {
+  id:                  string
+  aux_booking_id:      string
+  person_id:           string | null
+  passenger_label:     string | null
+  confirmation_number: string | null
+  seat_numbers:        string | null
+  sort_order:          number
 }
 
 export type TripAuxBookingPatch = Partial<Omit<TripAuxBooking, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
