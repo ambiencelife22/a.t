@@ -249,9 +249,12 @@ export async function createPreference(
   prefKey: string, prefValue: string, notes: string | null,
   source: string, confidence: PrefConfidence,
 ): Promise<void> {
-  const { error } = await supabase.from('a_house_preferences').insert({
-    house_id: houseId, person_id: personId, category, pref_key: prefKey,
-    pref_value: prefValue, notes, source, confidence,
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: {
+      mode: 'create', table: 'preferences',
+      house_id: houseId, person_id: personId, category, pref_key: prefKey,
+      pref_value: prefValue, notes, source, confidence,
+    },
   })
   if (error) throw new Error(`Failed to create preference: ${error.message}`)
 }
@@ -259,12 +262,16 @@ export async function createPreference(
 export async function updatePreference(id: string, patch: Partial<Pick<HousePreference,
   'pref_key' | 'pref_value' | 'notes' | 'source' | 'confidence' | 'category' | 'person_id'
 >>): Promise<void> {
-  const { error } = await supabase.from('a_house_preferences').update(patch).eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: { mode: 'update', table: 'preferences', id, ...patch },
+  })
   if (error) throw new Error(`Failed to update preference: ${error.message}`)
 }
 
 export async function deletePreference(id: string): Promise<void> {
-  const { error } = await supabase.from('a_house_preferences').delete().eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: { mode: 'delete', table: 'preferences', id },
+  })
   if (error) throw new Error(`Failed to delete preference: ${error.message}`)
 }
 
@@ -283,20 +290,27 @@ export async function createDiningEntry(
   status: DiningStatus, visitDate: string | null, tripRef: string | null,
   venueId: string | null, notes: string | null,
 ): Promise<void> {
-  const { error } = await supabase.from('a_house_dininghistory').insert({
-    house_id: houseId, restaurant_name: restaurantName, city, country,
-    status, visit_date: visitDate, trip_ref: tripRef, venue_id: venueId, notes,
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: {
+      mode: 'create', table: 'dining',
+      house_id: houseId, restaurant_name: restaurantName, city, country,
+      status, visit_date: visitDate, trip_ref: tripRef, venue_id: venueId, notes,
+    },
   })
   if (error) throw new Error(`Failed to create dining entry: ${error.message}`)
 }
 
 export async function updateDiningEntry(id: string, patch: Partial<Omit<HouseDiningEntry, 'id' | 'house_id' | 'created_at' | 'updated_at'>>): Promise<void> {
-  const { error } = await supabase.from('a_house_dininghistory').update(patch).eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: { mode: 'update', table: 'dining', id, ...patch },
+  })
   if (error) throw new Error(`Failed to update dining entry: ${error.message}`)
 }
 
 export async function deleteDiningEntry(id: string): Promise<void> {
-  const { error } = await supabase.from('a_house_dininghistory').delete().eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: { mode: 'delete', table: 'dining', id },
+  })
   if (error) throw new Error(`Failed to delete dining entry: ${error.message}`)
 }
 
@@ -317,20 +331,27 @@ export async function createDestination(
   status: DestinationStatus, visitDate: string | null,
   tripRef: string | null, notes: string | null,
 ): Promise<void> {
-  const { error } = await supabase.from('a_house_destinations').insert({
-    house_id: houseId, destination_name: destinationName, country, city,
-    trip_type: tripType, status, visit_date: visitDate, trip_ref: tripRef, notes,
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: {
+      mode: 'create', table: 'destinations',
+      house_id: houseId, destination_name: destinationName, country, city,
+      trip_type: tripType, status, visit_date: visitDate, trip_ref: tripRef, notes,
+    },
   })
   if (error) throw new Error(`Failed to create destination: ${error.message}`)
 }
 
 export async function updateDestination(id: string, patch: Partial<Omit<HouseDestination, 'id' | 'house_id' | 'created_at' | 'updated_at'>>): Promise<void> {
-  const { error } = await supabase.from('a_house_destinations').update(patch).eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: { mode: 'update', table: 'destinations', id, ...patch },
+  })
   if (error) throw new Error(`Failed to update destination: ${error.message}`)
 }
 
 export async function deleteDestination(id: string): Promise<void> {
-  const { error } = await supabase.from('a_house_destinations').delete().eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-records', {
+    body: { mode: 'delete', table: 'destinations', id },
+  })
   if (error) throw new Error(`Failed to delete destination: ${error.message}`)
 }
 
