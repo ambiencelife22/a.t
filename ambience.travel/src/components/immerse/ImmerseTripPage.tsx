@@ -752,7 +752,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                               </div>
                             )}
                             {item.cabinClass && (
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
                                   fontSize: 9, fontFamily: SANS, fontWeight: 700,
@@ -773,7 +773,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                                   p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
                                 ].filter(Boolean).join('  \u00b7  ')
                                 return (
-                                  <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+                                  <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                     <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
                                       Guest
                                     </div>
@@ -786,7 +786,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                               })
                             ) : (
                               item.seatNumbers && (
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                   <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
                                     Seats
                                   </div>
@@ -1354,8 +1354,8 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
       <div style={{ background: CREAM }} id='tabs'>
         <div style={{
           position:       'sticky',
-          top:            0,
-          zIndex:         50,
+          top:            60,
+          zIndex:         49,
           background:     'rgba(247,245,240,0.96)',
           backdropFilter: 'blur(12px)',
           borderBottom:   width < 640 ? 'none' : `1px solid ${RULE}`,
