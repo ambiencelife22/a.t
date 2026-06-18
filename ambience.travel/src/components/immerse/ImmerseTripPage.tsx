@@ -399,34 +399,22 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                   )}
                   {(() => {
                     const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
-                    if (pax.length > 0) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          {pax.map(p => {
-                            const detail = [
-                              p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
-                              p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
-                            ].filter(Boolean).join('  \u00b7  ')
-                            return (
-                              <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{p.passenger_label ?? 'Guest'}</span>
-                                {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{detail}</span>}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )
-                    }
+                    if (pax.length === 0) return null
                     return (
-                      <>
-                        {aux.seat_numbers && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>{`Seats ${aux.seat_numbers}`}</div>}
-                        {aux.guest_label && <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{aux.guest_label}</div>}
-                        {aux.confirmation_number && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 5, padding: '2px 8px', marginTop: 6, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
-                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #: {aux.confirmation_number}</span>
-                          </div>
-                        )}
-                      </>
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {pax.map(p => {
+                          const detail = [
+                            p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+                            p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                          ].filter(Boolean).join('  \u00b7  ')
+                          return (
+                            <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{p.passenger_label ?? 'Guest'}</span>
+                              {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{detail}</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
                     )
                   })()}
                 </div>
@@ -523,14 +511,14 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           start_time: a.start_time ?? null, end_time: a.end_time ?? null,
           title: a.name ?? a.booking_type ?? 'Booking',
           subtitle: isFlight ? null : (a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null),
-          notes: a.notes ?? null, confirmation_number: a.confirmation_number ?? null,
-          guest_label: a.guest_label ?? null, booked_by: a.booked_by ?? null,
+          notes: a.notes ?? null, confirmation_number: null,
+          guest_label: null, booked_by: a.booked_by ?? null,
           image_src: null, status: null, description: null,
           flightOrigin:      isFlight ? (a.origin      ?? null) : null,
           flightDestination: isFlight ? (a.destination ?? null) : null,
           flightDepartTime:  isFlight ? (a.start_time  ?? null) : null,
           flightArriveTime:  isFlight ? (a.end_time    ?? null) : null,
-          seatNumbers:       isFlight ? (a.seat_numbers ?? null) : null,
+          seatNumbers:       null,
           cabinClass:        isFlight ? (a.cabin_class  ?? null) : null,
           passengers:        (a.passengers ?? []).slice().sort((x, y) => x.sort_order - y.sort_order),
         }
@@ -932,7 +920,7 @@ function TripBriefTab({ clientData, days, entries }: {
                     </div>
                   )}
 
-                  {pax.length > 0 ? (
+                  {pax.length > 0 && (
                     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {pax.map(p => {
                         const detail = [
@@ -953,16 +941,6 @@ function TripBriefTab({ clientData, days, entries }: {
                         )
                       })}
                     </div>
-                  ) : (
-                    // Fallback: no passenger rows — show legacy row-level conf/seats
-                    (f.confirmation_number || f.seat_numbers) && (
-                      <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 6 }}>
-                        {[
-                          f.confirmation_number ? `Conf ${f.confirmation_number}` : null,
-                          f.seat_numbers ? `Seats ${f.seat_numbers}` : null,
-                        ].filter(Boolean).join('  \u00b7  ')}
-                      </div>
-                    )
                   )}
 
                   {bookedByLabel(f.booked_by) && (

@@ -143,7 +143,6 @@ export type TripAuxBooking = {
   trip_id:             string
   booking_type:        string | null
   name:                string | null
-  confirmation_number: string | null
   start_date:          string | null
   start_time:          string | null
   end_date:            string | null
@@ -151,7 +150,6 @@ export type TripAuxBooking = {
   origin:              string | null
   destination:         string | null
   notes:               string | null
-  guest_label:         string | null
   booked_by:           string | null
   brief_show:          boolean
   sort_order:          number
@@ -161,7 +159,6 @@ export type TripAuxBooking = {
   depart_airport:      string | null
   arrive_airport:      string | null
   cabin_class:         string | null
-  seat_numbers:        string | null
   seat_type:           string | null
   aircraft_type:       string | null
   passengers?:         TripAuxPassenger[]

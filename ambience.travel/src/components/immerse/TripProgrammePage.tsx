@@ -184,9 +184,8 @@ function auxToCard(a: TripAuxBooking): CardItem {
     title:               a.name ?? a.booking_type ?? 'Booking',
     subtitle:            subtitle || null,
     notes:               a.notes ?? null,
-    // legacy fallback when no passenger rows
-    confirmation_number: pax.length > 0 ? null : (a.confirmation_number ?? null),
-    guest_label:         pax.length > 0 ? null : (a.guest_label ?? null),
+    confirmation_number: null,
+    guest_label:         null,
     booked_by:           a.booked_by ?? null,
     image_src:           null,
     booking_status:      null,

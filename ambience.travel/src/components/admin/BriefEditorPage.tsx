@@ -53,6 +53,7 @@ import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf
 import AssetPicker from './AssetPicker'
 import { bookedByLabel } from '../../utils/utilsBooking'
 import { supabase } from '../../lib/supabase'
+import { AuxPassengersEditor } from './AuxPassengersEditor'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -155,8 +156,6 @@ type AuxDraft = {
   start_time:          string
   end_date:            string
   end_time:            string
-  confirmation_number: string
-  guest_label:         string
   booked_by:           string
   notes:               string
   // Flight-specific (rendered only when isFlightType(booking_type))
@@ -695,8 +694,6 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
       start_time:          aux.start_time?.slice(0, 5) ?? '',
       end_date:            aux.end_date            ?? '',
       end_time:            aux.end_time?.slice(0, 5) ?? '',
-      confirmation_number: aux.confirmation_number ?? '',
-      guest_label:         aux.guest_label         ?? '',
       booked_by:           aux.booked_by           ?? '',
       notes:               aux.notes               ?? '',
       airline_supplier_id: (aux as any).airline_supplier_id ?? '',
@@ -799,20 +796,6 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
                         onChange={e => patch(aux.id, aux, 'end_time', e.target.value)}
                         onBlur={e => save(aux.id, 'end_time', e.target.value)} />
                     </div>
-                    <div>
-                      <label style={fieldLabelStyle}>Confirmation #</label>
-                      <input style={fieldStyle} value={draft.confirmation_number}
-                        onChange={e => patch(aux.id, aux, 'confirmation_number', e.target.value)}
-                        onBlur={e => save(aux.id, 'confirmation_number', e.target.value)}
-                        placeholder='XY277-...' />
-                    </div>
-                    <div>
-                      <label style={fieldLabelStyle}>Guest Label</label>
-                      <input style={fieldStyle} value={draft.guest_label}
-                        onChange={e => patch(aux.id, aux, 'guest_label', e.target.value)}
-                        onBlur={e => save(aux.id, 'guest_label', e.target.value)}
-                        placeholder='All guests' />
-                    </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={fieldLabelStyle}>Booked By</label>
                       <input style={fieldStyle} value={draft.booked_by}
@@ -838,6 +821,11 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
                       save={save}
                       isMobile={isMobile}
                     />
+                  )}
+
+                  {/* S54b — Per-passenger conf + seats. Shared with the dossier editor. */}
+                  {isFlightType(draft.booking_type) && (
+                    <AuxPassengersEditor auxBookingId={aux.id} initial={aux.passengers ?? []} />
                   )}
                 </div>
               )
@@ -985,8 +973,8 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const name       = d?.name               || aux.name               || ''
               const origin     = d?.origin             || aux.origin             || ''
               const dest       = d?.destination        || aux.destination        || ''
-              const confNum    = d?.confirmation_number || aux.confirmation_number || ''
-              const guestLbl   = d?.guest_label        || aux.guest_label        || ''
+              const confNum    = ''
+              const guestLbl   = ''
               const bookedBy   = d?.booked_by?.trim()  || aux.booked_by?.trim()  || null
               const startTime  = d?.start_time || aux.start_time?.slice(0, 5) || null
               const endTime    = d?.end_time   || aux.end_time?.slice(0, 5)   || null
@@ -1250,8 +1238,6 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         start_time:          d.start_time          || aux.start_time,
         end_date:            d.end_date            || aux.end_date,
         end_time:            d.end_time            || aux.end_time,
-        confirmation_number: d.confirmation_number || aux.confirmation_number,
-        guest_label:         d.guest_label         || aux.guest_label,
         booked_by:           d.booked_by           || aux.booked_by,
         notes:               d.notes               || aux.notes,
         airline_supplier_id: d.airline_supplier_id || (aux as any).airline_supplier_id,

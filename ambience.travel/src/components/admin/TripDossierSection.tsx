@@ -20,11 +20,12 @@ import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminTrip'
-import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking, createAuxPassenger, updateAuxPassenger, deleteAuxPassenger } from '../../queries/queriesAdminTrip'
-import type { BookingRoom, TripAuxBooking, TripAuxBookingPatch, TripAuxPassenger, TripAuxPassengerPatch } from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBookingRoom, deleteBookingRoom, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
+import type { BookingRoom, TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
+import { AuxPassengersEditor } from './AuxPassengersEditor'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -299,147 +300,6 @@ function RoomsEditor({ booking }: { booking: TripBooking }) {
   )
 }
 
-// ── PassengersSubEditor ───────────────────────────────────────────────────────
-// Per-flight passenger list (nested inside AuxBookingsEditor's flight rows).
-// Each passenger: label + conf + seats. person_id wiring deferred to a picker;
-// label is the operator-facing field for now.
-
-type PaxDraft = {
-  passenger_label:     string
-  confirmation_number: string
-  seat_numbers:        string
-  sort_order:          number
-}
-
-function emptyPaxDraft(sortOrder: number): PaxDraft {
-  return { passenger_label: '', confirmation_number: '', seat_numbers: '', sort_order: sortOrder }
-}
-
-function paxToDraft(p: TripAuxPassenger): PaxDraft {
-  return {
-    passenger_label:     p.passenger_label     ?? '',
-    confirmation_number: p.confirmation_number  ?? '',
-    seat_numbers:        p.seat_numbers         ?? '',
-    sort_order:          p.sort_order,
-  }
-}
-
-function paxDraftToPatch(d: PaxDraft): TripAuxPassengerPatch {
-  const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
-  return {
-    passenger_label:     orNull(d.passenger_label),
-    confirmation_number: orNull(d.confirmation_number),
-    seat_numbers:        orNull(d.seat_numbers),
-    sort_order:          d.sort_order,
-  }
-}
-
-function PassengersSubEditor({ auxBookingId, initial }: { auxBookingId: string; initial: TripAuxPassenger[] }) {
-  const [pax,    setPax]    = useState<TripAuxPassenger[]>(initial)
-  const [adding, setAdding] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [draft,  setDraft]  = useState<PaxDraft>(emptyPaxDraft(0))
-  const [saving, setSaving] = useState(false)
-  const { success, error } = useAdminToast()
-
-  const sorted = [...pax].sort((a, b) => a.sort_order - b.sort_order)
-
-  function beginAdd() {
-    setEditId(null)
-    setDraft(emptyPaxDraft(pax.length))
-    setAdding(true)
-  }
-  function beginEdit(p: TripAuxPassenger) {
-    setAdding(false)
-    setEditId(p.id)
-    setDraft(paxToDraft(p))
-  }
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      const patch = paxDraftToPatch(draft)
-      if (editId) {
-        const updated = await updateAuxPassenger(editId, patch)
-        setPax(prev => prev.map(p => p.id === editId ? updated : p))
-        setEditId(null)
-        success('Passenger updated')
-      } else {
-        const created = await createAuxPassenger(auxBookingId, patch)
-        setPax(prev => [...prev, created])
-        setAdding(false)
-        success('Passenger added')
-      }
-    } catch (e) { error(e instanceof Error ? e.message : 'Failed to save passenger') }
-    finally { setSaving(false) }
-  }
-
-  async function handleDelete(id: string) {
-    setSaving(true)
-    try {
-      await deleteAuxPassenger(id)
-      setPax(prev => prev.filter(p => p.id !== id))
-      success('Passenger removed')
-    } catch (e) { error(e instanceof Error ? e.message : 'Failed to delete passenger') }
-    finally { setSaving(false) }
-  }
-
-  const form = (
-    <div style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <AuxField label='Passenger' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder='May Amin' />
-        <AuxField label='Confirmation #' value={draft.confirmation_number} onChange={v => setDraft({ ...draft, confirmation_number: v })} placeholder='PVJZEW' />
-        <AuxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => setDraft({ ...draft, seat_numbers: v })} placeholder='5F, 5E' />
-        <AuxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => setDraft({ ...draft, sort_order: parseInt(v, 10) || 0 })} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button onClick={() => { setAdding(false); setEditId(null) }} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}>
-          Cancel
-        </button>
-        <button onClick={handleSave} disabled={saving} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 5, padding: '4px 12px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-          {saving ? 'Saving...' : (editId ? 'Save' : 'Add')}
-        </button>
-      </div>
-    </div>
-  )
-
-  return (
-    <div style={{ marginTop: 8, paddingLeft: 8, borderLeft: `2px solid ${A.border}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
-          Passengers ({pax.length})
-        </div>
-        {!adding && !editId && (
-          <button onClick={beginAdd} style={{ fontFamily: A.font, fontSize: 9, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>
-            + Passenger
-          </button>
-        )}
-      </div>
-
-      {sorted.map(p => (
-        editId === p.id ? (
-          <div key={p.id} style={{ marginBottom: 6 }}>{form}</div>
-        ) : (
-          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 0' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.passenger_label ?? 'Guest'}</span>
-              <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginLeft: 8 }}>
-                {[p.confirmation_number, p.seat_numbers ? `Seats ${p.seat_numbers}` : null].filter(Boolean).join('  ·  ')}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-              <button onClick={() => beginEdit(p)} style={{ fontFamily: A.font, fontSize: 9, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>Edit</button>
-              <button onClick={() => handleDelete(p.id)} disabled={saving} style={{ fontFamily: A.font, fontSize: 9, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>×</button>
-            </div>
-          </div>
-        )
-      ))}
-
-      {adding && <div style={{ marginTop: 6 }}>{form}</div>}
-    </div>
-  )
-}
-
 // ── AuxBookingsEditor ─────────────────────────────────────────────────────────
 // Trip-level flights / transfers / car services. Sibling to RoomsEditor.
 // Writes every editable column on travel_trip_aux_bookings (airline_supplier_id
@@ -450,7 +310,6 @@ const AUX_TYPES = ['Flight', 'Transfer', 'Car Service', 'Rail', 'Ferry', 'Other'
 type AuxDraft = {
   booking_type:        string
   name:                string
-  confirmation_number: string
   start_date:          string
   start_time:          string
   end_date:            string
@@ -462,11 +321,9 @@ type AuxDraft = {
   depart_airport:      string
   arrive_airport:      string
   cabin_class:         string
-  seat_numbers:        string
   seat_type:           string
   aircraft_type:       string
   booked_by:           string
-  guest_label:         string
   notes:               string
   brief_show:          boolean
   sort_order:          number
@@ -474,11 +331,11 @@ type AuxDraft = {
 
 function emptyAuxDraft(sortOrder: number): AuxDraft {
   return {
-    booking_type: 'Flight', name: '', confirmation_number: '',
+    booking_type: 'Flight', name: '',
     start_date: '', start_time: '', end_date: '', end_time: '',
     origin: '', destination: '', airline_name: '', flight_number: '',
-    depart_airport: '', arrive_airport: '', cabin_class: '', seat_numbers: '',
-    seat_type: '', aircraft_type: '', booked_by: '', guest_label: '', notes: '',
+    depart_airport: '', arrive_airport: '', cabin_class: '',
+    seat_type: '', aircraft_type: '', booked_by: '', notes: '',
     brief_show: true, sort_order: sortOrder,
   }
 }
@@ -487,7 +344,6 @@ function auxToDraft(a: TripAuxBooking): AuxDraft {
   return {
     booking_type:        a.booking_type        ?? 'Flight',
     name:                a.name                ?? '',
-    confirmation_number: a.confirmation_number ?? '',
     start_date:          a.start_date          ?? '',
     start_time:          a.start_time          ?? '',
     end_date:            a.end_date            ?? '',
@@ -499,11 +355,9 @@ function auxToDraft(a: TripAuxBooking): AuxDraft {
     depart_airport:      a.depart_airport      ?? '',
     arrive_airport:      a.arrive_airport      ?? '',
     cabin_class:         a.cabin_class         ?? '',
-    seat_numbers:        a.seat_numbers        ?? '',
     seat_type:           a.seat_type           ?? '',
     aircraft_type:       a.aircraft_type       ?? '',
     booked_by:           a.booked_by           ?? '',
-    guest_label:         a.guest_label         ?? '',
     notes:               a.notes               ?? '',
     brief_show:          a.brief_show,
     sort_order:          a.sort_order,
@@ -516,7 +370,6 @@ function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
   return {
     booking_type:        orNull(d.booking_type),
     name:                orNull(d.name),
-    confirmation_number: orNull(d.confirmation_number),
     start_date:          orNull(d.start_date),
     start_time:          orNull(d.start_time),
     end_date:            orNull(d.end_date),
@@ -528,11 +381,9 @@ function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
     depart_airport:      orNull(d.depart_airport),
     arrive_airport:      orNull(d.arrive_airport),
     cabin_class:         orNull(d.cabin_class),
-    seat_numbers:        orNull(d.seat_numbers),
     seat_type:           orNull(d.seat_type),
     aircraft_type:       orNull(d.aircraft_type),
     booked_by:           orNull(d.booked_by),
-    guest_label:         orNull(d.guest_label),
     notes:               orNull(d.notes),
     brief_show:          d.brief_show,
     sort_order:          d.sort_order,
@@ -569,7 +420,6 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
           </select>
         </div>
         <AuxField label='Name' value={draft.name} onChange={v => set('name', v)} placeholder='Emirates EK 824' />
-        <AuxField label='Confirmation #' value={draft.confirmation_number} onChange={v => set('confirmation_number', v)} placeholder='XR7K2P' />
         <AuxField label='Booked By' value={draft.booked_by} onChange={v => set('booked_by', v)} placeholder='ambience' />
         <AuxField label='Start Date' type='date' value={draft.start_date} onChange={v => set('start_date', v)} />
         <AuxField label='Start Time' type='time' value={draft.start_time} onChange={v => set('start_time', v)} />
@@ -589,7 +439,6 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
             <AuxField label='Depart Airport' value={draft.depart_airport} onChange={v => set('depart_airport', v)} placeholder='RUH' />
             <AuxField label='Arrive Airport' value={draft.arrive_airport} onChange={v => set('arrive_airport', v)} placeholder='SZG' />
             <AuxField label='Cabin Class' value={draft.cabin_class} onChange={v => set('cabin_class', v)} placeholder='Business' />
-            <AuxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => set('seat_numbers', v)} placeholder='5F, 5E, 4D, 4G' />
             <AuxField label='Seat Type' value={draft.seat_type} onChange={v => set('seat_type', v)} placeholder='Lie-flat' />
             <AuxField label='Aircraft' value={draft.aircraft_type} onChange={v => set('aircraft_type', v)} placeholder='Boeing 777-300ER' />
           </div>
@@ -600,7 +449,6 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
       <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Display</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <AuxField label='Guest Label' value={draft.guest_label} onChange={v => set('guest_label', v)} placeholder='Al Suwaidi Family' />
           <AuxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => set('sort_order', parseInt(v, 10) || 0)} />
           <AuxField label='Notes' value={draft.notes} onChange={v => set('notes', v)} span />
         </div>
@@ -685,7 +533,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
 
   const rowLine = (a: TripAuxBooking): string => {
     const route = [a.origin, a.destination].filter(Boolean).join(' \u2192 ')
-    const seats = [a.cabin_class, a.seat_numbers ? `Seats ${a.seat_numbers}` : null].filter(Boolean).join(' \u00b7 ')
+    const seats = a.cabin_class ?? ''
     return [route, seats].filter(Boolean).join('  \u00b7  ')
   }
 
@@ -722,7 +570,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
                 {a.start_date && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.start_date}{a.start_time ? ` ${a.start_time.slice(0, 5)}` : ''}</span>}
               </div>
               {(a.booking_type ?? '').toLowerCase().includes('flight') && (
-                <PassengersSubEditor auxBookingId={a.id} initial={a.passengers ?? []} />
+                <AuxPassengersEditor auxBookingId={a.id} initial={a.passengers ?? []} />
               )}
             </div>
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>

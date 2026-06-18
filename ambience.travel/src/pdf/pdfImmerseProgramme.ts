@@ -143,9 +143,8 @@ function mergeDayEntries(
         end_time:            a.end_time,
         title:               a.name ?? a.booking_type ?? 'Booking',
         subtitle:            meta || null,
-        // when passenger rows exist they replace the single guest_label/conf line
-        guest_label:         paxLines.length > 0 ? null : a.guest_label,
-        confirmation_number: paxLines.length > 0 ? null : a.confirmation_number,
+        guest_label:         null,
+        confirmation_number: null,
         notes:               a.notes,
         booked_by:           a.booked_by,
         brief_show:          a.brief_show,
