@@ -191,7 +191,9 @@ export async function fetchHouseByHouseId(aHouseId: string): Promise<House | nul
 }
 
 export async function updateHouse(id: string, patch: HousePatch): Promise<void> {
-  const { error } = await supabase.from('a_houses').update(patch).eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house', {
+    body: { mode: 'update', id, ...patch },
+  })
   if (error) throw new Error(`Failed to update house: ${error.message}`)
 }
 
