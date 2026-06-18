@@ -23,6 +23,11 @@
 //   michelin_stars, michelin_green_star, worlds_50_best.
 
 import { supabase } from '../lib/supabase'
+import { fetchPeople, fetchPeopleByIds, type GlobalPersonResolved } from './queriesGlobalPeople'
+
+// S54c — global_people is read exclusively via queriesGlobalPeople (EF layer).
+// GlobalPerson is the canonical resolved shape; no local person type, no direct read.
+export type GlobalPerson = GlobalPersonResolved
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,14 +93,6 @@ export interface AdminDiningGuide {
   plan_your_visit_heading: string | null
   plan_your_visit_intro:   string | null
   plan_your_visit_bullets: string[] | null
-}
-
-export interface GlobalPerson {
-  id:         string
-  first_name: string | null
-  last_name:  string | null
-  email:      string | null
-  nickname:   string | null
 }
 
 export interface AdminGrant {
@@ -228,14 +225,8 @@ export async function fetchGrantsForDestination(
 
   const peopleById = new Map<string, GlobalPerson>()
   if (personIds.length > 0) {
-    const { data: people, error: peopleError } = await supabase
-      .from('global_people')
-      .select('id, first_name, last_name, email, nickname')
-      .in('id', personIds)
-    if (peopleError) throw new Error(`Failed to fetch people: ${peopleError.message}`)
-    for (const p of people ?? []) {
-      peopleById.set((p as GlobalPerson).id, p as GlobalPerson)
-    }
+    const people = await fetchPeopleByIds(personIds)
+    for (const p of people) peopleById.set(p.id, p)
   }
 
   return rows.map(r => ({
@@ -247,17 +238,6 @@ export async function fetchGrantsForDestination(
       ? (peopleById.get(r.profile.person_id) ?? null)
       : null,
   }))
-}
-
-// Fetch all global_people for the assign picker
-export async function fetchAllPeople(): Promise<GlobalPerson[]> {
-  const { data, error } = await supabase
-    .from('global_people')
-    .select('id, first_name, last_name, email, nickname')
-    .order('first_name', { ascending: true })
-
-  if (error) throw new Error(`Failed to fetch people: ${error.message}`)
-  return (data ?? []) as GlobalPerson[]
 }
 
 // Given a global_people UUID, find the linked global_profiles row.
@@ -467,14 +447,8 @@ export async function fetchExperiencesGrantsForDestination(
 
   const peopleById = new Map<string, GlobalPerson>()
   if (personIds.length > 0) {
-    const { data: people, error: peopleError } = await supabase
-      .from('global_people')
-      .select('id, first_name, last_name, email, nickname')
-      .in('id', personIds)
-    if (peopleError) throw new Error(`Failed to fetch people: ${peopleError.message}`)
-    for (const p of people ?? []) {
-      peopleById.set((p as GlobalPerson).id, p as GlobalPerson)
-    }
+    const people = await fetchPeopleByIds(personIds)
+    for (const p of people) peopleById.set(p.id, p)
   }
 
   return rows.map(r => ({

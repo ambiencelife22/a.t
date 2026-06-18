@@ -31,11 +31,8 @@ import {
   inputStyle,
   btnPrimary, btnDanger,
 } from '../../../styles/stylesAdmin'
-import {
-  fetchAllPeople,
-  fetchProfileByPersonId,
-  type GlobalPerson,
-} from '../../../queries/queriesAdminGuides'
+import { fetchProfileByPersonId } from '../../../queries/queriesAdminGuides'
+import { fetchPeople, type GlobalPersonResolved } from '../../../queries/queriesGlobalPeople'
 
 // ── Minimal grant shape — both AdminGrant + AdminExperiencesGrant satisfy ─────
 
@@ -43,12 +40,12 @@ export interface MinimalGrant {
   id:         string
   user_id:    string
   granted_at: string
-  person:     GlobalPerson | null
+  person:     GlobalPersonResolved | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function personDisplayName(person: GlobalPerson): string {
+function personDisplayName(person: GlobalPersonResolved): string {
   const parts = [person.first_name, person.last_name].filter(Boolean)
   if (parts.length > 0) return parts.join(' ')
   return person.nickname ?? person.email ?? '(unnamed)'
@@ -74,7 +71,7 @@ export default function GuideAccessTab({
 }) {
   const { toast } = useToast()
   const [grants,    setGrants]    = useState<MinimalGrant[]>([])
-  const [people,    setPeople]    = useState<GlobalPerson[]>([])
+  const [people,    setPeople]    = useState<GlobalPersonResolved[]>([])
   const [loading,   setLoading]   = useState(true)
   const [search,    setSearch]    = useState('')
   const [assigning, setAssigning] = useState(false)
@@ -86,7 +83,7 @@ export default function GuideAccessTab({
     try {
       const [g, p] = await Promise.all([
         fetchGrants(globalDestinationId),
-        fetchAllPeople(),
+        fetchPeople(),
       ])
       setGrants(g)
       setPeople(p)
@@ -114,7 +111,7 @@ export default function GuideAccessTab({
     })
   }, [people, search])
 
-  async function handleAssign(person: GlobalPerson) {
+  async function handleAssign(person: GlobalPersonResolved) {
     setAssigning(true)
     try {
       let profileId = profileCache.get(person.id)
