@@ -808,7 +808,7 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
                         {item.subtitle && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: 4 }}>{item.subtitle}</div>}
                         {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', lineHeight: 1.5 }}>{item.notes}</div>}
 
-                        {item.confirmation_number && (
+                        {item.passengers.length === 0 && item.confirmation_number && (
                           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${RULE}` }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>
                               <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>Conf #: {item.confirmation_number}</span>
