@@ -54,6 +54,7 @@ import AssetPicker from './AssetPicker'
 import { bookedByLabel } from '../../utils/utilsBooking'
 import { supabase } from '../../lib/supabase'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
+import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -139,14 +140,6 @@ async function resolveHouseIdForTrip(tripId: string): Promise<string | null> {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type RoomDraft = {
-  guest_name:        string
-  room_name:         string
-  party_composition: string
-  notes:             string
-  additional_guests: string[]
-}
-
 type AuxDraft = {
   name:                string
   booking_type:        string
@@ -223,178 +216,6 @@ function VisibilityToggle({ on, onChange, label }: { on: boolean; onChange: (v: 
         {on ? 'Shown' : 'Hidden'}
       </span>
     </button>
-  )
-}
-
-// ── BriefRoomEditor ───────────────────────────────────────────────────────────
-
-function BriefRoomEditor({ trip, roomImageSrcs, onImageSrcsChange, roomDrafts, onRoomDraftsChange, isMobile }: {
-  trip:               DossierTrip
-  roomImageSrcs:      Record<string, string>
-  onImageSrcsChange:  (srcs: Record<string, string>) => void
-  roomDrafts:         Record<string, RoomDraft>
-  onRoomDraftsChange: (drafts: Record<string, RoomDraft>) => void
-  isMobile:           boolean
-}) {
-  const allRooms = trip.bookings.flatMap(b => b._rooms.map(r => ({ room: r, booking: b })))
-
-  const [imgInitialized, setImgInitialized] = useState(false)
-  if (!imgInitialized && allRooms.length > 0 && Object.keys(roomImageSrcs).length === 0) {
-    onImageSrcsChange(Object.fromEntries(
-      allRooms.map(({ room, booking }) => [room.id, room.brief_image_src ?? booking._hotel_image_src ?? ''])
-    ))
-    setImgInitialized(true)
-  }
-
-  const [pickerRoomId, setPickerRoomId] = useState<string | null>(null)
-
-  function getDraft(roomId: string, room: typeof allRooms[number]['room']): RoomDraft {
-    return roomDrafts[roomId] ?? {
-      guest_name:        room.guest_name        ?? '',
-      room_name:         room.room_name         ?? '',
-      party_composition: room.party_composition ?? '',
-      notes:             room.notes             ?? '',
-      additional_guests: room.additional_guests ?? [],
-    }
-  }
-
-  function patch(roomId: string, room: typeof allRooms[number]['room'], field: keyof RoomDraft, value: string) {
-    const prev = getDraft(roomId, room)
-    onRoomDraftsChange({ ...roomDrafts, [roomId]: { ...prev, [field]: value } })
-  }
-
-  async function saveField(roomId: string, field: keyof Omit<RoomDraft, 'additional_guests'>, value: string) {
-    try { await updateBookingRoom(roomId, { [field]: value || null } as any) }
-    catch { /* silent */ }
-  }
-
-  async function saveAdditionalGuests(roomId: string, guests: string[]) {
-    try { await updateBookingRoom(roomId, { additional_guests: guests.length > 0 ? guests : null }) }
-    catch { /* silent */ }
-  }
-
-  function addGuest(roomId: string, room: typeof allRooms[number]['room']) {
-    const prev = getDraft(roomId, room)
-    onRoomDraftsChange({ ...roomDrafts, [roomId]: { ...prev, additional_guests: [...prev.additional_guests, ''] } })
-  }
-
-  function patchGuest(roomId: string, room: typeof allRooms[number]['room'], idx: number, value: string) {
-    const prev = getDraft(roomId, room)
-    const guests = [...prev.additional_guests]
-    guests[idx] = value
-    onRoomDraftsChange({ ...roomDrafts, [roomId]: { ...prev, additional_guests: guests } })
-  }
-
-  function removeGuest(roomId: string, room: typeof allRooms[number]['room'], idx: number) {
-    const prev   = getDraft(roomId, room)
-    const guests = prev.additional_guests.filter((_, i) => i !== idx)
-    onRoomDraftsChange({ ...roomDrafts, [roomId]: { ...prev, additional_guests: guests } })
-    saveAdditionalGuests(roomId, guests)
-  }
-
-  async function saveImage(roomId: string, src: string | null) {
-    try { await updateBookingRoom(roomId, { brief_image_src: src || null }) }
-    catch { /* silent */ }
-  }
-
-  return (
-    <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {allRooms.map(({ room }) => {
-          const src   = roomImageSrcs[room.id] ?? ''
-          const draft = getDraft(room.id, room)
-          return (
-            <div key={room.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '10px 12px' }}>
-              {room.confirmation_number && (
-                <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700, marginBottom: 8 }}>
-                  #{room.confirmation_number}
-                </div>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px', marginBottom: 10 }}>
-                <div>
-                  <label style={fieldLabelStyle}>Primary Guest</label>
-                  <input style={fieldStyle} value={draft.guest_name}
-                    onChange={e => patch(room.id, room, 'guest_name', e.target.value)}
-                    onBlur={e => saveField(room.id, 'guest_name', e.target.value)}
-                    placeholder='HRH Princess Nouf' />
-                  {draft.additional_guests.map((g, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <input style={{ ...fieldStyle, flex: 1 }} value={g}
-                        onChange={e => patchGuest(room.id, room, idx, e.target.value)}
-                        onBlur={() => saveAdditionalGuests(room.id, draft.additional_guests)}
-                        placeholder='Additional guest name' />
-                      <button onClick={() => removeGuest(room.id, room, idx)}
-                        style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>✕</button>
-                    </div>
-                  ))}
-                  <button onClick={() => addGuest(room.id, room)}
-                    style={{ fontFamily: A.font, fontSize: 9, fontWeight: 600, color: A.gold, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0 0', letterSpacing: '0.04em' }}>
-                    + Add'l Guest
-                  </button>
-                </div>
-                <div>
-                  <label style={fieldLabelStyle}>Party Composition</label>
-                  <input style={fieldStyle} value={draft.party_composition}
-                    onChange={e => patch(room.id, room, 'party_composition', e.target.value)}
-                    onBlur={e => saveField(room.id, 'party_composition', e.target.value)}
-                    placeholder='2 Adults, 2 Children' />
-                </div>
-                <div>
-                  <label style={fieldLabelStyle}>Room Name</label>
-                  <input style={fieldStyle} value={draft.room_name}
-                    onChange={e => patch(room.id, room, 'room_name', e.target.value)}
-                    onBlur={e => saveField(room.id, 'room_name', e.target.value)}
-                    placeholder='Two-Bedroom Suite Palm View' />
-                </div>
-                <div>
-                  <label style={fieldLabelStyle}>Notes</label>
-                  <input style={fieldStyle} value={draft.notes}
-                    onChange={e => patch(room.id, room, 'notes', e.target.value)}
-                    onBlur={e => saveField(room.id, 'notes', e.target.value)}
-                    placeholder='Complimentary rollaway bed' />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {src ? (
-                  <div style={{ width: 80, height: 52, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: `1px solid ${A.border}` }}>
-                    <img src={src} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ) : (
-                  <div style={{ width: 80, height: 52, borderRadius: 6, background: A.bg, border: `1px solid ${A.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font }}>No image</span>
-                  </div>
-                )}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <button onClick={() => setPickerRoomId(room.id)}
-                    style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', textAlign: 'left' as const }}>
-                    {src ? 'Change Image' : 'Select from Library'}
-                  </button>
-                  {src && (
-                    <button onClick={() => { onImageSrcsChange({ ...roomImageSrcs, [room.id]: '' }); saveImage(room.id, null) }}
-                      style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}>
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {pickerRoomId && (
-        <AssetPicker
-          onClose={() => setPickerRoomId(null)}
-          presetPath={trip.destinations[0]?.storage_path ? `${trip.destinations[0].storage_path}/accom` : undefined}
-          onSelected={async url => {
-            onImageSrcsChange({ ...roomImageSrcs, [pickerRoomId]: url })
-            setPickerRoomId(null)
-            updateBookingRoom(pickerRoomId, { brief_image_src: url }).catch(() => {})
-          }}
-        />
-      )}
-    </>
   )
 }
 
@@ -858,7 +679,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       {rooms.map((room, ri) => {
                         const d                = roomDrafts[room.id]
                         const roomName         = d?.room_name         ?? room.room_name         ?? null
-                        const guestName        = d?.guest_name        ?? room.guest_name        ?? null
+                        const guestName        = d?.guest_name        || room.resolved_guest_name || room.guest_name || null
                         const partyComposition = d?.party_composition ?? room.party_composition ?? null
                         const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
                         const guestParts: string[] = []
@@ -1017,13 +838,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       setPublicView(isPublic)
 
       const allRooms = found.bookings.flatMap(b => b._rooms)
-      setRoomDrafts(Object.fromEntries(allRooms.map(r => [r.id, {
-        guest_name:        r.guest_name        ?? '',
-        room_name:         r.room_name         ?? '',
-        party_composition: r.party_composition ?? '',
-        notes:             r.notes             ?? '',
-        additional_guests: r.additional_guests ?? [],
-      }])))
+      setRoomDrafts(Object.fromEntries(allRooms.map(r => [r.id, roomToDraft(r)])))
 
       const br = found.brief
       if (br) {
@@ -1444,7 +1259,24 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
             {trip.bookings.every(b => b._rooms.length === 0) ? (
               <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No rooms seeded yet. Add rooms via the booking card in the House tab.</div>
             ) : (
-              <BriefRoomEditor trip={trip} roomImageSrcs={roomImageSrcs} onImageSrcsChange={setRoomImageSrcs} roomDrafts={roomDrafts} onRoomDraftsChange={setRoomDrafts} isMobile={isMobile} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {trip.bookings.filter(b => b._rooms.length > 0).map(b => (
+                  <div key={b.id}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.muted, fontFamily: A.font, marginBottom: 8 }}>
+                      {b._hotel_name ?? b.name ?? 'Hotel'}
+                    </div>
+                    <BookingRoomsEditor
+                      booking={b}
+                      partyLabel={preparedFor || house?.display_name || null}
+                      imagePresetPath={trip.destinations[0]?.storage_path ? `${trip.destinations[0].storage_path}/accom` : undefined}
+                      roomDrafts={roomDrafts}
+                      onRoomDraftsChange={setRoomDrafts}
+                      roomImageSrcs={roomImageSrcs}
+                      onImageSrcsChange={setRoomImageSrcs}
+                    />
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 

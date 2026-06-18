@@ -29,10 +29,11 @@ const labelStyle: React.CSSProperties = {
   fontFamily: A.font, marginBottom: 3, display: 'block',
 }
 
-export function PersonLinkPicker({ label = 'Linked Person', personId, onChange }: {
-  label?:   string
-  personId: string | null
-  onChange: (personId: string | null) => void
+export function PersonLinkPicker({ label = 'Linked Person', personId, onChange, onResolved }: {
+  label?:     string
+  personId:   string | null
+  onChange:   (personId: string | null) => void
+  onResolved?: (displayName: string | null) => void
 }) {
   const [linked,  setLinked]  = useState<GlobalPersonResolved | null>(null)
   const [open,    setOpen]    = useState(false)
@@ -46,8 +47,8 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange }
     let cancelled = false
     if (!personId) { setLinked(null); return }
     fetchPersonById(personId)
-      .then(p => { if (!cancelled) setLinked(p) })
-      .catch(() => { if (!cancelled) setLinked(null) })
+      .then(p => { if (!cancelled) { setLinked(p); onResolved?.(p?.display_name ?? null) } })
+      .catch(() => { if (!cancelled) { setLinked(null); onResolved?.(null) } })
     return () => { cancelled = true }
   }, [personId])
 
@@ -68,6 +69,7 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange }
   function select(p: GlobalPersonResolved) {
     onChange(p.id)
     setLinked(p)
+    onResolved?.(p.display_name)
     setOpen(false)
     setQuery('')
   }
@@ -75,6 +77,7 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange }
   function unlink() {
     onChange(null)
     setLinked(null)
+    onResolved?.(null)
     setOpen(false)
     setQuery('')
   }

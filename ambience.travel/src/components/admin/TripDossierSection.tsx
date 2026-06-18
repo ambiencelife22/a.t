@@ -26,6 +26,7 @@ import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
+import { BookingRoomsEditor } from './BookingRoomsEditor'
 import { AirlinePicker } from './AirlinePicker'
 import { HotelPicker } from './HotelPicker'
 
@@ -770,11 +771,12 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
 
 // ── BookingCard ───────────────────────────────────────────────────────────────
 
-function BookingCard({ booking: b, partners, mobile, house }: {
-  booking:  TripBooking
-  partners: Record<string, TripPartner>
-  mobile:   boolean
-  house:    HouseProfile | null
+function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
+  booking:   TripBooking
+  partners:  Record<string, TripPartner>
+  mobile:    boolean
+  house:     HouseProfile | null
+  partyLabel: string | null
 }) {
   const [expanded,  setExpanded]  = useState(false)
   const [briefCat,  setBriefCat]  = useState(b.brief_category ?? '')
@@ -941,7 +943,7 @@ function BookingCard({ booking: b, partners, mobile, house }: {
             </div>
           </div>
 
-          <RoomsEditor booking={b} />
+          <BookingRoomsEditor booking={b} partyLabel={partyLabel} />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 2 }}>
             <button
@@ -1182,7 +1184,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
             ? <AdminEmptyState message='No bookings on this trip yet.' />
             : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} />)}
+                {bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} partyLabel={trip.brief?.prepared_for ?? null} />)}
               </div>
             )
           }

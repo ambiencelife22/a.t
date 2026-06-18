@@ -86,12 +86,13 @@ function paxDraftToPatch(d: PaxDraft): TripAuxPassengerPatch {
 
 // ── AuxPassengersEditor ───────────────────────────────────────────────────────
 
-export function AuxPassengersEditor({ auxBookingId, initial }: { auxBookingId: string; initial: TripAuxPassenger[] }) {
+export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { auxBookingId: string; initial: TripAuxPassenger[]; partyLabel?: string | null }) {
   const [pax,    setPax]    = useState<TripAuxPassenger[]>(initial)
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [draft,  setDraft]  = useState<PaxDraft>(emptyPaxDraft(0))
   const [saving, setSaving] = useState(false)
+  const [linkedName, setLinkedName] = useState<string | null>(null)
   const { success, error } = useAdminToast()
 
   const sorted = [...pax].sort((a, b) => a.sort_order - b.sort_order)
@@ -143,10 +144,11 @@ export function AuxPassengersEditor({ auxBookingId, initial }: { auxBookingId: s
           label='Passenger (global registry)'
           personId={draft.person_id}
           onChange={pid => setDraft({ ...draft, person_id: pid })}
+          onResolved={setLinkedName}
         />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <PaxField label='Label (override)' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder='May Amin' />
+        <PaxField label='Label (override)' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder={draft.person_id ? 'Using linked person' : (partyLabel ? `Resolves to: ${partyLabel}` : 'e.g. Ms. Sayegh')} />
         <PaxField label='Confirmation #' value={draft.confirmation_number} onChange={v => setDraft({ ...draft, confirmation_number: v })} placeholder='PVJZEW' />
         <PaxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => setDraft({ ...draft, seat_numbers: v })} placeholder='5F, 5E' />
         <PaxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => setDraft({ ...draft, sort_order: parseInt(v, 10) || 0 })} />
@@ -181,7 +183,7 @@ export function AuxPassengersEditor({ auxBookingId, initial }: { auxBookingId: s
         ) : (
           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 0' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.passenger_label ?? 'Guest'}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
               <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginLeft: 8 }}>
                 {[p.confirmation_number, p.seat_numbers ? `Seats ${p.seat_numbers}` : null].filter(Boolean).join('  ·  ')}
               </span>
