@@ -206,7 +206,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
           last_name:  p.last_name  ?? '',
           nickname:   p.nickname   ?? '',
           email:      p.email      ?? '',
-          phone:      '',
+          phone:      p.phone      ?? '',
         })
       })
       .catch(() => setGp(null))
@@ -524,7 +524,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
                     <input style={inputStyle} type='email' value={gpDraft.email} onChange={e => setGpDraft(d => ({ ...d, email: e.target.value }))} />
                   </Field>
                   <Field label='Phone'>
-                    <input style={inputStyle} type='tel' value={gpDraft.phone} onChange={e => setGpDraft(d => ({ ...d, phone: e.target.value }))} placeholder='Write-only — not shown on reload' />
+                    <input style={inputStyle} type='tel' value={gpDraft.phone} onChange={e => setGpDraft(d => ({ ...d, phone: e.target.value }))} placeholder='+1 555 0100' />
                   </Field>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

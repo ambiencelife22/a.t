@@ -36,6 +36,7 @@ export interface GlobalPersonResolved {
   last_name:            string | null
   nickname:             string | null
   email:                string | null
+  phone:                string | null
   last_initial:         string | null
   is_public_display:    boolean
   over_18_confirmed_at: string | null

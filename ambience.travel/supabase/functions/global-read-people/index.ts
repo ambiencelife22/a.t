@@ -45,7 +45,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const PERSON_SELECT = 'id, first_name, last_name, nickname, email, last_initial'
+const PERSON_SELECT = 'id, first_name, last_name, nickname, email, phone, last_initial'
 
 // Flatten + resolve display_name. Mirrors the team EF's shapeMember pattern.
 function shapePerson(p: any) {
@@ -59,6 +59,7 @@ function shapePerson(p: any) {
     last_name:    p.last_name ?? null,
     nickname:     p.nickname ?? null,
     email:        p.email ?? null,
+    phone:        p.phone ?? null,
     last_initial: p.last_initial ?? null,
     display_name: display,
   }
