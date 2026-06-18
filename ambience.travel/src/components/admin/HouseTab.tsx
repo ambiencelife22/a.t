@@ -53,7 +53,12 @@ import {
 import { TripDossierSection } from './TripDossierSection'
 import { RequestsSection } from './RequestsSection'
 import { PersonLinkPicker } from './PersonLinkPicker'
-import { createPerson as createGlobalPerson } from '../../queries/queriesGlobalPeople'
+import {
+  createPerson as createGlobalPerson,
+  fetchPersonById as fetchGlobalPersonById,
+  updatePerson as updateGlobalPerson,
+  type GlobalPersonResolved,
+} from '../../queries/queriesGlobalPeople'
 import { fetchRequestsForHouse, type TravelRequest } from '../../queries/queriesAdminRequests'
 import { PPD_PEOPLE_KEYS as PPD_KEYS } from '../../types/typesPpd'
 
@@ -164,6 +169,12 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
   const [profile, setProfile]               = useState<HousePersonProfile | null | 'loading'>('loading')
   const [profileLoaded, setProfileLoaded]   = useState(false)
 
+  // Editable global_people identity (driven by person.person_id).
+  const [gp, setGp]               = useState<GlobalPersonResolved | null | 'loading'>('loading')
+  const [gpLoaded, setGpLoaded]   = useState(false)
+  const [gpDraft, setGpDraft]     = useState({ first_name: '', last_name: '', nickname: '', email: '', phone: '' })
+  const [gpSaving, setGpSaving]   = useState(false)
+
   const personPrefs = useMemo(() => allPreferences.filter(p => p.person_id === person.id), [allPreferences, person.id])
   const personPPD   = useMemo(() => allPPD.filter(p => p.person_id === person.person_id), [allPPD, person.person_id])
 
@@ -183,6 +194,24 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
     }
   }, [tab, profileLoaded, person.id])
 
+  useEffect(() => {
+    if (tab !== 'profile' || gpLoaded) return
+    setGpLoaded(true)
+    if (!person.person_id) { setGp(null); return }
+    fetchGlobalPersonById(person.person_id)
+      .then(p => {
+        setGp(p)
+        if (p) setGpDraft({
+          first_name: p.first_name ?? '',
+          last_name:  p.last_name  ?? '',
+          nickname:   p.nickname   ?? '',
+          email:      p.email      ?? '',
+          phone:      '',
+        })
+      })
+      .catch(() => setGp(null))
+  }, [tab, gpLoaded, person.person_id])
+
   async function saveIdentity() {
     if (!identityDraft.member_ref.trim()) return
     setIdentitySaving(true)
@@ -192,6 +221,23 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setIdentitySaving(false)
+  }
+
+  async function saveGlobalPerson() {
+    if (!person.person_id) return
+    setGpSaving(true)
+    try {
+      const updated = await updateGlobalPerson(person.person_id, {
+        first_name: gpDraft.first_name.trim() || null,
+        last_name:  gpDraft.last_name.trim()  || null,
+        nickname:   gpDraft.nickname.trim()   || null,
+        email:      gpDraft.email.trim()      || null,
+        phone:      gpDraft.phone.trim()      || null,
+      })
+      setGp(updated)
+      success('Identity saved.')
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
+    setGpSaving(false)
   }
 
   async function deleteSelf() {
@@ -450,6 +496,46 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
 
         {tab === 'profile' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Editable global_people identity (canonical registry). */}
+            {!person.person_id ? (
+              <div style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
+                  Not linked to the person registry. Use the <span style={{ color: A.gold }}>Linked Person</span> field on the Identity tab to link or create a global record — identity fields become editable here once linked.
+                </div>
+              </div>
+            ) : gp === 'loading' ? (
+              <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading identity…</div>
+            ) : gp === null ? (
+              <div style={{ fontSize: 12, color: '#f87171', fontFamily: A.font }}>Linked person_id not found in registry.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 12, borderBottom: `1px solid ${A.border}` }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Registry Identity</div>
+                <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                  <Field label='First Name'>
+                    <input style={inputStyle} value={gpDraft.first_name} onChange={e => setGpDraft(d => ({ ...d, first_name: e.target.value }))} />
+                  </Field>
+                  <Field label='Last Name'>
+                    <input style={inputStyle} value={gpDraft.last_name} onChange={e => setGpDraft(d => ({ ...d, last_name: e.target.value }))} />
+                  </Field>
+                  <Field label='Nickname'>
+                    <input style={inputStyle} value={gpDraft.nickname} onChange={e => setGpDraft(d => ({ ...d, nickname: e.target.value }))} />
+                  </Field>
+                  <Field label='Email'>
+                    <input style={inputStyle} type='email' value={gpDraft.email} onChange={e => setGpDraft(d => ({ ...d, email: e.target.value }))} />
+                  </Field>
+                  <Field label='Phone'>
+                    <input style={inputStyle} type='tel' value={gpDraft.phone} onChange={e => setGpDraft(d => ({ ...d, phone: e.target.value }))} placeholder='Write-only — not shown on reload' />
+                  </Field>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={saveGlobalPerson} style={{ ...btnP, opacity: gpSaving ? 0.5 : 1 }} disabled={gpSaving}>
+                    {gpSaving ? 'Saving…' : 'Save Identity'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Login account status (global_profiles). Read-only. */}
             {profile === 'loading' ? (
               <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Checking...</div>
             ) : profile === null ? (
