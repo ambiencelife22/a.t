@@ -2,8 +2,9 @@
 //
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
-//   - Room cards — half-width image left, room name serif, guests muted,
-//     Conf #: pill + booked_by italic. Section: "ACCOMMODATION".
+//   - Hotel cards — image-left header (hotel name, dates, party, booking-level
+//     conf when roomless, booked_by), nested room rows beneath (room name,
+//     guests, per-room conf pill). Section: "ACCOMMODATION".
 //   - Flight cards — icon, route, times, conf# pill. Section: "FLIGHTS".
 //   - Contact cards — advisor + selected house guests/staff. S54.
 //
@@ -48,35 +49,54 @@ export interface ConfirmationBriefData {
   contacts?:       ConfirmationContact[]
 }
 
-// ── Room card ─────────────────────────────────────────────────────────────────
+// ── Hotel card ────────────────────────────────────────────────────────────────
+// One card per hotel booking: image-left header (hotel name, dates, booking-level
+// conf when roomless, booked_by), then nested room rows beneath (room name, guests,
+// per-room conf pill). Mirrors the client screen hierarchy.
 
-async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y: number): Promise<number> {
+async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise<number> {
   const imgW = Math.round(CW * 0.44)
-  const padV = 7; const padH = 8; const minCardH = 36
+  const padV = 7; const padH = 8
   const contentX = P.margin + imgW; const contentW = CW - imgW
-
-  const guestParts: string[] = []
-  if (room.guest_name) guestParts.push(room.guest_name)
-  if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
-  if (room.party_composition) guestParts.push(room.party_composition)
-  const guestLine = guestParts.join('  \u00b7  ')
 
   const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
   const pillColor    = isAmbience ? T.gold : T.faint
   const pillBg       = isAmbience ? ([250, 247, 240] as [number,number,number]) : ([245, 245, 245] as [number,number,number])
   const bookedByText = bookedByLabel(booking.booked_by)
-  const confText     = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
+  const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
+  const dateRange    = buildDateRange(booking.start_date, booking.end_date)
+  const rooms        = booking._rooms ?? []
 
+  // Booking-level conf only shows when there are no rooms (rooms carry their own).
+  const headerConf   = rooms.length === 0 && booking.confirmation_number
+    ? `Conf #:  ${booking.confirmation_number}` : null
+
+  // ── Measure header block ──
   serif(doc, 'normal', 11)
-  const nameLines = doc.splitTextToSize(room.room_name ?? 'Booking', contentW - padH * 2)
+  const nameLines = doc.splitTextToSize(hotelName, contentW - padH * 2)
   const nameH     = nameLines.length * 5.5
-  const guestH    = guestLine ? 5 : 0
-  const bottomH   = confText ? 4 + 6 + 7 + 4.5 : 4 + 4.5
-  const contentH  = padV + nameH + (guestH ? guestH + 5 : 0) + bottomH + padV
-  const cardH     = Math.max(minCardH, contentH)
+  const dateH     = dateRange ? 5 : 0
+  const partyH    = booking.party_composition ? 5 : 0
+  const bottomH   = headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5
+  const headerContentH = padV + nameH + dateH + partyH + bottomH + padV
+  const headerH   = Math.max(36, headerContentH)
 
+  // ── Measure room rows ──
+  const roomRowH = (room: BookingRoom): number => {
+    const gp: string[] = []
+    if (room.guest_name) gp.push(room.guest_name)
+    if (room.additional_guests?.length) gp.push(...room.additional_guests)
+    if (room.party_composition) gp.push(room.party_composition)
+    const nameH  = room.room_name ? 5 : 0
+    const guestH = gp.length ? 4.5 : 0
+    return padV + nameH + guestH + padV
+  }
+  const roomsH = rooms.reduce((sum, r) => sum + roomRowH(r), 0)
+  const cardH  = headerH + (rooms.length > 0 ? roomsH : 0)
+
+  // ── Hotel image (crop to header height) ──
   let croppedImg: { data: string; format: 'PNG' | 'JPEG' } | null = null
-  const imgSrc = room.resolved_image_src ?? room.brief_image_src
+  const imgSrc = booking.brief_image_src ?? booking._hotel_image_src
   if (imgSrc) {
     try {
       const raw = await loadImg(imgSrc)
@@ -84,6 +104,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
     } catch { /* silent */ }
   }
 
+  // ── Card frame ──
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
   doc.setLineWidth(0.3)
@@ -91,8 +112,7 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
 
   if (croppedImg) {
     doc.addImage(croppedImg.data, croppedImg.format, P.margin, y, imgW, cardH, undefined, 'FAST')
-  }
-  if (!croppedImg) {
+  } else {
     doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
     doc.rect(P.margin, y, imgW, cardH, 'F')
   }
@@ -101,38 +121,94 @@ async function drawRoomCard(doc: any, room: BookingRoom, booking: TripBooking, y
   doc.setLineWidth(0.3)
   doc.roundedRect(P.margin, y, CW, cardH, 2, 2, 'D')
 
+  // ── Header text ──
   const tx = contentX + padH; let ty = y + padV
 
   serif(doc, 'normal', 11)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
   for (const line of nameLines) { doc.text(line, tx, ty); ty += 5.5 }
 
-  if (guestLine) {
-    ty += 2
+  if (dateRange) {
     sans(doc, 'normal', 8)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-    doc.text((doc.splitTextToSize(guestLine, contentW - padH * 2))[0] ?? '', tx, ty)
+    doc.text(dateRange, tx, ty); ty += 5
+  }
+  if (booking.party_composition) {
+    sans(doc, 'normal', 8)
+    doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    doc.text((doc.splitTextToSize(booking.party_composition, contentW - padH * 2))[0] ?? '', tx, ty)
     ty += 5
   }
 
   ty += 4
 
-  if (confText) {
+  if (headerConf) {
     sans(doc, 'normal', 8)
-    const pillTextW = doc.getTextWidth(confText)
+    const pillTextW = doc.getTextWidth(headerConf)
     const ppx = 5; const pillW = pillTextW + ppx * 2; const pillH = 6
     doc.setFillColor(pillBg[0], pillBg[1], pillBg[2])
     doc.setDrawColor(pillColor[0], pillColor[1], pillColor[2])
     doc.setLineWidth(0.3)
     doc.roundedRect(tx, ty - pillH + 2, pillW, pillH, 1.5, 1.5, 'FD')
     doc.setTextColor(pillColor[0], pillColor[1], pillColor[2])
-    doc.text(confText, tx + ppx, ty - 0.2)
+    doc.text(headerConf, tx + ppx, ty - 0.2)
     ty += 7
   }
 
   sans(doc, 'italic', 7.5)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
   doc.text(bookedByText, tx, ty)
+
+  // ── Nested room rows ──
+  if (rooms.length > 0) {
+    let ry = y + headerH
+    for (let i = 0; i < rooms.length; i++) {
+      const room = rooms[i]
+      const thisRowH = roomRowH(room)
+
+      // Divider above each room row (separates header / prior room)
+      drawRule(doc, contentX, ry, contentW, T.rule, 0.3)
+
+      const gp: string[] = []
+      if (room.guest_name) gp.push(room.guest_name)
+      if (room.additional_guests?.length) gp.push(...room.additional_guests)
+      if (room.party_composition) gp.push(room.party_composition)
+      const guestLine = gp.join('  \u00b7  ')
+
+      const roomConf = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
+
+      let rty = ry + padV
+      if (room.room_name) {
+        sans(doc, 'bold', 8.5)
+        doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+        doc.text((doc.splitTextToSize(room.room_name, contentW - padH * 2 - 40))[0] ?? room.room_name, tx, rty)
+        rty += 5
+      }
+      if (guestLine) {
+        sans(doc, 'normal', 7.5)
+        doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+        doc.text((doc.splitTextToSize(guestLine, contentW - padH * 2 - 40))[0] ?? guestLine, tx, rty)
+        rty += 4.5
+      }
+
+      // Per-room conf pill — right-aligned within content column
+      if (roomConf) {
+        sans(doc, 'normal', 7.5)
+        const pillTextW = doc.getTextWidth(roomConf)
+        const ppx = 5; const pillW = pillTextW + ppx * 2; const pillH = 6
+        const px = P.margin + CW - padH - pillW
+        const py = ry + padV - pillH + 4
+        doc.setFillColor(pillBg[0], pillBg[1], pillBg[2])
+        doc.setDrawColor(pillColor[0], pillColor[1], pillColor[2])
+        doc.setLineWidth(0.3)
+        doc.roundedRect(px, py, pillW, pillH, 1.5, 1.5, 'FD')
+        doc.setTextColor(pillColor[0], pillColor[1], pillColor[2])
+        doc.text(roomConf, px + ppx, py + 4.2)
+      }
+
+      ry += thisRowH
+    }
+  }
 
   return cardH
 }
@@ -296,51 +372,40 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 
   const FOOTER_MARGIN = 18
 
-  // ── Room cards ────────────────────────────────────────────────────────────
+  // ── Hotel cards ───────────────────────────────────────────────────────────
 
-  const allRooms: { room: BookingRoom; booking: TripBooking }[] = []
-  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
-    if (b._rooms.length > 0) {
-      for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-      continue
-    }
-    allRooms.push({
-      room: {
-        id: b.id, booking_id: b.id, room_name: b.name,
-        confirmation_number: b.confirmation_number,
-        guest_name: d.house?.display_name ?? null,
-        party_composition: b.party_composition,
-        notes: b.inclusions ?? null, nights: b.nights,
-        rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-        total: null, extra_person_fee: null, brief_image_src: b.brief_image_src,
-        additional_guests: null,
-        sort_order: b.sort_order ?? 0,
-        created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
-      },
-      booking: b,
-    })
-  }
+  const accomBookings = trip.bookings
+    .filter(bk => bk.brief_show !== false)
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  if (allRooms.length > 0) {
+  if (accomBookings.length > 0) {
     drawRule(doc, P.margin, y, CW); y += 8
     sans(doc, 'bold', 7)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
     doc.text('ACCOMMODATION', P.margin, y, { charSpace: 0.5 }); y += 7
 
-    for (const { room, booking } of allRooms) {
-      const padH = 8; const padV = 7; const contentW = CW - Math.round(CW * 0.44)
+    for (const booking of accomBookings) {
+      // Estimate full card height (header + room rows) for pagination.
+      const padV = 7; const contentW = CW - Math.round(CW * 0.44); const padH = 8
       serif(doc, 'normal', 11)
-      const nl = doc.splitTextToSize(room.room_name ?? 'Booking', contentW - padH * 2)
-      const gp: string[] = []
-      if (room.guest_name) gp.push(room.guest_name)
-      if (room.additional_guests?.length) gp.push(...room.additional_guests)
-      if (room.party_composition) gp.push(room.party_composition)
-      const bH = room.confirmation_number ? 4 + 6 + 7 + 4.5 : 4 + 4.5
-      const cH = padV + nl.length * 5.5 + (gp.length ? 10 : 0) + bH + padV
-      const cardH = Math.max(36, cH)
+      const nl = doc.splitTextToSize(booking._hotel_name ?? booking.name ?? 'Hotel', contentW - padH * 2)
+      const rooms = booking._rooms ?? []
+      const headerConf = rooms.length === 0 && booking.confirmation_number
+      const headerH = Math.max(36,
+        padV + nl.length * 5.5
+        + (buildDateRange(booking.start_date, booking.end_date) ? 5 : 0)
+        + (booking.party_composition ? 5 : 0)
+        + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
+        + padV)
+      const roomsH = rooms.reduce((sum, r) => {
+        const gp = !!(r.guest_name || r.additional_guests?.length || r.party_composition)
+        return sum + padV + (r.room_name ? 5 : 0) + (gp ? 4.5 : 0) + padV
+      }, 0)
+      const cardH = headerH + (rooms.length > 0 ? roomsH : 0)
 
       if (y + cardH > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
-      const drawn = await drawRoomCard(doc, room, booking, y)
+      const drawn = await drawHotelCard(doc, booking, y)
       y += drawn + 4
     }
   }

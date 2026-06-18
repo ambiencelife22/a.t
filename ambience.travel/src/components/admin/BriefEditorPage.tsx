@@ -768,27 +768,10 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
   const pfor     = preparedFor || house?.display_name || ''
   const dates    = buildDateRange(trip.start_date, trip.end_date)
 
-  const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
-  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
-    if (b._rooms.length > 0) {
-      for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-      continue
-    }
-    allRooms.push({
-      room: {
-        id: b.id, booking_id: b.id, room_name: b.name,
-        confirmation_number: b.confirmation_number,
-        guest_name: house?.display_name ?? null,
-        party_composition: b.party_composition,
-        notes: b.inclusions ?? null, nights: b.nights,
-        rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-        total: null, brief_image_src: b.brief_image_src,
-        additional_guests: null,
-        sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
-      } as any,
-      booking: b,
-    })
-  }
+  const accomBookings = trip.bookings
+    .filter(bk => bk.brief_show !== false)
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
@@ -834,47 +817,71 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
         {dates && <div style={{ fontSize: 11, color: FAINT, textAlign: 'center', fontFamily: 'DM Mono, monospace' }}>{dates}</div>}
       </div>
 
-      {allRooms.length > 0 && (
+      {accomBookings.length > 0 && (
         <div style={{ padding: '28px 28px 0' }}>
           <div style={{ height: 1, background: RULE, marginBottom: 20 }} />
           <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>ACCOMMODATION</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {allRooms.map(({ room, booking }, i) => {
-              const d                = roomDrafts[room.id]
-              const guestName        = d?.guest_name        ?? room.guest_name        ?? null
-              const roomName         = d?.room_name         ?? room.room_name         ?? null
-              const partyComposition = d?.party_composition ?? room.party_composition ?? null
-              const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
-              const imgSrc           = roomImageSrcs[room.id] || room.brief_image_src
-              const isAmbience       = (booking.booked_by ?? 'ambience') === 'ambience'
-              const bookedByText     = bookedByLabel(booking.booked_by)
-              const pillColor        = isAmbience ? GOLD : FAINT
-
-              const guestParts: string[] = []
-              if (guestName) guestParts.push(guestName)
-              if (additionalGuests.length) guestParts.push(...additionalGuests)
-              if (partyComposition) guestParts.push(partyComposition)
-              const guestLine = guestParts.join(' · ')
+            {accomBookings.map(booking => {
+              const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
+              const bookedByText = bookedByLabel(booking.booked_by)
+              const pillColor    = isAmbience ? GOLD : FAINT
+              const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
+              const dateRange    = buildDateRange(booking.start_date, booking.end_date)
+              const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? null
+              const rooms        = booking._rooms ?? []
 
               return (
-                <div key={room.id ?? i} style={{ background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 8, overflow: 'hidden', display: 'flex', minHeight: 90 }}>
-                  <div style={{ width: '44%', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
-                    {imgSrc && <img src={imgSrc} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
-                  </div>
-                  <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      {roomName && <div style={{ fontSize: 14, color: INK, marginBottom: 3, lineHeight: 1.3 }}>{roomName}</div>}
-                      {guestLine && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{guestLine}</div>}
+                <div key={booking.id} style={{ background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', minHeight: 90 }}>
+                    <div style={{ width: '44%', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
+                      {headerImg && <img src={headerImg} alt='' style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
                     </div>
-                    <div style={{ marginTop: 10 }}>
-                      {room.confirmation_number && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 4, padding: '2px 8px', marginBottom: 4, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
-                          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {room.confirmation_number}</span>
-                        </div>
-                      )}
-                      <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                    <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: 14, color: INK, marginBottom: 3, lineHeight: 1.3 }}>{hotelName}</div>
+                        {dateRange && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{dateRange}</div>}
+                        {booking.party_composition && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED, marginTop: 1 }}>{booking.party_composition}</div>}
+                      </div>
+                      <div style={{ marginTop: 10 }}>
+                        {rooms.length === 0 && booking.confirmation_number && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 4, padding: '2px 8px', marginBottom: 4, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {booking.confirmation_number}</span>
+                          </div>
+                        )}
+                        <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                      </div>
                     </div>
                   </div>
+                  {rooms.length > 0 && (
+                    <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                      {rooms.map((room, ri) => {
+                        const d                = roomDrafts[room.id]
+                        const roomName         = d?.room_name         ?? room.room_name         ?? null
+                        const guestName        = d?.guest_name        ?? room.guest_name        ?? null
+                        const partyComposition = d?.party_composition ?? room.party_composition ?? null
+                        const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
+                        const guestParts: string[] = []
+                        if (guestName) guestParts.push(guestName)
+                        if (additionalGuests.length) guestParts.push(...additionalGuests)
+                        if (partyComposition) guestParts.push(partyComposition)
+                        const guestLine = guestParts.join(' · ')
+                        return (
+                          <div key={room.id ?? ri} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {roomName && <div style={{ fontSize: 12, color: INK, lineHeight: 1.3 }}>{roomName}</div>}
+                              {guestLine && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED, marginTop: 2 }}>{guestLine}</div>}
+                            </div>
+                            {room.confirmation_number && (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, border: `1px solid ${pillColor}`, borderRadius: 4, padding: '2px 8px', background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
+                                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {room.confirmation_number}</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -894,8 +901,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const name       = d?.name               || aux.name               || ''
               const origin     = d?.origin             || aux.origin             || ''
               const dest       = d?.destination        || aux.destination        || ''
-              const confNum    = ''
-              const guestLbl   = ''
               const bookedBy   = d?.booked_by?.trim()  || aux.booked_by?.trim()  || null
               const startTime  = d?.start_time || aux.start_time?.slice(0, 5) || null
               const endTime    = d?.end_time   || aux.end_time?.slice(0, 5)   || null
@@ -920,12 +925,6 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     {timeStr && <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</div>}
-                    {guestLbl && <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT, marginTop: 2 }}>{guestLbl}</div>}
-                    {confNum && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 4, padding: '1px 7px', marginTop: 4, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
-                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 9, color: pillColor }}>Conf #:  {confNum}</span>
-                      </div>
-                    )}
                     <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT, marginTop: 3 }}>{bookedByTxt}</div>
                   </div>
                 </div>

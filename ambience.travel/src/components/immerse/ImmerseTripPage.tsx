@@ -1100,8 +1100,7 @@ function TripBriefTab({ clientData, days, entries }: {
 // house.display_name when no people are selected.
 
 function ContactsTab({ clientData }: { clientData: TripClientData }) {
-  const { brief, house } = clientData
-  const contacts = (clientData as any).contacts as TripContact[] | undefined
+  const { brief, house, contacts } = clientData
 
   function ContactCard({ name, role, email, phone }: { name: string; role: string; email?: string | null; phone?: string | null }) {
     return (

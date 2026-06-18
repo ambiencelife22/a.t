@@ -400,18 +400,16 @@ type DossierBooking = {
 }
 
 type AuxBooking = {
-  id:                  string
-  start_date:          string | null
-  start_time:          string | null
-  end_time:            string | null
-  name:                string | null
-  booking_type:        string | null
-  origin:              string | null
-  destination:         string | null
-  booked_by:           string | null
-  confirmation_number: string | null
-  guest_label:         string | null
-  notes:               string | null
+  id:           string
+  start_date:   string | null
+  start_time:   string | null
+  end_time:     string | null
+  name:         string | null
+  booking_type: string | null
+  origin:       string | null
+  destination:  string | null
+  booked_by:    string | null
+  notes:        string | null
 }
 
 type DossierTrip = {
@@ -541,8 +539,8 @@ async function handleDeriveItinerary(
                                : null,
         category:            catIcon,
         booked_by:           aux.booked_by ?? 'Own Arrangements',
-        confirmation_number: aux.confirmation_number,
-        guest_label:         aux.guest_label,
+        confirmation_number: null,
+        guest_label:         null,
         notes:               aux.notes,
         brief_show:          true,
         sort_order:          aux.start_time

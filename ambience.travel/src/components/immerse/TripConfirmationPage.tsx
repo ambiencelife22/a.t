@@ -27,8 +27,7 @@
 import { useEffect, useState } from 'react'
 import { getAuxTypeMeta } from '../../types/typesAuxBookings'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
-import type { TripBooking, TripAuxBooking } from '../../queries/queriesAdminTrip'
-import type { ConfirmationBriefData } from '../../pdf/pdfImmerseConfirmation'
+import type { TripAuxBooking } from '../../queries/queriesAdminTrip'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import { bookedByLabel } from '../../utils/utilsBooking'
 
@@ -182,27 +181,10 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
   const heroSrc     = brief?.hero_image_src ?? ''
   const dates       = buildDateRange(trip.start_date, trip.end_date)
 
-  const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
-  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
-    if (b._rooms.length > 0) {
-      for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-      continue
-    }
-    allRooms.push({
-      room: {
-        id: b.id, booking_id: b.id, room_name: b.name,
-        confirmation_number: b.confirmation_number,
-        guest_name: house?.display_name ?? null,
-        party_composition: b.party_composition,
-        notes: b.inclusions ?? null, nights: b.nights,
-        rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-        total: null, brief_image_src: b.brief_image_src,
-        additional_guests: null,
-        sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '', updated_at: b.updated_at ?? '',
-      } as any,
-      booking: b,
-    })
-  }
+  const accomBookings = trip.bookings
+    .filter(bk => bk.brief_show !== false)
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
@@ -271,74 +253,107 @@ export function TripConfirmationDocument({ clientData }: { clientData: TripClien
         )}
       </div>
 
-      {/* Accommodation */}
-      {allRooms.length > 0 && (
+      {/* Accommodation — one block per hotel, rooms nested beneath */}
+      {accomBookings.length > 0 && (
         <Section label='ACCOMMODATION'>
-          {allRooms.map(({ room, booking }, i) => {
+          {accomBookings.map(booking => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
             const bookedByText = bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
-            const imgSrc       = room.resolved_image_src ?? room.brief_image_src
-            const imgAlt       = room.resolved_image_alt ?? room.room_name ?? ''
-            // S43 Add 2: paid in full — balance_paid_at takes precedence, deposit_paid_at as fallback
+            const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
+            const dateRange    = buildDateRange(booking.start_date, booking.end_date)
+            const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? null
+            const rooms        = booking._rooms ?? []
             const paidInFull   = !!(booking.balance_paid_at ?? booking.deposit_paid_at)
 
-            const guestParts: string[] = []
-            if (room.guest_name)               guestParts.push(room.guest_name)
-            if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
-            if (room.party_composition)        guestParts.push(room.party_composition)
-            const guestLine = guestParts.join(' \u00b7 ')
-
             return (
-              <div key={room.id ?? i} style={{
+              <div key={booking.id} style={{
                 background: '#fff', border: `0.5px solid ${RULE}`,
                 borderRadius: 12, overflow: 'hidden',
-                display: 'flex', minHeight: 100,
                 boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
               }}>
-                <div style={{ width: 'clamp(120px,35%,220px)', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
-                  {imgSrc && <img src={imgSrc} alt={imgAlt} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
-                </div>
-                <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    {room.room_name && <div style={{ fontSize: 16, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{room.room_name}</div>}
-                    {guestLine && <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED }}>{guestLine}</div>}
+                {/* Hotel header */}
+                <div style={{ display: 'flex', minHeight: 100 }}>
+                  <div style={{ width: 'clamp(120px,35%,220px)', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden' }}>
+                    {headerImg && <img src={headerImg} alt={hotelName} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />}
                   </div>
-                  <div style={{ marginTop: 12 }}>
-                    {room.confirmation_number && (
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        border: `1px solid ${pillColor}`, borderRadius: 5,
-                        padding: '3px 10px', marginBottom: 6,
-                        background: isAmbience ? '#FAF7F0' : '#F5F5F5',
-                      }}>
-                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
-                          Conf #:  {room.confirmation_number}
-                        </span>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", fontStyle: 'italic', color: FAINT }}>
-                      {bookedByText}
+                  <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 16, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
+                      {dateRange && <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED }}>{dateRange}</div>}
+                      {booking.party_composition && <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
                     </div>
-                    {paidInFull && (
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        marginTop: 6, padding: '3px 10px',
-                        background: 'rgba(74,222,128,0.08)',
-                        border: '1px solid rgba(74,222,128,0.25)',
-                        borderRadius: 5,
-                      }}>
-                        <span style={{ fontSize: 10, color: '#4ade80', lineHeight: 1 }}>✓</span>
-                        <span style={{
-                          fontSize: 10, fontFamily: "'Plus Jakarta Sans', sans-serif",
-                          color: '#4ade80', fontWeight: 600, letterSpacing: '0.06em',
+                    <div style={{ marginTop: 12 }}>
+                      {rooms.length === 0 && booking.confirmation_number && (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center',
+                          border: `1px solid ${pillColor}`, borderRadius: 5,
+                          padding: '3px 10px', marginBottom: 6,
+                          background: isAmbience ? '#FAF7F0' : '#F5F5F5',
                         }}>
-                          Paid in Full
-                        </span>
+                          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
+                            Conf #:  {booking.confirmation_number}
+                          </span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", fontStyle: 'italic', color: FAINT }}>
+                        {bookedByText}
                       </div>
-                    )}
+                      {paidInFull && (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          marginTop: 6, padding: '3px 10px',
+                          background: 'rgba(74,222,128,0.08)',
+                          border: '1px solid rgba(74,222,128,0.25)',
+                          borderRadius: 5,
+                        }}>
+                          <span style={{ fontSize: 10, color: '#4ade80', lineHeight: 1 }}>✓</span>
+                          <span style={{ fontSize: 10, fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#4ade80', fontWeight: 600, letterSpacing: '0.06em' }}>
+                            Paid in Full
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Nested rooms */}
+                {rooms.length > 0 && (
+                  <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                    {rooms.map((room, ri) => {
+                      const guestParts: string[] = []
+                      if (room.guest_name)                guestParts.push(room.guest_name)
+                      if (room.additional_guests?.length) guestParts.push(...room.additional_guests)
+                      if (room.party_composition)         guestParts.push(room.party_composition)
+                      const guestLine = guestParts.join(' \u00b7 ')
+                      return (
+                        <div key={room.id ?? ri} style={{
+                          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                          gap: 16, padding: '12px 20px',
+                          borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none',
+                          flexWrap: 'wrap',
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {room.room_name && <div style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, color: INK, lineHeight: 1.3 }}>{room.room_name}</div>}
+                            {guestLine && <div style={{ fontSize: 11, fontFamily: "'Plus Jakarta Sans', sans-serif", color: MUTED, marginTop: 2 }}>{guestLine}</div>}
+                          </div>
+                          {room.confirmation_number && (
+                            <div style={{
+                              display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                              border: `1px solid ${pillColor}`, borderRadius: 5,
+                              padding: '3px 10px',
+                              background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                            }}>
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
+                                Conf #:  {room.confirmation_number}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
