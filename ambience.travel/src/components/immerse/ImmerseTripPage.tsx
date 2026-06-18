@@ -252,29 +252,10 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
 
   const destHero = trip.destinations[0]?.hero_image_src ?? null
 
-  const allRooms: { room: TripBooking['_rooms'][number]; booking: TripBooking }[] = []
-  for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
-    if (b._rooms.length > 0) {
-      for (const r of b._rooms) allRooms.push({ room: r, booking: b })
-      continue
-    }
-    allRooms.push({
-      room: {
-        id: b.id, booking_id: b.id, room_name: b.name,
-        confirmation_number: b.confirmation_number,
-        guest_name: house?.display_name ?? null,
-        party_composition: b.party_composition,
-        notes: b.inclusions ?? null, nights: b.nights,
-        rate: b.commissionable_rate, tax_pct: b.taxes_and_fees,
-        total: null,
-        brief_image_src: b.brief_image_src ?? b._hotel_image_src ?? destHero,
-        additional_guests: null,
-        sort_order: b.sort_order ?? 0, created_at: b.created_at ?? '',
-        updated_at: b.updated_at ?? '',
-      } as any,
-      booking: b,
-    })
-  }
+  const accomBookings = trip.bookings
+    .filter(bk => bk.brief_show !== false)
+    .slice()
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
@@ -301,69 +282,94 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
     <div>
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
 
-      {/* Accommodation */}
-      {allRooms.length > 0 && (
+{/* Accommodation — one block per hotel, rooms nested beneath */}
+      {accomBookings.length > 0 && (
         <TabSection label='ACCOMMODATION'>
-          {allRooms.map(({ room, booking }, i) => {
+          {accomBookings.map(booking => {
             const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
             const bookedByText = bookedByLabel(booking.booked_by)
             const pillColor    = isAmbience ? GOLD : FAINT
-            const imgSrc       = (room as any).brief_image_src ?? booking.brief_image_src ?? booking._hotel_image_src ?? destHero
-            const guests       = [room.guest_name, room.party_composition].filter(Boolean).join(' · ')
+            const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
+            const dateRange    = buildDateRange(booking.start_date, booking.end_date)
+            const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
+            const rooms        = booking._rooms ?? []
 
             return (
-              <div key={room.id ?? i} style={{
+              <div key={booking.id} style={{
                 background: '#fff', border: `0.5px solid ${RULE}`,
                 borderRadius: 12, overflow: 'hidden',
-                display: 'flex', minHeight: 100,
                 boxSizing: 'border-box',
               }}>
-                <div
-                  style={{
-                    width: 'clamp(100px,30%,200px)', flexShrink: 0,
-                    background: CARD_BG, position: 'relative', overflow: 'hidden',
-                    cursor: imgSrc ? 'zoom-in' : 'default',
-                  }}
-                  onClick={() => imgSrc && setLightbox({ src: imgSrc, alt: room.room_name ?? '' })}
-                >
-                  {imgSrc && <img src={imgSrc} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
-                  {imgSrc && (
-                    <div style={{
-                      position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 150ms',
+                {/* Hotel header */}
+                <div style={{ display: 'flex', minHeight: 100 }}>
+                  <div
+                    style={{
+                      width: 'clamp(100px,30%,200px)', flexShrink: 0,
+                      background: CARD_BG, position: 'relative', overflow: 'hidden',
+                      cursor: headerImg ? 'zoom-in' : 'default',
                     }}
-                      onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0.12)'}
-                      onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'rgba(0,0,0,0)'}
-                    >
-                      <span style={{ fontSize: 20, color: 'rgba(255,255,255,0.8)', opacity: 0 }}
-                        onMouseEnter={e => (e.currentTarget as HTMLSpanElement).style.opacity = '1'}
-                        onMouseLeave={e => (e.currentTarget as HTMLSpanElement).style.opacity = '0'}
-                      >⊕</span>
+                    onClick={() => headerImg && setLightbox({ src: headerImg, alt: hotelName })}
+                  >
+                    {headerImg && <img src={headerImg} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
+                      {dateRange && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>{dateRange}</div>}
+                      {booking.party_composition && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
                     </div>
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    {room.room_name && <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{room.room_name}</div>}
-                    {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>{guests}</div>}
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    {room.confirmation_number && (
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        border: `1px solid ${pillColor}`, borderRadius: 5,
-                        padding: '3px 10px', marginBottom: 6,
-                        background: isAmbience ? '#FAF7F0' : '#F5F5F5',
-                      }}>
-                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
-                          Conf #: {room.confirmation_number}
-                        </span>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                    <div style={{ marginTop: 12 }}>
+                      {/* Booking-level conf shows only when there are no rooms (each room carries its own) */}
+                      {rooms.length === 0 && booking.confirmation_number && (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center',
+                          border: `1px solid ${pillColor}`, borderRadius: 5,
+                          padding: '3px 10px', marginBottom: 6,
+                          background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                        }}>
+                          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
+                            Conf #: {booking.confirmation_number}
+                          </span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                    </div>
                   </div>
                 </div>
+
+                {/* Nested rooms */}
+                {rooms.length > 0 && (
+                  <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                    {rooms.map((room, ri) => {
+                      const guests = [room.guest_name, room.party_composition].filter(Boolean).join(' · ')
+                      return (
+                        <div key={room.id ?? ri} style={{
+                          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                          gap: 16, padding: '12px 20px',
+                          borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none',
+                          flexWrap: 'wrap',
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {room.room_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{room.room_name}</div>}
+                            {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{guests}</div>}
+                          </div>
+                          {room.confirmation_number && (
+                            <div style={{
+                              display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                              border: `1px solid ${pillColor}`, borderRadius: 5,
+                              padding: '3px 10px',
+                              background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                            }}>
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
+                                Conf #: {room.confirmation_number}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}

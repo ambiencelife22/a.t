@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
         .order('sort_order', { ascending: true }),
 
       db.from('travel_trip_aux_bookings')
-        .select('id, trip_id, booking_type, name, confirmation_number, start_date, start_time, end_date, end_time, origin, destination, notes, guest_label, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_numbers, seat_type, aircraft_type, depart_airport, arrive_airport')
+        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id')
         .eq('trip_id', tripId)
         .order('sort_order', { ascending: true }),
 
