@@ -26,6 +26,7 @@ import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
+import { AirlinePicker } from './AirlinePicker'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -316,6 +317,7 @@ type AuxDraft = {
   end_time:            string
   origin:              string
   destination:         string
+  airline_supplier_id: string
   airline_name:        string
   flight_number:       string
   depart_airport:      string
@@ -333,7 +335,7 @@ function emptyAuxDraft(sortOrder: number): AuxDraft {
   return {
     booking_type: 'Flight', name: '',
     start_date: '', start_time: '', end_date: '', end_time: '',
-    origin: '', destination: '', airline_name: '', flight_number: '',
+    origin: '', destination: '', airline_supplier_id: '', airline_name: '', flight_number: '',
     depart_airport: '', arrive_airport: '', cabin_class: '',
     seat_type: '', aircraft_type: '', booked_by: '', notes: '',
     brief_show: true, sort_order: sortOrder,
@@ -350,6 +352,7 @@ function auxToDraft(a: TripAuxBooking): AuxDraft {
     end_time:            a.end_time            ?? '',
     origin:              a.origin              ?? '',
     destination:         a.destination         ?? '',
+    airline_supplier_id: a.airline_supplier_id ?? '',
     airline_name:        a.airline_name        ?? '',
     flight_number:       a.flight_number       ?? '',
     depart_airport:      a.depart_airport      ?? '',
@@ -376,6 +379,7 @@ function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
     end_time:            orNull(d.end_time),
     origin:              orNull(d.origin),
     destination:         orNull(d.destination),
+    airline_supplier_id: orNull(d.airline_supplier_id),
     airline_name:        orNull(d.airline_name),
     flight_number:       orNull(d.flight_number),
     depart_airport:      orNull(d.depart_airport),
@@ -433,8 +437,19 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
       {isFlight && (
         <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Flight Detail</div>
+          <div style={{ gridColumn: '1 / -1', marginBottom: 8 }}>
+            <AirlinePicker
+              supplierId={draft.airline_supplier_id}
+              airlineNameFallback={draft.airline_name}
+              bookingType={draft.booking_type}
+              variant='boxed'
+              onChange={value => {
+                // Pick a supplier; clear the free-text override so the supplier wins.
+                setDraft({ ...draft, airline_supplier_id: value, airline_name: value ? '' : draft.airline_name })
+              }}
+            />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <AuxField label='Airline' value={draft.airline_name} onChange={v => set('airline_name', v)} placeholder='Emirates' />
             <AuxField label='Flight #' value={draft.flight_number} onChange={v => set('flight_number', v)} placeholder='EK 824' />
             <AuxField label='Depart Airport' value={draft.depart_airport} onChange={v => set('depart_airport', v)} placeholder='RUH' />
             <AuxField label='Arrive Airport' value={draft.arrive_airport} onChange={v => set('arrive_airport', v)} placeholder='SZG' />

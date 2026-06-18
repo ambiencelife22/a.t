@@ -48,7 +48,7 @@ import type {
   TripAuxBooking,
 } from '../../queries/queriesAdminTrip'
 import { getAuxTypeMeta, AUX_BOOKING_TYPES, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
-import { fetchSuppliers, createSupplier, type Supplier } from '../../queries/queriesAdminSuppliers'
+import { AirlinePicker } from './AirlinePicker'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
 import { bookedByLabel } from '../../utils/utilsBooking'
@@ -420,58 +420,6 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile }: {
   save:   (id: string, field: keyof AuxDraft, value: string) => Promise<void>
   isMobile: boolean
 }) {
-  const [airlines,        setAirlines]        = useState<Supplier[]>([])
-  const [airlinesLoading, setAirlinesLoading] = useState(true)
-  const [creatingAirline, setCreatingAirline] = useState(false)
-  const [newAirlineName,  setNewAirlineName]  = useState('')
-
-  useEffect(() => {
-    fetchSuppliers(['Commercial Airline', 'Private Jet / Charter'])
-      .then(rows => setAirlines(rows))
-      .catch(() => setAirlines([]))
-      .finally(() => setAirlinesLoading(false))
-  }, [])
-
-  // Resolved airline name — supplier row takes precedence over free-text fallback.
-  const selectedSupplier = airlines.find(a => a.id === draft.airline_supplier_id) ?? null
-  const resolvedName     = selectedSupplier?.name ?? draft.airline_name
-
-  function handleAirlineChange(value: string) {
-    if (value === '__create__') {
-      setCreatingAirline(true)
-      return
-    }
-    patch(aux.id, aux, 'airline_supplier_id', value)
-    save(aux.id, 'airline_supplier_id', value)
-    // Clear free-text override when a supplier is picked
-    if (value && draft.airline_name) {
-      patch(aux.id, aux, 'airline_name', '')
-      save(aux.id, 'airline_name', '')
-    }
-  }
-
-  async function handleCreateAirline() {
-    const name = newAirlineName.trim()
-    if (!name) {
-      setCreatingAirline(false)
-      return
-    }
-    try {
-      // Default to Commercial Airline; admin can correct on supplier admin surface.
-      const supplierType = draft.booking_type === 'Private Jet / Charter'
-        ? 'Private Jet / Charter'
-        : 'Commercial Airline'
-      const created = await createSupplier(name, supplierType)
-      setAirlines(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
-      patch(aux.id, aux, 'airline_supplier_id', created.id)
-      save(aux.id, 'airline_supplier_id', created.id)
-      setNewAirlineName('')
-      setCreatingAirline(false)
-    } catch {
-      // Silent — leave the create form open so user can retry
-    }
-  }
-
   // Validation states for inline indicators (non-blocking)
   const flightNumberValid = !draft.flight_number || FLIGHT_NUMBER_REGEX.test(draft.flight_number)
   const departValid       = !draft.depart_airport || AIRPORT_REGEX.test(draft.depart_airport)
@@ -493,50 +441,23 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile }: {
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px' }}>
 
-        {/* Airline supplier picker */}
+        {/* Airline supplier picker — shared with the dossier AuxForm */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <label style={fieldLabelStyle}>Airline</label>
-          {creatingAirline ? (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input
-                autoFocus
-                style={{ ...fieldStyle, flex: 1 }}
-                value={newAirlineName}
-                onChange={e => setNewAirlineName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateAirline()
-                  if (e.key === 'Escape') { setCreatingAirline(false); setNewAirlineName('') }
-                }}
-                placeholder='New airline name'
-              />
-              <button onClick={handleCreateAirline}
-                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.gold, background: 'transparent', border: `1px solid ${A.gold}40`, borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}>
-                Create
-              </button>
-              <button onClick={() => { setCreatingAirline(false); setNewAirlineName('') }}
-                style={{ fontFamily: A.font, fontSize: 10, color: A.faint, background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <select
-              style={{ ...fieldStyle, cursor: airlinesLoading ? 'wait' : 'pointer' }}
-              value={draft.airline_supplier_id}
-              onChange={e => handleAirlineChange(e.target.value)}
-              disabled={airlinesLoading}
-            >
-              <option value=''>{airlinesLoading ? 'Loading\u2026' : '\u2014 Select airline \u2014'}</option>
-              {airlines.map(a => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-              <option value='__create__'>+ Add new airline\u2026</option>
-            </select>
-          )}
-          {resolvedName && !creatingAirline && (
-            <div style={{ fontSize: 9, color: A.faint, fontFamily: A.font, marginTop: 3, fontStyle: 'italic' }}>
-              Confirmed: {resolvedName}
-            </div>
-          )}
+          <AirlinePicker
+            supplierId={draft.airline_supplier_id}
+            airlineNameFallback={draft.airline_name}
+            bookingType={draft.booking_type}
+            variant='field'
+            onChange={value => {
+              patch(aux.id, aux, 'airline_supplier_id', value)
+              save(aux.id, 'airline_supplier_id', value)
+              // Clear free-text override when a supplier is picked.
+              if (value && draft.airline_name) {
+                patch(aux.id, aux, 'airline_name', '')
+                save(aux.id, 'airline_name', '')
+              }
+            }}
+          />
         </div>
 
         {/* Flight number */}
@@ -696,15 +617,15 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
       end_time:            aux.end_time?.slice(0, 5) ?? '',
       booked_by:           aux.booked_by           ?? '',
       notes:               aux.notes               ?? '',
-      airline_supplier_id: (aux as any).airline_supplier_id ?? '',
-      airline_name:        (aux as any).airline_name        ?? '',
-      flight_number:       (aux as any).flight_number       ?? '',
-      depart_airport:      (aux as any).depart_airport      ?? '',
-      arrive_airport:      (aux as any).arrive_airport      ?? '',
-      cabin_class:         (aux as any).cabin_class         ?? '',
+      airline_supplier_id: aux.airline_supplier_id ?? '',
+      airline_name:        aux.airline_name        ?? '',
+      flight_number:       aux.flight_number       ?? '',
+      depart_airport:      aux.depart_airport      ?? '',
+      arrive_airport:      aux.arrive_airport      ?? '',
+      cabin_class:         aux.cabin_class         ?? '',
       seat_numbers:        (aux as any).seat_numbers        ?? '',
-      seat_type:           (aux as any).seat_type           ?? '',
-      aircraft_type:       (aux as any).aircraft_type       ?? '',
+      seat_type:           aux.seat_type           ?? '',
+      aircraft_type:       aux.aircraft_type       ?? '',
     }
   }
 
@@ -1240,15 +1161,15 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         end_time:            d.end_time            || aux.end_time,
         booked_by:           d.booked_by           || aux.booked_by,
         notes:               d.notes               || aux.notes,
-        airline_supplier_id: d.airline_supplier_id || (aux as any).airline_supplier_id,
-        airline_name:        d.airline_name        || (aux as any).airline_name,
-        flight_number:       d.flight_number       || (aux as any).flight_number,
-        depart_airport:      d.depart_airport      || (aux as any).depart_airport,
-        arrive_airport:      d.arrive_airport      || (aux as any).arrive_airport,
-        cabin_class:         d.cabin_class         || (aux as any).cabin_class,
+        airline_supplier_id: d.airline_supplier_id || aux.airline_supplier_id,
+        airline_name:        d.airline_name        || aux.airline_name,
+        flight_number:       d.flight_number       || aux.flight_number,
+        depart_airport:      d.depart_airport      || aux.depart_airport,
+        arrive_airport:      d.arrive_airport      || aux.arrive_airport,
+        cabin_class:         d.cabin_class         || aux.cabin_class,
         seat_numbers:        d.seat_numbers        || (aux as any).seat_numbers,
-        seat_type:           d.seat_type           || (aux as any).seat_type,
-        aircraft_type:       d.aircraft_type       || (aux as any).aircraft_type,
+        seat_type:           d.seat_type           || aux.seat_type,
+        aircraft_type:       d.aircraft_type       || aux.aircraft_type,
       }
     })
 
