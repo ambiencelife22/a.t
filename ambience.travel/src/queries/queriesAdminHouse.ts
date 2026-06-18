@@ -206,18 +206,23 @@ export async function fetchPeopleForHouse(houseId: string): Promise<HousePerson[
 }
 
 export async function createPerson(houseId: string, memberRef: string, role: string, notes: string | null, personId: string | null = null): Promise<void> {
-  const { error } = await supabase
-    .from('a_house_people').insert({ house_id: houseId, member_ref: memberRef, role, notes, person_id: personId })
+  const { error } = await supabase.functions.invoke('a-write-house-people', {
+    body: { mode: 'create', house_id: houseId, member_ref: memberRef, role, notes, person_id: personId },
+  })
   if (error) throw new Error(`Failed to create person: ${error.message}`)
 }
 
 export async function updatePerson(id: string, patch: Partial<Pick<HousePerson, 'member_ref' | 'role' | 'notes' | 'person_id'>>): Promise<void> {
-  const { error } = await supabase.from('a_house_people').update(patch).eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-people', {
+    body: { mode: 'update', id, ...patch },
+  })
   if (error) throw new Error(`Failed to update person: ${error.message}`)
 }
 
 export async function deletePerson(id: string): Promise<void> {
-  const { error } = await supabase.from('a_house_people').delete().eq('id', id)
+  const { error } = await supabase.functions.invoke('a-write-house-people', {
+    body: { mode: 'delete', id },
+  })
   if (error) throw new Error(`Failed to delete person: ${error.message}`)
 }
 
