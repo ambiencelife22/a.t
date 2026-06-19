@@ -294,23 +294,6 @@ function renderProgrammeNotes(doc: any, notes: string, yIn: number): number {
   return y
 }
 
-// ── Footer chrome (programme uses logo in footer) ─────────────────────────────
-// Extends stampPageChrome with logo left in footer.
-
-function stampProgrammeFooter(doc: any, brief: TripBrief | null, logo: any): void {
-  stampPageChrome(doc, brief)
-  // Overlay logo on left side of footer rule (all pages)
-  const count = doc.getNumberOfPages()
-  for (let i = 1; i <= count; i++) {
-    doc.setPage(i)
-    if (logo) {
-      const logoH = 5; const logoW = logoH * 3.0
-      doc.addImage(logo.data, logo.format, P.margin, P.h - 9, logoW, logoH, undefined, 'FAST')
-      try { doc.link(P.margin, P.h - 10, logoW, logoH + 1, { url: 'https://ambience.travel' }) } catch {}
-    }
-  }
-}
-
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise<void> {
@@ -362,6 +345,6 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
     y = renderProgrammeNotes(doc, data.brief.programme_notes, y)
   }
 
-  stampProgrammeFooter(doc, data.brief, logo)
+  stampPageChrome(doc, data.brief)
   doc.save(buildFilename(data.trip))
 }
