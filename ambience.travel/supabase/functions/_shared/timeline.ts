@@ -22,7 +22,9 @@ export type TimelineRoom = {
   id:                  string
   guest:               string | null
   room_name:           string | null
+  party_composition:   string | null
   confirmation_number: string | null
+  notes:               string | null
 }
 
 export type TimelinePassenger = {
@@ -133,14 +135,19 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
           id:                  r.id as string,
           guest:               (r.resolved_guest_name as string | null) ?? (r.guest_name as string | null) ?? null,
           room_name:           (r.room_name as string | null) ?? null,
+          party_composition:   (r.party_composition as string | null) ?? null,
           confirmation_number: (r.confirmation_number as string | null) ?? null,
+          notes:               (r.notes as string | null) ?? null,
         }))
       out.push({
         id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: b.start_date,
         start_time: null, end_time: null, category: 'Hotel',
         title: `Check-in \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
-        confirmation_number: null, guest_label: null, status: b.status ?? null,
+        // Booking-level conf shown by the card when there are no per-room rows.
+        confirmation_number: (b.confirmation_number as string | null) ?? null,
+        guest_label: null,
+        status: (b.status as string | null) ?? null,
         rooms, passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -152,7 +159,8 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         start_time: null, end_time: null, category: 'Hotel',
         title: `Check-out \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
-        confirmation_number: null, guest_label: null, status: b.status ?? null,
+        confirmation_number: null, guest_label: null,
+        status: (b.status as string | null) ?? null,
         rooms: [], passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })

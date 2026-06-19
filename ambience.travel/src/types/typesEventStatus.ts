@@ -29,6 +29,8 @@
 
 export const EVENT_STATUSES = [
   'recommended',       // Proposed by advisor — not yet reviewed by client
+  'requested',         // Client asked — advisor sourcing
+  'quoted',            // Price/option presented — awaiting decision
   'awaiting_decision', // Presented — client is considering
   'pending',           // Approved — booking in progress
   'confirmed',         // Booked and confirmed with supplier
@@ -42,6 +44,8 @@ export type EventStatus = typeof EVENT_STATUSES[number]
 
 export const EVENT_STATUS_META: Record<EventStatus, { label: string; color: string }> = {
   recommended:       { label: 'Recommended',       color: '#B4AFA5' },  // faint  — proposed
+  requested:         { label: 'Requested',         color: '#B4AFA5' },  // faint  — sourcing
+  quoted:            { label: 'Quoted',            color: '#93C5FD' },  // blue   — option presented
   awaiting_decision: { label: 'Awaiting Decision', color: '#93C5FD' },  // blue   — client considering
   pending:           { label: 'Pending',           color: '#fbbf24' },  // amber  — in progress
   confirmed:         { label: 'Confirmed',         color: '#C9A84C' },  // gold   — booked
@@ -49,6 +53,14 @@ export const EVENT_STATUS_META: Record<EventStatus, { label: string; color: stri
   cancelled:         { label: 'Cancelled',         color: '#f87171' },  // red    — inactive
 }
 
+// Normalize any inbound status (DB title-case like 'Confirmed'/'Quoted', or
+// canonical lowercase) to the canonical key. ONE place that bridges the
+// booking-table vocabulary to the registry — see note below.
+export function normalizeEventStatus(status: string | null | undefined): EventStatus {
+  const key = (status ?? '').trim().toLowerCase().replace(/\s+/g, '_')
+  return (EVENT_STATUSES as readonly string[]).includes(key) ? (key as EventStatus) : 'recommended'
+}
+
 export function getEventStatusMeta(status: EventStatus | string | null | undefined): { label: string; color: string } {
-  return EVENT_STATUS_META[status as EventStatus] ?? EVENT_STATUS_META['recommended']
+  return EVENT_STATUS_META[normalizeEventStatus(status)]
 }

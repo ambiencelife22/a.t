@@ -476,7 +476,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     seatNumbers:       string | null
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-    rooms:             { id: string; guest: string | null; room_name: string | null; confirmation_number: string | null }[]
+    rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null }[]
   }
 
 // The EF (_shared/timeline.ts) already merged + ordered the stream. Filter by
@@ -528,7 +528,9 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               id:                  r.id,
               guest:               r.guest,
               room_name:           r.room_name,
+              party_composition:   r.party_composition,
               confirmation_number: r.confirmation_number,
+              notes:               r.notes,
             })),
           }
         })
@@ -709,18 +711,21 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
-                              const guestLine = [room.guest, room.room_name].filter(Boolean).join(' \u00b7 ')
+                              const guestLine = [room.guest, room.party_composition, room.room_name].filter(Boolean).join(' \u00b7 ')
                               return (
-                                <div key={room.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                                  {guestLine && <span style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{guestLine}</span>}
-                                  {room.confirmation_number && (
-                                    <span style={{
-                                      display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-                                      border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
-                                    }}>
-                                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>Conf #: {room.confirmation_number}</span>
-                                    </span>
-                                  )}
+                                <div key={room.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                                    {guestLine && <span style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{guestLine}</span>}
+                                    {room.confirmation_number && (
+                                      <span style={{
+                                        display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                                        border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
+                                      }}>
+                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>Conf #: {room.confirmation_number}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  {room.notes && <span style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>{room.notes}</span>}
                                 </div>
                               )
                             })}

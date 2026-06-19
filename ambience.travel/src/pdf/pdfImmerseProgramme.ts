@@ -109,7 +109,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     // Guarded with ?? [] so non-timeline rows (admin editor passes raw
     // TripDayEntry rows, which carry neither) don't crash.
     const roomLines = (it.rooms ?? []).map(r => {
-      const parts = [r.guest, r.room_name, r.confirmation_number ? `#${r.confirmation_number}` : null].filter(Boolean)
+      const parts = [r.guest, r.party_composition, r.room_name, r.notes, r.confirmation_number ? `#${r.confirmation_number}` : null].filter(Boolean)
       return parts.join('  \u00b7  ')
     })
     const paxLines = (it.passengers ?? []).map(p => {
