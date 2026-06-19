@@ -109,6 +109,7 @@ function buildFilename(trip: DossierTrip): string {
 function mergeDayEntries(
   entries:     TripDayEntry[],
   auxBookings: TripAuxBooking[],
+  bookings:    DossierTrip['bookings'],
   date:        string,
 ): ProgrammeEntry[] {
   const fromEntries: ProgrammeEntry[] = entries
@@ -153,7 +154,42 @@ function mergeDayEntries(
       }
     })
 
-  return [...fromEntries, ...fromAux].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time))
+  // Hotel check-in/out derived live from bookings (single source — never stored).
+  // Check-in carries per-room lines (guest · room · conf); check-out is bare.
+  const fromHotels: ProgrammeEntry[] = []
+  for (const b of bookings) {
+    if (b.brief_show === false) continue
+    if (b.booking_type !== 'Hotel' && (b._rooms?.length ?? 0) === 0) continue
+    const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
+    const img = b.brief_image_src ?? b._hotel_image_src ?? null
+    if (b.start_date === date) {
+      const roomLines = (b._rooms ?? [])
+        .slice()
+        .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
+        .map(r => {
+          const guest = r.resolved_guest_name ?? r.guest_name ?? null
+          const parts = [guest, r.room_name, r.confirmation_number ? `#${r.confirmation_number}` : null].filter(Boolean)
+          return parts.join('  \u00b7  ')
+        })
+        .filter(Boolean)
+      fromHotels.push({
+        id: `checkin-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
+        title: `Check-in \u00b7 ${hotelName}`, subtitle: null, guest_label: null,
+        confirmation_number: null, notes: null, booked_by: b.booked_by ?? null,
+        brief_show: true, image_src: img, passengerLines: roomLines,
+      })
+    }
+    if (b.end_date === date) {
+      fromHotels.push({
+        id: `checkout-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
+        title: `Check-out \u00b7 ${hotelName}`, subtitle: null, guest_label: null,
+        confirmation_number: null, notes: null, booked_by: b.booked_by ?? null,
+        brief_show: true, image_src: img, passengerLines: [],
+      })
+    }
+  }
+
+  return [...fromEntries, ...fromAux, ...fromHotels].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time))
 }
 
 // ── Entry row ─────────────────────────────────────────────────────────────────
@@ -375,6 +411,7 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
     const entries = mergeDayEntries(
       data.entriesByDate[day.entry_date] ?? [],
       data.auxBookings,
+      data.trip.bookings,
       day.entry_date,
     )
     y = await renderDay(doc, day, entries, idx, y)

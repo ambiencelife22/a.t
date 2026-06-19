@@ -477,6 +477,7 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
     seatNumbers:       string | null
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
+    rooms:             { id: string; guest: string | null; room_name: string | null; confirmation_number: string | null }[]
   }
 
   const cards: CardItem[] = activeDay ? [
@@ -507,6 +508,7 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
           seatNumbers: null,
           cabinClass: null,
           passengers: [],
+          rooms: [],
         }
       }),
     ...auxBookings
@@ -528,6 +530,7 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
           seatNumbers:       null,
           cabinClass:        isFlight ? (a.cabin_class  ?? null) : null,
           passengers:        (a.passengers ?? []).slice().sort((x, y) => x.sort_order - y.sort_order),
+          rooms:             [],
         }
       }),
     // Hotel check-in/out derived live from bookings (single source — never stored)
@@ -536,6 +539,10 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
       .flatMap(b => {
         const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
         const img = b.brief_image_src ?? b._hotel_image_src ?? null
+        const rooms = (b._rooms ?? []).slice().sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0)).map(r => ({
+          id: r.id, guest: r.resolved_guest_name ?? r.guest_name ?? null,
+          room_name: r.room_name ?? null, confirmation_number: r.confirmation_number ?? null,
+        }))
         const mk = (kind: 'in' | 'out'): CardItem => ({
           id: `check${kind}-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
           title: `Check-${kind === 'in' ? 'in' : 'out'} \u00b7 ${hotelName}`,
@@ -544,6 +551,7 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
           image_src: img, status: null, description: null,
           flightOrigin: null, flightDestination: null, flightDepartTime: null,
           flightArriveTime: null, seatNumbers: null, cabinClass: null, passengers: [],
+          rooms: kind === 'in' ? rooms : [],
         })
         const out: CardItem[] = []
         if (b.start_date === activeDay.entry_date) out.push(mk('in'))
@@ -723,6 +731,27 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
                         <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 4 }}>
                           {item.title}
                         </div>
+
+                        {item.rooms.length > 0 && (
+                          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {item.rooms.map(room => {
+                              const guestLine = [room.guest, room.room_name].filter(Boolean).join(' \u00b7 ')
+                              return (
+                                <div key={room.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                                  {guestLine && <span style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{guestLine}</span>}
+                                  {room.confirmation_number && (
+                                    <span style={{
+                                      display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                                      border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
+                                    }}>
+                                      <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>Conf #: {room.confirmation_number}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
 
                         {isFlight && (item.flightOrigin || item.flightDestination) && (
                           <div style={{
