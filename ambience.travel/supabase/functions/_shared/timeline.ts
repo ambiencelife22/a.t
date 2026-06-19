@@ -58,41 +58,43 @@ export type TimelineItem = {
 
 // ── Input shapes (loose — these are already-fetched DB rows) ───────────────────
 
-type BookingLike = Record<string, unknown> & {
-  id:               string
-  booking_type?:    string | null
-  name?:            string | null
-  start_date?:      string | null
-  end_date?:        string | null
-  brief_show?:      boolean
-  booked_by?:       string | null
-  status?:          string | null
-  _hotel_name?:     string | null
+type BookingLike = {
+  id?:               unknown
+  booking_type?:     string | null
+  name?:             string | null
+  start_date?:       string | null
+  end_date?:         string | null
+  brief_show?:       boolean
+  booked_by?:        string | null
+  status?:           string | null
+  _hotel_name?:      string | null
   _hotel_image_src?: string | null
-  brief_image_src?: string | null
-  _rooms?:          Record<string, unknown>[]
+  brief_image_src?:  string | null
+  _rooms?:           Record<string, unknown>[]
+  [k: string]:       unknown
 }
 
-type AuxLike = Record<string, unknown> & {
-  id:            string
-  booking_type?: string | null
-  name?:         string | null
-  start_date?:   string | null
-  start_time?:   string | null
-  end_time?:     string | null
-  origin?:       string | null
-  destination?:  string | null
-  notes?:        string | null
-  booked_by?:    string | null
-  brief_show?:   boolean
-  cabin_class?:  string | null
+type AuxLike = {
+  id?:            unknown
+  booking_type?:  string | null
+  name?:          string | null
+  start_date?:    string | null
+  start_time?:    string | null
+  end_time?:      string | null
+  origin?:        string | null
+  destination?:   string | null
+  notes?:         string | null
+  booked_by?:     string | null
+  brief_show?:    boolean
+  cabin_class?:   string | null
   aircraft_type?: string | null
-  passengers?:   Record<string, unknown>[]
+  passengers?:    Record<string, unknown>[]
+  [k: string]:    unknown
 }
 
-type EntryLike = Record<string, unknown> & {
-  id:                   string
-  entry_date:           string
+type EntryLike = {
+  id?:                  unknown
+  entry_date?:          string
   start_time?:          string | null
   end_time?:            string | null
   title?:               string | null
@@ -106,6 +108,7 @@ type EntryLike = Record<string, unknown> & {
   image_src?:           string | null
   source_booking_id?:   string | null
   source_aux_id?:       string | null
+  [k: string]:          unknown
 }
 
 // ── Builders ───────────────────────────────────────────────────────────────────
@@ -138,7 +141,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         title: `Check-in \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
         confirmation_number: null, guest_label: null, status: b.status ?? null,
-        rooms, passengers: [], source_booking_id: b.id, source_aux_id: null,
+        rooms, passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
     }
@@ -150,7 +153,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         title: `Check-out \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
         confirmation_number: null, guest_label: null, status: b.status ?? null,
-        rooms: [], passengers: [], source_booking_id: b.id, source_aux_id: null,
+        rooms: [], passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
     }
@@ -183,14 +186,14 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
       }))
 
     out.push({
-      id: a.id, kind: 'aux', entry_date: a.start_date,
+      id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
       category: a.booking_type ?? 'Other',
       title: a.name ?? a.booking_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: null,
       confirmation_number: null, guest_label: null, status: null,
       rooms: [], passengers,
-      source_booking_id: null, source_aux_id: a.id, brief_show: true,
+      source_booking_id: null, source_aux_id: a.id as string, brief_show: true,
     })
   }
   return out
@@ -206,15 +209,15 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
     // A booking-sourced entry is a redundant copy of a derived hotel item — skip.
     if (e.source_booking_id) continue
     out.push({
-      id: e.id, kind: 'entry', entry_date: e.entry_date,
-      start_time: e.start_time ?? null, end_time: e.end_time ?? null,
-      category: e.category ?? null, title: e.title ?? '', subtitle: e.subtitle ?? null,
-      notes: e.notes ?? null, booked_by: e.booked_by ?? null,
-      image_src: e.image_src ?? null,
-      confirmation_number: e.confirmation_number ?? null,
-      guest_label: e.guest_label ?? null, status: null,
+      id: e.id as string, kind: 'entry', entry_date: e.entry_date as string,
+      start_time: (e.start_time as string | null) ?? null, end_time: (e.end_time as string | null) ?? null,
+      category: (e.category as string | null) ?? null, title: (e.title as string) ?? '', subtitle: (e.subtitle as string | null) ?? null,
+      notes: (e.notes as string | null) ?? null, booked_by: (e.booked_by as string | null) ?? null,
+      image_src: (e.image_src as string | null) ?? null,
+      confirmation_number: (e.confirmation_number as string | null) ?? null,
+      guest_label: (e.guest_label as string | null) ?? null, status: null,
       rooms: [], passengers: [],
-      source_booking_id: null, source_aux_id: e.source_aux_id ?? null,
+      source_booking_id: null, source_aux_id: (e.source_aux_id as string | null) ?? null,
       brief_show: true,
     })
   }
