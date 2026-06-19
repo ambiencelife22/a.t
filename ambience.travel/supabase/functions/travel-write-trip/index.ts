@@ -6,50 +6,30 @@
 //
 // Security model:
 //   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
-//   - Caller must be authenticated (valid JWT in Authorization header)
-//   - Caller must be an admin (global_profiles.is_admin = true)
+//   - Caller must be authenticated AND an admin — enforced via the shared
+//     requireAdmin gate (_shared/auth.ts). The inline JWT->is_admin preamble
+//     was removed S53G in favour of the shared gate (canon SERVICE_ROLE_KEY).
 //   - All target tables have no direct anon/client write policy for this data
-//   - This function uses the service role key to bypass RLS
-//   - Never called with the anon key
 //
 // Request body:
 //   { mode: Mode, ...modeParams }
 //
-// Modes:
-//   upsert_brief          { trip_id, house_id, patch }
-//   update_booking_brief  { booking_id, patch }
-//   create_booking        { trip_id, patch }
-//   create_room           { booking_id, patch }
-//   update_room           { room_id, patch }
-//   delete_room           { room_id }
-//   create_aux_booking    { trip_id, patch }
-//   update_aux_booking    { id, patch }
-//   delete_aux_booking    { id }
-//   create_aux_passenger  { aux_booking_id, patch }
-//   update_aux_passenger  { id, patch }
-//   delete_aux_passenger  { id }
-//   upsert_day            { trip_id, entry_date, patch }
-//   create_day_entry      { trip_id, entry }
-//   update_day_entry      { id, patch }
-//   delete_day_entry      { id }
-//   set_public_view       { trip_id, public_view }
-//   derive_itinerary      { trip, aux_bookings }
+// Modes: upsert_brief | update_booking_brief | create_booking | create_room |
+//   update_room | delete_room | create_aux_booking | update_aux_booking |
+//   delete_aux_booking | create_aux_passenger | update_aux_passenger |
+//   delete_aux_passenger | upsert_day | create_day_entry | update_day_entry |
+//   delete_day_entry | set_public_view | derive_itinerary
 //
-// Response (200): mode-specific payload
-// Response (400): { error: 'Invalid request' }
-// Response (401): { error: 'Unauthorized' }
-// Response (403): { error: 'Forbidden' }
-// Response (500): { error: 'Internal server error' }
+// create_room / update_room resolve the room's guest name on return (S53G
+// single-source) so callers receive resolved_guest_name without a re-read.
 //
 // Deployed at: /functions/v1/travel-write-trip
-// Created: S52
+// Created: S52. S53G: migrated to _shared/ (auth + http + names).
 
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireAdmin } from '../_shared/auth.ts'
+import { json, preflight } from '../_shared/http.ts'
+import { resolveRoomGuestName } from '../_shared/names.ts'
 
 type Mode =
   | 'upsert_brief'
@@ -71,62 +51,51 @@ type Mode =
   | 'set_public_view'
   | 'derive_itinerary'
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-
-async function verifyAdminCaller(
-  req: Request,
-  serviceClient: SupabaseClient,
-): Promise<{ userId: string } | Response> {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+// ── Room name resolution on write (S53G single-source) ─────────────────────────
+// After a room write, resolve the guest name exactly as the read EFs do, so the
+// returned row carries resolved_guest_name. Walk: room.person_id → global_people;
+// room.booking_id → travel_bookings.trip_id → travel_trip_briefs.prepared_for.
+// FK path verified via information_schema S53G:
+//   travel_booking_rooms.booking_id (uuid NOT NULL)
+//     → travel_bookings.trip_id (uuid NOT NULL)
+//     → travel_trip_briefs.trip_id → prepared_for (text nullable)
+async function resolveRoomRow(
+  db: SupabaseClient,
+  room: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  // person (optional)
+  let person: Record<string, unknown> | null = null
+  if (room.person_id) {
+    const { data } = await db
+      .from('global_people')
+      .select('id, first_name, last_name, nickname')
+      .eq('id', room.person_id as string)
+      .maybeSingle()
+    person = data ?? null
   }
 
-  const anonClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader } } }
-  )
-
-  const { data: { user }, error: userError } = await anonClient.auth.getUser()
-  if (userError || !user) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
-
-  const { data: profile, error: profileError } = await serviceClient
-    .from('global_profiles')
-    .select('is_admin')
-    .eq('id', user.id)
+  // party label: booking_id → trip_id → brief.prepared_for
+  let partyLabel: string | null = null
+  const { data: booking } = await db
+    .from('travel_bookings')
+    .select('trip_id')
+    .eq('id', room.booking_id as string)
     .maybeSingle()
-
-  if (profileError || !profile || profile.is_admin !== true) {
-    return new Response(
-      JSON.stringify({ error: 'Forbidden' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+  if (booking?.trip_id) {
+    const { data: brief } = await db
+      .from('travel_trip_briefs')
+      .select('prepared_for')
+      .eq('trip_id', booking.trip_id as string)
+      .maybeSingle()
+    partyLabel = (brief?.prepared_for as string | null) ?? null
   }
 
-  return { userId: user.id }
-}
-
-function ok(payload: unknown): Response {
-  return new Response(
-    JSON.stringify(payload),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  const resolved_guest_name = resolveRoomGuestName(
+    person,
+    room.guest_name as string | null,
+    partyLabel,
   )
-}
-
-function err(message: string, status: number): Response {
-  return new Response(
-    JSON.stringify({ error: message }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
+  return { ...room, resolved_guest_name }
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -137,8 +106,6 @@ async function handleUpsertBrief(
   houseId: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
-  // Auto-seed brief_title from primary destination on first create
-  // Only when caller didn't explicitly set brief_title in the patch
   if (!patch.brief_title) {
     const { data: existing } = await db
       .from('travel_trip_briefs')
@@ -155,11 +122,10 @@ async function handleUpsertBrief(
         .limit(1)
         .maybeSingle()
 
-      const gd = dest?.global_destinations
-      const destName = Array.isArray(gd) ? gd[0]?.name : (gd as any)?.name
-      if (destName) {
-        patch.brief_title = destName
-      }
+      const gd = dest?.global_destinations as unknown
+      const gdName = (x: unknown): string | undefined => (x && typeof x === 'object' && 'name' in x ? String((x as { name: unknown }).name) : undefined)
+      const destName = Array.isArray(gd) ? gdName(gd[0]) : gdName(gd)
+      if (destName) patch.brief_title = destName
     }
   }
 
@@ -168,8 +134,8 @@ async function handleUpsertBrief(
     .upsert({ trip_id: tripId, house_id: houseId, ...patch }, { onConflict: 'trip_id' })
     .select()
     .single()
-  if (error) return err('Failed to upsert brief', 500)
-  return ok({ brief: data })
+  if (error) return json({ error: 'Failed to upsert brief' }, 500)
+  return json({ brief: data })
 }
 
 async function handleUpdateBookingBrief(
@@ -181,8 +147,8 @@ async function handleUpdateBookingBrief(
     .from('travel_bookings')
     .update(patch)
     .eq('id', bookingId)
-  if (error) return err('Failed to update booking', 500)
-  return ok({ success: true })
+  if (error) return json({ error: 'Failed to update booking' }, 500)
+  return json({ success: true })
 }
 
 async function handleCreateBooking(
@@ -195,8 +161,8 @@ async function handleCreateBooking(
     .insert({ trip_id: tripId, ...patch })
     .select()
     .single()
-  if (error) return err('Failed to create booking', 500)
-  return ok({ booking: data })
+  if (error) return json({ error: 'Failed to create booking' }, 500)
+  return json({ booking: data })
 }
 
 async function handleCreateRoom(
@@ -209,8 +175,9 @@ async function handleCreateRoom(
     .insert({ booking_id: bookingId, ...patch })
     .select()
     .single()
-  if (error) return err('Failed to create room', 500)
-  return ok({ room: data })
+  if (error) return json({ error: 'Failed to create room' }, 500)
+  const room = await resolveRoomRow(db, data as Record<string, unknown>)
+  return json({ room })
 }
 
 async function handleUpdateRoom(
@@ -224,8 +191,9 @@ async function handleUpdateRoom(
     .eq('id', roomId)
     .select()
     .single()
-  if (error) return err('Failed to update room', 500)
-  return ok({ room: data })
+  if (error) return json({ error: 'Failed to update room' }, 500)
+  const room = await resolveRoomRow(db, data as Record<string, unknown>)
+  return json({ room })
 }
 
 async function handleDeleteRoom(db: SupabaseClient, roomId: string): Promise<Response> {
@@ -233,8 +201,8 @@ async function handleDeleteRoom(db: SupabaseClient, roomId: string): Promise<Res
     .from('travel_booking_rooms')
     .delete()
     .eq('id', roomId)
-  if (error) return err('Failed to delete room', 500)
-  return ok({ success: true })
+  if (error) return json({ error: 'Failed to delete room' }, 500)
+  return json({ success: true })
 }
 
 async function handleCreateAuxBooking(
@@ -247,8 +215,8 @@ async function handleCreateAuxBooking(
     .insert({ trip_id: tripId, ...patch })
     .select()
     .single()
-  if (error) return err('Failed to create aux booking', 500)
-  return ok({ auxBooking: data })
+  if (error) return json({ error: 'Failed to create aux booking' }, 500)
+  return json({ auxBooking: data })
 }
 
 async function handleUpdateAuxBooking(
@@ -262,8 +230,8 @@ async function handleUpdateAuxBooking(
     .eq('id', id)
     .select()
     .single()
-  if (error) return err('Failed to update aux booking', 500)
-  return ok({ auxBooking: data })
+  if (error) return json({ error: 'Failed to update aux booking' }, 500)
+  return json({ auxBooking: data })
 }
 
 async function handleDeleteAuxBooking(db: SupabaseClient, id: string): Promise<Response> {
@@ -271,8 +239,8 @@ async function handleDeleteAuxBooking(db: SupabaseClient, id: string): Promise<R
     .from('travel_trip_aux_bookings')
     .delete()
     .eq('id', id)
-  if (error) return err('Failed to delete aux booking', 500)
-  return ok({ success: true })
+  if (error) return json({ error: 'Failed to delete aux booking' }, 500)
+  return json({ success: true })
 }
 
 async function handleCreateAuxPassenger(
@@ -285,8 +253,8 @@ async function handleCreateAuxPassenger(
     .insert({ aux_booking_id: auxBookingId, ...patch })
     .select()
     .single()
-  if (error) return err('Failed to create aux passenger', 500)
-  return ok({ auxPassenger: data })
+  if (error) return json({ error: 'Failed to create aux passenger' }, 500)
+  return json({ auxPassenger: data })
 }
 
 async function handleUpdateAuxPassenger(
@@ -300,8 +268,8 @@ async function handleUpdateAuxPassenger(
     .eq('id', id)
     .select()
     .single()
-  if (error) return err('Failed to update aux passenger', 500)
-  return ok({ auxPassenger: data })
+  if (error) return json({ error: 'Failed to update aux passenger' }, 500)
+  return json({ auxPassenger: data })
 }
 
 async function handleDeleteAuxPassenger(db: SupabaseClient, id: string): Promise<Response> {
@@ -309,8 +277,8 @@ async function handleDeleteAuxPassenger(db: SupabaseClient, id: string): Promise
     .from('travel_trip_aux_passengers')
     .delete()
     .eq('id', id)
-  if (error) return err('Failed to delete aux passenger', 500)
-  return ok({ success: true })
+  if (error) return json({ error: 'Failed to delete aux passenger' }, 500)
+  return json({ success: true })
 }
 
 async function handleUpsertDay(
@@ -324,8 +292,8 @@ async function handleUpsertDay(
     .upsert({ trip_id: tripId, entry_date: entryDate, ...patch }, { onConflict: 'trip_id,entry_date' })
     .select()
     .single()
-  if (error) return err('Failed to upsert day', 500)
-  return ok({ day: data })
+  if (error) return json({ error: 'Failed to upsert day' }, 500)
+  return json({ day: data })
 }
 
 async function handleCreateDayEntry(
@@ -338,8 +306,8 @@ async function handleCreateDayEntry(
     .insert({ ...entry, trip_id: tripId })
     .select()
     .single()
-  if (error) return err('Failed to create day entry', 500)
-  return ok({ dayEntry: data })
+  if (error) return json({ error: 'Failed to create day entry' }, 500)
+  return json({ dayEntry: data })
 }
 
 async function handleUpdateDayEntry(
@@ -353,8 +321,8 @@ async function handleUpdateDayEntry(
     .eq('id', id)
     .select()
     .single()
-  if (error) return err('Failed to update day entry', 500)
-  return ok({ dayEntry: data })
+  if (error) return json({ error: 'Failed to update day entry' }, 500)
+  return json({ dayEntry: data })
 }
 
 async function handleDeleteDayEntry(db: SupabaseClient, id: string): Promise<Response> {
@@ -362,8 +330,8 @@ async function handleDeleteDayEntry(db: SupabaseClient, id: string): Promise<Res
     .from('travel_trip_day_entries')
     .delete()
     .eq('id', id)
-  if (error) return err('Failed to delete day entry', 500)
-  return ok({ success: true })
+  if (error) return json({ error: 'Failed to delete day entry' }, 500)
+  return json({ success: true })
 }
 
 async function handleSetPublicView(
@@ -375,15 +343,11 @@ async function handleSetPublicView(
     .from('travel_immerse_engagements')
     .update({ public_view: publicView })
     .eq('trip_id', tripId)
-  if (error) return err('Failed to set public_view', 500)
-  return ok({ success: true })
+  if (error) return json({ error: 'Failed to set public_view' }, 500)
+  return json({ success: true })
 }
 
 // ── derive_itinerary — server-side orchestration ───────────────────────────────
-// Runs the full itinerary derivation in a single EF call.
-// Eliminates the multi-round-trip loop that existed when this ran client-side.
-// Partial derives are no longer possible — all days and entries are created
-// server-side atomically before returning.
 
 type DossierBooking = {
   id:                  string
@@ -429,7 +393,7 @@ async function upsertDay(
     .from('travel_trip_days')
     .upsert(
       { trip_id: tripId, entry_date: date, sort_order: sortOrder, show: true },
-      { onConflict: 'trip_id,entry_date' }
+      { onConflict: 'trip_id,entry_date' },
     )
     .select()
     .single()
@@ -456,7 +420,7 @@ async function handleDeriveItinerary(
   auxBookings: AuxBooking[],
 ): Promise<Response> {
   if (!trip.start_date || !trip.end_date) {
-    return ok({ days: [], entries: [] })
+    return json({ days: [], entries: [] })
   }
 
   const dates: string[] = []
@@ -468,14 +432,12 @@ async function handleDeriveItinerary(
   }
 
   try {
-    // Upsert all days in parallel
     const days = await Promise.all(
-      dates.map((date, i) => upsertDay(db, trip.id, date, i))
+      dates.map((date, i) => upsertDay(db, trip.id, date, i)),
     )
 
     const entries: Record<string, unknown>[] = []
 
-    // Hotel check-in / check-out entries
     for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
       if (b.start_date && b.booking_type === 'Hotel') {
         const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
@@ -524,7 +486,6 @@ async function handleDeriveItinerary(
       }
     }
 
-    // Aux booking entries
     for (const aux of auxBookings) {
       if (!aux.start_date) continue
       const catIcon = aux.booking_type ?? 'Other'
@@ -553,151 +514,125 @@ async function handleDeriveItinerary(
       entries.push(entry)
     }
 
-    return ok({ days, entries })
+    return json({ days, entries })
 
   } catch (e) {
     console.error('derive_itinerary error:', e)
-    return err('Failed to derive itinerary', 500)
+    return json({ error: 'Failed to derive itinerary' }, 500)
   }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     const body = await req.json().catch(() => ({}))
     const { mode } = body as { mode?: string }
+    if (!mode) return json({ error: 'mode is required' }, 400)
 
-    if (!mode) return err('mode is required', 400)
-
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const authResult = await verifyAdminCaller(req, serviceClient)
-    if (authResult instanceof Response) return authResult
+    const gate = await requireAdmin(req)
+    if (!gate.ok) return gate.response
+    const { serviceClient: db } = gate
 
     switch (mode as Mode) {
       case 'upsert_brief': {
         const { trip_id, house_id, patch } = body as { trip_id?: string; house_id?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !house_id || !patch) return err('trip_id, house_id, patch required', 400)
-        return handleUpsertBrief(serviceClient, trip_id, house_id, patch)
+        if (!trip_id || !house_id || !patch) return json({ error: 'trip_id, house_id, patch required' }, 400)
+        return handleUpsertBrief(db, trip_id, house_id, patch)
       }
-
       case 'update_booking_brief': {
         const { booking_id, patch } = body as { booking_id?: string; patch?: Record<string, unknown> }
-        if (!booking_id || !patch) return err('booking_id, patch required', 400)
-        return handleUpdateBookingBrief(serviceClient, booking_id, patch)
+        if (!booking_id || !patch) return json({ error: 'booking_id, patch required' }, 400)
+        return handleUpdateBookingBrief(db, booking_id, patch)
       }
-
       case 'create_booking': {
         const { trip_id, patch } = body as { trip_id?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !patch) return err('trip_id, patch required', 400)
-        return handleCreateBooking(serviceClient, trip_id, patch)
+        if (!trip_id || !patch) return json({ error: 'trip_id, patch required' }, 400)
+        return handleCreateBooking(db, trip_id, patch)
       }
-
       case 'create_room': {
         const { booking_id, patch } = body as { booking_id?: string; patch?: Record<string, unknown> }
-        if (!booking_id || !patch) return err('booking_id, patch required', 400)
-        return handleCreateRoom(serviceClient, booking_id, patch)
+        if (!booking_id || !patch) return json({ error: 'booking_id, patch required' }, 400)
+        return handleCreateRoom(db, booking_id, patch)
       }
-
       case 'update_room': {
         const { room_id, patch } = body as { room_id?: string; patch?: Record<string, unknown> }
-        if (!room_id || !patch) return err('room_id, patch required', 400)
-        return handleUpdateRoom(serviceClient, room_id, patch)
+        if (!room_id || !patch) return json({ error: 'room_id, patch required' }, 400)
+        return handleUpdateRoom(db, room_id, patch)
       }
-
       case 'delete_room': {
         const { room_id } = body as { room_id?: string }
-        if (!room_id) return err('room_id required', 400)
-        return handleDeleteRoom(serviceClient, room_id)
+        if (!room_id) return json({ error: 'room_id required' }, 400)
+        return handleDeleteRoom(db, room_id)
       }
-
       case 'create_aux_booking': {
         const { trip_id, patch } = body as { trip_id?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !patch) return err('trip_id, patch required', 400)
-        return handleCreateAuxBooking(serviceClient, trip_id, patch)
+        if (!trip_id || !patch) return json({ error: 'trip_id, patch required' }, 400)
+        return handleCreateAuxBooking(db, trip_id, patch)
       }
-
       case 'update_aux_booking': {
         const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
-        if (!id || !patch) return err('id, patch required', 400)
-        return handleUpdateAuxBooking(serviceClient, id, patch)
+        if (!id || !patch) return json({ error: 'id, patch required' }, 400)
+        return handleUpdateAuxBooking(db, id, patch)
       }
-
       case 'delete_aux_booking': {
         const { id } = body as { id?: string }
-        if (!id) return err('id required', 400)
-        return handleDeleteAuxBooking(serviceClient, id)
+        if (!id) return json({ error: 'id required' }, 400)
+        return handleDeleteAuxBooking(db, id)
       }
-
       case 'create_aux_passenger': {
         const { aux_booking_id, patch } = body as { aux_booking_id?: string; patch?: Record<string, unknown> }
-        if (!aux_booking_id || !patch) return err('aux_booking_id, patch required', 400)
-        return handleCreateAuxPassenger(serviceClient, aux_booking_id, patch)
+        if (!aux_booking_id || !patch) return json({ error: 'aux_booking_id, patch required' }, 400)
+        return handleCreateAuxPassenger(db, aux_booking_id, patch)
       }
-
       case 'update_aux_passenger': {
         const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
-        if (!id || !patch) return err('id, patch required', 400)
-        return handleUpdateAuxPassenger(serviceClient, id, patch)
+        if (!id || !patch) return json({ error: 'id, patch required' }, 400)
+        return handleUpdateAuxPassenger(db, id, patch)
       }
-
       case 'delete_aux_passenger': {
         const { id } = body as { id?: string }
-        if (!id) return err('id required', 400)
-        return handleDeleteAuxPassenger(serviceClient, id)
+        if (!id) return json({ error: 'id required' }, 400)
+        return handleDeleteAuxPassenger(db, id)
       }
-
       case 'upsert_day': {
         const { trip_id, entry_date, patch } = body as { trip_id?: string; entry_date?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !entry_date || !patch) return err('trip_id, entry_date, patch required', 400)
-        return handleUpsertDay(serviceClient, trip_id, entry_date, patch)
+        if (!trip_id || !entry_date || !patch) return json({ error: 'trip_id, entry_date, patch required' }, 400)
+        return handleUpsertDay(db, trip_id, entry_date, patch)
       }
-
       case 'create_day_entry': {
         const { trip_id, entry } = body as { trip_id?: string; entry?: Record<string, unknown> }
-        if (!trip_id || !entry) return err('trip_id, entry required', 400)
-        return handleCreateDayEntry(serviceClient, trip_id, entry)
+        if (!trip_id || !entry) return json({ error: 'trip_id, entry required' }, 400)
+        return handleCreateDayEntry(db, trip_id, entry)
       }
-
       case 'update_day_entry': {
         const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
-        if (!id || !patch) return err('id, patch required', 400)
-        return handleUpdateDayEntry(serviceClient, id, patch)
+        if (!id || !patch) return json({ error: 'id, patch required' }, 400)
+        return handleUpdateDayEntry(db, id, patch)
       }
-
       case 'delete_day_entry': {
         const { id } = body as { id?: string }
-        if (!id) return err('id required', 400)
-        return handleDeleteDayEntry(serviceClient, id)
+        if (!id) return json({ error: 'id required' }, 400)
+        return handleDeleteDayEntry(db, id)
       }
-
       case 'set_public_view': {
         const { trip_id, public_view } = body as { trip_id?: string; public_view?: boolean }
-        if (!trip_id || public_view === undefined) return err('trip_id, public_view required', 400)
-        return handleSetPublicView(serviceClient, trip_id, public_view)
+        if (!trip_id || public_view === undefined) return json({ error: 'trip_id, public_view required' }, 400)
+        return handleSetPublicView(db, trip_id, public_view)
       }
-
       case 'derive_itinerary': {
         const { trip, aux_bookings } = body as { trip?: DossierTrip; aux_bookings?: AuxBooking[] }
-        if (!trip || !aux_bookings) return err('trip, aux_bookings required', 400)
-        return handleDeriveItinerary(serviceClient, trip, aux_bookings)
+        if (!trip || !aux_bookings) return json({ error: 'trip, aux_bookings required' }, 400)
+        return handleDeriveItinerary(db, trip, aux_bookings)
       }
-
       default:
-        return err(`Unknown mode: ${mode}`, 400)
+        return json({ error: `Unknown mode: ${mode}` }, 400)
     }
 
   } catch (e) {
     console.error('travel-write-trip unexpected error:', e)
-    return err('Internal server error', 500)
+    return json({ error: 'Internal server error' }, 500)
   }
 })

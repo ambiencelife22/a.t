@@ -30,16 +30,18 @@ function formatPersonName(gp: any | null | undefined): string {
   const full  = [first, last].filter(Boolean).join(' ').trim()
   return (gp.nickname?.trim() || full || first || '').trim()
 }
+
 function resolvePartyName(
   person:     any | null | undefined,
   override:   string | null | undefined,
   partyLabel: string | null | undefined,
-): string {
+): string | null {
   const p = formatPersonName(person)
   if (p) return p
   const o = (override ?? '').trim()
   if (o) return o
-  return (partyLabel ?? '').trim()
+  const label = (partyLabel ?? '').trim()
+  return label === '' ? null : label
 }
 
 async function attachPassengers(db: any, aux: any[], partyLabel: string | null): Promise<any[]> {
@@ -177,7 +179,9 @@ Deno.serve(async (req: Request) => {
         .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, created_at, updated_at')
         .eq('house_id', houseId)
         .eq('trip_id', tripId)
-        .order('sort_order', { ascending: true }),
+        .order('start_date', { ascending: true, nullsFirst: false })
+        .order('end_date',   { ascending: true, nullsFirst: false })
+        .order('id',         { ascending: true }),
 
       db.from('travel_trip_destinations')
         .select('id, trip_id, destination_id, sort_order, global_destinations!travel_trip_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
