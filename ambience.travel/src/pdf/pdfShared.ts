@@ -325,3 +325,53 @@ export function passengerLines(aux: AuxLike): string[] {
     p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
   ].filter(Boolean).join('  \u00b7  '))
 }
+
+// ── Room display composition — shared across all trip PDFs ─────────────────────
+// One source for what a room's text content is. Layout stays per-surface
+// (confirmation = structured card rows, programme = flat joined string), but the
+// FIELDS and their composition live here. Mirror of passengerLines for rooms.
+//
+// resolved_guest_name is set by the caller (names.ts) before this runs.
+
+export interface RoomLike {
+  resolved_guest_name?: string | null
+  guest_name?:          string | null
+  additional_guests?:   string[] | null
+  party_composition?:   string | null
+  room_name?:           string | null
+  notes?:               string | null
+  confirmation_number?: string | null
+}
+
+export interface RoomDisplay {
+  roomName:  string | null   // e.g. "Suite Fenchl"
+  guestLine: string | null   // e.g. "AlSuwaidi Family · Ms. Sayegh"
+  board:     string | null   // e.g. "Full board"  (from notes)
+  conf:      string | null   // bare conf value, no prefix
+}
+
+export function roomDisplay(room: RoomLike): RoomDisplay {
+  const guests: string[] = []
+  const lead = room.resolved_guest_name || room.guest_name
+  if (lead) guests.push(lead)
+  if (room.additional_guests?.length) guests.push(...room.additional_guests)
+  if (room.party_composition) guests.push(room.party_composition)
+  return {
+    roomName:  room.room_name ?? null,
+    guestLine: guests.length ? guests.join('  \u00b7  ') : null,
+    board:     room.notes ?? null,
+    conf:      room.confirmation_number ?? null,
+  }
+}
+
+// Flat single-string variant for surfaces that render rooms as one line
+// (programme PDF). Order: guests · room · board · #conf.
+export function roomLine(room: RoomLike): string {
+  const d = roomDisplay(room)
+  return [
+    d.guestLine,
+    d.roomName,
+    d.board,
+    d.conf ? `#${d.conf}` : null,
+  ].filter(Boolean).join('  \u00b7  ')
+}

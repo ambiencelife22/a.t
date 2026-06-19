@@ -22,7 +22,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { RGB } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage,
+  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage, roomLine,
 } from './pdfShared'
 import type { TripDay, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 import type { TimelineItem } from '../types/typesTimeline'
@@ -108,10 +108,15 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     // Rooms (hotel check-in) and passengers (aux) both render as lines.
     // Guarded with ?? [] so non-timeline rows (admin editor passes raw
     // TripDayEntry rows, which carry neither) don't crash.
-    const roomLines = (it.rooms ?? []).map(r => {
-      const parts = [r.guest, r.party_composition, r.room_name, r.notes, r.confirmation_number ? `#${r.confirmation_number}` : null].filter(Boolean)
-      return parts.join('  \u00b7  ')
-    })
+    // Shared composition — roomLine owns field selection + order (see pdfShared).
+    // TimelineRoom uses `guest` where roomDisplay reads `guest_name`; map it.
+    const roomLines = (it.rooms ?? []).map(r => roomLine({
+      guest_name:          r.guest,
+      room_name:           r.room_name,
+      party_composition:   r.party_composition,
+      notes:               r.notes,
+      confirmation_number: r.confirmation_number,
+    }))
     const paxLines = (it.passengers ?? []).map(p => {
       const name = p.resolved_passenger_label ?? p.passenger_label ?? 'Guest'
       const detail = [

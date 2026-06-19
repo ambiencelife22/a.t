@@ -23,7 +23,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, fmtTime, buildDateRange, passengerLines,
+  fmtDate, fmtTime, buildDateRange, passengerLines, roomDisplay,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -83,14 +83,11 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
 
   // ── Measure room rows ──
   const roomRowH = (room: BookingRoom): number => {
-    const gp: string[] = []
-    const rGuest = (room as any).resolved_guest_name || room.guest_name
-    if (rGuest) gp.push(rGuest)
-    if (room.additional_guests?.length) gp.push(...room.additional_guests)
-    if (room.party_composition) gp.push(room.party_composition)
-    const nameH  = room.room_name ? 5 : 0
-    const guestH = gp.length ? 4.5 : 0
-    return padV + nameH + guestH + padV
+    const d = roomDisplay(room)
+    const nameH  = d.roomName  ? 5   : 0
+    const guestH = d.guestLine ? 4.5 : 0
+    const boardH = d.board     ? 4.5 : 0
+    return padV + nameH + guestH + boardH + padV
   }
   const roomsH = rooms.reduce((sum, r) => sum + roomRowH(r), 0)
   const cardH  = headerH + (rooms.length > 0 ? roomsH : 0)
@@ -170,26 +167,27 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
       // Divider above each room row (separates header / prior room)
       drawRule(doc, contentX, ry, contentW, T.rule, 0.3)
 
-      const gp: string[] = []
-      const rGuest = (room as any).resolved_guest_name || room.guest_name
-      if (rGuest) gp.push(rGuest)
-      if (room.additional_guests?.length) gp.push(...room.additional_guests)
-      if (room.party_composition) gp.push(room.party_composition)
-      const guestLine = gp.join('  \u00b7  ')
-
-      const roomConf = room.confirmation_number ? `Conf #:  ${room.confirmation_number}` : null
+      const d = roomDisplay(room)
+      const guestLine = d.guestLine
+      const roomConf  = d.conf ? `Conf #:  ${d.conf}` : null
 
       let rty = ry + padV
-      if (room.room_name) {
+      if (d.roomName) {
         sans(doc, 'bold', 8.5)
         doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-        doc.text((doc.splitTextToSize(room.room_name, contentW - padH * 2 - 40))[0] ?? room.room_name, tx, rty)
+        doc.text((doc.splitTextToSize(d.roomName, contentW - padH * 2 - 40))[0] ?? d.roomName, tx, rty)
         rty += 5
       }
       if (guestLine) {
         sans(doc, 'normal', 7.5)
         doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
         doc.text((doc.splitTextToSize(guestLine, contentW - padH * 2 - 40))[0] ?? guestLine, tx, rty)
+        rty += 4.5
+      }
+      if (d.board) {
+        sans(doc, 'italic', 7)
+        doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+        doc.text((doc.splitTextToSize(d.board, contentW - padH * 2 - 40))[0] ?? d.board, tx, rty)
         rty += 4.5
       }
 
@@ -401,8 +399,8 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
         + padV)
       const roomsH = rooms.reduce((sum, r) => {
-        const gp = !!((r as any).resolved_guest_name || r.guest_name || r.additional_guests?.length || r.party_composition)
-        return sum + padV + (r.room_name ? 5 : 0) + (gp ? 4.5 : 0) + padV
+        const d = roomDisplay(r)
+        return sum + padV + (d.roomName ? 5 : 0) + (d.guestLine ? 4.5 : 0) + (d.board ? 4.5 : 0) + padV
       }, 0)
       const cardH = headerH + (rooms.length > 0 ? roomsH : 0)
 
