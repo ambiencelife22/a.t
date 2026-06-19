@@ -8,14 +8,14 @@
  *   ambience.travel/#admin                               → AmbienceAdmin (S33)
  *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
- *   ambience.travel/immerse/:url_id/confirmation         → TripConfirmationPage (S48)
- *   ambience.travel/immerse/:url_id/programme            → TripProgrammePage (S48)
+ *   ambience.travel/immerse/:url_id/confirmation         → ImmerseTripPage (confirmation tab)
+ *   ambience.travel/immerse/:url_id/programme            → ImmerseTripPage (programme tab)
  *   ambience.travel/guides/:destination/dining           → DiningGuideRoute (S35)
  *   ambience.travel/guides/:destination/hotels           → HotelGuideRoute (S37)
  *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
- *   immerse.ambience.travel/:url_id/confirmation         → TripConfirmationPage (S48)
- *   immerse.ambience.travel/:url_id/programme            → TripProgrammePage (S48)
+ *   immerse.ambience.travel/:url_id/confirmation         → ImmerseTripPage (confirmation tab)
+ *   immerse.ambience.travel/:url_id/programme            → ImmerseTripPage (programme tab)
  *   guides.ambience.travel/:destination/dining           → DiningGuideRoute (S35)
  *   guides.ambience.travel/:destination/hotels           → HotelGuideRoute (S37)
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin (existing, untouched)
@@ -33,8 +33,8 @@
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
- *   localhost:5173/immerse/:url_id/confirmation          → TripConfirmationPage (S48)
- *   localhost:5173/immerse/:url_id/programme             → TripProgrammePage (S48)
+ *   localhost:5173/immerse/:url_id/confirmation          → ImmerseTripPage (confirmation tab)
+ *   localhost:5173/immerse/:url_id/programme             → ImmerseTripPage (programme tab)
  *   localhost:5173/guides/:destination/dining            → DiningGuideRoute (S35)
  *   localhost:5173/guides/:destination/hotels            → HotelGuideRoute (S37)
  *
@@ -55,6 +55,10 @@
  * Prior: S53 — Journey programme surface retired. Superseded by ImmerseTripPage
  *   + Programme tab. /journeys/:id routes and 'preview-journey' route removed.
  *   ProgrammeRoute now serves only stay-type programmes.
+ * Prior: /confirmation + /programme routes now resolve to ImmerseTripPage with
+ *   an initialTab (confirmation/programme) — legacy TripConfirmationPage +
+ *   TripProgrammePage retired, consolidating to one trip surface. Still handled
+ *   inside ImmerseEngagementRoute via RESERVED_SEGMENTS intercept.
  * Prior: S48 — Added confirmation + programme routes under immerse surface.
  *   Handled inside ImmerseEngagementRoute via RESERVED_SEGMENTS intercept —
  *   no changes to App.tsx routing logic required.
@@ -62,19 +66,6 @@
  * Prior: S37 — Added 'guides-hotels' route. resolveGuidePath() now
  *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
  *   on surface. New lazy import HotelGuideRoute. Mirrors S35 dining shape.
- * Prior: S35 — Added 'guides-dining' route for guides.ambience.travel
- *   and ambience.travel/guides/<dest>/dining. Hostname-based + path-based
- *   disambiguator mirrors the immerse pattern (isImmerseHost + isImmerseRoute).
- *   New helpers: isGuidesHost() + resolveGuidePath(). New lazy import
- *   DiningGuideRoute. No other elements touched.
- * Prior: S33 — Added 'admin-new' route for AmbienceAdmin.
- *   Hash matching changed from === '#admin' to startsWith('#admin') to
- *   support sub-paths. Hostname disambiguator distinguishes the existing
- *   programme admin from the new shell.
- * Prior: S32F — Inline IMMERSE_HOST + isImmerseHost() + isTripUrlId()
- *   removed in favour of imports from lib/immersePath.
- * Prior: S32 — Added immerse.ambience.travel hostname routing.
- * Prior: S30E perf — Route-level code splitting via React.lazy() + Suspense.
  */
 
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'

@@ -1246,7 +1246,7 @@ function TripNotFound() {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function ImmerseTripPage({ urlId }: { urlId: string }) {
+export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; initialTab?: TabId }) {
   const [tripData,    setTripData]    = useState<TripData | null>(null)
   const [notFound,    setNotFound]    = useState(false)
   const [activeTab,   setActiveTab]   = useState<TabId | null>(null)
@@ -1306,6 +1306,12 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
         const brief = confPayload.brief
         const hasProgramme = brief?.show_tab_programme !== false && (progPayload?.days?.length ?? 0) > 0
+
+        // Explicit initial tab (e.g. /programme route) wins when that tab is enabled.
+        if (initialTab === 'programme' && hasProgramme)                                  { setActiveTab('programme');    return }
+        if (initialTab === 'confirmation' && brief?.show_tab_confirmation !== false)     { setActiveTab('confirmation'); return }
+        if (initialTab === 'contacts' && brief?.show_tab_contacts !== false)             { setActiveTab('contacts');     return }
+        if (initialTab === 'brief' && brief?.show_tab_brief !== false)                   { setActiveTab('brief');        return }
 
         if (brief?.show_tab_brief !== false)    { setActiveTab('brief');        return }
         if (hasProgramme)                        { setActiveTab('programme');    return }

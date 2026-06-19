@@ -28,8 +28,6 @@ import { TravelLoadingScreen, NotFound }     from './ImmerseStateScreens'
 import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../utils/utilsImmersePath'
 import RouteLoading from '../RouteLoading'
 
-const TripConfirmationPage = lazy(() => import('./TripConfirmationPage'))
-const TripProgrammePage    = lazy(() => import('./TripProgrammePage'))
 const ImmerseTripPage      = lazy(() => import('./ImmerseTripPage'))
 
 // ── Reserved second segments ──────────────────────────────────────────────────
@@ -236,7 +234,7 @@ export default function ImmerseEngagementRoute() {
   if (route.kind === 'confirmation') {
     return (
       <Suspense fallback={<RouteLoading />}>
-        <TripConfirmationPage urlId={route.urlId} />
+        <ImmerseTripPage urlId={route.urlId} initialTab='confirmation' />
       </Suspense>
     )
   }
@@ -244,7 +242,7 @@ export default function ImmerseEngagementRoute() {
   if (route.kind === 'programme') {
     return (
       <Suspense fallback={<RouteLoading />}>
-        <TripProgrammePage urlId={route.urlId} />
+        <ImmerseTripPage urlId={route.urlId} initialTab='programme' />
       </Suspense>
     )
   }

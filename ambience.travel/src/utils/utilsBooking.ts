@@ -8,7 +8,7 @@
 //
 // Used by:
 //   - ImmerseTripPage.tsx (TripBriefTab web surface)
-//   - TripConfirmationPage.tsx (confirmation document body)
+//   - ImmerseTripPage.tsx (confirmation + brief tabs)
 //   - pdfImmerseBrief.ts (Trip Brief PDF)
 //   - pdfImmerseProgramme.ts (Daily Programme PDF)
 
