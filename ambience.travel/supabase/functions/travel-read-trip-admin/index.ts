@@ -141,7 +141,9 @@ async function handleDossier(db: SupabaseClient, houseId: string): Promise<Respo
     .from('travel_bookings')
     .select('id, trip_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
     .eq('house_id', houseId)
-    .order('sort_order', { ascending: true })
+    .order('start_date', { ascending: true, nullsFirst: false })
+    .order('end_date',   { ascending: true, nullsFirst: false })
+    .order('id',         { ascending: true })
 
   if (bookErr) return err('Failed to fetch booking details', 500)
   const bookingRows = (bookData ?? []) as Record<string, unknown>[]
