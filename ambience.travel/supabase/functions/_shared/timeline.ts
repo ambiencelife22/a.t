@@ -119,6 +119,36 @@ type EntryLike = {
 // resolved_guest_name is set by the caller (names.ts) before this runs.
 export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
+
+  // Pre-pass: rank each hotel booking among same-hotel stays on this trip, in
+  // date order. A booking that is the 2nd+ stay at the same hotel is a
+  // "Re-Check-in" (split stay — guest returns). Keyed by hotel name (no clean
+  // hotel_id on the row); same hotel = same name. Stable by start_date then id.
+  const reCheckin = new Set<string>()
+  const byHotel = new Map<string, BookingLike[]>()
+  for (const b of bookings) {
+    if (b.brief_show === false) continue
+    const hasR = (b._rooms?.length ?? 0) > 0
+    if (b.booking_type !== 'Hotel' && !hasR) continue
+    if (!b.start_date) continue
+    const key = (b._hotel_name ?? b.name ?? 'Hotel') as string
+    const list = byHotel.get(key) ?? []
+    list.push(b)
+    byHotel.set(key, list)
+  }
+  for (const list of byHotel.values()) {
+    if (list.length < 2) continue
+    list
+      .slice()
+      .sort((x, y) => {
+        const dx = (x.start_date as string) ?? ''
+        const dy = (y.start_date as string) ?? ''
+        if (dx !== dy) return dx < dy ? -1 : 1
+        return (x.id as string) < (y.id as string) ? -1 : 1
+      })
+      .forEach((b, i) => { if (i > 0) reCheckin.add(b.id as string) })
+  }
+
   for (const b of bookings) {
     if (b.brief_show === false) continue
     const hasRooms = (b._rooms?.length ?? 0) > 0
@@ -126,6 +156,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
 
     const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
     const img = b.brief_image_src ?? b._hotel_image_src ?? null
+    const checkinLabel = reCheckin.has(b.id as string) ? 'Re-Check-in' : 'Check-in'
 
     if (b.start_date) {
       const rooms: TimelineRoom[] = (b._rooms ?? [])
@@ -142,7 +173,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
       out.push({
         id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: b.start_date,
         start_time: null, end_time: null, category: 'Hotel',
-        title: `Check-in \u00b7 ${hotelName}`, subtitle: null, notes: null,
+        title: `${checkinLabel} \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
         // Booking-level conf shown by the card when there are no per-room rows.
         confirmation_number: (b.confirmation_number as string | null) ?? null,
