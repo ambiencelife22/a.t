@@ -242,19 +242,13 @@ Deno.serve(async (req: Request) => {
           ? db.from('travel_bookings')
               .select('id, brief_image_src, accom_hotel_id, status')
               .in('id', bookingIds)
-          : Promise.resolve({ data: [], error: null }),// Room-level image (all rooms per booking, includes room_id for canon lookup)
-        bookingIds.length > 0
-          ? db.from('travel_booking_rooms')
-              .select('id, booking_id, room_id, brief_image_src')
-              .in('booking_id', bookingIds)
-              .order('sort_order', { ascending: true })
           : Promise.resolve({ data: [], error: null }),
 
         // Room-level image (all rooms per booking, includes room_id for canon lookup)
         bookingIds.length > 0
-          ? await db.from('travel_booking_rooms')
-          .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, sort_order, created_at, updated_at')
-          .in('booking_id', bookingIds)
+          ? db.from('travel_booking_rooms')
+              .select('id, booking_id, room_id, brief_image_src')
+              .in('booking_id', bookingIds)
               .order('sort_order', { ascending: true })
           : Promise.resolve({ data: [], error: null }),
 
