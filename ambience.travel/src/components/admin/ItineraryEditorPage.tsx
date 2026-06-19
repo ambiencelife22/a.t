@@ -624,7 +624,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           >{deriving ? 'Generating...' : 'Auto-populate from Bookings'}</button>
         )}
         <button
-          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days, entriesByDate, auxBookings: [] })}
+          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days, entriesByDate: entriesByDate as unknown as Record<string, import('../../types/typesTimeline').TimelineItem[]> })}
           disabled={!pdfReady || pdfDownloading || days.length === 0}
           style={{
             ...btnBase,

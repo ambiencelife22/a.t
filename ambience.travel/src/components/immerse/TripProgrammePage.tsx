@@ -18,6 +18,7 @@
 import { useEffect, useState } from 'react'
 import type { TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripDay, TripDayEntry, TripAuxBooking } from '../../queries/queriesAdminTrip'
+import type { TimelineItem } from '../../types/typesTimeline'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost } from '../../utils/utilsImmersePath'
 import { bookedByLabel } from '../../utils/utilsBooking'
@@ -207,8 +208,8 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
 
   async function handlePdf() {
     if (!clientData) return
-    const entriesByDate: Record<string, TripDayEntry[]> = {}
-    for (const entry of entries) {
+    const entriesByDate: Record<string, TimelineItem[]> = {}
+    for (const entry of entries as unknown as TimelineItem[]) {
       if (!entriesByDate[entry.entry_date]) entriesByDate[entry.entry_date] = []
       entriesByDate[entry.entry_date].push(entry)
     }
@@ -218,7 +219,6 @@ function ProgrammeTopBar({ clientData, confirmationUrl, activeDate, days, entrie
       house:       clientData.house,
       days,
       entriesByDate,
-      auxBookings: clientData.auxBookings ?? [],
     })
   }
 

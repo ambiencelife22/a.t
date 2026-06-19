@@ -41,6 +41,7 @@ import ImmerseLayout                          from '../layouts/ImmerseLayout'
 import ImmerseHero                            from './ImmerseHero'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripBooking, TripAuxBooking, TripDay, TripDayEntry } from '../../queries/queriesAdminTrip'
+import type { TimelineItem } from '../../types/typesTimeline'
 import { getAuxTypeMeta }                     from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
@@ -59,7 +60,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 type TripData = {
   clientData: TripClientData
   days:       TripDay[]
-  entries:    TripDayEntry[]
+  entries:    TimelineItem[]
 }
 
 type TabId = 'confirmation' | 'programme' | 'brief' | 'contacts'
@@ -435,11 +436,9 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
 
 // ── Programme tab ─────────────────────────────────────────────────────────────
 
-function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange, brief }: {
+function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
   days:               TripDay[]
-  entries:            TripDayEntry[]
-  auxBookings:        TripAuxBooking[]
-  bookings:           TripBooking[]
+  entries:            TimelineItem[]
   brief:              any
   onActiveDayChange?: (label: string, openSidebar: () => void) => void
 }) {
@@ -480,85 +479,60 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
     rooms:             { id: string; guest: string | null; room_name: string | null; confirmation_number: string | null }[]
   }
 
-  const cards: CardItem[] = activeDay ? [
-    ...entries
-      .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
-      .map(e => {
-        const isFlight        = (e.category ?? '').toLowerCase() === 'flight'
-        let flightOrigin:      string | null = null
-        let flightDestination: string | null = null
-        if (isFlight && e.subtitle) {
-          const parts = e.subtitle.split('\u2192').map(s => s.trim())
-          if (parts.length === 2) {
-            flightOrigin      = parts[0] || null
-            flightDestination = parts[1] || null
+// The EF (_shared/timeline.ts) already merged + ordered the stream. Filter by
+  // active day and map each TimelineItem to the card shape. No client derivation.
+  const cards: CardItem[] = activeDay
+    ? entries
+        .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
+        .map(e => {
+          const isFlight = (e.category ?? '').toLowerCase().includes('flight') && e.kind === 'aux'
+          let flightOrigin:      string | null = null
+          let flightDestination: string | null = null
+          if (isFlight && e.subtitle) {
+            const parts = e.subtitle.split('\u2192').map(s => s.trim())
+            if (parts.length >= 2) {
+              flightOrigin      = parts[0] || null
+              // subtitle may carry extra " · cabin · aircraft" after the arrow; take up to the first ·
+              flightDestination = (parts[1].split('\u00b7')[0] || '').trim() || null
+            }
           }
-        }
-        return {
-          id: e.id, category: e.category, start_time: e.start_time,
-          end_time: e.end_time, title: e.title,
-          subtitle: isFlight ? null : (e.subtitle ?? null),
-          notes: e.notes ?? null, confirmation_number: e.confirmation_number ?? null,
-          guest_label: e.guest_label ?? null, booked_by: e.booked_by ?? null,
-          image_src: (e as any).image_src ?? null, status: (e as any).booking_status ?? null, description: null,
-          flightOrigin,
-          flightDestination,
-          flightDepartTime: isFlight ? (e.start_time ?? null) : null,
-          flightArriveTime: isFlight ? (e.end_time   ?? null) : null,
-          seatNumbers: null,
-          cabinClass: null,
-          passengers: [],
-          rooms: [],
-        }
-      }),
-    ...auxBookings
-      .filter(a => a.start_date === activeDay.entry_date && a.brief_show !== false)
-      .map(a => {
-        const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
-        return {
-          id: a.id, category: a.booking_type ?? 'Other',
-          start_time: a.start_time ?? null, end_time: a.end_time ?? null,
-          title: a.name ?? a.booking_type ?? 'Booking',
-          subtitle: isFlight ? null : (a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null),
-          notes: a.notes ?? null, confirmation_number: null,
-          guest_label: null, booked_by: a.booked_by ?? null,
-          image_src: null, status: null, description: null,
-          flightOrigin:      isFlight ? (a.origin      ?? null) : null,
-          flightDestination: isFlight ? (a.destination ?? null) : null,
-          flightDepartTime:  isFlight ? (a.start_time  ?? null) : null,
-          flightArriveTime:  isFlight ? (a.end_time    ?? null) : null,
-          seatNumbers:       null,
-          cabinClass:        isFlight ? (a.cabin_class  ?? null) : null,
-          passengers:        (a.passengers ?? []).slice().sort((x, y) => x.sort_order - y.sort_order),
-          rooms:             [],
-        }
-      }),
-    // Hotel check-in/out derived live from bookings (single source — never stored)
-    ...bookings
-      .filter(b => b.brief_show !== false && (b.booking_type === 'Hotel' || (b._rooms?.length ?? 0) > 0))
-      .flatMap(b => {
-        const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
-        const img = b.brief_image_src ?? b._hotel_image_src ?? null
-        const rooms = (b._rooms ?? []).slice().sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0)).map(r => ({
-          id: r.id, guest: r.resolved_guest_name ?? r.guest_name ?? null,
-          room_name: r.room_name ?? null, confirmation_number: r.confirmation_number ?? null,
-        }))
-        const mk = (kind: 'in' | 'out'): CardItem => ({
-          id: `check${kind}-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
-          title: `Check-${kind === 'in' ? 'in' : 'out'} \u00b7 ${hotelName}`,
-          subtitle: null, notes: null, confirmation_number: null,
-          guest_label: null, booked_by: b.booked_by ?? null,
-          image_src: img, status: null, description: null,
-          flightOrigin: null, flightDestination: null, flightDepartTime: null,
-          flightArriveTime: null, seatNumbers: null, cabinClass: null, passengers: [],
-          rooms: kind === 'in' ? rooms : [],
+          return {
+            id:                  e.id,
+            category:            e.category,
+            start_time:          e.start_time,
+            end_time:            e.end_time,
+            title:               e.title,
+            subtitle:            isFlight ? null : e.subtitle,
+            notes:               e.notes,
+            confirmation_number: e.confirmation_number,
+            guest_label:         e.guest_label,
+            booked_by:           e.booked_by,
+            image_src:           e.image_src,
+            status:              e.status,
+            description:         null,
+            flightOrigin,
+            flightDestination,
+            flightDepartTime:    isFlight ? e.start_time : null,
+            flightArriveTime:    isFlight ? e.end_time   : null,
+            seatNumbers:         null,
+            cabinClass:          null,
+            passengers:          e.passengers.map(p => ({
+              id:                       p.id,
+              passenger_label:          p.passenger_label,
+              resolved_passenger_label: p.resolved_passenger_label,
+              confirmation_number:      p.confirmation_number,
+              seat_numbers:             p.seat_numbers,
+              sort_order:               p.sort_order,
+            })),
+            rooms:               e.rooms.map(r => ({
+              id:                  r.id,
+              guest:               r.guest,
+              room_name:           r.room_name,
+              confirmation_number: r.confirmation_number,
+            })),
+          }
         })
-        const out: CardItem[] = []
-        if (b.start_date === activeDay.entry_date) out.push(mk('in'))
-        if (b.end_date   === activeDay.entry_date) out.push(mk('out'))
-        return out
-      }),
-  ].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time)) : []
+    : []
 
   return (
     <div style={{ display: 'flex', minHeight: '60vh', position: 'relative' }}>
@@ -892,10 +866,8 @@ function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange,
 
 // ── Trip Brief tab ────────────────────────────────────────────────────────────
 
-function TripBriefTab({ clientData, days, entries }: {
+function TripBriefTab({ clientData }: {
   clientData: TripClientData
-  days:       TripDay[]
-  entries:    TripDayEntry[]
 }) {
   const { trip, house, auxBookings } = clientData
 
@@ -1584,12 +1556,12 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
               <button
                 disabled={!progPdfReady || progPdfDownloading}
                 onClick={() => {
-                  const entriesByDate: Record<string, TripDayEntry[]> = {}
+                  const entriesByDate: Record<string, TimelineItem[]> = {}
                   for (const e of entries) {
                     if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
                     entriesByDate[e.entry_date].push(e)
                   }
-                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate, auxBookings: clientData.auxBookings })
+                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate })
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
@@ -1608,8 +1580,8 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
         <div style={{ background: CREAM, minHeight: '60vh' }}>
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
-          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} bookings={clientData.trip.bookings} brief={brief} onActiveDayChange={handleActiveDayChange} />}
-          {activeTab === 'brief'        && <TripBriefTab clientData={clientData} days={days} entries={entries} />}
+          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} brief={brief} onActiveDayChange={handleActiveDayChange} />}
+          {activeTab === 'brief'        && <TripBriefTab clientData={clientData} />}
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>
 

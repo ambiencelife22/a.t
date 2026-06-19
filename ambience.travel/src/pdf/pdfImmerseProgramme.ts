@@ -22,9 +22,10 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { RGB } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtTime, buildDateRange, passengerLines, drawPdfHero, stampPageChrome, addCreamPage,
+  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
-import type { TripDay, TripDayEntry, TripAuxBooking, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
+import type { TripDay, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
+import type { TimelineItem } from '../types/typesTimeline'
 import { bookedByLabel } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -34,8 +35,7 @@ export interface DailyProgrammeData {
   brief:         TripBrief | null
   house:         HouseProfile | null
   days:          TripDay[]
-  entriesByDate: Record<string, TripDayEntry[]>
-  auxBookings:   TripAuxBooking[]
+  entriesByDate: Record<string, TimelineItem[]>
 }
 
 // ── Internal merged entry type ────────────────────────────────────────────────
@@ -90,12 +90,6 @@ function fmtDateFull(iso: string): string {
   })
 }
 
-function sortKey(time: string | null | undefined): number {
-  if (!time) return 9999
-  const [h, m] = time.split(':')
-  return parseInt(h, 10) * 60 + parseInt(m ?? '0', 10)
-}
-
 function buildFilename(trip: DossierTrip): string {
   const today = new Date()
   const dd    = String(today.getDate()).padStart(2, '0')
@@ -104,92 +98,44 @@ function buildFilename(trip: DossierTrip): string {
   return `ambience \u00b7 ${trip.destinations[0]?.name ?? 'Programme'} \u00b7 Daily Programme \u00b7 ${dd} ${mon} ${yyyy}.pdf`
 }
 
-// ── Merge day entries + aux bookings ─────────────────────────────────────────
+// ── Map timeline items → render rows ─────────────────────────────────────────
+// The EF (travel-get-trip-programme via _shared/timeline.ts) already merged and
+// ordered hotels + aux + standalone entries. Here we only flatten each item's
+// structured rooms/passengers into the PDF's passengerLines render mechanism.
 
-function mergeDayEntries(
-  entries:     TripDayEntry[],
-  auxBookings: TripAuxBooking[],
-  bookings:    DossierTrip['bookings'],
-  date:        string,
-): ProgrammeEntry[] {
-  const fromEntries: ProgrammeEntry[] = entries
-    .filter(e => e.entry_date === date && e.brief_show)
-    .map(e => ({
-      id:                  e.id,
-      category:            e.category,
-      start_time:          e.start_time,
-      end_time:            e.end_time,
-      title:               e.title,
-      subtitle:            e.subtitle ?? null,
-      guest_label:         e.guest_label,
-      confirmation_number: e.confirmation_number,
-      notes:               e.notes,
-      booked_by:           e.booked_by,
-      brief_show:          e.brief_show,
-      image_src:           (e as any).image_src ?? null,
-      passengerLines:      [],
-    }))
-
-  const fromAux: ProgrammeEntry[] = auxBookings
-    .filter(a => a.start_date === date && a.brief_show !== false)
-    .map(a => {
-      const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
-      const route    = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
-      const meta     = isFlight ? [route, a.cabin_class, a.aircraft_type].filter(Boolean).join('  \u00b7  ') : route
-      const paxLines = isFlight ? passengerLines(a) : []
-      return {
-        id:                  a.id,
-        category:            a.booking_type ?? 'Other',
-        start_time:          a.start_time,
-        end_time:            a.end_time,
-        title:               a.name ?? a.booking_type ?? 'Booking',
-        subtitle:            meta || null,
-        guest_label:         null,
-        confirmation_number: null,
-        notes:               a.notes,
-        booked_by:           a.booked_by,
-        brief_show:          a.brief_show,
-        image_src:           null,
-        passengerLines:      paxLines,
-      }
+function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
+  return items.map(it => {
+    // Rooms (hotel check-in) and passengers (aux) both render as lines.
+    // Guarded with ?? [] so non-timeline rows (admin editor passes raw
+    // TripDayEntry rows, which carry neither) don't crash.
+    const roomLines = (it.rooms ?? []).map(r => {
+      const parts = [r.guest, r.room_name, r.confirmation_number ? `#${r.confirmation_number}` : null].filter(Boolean)
+      return parts.join('  \u00b7  ')
     })
-
-  // Hotel check-in/out derived live from bookings (single source — never stored).
-  // Check-in carries per-room lines (guest · room · conf); check-out is bare.
-  const fromHotels: ProgrammeEntry[] = []
-  for (const b of bookings) {
-    if (b.brief_show === false) continue
-    if (b.booking_type !== 'Hotel' && (b._rooms?.length ?? 0) === 0) continue
-    const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
-    const img = b.brief_image_src ?? b._hotel_image_src ?? null
-    if (b.start_date === date) {
-      const roomLines = (b._rooms ?? [])
-        .slice()
-        .sort((x, y) => (x.sort_order ?? 0) - (y.sort_order ?? 0))
-        .map(r => {
-          const guest = r.resolved_guest_name ?? r.guest_name ?? null
-          const parts = [guest, r.room_name, r.confirmation_number ? `#${r.confirmation_number}` : null].filter(Boolean)
-          return parts.join('  \u00b7  ')
-        })
-        .filter(Boolean)
-      fromHotels.push({
-        id: `checkin-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
-        title: `Check-in \u00b7 ${hotelName}`, subtitle: null, guest_label: null,
-        confirmation_number: null, notes: null, booked_by: b.booked_by ?? null,
-        brief_show: true, image_src: img, passengerLines: roomLines,
-      })
+    const paxLines = (it.passengers ?? []).map(p => {
+      const name = p.resolved_passenger_label ?? p.passenger_label ?? 'Guest'
+      const detail = [
+        p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
+        p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+      ].filter(Boolean).join('  \u00b7  ')
+      return detail ? `${name}  \u00b7  ${detail}` : name
+    })
+    return {
+      id:                  it.id,
+      category:            it.category,
+      start_time:          it.start_time,
+      end_time:            it.end_time,
+      title:               it.title,
+      subtitle:            it.subtitle,
+      guest_label:         it.guest_label,
+      confirmation_number: it.confirmation_number,
+      notes:               it.notes,
+      booked_by:           it.booked_by,
+      brief_show:          it.brief_show,
+      image_src:           it.image_src,
+      passengerLines:      [...roomLines, ...paxLines],
     }
-    if (b.end_date === date) {
-      fromHotels.push({
-        id: `checkout-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
-        title: `Check-out \u00b7 ${hotelName}`, subtitle: null, guest_label: null,
-        confirmation_number: null, notes: null, booked_by: b.booked_by ?? null,
-        brief_show: true, image_src: img, passengerLines: [],
-      })
-    }
-  }
-
-  return [...fromEntries, ...fromAux, ...fromHotels].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time))
+  })
 }
 
 // ── Entry row ─────────────────────────────────────────────────────────────────
@@ -408,12 +354,7 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
   const visibleDays = data.days.filter(d => d.show)
   for (let idx = 0; idx < visibleDays.length; idx++) {
     const day     = visibleDays[idx]
-    const entries = mergeDayEntries(
-      data.entriesByDate[day.entry_date] ?? [],
-      data.auxBookings,
-      data.trip.bookings,
-      day.entry_date,
-    )
+    const entries = timelineToRows(data.entriesByDate[day.entry_date] ?? [])
     y = await renderDay(doc, day, entries, idx, y)
   }
 
