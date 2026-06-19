@@ -435,10 +435,11 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
 
 // ── Programme tab ─────────────────────────────────────────────────────────────
 
-function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: {
+function ProgrammeTab({ days, entries, auxBookings, bookings, onActiveDayChange, brief }: {
   days:               TripDay[]
   entries:            TripDayEntry[]
   auxBookings:        TripAuxBooking[]
+  bookings:           TripBooking[]
   brief:              any
   onActiveDayChange?: (label: string, openSidebar: () => void) => void
 }) {
@@ -528,6 +529,26 @@ function ProgrammeTab({ days, entries, auxBookings, onActiveDayChange, brief }: 
           cabinClass:        isFlight ? (a.cabin_class  ?? null) : null,
           passengers:        (a.passengers ?? []).slice().sort((x, y) => x.sort_order - y.sort_order),
         }
+      }),
+    // Hotel check-in/out derived live from bookings (single source — never stored)
+    ...bookings
+      .filter(b => b.brief_show !== false && (b.booking_type === 'Hotel' || (b._rooms?.length ?? 0) > 0))
+      .flatMap(b => {
+        const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
+        const img = b.brief_image_src ?? b._hotel_image_src ?? null
+        const mk = (kind: 'in' | 'out'): CardItem => ({
+          id: `check${kind}-${b.id}`, category: 'Hotel', start_time: null, end_time: null,
+          title: `Check-${kind === 'in' ? 'in' : 'out'} \u00b7 ${hotelName}`,
+          subtitle: null, notes: null, confirmation_number: null,
+          guest_label: null, booked_by: b.booked_by ?? null,
+          image_src: img, status: null, description: null,
+          flightOrigin: null, flightDestination: null, flightDepartTime: null,
+          flightArriveTime: null, seatNumbers: null, cabinClass: null, passengers: [],
+        })
+        const out: CardItem[] = []
+        if (b.start_date === activeDay.entry_date) out.push(mk('in'))
+        if (b.end_date   === activeDay.entry_date) out.push(mk('out'))
+        return out
       }),
   ].sort((a, b) => sortKey(a.start_time) - sortKey(b.start_time)) : []
 
@@ -1558,7 +1579,7 @@ export default function ImmerseTripPage({ urlId }: { urlId: string }) {
 
         <div style={{ background: CREAM, minHeight: '60vh' }}>
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
-          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} brief={brief} onActiveDayChange={handleActiveDayChange} />}
+          {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} auxBookings={clientData.auxBookings} bookings={clientData.trip.bookings} brief={brief} onActiveDayChange={handleActiveDayChange} />}
           {activeTab === 'brief'        && <TripBriefTab clientData={clientData} days={days} entries={entries} />}
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>
