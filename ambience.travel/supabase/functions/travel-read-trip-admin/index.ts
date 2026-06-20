@@ -36,6 +36,7 @@
 // Created: S52
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildDays } from '../_shared/days.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -230,13 +231,19 @@ async function handleRooms(db: SupabaseClient, bookingId: string): Promise<Respo
 }
 
 async function handleDays(db: SupabaseClient, tripId: string): Promise<Response> {
-  const { data, error } = await db
-    .from('travel_trip_days')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('entry_date', { ascending: true })
-  if (error) return err('Failed to fetch days', 500)
-  return ok({ days: data ?? [] })
+  // Days are DERIVED from trip span; travel_trip_days is overlay-only.
+  const [{ data: trip, error: tripErr }, { data: overlay, error: ovErr }] = await Promise.all([
+    db.from('travel_trips').select('start_date, end_date').eq('id', tripId).maybeSingle(),
+    db.from('travel_trip_days').select('id, trip_id, entry_date, show, day_label, day_note').eq('trip_id', tripId),
+  ])
+  if (tripErr || ovErr) return err('Failed to fetch days', 500)
+  const days = buildDays(
+    tripId,
+    (trip?.start_date as string | null) ?? null,
+    (trip?.end_date as string | null) ?? null,
+    (overlay ?? []) as Record<string, unknown>[],
+  )
+  return ok({ days })  // admin gets ALL days incl hidden (for show toggle)
 }
 
 async function handleDayEntries(db: SupabaseClient, tripId: string): Promise<Response> {

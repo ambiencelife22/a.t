@@ -401,23 +401,10 @@ async function upsertDay(
   return data as Record<string, unknown>
 }
 
-async function createEntry(
-  db: SupabaseClient,
-  entry: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const { data, error } = await db
-    .from('travel_trip_day_entries')
-    .insert(entry)
-    .select()
-    .single()
-  if (error) throw new Error(`createEntry: ${error.message}`)
-  return data as Record<string, unknown>
-}
-
 async function handleDeriveItinerary(
   db: SupabaseClient,
   trip: DossierTrip,
-  auxBookings: AuxBooking[],
+  _auxBookings: AuxBooking[],
 ): Promise<Response> {
   if (!trip.start_date || !trip.end_date) {
     return json({ days: [], entries: [] })
@@ -436,83 +423,13 @@ async function handleDeriveItinerary(
       dates.map((date, i) => upsertDay(db, trip.id, date, i)),
     )
 
+    // Hotel + aux entries are NO LONGER derived-and-stored here. They are derived
+    // at read-time from bookings + aux by _shared/timeline.ts (single source).
+    // Writing them here created redundant source_booking_id / source_aux_id rows
+    // that double-rendered and re-polluted travel_trip_day_entries after cleanup.
+    // derive_itinerary now only seeds the day scaffold (travel_trip_days); the
+    // operator adds standalone entries (dining/experiences/notes) via create_day_entry.
     const entries: Record<string, unknown>[] = []
-
-    for (const b of trip.bookings.filter(bk => bk.brief_show !== false)) {
-      if (b.start_date && b.booking_type === 'Hotel') {
-        const hotelName = b._hotel_name ?? b.name ?? 'Hotel'
-
-        const checkIn = await createEntry(db, {
-          trip_id:             trip.id,
-          entry_date:          b.start_date,
-          start_time:          null,
-          end_time:            null,
-          title:               `Check-in \u2014 ${hotelName}`,
-          subtitle:            b.name ?? null,
-          category:            'Hotel',
-          booked_by:           b.booked_by ?? 'ambience',
-          confirmation_number: b.confirmation_number,
-          guest_label:         null,
-          notes:               b.inclusions ?? null,
-          brief_show:          true,
-          sort_order:          10,
-          is_auto_derived:     true,
-          source_booking_id:   b.id,
-          source_aux_id:       null,
-        })
-        entries.push(checkIn)
-
-        if (b.end_date) {
-          const checkOut = await createEntry(db, {
-            trip_id:             trip.id,
-            entry_date:          b.end_date,
-            start_time:          null,
-            end_time:            null,
-            title:               `Check-out \u2014 ${hotelName}`,
-            subtitle:            null,
-            category:            'Hotel',
-            booked_by:           b.booked_by ?? 'ambience',
-            confirmation_number: b.confirmation_number,
-            guest_label:         null,
-            notes:               null,
-            brief_show:          true,
-            sort_order:          90,
-            is_auto_derived:     true,
-            source_booking_id:   b.id,
-            source_aux_id:       null,
-          })
-          entries.push(checkOut)
-        }
-      }
-    }
-
-    for (const aux of auxBookings) {
-      if (!aux.start_date) continue
-      const catIcon = aux.booking_type ?? 'Other'
-      const entry = await createEntry(db, {
-        trip_id:             trip.id,
-        entry_date:          aux.start_date,
-        start_time:          aux.start_time,
-        end_time:            aux.end_time,
-        title:               aux.name ?? catIcon,
-        subtitle:            aux.origin && aux.destination
-                               ? `${aux.origin} \u2192 ${aux.destination}`
-                               : null,
-        category:            catIcon,
-        booked_by:           aux.booked_by ?? 'Own Arrangements',
-        confirmation_number: null,
-        guest_label:         null,
-        notes:               aux.notes,
-        brief_show:          true,
-        sort_order:          aux.start_time
-                               ? parseInt(aux.start_time.replace(':', ''), 10)
-                               : 50,
-        is_auto_derived:     true,
-        source_booking_id:   null,
-        source_aux_id:       aux.id,
-      })
-      entries.push(entry)
-    }
 
     return json({ days, entries })
 

@@ -102,7 +102,7 @@ export type TripBrief = {
 }
 
 export type TripDay = {
-  id:         string
+  id:         string | null
   trip_id:    string
   entry_date: string
   show:       boolean

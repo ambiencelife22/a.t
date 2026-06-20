@@ -34,6 +34,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/http.ts'
 import { resolvePartyName, attachPassengers } from '../_shared/names.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
+import { buildDays } from '../_shared/days.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
@@ -146,11 +147,11 @@ Deno.serve(async (req: Request) => {
         .eq('trip_id', tripId)
         .order('sort_order', { ascending: true }),
 
+      // Overlay only — buildDays derives the day list from trip span and applies
+      // these per-day overrides. No show filter; buildDays honors show.
       db.from('travel_trip_days')
-        .select('id, trip_id, entry_date, show, day_label, day_note, sort_order, created_at, updated_at')
-        .eq('trip_id', tripId)
-        .eq('show', true)
-        .order('sort_order', { ascending: true }),
+        .select('id, trip_id, entry_date, show, day_label, day_note')
+        .eq('trip_id', tripId),
 
       // Standalone stored entries (dining/experience/notes). Booking-sourced entries
       // are excluded downstream by timeline.ts (they are derived from bookings now).
@@ -331,7 +332,12 @@ Deno.serve(async (req: Request) => {
       destinationName: destinations[0]?.name ?? '',
       auxBookings,
       urlId:           url_id,
-      days:            daysResult.data ?? [],
+      days:            buildDays(
+                         tripId,
+                         tripResult.data.start_date as string | null,
+                         tripResult.data.end_date as string | null,
+                         (daysResult.data ?? []) as Record<string, unknown>[],
+                       ).filter(d => d.show),
       entries:         timeline,
     }
 

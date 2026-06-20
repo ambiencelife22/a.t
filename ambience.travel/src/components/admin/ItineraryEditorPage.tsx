@@ -266,7 +266,7 @@ function EntryRow({ entry, onUpdate, onDelete }: {
 function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onEntryAdd, tripId }: {
   day:           TripDay
   entries:       TripDayEntry[]
-  onDayUpdate:   (id: string, patch: TripDayPatch) => void
+  onDayUpdate:   (entryDate: string, patch: TripDayPatch) => void
   onEntryUpdate: (id: string, patch: TripDayEntryPatch) => void
   onEntryDelete: (id: string) => void
   onEntryAdd:    (entry: TripDayEntry) => void
@@ -315,7 +315,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: expanded ? `1px solid ${RULE}` : 'none' }}>
         {/* Show/hide toggle */}
         <button
-          onClick={() => { onDayUpdate(day.id, { show: !day.show }); upsertTripDay(tripId, day.entry_date, { show: !day.show }) }}
+          onClick={() => { onDayUpdate(day.entry_date, { show: !day.show }); upsertTripDay(tripId, day.entry_date, { show: !day.show }) }}
           style={{ fontFamily: A.font, fontSize: 9, color: day.show ? GOLD : FAINT, background: 'transparent', border: `1px solid ${day.show ? GOLD + '50' : RULE}`, borderRadius: 4, padding: '2px 7px', cursor: 'pointer', flexShrink: 0 }}
         >{day.show ? 'Shown' : 'Hidden'}</button>
 
@@ -335,7 +335,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
               <label style={labelSt}>Day Label Override</label>
               <input
                 style={inputStyle} value={day.day_label ?? ''}
-                onChange={e => onDayUpdate(day.id, { day_label: e.target.value })}
+                onChange={e => onDayUpdate(day.entry_date, { day_label: e.target.value })}
                 onBlur={e => upsertTripDay(tripId, day.entry_date, { day_label: e.target.value || null })}
                 placeholder={fmtDate(day.entry_date)}
               />
@@ -344,7 +344,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
               <label style={labelSt}>Empty Day Note</label>
               <input
                 style={inputStyle} value={day.day_note ?? ''}
-                onChange={e => onDayUpdate(day.id, { day_note: e.target.value })}
+                onChange={e => onDayUpdate(day.entry_date, { day_note: e.target.value })}
                 onBlur={e => upsertTripDay(tripId, day.entry_date, { day_note: e.target.value || null })}
                 placeholder='No plans today'
               />
@@ -549,8 +549,8 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
     }
   }
 
-  function updateDayLocal(id: string, patch: TripDayPatch) {
-    setDays(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d))
+  function updateDayLocal(entryDate: string, patch: TripDayPatch) {
+    setDays(prev => prev.map(d => d.entry_date === entryDate ? { ...d, ...patch } : d))
   }
 
   function updateEntryLocal(id: string, patch: TripDayEntryPatch) {
@@ -655,7 +655,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           ) : (
             days.map(day => (
               <DayBlock
-                key={day.id}
+                key={day.entry_date}
                 day={day}
                 entries={(entriesByDate[day.entry_date] ?? []).sort((a, b) => a.sort_order - b.sort_order)}
                 onDayUpdate={updateDayLocal}
