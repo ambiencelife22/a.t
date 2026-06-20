@@ -144,7 +144,36 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
     timers.current[key] = setTimeout(() => saveRow({ ...row, guest_name }, row.body), 600)
   }
 
+  async function saveGroup(group: LetterRow[]): Promise<void> {
+    // Flush pending debounce timers, then persist every row in the group.
+    for (const r of group) {
+      const bk = r.room_id
+      const nk = `name:${r.room_id}`
+      if (timers.current[bk]) { clearTimeout(timers.current[bk]); delete timers.current[bk] }
+      if (timers.current[nk]) { clearTimeout(timers.current[nk]); delete timers.current[nk] }
+    }
+    setSaving(group[0].booking_id)
+    try {
+      for (const r of group) {
+        const saved = await upsertTripWelcomeLetter(trip.id, {
+          ...(r.letter_id ? { id: r.letter_id } : {}),
+          booking_id: r.booking_id,
+          room_id:    r.room_id,
+          guest_name: r.guest_name,
+          body:       r.body,
+        })
+        setRows(prev => prev.map(x => x.room_id === r.room_id ? { ...x, letter_id: saved.id } : x))
+      }
+      success('Letters saved')
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Failed to save letters')
+    } finally {
+      setSaving(null)
+    }
+  }
+
   async function handleDownloadGroup(group: LetterRow[]) {
+    await saveGroup(group)  // flush + persist before generating, so the PDF is never stale
     const recipients = group
       .filter(r => r.body.trim())
       .map(r => ({ guest_name: r.guest_name, body: r.body }))
@@ -197,23 +226,30 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
         <div key={group[0].booking_id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{group[0].hotel_name}</div>
-            <button
-              onClick={() => handleDownloadGroup(group)}
-              disabled={downloading === group[0].booking_id}
-              style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: downloading === group[0].booking_id ? 'not-allowed' : 'pointer', opacity: downloading === group[0].booking_id ? 0.6 : 1 }}
-            >{downloading === group[0].booking_id ? 'Generating…' : 'Download'}</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => saveGroup(group)}
+                disabled={saving === group[0].booking_id}
+                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.text, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: saving === group[0].booking_id ? 'not-allowed' : 'pointer', opacity: saving === group[0].booking_id ? 0.6 : 1 }}
+              >{saving === group[0].booking_id ? 'Saving…' : 'Save'}</button>
+              <button
+                onClick={() => handleDownloadGroup(group)}
+                disabled={downloading === group[0].booking_id || saving === group[0].booking_id}
+                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: (downloading === group[0].booking_id || saving === group[0].booking_id) ? 'not-allowed' : 'pointer', opacity: (downloading === group[0].booking_id || saving === group[0].booking_id) ? 0.6 : 1 }}
+              >{downloading === group[0].booking_id ? 'Generating…' : 'Download'}</button>
+            </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {group.map(row => (
               <div key={row.room_id}>
-                <label style={labelStyle}>Recipient (for filename & {'{{guest_name}}'})</label>
+                <label style={labelStyle}>Recipient name (filename only — not the greeting)</label>
                 <input
                   style={{ fontFamily: A.font, fontSize: 12, color: A.text, background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '6px 10px', width: '100%', boxSizing: 'border-box', outline: 'none', marginBottom: 6 }}
                   value={row.guest_name}
                   onChange={e => onName(row, e.target.value)}
                   placeholder='Guest name'
                 />
-                <label style={labelStyle}>Letter (full text, including greeting)</label>
+                <label style={labelStyle}>Letter — write the full text including the greeting (Dear / Greetings / Welcome…). Use {'{{guest_name}}'} to insert the name.</label>
                 <textarea
                   style={taStyle}
                   value={row.body}
