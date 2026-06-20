@@ -51,9 +51,10 @@ const taStyle: React.CSSProperties = {
 type LetterRow = {
   booking_id:  string
   room_id:     string
-  guest_name:  string          // derived default (editable in the PDF data, not here)
+  guest_name:  string
   hotel_name:  string
-  letter_id:   string | null   // existing stored letter, if any
+  check_in:    string | null   // booking start_date — for the filename
+  letter_id:   string | null
   body:        string
 }
 
@@ -76,6 +77,7 @@ function buildRows(bookings: TripBooking[], letters: TripWelcomeLetter[]): Lette
         room_id:    r.id,
         guest_name: roomGuest(r),
         hotel_name: b._hotel_name ?? b.name ?? 'Accommodation',
+        check_in:   b.start_date ?? null,
         letter_id:  existing?.id ?? null,
         body:       existing?.body ?? '',
       })
@@ -91,7 +93,7 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
   const [rows,    setRows]    = useState<LetterRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState<string | null>(null)
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -135,18 +137,32 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
     timers.current[key] = setTimeout(() => saveRow({ ...row, body }, body), 600)
   }
 
-  async function handleDownload() {
-    const recipients = rows
+  function onName(row: LetterRow, guest_name: string) {
+    setRows(prev => prev.map(r => r.room_id === row.room_id ? { ...r, guest_name } : r))
+    const key = `name:${row.room_id}`
+    if (timers.current[key]) clearTimeout(timers.current[key])
+    timers.current[key] = setTimeout(() => saveRow({ ...row, guest_name }, row.body), 600)
+  }
+
+  async function handleDownloadGroup(group: LetterRow[]) {
+    const recipients = group
       .filter(r => r.body.trim())
       .map(r => ({ guest_name: r.guest_name, body: r.body }))
-    if (recipients.length === 0) { error('No letters written yet'); return }
-    setDownloading(true)
+    if (recipients.length === 0) { error('No letters written for this accommodation yet'); return }
+    setDownloading(group[0].booking_id)
     try {
-      await exportWelcomeLetterPdf({ trip, brief: trip.brief ?? null, recipients })
+      await exportWelcomeLetterPdf({
+        trip,
+        brief:       trip.brief ?? null,
+        recipients,
+        accomName:   group[0].hotel_name,
+        groupName:   trip.brief?.prepared_for ?? '',
+        checkInDate: group[0].check_in,
+      })
     } catch (e) {
       error(e instanceof Error ? e.message : 'Failed to generate PDF')
     } finally {
-      setDownloading(false)
+      setDownloading(null)
     }
   }
 
@@ -173,24 +189,31 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
-          Welcome Letters ({rows.length})
-        </div>
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '6px 14px', cursor: downloading ? 'not-allowed' : 'pointer', opacity: downloading ? 0.6 : 1 }}
-        >{downloading ? 'Generating…' : 'Download Welcome Letters'}</button>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
+        Welcome Letters ({rows.length})
       </div>
 
       {[...byHotel.values()].map(group => (
         <div key={group[0].booking_id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '12px 14px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font, marginBottom: 10 }}>{group[0].hotel_name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{group[0].hotel_name}</div>
+            <button
+              onClick={() => handleDownloadGroup(group)}
+              disabled={downloading === group[0].booking_id}
+              style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: downloading === group[0].booking_id ? 'not-allowed' : 'pointer', opacity: downloading === group[0].booking_id ? 0.6 : 1 }}
+            >{downloading === group[0].booking_id ? 'Generating…' : 'Download'}</button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {group.map(row => (
               <div key={row.room_id}>
-                <label style={labelStyle}>Dear {row.guest_name},</label>
+                <label style={labelStyle}>Addressed to</label>
+                <input
+                  style={{ fontFamily: A.font, fontSize: 12, color: A.text, background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '6px 10px', width: '100%', boxSizing: 'border-box', outline: 'none', marginBottom: 6 }}
+                  value={row.guest_name}
+                  onChange={e => onName(row, e.target.value)}
+                  placeholder='Guest name'
+                />
+                <label style={labelStyle}>Letter (Dear {row.guest_name || 'Guest'},)</label>
                 <textarea
                   style={taStyle}
                   value={row.body}

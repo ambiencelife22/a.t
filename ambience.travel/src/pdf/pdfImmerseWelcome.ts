@@ -32,9 +32,12 @@ export interface WelcomeRecipient {
 }
 
 export interface WelcomeLetterData {
-  trip:       DossierTrip
-  brief:      TripBrief | null
-  recipients: WelcomeRecipient[]
+  trip:        DossierTrip
+  brief:       TripBrief | null
+  recipients:  WelcomeRecipient[]
+  accomName:   string         // hotel name for filename
+  groupName:   string         // primary guest / group (prepared_for) for filename
+  checkInDate: string | null  // booking start_date (ISO) → DDMMMYY in filename
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -107,10 +110,24 @@ function renderLetter(doc: any, recipient: WelcomeRecipient, emblem: Img | null,
 
 // ── Filename ──────────────────────────────────────────────────────────────────
 
+// DDMMMYY, e.g. 24MAY26 — uppercase month, no separators.
+function fmtCheckIn(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso.slice(0, 10) + 'T00:00:00')
+  const dd  = String(d.getDate()).padStart(2, '0')
+  const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+  const yy  = String(d.getFullYear()).slice(-2)
+  return `${dd}${mon}${yy}`
+}
+
 function buildFilename(data: WelcomeLetterData): string {
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const dest = data.trip.destinations[0]?.name ?? 'Trip'
-  return `Welcome Letters - ${safe(dest)}.pdf`
+  const parts = ['WELCOME LETTER', safe(data.accomName) || 'Accommodation']
+  const group = safe(data.groupName)
+  if (group) parts.push(group)
+  const ci = fmtCheckIn(data.checkInDate)
+  if (ci) parts.push(ci)
+  return parts.join(' - ') + '.pdf'
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
