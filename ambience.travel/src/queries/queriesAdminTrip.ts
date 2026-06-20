@@ -9,11 +9,9 @@
 //
 // S52 — All read and write paths routed through Edge Functions.
 //   travel-read-trip-admin: all 7 read paths.
-//   travel-write-trip: all 11 mutation paths + derive_itinerary orchestration.
+//   travel-write-trip: all mutation paths.
 //   No direct supabase table reads or writes remain in this file.
 //   supabase (session client) used for all EF calls — JWT attached automatically.
-//   autoDeriveTripItinerary now fires a single EF call (derive_itinerary mode)
-//   replacing the prior multi-round-trip client-side loop.
 //
 // Last updated: S50 — TripBrief gains show_advisor_email. Mirrors migration
 //   s50_add_show_advisor_email. Gates advisor_email visibility on public
@@ -579,22 +577,6 @@ export async function updateTripDayEntry(id: string, patch: TripDayEntryPatch): 
 
 export async function deleteTripDayEntry(id: string): Promise<void> {
   await invokeWriteTrip({ mode: 'delete_day_entry', id })
-}
-
-// ── autoDeriveTripItinerary — single EF call ──────────────────────────────────
-// Server-side orchestration via derive_itinerary mode.
-// Replaces the prior client-side loop — one network call regardless of trip
-// length. Partial derives are no longer possible.
-
-export async function autoDeriveTripItinerary(
-  trip: DossierTrip,
-  auxBookings: TripAuxBooking[],
-): Promise<{ days: TripDay[]; entries: TripDayEntry[] }> {
-  if (!trip.start_date || !trip.end_date) return { days: [], entries: [] }
-  const { days, entries } = await invokeWriteTrip<{ days: TripDay[]; entries: TripDayEntry[] }>({
-    mode: 'derive_itinerary', trip, aux_bookings: auxBookings,
-  })
-  return { days, entries }
 }
 
 // ── Engagement public_view toggle ─────────────────────────────────────────────

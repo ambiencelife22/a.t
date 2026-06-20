@@ -18,7 +18,7 @@
 //   update_room | delete_room | create_aux_booking | update_aux_booking |
 //   delete_aux_booking | create_aux_passenger | update_aux_passenger |
 //   delete_aux_passenger | upsert_day | create_day_entry | update_day_entry |
-//   delete_day_entry | set_public_view | derive_itinerary
+//   delete_day_entry | set_public_view
 //
 // create_room / update_room resolve the room's guest name on return (S53G
 // single-source) so callers receive resolved_guest_name without a re-read.
@@ -49,7 +49,6 @@ type Mode =
   | 'update_day_entry'
   | 'delete_day_entry'
   | 'set_public_view'
-  | 'derive_itinerary'
 
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
@@ -347,98 +346,6 @@ async function handleSetPublicView(
   return json({ success: true })
 }
 
-// ── derive_itinerary — server-side orchestration ───────────────────────────────
-
-type DossierBooking = {
-  id:                  string
-  trip_id:             string
-  booking_type:        string | null
-  name:                string | null
-  confirmation_number: string | null
-  start_date:          string | null
-  end_date:            string | null
-  brief_show:          boolean
-  booked_by:           string | null
-  inclusions:          string | null
-  _hotel_name:         string | null
-}
-
-type AuxBooking = {
-  id:           string
-  start_date:   string | null
-  start_time:   string | null
-  end_time:     string | null
-  name:         string | null
-  booking_type: string | null
-  origin:       string | null
-  destination:  string | null
-  booked_by:    string | null
-  notes:        string | null
-}
-
-type DossierTrip = {
-  id:         string
-  start_date: string | null
-  end_date:   string | null
-  bookings:   DossierBooking[]
-}
-
-async function upsertDay(
-  db: SupabaseClient,
-  tripId: string,
-  date: string,
-  sortOrder: number,
-): Promise<Record<string, unknown>> {
-  const { data, error } = await db
-    .from('travel_trip_days')
-    .upsert(
-      { trip_id: tripId, entry_date: date, sort_order: sortOrder, show: true },
-      { onConflict: 'trip_id,entry_date' },
-    )
-    .select()
-    .single()
-  if (error) throw new Error(`upsertDay ${date}: ${error.message}`)
-  return data as Record<string, unknown>
-}
-
-async function handleDeriveItinerary(
-  db: SupabaseClient,
-  trip: DossierTrip,
-  _auxBookings: AuxBooking[],
-): Promise<Response> {
-  if (!trip.start_date || !trip.end_date) {
-    return json({ days: [], entries: [] })
-  }
-
-  const dates: string[] = []
-  const cursor = new Date(trip.start_date + 'T00:00:00')
-  const end    = new Date(trip.end_date   + 'T00:00:00')
-  while (cursor <= end) {
-    dates.push(cursor.toISOString().slice(0, 10))
-    cursor.setDate(cursor.getDate() + 1)
-  }
-
-  try {
-    const days = await Promise.all(
-      dates.map((date, i) => upsertDay(db, trip.id, date, i)),
-    )
-
-    // Hotel + aux entries are NO LONGER derived-and-stored here. They are derived
-    // at read-time from bookings + aux by _shared/timeline.ts (single source).
-    // Writing them here created redundant source_booking_id / source_aux_id rows
-    // that double-rendered and re-polluted travel_trip_day_entries after cleanup.
-    // derive_itinerary now only seeds the day scaffold (travel_trip_days); the
-    // operator adds standalone entries (dining/experiences/notes) via create_day_entry.
-    const entries: Record<string, unknown>[] = []
-
-    return json({ days, entries })
-
-  } catch (e) {
-    console.error('derive_itinerary error:', e)
-    return json({ error: 'Failed to derive itinerary' }, 500)
-  }
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -538,11 +445,6 @@ Deno.serve(async (req: Request) => {
         const { trip_id, public_view } = body as { trip_id?: string; public_view?: boolean }
         if (!trip_id || public_view === undefined) return json({ error: 'trip_id, public_view required' }, 400)
         return handleSetPublicView(db, trip_id, public_view)
-      }
-      case 'derive_itinerary': {
-        const { trip, aux_bookings } = body as { trip?: DossierTrip; aux_bookings?: AuxBooking[] }
-        if (!trip || !aux_bookings) return json({ error: 'trip, aux_bookings required' }, 400)
-        return handleDeriveItinerary(db, trip, aux_bookings)
       }
       default:
         return json({ error: `Unknown mode: ${mode}` }, 400)

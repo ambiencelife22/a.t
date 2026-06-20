@@ -11,8 +11,9 @@
  *     - Add entry per day, delete entry
  *   - Right panel (58%): live HTML preview, debounced 300ms
  *
- * Auto-derive: on first open (no days exist), system seeds days + entries
- *   from travel_bookings + travel_trip_aux_bookings.
+ * Days: derived from the trip span (start_date..end_date) by the read EF.
+ *   travel_trip_days is overlay-only (show / day_label / day_note). Editing a
+ *   day creates its overlay row on first change (upsert keyed by entry_date).
  *
  * Empty days: always shown with "No plans today" unless day_note overrides.
  *   Admin can hide individual days via show toggle.
@@ -29,12 +30,10 @@ import {
   fetchTripDossierForHouse,
   fetchTripDays,
   fetchTripDayEntries,
-  fetchTripAuxBookings,
   upsertTripDay,
   createTripDayEntry,
   updateTripDayEntry,
   deleteTripDayEntry,
-  autoDeriveTripItinerary,
 } from '../../queries/queriesAdminTrip'
 import type {
   DossierTrip,
@@ -423,7 +422,7 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
           const dayLabel = day.day_label || fmtDate(day.entry_date)
 
           return (
-            <div key={day.id}>
+            <div key={day.entry_date}>
               {/* Day header */}
               <div style={{ padding: '20px 24px 10px', borderBottom: `1px solid ${RULE}` }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -505,8 +504,6 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
   const [days,     setDays]     = useState<TripDay[]>([])
   const [entries,  setEntries]  = useState<TripDayEntry[]>([])
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
-  const [deriving, setDeriving] = useState(false)
-  const [derived,  setDerived]  = useState(false)
 
   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
@@ -528,26 +525,9 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
       setHouse(dossier.house)
       setDays(daysData)
       setEntries(entriesData)
-      setDerived(daysData.length > 0)
     }
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
   }, [tripId])
-
-  async function handleAutoDerive() {
-    if (!trip) return
-    setDeriving(true)
-    try {
-      const auxBookings = await fetchTripAuxBookings(tripId)
-      const { days: newDays, entries: newEntries } = await autoDeriveTripItinerary(trip, auxBookings)
-      setDays(newDays)
-      setEntries(prev => [...prev, ...newEntries])
-      setDerived(true)
-    } catch (err) {
-      console.error('Auto-derive failed:', err)
-    } finally {
-      setDeriving(false)
-    }
-  }
 
   function updateDayLocal(entryDate: string, patch: TripDayPatch) {
     setDays(prev => prev.map(d => d.entry_date === entryDate ? { ...d, ...patch } : d))
@@ -617,12 +597,6 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{trip.trip_code}</span>
           <span style={{ fontSize: 10, color: MUTED }}>Daily Programme</span>
         </div>
-        {!derived && (
-          <button
-            onClick={handleAutoDerive} disabled={deriving}
-            style={{ ...btnBase, background: GOLD + '20', color: GOLD, border: `1px solid ${GOLD}40`, opacity: deriving ? 0.6 : 1 }}
-          >{deriving ? 'Generating...' : 'Auto-populate from Bookings'}</button>
-        )}
         <button
           onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days, entriesByDate: entriesByDate as unknown as Record<string, import('../../types/typesTimeline').TimelineItem[]> })}
           disabled={!pdfReady || pdfDownloading || days.length === 0}
@@ -643,14 +617,10 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
         <div style={{ width: '42%', flexShrink: 0, borderRight: `1px solid ${RULE}`, overflowY: 'auto', background: CREAM2, padding: 20 }}>
           {days.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: 60 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: INK, marginBottom: 8 }}>No itinerary yet</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: INK, marginBottom: 8 }}>No days yet</div>
               <div style={{ fontSize: 11, color: MUTED, marginBottom: 24, lineHeight: 1.6 }}>
-                Auto-populate from your bookings and flights,<br />then customise each day.
+                Set the trip's start and end dates on the Brief,<br />and the days will appear here automatically.
               </div>
-              <button
-                onClick={handleAutoDerive} disabled={deriving}
-                style={{ ...btnBase, background: INK, color: CREAM, opacity: deriving ? 0.6 : 1 }}
-              >{deriving ? 'Generating...' : 'Auto-populate from Bookings'}</button>
             </div>
           ) : (
             days.map(day => (
