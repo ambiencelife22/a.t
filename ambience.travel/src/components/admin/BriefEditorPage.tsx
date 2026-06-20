@@ -55,6 +55,7 @@ import { bookedByLabel } from '../../utils/utilsBooking'
 import { supabase } from '../../lib/supabase'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
+import { WelcomeLettersEditor } from './WelcomeLettersEditor'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1278,6 +1279,14 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                 ))}
               </div>
             )}
+          </section>
+
+          <section>
+            <div style={sectionHeadStyle}>Welcome Letters</div>
+            <p style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>
+              A personal arrival letter per room guest, per accommodation. Download all as one PDF for the hotel to print.
+            </p>
+            <WelcomeLettersEditor trip={trip} />
           </section>
 
           {hasVisibleAux && (

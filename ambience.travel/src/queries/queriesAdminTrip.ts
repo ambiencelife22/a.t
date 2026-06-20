@@ -552,6 +552,41 @@ export async function deleteAuxPassenger(id: string): Promise<void> {
   await invokeWriteTrip({ mode: 'delete_aux_passenger', id })
 }
 
+// ── Welcome letters (arrival) ─────────────────────────────────────────────────
+// Per room-guest per accommodation. One PDF letter per row, for the hotel to print.
+
+export type TripWelcomeLetter = {
+  id:         string
+  trip_id:    string
+  booking_id: string
+  room_id:    string | null
+  guest_name: string
+  body:       string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type TripWelcomeLetterPatch = Partial<Omit<TripWelcomeLetter, 'trip_id' | 'created_at' | 'updated_at'>>
+
+export async function fetchTripWelcomeLetters(tripId: string): Promise<TripWelcomeLetter[]> {
+  const { letters } = await invokeReadTrip<{ letters: TripWelcomeLetter[] }>({
+    mode: 'welcome_letters', trip_id: tripId,
+  })
+  return letters
+}
+
+export async function upsertTripWelcomeLetter(tripId: string, letter: TripWelcomeLetterPatch): Promise<TripWelcomeLetter> {
+  const { letter: row } = await invokeWriteTrip<{ letter: TripWelcomeLetter }>({
+    mode: 'upsert_welcome_letter', trip_id: tripId, letter,
+  })
+  return row
+}
+
+export async function deleteTripWelcomeLetter(id: string): Promise<void> {
+  await invokeWriteTrip({ mode: 'delete_welcome_letter', id })
+}
+
 // ── Itinerary CRUD ────────────────────────────────────────────────────────────
 
 export async function upsertTripDay(tripId: string, date: string, patch: TripDayPatch): Promise<TripDay> {

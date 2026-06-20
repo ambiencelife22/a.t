@@ -48,6 +48,7 @@ type Mode =
   | 'brief'
   | 'rooms'
   | 'days'
+  | 'welcome_letters'
   | 'day_entries'
   | 'aux_bookings'
   | 'public_view'
@@ -246,6 +247,16 @@ async function handleDays(db: SupabaseClient, tripId: string): Promise<Response>
   return ok({ days })  // admin gets ALL days incl hidden (for show toggle)
 }
 
+async function handleWelcomeLetters(db: SupabaseClient, tripId: string): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_trip_welcome_letters')
+    .select('*')
+    .eq('trip_id', tripId)
+    .order('sort_order', { ascending: true })
+  if (error) return err('Failed to fetch welcome letters', 500)
+  return ok({ letters: data ?? [] })
+}
+
 async function handleDayEntries(db: SupabaseClient, tripId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_trip_day_entries')
@@ -338,6 +349,10 @@ Deno.serve(async (req: Request) => {
       case 'days':
         if (!trip_id) return err('trip_id is required for days mode', 400)
         return handleDays(serviceClient, trip_id)
+
+      case 'welcome_letters':
+        if (!trip_id) return err('trip_id is required for welcome_letters mode', 400)
+        return handleWelcomeLetters(serviceClient, trip_id)
 
       case 'day_entries':
         if (!trip_id) return err('trip_id is required for day_entries mode', 400)

@@ -48,6 +48,8 @@ type Mode =
   | 'create_day_entry'
   | 'update_day_entry'
   | 'delete_day_entry'
+  | 'upsert_welcome_letter'
+  | 'delete_welcome_letter'
   | 'set_public_view'
 
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
@@ -333,6 +335,30 @@ async function handleDeleteDayEntry(db: SupabaseClient, id: string): Promise<Res
   return json({ success: true })
 }
 
+async function handleUpsertWelcomeLetter(
+  db: SupabaseClient,
+  tripId: string,
+  letter: Record<string, unknown>,
+): Promise<Response> {
+  const row = { ...letter, trip_id: tripId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
+  const { data, error } = await db
+    .from('travel_trip_welcome_letters')
+    .upsert(row, { onConflict: 'id' })
+    .select()
+    .single()
+  if (error) return json({ error: 'Failed to upsert welcome letter' }, 500)
+  return json({ letter: data })
+}
+
+async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promise<Response> {
+  const { error } = await db
+    .from('travel_trip_welcome_letters')
+    .delete()
+    .eq('id', id)
+  if (error) return json({ error: 'Failed to delete welcome letter' }, 500)
+  return json({ success: true })
+}
+
 async function handleSetPublicView(
   db: SupabaseClient,
   tripId: string,
@@ -445,6 +471,16 @@ Deno.serve(async (req: Request) => {
         const { trip_id, public_view } = body as { trip_id?: string; public_view?: boolean }
         if (!trip_id || public_view === undefined) return json({ error: 'trip_id, public_view required' }, 400)
         return handleSetPublicView(db, trip_id, public_view)
+      }
+      case 'upsert_welcome_letter': {
+        const { trip_id, letter } = body as { trip_id?: string; letter?: Record<string, unknown> }
+        if (!trip_id || !letter) return json({ error: 'trip_id, letter required' }, 400)
+        return handleUpsertWelcomeLetter(db, trip_id, letter)
+      }
+      case 'delete_welcome_letter': {
+        const { id } = body as { id?: string }
+        if (!id) return json({ error: 'id required' }, 400)
+        return handleDeleteWelcomeLetter(db, id)
       }
       default:
         return json({ error: `Unknown mode: ${mode}` }, 400)
