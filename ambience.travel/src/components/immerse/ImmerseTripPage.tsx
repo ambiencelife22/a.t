@@ -1244,7 +1244,7 @@ function TripNotFound() {
   return (
     <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: '0 24px', textAlign: 'center' }}>
       <div style={{ fontSize: 20, fontFamily: SERIF, color: INK }}>This trip is not available.</div>
-      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel \u2192</a>
+      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel {'\u2192'}</a>
     </div>
   )
 }
@@ -1501,7 +1501,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                 >
                   <span style={{ fontSize: 11, color: GOLD, flexShrink: 0, lineHeight: 1 }}>☰</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeDayLabel}</span>
-                  <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>\u203a</span>
+                  <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>{'\u203a'}</span>
                 </button>
               )}
             </div>
