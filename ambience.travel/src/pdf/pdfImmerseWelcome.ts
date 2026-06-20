@@ -77,13 +77,9 @@ function renderLetter(doc: any, recipient: WelcomeRecipient, emblem: Img | null,
 
   let y = LETTER.bodyTopY
 
-  // Salutation — rendered automatically.
-  serif(doc, 'normal', 12)
-  doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-  doc.text(`Dear ${recipient.guest_name},`, P.margin, y)
-  y += LETTER.lineH * 2
-
-  // Body — authored verbatim (sign-off + signer are written into this text).
+  // Body — authored verbatim, greeting line included. {{guest_name}} substituted.
+  // The operator controls the full letter from the greeting down (Dear / Greetings /
+  // Welcome, etc.) and the sign-off.
   // Paragraphs split on blank lines; single newlines preserved as line breaks.
   const body = personalise(recipient.body ?? '', recipient.guest_name)
   const paragraphs = body.split(/\n\s*\n/).map(p => p.replace(/\s+$/g, '')).filter(p => p.trim())

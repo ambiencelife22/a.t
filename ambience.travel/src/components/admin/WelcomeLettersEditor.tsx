@@ -206,19 +206,19 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {group.map(row => (
               <div key={row.room_id}>
-                <label style={labelStyle}>Addressed to</label>
+                <label style={labelStyle}>Recipient (for filename & {'{{guest_name}}'})</label>
                 <input
                   style={{ fontFamily: A.font, fontSize: 12, color: A.text, background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '6px 10px', width: '100%', boxSizing: 'border-box', outline: 'none', marginBottom: 6 }}
                   value={row.guest_name}
                   onChange={e => onName(row, e.target.value)}
                   placeholder='Guest name'
                 />
-                <label style={labelStyle}>Letter (Dear {row.guest_name || 'Guest'},)</label>
+                <label style={labelStyle}>Letter (full text, including greeting)</label>
                 <textarea
                   style={taStyle}
                   value={row.body}
                   onChange={e => onBody(row, e.target.value)}
-                  placeholder={'Welcome to ' + (group[0].hotel_name) + '!\n\nI hope you arrived well...\n\nMy very best,\nDeron'}
+                  placeholder={'Dear ' + (row.guest_name || '{{guest_name}}') + ',\n\nWelcome to ' + group[0].hotel_name + '!\n\nI hope you arrived well...\n\nMy best,\nDeron'}
                 />
               </div>
             ))}
