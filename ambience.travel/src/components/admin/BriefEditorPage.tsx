@@ -815,6 +815,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   const [showTabProgramme,    setShowTabProgramme]    = useState(true)
   const [showTabBrief,        setShowTabBrief]        = useState(true)
   const [showTabContacts,     setShowTabContacts]     = useState(true)
+  const [showTabWelcome,      setShowTabWelcome]      = useState(false)
 
   const [roomImageSrcs, setRoomImageSrcs] = useState<Record<string, string>>({})
   const [roomDrafts,    setRoomDrafts]    = useState<Record<string, RoomDraft>>({})
@@ -857,6 +858,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
         setShowTabProgramme(br.show_tab_programme       ?? true)
         setShowTabBrief(br.show_tab_brief               ?? true)
         setShowTabContacts(br.show_tab_contacts         ?? true)
+        setShowTabWelcome((br as any).show_tab_welcome  ?? false)
         return
       }
       setPreparedFor(dossier.house?.display_name ?? '')
@@ -884,7 +886,8 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
   async function persistToggle(
     field: 'show_advisor_email' | 'show_advisor_phone'
          | 'show_tab_confirmation' | 'show_tab_programme'
-         | 'show_tab_brief'        | 'show_tab_contacts',
+         | 'show_tab_brief'        | 'show_tab_contacts'
+         | 'show_tab_welcome',
     value: boolean,
   ) {
     if (!trip || !house) return
@@ -1184,6 +1187,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {([
+                { key: 'welcome',      label: 'Welcome Letter', value: showTabWelcome,      setter: setShowTabWelcome,      field: 'show_tab_welcome'      as const },
                 { key: 'confirmation', label: 'Confirmation', value: showTabConfirmation, setter: setShowTabConfirmation, field: 'show_tab_confirmation' as const },
                 { key: 'programme',    label: 'Programme',    value: showTabProgramme,    setter: setShowTabProgramme,    field: 'show_tab_programme'    as const },
                 { key: 'brief',        label: 'Brief',        value: showTabBrief,        setter: setShowTabBrief,        field: 'show_tab_brief'        as const },

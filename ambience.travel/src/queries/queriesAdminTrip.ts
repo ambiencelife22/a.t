@@ -91,6 +91,7 @@ export type TripBrief = {
   show_tab_programme:    boolean
   show_tab_brief:        boolean
   show_tab_contacts:     boolean
+  show_tab_welcome:      boolean
   show_advisor_phone:    boolean
   show_advisor_email:    boolean
   links:                 { label: string; url: string }[]

@@ -63,7 +63,7 @@ type TripData = {
   entries:    TimelineItem[]
 }
 
-type TabId = 'confirmation' | 'programme' | 'brief' | 'contacts'
+type TabId = 'welcome' | 'confirmation' | 'programme' | 'brief' | 'contacts'
 
 // S54 — resolved house contact (from travel-get-trip-confirmation `contacts`)
 type TripContact = {
@@ -1318,6 +1318,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
         if (initialTab === 'contacts' && brief?.show_tab_contacts !== false)             { setActiveTab('contacts');     return }
         if (initialTab === 'brief' && brief?.show_tab_brief !== false)                   { setActiveTab('brief');        return }
 
+        if ((brief as any)?.show_tab_welcome === true && (brief as any)?.welcome_letter) { setActiveTab('welcome'); return }
         if (brief?.show_tab_brief !== false)    { setActiveTab('brief');        return }
         if (hasProgramme)                        { setActiveTab('programme');    return }
         if (brief?.show_tab_confirmation !== false) { setActiveTab('confirmation'); return }
@@ -1335,7 +1336,11 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
   const { clientData, days, entries } = tripData
   const { trip, brief, house } = clientData
 
+  const welcomeLetter = (brief as any)?.welcome_letter ?? null
+  const welcomeAsTab  = (brief as any)?.show_tab_welcome === true && !!welcomeLetter
+
   const tabs: { id: TabId; label: string }[] = []
+  if (welcomeAsTab) tabs.push({ id: 'welcome', label: 'Welcome' })
   if (brief?.show_tab_brief        !== false) tabs.push({ id: 'brief',        label: 'Trip Brief' })
   if (brief?.show_tab_programme    !== false) tabs.push({ id: 'programme',    label: 'Programme' })
   if (brief?.show_tab_confirmation !== false) tabs.push({ id: 'confirmation', label: 'Confirmation' })
@@ -1346,8 +1351,6 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
   const guestName    = brief?.prepared_for ?? ''
   const dateLabel    = buildDateRange(trip.start_date, trip.end_date) || undefined
-
-  const welcomeLetter = (brief as any)?.welcome_letter ?? null
 
   return (
     <ImmerseLayout>
@@ -1364,7 +1367,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
         secondaryLabel={tabs[1]?.label}
       />
 
-      {welcomeLetter && (
+      {welcomeLetter && !welcomeAsTab && (
         <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: CREAM }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
             <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: FAINT, marginBottom: 28, fontFamily: SANS }}>Welcome</p>
@@ -1590,6 +1593,23 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
         </div>
 
         <div style={{ background: CREAM, minHeight: '60vh' }}>
+          {activeTab === 'welcome' && (
+            <div style={{ padding: 'clamp(40px,6vw,80px) clamp(20px,5vw,48px)' }}>
+              <div style={{ maxWidth: 720, margin: '0 auto' }}>
+                <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: FAINT, marginBottom: 28, fontFamily: SANS }}>Welcome</p>
+                {(welcomeLetter as string).split('\n\n').filter(Boolean).map((p: string, i: number, arr: string[]) => (
+                  <p key={i} style={{
+                    fontSize:      i === 0 ? 'clamp(18px,2vw,26px)' : 15,
+                    fontFamily:    i === 0 ? SERIF : SANS,
+                    lineHeight:    1.85,
+                    color:         i === 0 ? INK : MUTED,
+                    marginBottom:  i === arr.length - 1 ? 0 : 20,
+                    letterSpacing: i === 0 ? '-0.01em' : 'normal',
+                  }}>{p}</p>
+                ))}
+              </div>
+            </div>
+          )}
           {activeTab === 'confirmation' && <ConfirmationTab clientData={clientData} />}
           {activeTab === 'programme'    && <ProgrammeTab days={days} entries={entries} brief={brief} onActiveDayChange={handleActiveDayChange} />}
           {activeTab === 'brief'        && <TripBriefTab clientData={clientData} />}
