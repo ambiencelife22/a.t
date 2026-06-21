@@ -56,6 +56,7 @@ import { supabase } from '../../lib/supabase'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 import { WelcomeLettersEditor } from './WelcomeLettersEditor'
+import { roomGuestName } from '../../utils/utilsRoomDisplay'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -680,7 +681,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       {rooms.map((room, ri) => {
                         const d                = roomDrafts[room.id]
                         const roomName         = d?.room_name         ?? room.room_name         ?? null
-                        const guestName        = d?.guest_name        || room.resolved_guest_name || room.guest_name || null
+                        const guestName        = (d?.guest_name || roomGuestName(room)) ?? null
                         const partyComposition = d?.party_composition ?? room.party_composition ?? null
                         const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
                         const guestParts: string[] = []

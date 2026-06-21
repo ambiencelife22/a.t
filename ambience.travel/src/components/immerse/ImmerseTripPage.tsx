@@ -13,7 +13,7 @@
 //       Trip Brief   — structured summary (flights, hotels, transfers, contacts)
 //       Contacts     — advisor + selected house people
 //   - Collapsible left sidebar day navigator on Programme tab (desktop + mobile)
-//   - Status pills: Recommended / Awaiting Decision / Pending / Confirmed / Paid / Cancelled
+//   - Status pills via typesEventStatus (getEventStatusMeta) — single registry
 //   - Clickable image gallery on event cards
 //   - PDF download (confirmation brief + programme)
 //
@@ -23,18 +23,15 @@
 //   - PDF generation (pdfImmerseConfirmation.ts, pdfImmerseProgramme.ts)
 //   - Edge Functions (get-trip-confirmation, get-trip-programme)
 //
-// Last updated: S54 — Contacts tab renders selected house people from the EF
-//   `contacts` array (brief.contact_person_ids + contact_name_format). Falls back
-//   to house.display_name when none selected.
-//               S49 — mobile horizontal scroll + right-padding fixes.
-//               S49r2 — unified mobile nav bar.
-//               S49r3 — full image overlay chain in ConfirmationTab.
-//               S49r4 — hero image fallback uses || not ??.
-//               S49r5 — Guides section in TripBriefTab.
-//               S49r6 — Brief PDF calls exportTripBriefPdf.
-//               S49r7 — unicode escape fixes in single-quoted strings.
-//               S50 — show_tab_itinerary renamed to show_tab_programme.
-//               S50r2 — duplicate Guides block removed from TripBriefTab.
+// Last updated:
+//   S55 — room + passenger display single-sourced via utilsRoomDisplay
+//     (webRoomDisplay / passengerName); no inline guest-name composition left here.
+//   S54 — Contacts tab renders selected house people from the EF `contacts` array
+//     (brief.contact_person_ids + contact_name_format); falls back to house.display_name.
+//   S50 — show_tab_itinerary renamed to show_tab_programme; duplicate Guides block
+//     removed from TripBriefTab.
+//   S49 — mobile pass: unified nav bar, horizontal-scroll + right-padding fixes,
+//     full image overlay chain in ConfirmationTab, Guides section in TripBriefTab.
 
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
@@ -48,6 +45,7 @@ import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfir
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
 import { bookedByLabel }                      from '../../utils/utilsBooking'
+import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
@@ -342,7 +340,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                 {rooms.length > 0 && (
                   <div style={{ borderTop: `0.5px solid ${RULE}` }}>
                     {rooms.map((room, ri) => {
-                      const guests = [room.resolved_guest_name || room.guest_name, room.party_composition].filter(Boolean).join(' · ')
+                      const guests = webRoomDisplay(room).guestLine
                       return (
                         <div key={room.id ?? ri} style={{
                           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
@@ -416,7 +414,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                           ].filter(Boolean).join('  \u00b7  ')
                           return (
                             <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{passengerName(p)}</span>
                               {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{detail}</span>}
                             </div>
                           )
@@ -711,7 +709,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
-                              const guestLine = [room.guest, room.party_composition, room.room_name].filter(Boolean).join(' \u00b7 ')
+                              const guestLine = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name }).guestLine
                               return (
                                 <div key={room.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
@@ -963,7 +961,7 @@ function TripBriefTab({ clientData }: {
                         return (
                           <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>
-                              {p.resolved_passenger_label || p.passenger_label || 'Guest'}
+                              {passengerName(p)}
                             </div>
                             {detail && (
                               <div style={{ fontSize: 11, color: MUTED, fontFamily: 'DM Mono, monospace' }}>

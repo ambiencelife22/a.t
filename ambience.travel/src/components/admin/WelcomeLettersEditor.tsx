@@ -30,6 +30,7 @@ import type {
   DossierTrip, TripBooking, BookingRoom, TripWelcomeLetter,
 } from '../../queries/queriesAdminTrip'
 import { exportWelcomeLetterPdf } from '../../pdf/pdfImmerseWelcome'
+import { roomGuestName } from '../../utils/utilsRoomDisplay'
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ type LetterRow = {
 }
 
 function roomGuest(r: BookingRoom): string {
-  return (r.resolved_guest_name ?? r.guest_name ?? 'Guest').trim() || 'Guest'
+  return (roomGuestName(r) ?? 'Guest').trim() || 'Guest'
 }
 
 // Bookings that are accommodations (have rooms). Flights/aux have none.

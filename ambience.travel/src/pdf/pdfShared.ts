@@ -25,6 +25,7 @@
 import { serif, sans, drawRule, loadImg, loadSvg, makeCoverCropAsync } from './pdfUtils'
 import type { RGB, Img } from './pdfUtils'
 import type { TripBrief } from '../queries/queriesAdminTrip'
+import { roomGuestName, passengerName } from '../utils/utilsRoomDisplay'
 
 // ── Theme — single palette for all PDFs ──────────────────────────────────────
 
@@ -283,6 +284,9 @@ export function stampPageChrome(doc: any, brief: TripBrief | null): void {
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
 
     const idx = footer.lastIndexOf(LINK)
+    if (idx === -1) {
+      doc.text(footer, P.margin, P.h - 5.5)
+    }
     if (idx !== -1) {
       const before = footer.slice(0, idx)
       const after  = footer.slice(idx + LINK.length)
@@ -292,8 +296,6 @@ export function stampPageChrome(doc: any, brief: TripBrief | null): void {
       const lw = doc.getTextWidth(LINK)
       try { doc.link(P.margin + bw, P.h - 8, lw, 4, { url: 'https://ambience.travel' }) } catch {}
       if (after) doc.text(after, P.margin + bw + lw, P.h - 5.5)
-    } else {
-      doc.text(footer, P.margin, P.h - 5.5)
     }
 
     doc.text(`PAGE ${i} OF ${count}`, P.w - P.margin, P.h - 5.5, { align: 'right' })
@@ -320,7 +322,7 @@ export interface AuxLike {
 export function passengerLines(aux: AuxLike): string[] {
   const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   return pax.map(p => [
-    p.resolved_passenger_label || p.passenger_label || 'Guest',
+    passengerName(p),
     p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
     p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
   ].filter(Boolean).join('  \u00b7  '))
@@ -352,7 +354,7 @@ export interface RoomDisplay {
 
 export function roomDisplay(room: RoomLike): RoomDisplay {
   const guests: string[] = []
-  const lead = room.resolved_guest_name || room.guest_name
+  const lead = roomGuestName(room)
   if (lead) guests.push(lead)
   if (room.additional_guests?.length) guests.push(...room.additional_guests)
   if (room.party_composition) guests.push(room.party_composition)

@@ -12,7 +12,7 @@
 //
 // Model: each guest's letter is its OWN authored body (the letters genuinely
 // differ per guest — see the manual example). The salutation "Dear {name},"
-// is rendered automatically; everything else (including the sign-off and signer)
+// is rendered automatically; everything otherwise (including the sign-off and signer)
 // is part of the authored body text. {{guest_name}} in a body is substituted
 // with that recipient's name for convenience.
 //

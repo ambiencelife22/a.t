@@ -27,6 +27,7 @@
 
 import { useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
+import { roomGuestName } from '../../utils/utilsRoomDisplay'
 import { useAdminToast } from './_adminPrimitives'
 import { PersonLinkPicker } from './PersonLinkPicker'
 import AssetPicker from './AssetPicker'
@@ -354,7 +355,10 @@ function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onR
               addGuest={() => setField(r, 'additional_guests', [...d.additional_guests, ''])}
               patchGuest={(idx, v) => { const g = [...d.additional_guests]; g[idx] = v; setField(r, 'additional_guests', g) }}
               removeGuest={idx => { const g = d.additional_guests.filter((_, i) => i !== idx); setField(r, 'additional_guests', g); saveGuests(r, g) }}
-              blurField={k => { if (k === 'additional_guests') saveGuests(r, d.additional_guests); else saveField(r, k) }}
+              blurField={k => {
+                if (k === 'additional_guests') { saveGuests(r, d.additional_guests); return }
+                saveField(r, k as SavableField)
+              }}
             />
             <RoomImageStrip
               roomId={r.id}
@@ -450,7 +454,7 @@ function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: 
           <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {r.confirmation_number && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>}
-              <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{r.resolved_guest_name ?? r.guest_name ?? 'Guest'}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily:A.font }}>{roomGuestName(r) ?? 'Guest'}</div>
               {r.additional_guests?.length ? <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.additional_guests.join(', ')}</div> : null}
               {r.party_composition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>}
               {r.room_name          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}

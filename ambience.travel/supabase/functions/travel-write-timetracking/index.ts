@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
     // ── 4. Rate snapshot helper ───────────────────────────────────────────────
     // Resolves rate_id + invoiceable flag → { rate_applied, effort_value, billable_amount }.
     //   effort_value    = hours * rate (ALWAYS when a rate exists) — the worth of the time.
-    //   billable_amount = effort_value when invoiceable; else 0. Null rate/effort when no rate.
+    //   billable_amount = effort_value when invoiceable; otherwise 0. Null rate/effort when no rate.  
     // Throws 'RATE_NOT_FOUND' if a rate_id is given but does not resolve.
     async function snapshot(rateId: unknown, hours: number, isInvoiceable: boolean) {
       if (!rateId) {

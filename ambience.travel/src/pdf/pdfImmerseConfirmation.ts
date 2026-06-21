@@ -110,7 +110,8 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
 
   if (croppedImg) {
     doc.addImage(croppedImg.data, croppedImg.format, P.margin, y, imgW, cardH, undefined, 'FAST')
-  } else {
+  }
+  if (!croppedImg) {
     doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
     doc.rect(P.margin, y, imgW, cardH, 'F')
   }

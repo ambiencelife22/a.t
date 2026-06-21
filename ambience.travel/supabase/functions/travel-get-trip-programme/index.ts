@@ -184,12 +184,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // Attach resolved image_src to standalone entries (non-booking sources).
-    const enrichedEntries = entries.map(e => {
-      let image_src: string | null = null
-      if (e.source_dining_id)          image_src = diningImgById[e.source_dining_id as string] ?? null
-      else if (e.source_experience_id) image_src = expImgById[e.source_experience_id as string] ?? null
-      return { ...e, image_src }
-    })
+    const entryImage = (e: Record<string, unknown>): string | null => {
+      if (e.source_dining_id)     return diningImgById[e.source_dining_id as string] ?? null
+      if (e.source_experience_id) return expImgById[e.source_experience_id as string] ?? null
+      return null
+    }
+    const enrichedEntries = entries.map(e => ({ ...e, image_src: entryImage(e) }))
 
     // ── 11. Build the single-source timeline ───────────────────────────────────
     const timeline = buildTimeline(enrichedBookings, auxBookings, enrichedEntries)
