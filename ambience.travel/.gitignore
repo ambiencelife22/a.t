@@ -63,3 +63,5 @@ supabase/.env
 .env
 !.vscode/settings.json
 !.vscode/settings.json
+
+supabase/functions/node_modules/
