@@ -249,7 +249,8 @@ export default function ShoppingGuidePage({
 
         if (shopsResult.status === 'fulfilled') {
           setShops(shopsResult.value)
-        } else {
+        }
+        if (shopsResult.status !== 'fulfilled') {
           console.error('ShoppingGuidePage: failed to load shops', shopsResult.reason)
           const msg = shopsResult.reason instanceof Error ? shopsResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load shopping: ${msg}`)
@@ -258,7 +259,8 @@ export default function ShoppingGuidePage({
 
         if (happeningsResult.status === 'fulfilled') {
           setHappenings(happeningsResult.value)
-        } else {
+        }
+        if (happeningsResult.status !== 'fulfilled') {
           // Soft-fail — happenings are supplementary. Log only.
           console.error('ShoppingGuidePage: failed to load happenings', happeningsResult.reason)
           setHappenings([])

@@ -192,7 +192,7 @@ export default function TimeAnalyticsTab() {
     setFilters(prev => {
       const next = { ...prev }
       if (v === undefined || v === '' as any) delete next[k]
-      else next[k] = v
+      if (v !== undefined && v !== ('' as any)) next[k] = v
       // changing house clears engagement
       if (k === 'house_id') delete next.engagement_id
       return next

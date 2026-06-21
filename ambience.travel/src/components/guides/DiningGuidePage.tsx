@@ -182,7 +182,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
         if (venuesResult.status === 'fulfilled') {
           setVenues(venuesResult.value)
-        } else {
+        }
+        if (venuesResult.status !== 'fulfilled') {
           console.error('DiningGuidePage: failed to load venues', venuesResult.reason)
           const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load dining venues: ${msg}`)
@@ -191,7 +192,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
         if (happeningsResult.status === 'fulfilled') {
           setHappenings(happeningsResult.value)
-        } else {
+        }
+        if (happeningsResult.status !== 'fulfilled') {
           // Soft-fail — happenings are supplementary. Log only.
           console.error('DiningGuidePage: failed to load happenings', happeningsResult.reason)
           setHappenings([])

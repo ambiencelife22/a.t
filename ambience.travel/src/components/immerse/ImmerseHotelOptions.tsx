@@ -87,7 +87,7 @@ function rateIsNumeric(rate: string | undefined): boolean {
   return /^([$€£¥]|EURO|USD|GBP|JPY|CHF|AED|SAR)?\s*[$€£¥]?\s*\d/i.test(rate.trim())
 }
 
-// S53C — the displayed rate of a room (ambience preferred, else public).
+// S53C — the displayed rate of a room (ambience preferred, otherwise public).
 function displayedRate(room: ImmerseRoomOption): string | undefined {
   return room.ambienceNightlyRate ?? room.publicNightlyRate ?? undefined
 }

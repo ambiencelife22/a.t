@@ -117,7 +117,8 @@ export default function GuideDownloadTab({
           accuracyDate: overlay?.accuracy_date ?? null,
           logoVariant,
         }
-      } else if (variant === 'experiences') {
+      }
+      if (variant === 'experiences') {
         const [destination, venues, happenings] = await Promise.all([
           getExperiencesGuideDestination(destinationSlug),
           getExperienceVenuesByDestination(destinationSlug),
@@ -142,7 +143,8 @@ export default function GuideDownloadTab({
           accuracyDate: overlay?.accuracy_date ?? null,
           logoVariant,
         }
-      } else if (variant === 'hotels') {
+      }
+      if (variant === 'hotels') {
         const [destination, venues, happenings] = await Promise.all([
           getHotelGuideDestination(destinationSlug),
           getHotelsByDestination(destinationSlug),
@@ -167,7 +169,8 @@ export default function GuideDownloadTab({
           accuracyDate: overlay?.accuracy_date ?? null,
           logoVariant,
         }
-      } else {
+      }
+      if (variant === 'shopping') {
         // shopping
         const [destination, venues, happenings] = await Promise.all([
           getShoppingGuideDestination(destinationSlug),
@@ -195,6 +198,7 @@ export default function GuideDownloadTab({
         }
       }
 
+      if (!payload) { toast.error('Unknown guide variant.'); setDownloading(null); return }
       await handleDownloadPdf(payload)
       toast.success(`Downloaded ${logoVariant} variant.`)
     } catch (e) {

@@ -112,7 +112,8 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           setLevel1Sel(HERO_TAB)
           setFiles(imgs)
         }
-      } else {
+      }
+      if (dirs.length === 0) {
         setFiles(imgs)
       }
     }).catch(() => {}).finally(() => setLoading(false))
@@ -123,7 +124,8 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
     if (!basePath || !level1Sel || level1Sel === HERO_TAB) {
       if (level1Sel === HERO_TAB) {
         setLevel2Dirs([]); setLevel2Sel(''); setFiles(level1RootImages)
-      } else {
+      }
+      if (level1Sel !== HERO_TAB) {
         setLevel2Dirs([]); setLevel2Sel(''); setFiles([])
       }
       return
@@ -137,7 +139,8 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
       if (dirs.length > 0) {
         setLevel2Dirs(dirs)
-      } else {
+      }
+      if (dirs.length === 0) {
         setFiles(imgs)
       }
     }).catch(() => {}).finally(() => setLoading(false))

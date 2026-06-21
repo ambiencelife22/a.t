@@ -140,7 +140,8 @@ Deno.serve(async (req: Request) => {
           { person_id: personId, product: SPORTS_PRODUCT, welcome_email_sent_at: new Date().toISOString() },
           { onConflict: 'person_id,product' }
         )
-    } else {
+    }
+    if (!personId) {
       console.error('send-welcome-email: no person_id for user', userId, '— stamp not written')
     }
 

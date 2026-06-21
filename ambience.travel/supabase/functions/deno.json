@@ -1,11 +1,13 @@
 {
   "$schema": "./.schemas/deno-config.v1.json",
+  "nodeModulesDir": "auto",
   "lint": {
     "rules": {
       "exclude": ["no-import-prefix", "no-explicit-any", "no-inner-declarations", "no-unversioned-import"]
     }
   },
   "imports": {
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "resend": "npm:resend@4"
   }
 }

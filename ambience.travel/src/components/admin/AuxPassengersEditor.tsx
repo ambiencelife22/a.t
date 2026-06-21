@@ -22,6 +22,7 @@ import {
   createAuxPassenger, updateAuxPassenger, deleteAuxPassenger,
 } from '../../queries/queriesAdminTrip'
 import type { TripAuxPassenger, TripAuxPassengerPatch } from '../../queries/queriesAdminTrip'
+import { passengerName } from '../../utils/utilsRoomDisplay'
 
 // ── Local styles + field ───────────────────────────────────────────────────────
 
@@ -117,12 +118,12 @@ export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { aux
         setPax(prev => prev.map(p => p.id === editId ? updated : p))
         setEditId(null)
         success('Passenger updated')
-      } else {
-        const created = await createAuxPassenger(auxBookingId, patch)
-        setPax(prev => [...prev, created])
-        setAdding(false)
-        success('Passenger added')
+        return
       }
+      const created = await createAuxPassenger(auxBookingId, patch)
+      setPax(prev => [...prev, created])
+      setAdding(false)
+      success('Passenger added')
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to save passenger') }
     finally { setSaving(false) }
   }

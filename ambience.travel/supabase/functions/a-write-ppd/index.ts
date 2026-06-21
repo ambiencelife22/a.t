@@ -198,7 +198,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build insert row per table
-    let insertRow: Record<string, unknown>
+    let insertRow: Record<string, unknown> = {}
 
     if (table === 'people') {
       const personId = payload.person_id ?? null
@@ -212,8 +212,9 @@ Deno.serve(async (req: Request) => {
         data_value:  dataValue,
         access_note: accessNote,
       }
-    } else {
-      // contacts \u2014 contact_id required
+    }
+    if (table === 'contacts') {
+      // contacts — contact_id required
       const contactId = payload.contact_id
       if (typeof contactId !== 'string' || contactId.length === 0) {
         return badRequest('payload.contact_id required for contacts insert')

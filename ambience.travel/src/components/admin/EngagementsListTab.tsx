@@ -1098,7 +1098,8 @@ export default function EngagementsListTab() {
       if (field === 'engagement_status_id') {
         const slug = engagementStatuses.find(s => s.id === value)?.slug as EngagementStatusSlug | undefined
         if (slug) await setEngagementStatus(row.id, slug)
-      } else {
+      }
+      if (field !== 'engagement_status_id') {
         const slug = itineraryStatuses.find(s => s.id === value)?.slug as ItineraryStatusSlug | undefined
         if (slug) await setItineraryStatus(row.id, slug)
       }

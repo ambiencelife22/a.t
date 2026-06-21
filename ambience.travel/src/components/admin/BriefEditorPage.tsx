@@ -681,7 +681,9 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       {rooms.map((room, ri) => {
                         const d                = roomDrafts[room.id]
                         const roomName         = d?.room_name         ?? room.room_name         ?? null
-                        const guestName        = (d?.guest_name || roomGuestName(room)) ?? null
+                        // guest_name is an OVERRIDE field: empty draft string = "no override, use resolved"
+                        // hence || (fall through on empty), not ?? — matches BookingRoomsEditor's override model.
+                        const guestName        = d?.guest_name || roomGuestName(room) || null
                         const partyComposition = d?.party_composition ?? room.party_composition ?? null
                         const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
                         const guestParts: string[] = []

@@ -4,7 +4,7 @@
 // Rules:
 //   - null/undefined/'ambience' → 'Booked by ambience'
 //   - 'self'                    → 'Own Arrangements'
-//   - anything else             → 'Booked by {value}'
+//   - anything otherwise             → 'Booked by {value}'
 //
 // Used by:
 //   - ImmerseTripPage.tsx (TripBriefTab web surface)

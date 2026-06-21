@@ -256,18 +256,19 @@ export default function ExperiencesGuidePage({
         ])
         if (cancelled) return
 
-        if (venuesResult.status === 'fulfilled') {
-          setVenues(venuesResult.value)
-        } else {
-          console.error('ExperiencesGuidePage: failed to load venues', venuesResult.reason)
-          const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
-          toastRef.current.error(`Couldn't load experiences: ${msg}`)
-          setVenues([])
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
+        }
+        if (happeningsResult.status !== 'fulfilled') {
+          // Soft-fail — happenings are supplementary. Log only.
+          console.error('ExperiencesGuidePage: failed to load happenings', happeningsResult.reason)
+          setHappenings([])
         }
 
         if (happeningsResult.status === 'fulfilled') {
           setHappenings(happeningsResult.value)
-        } else {
+        }
+        if (happeningsResult.status !== 'fulfilled') {
           // Soft-fail — happenings are supplementary. Log only.
           console.error('ExperiencesGuidePage: failed to load happenings', happeningsResult.reason)
           setHappenings([])

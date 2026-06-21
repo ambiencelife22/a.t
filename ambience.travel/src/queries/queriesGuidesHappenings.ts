@@ -84,11 +84,14 @@ export async function fetchActiveHappeningsForDestination(
     query = query.contains('surfaces', [opts.surface])
   }
 
-  if (opts.startDate || opts.endDate) {
+  const hasWindow = !!(opts.startDate || opts.endDate)
+
+  if (hasWindow) {
     // Window-overlap: happening.start_date <= window.end AND happening.end_date >= window.start
     if (opts.endDate)   query = query.lte('start_date', opts.endDate)
     if (opts.startDate) query = query.gte('end_date',   opts.startDate)
-  } else {
+  }
+  if (!hasWindow) {
     // Default: not yet past
     const today = new Date().toISOString().slice(0, 10)
     query = query.gte('end_date', today)
