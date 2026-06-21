@@ -32,6 +32,7 @@ import type {
   EngagementType,
   EngagementAudience,
   EngagementStatus,
+  EngagementStatusSlug,
   ItineraryStatus,
   EngagementStage,
 } from '../types/typesImmerse'
@@ -312,19 +313,8 @@ async function hydrateEngagement(
     .filter((s): s is string => !!s)
   const heroFallbacks = await fetchDestinationHeroFallbacks(destinationSlugs)
 
-  const hasProposalContent = !!(
-    engagementRow.hero_tagline    ||
-    engagementRow.route_body      ||
-    engagementRow.destination_body ||
-    engagementRow.pricing_body    ||
-    engagementRow.pricing_total_value ||
-    destRows.length > 0
-  )
-
   const stage: EngagementStage = computeEngagementStage({
-    statusSlug:         engagementRow.travel_engagement_statuses?.slug ?? '',
-    hasProposalContent,
-    hasTripContent,
+    statusSlug: (engagementRow.travel_engagement_statuses?.slug ?? 'new_request') as EngagementStatusSlug,
   })
 
   const clientName = displayRow?.nickname

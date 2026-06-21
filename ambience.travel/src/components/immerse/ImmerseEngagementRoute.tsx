@@ -11,7 +11,7 @@
 // engagement, set in the query layer based on status + content presence.
 //
 //   stage 'trip' / 'completed'              → render ImmerseTripPage
-//   stage 'proposal' / 'proposal_with_pending' → redirect to /proposal
+//   stage 'proposal'                        → redirect to /proposal
 //   stage 'draft' / 'cancelled'             → not found
 //
 // Last updated: S48 — bare URL is stage-driven. /proposal is the explicit
@@ -169,8 +169,7 @@ function EngagementRoute({ route }: {
           </Suspense>
         )
 
-      case 'proposal':
-      case 'proposal_with_pending': {
+      case 'proposal': {
         // Explicit redirect to /proposal — bare URL is for trip surfaces only
         const target = `${getOverviewUrl(engagement.urlId)}/proposal`
         window.location.replace(target)

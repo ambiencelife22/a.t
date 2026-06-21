@@ -220,35 +220,44 @@ export type ImmerseTripPricingRow = {
 }
 
 // ─── Engagement stage ─────────────────────────────────────────────────────────
+// MISSION: stage is a pure function of DECLARED engagement status. No inference
+// from content presence. The status slug is the single source of truth; the
+// operator edits it; the stage follows. (S55 — removed hasProposalContent /
+// hasTripContent inference, which violated single-source and misread completed
+// engagements whose content keyed elsewhere.)
 
 export type EngagementStage =
   | 'draft'
   | 'proposal'
-  | 'proposal_with_pending'
   | 'trip'
   | 'completed'
   | 'cancelled'
 
-const COMPLETED_STATUS_SLUGS = new Set<string>(['completed', 'archived'])
-const CANCELLED_STATUS_SLUGS = new Set<string>(['cancelled', 'lost'])
-
 export type EngagementStageInputs = {
-  statusSlug:         string
-  hasProposalContent: boolean
-  hasTripContent:     boolean
+  statusSlug: EngagementStatusSlug
 }
 
-const TRIP_STATUS_SLUGS = new Set<string>(['booked', 'in_travel'])
-
 export function computeEngagementStage(input: EngagementStageInputs): EngagementStage {
-  if (CANCELLED_STATUS_SLUGS.has(input.statusSlug)) return 'cancelled'
-  if (COMPLETED_STATUS_SLUGS.has(input.statusSlug) && input.hasTripContent) return 'completed'
-  if (TRIP_STATUS_SLUGS.has(input.statusSlug)) return 'trip'
+  switch (input.statusSlug) {
+    case 'cancelled':
+    case 'lost':
+      return 'cancelled'
 
-  if (input.hasTripContent && input.hasProposalContent) return 'proposal_with_pending'
-  if (input.hasTripContent)     return 'trip'
-  if (input.hasProposalContent) return 'proposal'
-  return 'draft'
+    case 'completed':
+      return 'completed'
+
+    case 'booked':
+    case 'in_travel':
+      return 'trip'
+
+    case 'proposal_in_progress':
+    case 'proposal_sent':
+    case 'revisions_in_progress':
+      return 'proposal'
+
+    case 'new_request':
+      return 'draft'
+  }
 }
 
 // ─── Engagement data ─────────────────────────────────────────────────────────
