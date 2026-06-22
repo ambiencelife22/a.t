@@ -20,30 +20,51 @@ import { parseAdminHash, type AdminTab } from '../utils/utilsAdminPath'
 import { A } from '../tokens/tokensAdmin'
 import { AdminToastProvider } from './admin/_adminPrimitives'
 
-const AdminSidebar         = lazy(() => import('./admin/AdminSidebar'))
-const EngagementsListTab   = lazy(() => import('./admin/EngagementsListTab'))
-const EngagementDetailTab  = lazy(() => import('./admin/EngagementDetailTab'))
-const ShowcasesListTab     = lazy(() => import('./admin/ShowcasesListTab'))
-const LibraryDiningTab     = lazy(() => import('./admin/LibraryDiningTab'))
-const GuidesDiningTab      = lazy(() => import('./admin/GuidesDiningTab'))
-const GuidesHotelsTab      = lazy(() => import('./admin/GuidesHotelsTab'))
-const LibraryHotelsTab     = lazy(() => import('./admin/LibraryHotelsTab'))
-const GuidesExperiencesTab = lazy(() => import('./admin/GuidesExperiencesTab'))
-const GuidesShoppingTab    = lazy(() => import('./admin/GuidesShoppingTab'))
-const HouseTab             = lazy(() => import('./admin/HouseTab'))
-const BriefEditorPage      = lazy(() => import('./admin/BriefEditorPage'))
-const ItineraryEditorPage  = lazy(() => import('./admin/ItineraryEditorPage'))
-const OperationsTab        = lazy(() => import('./admin/OperationsTab').then(m => ({ default: m.OperationsTab })))
-const TimeTrackingTab      = lazy(() => import('./admin/TimeTrackingTab'))
-const TimeAnalyticsTab     = lazy(() => import('./admin/TimeAnalyticsTab'))
-const ClientProfilePage    = lazy(() => import('./admin/ClientProfilePage'))
+// Stale-chunk recovery: after a deploy, Vite re-hashes chunks and the old
+// hashes 404 — the SPA host serves index.html (HTML) for the missing .js,
+// the browser rejects the MIME type, and the dynamic import throws, blanking
+// the tree. Catch that once, force-reload to fetch the current build, and
+// guard against reload loops. A genuine import error (already retried) rethrows.
+function lazyWithReload<T extends { default: React.ComponentType<any> }>(
+  factory: () => Promise<T>,
+) {
+  return lazy(() =>
+    factory().catch((err: unknown) => {
+      const KEY = 'admin-chunk-reload'
+      if (!sessionStorage.getItem(KEY)) {
+        sessionStorage.setItem(KEY, '1')
+        window.location.reload()
+        return new Promise<T>(() => {}) // never resolves; reload takes over
+      }
+      throw err // already retried after a reload — surface the real failure
+    }),
+  )
+}
 
-const ProgrammesTab        = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
-const WelcomeLettersTab    = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.WelcomeLettersTab })))
-const ListingsTab          = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ListingsTab })))
-const PropertySectionsTab  = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertySectionsTab })))
-const PropertiesTab        = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertiesTab })))
-const AccessDeniedPageTab  = lazy(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.AccessDeniedPageTab })))
+const AdminSidebar         = lazyWithReload(() => import('./admin/AdminSidebar'))
+const EngagementsListTab   = lazyWithReload(() => import('./admin/EngagementsListTab'))
+const EngagementDetailTab  = lazyWithReload(() => import('./admin/EngagementDetailTab'))
+const ShowcasesListTab     = lazyWithReload(() => import('./admin/ShowcasesListTab'))
+const LibraryDiningTab     = lazyWithReload(() => import('./admin/LibraryDiningTab'))
+const GuidesDiningTab      = lazyWithReload(() => import('./admin/GuidesDiningTab'))
+const GuidesHotelsTab      = lazyWithReload(() => import('./admin/GuidesHotelsTab'))
+const LibraryHotelsTab     = lazyWithReload(() => import('./admin/LibraryHotelsTab'))
+const GuidesExperiencesTab = lazyWithReload(() => import('./admin/GuidesExperiencesTab'))
+const GuidesShoppingTab    = lazyWithReload(() => import('./admin/GuidesShoppingTab'))
+const HouseTab             = lazyWithReload(() => import('./admin/HouseTab'))
+const BriefEditorPage      = lazyWithReload(() => import('./admin/BriefEditorPage'))
+const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEditorPage'))
+const OperationsTab        = lazyWithReload(() => import('./admin/OperationsTab').then(m => ({ default: m.OperationsTab })))
+const TimeTrackingTab      = lazyWithReload(() => import('./admin/TimeTrackingTab'))
+const TimeAnalyticsTab     = lazyWithReload(() => import('./admin/TimeAnalyticsTab'))
+const ClientProfilePage    = lazyWithReload(() => import('./admin/ClientProfilePage'))
+
+const ProgrammesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
+const WelcomeLettersTab    = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.WelcomeLettersTab })))
+const ListingsTab          = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ListingsTab })))
+const PropertySectionsTab  = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertySectionsTab })))
+const PropertiesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertiesTab })))
+const AccessDeniedPageTab  = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.AccessDeniedPageTab })))
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
 
@@ -90,6 +111,10 @@ function AdminShell() {
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  // App mounted successfully — clear the stale-chunk reload guard so a future
+  // genuine chunk failure can still trigger its one recovery reload.
+  useEffect(() => { sessionStorage.removeItem('admin-chunk-reload') }, [])
 
   // Full-page cream editors — bypass standard admin chrome
   if (tab.product === 'trips' && tab.tab === 'brief') {
