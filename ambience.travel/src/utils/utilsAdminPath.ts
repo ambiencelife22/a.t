@@ -38,7 +38,7 @@
 
 import { isTripUrlId } from '../utils/utilsImmersePath'
 
-export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips' | 'time' // S53C: + 'time'
+export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips' | 'time' | 'calendar' // S55: + 'calendar'
 
 export type AdminTab =
   | { product: 'immerse';    tab: 'engagements'; urlId: string | null }
@@ -50,6 +50,7 @@ export type AdminTab =
   | { product: 'library';    tab: 'dining'; destinationId: string | null }
   | { product: 'library';    tab: 'hotels'; destinationId: string | null }
   | { product: 'house';      tab: 'houses' }
+  | { product: 'calendar';   tab: 'calendar' }
   | { product: 'operations'; tab: 'bookings' }
   | { product: 'time';       tab: 'entries' } // S53C
   | { product: 'time';       tab: 'analytics' } // S53C analytics surface
@@ -117,6 +118,10 @@ export function parseAdminHash(hash: string): AdminTab {
     return { product: 'house', tab: 'houses' }
   }
 
+  if (product === 'calendar') {
+    return { product: 'calendar', tab: 'calendar' }
+  }
+
   if (product === 'operations') {
     return { product: 'operations', tab: 'bookings' }
   }
@@ -171,6 +176,9 @@ export function buildAdminHash(target: AdminTab): string {
   }
   if (target.product === 'house') {
     return '#admin/house'
+  }
+  if (target.product === 'calendar') {
+    return '#admin/calendar'
   }
   if (target.product === 'operations') {
     return '#admin/operations/bookings'

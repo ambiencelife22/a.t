@@ -58,6 +58,7 @@ const OperationsTab        = lazyWithReload(() => import('./admin/OperationsTab'
 const TimeTrackingTab      = lazyWithReload(() => import('./admin/TimeTrackingTab'))
 const TimeAnalyticsTab     = lazyWithReload(() => import('./admin/TimeAnalyticsTab'))
 const ClientProfilePage    = lazyWithReload(() => import('./admin/ClientProfilePage'))
+const CalendarTab          = lazyWithReload(() => import('./admin/CalendarTab'))
 
 const ProgrammesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
 const WelcomeLettersTab    = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.WelcomeLettersTab })))
@@ -188,6 +189,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'hotels') return <LibraryHotelsTab destinationId={tab.destinationId} />
   }
 
+  if (tab.product === 'calendar')   return <CalendarTab />
   if (tab.product === 'house')      return <HouseTab />
   if (tab.product === 'operations') return <OperationsTab />
   if (tab.product === 'time') {

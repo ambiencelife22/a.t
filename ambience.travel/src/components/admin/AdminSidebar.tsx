@@ -40,6 +40,7 @@ type SidebarLink =
   | { kind: 'library-dining' }
   | { kind: 'library-hotels' }
   | { kind: 'house-houses' }
+  | { kind: 'calendar' }
   | { kind: 'operations-bookings' }
   | { kind: 'time-entries' } // S53C
   | { kind: 'time-analytics' } // S53C
@@ -83,6 +84,10 @@ const HOUSE_ITEMS: SidebarItem[] = [
   { key: 'house-houses', label: 'Houses', link: { kind: 'house-houses' } },
 ]
 
+const CALENDAR_ITEMS: SidebarItem[] = [
+  { key: 'calendar', label: 'Calendar', link: { kind: 'calendar' } },
+]
+
 const OPERATIONS_ITEMS: SidebarItem[] = [
   { key: 'operations-bookings', label: 'Bookings', link: { kind: 'operations-bookings' } },
 ]
@@ -109,6 +114,7 @@ const SOON_ITEMS: SidebarItem[] = [
 ]
 
 const GROUPS: SidebarGroup[] = [
+  { key: 'calendar',   icon: LayoutGrid, items: CALENDAR_ITEMS   },
   { key: 'immerse',    icon: Plane,      items: IMMERSE_ITEMS    },
   { key: 'guides',     icon: BookOpen,   items: GUIDES_ITEMS     },
   { key: 'library',    icon: Library,    items: LIBRARY_ITEMS    },
@@ -147,6 +153,9 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   }
   if (item.link.kind === 'house-houses') {
     return current.product === 'house'
+  }
+  if (item.link.kind === 'calendar') {
+    return current.product === 'calendar'
   }
   if (item.link.kind === 'operations-bookings') {
     return current.product === 'operations'
@@ -191,6 +200,9 @@ function hashFor(item: SidebarItem): string {
   }
   if (item.link.kind === 'house-houses') {
     return buildAdminHash({ product: 'house', tab: 'houses' })
+  }
+  if (item.link.kind === 'calendar') {
+    return buildAdminHash({ product: 'calendar', tab: 'calendar' })
   }
   if (item.link.kind === 'operations-bookings') {
     return buildAdminHash({ product: 'operations', tab: 'bookings' })
@@ -406,6 +418,7 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     ...IMMERSE_ITEMS,
     ...GUIDES_ITEMS,
     ...LIBRARY_ITEMS,
+    ...CALENDAR_ITEMS,
     ...HOUSE_ITEMS,
     ...OPERATIONS_ITEMS,
     ...TIME_ITEMS, // S53C
@@ -450,6 +463,9 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         </optgroup>
         <optgroup label='Library'>
           {LIBRARY_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+        </optgroup>
+        <optgroup label='Calendar'>
+          {CALENDAR_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
         <optgroup label='House'>
           {HOUSE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
