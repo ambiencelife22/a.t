@@ -144,7 +144,7 @@ function staggerDelay(index: number, max = 8): string {
 
 function statusToSlug(statusId: string, statuses: StatusLookup[]): EngagementStatusSlug {
   const found = statuses.find(s => s.id === statusId)
-  return (found?.slug ?? 'new_request') as EngagementStatusSlug
+  return (found?.slug ?? 'requested') as EngagementStatusSlug
 }
 
 // ── Pencil icon ──────────────────────────────────────────────────────────────
@@ -927,7 +927,7 @@ function CreateModal({
 }) {
   const { success, error } = useAdminToast()
 
-  const newRequestStatus = engagementStatuses.find(s => s.slug === 'new_request')
+  const newRequestStatus = engagementStatuses.find(s => s.slug === 'requested')
   const draftStatus      = itineraryStatuses.find(s => s.slug === 'draft')
 
   const [title, setTitle]                           = useState('')

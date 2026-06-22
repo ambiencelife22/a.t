@@ -22,15 +22,15 @@ export type EngagementAudience =
   | 'public'
 
 export type EngagementStatusSlug =
-  | 'new_request'
-  | 'proposal_in_progress'
-  | 'proposal_sent'
-  | 'revisions_in_progress'
-  | 'booked'
-  | 'in_travel'
-  | 'completed'
-  | 'cancelled'
-  | 'lost'
+    | 'requested'
+    | 'quoted'
+    | 'pending'
+    | 'confirmed'
+    | 'paid'
+    | 'in_service'
+    | 'closed_won'
+    | 'cancelled'
+    | 'closed_lost'
 
 export type ItineraryStatusSlug =
   | 'draft'
@@ -240,22 +240,22 @@ export type EngagementStageInputs = {
 export function computeEngagementStage(input: EngagementStageInputs): EngagementStage {
   switch (input.statusSlug) {
     case 'cancelled':
-    case 'lost':
+    case 'closed_lost':
       return 'cancelled'
 
-    case 'completed':
+    case 'closed_won':
       return 'completed'
 
-    case 'booked':
-    case 'in_travel':
+    case 'confirmed':
+    case 'paid':
+    case 'in_service':
       return 'trip'
 
-    case 'proposal_in_progress':
-    case 'proposal_sent':
-    case 'revisions_in_progress':
+    case 'quoted':
+    case 'pending':
       return 'proposal'
 
-    case 'new_request':
+    case 'requested':
       return 'draft'
   }
 }
@@ -441,7 +441,7 @@ export type EngagementPatch = Partial<EngagementWritableFields>
 
 export interface CreateEngagementInput {
   engagement?:             EngagementPatch
-  engagement_status_slug?: EngagementStatusSlug   // default 'new_request'
+  engagement_status_slug?: EngagementStatusSlug   // default 'requested'
   itinerary_status_slug?:  ItineraryStatusSlug    // default 'draft'
 }
 
@@ -459,4 +459,4 @@ export interface WelcomeLetterPatch {
 }
 
 // Terminal engagement status for archive (itinerary always → 'archived').
-export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 'lost'>
+export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 'closed_lost'>

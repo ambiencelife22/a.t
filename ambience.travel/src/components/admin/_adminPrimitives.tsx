@@ -135,15 +135,15 @@ type StatusOption = {
 }
 
 const STATUS_CONFIG: Record<EngagementStatusSlug, { bg: string; color: string; border: string }> = {
-  new_request:           { bg: 'rgba(127,222,255,0.08)', color: '#7FDEFF',  border: 'rgba(127,222,255,0.2)'  },
-  proposal_in_progress:  { bg: 'rgba(232,197,71,0.10)',  color: '#E8C547',  border: 'rgba(232,197,71,0.25)'  },
-  proposal_sent:         { bg: 'rgba(216,181,106,0.10)', color: '#D8B56A',  border: 'rgba(216,181,106,0.3)'  },
-  revisions_in_progress: { bg: 'rgba(232,197,71,0.10)',  color: '#E8C547',  border: 'rgba(232,197,71,0.25)'  },
-  booked:                { bg: 'rgba(74,222,128,0.10)',  color: '#4ade80',  border: 'rgba(74,222,128,0.25)'  },
-  in_travel:             { bg: 'rgba(45,212,191,0.10)',  color: '#2dd4bf',  border: 'rgba(45,212,191,0.25)'  },
-  completed:             { bg: 'rgba(74,222,128,0.06)',  color: '#86efac',  border: 'rgba(74,222,128,0.15)'  },
-  cancelled:             { bg: 'rgba(248,113,113,0.10)', color: '#f87171',  border: 'rgba(248,113,113,0.25)' },
-  lost:                  { bg: 'rgba(248,113,113,0.06)', color: '#fca5a5',  border: 'rgba(248,113,113,0.15)' },
+  requested:    { bg: 'rgba(127,222,255,0.08)', color: '#7FDEFF',  border: 'rgba(127,222,255,0.2)'  },
+  quoted:       { bg: 'rgba(232,197,71,0.10)',  color: '#E8C547',  border: 'rgba(232,197,71,0.25)'  },
+  pending:      { bg: 'rgba(216,181,106,0.10)', color: '#D8B56A',  border: 'rgba(216,181,106,0.3)'  },
+  confirmed:    { bg: 'rgba(74,222,128,0.10)',  color: '#4ade80',  border: 'rgba(74,222,128,0.25)'  },
+  paid:         { bg: 'rgba(74,222,128,0.14)',  color: '#4ade80',  border: 'rgba(74,222,128,0.3)'   },
+  in_service:   { bg: 'rgba(45,212,191,0.10)',  color: '#2dd4bf',  border: 'rgba(45,212,191,0.25)'  },
+  closed_won:   { bg: 'rgba(74,222,128,0.06)',  color: '#86efac',  border: 'rgba(74,222,128,0.15)'  },
+  cancelled:    { bg: 'rgba(248,113,113,0.10)', color: '#f87171',  border: 'rgba(248,113,113,0.25)' },
+  closed_lost:  { bg: 'rgba(248,113,113,0.06)', color: '#fca5a5',  border: 'rgba(248,113,113,0.15)' },
 }
 
 export function StatusPill({
@@ -186,7 +186,7 @@ export function StatusPill({
     }
   }
 
-  const cfg = STATUS_CONFIG[optimistic] ?? STATUS_CONFIG.new_request
+  const cfg = STATUS_CONFIG[optimistic] ?? STATUS_CONFIG.requested
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
@@ -233,7 +233,7 @@ export function StatusPill({
           animation:    `_a_admin_status_pill_in 150ms ${EASE} both`,
         }}>
           {options.map(opt => {
-            const oc = STATUS_CONFIG[opt.slug] ?? STATUS_CONFIG.new_request
+            const oc = STATUS_CONFIG[opt.slug] ?? STATUS_CONFIG.requested
             return (
               <button
                 key={opt.slug}

@@ -314,7 +314,7 @@ async function hydrateEngagement(
   const heroFallbacks = await fetchDestinationHeroFallbacks(destinationSlugs)
 
   const stage: EngagementStage = computeEngagementStage({
-    statusSlug: (engagementRow.travel_engagement_statuses?.slug ?? 'new_request') as EngagementStatusSlug,
+    statusSlug: (engagementRow.travel_engagement_statuses?.slug ?? 'requested') as EngagementStatusSlug,
   })
 
   const clientName = displayRow?.nickname
