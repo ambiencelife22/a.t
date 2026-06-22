@@ -52,6 +52,7 @@ type Mode =
   | 'day_entries'
   | 'aux_bookings'
   | 'public_view'
+  | 'calendar'
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -331,6 +332,122 @@ async function handlePublicView(db: SupabaseClient, tripId: string): Promise<Res
   return ok({ publicView: !!(data as { public_view: boolean }).public_view })
 }
 
+// ── Calendar (fleet-wide; confirmed + upcoming) ───────────────────────────────
+// Single source for the admin Calendar tab. Returns confirmed/upcoming trips
+// with their per-hotel bookings (stays) + hotel names, derived from the same
+// canonical tables the dossier uses — NOT a parallel store. The calendar owns
+// no dates; it renders these.
+//
+// "Confirmed/upcoming" is DECLARED, not inferred:
+//   - trip status is derived from confirmed_engagement_id's engagement status
+//     slug (post-lifecycle-migration canon).
+//   - included slugs: confirmed | paid | in_service (post-commitment, pre-terminal).
+//   - excluded: requested/quoted/pending (pre-commitment), closed_won (concluded),
+//     cancelled/closed_lost (dead). And end_date >= range_start (not past).
+//
+// Params: { range_start?: string (YYYY-MM-DD, default today), range_end?: string }
+// Range filters trips whose [start_date, end_date] overlaps the window.
+
+const CALENDAR_CONFIRMED_SLUGS = ['confirmed', 'paid', 'in_service'] as const
+
+async function handleCalendar(
+  db: SupabaseClient,
+  rangeStart: string | null,
+  rangeEnd: string | null,
+): Promise<Response> {
+  const start = rangeStart ?? new Date().toISOString().slice(0, 10)
+
+  // 1. Trips with a confirmed engagement, ending on/after the range start.
+  //    (A trip with no confirmed_engagement_id is pre-commitment — not shown.)
+  let tripQ = db
+    .from('travel_trips')
+    .select('id, trip_code, public_title, start_date, end_date, confirmed_engagement_id, primary_client_id')
+    .not('confirmed_engagement_id', 'is', null)
+    .gte('end_date', start)
+  if (rangeEnd) tripQ = tripQ.lte('start_date', rangeEnd)
+
+  const { data: tripData, error: tripErr } = await tripQ.order('start_date', { ascending: true })
+  if (tripErr) return err('Failed to fetch calendar trips', 500)
+
+  const trips = (tripData ?? []) as Array<{
+    id: string; trip_code: string; public_title: string | null
+    start_date: string | null; end_date: string | null
+    confirmed_engagement_id: string | null; primary_client_id: string | null
+  }>
+  if (trips.length === 0) return ok({ trips: [] })
+
+  // 2. Resolve each winning engagement's status slug; keep only confirmed-stage.
+  const engIds = [...new Set(trips.map(t => t.confirmed_engagement_id).filter((x): x is string => !!x))]
+  const slugByEng = new Map<string, string>()
+  if (engIds.length > 0) {
+    const { data: engRows, error: engErr } = await db
+      .from('travel_immerse_engagements')
+      .select('id, travel_engagement_statuses(slug)')
+      .in('id', engIds)
+    if (engErr) return err('Failed to resolve engagement statuses', 500)
+    for (const e of (engRows ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
+      const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
+      if (s?.slug) slugByEng.set(e.id, s.slug)
+    }
+  }
+
+  const confirmedTrips = trips.filter(t => {
+    const slug = t.confirmed_engagement_id ? slugByEng.get(t.confirmed_engagement_id) : null
+    return !!slug && (CALENDAR_CONFIRMED_SLUGS as readonly string[]).includes(slug)
+  })
+  if (confirmedTrips.length === 0) return ok({ trips: [] })
+
+  const tripIds = confirmedTrips.map(t => t.id)
+
+  // 3. Bookings (stays) for those trips — start_date/end_date are check-in/out.
+  const { data: bookData, error: bookErr } = await db
+    .from('travel_bookings')
+    .select('id, trip_id, name, status, booking_type, start_date, end_date, accom_hotel_id')
+    .in('trip_id', tripIds)
+    .order('start_date', { ascending: true, nullsFirst: false })
+  if (bookErr) return err('Failed to fetch calendar bookings', 500)
+  const bookings = (bookData ?? []) as Array<{
+    id: string; trip_id: string; name: string | null; status: string | null
+    booking_type: string | null; start_date: string | null; end_date: string | null
+    accom_hotel_id: string | null
+  }>
+
+  // 4. Hotel names for accom bookings.
+  const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter((x): x is string => !!x))]
+  const hotelName = new Map<string, string>()
+  if (hotelIds.length > 0) {
+    const { data: hotelData } = await db
+      .from('travel_accom_hotels').select('id, name').in('id', hotelIds)
+    for (const h of (hotelData ?? []) as Array<{ id: string; name: string }>) hotelName.set(h.id, h.name)
+  }
+
+  // 5. Shape: trips each carrying their stays (booking + resolved hotel name + slug).
+  const byTrip = new Map<string, typeof bookings>()
+  for (const b of bookings) (byTrip.get(b.trip_id) ?? byTrip.set(b.trip_id, []).get(b.trip_id)!).push(b)
+
+  const out = confirmedTrips.map(t => ({
+    id:            t.id,
+    trip_code:     t.trip_code,
+    title:         t.public_title,
+    start_date:    t.start_date,
+    end_date:      t.end_date,
+    status_slug:   t.confirmed_engagement_id ? (slugByEng.get(t.confirmed_engagement_id) ?? null) : null,
+    primary_client_id: t.primary_client_id,
+    stays: (byTrip.get(t.id) ?? []).map(b => ({
+      id:           b.id,
+      name:         b.name,
+      status:       b.status,
+      booking_type: b.booking_type,
+      check_in:     b.start_date,
+      check_out:    b.end_date,
+      hotel_id:     b.accom_hotel_id,
+      hotel_name:   b.accom_hotel_id ? (hotelName.get(b.accom_hotel_id) ?? null) : null,
+    })),
+  }))
+
+  return ok({ trips: out })
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -340,11 +457,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const { mode, house_id, trip_id, booking_id } = body as {
-      mode:        string | undefined
-      house_id?:   string
-      trip_id?:    string
-      booking_id?: string
+    const { mode, house_id, trip_id, booking_id, range_start, range_end } = body as {
+      mode:         string | undefined
+      house_id?:    string
+      trip_id?:     string
+      booking_id?:  string
+      range_start?: string
+      range_end?:   string
     }
 
     if (!mode) return err('mode is required', 400)
@@ -390,6 +509,9 @@ Deno.serve(async (req: Request) => {
       case 'public_view':
         if (!trip_id) return err('trip_id is required for public_view mode', 400)
         return handlePublicView(serviceClient, trip_id)
+
+      case 'calendar':
+        return handleCalendar(serviceClient, range_start ?? null, range_end ?? null)
 
       default:
         return err(`Unknown mode: ${mode}`, 400)
