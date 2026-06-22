@@ -895,8 +895,12 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
   house:    HouseProfile | null
 }) {
   const [bookings, setBookings] = useState<TripBooking[]>(trip.bookings)
-  const statusColor: Record<string, string> = { active: '#4ade80', completed: '#86efac', cancelled: '#f87171', draft: A.faint }
-  const tripColor       = statusColor[trip.status ?? ''] ?? A.gold
+  // Stage-based pill (S53G+): derived from the winning engagement, not a
+  // free-text trip column. 5 stages; null winner → "Pre-confirmation".
+  const stageColor: Record<string, string> = { trip: '#4ade80', completed: '#86efac', proposal: '#E8C547', draft: A.faint, cancelled: '#f87171' }
+  const stageLabel: Record<string, string> = { trip: 'In Progress', completed: 'Completed', proposal: 'Proposal', draft: 'Draft', cancelled: 'Cancelled' }
+  const tripColor       = trip.stage ? (stageColor[trip.stage] ?? A.gold) : A.faint
+  const tripStageText   = trip.stage ? (stageLabel[trip.stage] ?? trip.stage) : 'Pre-confirmation'
   const totalCommission = bookings.reduce((s, b) => s + (b.commission_amount ?? 0), 0)
   const totalGross      = bookings.reduce((s, b) => s + (b.commissionable_rate ?? b.price ?? 0) * (b.nights ?? 1), 0)
 
@@ -905,7 +909,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
       <div onClick={onToggle} style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: tripColor, fontFamily: A.font, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{trip.status ?? 'Unknown'}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: tripColor, fontFamily: A.font, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tripStageText}</span>
           {trip.start_date && (
             <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
               {fmtDate(trip.start_date)}{trip.end_date ? ` \u2013 ${fmtDate(trip.end_date)}` : ''}{trip.duration_nights ? ` \u00b7 ${trip.duration_nights}N` : ''}

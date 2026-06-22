@@ -27,6 +27,7 @@
 // Prior: S44 — initial ship.
 
 import { supabase } from '../lib/supabase'
+import { computeEngagementStage, type EngagementStage } from '../types/typesImmerse'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -273,7 +274,7 @@ export type TripBooking = {
 export type DossierTrip = {
   id:                   string
   trip_code:            string
-  status:               string | null
+  stage:                EngagementStage | null   // S53G+ derived from winning engagement
   start_date:           string | null
   end_date:             string | null
   duration_nights:      number | null
@@ -294,7 +295,7 @@ export type TripDossierData = {
 
 // ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
-type TripRow     = { id: string; trip_code: string; status: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
+type TripRow     = { id: string; trip_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
 type BookingRow  = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>
 type HotelEntry  = { name: string; hero_image_src: string | null }
 type BriefRow    = TripBrief
@@ -386,7 +387,9 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
   const trips: DossierTrip[] = tripRows.map(t => ({
     id:                   t.id,
     trip_code:            t.trip_code,
-    status:               t.status,
+    stage:                t.derived_status_slug
+                            ? computeEngagementStage({ statusSlug: t.derived_status_slug as any })
+                            : null,
     start_date:           t.start_date,
     end_date:             t.end_date,
     duration_nights:      t.duration_nights,

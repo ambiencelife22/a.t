@@ -395,10 +395,11 @@ function TripGroup({ trip, partners, defaultExpanded }: {
 
   const tripCommission = trip.bookings.reduce((s, b) => s + (b.commission_amount ?? 0), 0)
 
-  const statusColor: Record<string, string> = {
-    active: '#4ade80', completed: '#86efac', cancelled: '#f87171', draft: A.faint,
-  }
-  const tripColor = statusColor[trip.status ?? ''] ?? A.gold
+  // Stage-based pill (S53G+): derived from the winning engagement.
+      const stageColor: Record<string, string> = { trip: '#4ade80', completed: '#86efac', proposal: '#E8C547', draft: A.faint, cancelled: '#f87171' }
+      const stageLabel: Record<string, string> = { trip: 'In Progress', completed: 'Completed', proposal: 'Proposal', draft: 'Draft', cancelled: 'Cancelled' }
+      const tripColor     = trip.stage ? (stageColor[trip.stage] ?? A.gold) : A.faint
+      const tripStageText = trip.stage ? (stageLabel[trip.stage] ?? trip.stage) : 'Pre-confirmation'
 
   return (
     <div style={{
@@ -432,7 +433,7 @@ function TripGroup({ trip, partners, defaultExpanded }: {
           )}
           {/* Status */}
           <span style={{ fontSize: 10, fontWeight: 700, color: tripColor, fontFamily: A.font, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {trip.status ?? 'Unknown'}
+            {tripStageText}
           </span>
           {/* Dates */}
           {trip.start_date && (

@@ -17,6 +17,7 @@
 
 import { supabase } from '../lib/supabase'
 import type { TripPartner } from '../queries/queriesAdminTrip'
+import { computeEngagementStage, type EngagementStage } from '../types/typesImmerse'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,7 +83,7 @@ export type OpsBooking = {
 export type OpsTrip = {
   id:              string
   trip_code:       string
-  status:          string | null
+  stage:           EngagementStage | null   // S53G+ derived from winning engagement
   start_date:      string | null
   end_date:        string | null
   duration_nights: number | null
@@ -115,14 +116,14 @@ export type OpsSummary = {
 // ── Raw row shapes ─────────────────────────────────────────────────────────────
 
 type TripRow = {
-  id:              string
-  trip_code:       string
-  status:          string | null
-  start_date:      string | null
-  end_date:        string | null
-  duration_nights: number | null
-  trip_type:       string | null
-  destinations:    string[] | null
+  id:                      string
+  trip_code:               string
+  confirmed_engagement_id: string | null
+  start_date:              string | null
+  end_date:                string | null
+  duration_nights:         number | null
+  trip_type:               string | null
+  destinations:            string[] | null
 }
 
 type BookingRow = Omit<OpsBooking, '_hotel_name' | '_trip_code' | '_house_name' | '_house_id'>
@@ -139,7 +140,7 @@ export async function fetchOpsPortfolio(): Promise<OpsPortfolio> {
   // Step 1: all trips ordered by start_date desc
   const { data: tripData, error: tripErr } = await supabase
     .from('travel_trips')
-    .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, destinations')
+    .select('id, trip_code, confirmed_engagement_id, start_date, end_date, duration_nights, trip_type, destinations')
     .order('start_date', { ascending: false })
 
   if (tripErr) throw new Error(tripErr.message)
@@ -234,6 +235,31 @@ export async function fetchOpsPortfolio(): Promise<OpsPortfolio> {
     }
   }
 
+// Step 5b: resolve each trip's winning-engagement stage (S53G+ — trip status
+// derived from confirmed_engagement_id, not the dropped column).
+const winnerEngIds = [...new Set(
+  tripRows.map(t => t.confirmed_engagement_id).filter((id): id is string => !!id)
+)]
+const stageByTripId = new Map<string, EngagementStage>()
+if (winnerEngIds.length > 0) {
+  const { data: engStatusData } = await supabase
+    .from('travel_immerse_engagements')
+    .select('id, travel_engagement_statuses(slug)')
+    .in('id', winnerEngIds)
+  const slugByEngId = new Map<string, string>()
+  for (const e of (engStatusData ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
+    const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
+    if (s?.slug) slugByEngId.set(e.id, s.slug)
+  }
+  for (const t of tripRows) {
+    const engId = t.confirmed_engagement_id
+    if (engId) {
+      const slug = slugByEngId.get(engId)
+      if (slug) stageByTripId.set(t.id, computeEngagementStage({ statusSlug: slug as any }))
+    }
+  }
+}
+
   // Step 6: assemble
   const bookingsByTrip = new Map<string, OpsBooking[]>()
   for (const b of bookingRows) {
@@ -254,7 +280,7 @@ export async function fetchOpsPortfolio(): Promise<OpsPortfolio> {
     return {
       id:              t.id,
       trip_code:       t.trip_code,
-      status:          t.status,
+      stage:           stageByTripId.get(t.id) ?? null,
       start_date:      t.start_date,
       end_date:        t.end_date,
       duration_nights: t.duration_nights,
