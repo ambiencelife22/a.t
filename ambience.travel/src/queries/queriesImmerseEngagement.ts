@@ -60,6 +60,7 @@ type EngagementRow = {
   person_id:                       string | null
   status_label:                    string | null
   public_view:                     boolean
+  proposal_visibility:             'active' | 'archived'
   engagement_status_id:            string
   itinerary_status_id:             string
   travel_engagement_statuses:      StatusJoinRow | null
@@ -397,6 +398,7 @@ async function hydrateEngagement(
     audience:        normalizeAudience(engagementRow.audience),
     urlId:           engagementRow.url_id,
     stage,
+    proposalVisibility: engagementRow.proposal_visibility,
     slug:            engagementRow.slug,
     tripFormat:      (engagementRow.trip_format as ImmerseTripFormat) ?? 'journey',
     journeyTypes:    engagementRow.journey_types ?? [],

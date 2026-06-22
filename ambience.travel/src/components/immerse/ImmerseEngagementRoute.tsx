@@ -27,6 +27,7 @@ import ImmerseLayout, { type ImmerseNavItem } from '../layouts/ImmerseLayout'
 import { TravelLoadingScreen, NotFound }     from './ImmerseStateScreens'
 import { isImmerseHost, isTripUrlId, getOverviewUrl } from '../../utils/utilsImmersePath'
 import RouteLoading from '../RouteLoading'
+import ProposalArchivedFallback              from './ProposalArchivedFallback'
 
 const ImmerseTripPage      = lazy(() => import('./ImmerseTripPage'))
 
@@ -154,6 +155,20 @@ function EngagementRoute({ route }: {
     return (
       <ImmerseLayout>
         <NotFound message='This page is not available.' />
+      </ImmerseLayout>
+    )
+  }
+
+  // ── Archived proposal → graceful fallback (AXIS-2) ────────────────────────
+  // Distinct from public_view=false (which 404s upstream in the stage EF). An
+  // archived proposal WAS live; the client holds the link. Degrade to human
+  // contact, never an error or stale content. Covers all proposal-family routes
+  // (auto-as-proposal, /proposal, destination). trip/completed stages route to
+  // ImmerseTripPage and are intentionally unaffected — archive is a proposal axis.
+  if (engagement.proposalVisibility === 'archived') {
+    return (
+      <ImmerseLayout logoHref={logoHref}>
+        <ProposalArchivedFallback />
       </ImmerseLayout>
     )
   }
