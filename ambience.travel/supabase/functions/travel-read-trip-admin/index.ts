@@ -130,13 +130,38 @@ async function handleDossier(db: SupabaseClient, houseId: string): Promise<Respo
   // 2. Trips
   const { data: tripData, error: tripErr } = await db
     .from('travel_trips')
-    .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
+    .select('id, trip_code, confirmed_engagement_id, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
     .in('id', tripIds)
     .order('start_date', { ascending: false })
 
   if (tripErr) return err('Failed to fetch trips', 500)
   const tripRows = (tripData ?? []) as Record<string, unknown>[]
   if (tripRows.length === 0) return ok({ trips: [], partners: {}, house: null })
+
+// Resolve each trip's winning-engagement status slug (S53G+: trip status is
+// DERIVED from confirmed_engagement_id, not the dropped status column). EF
+// returns the slug; the app computes stage via computeEngagementStage.
+const winnerEngIds = [...new Set(
+  tripRows
+    .map(t => t.confirmed_engagement_id as string | null)
+    .filter((id): id is string => !!id)
+)]
+const engStatusSlugByEngId = new Map<string, string>()
+if (winnerEngIds.length > 0) {
+  const { data: engStatusRows } = await db
+    .from('travel_immerse_engagements')
+    .select('id, travel_engagement_statuses(slug)')
+    .in('id', winnerEngIds)
+  for (const e of (engStatusRows ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
+    const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
+    if (s?.slug) engStatusSlugByEngId.set(e.id, s.slug)
+  }
+}
+for (const t of tripRows) {
+  const engId = t.confirmed_engagement_id as string | null
+  ;(t as Record<string, unknown>).derived_status_slug =
+    engId ? (engStatusSlugByEngId.get(engId) ?? null) : null
+}
 
   // 3. Bookings
   const { data: bookData, error: bookErr } = await db

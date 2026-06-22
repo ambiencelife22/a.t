@@ -11,7 +11,7 @@
 // Default when no overlay row exists for a date: show=true, no label, no note.
 
 export type TripDayItem = {
-  id:         string | null   // overlay row id if present, otherwise null (derived-only day)
+  id:         string | null   // overlay row id if present, else null (derived-only day)
   trip_id:    string
   entry_date: string
   show:       boolean
