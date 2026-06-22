@@ -99,6 +99,7 @@ export type EngagementDetailRow = {
   audience:            'private' | 'public'
   is_public:           boolean
   is_public_template:  boolean | null
+  proposal_visibility: 'active' | 'archived'
   engagement_type:     string
   trip_format:         string
   journey_types:       string[]
@@ -345,6 +346,19 @@ export async function reorderEngagements(items: ReorderItem[]): Promise<number> 
 
 export async function setEngagementVisibility(id: string, publicView: boolean): Promise<EngagementDetailRow> {
   const { row } = await invokeWrite<{ row: EngagementDetailRow }>('set_visibility', { id, public_view: publicView })
+  return row
+}
+
+// AXIS-2 — toggles proposal_visibility (active|archived). Orthogonal to
+// public_view: archived shows the client the "ask your travel designer"
+// fallback instead of the proposal, while still resolving (not a 404).
+export async function setEngagementProposalVisibility(
+  id: string,
+  visibility: 'active' | 'archived',
+): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>(
+    'set_proposal_visibility', { id, proposal_visibility: visibility },
+  )
   return row
 }
 

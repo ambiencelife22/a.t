@@ -45,6 +45,7 @@ import {
   setEngagementStatus,
   setItineraryStatus,
   setEngagementVisibility,
+  setEngagementProposalVisibility,
   archiveEngagement,
   deleteEngagement,
   type EngagementDetailRow,
@@ -643,6 +644,26 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
     // Success: modal shows success state; handleDeleteClose navigates away.
   }
 
+  // AXIS-2 — toggle proposal_visibility (active|archived). Orthogonal to
+  // archive/status: this controls what the CLIENT sees on a still-resolving
+  // proposal URL (proposal content vs the "ask your travel designer" fallback),
+  // not the engagement's lifecycle. Optimistic, inline-save.
+  const [visSaving, setVisSaving] = useState(false)
+  async function handleToggleProposalVisibility() {
+    if (!row || !draft) return
+    const next = draft.proposal_visibility === 'archived' ? 'active' : 'archived'
+    setVisSaving(true)
+    patch('proposal_visibility', next)  // optimistic
+    try {
+      await setEngagementProposalVisibility(row.id, next)
+      setRow(prev => prev ? { ...prev, proposal_visibility: next } : prev)
+    } catch (e: any) {
+      patch('proposal_visibility', draft.proposal_visibility)  // revert
+      showToast(`Failed: ${e.message ?? 'unknown error'}`, 'error')
+    }
+    setVisSaving(false)
+  }
+
   // Archive = reversible. Calm single confirm, sets status -> cancelled,
   // itinerary -> archived. Content preserved; reactivatable via status.
   async function handleArchive() {
@@ -1023,6 +1044,42 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           Only changed fields are written.
         </span>
       </div>
+
+      {/* Client Visibility — AXIS-2 proposal_visibility */}
+      <Section title='Client Visibility'>
+        <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
+          Controls what the client sees on this proposal's link. <strong style={{ color: A.text }}>Active</strong> shows
+          the proposal. <strong style={{ color: A.text }}>Archived</strong> shows a graceful "this proposal is no longer
+          active — reach out to your travel designer" notice instead, without breaking the link.
+          This is separate from the engagement's status: an archived proposal is not cancelled, just no longer shown.
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={handleToggleProposalVisibility}
+            disabled={visSaving}
+            style={{
+              width: 38, height: 20, borderRadius: 999,
+              border: `1px solid ${draft.proposal_visibility === 'archived' ? A.gold : A.border}`,
+              background: draft.proposal_visibility === 'archived' ? A.gold : 'transparent',
+              cursor: visSaving ? 'wait' : 'pointer',
+              position: 'relative', flexShrink: 0, transition: 'all 150ms ease', padding: 0,
+            }}
+          >
+            <div style={{
+              width: 14, height: 14, borderRadius: '50%',
+              background: draft.proposal_visibility === 'archived' ? '#0F1110' : A.faint,
+              position: 'absolute', top: 2,
+              left: draft.proposal_visibility === 'archived' ? 20 : 2,
+              transition: 'left 150ms ease',
+            }} />
+          </button>
+          <div style={{ fontSize: 12, color: draft.proposal_visibility === 'archived' ? A.gold : A.muted, fontFamily: A.font, fontWeight: 600 }}>
+            {draft.proposal_visibility === 'archived'
+              ? 'Archived — client sees the "ask your travel designer" notice'
+              : 'Active — client sees the full proposal'}
+          </div>
+        </div>
+      </Section>
 
       {/* Archive — reversible, calm */}
       <Section title='Archive'>

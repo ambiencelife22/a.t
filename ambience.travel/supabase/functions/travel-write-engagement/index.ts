@@ -65,6 +65,7 @@ type WriteMode =
   | 'set_itinerary_status'
   | 'reorder'
   | 'set_visibility'
+  | 'set_proposal_visibility'
   | 'update_welcome_letter'
   | 'archive'
   | 'delete_engagement'
@@ -319,6 +320,26 @@ Deno.serve(async (req: Request) => {
       if (error) {
         console.error('set_visibility error:', error)
         return json({ error: 'Failed to set visibility' }, 500)
+      }
+      return json({ row: await rowById(id) })
+    }
+
+    if (mode === 'set_proposal_visibility') {
+      // AXIS-2: orthogonal to public_view. public_view gates whether the URL
+      // resolves at all (404 in the stage EF); proposal_visibility gates, when
+      // it DOES resolve, proposal content vs the "ask your travel designer"
+      // archived fallback. 'active' | 'archived'.
+      const id = body?.id as string | undefined
+      const visibility = body?.proposal_visibility as string | undefined
+      if (!id || (visibility !== 'active' && visibility !== 'archived')) {
+        return json({ error: "id and proposal_visibility ('active'|'archived') are required" }, 400)
+      }
+      const { error } = await serviceClient
+        .from('travel_immerse_engagements')
+        .update({ proposal_visibility: visibility }).eq('id', id)
+      if (error) {
+        console.error('set_proposal_visibility error:', error)
+        return json({ error: 'Failed to set proposal visibility' }, 500)
       }
       return json({ row: await rowById(id) })
     }
