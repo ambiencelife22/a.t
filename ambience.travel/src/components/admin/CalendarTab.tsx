@@ -86,7 +86,26 @@ function confIsPartial(s: CalendarStay): boolean { return s.confirmation === 'pa
 // "08:40:00" -> "08:40"; null -> ''. Transport is a moment (a departure time);
 // a stay is a span (date range). The itinerary distinguishes them visually.
 function fmtTime(t: string | null): string { return t ? t.slice(0, 5) : '' }
-function isTransport(a: CalendarActivity): boolean { return a.category === 'transport' }
+
+// Engagement types render as a SPAN (held across dates, like a stay) or a MOMENT
+// (a point with a departure time). Single source for the shape — mirrors the
+// ENGAGEMENT_TAXONOMY span/moment classification.
+const SPAN_CATEGORIES = new Set(['stay', 'car_service', 'car_rental', 'cruise', 'yacht_charter'])
+const MOMENT_CATEGORIES = new Set(['flight', 'private_jet', 'airport_transfer', 'transfer', 'heli_transfer', 'public_transport'])
+
+function activityIsSpan(a: CalendarActivity): boolean {
+  if (a.category && SPAN_CATEGORIES.has(a.category)) return true
+  if (a.category && MOMENT_CATEGORIES.has(a.category)) return false
+  // tour / unknown: span if it covers more than one day, else a moment.
+  return !!(a.end_date && a.date && a.end_date !== a.date)
+}
+
+// 6C drill-down shapes (from the activity_detail EF mode).
+type RoomDetail = { id: string; room_name: string | null; guest_name: string | null; confirmation_number: string | null; party_composition: string | null }
+type PassengerDetail = { id: string; passenger_name: string | null; seat_numbers: string | null; confirmation_number: string | null }
+type ActivityDetail =
+  | { kind: 'stay'; rooms: RoomDetail[] }
+  | { kind: 'transport'; passengers: PassengerDetail[] }
 
 export default function CalendarTab() {
   const [trips, setTrips] = useState<CalendarTrip[]>([])
@@ -318,7 +337,7 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
           const checkins: {trip:CalendarTrip;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarTrip;stay:CalendarStay}[] = []
           for (const t of trips) for (const s of t.stays) { if (s.check_in===iso) checkins.push({trip:t,stay:s}); if (s.check_out===iso) checkouts.push({trip:t,stay:s}) }
           const transport: {trip:CalendarTrip;activity:CalendarActivity}[] = []
-          for (const t of trips) for (const a of t.activities) { if (a.category==='transport' && a.date===iso) transport.push({trip:t,activity:a}) }
+          for (const t of trips) for (const a of t.activities) { if (MOMENT_CATEGORIES.has(a.category ?? '') && a.date===iso) transport.push({trip:t,activity:a}) }
           transport.sort((x,y) => (x.activity.time ?? '') < (y.activity.time ?? '') ? -1 : 1)
           const empty = spanning.length===0 && checkins.length===0 && checkouts.length===0 && transport.length===0
           return (
@@ -474,28 +493,104 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
 // confirmation comes from the matching CalendarStay (same source_booking_id), so the
 // itinerary shows the same honest confirmed/partial/designing state as everywhere else.
 function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: CalendarStay[] }) {
-  if (isTransport(activity)) {
-    const time = fmtTime(activity.time)
-    return (
-      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:10, alignItems:'baseline',
-        border:`1px solid ${L.line}`, borderRadius:14, padding:'10px 12px', background:L.panel }}>
-        <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time || '—'}</span>
-        <span style={{ minWidth:0 }}>
-          <strong style={{ display:'block', fontSize:13.5, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{activity.title || 'Transport'}</strong>
-          <span style={{ fontSize:11, color:L.muted, textTransform:'uppercase', letterSpacing:'0.06em' }}>{activity.label || 'Transport'}</span>
-        </span>
-      </div>
-    )
+  const [open, setOpen] = useState(false)
+  const [detail, setDetail] = useState<ActivityDetail | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+
+  const span = activityIsSpan(activity)
+  const canExpand = span ? !!activity.source_booking_id : !!activity.source_aux_booking_id
+
+  async function toggle() {
+    if (!canExpand) return
+    const next = !open
+    setOpen(next)
+    if (next && !detail && !loadingDetail) {
+      setLoadingDetail(true)
+      const body = span
+        ? { mode: 'activity_detail', booking_id: activity.source_booking_id }
+        : { mode: 'activity_detail', aux_booking_id: activity.source_aux_booking_id }
+      const { data } = await supabase.functions.invoke('travel-read-trip-admin', { body })
+      setDetail((data ?? null) as ActivityDetail | null)
+      setLoadingDetail(false)
+    }
   }
-  // Stay (and any future span category) — pair to its CalendarStay for confirmation.
+
   const stay = stays.find(s => s.id === activity.source_booking_id) ?? null
   const tentative = stay ? confIsTentative(stay) : false
   const partial = stay ? confIsPartial(stay) : false
   const confText = stay ? confLabel(stay) : ''
+  const time = fmtTime(activity.time)
+  const moment = !span
+
   return (
-    <div style={{ border:`1px solid ${partial?L.gold:L.line}`, borderRadius:14, padding:12, borderStyle: tentative?'dashed':'solid', background:L.panel }}>
-      <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{activity.title || 'Stay'}</strong>
-      <p style={{ margin:0, fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(activity.date, activity.end_date)}{confText ? ` · ${confText}` : ''}</p>
+    <div style={{ border:`1px solid ${partial?L.gold:L.line}`, borderRadius:14, borderStyle: (span && tentative)?'dashed':'solid', background:L.panel, overflow:'hidden' }}>
+      <button onClick={toggle} disabled={!canExpand} style={{ appearance:'none', display:'block', width:'100%', textAlign:'left',
+        cursor: canExpand?'pointer':'default', background:'transparent', border:'none', padding:moment?'10px 12px':12, fontFamily:L.sans }}>
+        {moment ? (
+          <span style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10, alignItems:'baseline' }}>
+            <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time || '—'}</span>
+            <span style={{ minWidth:0 }}>
+              <strong style={{ display:'block', fontSize:13.5, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{activity.title || 'Transport'}</strong>
+              <span style={{ fontSize:11, color:L.muted, textTransform:'uppercase', letterSpacing:'0.06em' }}>{activity.label || 'Transport'}</span>
+            </span>
+            {canExpand && <span style={{ color:L.muted, fontSize:12 }}>{open?'▾':'▸'}</span>}
+          </span>
+        ) : (
+          <span style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, alignItems:'start' }}>
+            <span style={{ minWidth:0 }}>
+              <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{activity.title || 'Stay'}</strong>
+              <span style={{ display:'block', fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(activity.date, activity.end_date)}{confText ? ` · ${confText}` : ''}</span>
+            </span>
+            {canExpand && <span style={{ color:L.muted, fontSize:12 }}>{open?'▾':'▸'}</span>}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div style={{ borderTop:`1px solid ${L.line}`, padding:'10px 12px', background:L.surface }}>
+          {loadingDetail && <div style={{ fontSize:12, color:L.muted }}>Loading…</div>}
+          {!loadingDetail && detail?.kind === 'stay' && <RoomList rooms={detail.rooms} />}
+          {!loadingDetail && detail?.kind === 'transport' && <PassengerList passengers={detail.passengers} />}
+          {!loadingDetail && !detail && <div style={{ fontSize:12, color:L.muted }}>No detail available.</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RoomList({ rooms }: { rooms: RoomDetail[] }) {
+  if (rooms.length === 0) return <div style={{ fontSize:12, color:L.muted }}>No rooms recorded.</div>
+  return (
+    <div style={{ display:'grid', gap:8 }}>
+      {rooms.map(r => (
+        <div key={r.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
+          <span style={{ minWidth:0 }}>
+            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{r.room_name || 'Room'}</strong>
+            <span style={{ fontSize:11.5, color:L.muted }}>{r.guest_name || '—'}</span>
+          </span>
+          {r.confirmation_number && (
+            <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>Conf {r.confirmation_number}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PassengerList({ passengers }: { passengers: PassengerDetail[] }) {
+  if (passengers.length === 0) return <div style={{ fontSize:12, color:L.muted }}>No passengers recorded.</div>
+  return (
+    <div style={{ display:'grid', gap:8 }}>
+      {passengers.map(p => (
+        <div key={p.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
+          <span style={{ minWidth:0 }}>
+            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{p.passenger_name || '—'}</strong>
+            {p.seat_numbers && <span style={{ fontSize:11.5, color:L.muted }}>Seat {p.seat_numbers}</span>}
+          </span>
+          {p.confirmation_number && (
+            <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{p.confirmation_number}</span>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

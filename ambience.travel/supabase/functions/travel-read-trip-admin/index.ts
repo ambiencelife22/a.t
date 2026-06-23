@@ -38,6 +38,7 @@
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildDays } from '../_shared/days.ts'
 import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
+import { resolveRoomGuestName, resolvePartyName } from '../_shared/names.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -54,6 +55,7 @@ type Mode =
   | 'aux_bookings'
   | 'public_view'
   | 'calendar'
+  | 'activity_detail'
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -509,6 +511,107 @@ async function handleCalendar(
   return ok({ trips: out })
 }
 
+// ── Activity detail (6C drill-down) ───────────────────────────────────────────
+// Fine-print for one itinerary item. Reuses the canonical resolvers in
+// _shared/names.ts so "who's in this room / on this flight" is IDENTICAL to the
+// client confirmation page — one resolution truth, never a parallel copy.
+//   stay (booking_id)     → rooms with resolved guest names + per-room conf
+//   transport (aux id)    → passengers with resolved names + seat + conf
+// partyLabel (brief.prepared_for) is the trip's single client address, the last
+// fallback in resolvePartyName.
+
+async function partyLabelForTrip(db: SupabaseClient, tripId: string | null): Promise<string | null> {
+  if (!tripId) return null
+  const { data } = await db
+    .from('travel_trip_briefs')
+    .select('prepared_for')
+    .eq('trip_id', tripId)
+    .maybeSingle()
+  return (data?.prepared_for as string | null) ?? null
+}
+
+async function resolvePeopleByIds(
+  db: SupabaseClient,
+  personIds: string[],
+): Promise<Record<string, Record<string, unknown>>> {
+  const byId: Record<string, Record<string, unknown>> = {}
+  if (personIds.length === 0) return byId
+  const { data } = await db
+    .from('global_people')
+    .select('id, first_name, last_name, nickname')
+    .in('id', personIds)
+  for (const g of (data ?? []) as Array<Record<string, unknown>>) byId[g.id as string] = g
+  return byId
+}
+
+async function handleActivityDetail(
+  db: SupabaseClient,
+  bookingId: string | null,
+  auxBookingId: string | null,
+): Promise<Response> {
+  if (bookingId) {
+    // Trip (for party label) via the booking.
+    const { data: bk } = await db
+      .from('travel_bookings').select('trip_id').eq('id', bookingId).maybeSingle()
+    const partyLabel = await partyLabelForTrip(db, (bk?.trip_id as string | null) ?? null)
+
+    const { data: roomData, error: roomErr } = await db
+      .from('travel_booking_rooms')
+      .select('id, room_name, person_id, guest_name, confirmation_number, party_composition, sort_order')
+      .eq('booking_id', bookingId)
+      .order('sort_order', { ascending: true })
+    if (roomErr) return err('Failed to fetch rooms', 500)
+    const rooms = (roomData ?? []) as Array<Record<string, unknown>>
+
+    const peopleById = await resolvePeopleByIds(
+      db, [...new Set(rooms.map(r => r.person_id).filter(Boolean))] as string[],
+    )
+    const out = rooms.map(r => ({
+      id:                  r.id,
+      room_name:           r.room_name,
+      guest_name:          resolveRoomGuestName(
+                             r.person_id ? peopleById[r.person_id as string] : null,
+                             r.guest_name as string | null,
+                             partyLabel,
+                           ),
+      confirmation_number: r.confirmation_number,
+      party_composition:   r.party_composition,
+    }))
+    return ok({ kind: 'stay', rooms: out })
+  }
+
+  if (auxBookingId) {
+    const { data: aux } = await db
+      .from('travel_trip_aux_bookings').select('trip_id').eq('id', auxBookingId).maybeSingle()
+    const partyLabel = await partyLabelForTrip(db, (aux?.trip_id as string | null) ?? null)
+
+    const { data: paxData, error: paxErr } = await db
+      .from('travel_trip_aux_passengers')
+      .select('id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
+      .eq('aux_booking_id', auxBookingId)
+      .order('sort_order', { ascending: true })
+    if (paxErr) return err('Failed to fetch passengers', 500)
+    const pax = (paxData ?? []) as Array<Record<string, unknown>>
+
+    const peopleById = await resolvePeopleByIds(
+      db, [...new Set(pax.map(p => p.person_id).filter(Boolean))] as string[],
+    )
+    const out = pax.map(p => ({
+      id:                  p.id,
+      passenger_name:      resolvePartyName(
+                             p.person_id ? peopleById[p.person_id as string] : null,
+                             p.passenger_label as string | null,
+                             partyLabel,
+                           ),
+      seat_numbers:        p.seat_numbers,
+      confirmation_number: p.confirmation_number,
+    }))
+    return ok({ kind: 'transport', passengers: out })
+  }
+
+  return err('booking_id or aux_booking_id is required', 400)
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -518,13 +621,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const { mode, house_id, trip_id, booking_id, range_start, range_end } = body as {
-      mode:         string | undefined
-      house_id?:    string
-      trip_id?:     string
-      booking_id?:  string
-      range_start?: string
-      range_end?:   string
+    const { mode, house_id, trip_id, booking_id, aux_booking_id, range_start, range_end } = body as {
+      mode:           string | undefined
+      house_id?:      string
+      trip_id?:       string
+      booking_id?:    string
+      aux_booking_id?: string
+      range_start?:   string
+      range_end?:     string
     }
 
     if (!mode) return err('mode is required', 400)
@@ -573,6 +677,9 @@ Deno.serve(async (req: Request) => {
 
       case 'calendar':
         return handleCalendar(serviceClient, range_start ?? null, range_end ?? null)
+
+      case 'activity_detail':
+        return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null)
 
       default:
         return err(`Unknown mode: ${mode}`, 400)
