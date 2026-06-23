@@ -26,9 +26,11 @@ const L = {
   sans: "'Plus Jakarta Sans', sans-serif", band: '#6f5528',
 } as const
 
+type ConfirmationState = 'confirmed' | 'partially_confirmed' | 'designing'
 type CalendarStay = {
   id: string; name: string | null; status: string | null; booking_type: string | null
   check_in: string | null; check_out: string | null; hotel_id: string | null; hotel_name: string | null
+  confirmation: ConfirmationState; rooms_confirmed: number; rooms_total: number
 }
 type CalendarTrip = {
   id: string; trip_code: string; title: string | null
@@ -61,7 +63,17 @@ function fmtRange(start: string | null, end: string | null): string {
 }
 const SLUG_LABEL: Record<string,string> = { confirmed:'Confirmed', paid:'Paid', in_service:'In service' }
 function tripStatusLabel(slug: string | null): string { return slug ? (SLUG_LABEL[slug] ?? slug) : '—' }
-function isTentative(stay: CalendarStay): boolean { return (stay.status ?? '') !== 'confirmed' }
+// Confirmation is DERIVED upstream (EF, via _shared/confirmation.ts) — the calendar
+// renders the three honest states, never re-deriving from status. 'designing' = not
+// yet confirmed (still in the design phase); shown tentative. partially_confirmed =
+// some rooms locked, some pending — its own state, not flattened.
+function confLabel(s: CalendarStay): string {
+  if (s.confirmation === 'confirmed') return 'Confirmed'
+  if (s.confirmation === 'partially_confirmed') return `Partial · ${s.rooms_confirmed}/${s.rooms_total} rooms`
+  return 'In design'
+}
+function confIsTentative(s: CalendarStay): boolean { return s.confirmation === 'designing' }
+function confIsPartial(s: CalendarStay): boolean { return s.confirmation === 'partially_confirmed' }
 
 export default function CalendarTab() {
   const [trips, setTrips] = useState<CalendarTrip[]>([])
@@ -266,12 +278,13 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
 }
 
 function StayMarker({ trip, stay, kind, onSelect }: { trip: CalendarTrip; stay: CalendarStay; kind:'in'|'out'; onSelect:(id:string)=>void }) {
-  const tentative = isTentative(stay); const hotel = stay.hotel_name || stay.name || 'Stay'
+  const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
+  const hotel = stay.hotel_name || stay.name || 'Stay'
   const verb = kind==='in' ? 'Check-in' : 'Check-out'
   return (
-    <button onClick={() => onSelect(trip.id)} title={`${verb}: ${hotel}${tentative?' (tentative)':''}`} style={{
+    <button onClick={() => onSelect(trip.id)} title={`${verb}: ${hotel} · ${confLabel(stay)}`} style={{
       display:'block', width:'100%', textAlign:'left', cursor:'pointer', margin:'3px 0', background:L.panel, color:L.ink,
-      border:`1px solid ${L.line}`, borderStyle: tentative?'dashed':'solid', borderRadius:8, padding:'3px 7px', fontSize:10.5, fontWeight:700,
+      border:`1px solid ${partial?L.gold:L.line}`, borderStyle: tentative?'dashed':'solid', borderRadius:8, padding:'3px 7px', fontSize:10.5, fontWeight:700,
       whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:L.sans, opacity: tentative?0.8:1 }}>
       <span style={{ color:L.gold }}>{kind==='in'?'→':'←'}</span> {hotel}
     </button>
@@ -317,13 +330,14 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
   )
 }
 function WeekStay({ trip, stay, kind, onSelect }: { trip:CalendarTrip; stay:CalendarStay; kind:'in'|'out'; onSelect:(id:string)=>void }) {
-  const tentative = isTentative(stay); const hotel = stay.hotel_name||stay.name||'Stay'
+  const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
+  const hotel = stay.hotel_name||stay.name||'Stay'
   const verb = kind==='in'?'Check-in':'Check-out'
   return (
-    <button onClick={()=>onSelect(trip.id)} title={`${verb}: ${hotel}${tentative?' (tentative)':''}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
-      borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px solid ${L.line}`, background:L.panel, borderStyle: tentative?'dashed':'solid', opacity: tentative?0.82:1, boxSizing:'border-box', minWidth:0 }}>
+    <button onClick={()=>onSelect(trip.id)} title={`${verb}: ${hotel} · ${confLabel(stay)}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
+      borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px solid ${partial?L.gold:L.line}`, background:L.panel, borderStyle: tentative?'dashed':'solid', opacity: tentative?0.82:1, boxSizing:'border-box', minWidth:0 }}>
       <strong style={{ display:'block', fontSize:11.5, color:L.ink }}>{verb}</strong>
-      <span style={{ display:'block', fontSize:10, color:L.muted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotel}{tentative?' · tentative':''}</span>
+      <span style={{ display:'block', fontSize:10, color:L.muted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotel} · {confLabel(stay)}</span>
     </button>
   )
 }
@@ -379,10 +393,10 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
   if (ev.kind==='stay-checkin' || ev.kind==='stay-checkout') {
     const hotel = ev.stay.hotel_name||ev.stay.name||'Stay'
     const timeLabel = ev.kind==='stay-checkin'?'Check-in':'Check-out'
-    const tentative = isTentative(ev.stay)
-    const sub = tentative?'Stay · tentative (quoted)':'Stay · confirmed'
+    const tentative = confIsTentative(ev.stay); const partial = confIsPartial(ev.stay)
+    const sub = `Stay · ${confLabel(ev.stay)}`
     return (
-      <button onClick={()=>onSelect(ev.trip.id)} style={{ ...ROW_STYLE, border:`1px solid ${L.line}`, borderStyle: tentative?'dashed':'solid', opacity: tentative?0.85:1 }}>
+      <button onClick={()=>onSelect(ev.trip.id)} style={{ ...ROW_STYLE, border:`1px solid ${partial?L.gold:L.line}`, borderStyle: tentative?'dashed':'solid', opacity: tentative?0.85:1 }}>
         <span style={{ fontSize:13, color:L.muted }}>{timeLabel}</span>
         <span>
           <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:3 }}>{hotel}</strong>
@@ -428,11 +442,11 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
       <div style={{ display:'grid', gap:8 }}>
         {trip.stays.length===0 && <div style={{ fontSize:13, color:L.muted }}>No stays recorded.</div>}
         {trip.stays.map(stay => {
-          const tentative = isTentative(stay)
+          const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
           return (
-            <div key={stay.id} style={{ border:`1px solid ${L.line}`, borderRadius:14, padding:12, borderStyle: tentative?'dashed':'solid', background:L.panel }}>
+            <div key={stay.id} style={{ border:`1px solid ${partial?L.gold:L.line}`, borderRadius:14, padding:12, borderStyle: tentative?'dashed':'solid', background:L.panel }}>
               <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{stay.hotel_name||stay.name||'Stay'}</strong>
-              <p style={{ margin:0, fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(stay.check_in, stay.check_out)}{tentative?' · tentative (quoted)':' · confirmed'}</p>
+              <p style={{ margin:0, fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(stay.check_in, stay.check_out)} · {confLabel(stay)}</p>
             </div>
           )
         })}

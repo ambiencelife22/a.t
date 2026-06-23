@@ -37,6 +37,7 @@
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildDays } from '../_shared/days.ts'
+import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -402,15 +403,29 @@ async function handleCalendar(
   // 3. Bookings (stays) for those trips — start_date/end_date are check-in/out.
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
-    .select('id, trip_id, name, status, booking_type, start_date, end_date, accom_hotel_id')
+    .select('id, trip_id, name, status, booking_type, start_date, end_date, accom_hotel_id, confirmation_number')
     .in('trip_id', tripIds)
     .order('start_date', { ascending: true, nullsFirst: false })
   if (bookErr) return err('Failed to fetch calendar bookings', 500)
   const bookings = (bookData ?? []) as Array<{
     id: string; trip_id: string; name: string | null; status: string | null
     booking_type: string | null; start_date: string | null; end_date: string | null
-    accom_hotel_id: string | null
+    accom_hotel_id: string | null; confirmation_number: string | null
   }>
+
+  // 3b. Room confirmation numbers per booking — the evidence the derivation reads.
+  const calBookingIds = bookings.map(b => b.id)
+  const roomsByBookingId = new Map<string, Array<{ confirmation_number: string | null }>>()
+  if (calBookingIds.length > 0) {
+    const { data: roomData, error: roomErr } = await db
+      .from('travel_booking_rooms')
+      .select('booking_id, confirmation_number')
+      .in('booking_id', calBookingIds)
+    if (roomErr) return err('Failed to fetch calendar rooms', 500)
+    for (const r of (roomData ?? []) as Array<{ booking_id: string; confirmation_number: string | null }>) {
+      ;(roomsByBookingId.get(r.booking_id) ?? roomsByBookingId.set(r.booking_id, []).get(r.booking_id)!).push({ confirmation_number: r.confirmation_number })
+    }
+  }
 
   // 4. Hotel names for accom bookings.
   const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter((x): x is string => !!x))]
@@ -419,6 +434,39 @@ async function handleCalendar(
     const { data: hotelData } = await db
       .from('travel_accom_hotels').select('id, name').in('id', hotelIds)
     for (const h of (hotelData ?? []) as Array<{ id: string; name: string }>) hotelName.set(h.id, h.name)
+  }
+
+  // 4b. Activities (typed child engagements) — the engagement-spine read. Stay +
+  //     Transport children today; dining/experience/etc. flow through automatically
+  //     as created (category = registry slug, never hardcoded). Fetched independently
+  //     of trip span so out-of-span activities survive (e.g. a return flight the day
+  //     after end_date).
+  const journeyIds = [...new Set(confirmedTrips.map(t => t.confirmed_engagement_id).filter((x): x is string => !!x))]
+  const activitiesByJourney = new Map<string, Array<Record<string, unknown>>>()
+  if (journeyIds.length > 0) {
+    const { data: actData, error: actErr } = await db
+      .from('travel_immerse_engagements')
+      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, source_booking_id, source_aux_booking_id, travel_engagement_types!travel_immerse_engagements_engagement_type_id_fkey(slug, label)')
+      .in('parent_engagement_id', journeyIds)
+      .not('activity_date', 'is', null)
+      .order('activity_date', { ascending: true })
+    if (actErr) return err('Failed to fetch calendar activities', 500)
+    for (const a of (actData ?? []) as Array<Record<string, unknown>>) {
+      const parent = a.parent_engagement_id as string
+      const typeRaw = a.travel_engagement_types
+      const type = Array.isArray(typeRaw) ? typeRaw[0] : typeRaw
+      ;(activitiesByJourney.get(parent) ?? activitiesByJourney.set(parent, []).get(parent)!).push({
+        id:         a.id,
+        category:   (type as { slug: string } | null)?.slug ?? null,
+        label:      (type as { label: string } | null)?.label ?? null,
+        title:      a.title,
+        date:       a.activity_date,
+        end_date:   a.activity_end_date,
+        time:       a.activity_start_time,
+        source_booking_id:     a.source_booking_id,
+        source_aux_booking_id: a.source_aux_booking_id,
+      })
+    }
   }
 
   // 5. Shape: trips each carrying their stays (booking + resolved hotel name + slug).
@@ -433,16 +481,29 @@ async function handleCalendar(
     end_date:      t.end_date,
     status_slug:   t.confirmed_engagement_id ? (slugByEng.get(t.confirmed_engagement_id) ?? null) : null,
     primary_client_id: t.primary_client_id,
-    stays: (byTrip.get(t.id) ?? []).map(b => ({
-      id:           b.id,
-      name:         b.name,
-      status:       b.status,
-      booking_type: b.booking_type,
-      check_in:     b.start_date,
-      check_out:    b.end_date,
-      hotel_id:     b.accom_hotel_id,
-      hotel_name:   b.accom_hotel_id ? (hotelName.get(b.accom_hotel_id) ?? null) : null,
-    })),
+    stays: (byTrip.get(t.id) ?? []).map(b => {
+      const stayRooms = roomsByBookingId.get(b.id) ?? []
+      const confirmation = deriveConfirmation({
+        rooms: stayRooms,
+        bookingConfirmationNumber: b.confirmation_number,
+        bookingStatus: b.status,
+      })
+      const roomCount = roomConfirmationCount(stayRooms)
+      return {
+        id:           b.id,
+        name:         b.name,
+        status:       b.status,
+        booking_type: b.booking_type,
+        check_in:     b.start_date,
+        check_out:    b.end_date,
+        hotel_id:     b.accom_hotel_id,
+        hotel_name:   b.accom_hotel_id ? (hotelName.get(b.accom_hotel_id) ?? null) : null,
+        confirmation,                          // 'confirmed' | 'partially_confirmed' | 'designing'
+        rooms_confirmed: roomCount.confirmed,
+        rooms_total:     roomCount.total,
+      }
+    }),
+    activities: t.confirmed_engagement_id ? (activitiesByJourney.get(t.confirmed_engagement_id) ?? []) : [],
   }))
 
   return ok({ trips: out })
