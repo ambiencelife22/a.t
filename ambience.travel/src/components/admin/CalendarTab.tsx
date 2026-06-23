@@ -32,10 +32,18 @@ type CalendarStay = {
   check_in: string | null; check_out: string | null; hotel_id: string | null; hotel_name: string | null
   confirmation: ConfirmationState; rooms_confirmed: number; rooms_total: number
 }
+// A typed child engagement (from the engagement spine). category is the registry slug
+// ('stay' | 'transport' | dining/experience/etc. as they're created) — never hardcoded.
+type CalendarActivity = {
+  id: string; category: string | null; label: string | null; title: string | null
+  date: string | null; end_date: string | null; time: string | null
+  source_booking_id: string | null; source_aux_booking_id: string | null
+}
 type CalendarTrip = {
   id: string; trip_code: string; title: string | null
   start_date: string | null; end_date: string | null
-  status_slug: string | null; primary_client_id: string | null; stays: CalendarStay[]
+  status_slug: string | null; primary_client_id: string | null
+  stays: CalendarStay[]; activities: CalendarActivity[]
 }
 type ViewMode = 'month' | 'week' | 'agenda'
 
@@ -74,6 +82,11 @@ function confLabel(s: CalendarStay): string {
 }
 function confIsTentative(s: CalendarStay): boolean { return s.confirmation === 'designing' }
 function confIsPartial(s: CalendarStay): boolean { return s.confirmation === 'partially_confirmed' }
+
+// "08:40:00" -> "08:40"; null -> ''. Transport is a moment (a departure time);
+// a stay is a span (date range). The itinerary distinguishes them visually.
+function fmtTime(t: string | null): string { return t ? t.slice(0, 5) : '' }
+function isTransport(a: CalendarActivity): boolean { return a.category === 'transport' }
 
 export default function CalendarTab() {
   const [trips, setTrips] = useState<CalendarTrip[]>([])
@@ -225,32 +238,18 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
   const BAR_H = 22, BAR_GAP = 3
   const barsAreaH = laneCount > 0 ? laneCount*(BAR_H+BAR_GAP) + 2 : 0
 
-  const dayStays = week.map((day) => {
-    const iso = fmtISO(day)
-    const checkins: {trip:CalendarTrip;stay:CalendarStay}[] = []
-    const checkouts: {trip:CalendarTrip;stay:CalendarStay}[] = []
-    for (const t of trips) for (const s of t.stays) {
-      if (s.check_in === iso) checkins.push({ trip:t, stay:s })
-      if (s.check_out === iso) checkouts.push({ trip:t, stay:s })
-    }
-    return { checkins, checkouts }
-  })
-
   return (
     <div style={{ position:'relative', borderBottom:`1px solid ${L.line}` }}>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))' }}>
         {week.map((day, col) => {
           const inMonth = day.getMonth() === cursorMonth
           const isToday = sameDay(day, today)
-          const ds = dayStays[col]
           return (
             <div key={col} style={{ minHeight: 96 + barsAreaH, padding:'8px 8px 8px', borderRight: col!==6 ? `1px solid ${L.line}` : 'none',
               background: inMonth ? L.panel : L.surface, opacity: inMonth ? 1 : 0.55 }}>
               <div style={{ display:'flex', justifyContent:'flex-end', marginBottom: barsAreaH ? barsAreaH+4 : 4 }}>
                 <span style={{ fontSize:12, fontWeight:600, color: isToday?L.panel:L.muted, background: isToday?L.ink:'transparent', width:24, height:24, borderRadius:'50%', display:'inline-grid', placeItems:'center' }}>{day.getDate()}</span>
               </div>
-              {ds.checkins.map((c, i) => <StayMarker key={`in-${i}`} trip={c.trip} stay={c.stay} kind="in" onSelect={onSelect} />)}
-              {ds.checkouts.map((c, i) => <StayMarker key={`out-${i}`} trip={c.trip} stay={c.stay} kind="out" onSelect={onSelect} />)}
             </div>
           )
         })}
@@ -274,6 +273,23 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
         })}
       </div>
     </div>
+  )
+}
+
+// Transport mark — a connector, not a destination. Lighter than a stay marker: a gold
+// departure time + flight name, no border fill. Click selects the trip (the panel
+// itinerary carries the detail; 6C day-detail will carry per-passenger fine-print).
+function TransportMark({ trip, activity, onSelect }: { trip: CalendarTrip; activity: CalendarActivity; onSelect:(id:string)=>void }) {
+  const time = fmtTime(activity.time)
+  const name = activity.title || 'Transport'
+  return (
+    <button onClick={() => onSelect(trip.id)} title={`${time ? time + ' · ' : ''}${name}`} style={{
+      display:'flex', alignItems:'baseline', gap:5, width:'100%', textAlign:'left', cursor:'pointer', margin:'3px 0',
+      background:'transparent', border:'none', padding:'1px 2px', fontFamily:L.sans, minWidth:0 }}>
+      <span aria-hidden style={{ color:L.gold, fontSize:10, lineHeight:1, flex:'0 0 auto' }}>✈</span>
+      <span style={{ color:L.gold, fontSize:10, fontWeight:700, fontVariantNumeric:'tabular-nums', flex:'0 0 auto' }}>{time}</span>
+      <span style={{ color:L.muted, fontSize:10, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</span>
+    </button>
   )
 }
 
@@ -301,7 +317,10 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
           const spanning = trips.filter(t => t.start_date && t.end_date && t.start_date <= iso && t.end_date >= iso)
           const checkins: {trip:CalendarTrip;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarTrip;stay:CalendarStay}[] = []
           for (const t of trips) for (const s of t.stays) { if (s.check_in===iso) checkins.push({trip:t,stay:s}); if (s.check_out===iso) checkouts.push({trip:t,stay:s}) }
-          const empty = spanning.length===0 && checkins.length===0 && checkouts.length===0
+          const transport: {trip:CalendarTrip;activity:CalendarActivity}[] = []
+          for (const t of trips) for (const a of t.activities) { if (a.category==='transport' && a.date===iso) transport.push({trip:t,activity:a}) }
+          transport.sort((x,y) => (x.activity.time ?? '') < (y.activity.time ?? '') ? -1 : 1)
+          const empty = spanning.length===0 && checkins.length===0 && checkouts.length===0 && transport.length===0
           return (
             <div key={i} style={{ minHeight:420, padding:'12px 10px', borderRight: i!==6?`1px solid ${L.line}`:'none', background: isToday?L.goldTint:L.panel }}>
               <div style={{ marginBottom:10 }}>
@@ -322,6 +341,7 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
               })}
               {checkins.map((c,j) => <WeekStay key={`in-${j}`} trip={c.trip} stay={c.stay} kind="in" onSelect={onSelect} />)}
               {checkouts.map((c,j) => <WeekStay key={`out-${j}`} trip={c.trip} stay={c.stay} kind="out" onSelect={onSelect} />)}
+              {transport.map((c,j) => <TransportMark key={`tr-${j}`} trip={c.trip} activity={c.activity} onSelect={onSelect} />)}
             </div>
           )
         })}
@@ -438,18 +458,10 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
         <Info label="Trip dates" value={fmtRange(trip.start_date, trip.end_date)} />
         <Info label="Stays" value={`${trip.stays.length}`} />
       </div>
-      <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:8 }}>Stays</div>
+      <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:8 }}>Itinerary</div>
       <div style={{ display:'grid', gap:8 }}>
-        {trip.stays.length===0 && <div style={{ fontSize:13, color:L.muted }}>No stays recorded.</div>}
-        {trip.stays.map(stay => {
-          const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
-          return (
-            <div key={stay.id} style={{ border:`1px solid ${partial?L.gold:L.line}`, borderRadius:14, padding:12, borderStyle: tentative?'dashed':'solid', background:L.panel }}>
-              <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{stay.hotel_name||stay.name||'Stay'}</strong>
-              <p style={{ margin:0, fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(stay.check_in, stay.check_out)} · {confLabel(stay)}</p>
-            </div>
-          )
-        })}
+        {trip.activities.length===0 && <div style={{ fontSize:13, color:L.muted }}>No itinerary recorded.</div>}
+        {trip.activities.map(a => <ItineraryRow key={a.id} activity={a} stays={trip.stays} />)}
       </div>
       <div style={{ marginTop:16, borderTop:`1px solid ${L.line}`, paddingTop:12, fontSize:12, color:L.muted, lineHeight:1.45 }}>
         To-do list and welcome-prep tasks appear here once task scheduling is enabled.
@@ -457,6 +469,37 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
     </div>
   )
 }
+// One itinerary line. Transport = a departure time + flight name (a moment). Stay =
+// a hotel held across nights + its derived confirmation (a span). The stay's
+// confirmation comes from the matching CalendarStay (same source_booking_id), so the
+// itinerary shows the same honest confirmed/partial/designing state as everywhere else.
+function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: CalendarStay[] }) {
+  if (isTransport(activity)) {
+    const time = fmtTime(activity.time)
+    return (
+      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:10, alignItems:'baseline',
+        border:`1px solid ${L.line}`, borderRadius:14, padding:'10px 12px', background:L.panel }}>
+        <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time || '—'}</span>
+        <span style={{ minWidth:0 }}>
+          <strong style={{ display:'block', fontSize:13.5, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{activity.title || 'Transport'}</strong>
+          <span style={{ fontSize:11, color:L.muted, textTransform:'uppercase', letterSpacing:'0.06em' }}>{activity.label || 'Transport'}</span>
+        </span>
+      </div>
+    )
+  }
+  // Stay (and any future span category) — pair to its CalendarStay for confirmation.
+  const stay = stays.find(s => s.id === activity.source_booking_id) ?? null
+  const tentative = stay ? confIsTentative(stay) : false
+  const partial = stay ? confIsPartial(stay) : false
+  const confText = stay ? confLabel(stay) : ''
+  return (
+    <div style={{ border:`1px solid ${partial?L.gold:L.line}`, borderRadius:14, padding:12, borderStyle: tentative?'dashed':'solid', background:L.panel }}>
+      <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{activity.title || 'Stay'}</strong>
+      <p style={{ margin:0, fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(activity.date, activity.end_date)}{confText ? ` · ${confText}` : ''}</p>
+    </div>
+  )
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:12, padding:11, background:L.surface }}>
