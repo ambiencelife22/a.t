@@ -38,9 +38,11 @@ import {
   createDestination, updateDestination, deleteDestination,
   createContact, updateContact, deleteContact,
   createPPDPeopleEntry, deletePPDPeopleEntry,
+  fetchHouseRoles,
   type House, type HousePerson, type HousePreference,
   type HouseDiningEntry, type HouseDestination, type HouseContact,
   type PPDPeopleEntry, type HousePersonProfile,
+  type HouseRole_Registry,
   type PrefCategory, type PrefConfidence, type DiningStatus,
   type DestinationStatus, type DestinationTripType, type ContactType,
 } from '../../queries/queriesAdminHouse'
@@ -123,7 +125,6 @@ const PREF_KEYS: Record<string, string[]> = {
   Misc:          ['General Note', 'To Confirm', 'Open Item'],
 }
 
-const ROLES              = ['primary', 'spouse', 'partner', 'child', 'staff', 'other']
 const DEST_STATUSES: DestinationStatus[]     = ['visited', 'planned', 'avoided']
 const DEST_TRIP_TYPES: DestinationTripType[] = ['family', 'couple', 'solo', 'business', 'other']
 const CONTACT_TYPES: ContactType[]          = ['pa', 'driver', 'fixer', 'medical', 'security', 'concierge', 'other']
@@ -139,11 +140,13 @@ interface AllData {
   ppd:          PPDPeopleEntry[]
   dossier:      TripDossierData
   requests:     TravelRequest[]
+  roles:        HouseRole_Registry[]
 }
 
 const EMPTY_DATA: AllData = {
   people: [], preferences: [], dining: [], destinations: [],
   contacts: [], ppd: [], dossier: { trips: [], partners: {}, house: null }, requests: [],
+  roles: [],
 }
 
 // ── Section type ──────────────────────────────────────────────────────────────
@@ -152,11 +155,12 @@ type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contact
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
-function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReload }: {
+function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, onReload }: {
   person:         HousePerson
   houseId:        string
   allPreferences: HousePreference[]
   allPPD:         PPDPeopleEntry[]
+  roles:          HouseRole_Registry[]
   onClose:        () => void
   onReload:       () => void
 }) {
@@ -359,7 +363,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, onClose, onReloa
               </Field>
               <Field label='Role'>
                 <select style={inputStyle} value={identityDraft.role} onChange={e => setIdentityDraft(d => ({ ...d, role: e.target.value }))}>
-                  {ROLES.map(r => <option key={r} value={r}>{capitalize(r)}</option>)}
+                  {roles.map(r => <option key={r.slug} value={r.slug}>{r.label}</option>)}
                 </select>
               </Field>
             </div>
@@ -680,12 +684,13 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   const searchRef                     = useRef<HTMLInputElement>(null)
   const [addingPerson, setAddingPerson] = useState(false)
   const [pd, setPd]                   = useState({ member_ref: '', role: 'primary' })
+  const roles                          = data.roles
   const [addSaving, setAddSaving]     = useState(false)
 
   async function loadAll() {
     setLoading(true)
     try {
-      const [people, preferences, dining, destinations, contacts, ppdResponse, dossier, requests] = await Promise.all([
+      const [people, preferences, dining, destinations, contacts, ppdResponse, dossier, requests, roles] = await Promise.all([
         fetchPeopleForHouse(house.id),
         fetchPreferencesForHouse(house.id),
         fetchDiningHistoryForHouse(house.id),
@@ -694,8 +699,9 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         fetchPPDForHouse(house.id),
         fetchTripDossierForHouse(house.id),
         fetchRequestsForHouse(house.id),
+        fetchHouseRoles(),
       ])
-      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people, dossier, requests })
+      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people, dossier, requests, roles })
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to load') }
     setLoading(false)
   }
@@ -783,7 +789,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
           <AddFormShell>
             <input style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} placeholder='J, K, Child 1...' value={pd.member_ref} onChange={e => setPd(d => ({ ...d, member_ref: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') addPerson() }} />
             <select style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} value={pd.role} onChange={e => setPd(d => ({ ...d, role: e.target.value }))}>
-              {ROLES.map(r => <option key={r} value={r}>{capitalize(r)}</option>)}
+              {roles.map(r => <option key={r.slug} value={r.slug}>{r.label}</option>)}
             </select>
             <FormActions onCancel={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'primary' }) }} onSave={addPerson} saving={addSaving} />
           </AddFormShell>
@@ -856,6 +862,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         <PersonModal
           person={modalPerson} houseId={house.id}
           allPreferences={data.preferences} allPPD={data.ppd}
+          roles={roles}
           onClose={() => setModalPerson(null)} onReload={loadAll}
         />
       )}

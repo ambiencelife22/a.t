@@ -18,12 +18,19 @@ import { supabase } from '../lib/supabase'
 async function invokeRead<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('global-read-people', { body })
   if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error((data as { error: string }).error)
+  }
   return data as T
 }
 
 async function invokeWrite<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('global-write-people', { body })
   if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    const d = data as { error: string; message?: string }
+    throw new Error(d.message ?? d.error)
+  }
   return data as T
 }
 

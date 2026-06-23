@@ -32,7 +32,7 @@ import type { PpdPeopleKey, PpdContactKey } from '../types/typesPpd'
 
 export type HouseStatus      = 'active' | 'inactive' | 'archived'
 export type HouseDesignation = 'HRH' | 'HH' | 'VVIP' | null
-export type HouseRole        = 'principal' | 'spouse' | 'child' | 'staff' | 'advisor' | string
+export type HouseRole        = string
 export type PrefConfidence   = 'confirmed' | 'to_confirm' | 'outdated'
 export type DiningStatus     = 'favorite' | 'visited' | 'avoid' | 'to_try'
 export type DestinationStatus = 'visited' | 'planned' | 'avoided'
@@ -195,6 +195,27 @@ export async function updateHouse(id: string, patch: HousePatch): Promise<void> 
     body: { mode: 'update', id, ...patch },
   })
   if (error) throw new Error(`Failed to update house: ${error.message}`)
+}
+
+// ── Roles registry ────────────────────────────────────────────────────────────
+
+export interface HouseRole_Registry {
+  id:         string
+  slug:       string
+  label:      string
+  sort_order: number
+  is_active:  boolean
+}
+
+export async function fetchHouseRoles(): Promise<HouseRole_Registry[]> {
+  const { data, error } = await supabase.functions.invoke('a-read-house', {
+    body: { mode: 'roles' },
+  })
+  if (error) throw new Error(`Failed to fetch house roles: ${error.message}`)
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error((data as { error: string }).error)
+  }
+  return (data as { roles: HouseRole_Registry[] }).roles
 }
 
 // ── People reads/writes ───────────────────────────────────────────────────────

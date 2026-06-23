@@ -96,7 +96,7 @@ const MOMENT_CATEGORIES = new Set(['flight', 'private_jet', 'airport_transfer', 
 function activityIsSpan(a: CalendarActivity): boolean {
   if (a.category && SPAN_CATEGORIES.has(a.category)) return true
   if (a.category && MOMENT_CATEGORIES.has(a.category)) return false
-  // tour / unknown: span if it covers more than one day, else a moment.
+  // tour / unknown: span if it covers more than one day, otherwise a moment.
   return !!(a.end_date && a.date && a.end_date !== a.date)
 }
 
@@ -493,7 +493,7 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
 // One itinerary line. Transport = a departure time + flight name (a moment). Stay =
 // a hotel held across nights + its derived confirmation (a span). The stay's
 // confirmation comes from the matching CalendarStay (same source_booking_id), so the
-// itinerary shows the same honest confirmed/partial/designing state as everywhere else.
+// itinerary shows the same honest confirmed/partial/designing state as everywhere otherwise.
 function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: CalendarStay[] }) {
   const [open, setOpen] = useState(false)
   const [detail, setDetail] = useState<ActivityDetail | null>(null)
