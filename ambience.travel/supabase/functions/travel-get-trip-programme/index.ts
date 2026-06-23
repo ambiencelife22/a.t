@@ -32,7 +32,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/http.ts'
-import { attachPassengers } from '../_shared/names.ts'
+import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings } from '../_shared/trip.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
@@ -159,8 +159,11 @@ Deno.serve(async (req: Request) => {
       }
     })
 
-    // ── 9. Aux with resolved passengers ────────────────────────────────────────
-    const auxBookings = await attachPassengers(db, (auxResult.data ?? []) as Record<string, unknown>[], partyLabel)
+    // ── 9. Aux with resolved passengers + driver details ───────────────────────
+    const auxBookings = await attachDriverDetails(
+      db,
+      await attachPassengers(db, (auxResult.data ?? []) as Record<string, unknown>[], partyLabel),
+    )
 
     // ── 10. Dining / experience images for standalone entries ──────────────────
     const diningIds     = [...new Set(entries.map(e => e.source_dining_id).filter(Boolean))] as string[]

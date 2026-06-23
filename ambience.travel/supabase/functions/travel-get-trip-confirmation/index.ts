@@ -11,7 +11,7 @@
 //   (uuid[] of a_house_people.person_id) + contact_name_format ('first'|'full').
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { attachPassengers } from '../_shared/names.ts'
+import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings } from '../_shared/trip.ts'
 
 const corsHeaders = {
@@ -196,7 +196,7 @@ Deno.serve(async (req: Request) => {
       house,
       contacts,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings: await attachPassengers(db, auxBookings, (brief?.prepared_for as string | null) ?? null),
+      auxBookings: await attachDriverDetails(db, await attachPassengers(db, auxBookings, (brief?.prepared_for as string | null) ?? null)),
       urlId: url_id,
       guides: {
         hasDining:         !!diningGuideResult.data,

@@ -103,9 +103,11 @@ function activityIsSpan(a: CalendarActivity): boolean {
 // 6C drill-down shapes (from the activity_detail EF mode).
 type RoomDetail = { id: string; room_name: string | null; guest_name: string | null; confirmation_number: string | null; party_composition: string | null }
 type PassengerDetail = { id: string; passenger_name: string | null; seat_numbers: string | null; confirmation_number: string | null }
+type VehicleDetail = { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; company: string | null; vehicle_role: string | null }
 type ActivityDetail =
   | { kind: 'stay'; rooms: RoomDetail[] }
   | { kind: 'transport'; passengers: PassengerDetail[] }
+  | { kind: 'ground_transport'; vehicles: VehicleDetail[] }
 
 export default function CalendarTab() {
   const [trips, setTrips] = useState<CalendarTrip[]>([])
@@ -507,8 +509,8 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
     if (next && !detail && !loadingDetail) {
       setLoadingDetail(true)
       const body = span
-        ? { mode: 'activity_detail', booking_id: activity.source_booking_id }
-        : { mode: 'activity_detail', aux_booking_id: activity.source_aux_booking_id }
+        ? { mode: 'activity_detail', booking_id: activity.source_booking_id, category: activity.category }
+        : { mode: 'activity_detail', aux_booking_id: activity.source_aux_booking_id, category: activity.category }
       const { data } = await supabase.functions.invoke('travel-read-trip-admin', { body })
       setDetail((data ?? null) as ActivityDetail | null)
       setLoadingDetail(false)
@@ -550,6 +552,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
           {loadingDetail && <div style={{ fontSize:12, color:L.muted }}>Loading…</div>}
           {!loadingDetail && detail?.kind === 'stay' && <RoomList rooms={detail.rooms} />}
           {!loadingDetail && detail?.kind === 'transport' && <PassengerList passengers={detail.passengers} />}
+          {!loadingDetail && detail?.kind === 'ground_transport' && <VehicleList vehicles={detail.vehicles} />}
           {!loadingDetail && !detail && <div style={{ fontSize:12, color:L.muted }}>No detail available.</div>}
         </div>
       )}
@@ -589,6 +592,34 @@ function PassengerList({ passengers }: { passengers: PassengerDetail[] }) {
           {p.confirmation_number && (
             <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{p.confirmation_number}</span>
           )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Driver vehicles for a ground-car service (transfer / airport transfer / car service).
+// This is the ADMIN ops surface, so company IS shown (operator-internal context). The
+// CLIENT confirmation/programme pages omit company. vehicle_role labels the 5-car case
+// (Principal / Staff / Luggage). Empty until the driver details come back ~24-36h prior.
+function VehicleList({ vehicles }: { vehicles: VehicleDetail[] }) {
+  if (vehicles.length === 0) return <div style={{ fontSize:12, color:L.muted }}>Driver details not yet recorded.</div>
+  return (
+    <div style={{ display:'grid', gap:10 }}>
+      {vehicles.map(v => (
+        <div key={v.id} style={{ display:'grid', gap:2 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
+            <strong style={{ fontSize:12.5, color:L.ink }}>{v.driver_name || 'Driver'}</strong>
+            {v.vehicle_role && (
+              <span style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.gold }}>{v.vehicle_role}</span>
+            )}
+          </div>
+          <div style={{ fontSize:11.5, color:L.muted, display:'flex', gap:8, flexWrap:'wrap' }}>
+            {v.driver_phone && <span style={{ fontVariantNumeric:'tabular-nums' }}>{v.driver_phone}</span>}
+            {v.car_model && <span>{v.car_model}</span>}
+            {v.plate && <span style={{ fontVariantNumeric:'tabular-nums' }}>{v.plate}</span>}
+          </div>
+          {v.company && <div style={{ fontSize:10.5, color:L.muted, opacity:0.7 }}>{v.company}</div>}
         </div>
       ))}
     </div>

@@ -544,10 +544,15 @@ async function resolvePeopleByIds(
   return byId
 }
 
+// Ground-car movement slugs (ENGAGEMENT_TAXONOMY ground-transport group). These
+// carry driver vehicles; other aux movements (flight, private_jet) carry passengers.
+const GROUND_CAR_SLUGS = new Set(['transfer', 'airport_transfer', 'car_service'])
+
 async function handleActivityDetail(
   db: SupabaseClient,
   bookingId: string | null,
   auxBookingId: string | null,
+  category: string | null,
 ): Promise<Response> {
   if (bookingId) {
     // Trip (for party label) via the booking.
@@ -581,10 +586,26 @@ async function handleActivityDetail(
   }
 
   if (auxBookingId) {
+    // An aux booking is EITHER a flight/jet (→ passengers) OR a ground-car service
+    // (→ driver vehicles). The ENGAGEMENT TYPE SLUG discriminates — canonical, not the
+    // fragile display string. category is the registry slug passed from the itinerary row.
+    const isGroundCar = category != null && GROUND_CAR_SLUGS.has(category)
+
+    if (isGroundCar) {
+      const { data: vehData, error: vehErr } = await db
+        .from('travel_aux_driver_details')
+        .select('id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
+        .eq('aux_booking_id', auxBookingId)
+        .order('sort_order', { ascending: true })
+      if (vehErr) return err('Failed to fetch driver details', 500)
+      const vehicles = (vehData ?? []) as Array<Record<string, unknown>>
+      // Admin surface returns ALL fields incl company; the CLIENT EFs omit company.
+      return ok({ kind: 'ground_transport', vehicles })
+    }
+
     const { data: aux } = await db
       .from('travel_trip_aux_bookings').select('trip_id').eq('id', auxBookingId).maybeSingle()
     const partyLabel = await partyLabelForTrip(db, (aux?.trip_id as string | null) ?? null)
-
     const { data: paxData, error: paxErr } = await db
       .from('travel_trip_aux_passengers')
       .select('id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
@@ -621,12 +642,13 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const { mode, house_id, trip_id, booking_id, aux_booking_id, range_start, range_end } = body as {
+    const { mode, house_id, trip_id, booking_id, aux_booking_id, category, range_start, range_end } = body as {
       mode:           string | undefined
       house_id?:      string
       trip_id?:       string
       booking_id?:    string
       aux_booking_id?: string
+      category?:      string
       range_start?:   string
       range_end?:     string
     }
@@ -679,7 +701,7 @@ Deno.serve(async (req: Request) => {
         return handleCalendar(serviceClient, range_start ?? null, range_end ?? null)
 
       case 'activity_detail':
-        return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null)
+        return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null, category ?? null)
 
       default:
         return err(`Unknown mode: ${mode}`, 400)

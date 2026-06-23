@@ -77,6 +77,37 @@ export async function attachPassengers(
   return aux.map(a => ({ ...a, passengers: byAux[a.id as string] ?? [] }))
 }
 
+// Attach client-facing driver vehicles to each ground-car aux booking
+// (transfer / airport transfer / car service). Parallel to attachPassengers.
+// CLIENT-FACING: selects name/phone/car_model/plate/vehicle_role only — company is
+// operator-internal and deliberately OMITTED here, so neither the confirmation nor
+// the programme page can leak it. Bookings with no driver rows get an empty array.
+export async function attachDriverDetails(
+  db: SupabaseClient,
+  aux: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  if (aux.length === 0) return aux
+  const ids = aux.map(a => a.id as string)
+  const { data: veh } = await db
+    .from('travel_aux_driver_details')
+    .select('id, aux_booking_id, driver_name, driver_phone, car_model, plate, vehicle_role, sort_order')
+    .in('aux_booking_id', ids)
+    .order('sort_order', { ascending: true })
+
+  const byAux: Record<string, Record<string, unknown>[]> = {}
+  for (const v of (veh ?? []) as Record<string, unknown>[]) {
+    ;(byAux[v.aux_booking_id as string] ??= []).push({
+      id:           v.id,
+      driver_name:  v.driver_name,
+      driver_phone: v.driver_phone,
+      car_model:    v.car_model,
+      plate:        v.plate,
+      vehicle_role: v.vehicle_role,
+    })
+  }
+  return aux.map(a => ({ ...a, driver_details: byAux[a.id as string] ?? [] }))
+}
+
 // Resolve a room's guest name. Single-source helper for the write EF's
 // resolve-on-return: given a room's person_id and guest_name override plus the
 // trip's party label, return the resolved name (or null). The write path fetches
