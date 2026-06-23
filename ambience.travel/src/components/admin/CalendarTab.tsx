@@ -337,7 +337,14 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
           const iso = fmtISO(day); const isToday = sameDay(day, today)
           const spanning = trips.filter(t => t.start_date && t.end_date && t.start_date <= iso && t.end_date >= iso)
           const checkins: {trip:CalendarTrip;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarTrip;stay:CalendarStay}[] = []
-          for (const t of trips) for (const s of t.stays) { if (s.check_in===iso) checkins.push({trip:t,stay:s}); if (s.check_out===iso) checkouts.push({trip:t,stay:s}) }
+          // Deduplicate by hotel_id + date — one marker per distinct hotel per day
+          const seenIn = new Set<string>(); const seenOut = new Set<string>()
+          for (const t of trips) for (const s of t.stays) {
+            const inKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_in}`
+            const outKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_out}`
+            if (s.check_in===iso && !seenIn.has(inKey)) { checkins.push({trip:t,stay:s}); seenIn.add(inKey) }
+            if (s.check_out===iso && !seenOut.has(outKey)) { checkouts.push({trip:t,stay:s}); seenOut.add(outKey) }
+          }
           const transport: {trip:CalendarTrip;activity:CalendarActivity}[] = []
           for (const t of trips) for (const a of t.activities) { if (MOMENT_CATEGORIES.has(a.category ?? '') && a.date===iso) transport.push({trip:t,activity:a}) }
           transport.sort((x,y) => (x.activity.time ?? '') < (y.activity.time ?? '') ? -1 : 1)
@@ -394,9 +401,16 @@ function AgendaView({ trips, onSelect }: { trips: CalendarTrip[]; onSelect:(id:s
     for (const t of trips) {
       if (t.start_date && t.start_date >= start) acc.push({ date:t.start_date, sort:0, node:{kind:'trip-start',trip:t} })
       if (t.end_date && t.end_date >= start) acc.push({ date:t.end_date, sort:3, node:{kind:'trip-end',trip:t} })
+      const seenAgendaIn = new Set<string>(); const seenAgendaOut = new Set<string>()
       for (const s of t.stays) {
-        if (s.check_in && s.check_in >= start) acc.push({ date:s.check_in, sort:1, node:{kind:'stay-checkin',trip:t,stay:s} })
-        if (s.check_out && s.check_out >= start) acc.push({ date:s.check_out, sort:2, node:{kind:'stay-checkout',trip:t,stay:s} })
+        const inKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_in}`
+        const outKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_out}`
+        if (s.check_in && s.check_in >= start && !seenAgendaIn.has(inKey)) {
+          acc.push({ date:s.check_in, sort:1, node:{kind:'stay-checkin',trip:t,stay:s} }); seenAgendaIn.add(inKey)
+        }
+        if (s.check_out && s.check_out >= start && !seenAgendaOut.has(outKey)) {
+          acc.push({ date:s.check_out, sort:2, node:{kind:'stay-checkout',trip:t,stay:s} }); seenAgendaOut.add(outKey)
+        }
       }
     }
     acc.sort((a,b) => a.date===b.date ? a.sort-b.sort : (a.date<b.date?-1:1))
@@ -477,7 +491,7 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
         <Info label="Trip dates" value={fmtRange(trip.start_date, trip.end_date)} />
-        <Info label="Stays" value={`${trip.stays.length}`} />
+        <Info label="Stays" value={`${new Set(trip.stays.map(s => s.hotel_id).filter(Boolean)).size || trip.stays.length}`} />
       </div>
       <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:8 }}>Itinerary</div>
       <div style={{ display:'grid', gap:8 }}>

@@ -125,28 +125,42 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
   // "Re-Check-in" (split stay — guest returns). Keyed by hotel name (no clean
   // hotel_id on the row); same hotel = same name. Stable by start_date then id.
   const reCheckin = new Set<string>()
-  const byHotel = new Map<string, BookingLike[]>()
+  // Group by hotel + exact date range. Bookings sharing the same hotel AND
+  // the same start+end are concurrent rooms (one check-in, not a re-check-in).
+  // Only a booking at the same hotel with a DIFFERENT date range is a re-check-in.
+  const byHotelStay = new Map<string, BookingLike[]>()
   for (const b of bookings) {
     if (b.brief_show === false) continue
     const hasR = (b._rooms?.length ?? 0) > 0
     if (b.booking_type !== 'Hotel' && !hasR) continue
     if (!b.start_date) continue
-    const key = (b._hotel_name ?? b.name ?? 'Hotel') as string
-    const list = byHotel.get(key) ?? []
+    // Key = hotel identity + date range. accom_hotel_id is canonical; fall back
+    // to hotel name for legacy rows without it.
+    const hotelKey = (b.accom_hotel_id ?? b._hotel_name ?? b.name ?? 'Hotel') as string
+    const stayKey  = `${hotelKey}::${b.start_date}::${b.end_date ?? ''}`
+    const list = byHotelStay.get(stayKey) ?? []
     list.push(b)
-    byHotel.set(key, list)
+    byHotelStay.set(stayKey, list)
   }
-  for (const list of byHotel.values()) {
-    if (list.length < 2) continue
-    list
-      .slice()
-      .sort((x, y) => {
-        const dx = (x.start_date as string) ?? ''
-        const dy = (y.start_date as string) ?? ''
-        if (dx !== dy) return dx < dy ? -1 : 1
-        return (x.id as string) < (y.id as string) ? -1 : 1
-      })
-      .forEach((b, i) => { if (i > 0) reCheckin.add(b.id as string) })
+  // Now detect re-check-ins: same hotel, different date range = sequential stay.
+  // Group all stays per hotel, sort by start_date; 2nd+ distinct date range = re-check-in.
+  const byHotel = new Map<string, string[]>() // hotelKey → sorted unique stayKeys
+  for (const stayKey of byHotelStay.keys()) {
+    const hotelKey = stayKey.split('::')[0]
+    const list = byHotel.get(hotelKey) ?? []
+    list.push(stayKey)
+    byHotel.set(hotelKey, list)
+  }
+  for (const stayKeys of byHotel.values()) {
+    if (stayKeys.length < 2) continue
+    stayKeys.sort() // sorts by start_date since stayKey starts with hotelKey::start_date
+    stayKeys.forEach((stayKey, i) => {
+      if (i === 0) return
+      // All bookings in this stay group are re-check-ins
+      for (const b of byHotelStay.get(stayKey) ?? []) {
+        reCheckin.add(b.id as string)
+      }
+    })
   }
 
   for (const b of bookings) {
