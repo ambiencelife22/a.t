@@ -180,6 +180,19 @@ export type TripAuxPassenger = {
 
 export type TripAuxBookingPatch = Partial<Omit<TripAuxBooking, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
 
+export type TripAuxDriverDetail = {
+  id:            string
+  aux_booking_id: string
+  driver_name:   string | null
+  driver_phone:  string | null
+  car_model:     string | null
+  plate:         string | null
+  company:       string | null
+  vehicle_role:  string | null
+  sort_order:    number
+}
+export type TripAuxDriverDetailPatch = Partial<Omit<TripAuxDriverDetail, 'id' | 'aux_booking_id'>>
+
 export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'trip_id' | 'created_at' | 'updated_at'>>
 
 export type BookingRoom = {
@@ -554,6 +567,33 @@ export async function updateAuxPassenger(id: string, patch: TripAuxPassengerPatc
 
 export async function deleteAuxPassenger(id: string): Promise<void> {
   await invokeWriteTrip({ mode: 'delete_aux_passenger', id })
+}
+
+// ── Aux driver details write (ground-car vehicles) ────────────────────────────
+
+export async function fetchAuxDriverDetails(auxBookingId: string): Promise<TripAuxDriverDetail[]> {
+  const { driverDetails } = await invokeReadTrip<{ driverDetails: TripAuxDriverDetail[] }>({
+    mode: 'aux_driver_details', aux_booking_id: auxBookingId,
+  })
+  return driverDetails
+}
+
+export async function createAuxDriverDetail(auxBookingId: string, patch: TripAuxDriverDetailPatch): Promise<TripAuxDriverDetail> {
+  const { driverDetail } = await invokeWriteTrip<{ driverDetail: TripAuxDriverDetail }>({
+    mode: 'create_aux_driver_detail', aux_booking_id: auxBookingId, patch,
+  })
+  return driverDetail
+}
+
+export async function updateAuxDriverDetail(id: string, patch: TripAuxDriverDetailPatch): Promise<TripAuxDriverDetail> {
+  const { driverDetail } = await invokeWriteTrip<{ driverDetail: TripAuxDriverDetail }>({
+    mode: 'update_aux_driver_detail', id, patch,
+  })
+  return driverDetail
+}
+
+export async function deleteAuxDriverDetail(id: string): Promise<void> {
+  await invokeWriteTrip({ mode: 'delete_aux_driver_detail', id })
 }
 
 // ── Welcome letters (arrival) ─────────────────────────────────────────────────

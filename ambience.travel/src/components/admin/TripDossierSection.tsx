@@ -27,6 +27,7 @@ import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
+import { AuxDriverDetailsEditor } from './AuxDriverDetailsEditor'
 import { BookingRoomsEditor } from './BookingRoomsEditor'
 import { AirlinePicker } from './AirlinePicker'
 import { HotelPicker } from './HotelPicker'
@@ -508,6 +509,9 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
               </div>
               {(a.booking_type ?? '').toLowerCase().includes('flight') && (
                 <AuxPassengersEditor auxBookingId={a.id} initial={a.passengers ?? []} />
+              )}
+              {['transfer', 'airport transfer', 'car service'].includes((a.booking_type ?? '').toLowerCase()) && (
+                <AuxDriverDetailsEditor auxBookingId={a.id} />
               )}
             </div>
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>

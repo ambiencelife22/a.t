@@ -44,6 +44,9 @@ type Mode =
   | 'create_aux_passenger'
   | 'update_aux_passenger'
   | 'delete_aux_passenger'
+  | 'create_aux_driver_detail'
+  | 'update_aux_driver_detail'
+  | 'delete_aux_driver_detail'
   | 'upsert_day'
   | 'create_day_entry'
   | 'update_day_entry'
@@ -282,6 +285,44 @@ async function handleDeleteAuxPassenger(db: SupabaseClient, id: string): Promise
   return json({ success: true })
 }
 
+async function handleCreateAuxDriverDetail(
+  db: SupabaseClient,
+  auxBookingId: string,
+  patch: Record<string, unknown>,
+): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_aux_driver_details')
+    .insert({ aux_booking_id: auxBookingId, ...patch })
+    .select()
+    .single()
+  if (error) return json({ error: 'Failed to create driver detail' }, 500)
+  return json({ driverDetail: data })
+}
+
+async function handleUpdateAuxDriverDetail(
+  db: SupabaseClient,
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_aux_driver_details')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) return json({ error: 'Failed to update driver detail' }, 500)
+  return json({ driverDetail: data })
+}
+
+async function handleDeleteAuxDriverDetail(db: SupabaseClient, id: string): Promise<Response> {
+  const { error } = await db
+    .from('travel_aux_driver_details')
+    .delete()
+    .eq('id', id)
+  if (error) return json({ error: 'Failed to delete driver detail' }, 500)
+  return json({ success: true })
+}
+
 async function handleUpsertDay(
   db: SupabaseClient,
   tripId: string,
@@ -446,6 +487,21 @@ Deno.serve(async (req: Request) => {
         const { id } = body as { id?: string }
         if (!id) return json({ error: 'id required' }, 400)
         return handleDeleteAuxPassenger(db, id)
+      }
+      case 'create_aux_driver_detail': {
+        const { aux_booking_id, patch } = body as { aux_booking_id?: string; patch?: Record<string, unknown> }
+        if (!aux_booking_id || !patch) return json({ error: 'aux_booking_id, patch required' }, 400)
+        return handleCreateAuxDriverDetail(db, aux_booking_id, patch)
+      }
+      case 'update_aux_driver_detail': {
+        const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
+        if (!id || !patch) return json({ error: 'id, patch required' }, 400)
+        return handleUpdateAuxDriverDetail(db, id, patch)
+      }
+      case 'delete_aux_driver_detail': {
+        const { id } = body as { id?: string }
+        if (!id) return json({ error: 'id required' }, 400)
+        return handleDeleteAuxDriverDetail(db, id)
       }
       case 'upsert_day': {
         const { trip_id, entry_date, patch } = body as { trip_id?: string; entry_date?: string; patch?: Record<string, unknown> }

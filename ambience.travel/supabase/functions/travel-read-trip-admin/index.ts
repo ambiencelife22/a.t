@@ -56,6 +56,7 @@ type Mode =
   | 'public_view'
   | 'calendar'
   | 'activity_detail'
+  | 'aux_driver_details'
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -258,6 +259,16 @@ async function handleRooms(db: SupabaseClient, bookingId: string): Promise<Respo
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch rooms', 500)
   return ok({ rooms: data ?? [] })
+}
+
+async function handleAuxDriverDetails(db: SupabaseClient, auxBookingId: string): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_aux_driver_details')
+    .select('id, aux_booking_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
+    .eq('aux_booking_id', auxBookingId)
+    .order('sort_order', { ascending: true })
+  if (error) return err('Failed to fetch driver details', 500)
+  return ok({ driverDetails: data ?? [] })
 }
 
 async function handleDays(db: SupabaseClient, tripId: string): Promise<Response> {
@@ -676,6 +687,10 @@ Deno.serve(async (req: Request) => {
       case 'rooms':
         if (!booking_id) return err('booking_id is required for rooms mode', 400)
         return handleRooms(serviceClient, booking_id)
+
+      case 'aux_driver_details':
+        if (!aux_booking_id) return err('aux_booking_id is required for aux_driver_details mode', 400)
+        return handleAuxDriverDetails(serviceClient, aux_booking_id)
 
       case 'days':
         if (!trip_id) return err('trip_id is required for days mode', 400)
