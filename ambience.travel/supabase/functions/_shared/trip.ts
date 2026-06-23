@@ -69,7 +69,7 @@ export async function fetchTripCore(
 ): Promise<TripCore> {
   const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
     db.from('travel_trips')
-      .select('id, trip_code, status, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
+      .select('id, trip_code, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
       .eq('id', tripId)
       .single(),
 
