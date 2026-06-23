@@ -162,6 +162,7 @@ export type TripAuxBooking = {
   seat_type:           string | null
   aircraft_type:       string | null
   passengers?:         TripAuxPassenger[]
+  driver_details?:     TripAuxDriverDetail[]
   created_at:          string
   updated_at:          string
 }

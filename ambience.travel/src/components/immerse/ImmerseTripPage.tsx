@@ -422,6 +422,24 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                       </div>
                     )
                   })()}
+                  {(() => {
+                    const isGroundCar = ['transfer', 'airport transfer', 'car service'].includes((aux.booking_type ?? '').toLowerCase())
+                    const veh = isGroundCar ? (aux.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order) : []
+                    if (veh.length === 0) return null
+                    return (
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {veh.map(v => (
+                          <div key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{v.driver_name || 'Driver'}</span>
+                            {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS }}>{v.vehicle_role}</span>}
+                            <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>
+                              {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             )
@@ -475,6 +493,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
     rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null }[]
+    driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
   }
 
 // The EF (_shared/timeline.ts) already merged + ordered the stream. Filter by
@@ -529,6 +548,15 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               party_composition:   r.party_composition,
               confirmation_number: r.confirmation_number,
               notes:               r.notes,
+            })),
+            driverDetails:       (e.driver_details ?? []).map(d => ({
+              id:           d.id,
+              driver_name:  d.driver_name,
+              driver_phone: d.driver_phone,
+              car_model:    d.car_model,
+              plate:        d.plate,
+              vehicle_role: d.vehicle_role,
+              sort_order:   d.sort_order,
             })),
           }
         })
@@ -829,6 +857,23 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.subtitle && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: 4 }}>{item.subtitle}</div>}
                         {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', lineHeight: 1.5 }}>{item.notes}</div>}
 
+                        {item.driverDetails.length > 0 && (
+                          <div style={{ marginTop: 10, marginBottom: 8, padding: '10px 12px', background: CARD_BG, borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {item.driverDetails.map(v => (
+                              <div key={v.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                                <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
+                                  {v.vehicle_role || 'Driver'}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                  <span style={{ fontWeight: 600 }}>{v.driver_name || 'Driver'}</span>
+                                  {[v.driver_phone, v.car_model, v.plate].filter(Boolean).length > 0 && (
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED }}>{`  ${[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}`}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {item.passengers.length === 0 && item.confirmation_number && (
                           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${RULE}` }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>

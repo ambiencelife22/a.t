@@ -23,7 +23,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, fmtTime, buildDateRange, passengerLines, roomDisplay,
+  fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -220,9 +220,11 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const padV = 6; const padH = 10
   const bookedByText = bookedByLabel(aux.booked_by)
   const paxLines = passengerLines(aux)
-  // Base block holds name/route/date/cabin; passenger lines extend height.
+  const isGroundCar = ['transfer', 'airport transfer', 'car service'].includes((aux.booking_type ?? '').toLowerCase())
+  const detailLines = isGroundCar ? driverDetailLines(aux) : paxLines
+  // Base block holds name/route/date/cabin; detail lines extend height.
   const baseH = 30
-  const cardH = Math.max(34, baseH + paxLines.length * 5 + 4)
+  const cardH = Math.max(34, baseH + detailLines.length * 5 + 4)
 
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
@@ -259,9 +261,9 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.text(metaLine, centreX, y + padV + 17)
   }
 
-  // Passenger lines — each "Label · Conf · Seats"
+  // Passenger or driver lines depending on booking type
   let py = y + padV + 23
-  for (const line of paxLines) {
+  for (const line of detailLines) {
     sans(doc, 'normal', 8)
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
     doc.text(line, centreX, py)

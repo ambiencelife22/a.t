@@ -543,8 +543,8 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
       <button onClick={toggle} disabled={!canExpand} style={{ appearance:'none', display:'block', width:'100%', textAlign:'left',
         cursor: canExpand?'pointer':'default', background:'transparent', border:'none', padding:moment?'10px 12px':12, fontFamily:L.sans }}>
         {moment ? (
-          <span style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10, alignItems:'baseline' }}>
-            <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time || '—'}</span>
+          <span style={{ display:'grid', gridTemplateColumns:time ? 'auto 1fr auto' : '1fr auto', gap:10, alignItems:'baseline' }}>
+            {time && <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time}</span>}
             <span style={{ minWidth:0 }}>
               <strong style={{ display:'block', fontSize:13.5, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{activity.title || 'Transport'}</strong>
               <span style={{ fontSize:11, color:L.muted, textTransform:'uppercase', letterSpacing:'0.06em' }}>{activity.label || 'Transport'}</span>
@@ -552,7 +552,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
             {canExpand && <span style={{ color:L.muted, fontSize:12 }}>{open?'▾':'▸'}</span>}
           </span>
         ) : (
-          <span style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, alignItems:'start' }}>
+          <span style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, alignItems:'start' }}>{time && <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time}</span>}
             <span style={{ minWidth:0 }}>
               <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{activity.title || 'Stay'}</strong>
               <span style={{ display:'block', fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(activity.date, activity.end_date)}{confText ? ` · ${confText}` : ''}</span>

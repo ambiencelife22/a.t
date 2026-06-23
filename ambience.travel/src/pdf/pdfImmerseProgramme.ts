@@ -22,7 +22,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { RGB } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage, roomLine,
+  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage, roomLine, driverDetailLines,
 } from './pdfShared'
 import type { TripDay, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 import type { TimelineItem } from '../types/typesTimeline'
@@ -125,6 +125,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       ].filter(Boolean).join('  \u00b7  ')
       return detail ? `${name}  \u00b7  ${detail}` : name
     })
+    const vehLines = driverDetailLines(it)
     return {
       id:                  it.id,
       category:            it.category,
@@ -138,7 +139,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       booked_by:           it.booked_by,
       brief_show:          it.brief_show,
       image_src:           it.image_src,
-      passengerLines:      [...roomLines, ...paxLines],
+      passengerLines:      [...roomLines, ...paxLines, ...vehLines],
     }
   })
 }

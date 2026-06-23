@@ -319,6 +319,28 @@ export interface AuxLike {
   passengers?: AuxPassengerLike[] | null
 }
 
+export interface AuxDriverDetailLike {
+  driver_name:  string | null
+  driver_phone: string | null
+  car_model:    string | null
+  plate:        string | null
+  vehicle_role: string | null
+  sort_order:   number
+}
+
+export interface AuxWithDriverDetails {
+  driver_details?: AuxDriverDetailLike[] | null
+}
+
+export function driverDetailLines(aux: AuxWithDriverDetails): string[] {
+  const veh = (aux.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+  return veh.map(v => {
+    const label = v.vehicle_role ? `${v.vehicle_role}: ` : ''
+    const detail = [v.driver_name, v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')
+    return `${label}${detail}`
+  })
+}
+
 export function passengerLines(aux: AuxLike): string[] {
   const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   return pax.map(p => [

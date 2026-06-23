@@ -15,6 +15,16 @@ export type TimelineRoom = {
   notes:               string | null
 }
 
+export type TimelineDriverDetail = {
+  id:           string
+  driver_name:  string | null
+  driver_phone: string | null
+  car_model:    string | null
+  plate:        string | null
+  vehicle_role: string | null
+  sort_order:   number
+}
+
 export type TimelinePassenger = {
   id:                       string
   passenger_label:          string | null
@@ -41,6 +51,7 @@ export type TimelineItem = {
   status:              string | null
   rooms:               TimelineRoom[]
   passengers:          TimelinePassenger[]
+  driver_details:      TimelineDriverDetail[]
   source_booking_id:   string | null
   source_aux_id:       string | null
   brief_show:          boolean
