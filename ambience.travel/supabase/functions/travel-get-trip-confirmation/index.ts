@@ -13,18 +13,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings } from '../_shared/trip.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders, preflight } from '../_shared/http.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     const body = await req.json().catch(() => ({}))

@@ -157,9 +157,9 @@ export default function TripCreateModal({
     try {
       const newTripId = await createTrip({
         trip_code:         tripCode.trim(),
-        public_title:      publicTitle.trim() || null,
-        start_date:        startDate || null,
-        end_date:          endDate || null,
+        public_title:      publicTitle.trim() ?? null,
+        start_date:        startDate ?? null,
+        end_date:          endDate ?? null,
         currency:          currency.trim() || 'USD',
         primary_client_id: null,
       })
