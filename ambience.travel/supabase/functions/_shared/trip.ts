@@ -67,9 +67,9 @@ export async function fetchTripCore(
   tripId: string,
   houseId: string,
 ): Promise<TripCore> {
-  const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
+  const [tripResult, briefResult, houseResult, destResult, engResult] = await Promise.all([
     db.from('travel_trips')
-      .select('id, trip_code, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
+      .select('id, trip_code, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
       .eq('id', tripId)
       .single(),
 
@@ -115,9 +115,28 @@ export async function fetchTripCore(
     }
   })
 
+  // Engagement hero is canon. brief.hero_image_src is an overlay (only set when
+  // operator deliberately wants a different hero on the confirmation surface).
+  // Resolve: brief overlay → engagement canon → null.
+  const confirmedEngId = (tripResult.data?.confirmed_engagement_id as string | null) ?? null
+  let engHeroSrc: string | null = null
+  if (confirmedEngId) {
+    const { data: eng } = await db
+      .from('travel_immerse_engagements')
+      .select('hero_image_src')
+      .eq('id', confirmedEngId)
+      .maybeSingle()
+    engHeroSrc = (eng?.hero_image_src as string | null) ?? null
+  }
+
+  const brief = briefResult.data as Record<string, unknown> | null
+  const resolvedBrief = brief
+    ? { ...brief, hero_image_src: (brief.hero_image_src as string | null) ?? engHeroSrc }
+    : null
+
   return {
     trip:  tripResult.data ?? null,
-    brief: briefResult.data ?? null,
+    brief: resolvedBrief,
     house: houseResult.data ?? null,
     destinations,
   }
