@@ -22,18 +22,23 @@
 //   - PDF library loading (useGuidePdf hook)
 //   - Style objects (guidePageStyles.ts)
 //   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
+//   - Section break rendering (GuideSectionBreak.tsx)
 //
 // Render groups (S52):
 //   1. Primary (is_supplementary=false, operational venues)
-//   2. Supplementary (is_supplementary=true, operational venues) — under "Also nearby"
+//   2. Supplementary (is_supplementary=true, operational venues)
+//      Editorial section break above: "Also Nearby"
 //   3. Recently closed (venue_status='permanently_closed' AND
-//      closed_visible_until >= today) — under "Recently closed"
+//      closed_visible_until >= today)
+//      Editorial section break above: "Recently Closed"
 //   Beyond closed_visible_until, permanently_closed venues are filtered out
 //   entirely. All groups alphabetical within group.
 //
-// Last updated: S52 — Three-group render. Recently closed section added below
-//   supplementary. permanently_closed venues filtered by closed_visible_until
-//   window (45-day default set by tg_set_closed_visible_until trigger).
+// Last updated: S52 — GuideSectionBreak component replaces the lightweight
+//   supplementaryDivider treatment. "Also nearby" and "Recently closed" now
+//   render as full editorial section breaks with eyebrow + serif heading +
+//   descriptor. Treats each as a deliberate chapter rather than a row separator.
+// Prior: S52 — Three-group render added.
 // Prior: S52 — happenings infrastructure added.
 // Prior: S41 — jsPDF load + handleDownloadPdf extracted to usePdfDownload hook.
 // Prior: S40C — hasFullAccess prop added.
@@ -57,6 +62,7 @@ import {
 import { useGuidePdf } from '../../hooks/useGuidePdf'
 import { DiningCard } from './DiningCard'
 import { GuideHero } from './GuideHero'
+import { GuideSectionBreak } from './GuideSectionBreak'
 import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
 import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
 import { ComingUpSection } from './ComingUpSection'
@@ -71,8 +77,6 @@ import {
   downloadBtnDisabledStyle,
   downloadIconStyle,
   gridStyle,
-  supplementaryDividerStyle,
-  supplementaryLabelStyle,
   disclaimerStyle,
   disclaimerTextStyle,
   messageBlockStyle,
@@ -113,7 +117,6 @@ function resolveGuideVersion(overlayVersion: string | null | undefined): string 
 }
 
 // ── Today as YYYY-MM-DD (local) — for closed_visible_until comparisons ──────
-// closed_visible_until is a DATE column. Comparison must be local-date based.
 
 function todayISO(): string {
   const d = new Date()
@@ -197,7 +200,6 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
           setHappenings(happeningsResult.value)
         }
         if (happeningsResult.status !== 'fulfilled') {
-          // Soft-fail — happenings are supplementary. Log only.
           console.error('DiningGuidePage: failed to load happenings', happeningsResult.reason)
           setHappenings([])
         }
@@ -238,17 +240,6 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   )
 
   // ── Group venues: primary, supplementary, recently closed ────────────────
-  // Three-group model. Each group filtered, then alphabetised.
-  //
-  // Group membership rules:
-  //   Primary:           operational AND NOT is_supplementary
-  //   Supplementary:     operational AND is_supplementary
-  //   Recently closed:   permanently_closed AND closed_visible_until >= today
-  //   Excluded:          permanently_closed AND closed_visible_until < today
-  //                      (or null closed_visible_until)
-  //   Other statuses (temporarily_closed, seasonal_closure) flow through
-  //   primary or supplementary based on is_supplementary; status surfaced on
-  //   the card.
 
   const today = useMemo(() => todayISO(), [])
 
@@ -383,9 +374,11 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   ))}
 
                   {supplementaryVenues.length > 0 && primaryVenues.length > 0 && (
-                    <div style={supplementaryDividerStyle}>
-                      <span style={supplementaryLabelStyle}>Also nearby</span>
-                    </div>
+                    <GuideSectionBreak
+                      eyebrow="Beyond the Center"
+                      heading="Also Nearby"
+                      descriptor={`Worth the journey from central ${destination.name}. Tables outside the main circuit, kept here for those who want a fuller picture of the city's dining landscape.`}
+                    />
                   )}
                   {supplementaryVenues.map(v => (
                     <DiningCard
@@ -398,9 +391,11 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
                   {recentlyClosedVenues.length > 0 &&
                     (primaryVenues.length > 0 || supplementaryVenues.length > 0) && (
-                    <div style={supplementaryDividerStyle}>
-                      <span style={supplementaryLabelStyle}>Recently closed</span>
-                    </div>
+                    <GuideSectionBreak
+                      eyebrow="For Reference"
+                      heading="Recently Closed"
+                      descriptor="Tables that have recently closed their doors. Kept here briefly so the record stays current and any prior recommendation has context."
+                    />
                   )}
                   {recentlyClosedVenues.map(v => (
                     <DiningCard

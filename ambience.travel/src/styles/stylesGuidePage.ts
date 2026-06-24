@@ -1,10 +1,14 @@
 // guidePageStyles.ts — style objects for guide page components
 // What it owns: all React.CSSProperties constants for guide layer components:
-//   DiningGuidePage.tsx, PlanYourVisit.tsx
+//   DiningGuidePage.tsx, PlanYourVisit.tsx, GuideSectionBreak.tsx
 // What it does not own: token definitions (landingColors), component-local styles
-// Last updated: S40 — PlanYourVisit styles added. File scope expanded from
-//   DiningGuidePage-only to all guide layer components.
-// Prior: S40 — extracted from DiningGuidePage.tsx inline styles
+//
+// Last updated: S52 — Section break styles added for GuideSectionBreak.
+//   Replaces the lightweight supplementaryDivider* styles with full editorial
+//   treatment: eyebrow + serif heading + descriptor + generous breathing room.
+//   Old supplementaryDivider* styles removed.
+// Prior: S40 — PlanYourVisit styles added.
+// Prior: S40 — extracted from DiningGuidePage.tsx inline styles.
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../tokens/tokensLanding'
@@ -228,25 +232,47 @@ export const pyvItemTextStyle: React.CSSProperties = {
   lineHeight: 1.65,
 }
 
-// ── Supplementary divider ─────────────────────────────────────────────────────
-// Spans full grid width via gridColumn 1/-1. Renders above first supplementary
-// venue. Subtle rule with a muted label — signals a section break without weight.
+// ── GuideSectionBreak ─────────────────────────────────────────────────────────
+// Editorial section break between venue groups (e.g. "Also nearby", "Recently
+// closed"). Sits inline in the grid via gridColumn 1/-1, full content width.
+//
+// Treatment: generous breathing room above and below, gold top rule, eyebrow
+// in uppercase gold, serif heading matching the main "Selected tables" register,
+// descriptor in muted prose. Reads as a chapter break, not a row separator.
 
-export const supplementaryDividerStyle: React.CSSProperties = {
+export const sectionBreakStyle: React.CSSProperties = {
   gridColumn: '1 / -1',
+  marginTop: 56,
+  marginBottom: 12,
+  paddingTop: 36,
+  borderTop: `1px solid ${ID.gold}33`,
   display: 'flex',
-  alignItems: 'center',
-  gap: 16,
-  paddingTop: 12,
-  marginTop: 10,
-  borderTop: `1px solid rgba(216,181,106,0.12)`,
+  flexDirection: 'column',
+  gap: 14,
 }
 
-export const supplementaryLabelStyle: React.CSSProperties = {
-  color: C.muted,
+export const sectionBreakEyebrowStyle: React.CSSProperties = {
+  color: ID.gold,
   fontSize: 11,
-  letterSpacing: '0.14em',
+  letterSpacing: '0.22em',
   textTransform: 'uppercase',
-  fontWeight: 600,
-  whiteSpace: 'nowrap',
+  fontWeight: 700,
+}
+
+export const sectionBreakHeadingStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: FONTS.serif,
+  fontSize: 'clamp(28px, 3.4vw, 38px)',
+  fontWeight: 400,
+  letterSpacing: '-0.04em',
+  lineHeight: 1.05,
+  color: ID.text,
+}
+
+export const sectionBreakDescriptorStyle: React.CSSProperties = {
+  margin: 0,
+  color: ID.muted,
+  fontSize: 15,
+  lineHeight: 1.7,
+  maxWidth: 640,
 }
