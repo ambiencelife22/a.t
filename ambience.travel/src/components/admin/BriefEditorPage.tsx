@@ -57,6 +57,7 @@ import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 import { WelcomeLettersEditor } from './WelcomeLettersEditor'
 import { roomGuestName } from '../../utils/utilsRoomDisplay'
+import { fmtTime } from '../../utils/utilsDates'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -106,15 +107,6 @@ function fmtDate(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso.slice(0, 10) + 'T00:00:00')
   return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function fmtTime(t: string | null): string {
-  if (!t) return ''
-  const [h, m] = t.split(':')
-  const hour = parseInt(h, 10)
-  const ampm = hour >= 12 ? 'PM' : 'AM'
-  const h12  = hour % 12 || 12
-  return `${h12}:${m} ${ampm}`
 }
 
 function buildDateRange(start: string | null, end: string | null): string {

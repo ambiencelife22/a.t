@@ -77,12 +77,7 @@ export function fmtDate(iso: string | null): string {
   })
 }
 
-export function fmtTime(t: string | null | undefined): string {
-  if (!t) return ''
-  const [h, m] = t.split(':')
-  const hour   = parseInt(h, 10)
-  return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`
-}
+export { fmtTime } from '../utils/utilsDates'
 
 export function buildDateRange(s: string | null, e: string | null): string {
   if (!s) return ''

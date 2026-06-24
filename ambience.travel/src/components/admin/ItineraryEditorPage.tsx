@@ -26,6 +26,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
+import { fmtTime } from '../../utils/utilsDates'
 import {
   fetchTripDossierForHouse,
   fetchTripDays,
@@ -98,15 +99,6 @@ async function resolveHouseIdForTrip(tripId: string): Promise<string | null> {
 function fmtDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
   return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function fmtTime(t: string | null): string {
-  if (!t) return ''
-  const [h, m] = t.split(':')
-  const hour = parseInt(h, 10)
-  const ampm = hour >= 12 ? 'PM' : 'AM'
-  const h12  = hour % 12 || 12
-  return `${h12}:${m} ${ampm}`
 }
 
 function categoryIcon(cat: string | null): string {

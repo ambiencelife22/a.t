@@ -71,3 +71,15 @@ export function formatDateShort(iso: string | null | undefined): string {
   const day   = parseInt(m[3], 10)
   return `${day} ${MONTHS_SHORT[month]} ${year}`
 }
+
+// "15:05" -> "15:05 (pm)", "08:40" -> "08:40 (am)", "00:30" -> "00:30 (am)".
+// 24-hour clock with am/pm period in parens (am: hour < 12, pm: hour >= 12;
+// midnight is am, noon is pm). Single source for time display across every
+// surface — admin editors, client page, all PDFs.
+export function fmtTime(t: string | null | undefined): string {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hour = parseInt(h, 10)
+  const period = hour < 12 ? 'am' : 'pm'
+  return `${h.padStart(2, '0')}:${m} (${period})`
+}

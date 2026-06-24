@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { bookedByLabel } from '../../utils/utilsBooking'
+import { fmtTime } from '../../utils/utilsDates'
 
 const L = {
   surface: IMMERSE.lightSurface, panel: IMMERSE.panelOnLight, ink: IMMERSE.textOnLight,
@@ -99,9 +100,6 @@ function flightLine(a: CalendarActivity): string {
 // "self" = Own Arrangements (client self-booked). The subtle indicator axis.
 function isOwnArrangements(bookedBy: string | null): boolean { return bookedBy === 'self' }
 
-// "08:40:00" -> "08:40"; null -> ''. Transport is a moment (a departure time);
-// a stay is a span (date range). The itinerary distinguishes them visually.
-function fmtTime(t: string | null): string { return t ? t.slice(0, 5) : '' }
 
 // Engagement types render as a SPAN (held across dates, like a stay) or a MOMENT
 // (a point with a departure time). Single source for the shape — mirrors the

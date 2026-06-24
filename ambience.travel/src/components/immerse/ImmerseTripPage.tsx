@@ -46,6 +46,7 @@ import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgra
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
 import { bookedByLabel, isOwnArrangements }   from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
+import { fmtTime }                            from '../../utils/utilsDates'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
@@ -106,13 +107,6 @@ function fmtDateFull(iso: string | null): string {
   return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
-}
-
-function fmtTime(t: string | null | undefined): string {
-  if (!t) return ''
-  const [h, m] = t.split(':')
-  const hour = parseInt(h, 10)
-  return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`
 }
 
 function buildDateRange(start: string | null, end: string | null): string {
