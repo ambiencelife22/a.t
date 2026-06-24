@@ -27,7 +27,7 @@ import {
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
-import { bookedByLabel } from '../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -59,9 +59,9 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
   const padV = 7; const padH = 8
   const contentX = P.margin + imgW; const contentW = CW - imgW
 
-  const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-  const pillColor    = isAmbience ? T.gold : T.faint
-  const pillBg       = isAmbience ? ([250, 247, 240] as [number,number,number]) : ([245, 245, 245] as [number,number,number])
+  const ownArr       = isOwnArrangements(booking.booked_by)
+  const pillColor    = ownArr ? T.faint : T.gold
+  const pillBg       = ownArr ? ([245, 245, 245] as [number,number,number]) : ([250, 247, 240] as [number,number,number])
   const bookedByText = bookedByLabel(booking.booked_by)
   const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
   const dateRange    = buildDateRange(booking.start_date, booking.end_date)

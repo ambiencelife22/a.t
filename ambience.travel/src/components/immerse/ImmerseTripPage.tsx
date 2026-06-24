@@ -44,7 +44,7 @@ import { getEventStatusMeta }                 from '../../types/typesEventStatus
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
-import { bookedByLabel }                      from '../../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements }   from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
@@ -285,9 +285,9 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
       {accomBookings.length > 0 && (
         <TabSection label='ACCOMMODATION'>
           {accomBookings.map(booking => {
-            const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
+            const ownArr       = isOwnArrangements(booking.booked_by)
             const bookedByText = bookedByLabel(booking.booked_by)
-            const pillColor    = isAmbience ? GOLD : FAINT
+            const pillColor    = ownArr ? FAINT : GOLD
             const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
             const dateRange    = buildDateRange(booking.start_date, booking.end_date)
             const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
@@ -324,14 +324,23 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                           display: 'inline-flex', alignItems: 'center',
                           border: `1px solid ${pillColor}`, borderRadius: 5,
                           padding: '3px 10px', marginBottom: 6,
-                          background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                          background: ownArr ? '#F5F5F5' : '#FAF7F0',
                         }}>
                           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
                             Conf #: {booking.confirmation_number}
                           </span>
                         </div>
                       )}
-                      <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                      {ownArr ? (
+                        <span style={{
+                          display: 'inline-block', fontFamily: SANS, fontSize: 9,
+                          letterSpacing: '0.12em', color: MUTED,
+                          border: `0.5px solid ${FAINT}`, borderRadius: 999,
+                          padding: '3px 10px', whiteSpace: 'nowrap',
+                        }}>Own Arrangements</span>
+                      ) : (
+                        <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -357,7 +366,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                               display: 'inline-flex', alignItems: 'center', flexShrink: 0,
                               border: `1px solid ${pillColor}`, borderRadius: 5,
                               padding: '3px 10px',
-                              background: isAmbience ? '#FAF7F0' : '#F5F5F5',
+                              background: ownArr ? '#F5F5F5' : '#FAF7F0',
                             }}>
                               <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
                                 Conf #: {room.confirmation_number}
@@ -379,8 +388,8 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
       {auxSections.map(section => (
         <TabSection key={section.type} label={section.label}>
           {section.items.map(aux => {
-            const isAmbience = !aux.booked_by || aux.booked_by.toLowerCase().includes('ambience')
-            const pillColor  = isAmbience ? GOLD : FAINT
+            const ownArr    = isOwnArrangements(aux.booked_by)
+            const pillColor = ownArr ? FAINT : GOLD
             const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' – ')
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
@@ -401,6 +410,14 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                     <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>
                       {[aux.cabin_class, aux.aircraft_type].filter(Boolean).join(' \u00b7 ')}
                     </div>
+                  )}
+                  {ownArr && (
+                    <span style={{
+                      display: 'inline-block', marginTop: 6, fontFamily: SANS, fontSize: 9,
+                      letterSpacing: '0.12em', color: MUTED,
+                      border: `0.5px solid ${FAINT}`, borderRadius: 999,
+                      padding: '3px 10px', whiteSpace: 'nowrap',
+                    }}>Own Arrangements</span>
                   )}
                   {(() => {
                     const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
