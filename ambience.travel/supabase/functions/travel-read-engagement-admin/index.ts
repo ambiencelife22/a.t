@@ -42,6 +42,7 @@ type ReadMode =
   | 'child_counts'
   | 'engagement_statuses'
   | 'itinerary_statuses'
+  | 'engagement_types'
   | 'people'
   | 'trips'
   | 'person_by_id'
@@ -311,6 +312,21 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ row: data ?? null })
+    }
+
+    if (mode === 'engagement_types') {
+      const { data, error } = await serviceClient
+        .from('travel_engagement_types')
+        .select('id, slug, label, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+
+      if (error) {
+        console.error('engagement_types error:', error)
+        return json({ error: 'Failed to fetch engagement types' }, 500)
+      }
+
+      return json({ rows: data ?? [] })
     }
 
     if (mode === 'welcome_letter') {

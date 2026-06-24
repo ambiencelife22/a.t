@@ -36,6 +36,8 @@ import {
   fetchChildCounts,
   fetchEngagementStatuses,
   fetchItineraryStatuses,
+  fetchEngagementTypes,
+  type EngagementTypeLookup,
   fetchPeople,
   fetchTrips,
   fetchPersonById,
@@ -544,6 +546,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
   const [counts, setCounts]                        = useState<ChildCounts | null>(null)
   const [engagementStatuses, setEngagementStatuses] = useState<StatusLookup[]>([])
   const [itineraryStatuses, setItineraryStatuses]  = useState<StatusLookup[]>([])
+  const [engagementTypes, setEngagementTypes]      = useState<EngagementTypeLookup[]>([])
   const [welcomeCanon, setWelcomeCanon]            = useState<WelcomeLetterCanonical | null>(null)
   const [loading, setLoading]                      = useState(true)
   const [saving, setSaving]                        = useState(false)
@@ -555,11 +558,12 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
   async function load() {
     setLoading(true)
     try {
-      const [detail, eng, it, canon] = await Promise.all([
+      const [detail, eng, it, canon, types] = await Promise.all([
         fetchEngagementDetail(urlId),
         fetchEngagementStatuses(),
         fetchItineraryStatuses(),
         fetchWelcomeLetterCanonical(),
+        fetchEngagementTypes(),
       ])
       if (!detail) {
         showToast('Engagement not found.', 'error')
@@ -571,6 +575,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       setEngagementStatuses(eng)
       setItineraryStatuses(it)
       setWelcomeCanon(canon)
+      setEngagementTypes(types)
 
       const c = await fetchChildCounts(detail.id)
       setCounts(c)
@@ -793,6 +798,19 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
             />
           </Field>
         </div>
+
+        <Field label='Engagement Type'>
+          <select
+            style={inputStyle}
+            value={draft.engagement_type_id ?? ''}
+            onChange={e => patch('engagement_type_id', e.target.value || null)}
+          >
+            <option value=''>— Not set —</option>
+            {engagementTypes.map(t => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+        </Field>
 
         <Field label='Journey Types'>
           <ChipInput values={draft.journey_types ?? []} onChange={v => patch('journey_types', v)} />

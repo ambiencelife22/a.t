@@ -106,6 +106,7 @@ export type EngagementDetailRow = {
   // Linkage
   person_id:           string | null
   trip_id:             string | null
+  engagement_type_id:  string | null
 
   // Status
   engagement_status_id: string
@@ -158,6 +159,13 @@ export type EngagementDetailRow = {
 }
 
 export type StatusLookup = {
+  id:         string
+  slug:       string
+  label:      string
+  sort_order: number
+}
+
+export type EngagementTypeLookup = {
   id:         string
   slug:       string
   label:      string
@@ -385,6 +393,11 @@ export async function deleteEngagement(id: string): Promise<void> {
 }
 
 // ── Lookups ───────────────────────────────────────────────────────────────────
+
+export async function fetchEngagementTypes(): Promise<EngagementTypeLookup[]> {
+  const { rows } = await invokeRead<{ rows: EngagementTypeLookup[] }>('engagement_types')
+  return rows
+}
 
 export async function fetchEngagementStatuses(): Promise<StatusLookup[]> {
   const { rows } = await invokeRead<{ rows: StatusLookup[] }>('engagement_statuses')
