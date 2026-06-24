@@ -268,7 +268,7 @@ async function fetchRegionGroups(
       rankLabel:     tr?.rankLabel ?? '',
       bullets:       tr?.bullets   ?? [],
       stayLabel:     tr?.stayLabel ?? '',
-      heroImageSrc:  heroResolved || undefined,
+      heroImageSrc:  heroResolved ?? undefined,
       heroImageAlt:  region.hero_image_alt ?? undefined,
       regionGallery: rewriteImageUrls(region.region_gallery),
       hotels:        hotelsByRegionId.get(region.id) ?? [],
@@ -367,7 +367,7 @@ async function fetchRoomsForHotels(
     const sqmMax  = o.sqm_max_override  ?? canon.sqm_max  ?? o.sqm_max  ?? undefined
 
     const floorplanResolved = rewriteImageUrl(o.floorplan_src_override ?? canon.floorplan_src)
-    const floorplanSrc = floorplanResolved || undefined
+    const floorplanSrc = floorplanResolved ?? undefined
 
     const roomBenefits = Array.isArray(o.room_benefits) && (o.room_benefits as string[]).length > 0
       ? (o.room_benefits as string[])

@@ -411,7 +411,7 @@ async function hydrateEngagement(
     subtitle:      engagementRow.subtitle       ?? '',
     heroImageSrc:  rewriteImageUrl(engagementRow.hero_image_src),
     heroImageAlt:  engagementRow.hero_image_alt ?? '',
-    heroImageSrc2: heroSrc2Resolved || undefined,
+    heroImageSrc2: heroSrc2Resolved ?? undefined,
     heroImageAlt2: engagementRow.hero_image_alt_2 ?? undefined,
     heroTitle2:    engagementRow.hero_title_2    ?? undefined,
     heroSubtitle2: engagementRow.hero_subtitle_2 ?? undefined,

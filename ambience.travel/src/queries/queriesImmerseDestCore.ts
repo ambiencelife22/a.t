@@ -297,7 +297,7 @@ export async function getImmerseDestinationCore(
                      ?? (dest!.hero_image_alt as string | null)
                      ?? globalDest?.hero_image_alt
                      ?? '',
-    heroImageSrc2: heroSrc2Resolved || undefined,
+    heroImageSrc2: heroSrc2Resolved ?? undefined,
     heroImageAlt2: ov?.hero_image_alt_2_override
                      ?? (dest!.hero_image_alt_2 as string | null) ?? undefined,
     heroTitle2:    ov?.hero_title_2_override

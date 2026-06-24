@@ -471,10 +471,10 @@ export async function createTrip(payload: TripCreatePayload): Promise<string> {
   }
   const insertPayload: Record<string, unknown> = {
     trip_code:    payload.trip_code.trim(),
-    public_title: payload.public_title?.trim() || null,
-    start_date:   payload.start_date || null,
-    end_date:     payload.end_date || null,
-    currency:     payload.currency || 'USD',
+    public_title: payload.public_title?.trim() ?? null,
+    start_date:   payload.start_date ?? null,
+    end_date:     payload.end_date ?? null,
+    currency:     payload.currency ?? 'USD',
   }
   if (payload.primary_client_id) {
     insertPayload.primary_client_id = payload.primary_client_id
