@@ -35,11 +35,8 @@
 // Last updated: S54c — initial ship (table 1 of the queriesAdminHouse write migration).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const PERSON_SELECT = 'id, house_id, member_ref, role, notes, person_id, created_at, updated_at'
 
@@ -57,9 +54,7 @@ function pick(src: Record<string, unknown>, fields: readonly string[]): Record<s
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────

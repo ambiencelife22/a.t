@@ -32,11 +32,8 @@
 // Last updated: S53C — initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const r2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100
 
@@ -51,9 +48,7 @@ function validateHours(h: unknown): number | null {
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────

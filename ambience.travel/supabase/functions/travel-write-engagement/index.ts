@@ -52,11 +52,8 @@
 // First ship: S54 (this file)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 type WriteMode =
   | 'create_engagement'
@@ -115,9 +112,7 @@ function generateUrlId(): string {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────

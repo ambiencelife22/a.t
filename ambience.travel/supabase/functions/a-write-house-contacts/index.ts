@@ -35,11 +35,8 @@
 // Last updated: S54c — initial ship (table 2 of the write migration).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const CONTACT_SELECT =
   'id, house_id, person_id, contact_type, name, role, company, is_primary, notes, created_at, updated_at'
@@ -58,9 +55,7 @@ function pick(src: Record<string, unknown>, fields: readonly string[]): Record<s
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────

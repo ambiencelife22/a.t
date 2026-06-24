@@ -45,11 +45,8 @@
 //   previously RLS-only, with no in-code auth or validation).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 // ── Canonical PPD key registries ──────────────────────────────────────────────
 // Mirrors src/types/typesPpd.ts on the frontend. Both files MUST stay in sync.
@@ -98,9 +95,7 @@ interface RequestBody {
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────

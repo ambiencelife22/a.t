@@ -36,14 +36,11 @@
 // Created: S52
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, preflight } from '../_shared/http.ts'
 import { buildDays } from '../_shared/days.ts'
 import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 type Mode =
   | 'dossier'
@@ -742,9 +739,7 @@ async function handleActivityDetail(
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     const body = await req.json().catch(() => ({}))
