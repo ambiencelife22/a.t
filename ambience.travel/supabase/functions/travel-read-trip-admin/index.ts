@@ -592,15 +592,33 @@ async function handleActivityDetail(
   category: string | null,
 ): Promise<Response> {
   if (bookingId) {
-    // Trip (for party label) via the booking.
+    // A stay represents the HOTEL, not one booking. Resolve the anchor booking →
+    // its hotel + trip, then gather ALL bookings at that hotel for that trip, and
+    // return rooms across all of them. (The anchor is one incidental booking of
+    // the hotel group; the stay spans the whole group — mirrors the hotel-keyed
+    // child-activity derivation.) Falls back to the single booking if the anchor
+    // has no accom_hotel_id (non-hotel stay).
     const { data: bk } = await db
-      .from('travel_bookings').select('trip_id').eq('id', bookingId).maybeSingle()
-    const partyLabel = await partyLabelForTrip(db, (bk?.trip_id as string | null) ?? null)
+      .from('travel_bookings').select('trip_id, accom_hotel_id').eq('id', bookingId).maybeSingle()
+    const tripId = (bk?.trip_id as string | null) ?? null
+    const hotelId = (bk?.accom_hotel_id as string | null) ?? null
+    const partyLabel = await partyLabelForTrip(db, tripId)
+
+    let bookingIdsForStay: string[] = [bookingId]
+    if (tripId && hotelId) {
+      const { data: hotelBookings } = await db
+        .from('travel_bookings')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('accom_hotel_id', hotelId)
+      const ids = (hotelBookings ?? []).map(b => b.id as string)
+      if (ids.length > 0) bookingIdsForStay = ids
+    }
 
     const { data: roomData, error: roomErr } = await db
       .from('travel_booking_rooms')
-      .select('id, room_name, person_id, guest_name, additional_guests, confirmation_number, party_composition, sort_order')
-      .eq('booking_id', bookingId)
+      .select('id, booking_id, room_name, person_id, guest_name, additional_guests, confirmation_number, party_composition, sort_order')
+      .in('booking_id', bookingIdsForStay)
       .order('sort_order', { ascending: true })
     if (roomErr) return err('Failed to fetch rooms', 500)
     const rooms = (roomData ?? []) as Array<Record<string, unknown>>
