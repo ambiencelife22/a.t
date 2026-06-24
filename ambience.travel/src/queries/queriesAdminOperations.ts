@@ -19,6 +19,17 @@ import { supabase } from '../lib/supabase'
 import type { TripPartner } from '../queries/queriesAdminTrip'
 import { computeEngagementStage, type EngagementStage } from '../types/typesImmerse'
 
+async function invokeRead<T>(mode: string, params: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-ops-admin', {
+    body: { mode, ...params },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error((data as { error: string }).error)
+  }
+  return data as T
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type OpsBooking = {
@@ -137,212 +148,10 @@ type HouseRow   = { id: string; display_name: string }
 // ── Query ─────────────────────────────────────────────────────────────────────
 
 export async function fetchOpsPortfolio(): Promise<OpsPortfolio> {
-  // Step 1: all trips ordered by start_date desc
-  const { data: tripData, error: tripErr } = await supabase
-    .from('travel_trips')
-    .select('id, trip_code, confirmed_engagement_id, start_date, end_date, duration_nights, trip_type, destinations')
-    .order('start_date', { ascending: false })
-
-  if (tripErr) throw new Error(tripErr.message)
-  const tripRows = (tripData ?? []) as TripRow[]
-  if (tripRows.length === 0) {
-    return { trips: [], partners: {}, summary: emptySummary() }
-  }
-
-  const tripIds = tripRows.map(t => t.id)
-
-  // Step 2: all bookings for those trips
-  const { data: bookData, error: bookErr } = await supabase
-    .from('travel_bookings')
-    .select('id, trip_id, engagement_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, currency, commissionable_rate, total_rate, taxes_and_fees, rate_type, price, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, cancellation_policy, notes, sort_order, created_at')
-    .in('trip_id', tripIds)
-    .order('sort_order', { ascending: true })
-
-  if (bookErr) throw new Error(bookErr.message)
-  const bookingRows = (bookData ?? []) as BookingRow[]
-
-  // Step 3: hotel names
-  const hotelIds = [...new Set(
-    bookingRows.map(b => b.accom_hotel_id).filter((id): id is string => !!id)
-  )]
-  const hotelNameMap = new Map<string, string>()
-  if (hotelIds.length > 0) {
-    const { data: hotelData } = await supabase
-      .from('travel_accom_hotels')
-      .select('id, name')
-      .in('id', hotelIds)
-    for (const h of (hotelData ?? []) as HotelRow[]) hotelNameMap.set(h.id, h.name)
-  }
-
-  // Step 4: partners
-  const { data: partnerData, error: partErr } = await supabase
-    .from('travel_partners')
-    .select('id, name, partner_type, default_share_pct, currency, is_active')
-  if (partErr) throw new Error(partErr.message)
-  const partnerMap: Record<string, TripPartner> = {}
-  for (const p of (partnerData ?? []) as PartnerRow[]) partnerMap[p.id] = p
-
-  // Step 5: resolve house names via engagements -> people -> houses
-  const { data: engData } = await supabase
-    .from('travel_immerse_engagements')
-    .select('trip_id, person_id')
-    .in('trip_id', tripIds)
-    .not('person_id', 'is', null)
-
-  const engRows = (engData ?? []) as EngRow[]
-
-  // trip_id -> person_id (first engagement per trip)
-  const tripPersonMap = new Map<string, string>()
-  for (const e of engRows) {
-    if (!tripPersonMap.has(e.trip_id)) tripPersonMap.set(e.trip_id, e.person_id)
-  }
-
-  const personIds = [...new Set(tripPersonMap.values())]
-  const personHouseMap = new Map<string, string>() // person_id -> house_id
-
-  if (personIds.length > 0) {
-    const { data: personData } = await supabase
-      .from('a_house_people')
-      .select('id, house_id')
-      .in('id', personIds)
-    for (const p of (personData ?? []) as PersonRow[]) personHouseMap.set(p.id, p.house_id)
-  }
-
-  const houseIds = [...new Set(personHouseMap.values())]
-  const houseNameMap = new Map<string, string>()  // house_id -> display_name
-  const houseIdMap   = new Map<string, string>()  // house_id -> id (same, for reference)
-
-  if (houseIds.length > 0) {
-    const { data: houseData } = await supabase
-      .from('a_houses')
-      .select('id, display_name')
-      .in('id', houseIds)
-    for (const h of (houseData ?? []) as HouseRow[]) {
-      houseNameMap.set(h.id, h.display_name)
-      houseIdMap.set(h.id, h.id)
-    }
-  }
-
-  // trip_id -> { house_name, house_id }
-  const tripHouseMap = new Map<string, { name: string; id: string }>()
-  for (const [tripId, personId] of tripPersonMap.entries()) {
-    const houseId = personHouseMap.get(personId)
-    if (houseId) {
-      tripHouseMap.set(tripId, {
-        name: houseNameMap.get(houseId) ?? 'Unknown',
-        id:   houseId,
-      })
-    }
-  }
-
-// Step 5b: resolve each trip's winning-engagement stage (S53G+ — trip status
-// derived from confirmed_engagement_id, not the dropped column).
-const winnerEngIds = [...new Set(
-  tripRows.map(t => t.confirmed_engagement_id).filter((id): id is string => !!id)
-)]
-const stageByTripId = new Map<string, EngagementStage>()
-if (winnerEngIds.length > 0) {
-  const { data: engStatusData } = await supabase
-    .from('travel_immerse_engagements')
-    .select('id, travel_engagement_statuses(slug)')
-    .in('id', winnerEngIds)
-  const slugByEngId = new Map<string, string>()
-  for (const e of (engStatusData ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
-    const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
-    if (s?.slug) slugByEngId.set(e.id, s.slug)
-  }
-  for (const t of tripRows) {
-    const engId = t.confirmed_engagement_id
-    if (engId) {
-      const slug = slugByEngId.get(engId)
-      if (slug) stageByTripId.set(t.id, computeEngagementStage({ statusSlug: slug as any }))
-    }
-  }
+  return invokeRead<OpsPortfolio>('portfolio')
 }
 
-  // Step 6: assemble
-  const bookingsByTrip = new Map<string, OpsBooking[]>()
-  for (const b of bookingRows) {
-    if (!bookingsByTrip.has(b.trip_id)) bookingsByTrip.set(b.trip_id, [])
-    const house = tripHouseMap.get(b.trip_id)
-    bookingsByTrip.get(b.trip_id)!.push({
-      ...b,
-      _hotel_name: b.accom_hotel_id ? (hotelNameMap.get(b.accom_hotel_id) ?? null) : null,
-      _trip_code:  null, // set below
-      _house_name: house?.name ?? null,
-      _house_id:   house?.id ?? null,
-    })
-  }
-
-  const trips: OpsTrip[] = tripRows.map(t => {
-    const house    = tripHouseMap.get(t.id)
-    const bookings = (bookingsByTrip.get(t.id) ?? []).map(b => ({ ...b, _trip_code: t.trip_code }))
-    return {
-      id:              t.id,
-      trip_code:       t.trip_code,
-      stage:           stageByTripId.get(t.id) ?? null,
-      start_date:      t.start_date,
-      end_date:        t.end_date,
-      duration_nights: t.duration_nights,
-      trip_type:       t.trip_type,
-      destinations:    t.destinations,
-      bookings,
-      _house_name:     house?.name ?? null,
-      _house_id:       house?.id ?? null,
-    }
-  })
-
-  const summary = computeSummary(trips)
-
-  return { trips, partners: partnerMap, summary }
-}
-
-// ── Aggregation ───────────────────────────────────────────────────────────────
-
-function emptySummary(): OpsSummary {
-  return {
-    total_bookings:       0,
-    confirmed_bookings:   0,
-    total_commission:     0,
-    commission_paid:      0,
-    commission_unpaid:    0,
-    deposits_outstanding: 0,
-    balances_outstanding: 0,
-    total_gross:          0,
-  }
-}
-
-function computeSummary(trips: OpsTrip[]): OpsSummary {
-  const s = emptySummary()
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  for (const trip of trips) {
-    for (const b of trip.bookings) {
-      s.total_bookings++
-      if (b.status === 'Confirmed') s.confirmed_bookings++
-
-      const commission = b.commission_amount ?? 0
-      s.total_commission += commission
-      if (b.commission_paid_at) {
-        s.commission_paid += commission
-      }
-      if (!b.commission_paid_at) {
-        s.commission_unpaid += commission
-      }
-
-      const nights = b.nights ?? 1
-      const rate   = b.commissionable_rate ?? b.price ?? 0
-      s.total_gross += rate * nights
-
-      if (b.deposit_amount && !b.deposit_paid_at) {
-        s.deposits_outstanding += b.deposit_amount
-      }
-      if (b.balance_amount && !b.balance_paid_at) {
-        s.balances_outstanding += b.balance_amount
-      }
-    }
-  }
-
-  return s
+// ── Legacy direct-query implementation (retired S53G — moved to travel-read-ops-admin EF) ──
+async function _fetchOpsPortfolioLegacy(): Promise<OpsPortfolio> {
+  return invokeRead<OpsPortfolio>('portfolio')
 }
