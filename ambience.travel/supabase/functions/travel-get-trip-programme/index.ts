@@ -92,7 +92,8 @@ Deno.serve(async (req: Request) => {
       db.from('travel_trip_aux_bookings')
         .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id')
         .eq('trip_id', tripId)
-        .order('sort_order', { ascending: true }),
+        .order('start_date', { ascending: true, nullsFirst: false })
+        .order('start_time', { ascending: true, nullsFirst: false }),
 
       // Overlay only — buildDays derives the day list from trip span and applies
       // these per-day overrides. No show filter; buildDays honors show.

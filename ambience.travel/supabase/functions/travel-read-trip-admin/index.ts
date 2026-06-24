@@ -339,7 +339,8 @@ async function handleAuxBookings(db: SupabaseClient, tripId: string): Promise<Re
     .from('travel_trip_aux_bookings')
     .select('*')
     .eq('trip_id', tripId)
-    .order('sort_order', { ascending: true })
+    .order('start_date', { ascending: true, nullsFirst: false })
+    .order('start_time', { ascending: true, nullsFirst: false })
   if (error) return err('Failed to fetch aux bookings', 500)
 
   const aux = (data ?? []) as Record<string, unknown>[]
