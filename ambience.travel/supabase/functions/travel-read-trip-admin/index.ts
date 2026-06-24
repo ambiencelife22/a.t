@@ -490,10 +490,31 @@ async function handleCalendar(
       .not('activity_date', 'is', null)
       .order('activity_date', { ascending: true })
     if (actErr) return err('Failed to fetch calendar activities', 500)
+
+    // Enrich movement activities with their aux booking's flight detail + booked_by.
+    // The activity is the engagement-spine row; the aux booking is the source of
+    // record for route/times/flight number/who-arranged. One batch join, attached
+    // per activity so the calendar renders flight fine-print + the Own Arrangements
+    // axis (booked_by) without a second round-trip. bookedByLabel() owns the display.
+    const auxIds = [...new Set(
+      (actData ?? [])
+        .map(a => a.source_aux_booking_id as string | null)
+        .filter((x): x is string => !!x)
+    )]
+    const auxById = new Map<string, Record<string, unknown>>()
+    if (auxIds.length > 0) {
+      const { data: auxData } = await db
+        .from('travel_trip_aux_bookings')
+        .select('id, booked_by, origin, destination, depart_airport, arrive_airport, flight_number, airline_name, start_time, end_time')
+        .in('id', auxIds)
+      for (const ax of (auxData ?? []) as Array<Record<string, unknown>>) auxById.set(ax.id as string, ax)
+    }
+
     for (const a of (actData ?? []) as Array<Record<string, unknown>>) {
       const parent = a.parent_engagement_id as string
       const typeRaw = a.travel_engagement_types
       const type = Array.isArray(typeRaw) ? typeRaw[0] : typeRaw
+      const aux = a.source_aux_booking_id ? auxById.get(a.source_aux_booking_id as string) : null
       ;(activitiesByJourney.get(parent) ?? activitiesByJourney.set(parent, []).get(parent)!).push({
         id:         a.id,
         category:   (type as { slug: string } | null)?.slug ?? null,
@@ -504,6 +525,15 @@ async function handleCalendar(
         time:       a.activity_start_time,
         source_booking_id:     a.source_booking_id,
         source_aux_booking_id: a.source_aux_booking_id,
+        // Flight detail (movement activities only; null for stays/others)
+        booked_by:      (aux?.booked_by as string | null) ?? null,
+        origin:         (aux?.origin as string | null) ?? null,
+        destination:    (aux?.destination as string | null) ?? null,
+        depart_airport: (aux?.depart_airport as string | null) ?? null,
+        arrive_airport: (aux?.arrive_airport as string | null) ?? null,
+        flight_number:  (aux?.flight_number as string | null) ?? null,
+        airline_name:   (aux?.airline_name as string | null) ?? null,
+        end_time:       (aux?.end_time as string | null) ?? null,
       })
     }
   }
