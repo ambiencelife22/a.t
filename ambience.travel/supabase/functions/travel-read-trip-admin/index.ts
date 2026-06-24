@@ -221,7 +221,7 @@ for (const t of tripRows) {
       .in('trip_id', tripIds)
       .order('sort_order', { ascending: true }),
     db.from('travel_immerse_engagements')
-      .select('trip_id, url_id')
+      .select('trip_id, url_id, hero_image_src, title')
       .in('trip_id', tripIds)
       .not('trip_id', 'is', null),
   ])
@@ -254,13 +254,24 @@ for (const t of tripRows) {
       .filter(Boolean),
   }))
 
+  // Engagement hero + title are canon. brief overlay only (null = fall through).
+  const engByTrip = new Map<string, { hero_image_src: string | null; title: string | null }>()
+  for (const e of (engResult.data ?? []) as Array<{ trip_id: string; hero_image_src: string | null; title: string | null }>) {
+    if (!engByTrip.has(e.trip_id)) engByTrip.set(e.trip_id, { hero_image_src: e.hero_image_src, title: e.title })
+  }
+  const briefs = ((briefResult.data ?? []) as Array<Record<string, unknown>>).map(b => ({
+    ...b,
+    hero_image_src: (b.hero_image_src as string | null) ?? engByTrip.get(b.trip_id as string)?.hero_image_src ?? null,
+    brief_title:    (b.brief_title    as string | null) ?? engByTrip.get(b.trip_id as string)?.title           ?? null,
+  }))
+
   return ok({
     bookingRows,
     hotelMap,
     tripRows,
     partners:  partnerResult.data ?? [],
     house:     houseResult.data ?? null,
-    briefs:    briefResult.data ?? [],
+    briefs,
     rooms:     resolvedRooms,
     dests:     destResult.data  ?? [],
     engagements: engResult.data ?? [],
