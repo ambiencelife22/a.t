@@ -11,12 +11,6 @@
 //   on ImmerseEngagementData.
 // Prior: S42 Add 3 — resort_map_src added to ImmerseHotelOption.
 
-export type EngagementType =
-  | 'journey'
-  | 'service'
-  | 'experience'
-  | 'acquisition'
-
 export type EngagementAudience =
   | 'private'
   | 'public'
@@ -177,8 +171,6 @@ export type ImmerseDestinationHotelsShape =
 
 // ─── Engagement overview ──────────────────────────────────────────────────────
 
-export type ImmerseTripFormat = 'journey' | 'experience'
-
 export type ImmerseSubpageStatus = 'live' | 'preview' | 'hidden'
 
 export type ImmerseRouteStop = {
@@ -264,11 +256,9 @@ export function computeEngagementStage(input: EngagementStageInputs): Engagement
 
 export type ImmerseEngagementData = {
   engagementId:    string
-  engagementType:  EngagementType
   audience:        EngagementAudience
   urlId:           string
   slug:            string
-  tripFormat:      ImmerseTripFormat
   journeyTypes:    string[]
   clientName:      string
   statusLabel:     string
@@ -397,8 +387,6 @@ export type EngagementWriteMode =
 export interface EngagementWritableFields {
   title:                          string | null
   audience:                       EngagementAudience
-  engagement_type:                EngagementType
-  trip_format:                    ImmerseTripFormat
   journey_types:                  string[]
   iteration_label:                string
   trip_id:                        string | null

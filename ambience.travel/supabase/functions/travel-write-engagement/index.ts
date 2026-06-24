@@ -81,7 +81,7 @@ const json = (body: unknown, status = 200) =>
 //   engagement_status_id, itinerary_status_id (own modes),
 //   public_view, is_public, is_public_template (visibility mode / separate).
 const EDITABLE_SCALARS = [
-  'title', 'audience', 'engagement_type', 'trip_format', 'journey_types',
+  'title', 'audience', 'journey_types',
   'iteration_label', 'trip_id', 'person_id', 'slug', 'status_label',
   'eyebrow', 'hero_tagline', 'subtitle',
   'hero_image_src', 'hero_image_alt', 'hero_image_src_2', 'hero_image_alt_2',

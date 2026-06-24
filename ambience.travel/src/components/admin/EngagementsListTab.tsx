@@ -933,8 +933,6 @@ function CreateModal({
   const [title, setTitle]                           = useState('')
   const [iterationLabel, setIterationLabel]         = useState('')
   const [audience, setAudience]                     = useState<'private' | 'public'>('private')
-  const [engagementType, setEngagementType]         = useState('journey')
-  const [tripFormat, setTripFormat]                 = useState('journey')
   const [engagementStatusId, setEngagementStatusId] = useState(newRequestStatus?.id ?? '')
   const [itineraryStatusId,  setItineraryStatusId]  = useState(draftStatus?.id ?? '')
   const [saving, setSaving]                         = useState(false)
@@ -953,8 +951,6 @@ function CreateModal({
         engagement: {
           title:              title.trim(),
           audience,
-          engagement_type:    engagementType as any,
-          trip_format:        tripFormat as any,
           journey_types:      [],
           iteration_label:    iterationLabel.trim(),
         },
@@ -994,22 +990,6 @@ function CreateModal({
             <select style={inputStyle} value={audience} onChange={e => setAudience(e.target.value as 'private' | 'public')}>
               <option value='private'>private</option>
               <option value='public'>public</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Engagement Type</label>
-            <select style={inputStyle} value={engagementType} onChange={e => setEngagementType(e.target.value)}>
-              <option value='journey'>journey</option>
-              <option value='service'>service</option>
-              <option value='experience'>experience</option>
-              <option value='acquisition'>acquisition</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Trip Format</label>
-            <select style={inputStyle} value={tripFormat} onChange={e => setTripFormat(e.target.value)}>
-              <option value='journey'>journey</option>
-              <option value='experience'>experience</option>
             </select>
           </div>
           <div>

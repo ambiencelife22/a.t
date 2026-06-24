@@ -785,20 +785,6 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
               disabled
             />
           </Field>
-          <Field label='Engagement Type'>
-            <select style={inputStyle} value={draft.engagement_type} onChange={e => patch('engagement_type', e.target.value)}>
-              <option value='journey'>journey</option>
-              <option value='service'>service</option>
-              <option value='experience'>experience</option>
-              <option value='acquisition'>acquisition</option>
-            </select>
-          </Field>
-          <Field label='Trip Format'>
-            <select style={inputStyle} value={draft.trip_format} onChange={e => patch('trip_format', e.target.value)}>
-              <option value='journey'>journey</option>
-              <option value='experience'>experience</option>
-            </select>
-          </Field>
           <Field label='is_public (read-only)'>
             <input
               style={{ ...inputStyle, opacity: 0.6 }}

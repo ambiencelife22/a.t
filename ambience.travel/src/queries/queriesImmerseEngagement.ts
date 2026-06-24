@@ -23,13 +23,11 @@ import { mapEngagementStatus, mapItineraryStatus } from '../queries/queriesStatu
 import type {
   ImmerseEngagementData,
   ImmersePricingNote,
-  ImmerseTripFormat,
   ImmerseRouteStop,
   ImmerseDestinationRow,
   ImmerseSubpageStatus,
   ImmerseTripPricingRow,
   ImmerseWelcomeLetter,
-  EngagementType,
   EngagementAudience,
   EngagementStatus,
   EngagementStatusSlug,
@@ -53,8 +51,6 @@ type EngagementRow = {
   url_id:                          string
   slug:                            string
   trip_id:                         string | null
-  trip_format:                     string
-  engagement_type:                 string
   audience:                        string
   journey_types:                   string[] | null
   person_id:                       string | null
@@ -394,13 +390,11 @@ async function hydrateEngagement(
 
   return {
     engagementId:    engagementRow.id,
-    engagementType:  (engagementRow.engagement_type as EngagementType) ?? 'journey',
     audience:        normalizeAudience(engagementRow.audience),
     urlId:           engagementRow.url_id,
     stage,
     proposalVisibility: engagementRow.proposal_visibility,
     slug:            engagementRow.slug,
-    tripFormat:      (engagementRow.trip_format as ImmerseTripFormat) ?? 'journey',
     journeyTypes:    engagementRow.journey_types ?? [],
     clientName,
     statusLabel:     engagementRow.status_label ?? '',

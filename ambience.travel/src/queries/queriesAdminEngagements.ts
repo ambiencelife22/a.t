@@ -100,8 +100,6 @@ export type EngagementDetailRow = {
   is_public:           boolean
   is_public_template:  boolean | null
   proposal_visibility: 'active' | 'archived'
-  engagement_type:     string
-  trip_format:         string
   journey_types:       string[]
   sort_order:          number
 
