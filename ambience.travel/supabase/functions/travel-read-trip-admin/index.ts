@@ -522,7 +522,10 @@ async function handleCalendar(
         title:      a.title,
         date:       a.activity_date,
         end_date:   a.activity_end_date,
-        time:       a.activity_start_time,
+        // Departure time: the aux booking's start_time is the source of record for a
+        // movement (the engagement's activity_start_time is null for derived flights).
+        // Falls back to the activity's own time for non-aux activities.
+        time:       (aux?.start_time as string | null) ?? a.activity_start_time,
         source_booking_id:     a.source_booking_id,
         source_aux_booking_id: a.source_aux_booking_id,
         // Flight detail (movement activities only; null for stays/others)
