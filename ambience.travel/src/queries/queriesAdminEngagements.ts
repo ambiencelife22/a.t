@@ -465,28 +465,15 @@ export type TripCreatePayload = {
 }
 
 export async function createTrip(payload: TripCreatePayload): Promise<string> {
-  // trip_code is NOT NULL — guard before hitting the DB
   if (!payload.trip_code || !payload.trip_code.trim()) {
     throw new Error('trip_code is required')
   }
-  const insertPayload: Record<string, unknown> = {
-    trip_code:    payload.trip_code.trim(),
-    public_title: payload.public_title?.trim() ?? null,
-    start_date:   payload.start_date ?? null,
-    end_date:     payload.end_date ?? null,
-    currency:     payload.currency ?? 'USD',
-  }
-  if (payload.primary_client_id) {
-    insertPayload.primary_client_id = payload.primary_client_id
-  }
-
-  const { data, error } = await supabase
-    .from('travel_trips')
-    .insert(insertPayload)
-    .select('id')
-    .single()
+  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
+    body: { mode: 'create_trip', ...payload },
+  })
   if (error) throw error
-  return data.id as string
+  if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
+  return (data as { trip: { id: string } }).trip.id
 }
 
 // ── Trip update (group-header inline edits for trip_code + public_title) ─────
@@ -497,24 +484,11 @@ export type TripUpdatePayload = {
 }
 
 export async function updateTrip(id: string, payload: TripUpdatePayload): Promise<void> {
-  // Strip undefined keys so we never send {} or accidentally null a column
-  const clean: Record<string, unknown> = {}
-  if (payload.trip_code !== undefined) {
-    const trimmed = payload.trip_code.trim()
-    if (!trimmed) throw new Error('trip_code cannot be empty')
-    clean.trip_code = trimmed
-  }
-  if (payload.public_title !== undefined) {
-    const trimmed = payload.public_title?.trim() ?? ''
-    clean.public_title = trimmed.length > 0 ? trimmed : null
-  }
-  if (Object.keys(clean).length === 0) return
-
-  const { error } = await supabase
-    .from('travel_trips')
-    .update(clean)
-    .eq('id', id)
+  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
+    body: { mode: 'update_trip', id, ...payload },
+  })
   if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
 }
 
 // ── Person update (group-header client name edit) ────────────────────────────
@@ -528,20 +502,11 @@ export type PersonUpdatePayload = {
 }
 
 export async function updatePerson(id: string, payload: PersonUpdatePayload): Promise<void> {
-  const clean: Record<string, unknown> = {}
-  for (const key of ['first_name', 'last_name', 'nickname'] as const) {
-    if (payload[key] !== undefined) {
-      const trimmed = payload[key]?.trim() ?? ''
-      clean[key] = trimmed.length > 0 ? trimmed : null
-    }
-  }
-  if (Object.keys(clean).length === 0) return
-
-  const { error } = await supabase
-    .from('global_people')
-    .update(clean)
-    .eq('id', id)
+  const { data, error } = await supabase.functions.invoke('global-write-people', {
+    body: { mode: 'update', id, ...payload },
+  })
   if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
 }
 
 // ── Engagement re-parenting (drag-and-drop target) ────────────────────────────
@@ -552,11 +517,11 @@ export async function reassignEngagementTrip(
   engagementId: string,
   newTripId:    string | null,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('travel_immerse_engagements')
-    .update({ trip_id: newTripId })
-    .eq('id', engagementId)
+  const { data, error } = await supabase.functions.invoke('travel-write-engagement', {
+    body: { mode: 'reassign_trip', id: engagementId, trip_id: newTripId },
+  })
   if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
 }
 
 // ── Trip primary client update ────────────────────────────────────────────────
@@ -567,9 +532,9 @@ export async function updateTripPrimaryClient(
   tripId:   string,
   personId: string | null,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('travel_trips')
-    .update({ primary_client_id: personId })
-    .eq('id', tripId)
-  if (error) throw new Error(`Failed to update trip client: ${error.message}`)
+  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
+    body: { mode: 'update_trip_primary_client', id: tripId, primary_client_id: personId },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
 }

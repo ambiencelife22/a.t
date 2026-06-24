@@ -66,6 +66,7 @@ type WriteMode =
   | 'update_welcome_letter'
   | 'archive'
   | 'delete_engagement'
+  | 'reassign_trip'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -431,6 +432,22 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to delete engagement' }, 500)
       }
       return json({ deleted: true, id })
+    }
+
+    if (mode === 'reassign_trip') {
+      const id         = body?.id as string | undefined
+      const new_trip_id = (body?.trip_id as string | null) ?? null
+      if (!id) return json({ error: 'id is required' }, 400)
+
+      const { error } = await serviceClient
+        .from('travel_immerse_engagements')
+        .update({ trip_id: new_trip_id })
+        .eq('id', id)
+      if (error) {
+        console.error('reassign_trip error:', error)
+        return json({ error: 'Failed to reassign trip' }, 500)
+      }
+      return json({ row: await rowById(id) })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

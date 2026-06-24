@@ -54,6 +54,9 @@ type Mode =
   | 'upsert_welcome_letter'
   | 'delete_welcome_letter'
   | 'set_public_view'
+  | 'create_trip'
+  | 'update_trip'
+  | 'update_trip_primary_client'
 
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
@@ -415,6 +418,57 @@ async function handleSetPublicView(
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+// ── Trip CRUD ─────────────────────────────────────────────────────────────────
+
+async function handleCreateTrip(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+  const trip_code = (body.trip_code as string | undefined)?.trim()
+  if (!trip_code) return json({ error: 'trip_code is required' }, 400)
+
+  const insert: Record<string, unknown> = {
+    trip_code,
+    public_title:       (body.public_title as string | undefined)?.trim() ?? null,
+    start_date:         (body.start_date as string | undefined) ?? null,
+    end_date:           (body.end_date as string | undefined) ?? null,
+    currency:           (body.currency as string | undefined) ?? 'USD',
+    primary_client_id:  (body.primary_client_id as string | undefined) ?? null,
+  }
+
+  const { data, error } = await db.from('travel_trips').insert(insert).select('id').single()
+  if (error) { console.error('create_trip error:', error); return json({ error: 'Failed to create trip' }, 500) }
+  return json({ trip: data })
+}
+
+async function handleUpdateTrip(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+  const id = body.id as string | undefined
+  if (!id) return json({ error: 'id is required' }, 400)
+
+  const patch: Record<string, unknown> = {}
+  if (body.trip_code !== undefined) {
+    const trimmed = (body.trip_code as string).trim()
+    if (!trimmed) return json({ error: 'trip_code cannot be empty' }, 400)
+    patch.trip_code = trimmed
+  }
+  if (body.public_title !== undefined) {
+    const trimmed = (body.public_title as string | null)?.trim() ?? ''
+    patch.public_title = trimmed.length > 0 ? trimmed : null
+  }
+  if (Object.keys(patch).length === 0) return json({ error: 'nothing to update' }, 400)
+
+  const { error } = await db.from('travel_trips').update(patch).eq('id', id)
+  if (error) { console.error('update_trip error:', error); return json({ error: 'Failed to update trip' }, 500) }
+  return json({ ok: true })
+}
+
+async function handleUpdateTripPrimaryClient(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+  const id        = body.id as string | undefined
+  const person_id = (body.primary_client_id as string | null) ?? null
+  if (!id) return json({ error: 'id is required' }, 400)
+
+  const { error } = await db.from('travel_trips').update({ primary_client_id: person_id }).eq('id', id)
+  if (error) { console.error('update_trip_primary_client error:', error); return json({ error: 'Failed to update primary client' }, 500) }
+  return json({ ok: true })
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
 
@@ -538,6 +592,12 @@ Deno.serve(async (req: Request) => {
         if (!id) return json({ error: 'id required' }, 400)
         return handleDeleteWelcomeLetter(db, id)
       }
+      case 'create_trip':
+        return handleCreateTrip(db, body as Record<string, unknown>)
+      case 'update_trip':
+        return handleUpdateTrip(db, body as Record<string, unknown>)
+      case 'update_trip_primary_client':
+        return handleUpdateTripPrimaryClient(db, body as Record<string, unknown>)
       default:
         return json({ error: `Unknown mode: ${mode}` }, 400)
     }
