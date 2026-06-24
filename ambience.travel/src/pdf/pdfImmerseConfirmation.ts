@@ -237,8 +237,8 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
     doc.text(aux.name, centreX, y + padV + 5)
   }
-  if (aux.origin || aux.destination) {
-    const route = [aux.origin, aux.destination].filter(Boolean).join('  \u2192  ')
+  if (aux.origin || aux.destination || aux.depart_airport || aux.arrive_airport) {
+    const route = [aux.depart_airport ?? aux.origin, aux.arrive_airport ?? aux.destination].filter(Boolean).join('  \u2192  ')
     sans(doc, 'normal', 9)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(route, centreX, y + padV + 11)

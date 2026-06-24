@@ -199,7 +199,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
     y = drawSectionHeader(doc, 'Flights', y)
     for (const f of flights) {
       y = checkOverflow(doc, y, 16)
-      const route    = [f.origin, f.destination].filter(Boolean).join('  \u2192  ')
+      const route    = [f.depart_airport ?? f.origin, f.arrive_airport ?? f.destination].filter(Boolean).join('  \u2192  ')
       const meta     = [route, f.cabin_class, f.aircraft_type].filter(Boolean).join('   \u00b7   ') || null
       const paxLines = passengerLines(f)
       y += drawDataRow(doc, f.start_date ? fmtDate(f.start_date) : '\u2014', f.name ?? 'Flight', meta ?? null, bookedByLabel(f.booked_by), y, f.booked_by)

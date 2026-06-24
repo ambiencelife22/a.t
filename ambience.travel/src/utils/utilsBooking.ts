@@ -50,6 +50,37 @@ const CATEGORY_ACCENT_MAP: Record<string, { hex: string; rgb: RGB }> = {
 
 const CATEGORY_ACCENT_DEFAULT = { hex: '#B4AFA5', rgb: [180, 175, 165] as RGB }
 
+// ── Flight detail composition — single source ─────────────────────────────────
+// Composes route + times + flight number into one display string.
+// Used by CalendarTab (web) and PDF surfaces. Never compose inline.
+//
+// Input shape is the minimal intersection of CalendarActivity and TripAuxBooking
+// that all surfaces have in common. Pass what you have; missing fields are omitted.
+
+export interface FlightDetailInput {
+  origin?:         string | null
+  destination?:    string | null
+  depart_airport?: string | null
+  arrive_airport?: string | null
+  time?:           string | null   // departure time (CalendarActivity uses .time)
+  start_time?:     string | null   // departure time (aux booking uses .start_time)
+  end_time?:       string | null
+  flight_number?:  string | null
+  airline_name?:   string | null
+}
+
+export function flightDetail(a: FlightDetailInput, fmtTimeFn: (t: string | null | undefined) => string): string {
+  const from  = a.depart_airport ?? a.origin ?? null
+  const to    = a.arrive_airport ?? a.destination ?? null
+  const route = [from, to].filter(Boolean).join(' \u2192 ')
+  const depRaw = a.time ?? a.start_time ?? null
+  const dep   = fmtTimeFn(depRaw)
+  const arr   = fmtTimeFn(a.end_time)
+  const times = dep && arr ? `${dep}\u2013${arr}` : dep || arr || ''
+  const parts = [route, times, a.flight_number ?? null].filter(Boolean)
+  return parts.join('  \u00b7  ')
+}
+
 export function categoryAccentHex(category: string | null | undefined): string {
   return (CATEGORY_ACCENT_MAP[category ?? ''] ?? CATEGORY_ACCENT_DEFAULT).hex
 }

@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
-import { bookedByLabel } from '../../utils/utilsBooking'
+import { bookedByLabel, flightDetail } from '../../utils/utilsBooking'
 import { fmtTime } from '../../utils/utilsDates'
 
 const L = {
@@ -89,13 +89,9 @@ function confLabel(s: CalendarStay): string {
 function confIsTentative(s: CalendarStay): boolean { return s.confirmation === 'designing' }
 function confIsPartial(s: CalendarStay): boolean { return s.confirmation === 'partially_confirmed' }
 
-// Flight route + times for a movement activity. "LHR → LAX · 15:05–18:20".
-// Single composition; agenda + itinerary both render from it.
+// flightDetail: single source in utilsBooking.ts
 function flightLine(a: CalendarActivity): string {
-  const route = [a.depart_airport ?? a.origin, a.arrive_airport ?? a.destination].filter(Boolean).join(' → ')
-  const dep = fmtTime(a.time), arr = fmtTime(a.end_time)
-  const times = dep && arr ? `${dep}–${arr}` : dep || arr || ''
-  return [route, times].filter(Boolean).join('  ·  ')
+  return flightDetail(a, fmtTime)
 }
 // "self" = Own Arrangements (client self-booked). The subtle indicator axis.
 function isOwnArrangements(bookedBy: string | null): boolean { return bookedBy === 'self' }
@@ -493,7 +489,7 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
         <span style={{ fontSize:13, color:L.gold, fontWeight:700 }}>{fmtTime(a.time) || 'Flight'}</span>
         <span>
           <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:3 }}>{a.title || 'Flight'}</strong>
-          <span style={{ fontSize:12, color:L.muted }}>{detail}{a.flight_number ? `  ·  ${a.flight_number}` : ''}</span>
+          <span style={{ fontSize:12, color:L.muted }}>{detail}</span>
         </span>
         <span style={{ alignSelf:'center', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
           <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.gold }}>✈</span>
@@ -590,7 +586,6 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
               <strong style={{ display:'block', fontSize:13.5, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{activity.title || 'Transport'}</strong>
               <span style={{ fontSize:11, color:L.muted }}>
                 {flightLine(activity) || (activity.label || 'Transport')}
-                {activity.flight_number ? `  ·  ${activity.flight_number}` : ''}
                 {isOwnArrangements(activity.booked_by) ? `  ·  ${bookedByLabel(activity.booked_by)}` : ''}
               </span>
             </span>
@@ -615,7 +610,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
               {(flightLine(activity) || activity.flight_number || isOwnArrangements(activity.booked_by)) && (
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8, paddingBottom:8, borderBottom:`1px solid ${L.line}` }}>
                   <span style={{ fontSize:11.5, color:L.muted, fontVariantNumeric:'tabular-nums' }}>
-                    {flightLine(activity)}{activity.flight_number ? `  ·  ${activity.flight_number}` : ''}
+                    {flightLine(activity)}
                   </span>
                   {isOwnArrangements(activity.booked_by) && (
                     <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:L.muted, border:`1px solid ${L.line}`, borderRadius:999, padding:'2px 7px', whiteSpace:'nowrap' }}>{bookedByLabel(activity.booked_by)}</span>
