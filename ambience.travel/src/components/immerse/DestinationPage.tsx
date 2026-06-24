@@ -1,5 +1,5 @@
 // DestinationPage.tsx — Destination subpage for immerse engagement.
-// Routes:
+// Routes: 
 //   immerse.ambience.travel/<url_id>/<dest>     → subpage
 //   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
 //
