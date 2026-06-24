@@ -400,3 +400,28 @@ export function roomLine(room: RoomLike): string {
     d.conf ? `#${d.conf}` : null,
   ].filter(Boolean).join('  \u00b7  ')
 }
+
+// ── Own Arrangements chip ───────────────────────────────────────────────────
+// The subtle, elegant client-facing indicator for booked_by='self' (client
+// self-booked). Single source — all three PDFs draw the SAME chip via this helper,
+// matching the web confirmation chip (outlined, transparent, letter-spaced muted
+// text). Returns the vertical space consumed so callers advance y. ambience/Deron
+// bookings do NOT call this — they keep the plain italic bookedByLabel text.
+export function drawOwnArrangementsChip(doc: any, x: number, y: number): number {
+  const label = 'Own Arrangements'
+  const charSpace = 0.5
+  sans(doc, 'normal', 7)
+  // jsPDF getTextWidth ignores charSpace; add it back manually (n-1 gaps).
+  const textW = doc.getTextWidth(label) + charSpace * (label.length - 1)
+  const padH = 3.2; const padV = 2.2; const chipH = 5.4
+  const chipW = textW + padH * 2
+
+  doc.setDrawColor(T.faint[0], T.faint[1], T.faint[2])
+  doc.setLineWidth(0.2)
+  doc.roundedRect(x, y, chipW, chipH, chipH / 2, chipH / 2, 'D')
+
+  doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+  doc.text(label, x + padH, y + padV + 1.5, { charSpace })
+
+  return chipH + 2
+}

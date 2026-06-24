@@ -22,11 +22,11 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { RGB } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage, roomLine, driverDetailLines,
+  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage, roomLine, driverDetailLines, drawOwnArrangementsChip,
 } from './pdfShared'
 import type { TripDay, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 import type { TimelineItem } from '../types/typesTimeline'
-import { bookedByLabel } from '../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -200,9 +200,14 @@ async function renderEntryRow(doc: any, entry: ProgrammeEntry, y: number): Promi
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
   for (const line of titleLines) { doc.text(line, contentX, ty + 4.8); ty += 4.8 }
 
-  sans(doc, 'italic', 7.5)
-  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text(bookedLabel, contentX, ty + 3.5); ty += 4.5
+  if (isOwnArrangements(entry.booked_by)) {
+    drawOwnArrangementsChip(doc, contentX, ty + 0.5); ty += 5.4
+  }
+  if (!isOwnArrangements(entry.booked_by)) {
+    sans(doc, 'italic', 7.5)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text(bookedLabel, contentX, ty + 3.5); ty += 4.5
+  }
 
   if (entry.subtitle) {
     sans(doc, 'normal', 8.5)

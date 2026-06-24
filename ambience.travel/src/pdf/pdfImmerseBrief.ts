@@ -22,7 +22,7 @@ import { assertJsPdf, loadImg, loadSvg, serif, sans, drawRule } from './pdfUtils
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, buildDateRange, passengerLines,
+  fmtDate, buildDateRange, passengerLines, drawOwnArrangementsChip,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -119,7 +119,10 @@ function drawDataRow(doc: any, date: string, name: string, sub: string | null, b
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(sub, nameX, ty + 1); ty += 5
   }
-  if (bookedBy) {
+  if (bookedBy === 'Own Arrangements') {
+    drawOwnArrangementsChip(doc, nameX, ty - 2.4); ty += 5.4
+  }
+  if (bookedBy && bookedBy !== 'Own Arrangements') {
     sans(doc, 'italic', 7)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(bookedBy, nameX, ty + 1); ty += 4.5

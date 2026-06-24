@@ -23,7 +23,7 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay,
+  fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay, drawOwnArrangementsChip,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -154,11 +154,14 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
     ty += 7
   }
 
-  sans(doc, 'italic', 7.5)
-  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text(bookedByText, tx, ty)
-
-  // ── Nested room rows ──
+  if (isOwnArrangements(booking.booked_by)) {
+    drawOwnArrangementsChip(doc, tx, ty - 3.6)
+  }
+  if (!isOwnArrangements(booking.booked_by)) {
+    sans(doc, 'italic', 7.5)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text(bookedByText, tx, ty)
+  }
   if (rooms.length > 0) {
     let ry = y + headerH
     for (let i = 0; i < rooms.length; i++) {
@@ -279,9 +282,14 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
     doc.text(timeStr, rightX, y + padV + 5, { align: 'right' })
   }
 
-  sans(doc, 'italic', 7.5)
-  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text(bookedByText, P.margin + padH, y + cardH - 4)
+  if (isOwnArrangements(aux.booked_by)) {
+    drawOwnArrangementsChip(doc, P.margin + padH, y + cardH - 7.6)
+  }
+  if (!isOwnArrangements(aux.booked_by)) {
+    sans(doc, 'italic', 7.5)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text(bookedByText, P.margin + padH, y + cardH - 4)
+  }
 
   return cardH
 }
