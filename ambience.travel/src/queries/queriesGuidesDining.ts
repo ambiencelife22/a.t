@@ -3,7 +3,12 @@
 //   grant check via dining_guide_for_user view.
 // What it does not own: gating UI, admin grant management.
 //
-// Last updated: S40C — Added checkGuideGrant(). Queries dining_guide_for_user
+// Last updated: S52 — Added closed_visible_until to DiningVenue type and SELECT.
+//   Drives the "Recently closed" section: permanently_closed venues remain
+//   visible until this date, then are filtered out entirely. Trigger
+//   tg_set_closed_visible_until auto-sets to CURRENT_DATE + 45 days when a
+//   venue transitions to permanently_closed.
+// Prior: S40C — Added checkGuideGrant(). Queries dining_guide_for_user
 //   view (SECURITY INVOKER) to determine whether the current auth user has
 //   been granted access to a specific destination's guide.
 // Prior: S40 — Canon hero resolution. hero_image_src + hero_image_alt added
@@ -47,6 +52,7 @@ export interface DiningVenue {
   is_supplementary: boolean
   is_highlighted: boolean
   venue_status: VenueStatus
+  closed_visible_until: string | null
 }
 
 export interface DiningGuideOverlay {
@@ -121,7 +127,8 @@ export async function getDiningVenuesByDestination(
       neighborhood, price_band, public_preview_rank, tags,
       image_src, image_alt, image_credit, image_credit_url, image_license,
       image_2_src, image_2_alt,
-      sort_order, is_supplementary, is_highlighted, venue_status
+      sort_order, is_supplementary, is_highlighted, venue_status,
+      closed_visible_until
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)

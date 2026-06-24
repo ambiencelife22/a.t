@@ -5,6 +5,8 @@
 //   - Welcome page (welcome copy + at-a-glance bullets)
 //   - Contents page (auto-generated from sections present)
 //   - Card list section (manual layout, page-break-aware, variant dispatch)
+//   - Three-group dining layout: primary → supplementary → recently closed
+//     (S52 — mirrors DiningGuidePage three-group render)
 //   - Happenings section (S52 — time-bound destination content, snapshot at
 //     PDF generation time)
 //   - Closing chrome (logo + restriction notice + copyright per page)
@@ -13,13 +15,18 @@
 //
 // What it does not own:
 //   - Library loading (usePdfDownload hook owns this)
-//   - Filter state (PDF renders the full unfiltered venue set)
+//   - Filter state (PDF renders the full unfiltered venue set, minus closed
+//     past the visibility window — which is treated as data hygiene, not
+//     filtering)
 //   - Image loading, SVG rasterisation, font helpers, draw helpers (pdfUtils.ts)
 //
 // Variants:
-//   dining      — DiningVenue[], recognition marks, cuisine/neighborhood meta
-//   experiences — ExperienceVenue[], no recognition marks, kicker in eyebrow slot,
-//                 at_a_glance_bullets from overlay on welcome page
+//   dining      — DiningVenue[], recognition marks, cuisine/neighborhood meta.
+//                 Three-group layout: primary, supplementary, recently closed.
+//                 permanently_closed venues past closed_visible_until are
+//                 excluded entirely.
+//   experiences — ExperienceVenue[], no recognition marks, kicker in eyebrow
+//                 slot, at_a_glance_bullets from overlay on welcome page
 //   shopping    — Shop[], shop_type · by_appointment eyebrow, bullet list,
 //                 maps_url link on address row
 //   hotels      — HotelVenue[], stars + michelin keys + forbes recognition,
@@ -28,23 +35,17 @@
 //   between Cards and Closing, snapshot of future happenings at generation time.
 //   BaseGuidePdfOptions hoists shared fields off the variant union.
 //
-// Last updated: S52 — SPACE scale established. Role-based vertical spacing
-//   applied uniformly to all four card renderers and all section headers.
-//   Replaces 30+ hardcoded `ty += N` / `y += N` values with named roles
-//   (LEAD_IN, META_GAP, IDENTITY_BREATHE, CLUSTER_TIGHT, SECTION_BREATHE,
-//   SUBLINE_TO_BODY, WITHIN_BODY, ITEM_TIGHT). Eyebrow → date → name
-//   hierarchy now breathes per editorial-typography standards.
+// Last updated: S52 — Three-group dining layout in PDF mirrors the web page.
+//   groupDiningVenuesForPdf classifies venues into primary, supplementary,
+//   recently closed. "Also nearby" and "Recently closed" subsection dividers
+//   render inline between groups. permanently_closed venues past their
+//   closed_visible_until window are filtered out — they are not in the PDF.
+// Prior: S52 — SPACE scale established. Role-based vertical spacing.
 // Prior: S51 — logoVariant option ('ambience' | 'alfaone' | 'unbranded')
-//   threaded through. Cover branding, footer logo, restriction notice,
-//   copyright, and filename suffix all branch on the variant.
-// Prior: S51 — hotels variant added with stars + michelin keys + forbes
-//   recognition row. HotelGuideDestination + HotelVenue threaded into
-//   ExportGuidePdfOptions union and RenderCtx.
-// Prior: S52 — shopping variant added; BaseGuidePdfOptions hoist for
-//   shared fields (happenings, copy, hero, year/version, accuracyDate).
-// Prior: S52 — happenings section added. Renders own page when caller
-//   provides happenings[]. Filters to future-only (end_date >= today) at
-//   generation time. Mirrors venue card row pattern for visual cohesion.
+//   threaded through.
+// Prior: S51 — hotels variant added.
+// Prior: S52 — shopping variant added; BaseGuidePdfOptions hoist.
+// Prior: S52 — happenings section added.
 // Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
 
 import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
@@ -84,21 +85,6 @@ const PAGE = {
 } as const
 
 // ── Spacing scale ────────────────────────────────────────────────────────────
-// Role-based vertical spacing. Every `ty += N` and `y += N` between text blocks
-// uses one of these constants — no raw numbers. Tune one value, the whole
-// system breathes correctly.
-//
-// Roles, from quiet to loud:
-//   LINE_TIGHT       — within bullets, between address lines (small text, intent: continuous block)
-//   WITHIN_BODY      — between body prose paragraphs / after body block
-//   CLUSTER_TIGHT    — within an identity cluster (name → recognition, tagline → body)
-//   META_GAP         — between two metadata lines that are visually distinct (eyebrow → date)
-//   META_TO_NAME     — after the small metadata row, before the 18pt name (date → name)
-//   LEAD_IN          — after small uppercase eyebrow, before name (no date present)
-//   IDENTITY_BREATHE — after the 18pt serif name when no recognition row follows
-//   SECTION_BREATHE  — after 26pt section heading, before small-caps subline
-//   SUBLINE_TO_BODY  — after the gold small-caps subline, before first card / intro
-//   PAGE_PAD         — between major page blocks (welcome → contents)
 
 const SPACE = {
   LINE_TIGHT:       1,
@@ -120,6 +106,10 @@ const ASSET_PATHS = {
 
 const AMBIENCE_URL       = 'https://ambience.travel'
 const RESTRICTION_NOTICE = 'This guide is for ambience and its guests only.'
+
+// Subsection divider height — used in both height computation and rendering.
+// Matches the gold rule + small uppercase label pattern.
+const SUBSECTION_DIVIDER_HEIGHT = 14
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -438,7 +428,12 @@ function renderWelcomePage(ctx: RenderCtx) {
   y = panelTop + panelHeight + SPACE.PAGE_PAD
 
   if (variant === 'dining') {
-    y = renderRecognitionKey(doc, venues as DiningVenue[], y)
+    // Only operational venues drive recognition key — closed venues that have
+    // recognition shouldn't inflate the key for venues guests can actually visit.
+    const operationalVenues = (venues as DiningVenue[]).filter(
+      v => v.venue_status !== 'permanently_closed',
+    )
+    y = renderRecognitionKey(doc, operationalVenues, y)
   }
 
   y += SPACE.PAGE_PAD
@@ -551,6 +546,68 @@ function renderContentsBlock(ctx: RenderCtx, startY: number): number {
   return y
 }
 
+// ── Dining venue grouping (S52) ──────────────────────────────────────────────
+// Mirrors DiningGuidePage three-group render:
+//   primary           — operational AND NOT is_supplementary
+//   supplementary     — operational AND is_supplementary
+//   recentlyClosed    — permanently_closed AND closed_visible_until >= today
+//   excluded          — permanently_closed AND closed_visible_until < today
+//                       (or null closed_visible_until)
+//
+// Other statuses (temporarily_closed, seasonal_closure) flow into primary or
+// supplementary based on is_supplementary — same as the page.
+
+interface DiningGroups {
+  primary:        DiningVenue[]
+  supplementary:  DiningVenue[]
+  recentlyClosed: DiningVenue[]
+}
+
+function groupDiningVenuesForPdf(venues: DiningVenue[]): DiningGroups {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const primary:       DiningVenue[] = []
+  const supplementary: DiningVenue[] = []
+  const closed:        DiningVenue[] = []
+
+  for (const v of venues) {
+    if (v.venue_status === 'permanently_closed') {
+      if (v.closed_visible_until && v.closed_visible_until >= today) {
+        closed.push(v)
+      }
+      // else: excluded entirely from PDF
+      continue
+    }
+    if (v.is_supplementary) {
+      supplementary.push(v)
+    } else {
+      primary.push(v)
+    }
+  }
+
+  const byName = (a: DiningVenue, b: DiningVenue) => a.name.localeCompare(b.name)
+  primary.sort(byName)
+  supplementary.sort(byName)
+  closed.sort(byName)
+
+  return { primary, supplementary, recentlyClosed: closed }
+}
+
+// ── Subsection divider — inline between groups ───────────────────────────────
+// Gold rule + small uppercase gold label. Spans card content width.
+// Height: SUBSECTION_DIVIDER_HEIGHT (constant). Page-break aware.
+
+function renderSubsectionDivider(doc: any, label: string, y: number): number {
+  doc.setDrawColor(...THEME.rule)
+  doc.setLineWidth(0.2)
+  doc.line(PAGE.margin, y + 2, PAGE.width - PAGE.margin, y + 2)
+
+  sans(doc, 'normal', 8); doc.setTextColor(...THEME.gold)
+  doc.text(label.toUpperCase(), PAGE.margin, y + 8, { charSpace: 0.5 })
+
+  return y + SUBSECTION_DIVIDER_HEIGHT
+}
+
 // ── Cards section ─────────────────────────────────────────────────────────────
 
 const CARD = {
@@ -589,10 +646,118 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
   doc.text(subline, PAGE.margin, y, { charSpace: 0.4 })
   y += SPACE.SUBLINE_TO_BODY
 
+  // Dining: three-group render (primary → supplementary → recently closed).
+  // Other variants: single sequential render — closed-window logic doesn't
+  // apply (those tables don't have closed_visible_until yet).
+  if (variant === 'dining') {
+    y = await renderDiningGroupedCards(ctx, venues as DiningVenue[], y)
+  } else {
+    y = await renderNonDiningCards(ctx, venues, y)
+  }
+
+  const hasFollowingPages =
+    ctx.happenings.length > 0 ||
+    planYourVisitHasContent(ctx.destination.overlay)
+  if (ctx.accuracyDate && !hasFollowingPages) {
+    const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
+    renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
+  }
+}
+
+// Dining-only path: three groups with subsection dividers.
+async function renderDiningGroupedCards(ctx: RenderCtx, venues: DiningVenue[], startY: number): Promise<number> {
+  const { doc, destination } = ctx
+  const groups = groupDiningVenuesForPdf(venues)
+  let y = startY
+
+  if (groups.primary.length === 0 &&
+      groups.supplementary.length === 0 &&
+      groups.recentlyClosed.length === 0) {
+    sans(doc, 'italic', 10); doc.setTextColor(...THEME.muted)
+    doc.text(`No dining curated for ${destination.name} yet.`, PAGE.margin, y)
+    return y
+  }
+
+  // Primary group
+  for (const venue of groups.primary) {
+    const cardHeight = computeCardHeight(doc, venue, 'dining')
+    if (y + cardHeight > PAGE.footerY - 10) {
+      doc.addPage()
+      doc.setFillColor(...THEME.white)
+      doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+      y = PAGE.bodyTop + 8
+    }
+    await renderCard(doc, venue, y, 'dining')
+    y += cardHeight + CARD.rowGap
+  }
+
+  // Supplementary group — "Also nearby" divider when both groups have items
+  if (groups.supplementary.length > 0) {
+    if (groups.primary.length > 0) {
+      // Page-break check for divider + first card
+      const firstCardHeight = computeCardHeight(doc, groups.supplementary[0], 'dining')
+      if (y + SUBSECTION_DIVIDER_HEIGHT + firstCardHeight > PAGE.footerY - 10) {
+        doc.addPage()
+        doc.setFillColor(...THEME.white)
+        doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+        y = PAGE.bodyTop + 8
+      }
+      y = renderSubsectionDivider(doc, 'Also nearby', y)
+    }
+
+    for (const venue of groups.supplementary) {
+      const cardHeight = computeCardHeight(doc, venue, 'dining')
+      if (y + cardHeight > PAGE.footerY - 10) {
+        doc.addPage()
+        doc.setFillColor(...THEME.white)
+        doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+        y = PAGE.bodyTop + 8
+      }
+      await renderCard(doc, venue, y, 'dining')
+      y += cardHeight + CARD.rowGap
+    }
+  }
+
+  // Recently closed group — divider when any preceding content exists
+  if (groups.recentlyClosed.length > 0) {
+    const hasPreceding = groups.primary.length > 0 || groups.supplementary.length > 0
+    if (hasPreceding) {
+      const firstCardHeight = computeCardHeight(doc, groups.recentlyClosed[0], 'dining')
+      if (y + SUBSECTION_DIVIDER_HEIGHT + firstCardHeight > PAGE.footerY - 10) {
+        doc.addPage()
+        doc.setFillColor(...THEME.white)
+        doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+        y = PAGE.bodyTop + 8
+      }
+      y = renderSubsectionDivider(doc, 'Recently closed', y)
+    }
+
+    for (const venue of groups.recentlyClosed) {
+      const cardHeight = computeCardHeight(doc, venue, 'dining')
+      if (y + cardHeight > PAGE.footerY - 10) {
+        doc.addPage()
+        doc.setFillColor(...THEME.white)
+        doc.rect(0, 0, PAGE.width, PAGE.height, 'F')
+        y = PAGE.bodyTop + 8
+      }
+      await renderCard(doc, venue, y, 'dining')
+      y += cardHeight + CARD.rowGap
+    }
+  }
+
+  return y
+}
+
+// Non-dining path: sequential single-group render. Other variants don't yet
+// have closed_visible_until or three-group structure.
+async function renderNonDiningCards(ctx: RenderCtx, venues: any[], startY: number): Promise<number> {
+  const { doc, destination, variant } = ctx
+  let y = startY
+
   if (venues.length === 0) {
     sans(doc, 'italic', 10); doc.setTextColor(...THEME.muted)
     doc.text(`No ${variant} curated for ${destination.name} yet.`, PAGE.margin, y)
-    return
+    return y
   }
 
   for (const item of venues) {
@@ -622,7 +787,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
       continue
     }
 
-    const cardHeight = computeCardHeight(doc, item, variant)
+    const cardHeight = computeCardHeight(doc, item, variant as 'dining' | 'experiences')
     if (y + cardHeight > PAGE.footerY - 10) {
       doc.addPage()
       doc.setFillColor(...THEME.white)
@@ -633,13 +798,7 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
     y += cardHeight + CARD.rowGap
   }
 
-  const hasFollowingPages =
-    ctx.happenings.length > 0 ||
-    planYourVisitHasContent(ctx.destination.overlay)
-  if (ctx.accuracyDate && !hasFollowingPages) {
-    const disclaimerY = Math.max(y + 8, PAGE.footerY - 36)
-    renderDisclaimer(doc, ctx.accuracyDate, disclaimerY)
-  }
+  return y
 }
 
 // ── Dining / Experiences card ─────────────────────────────────────────────────
@@ -907,8 +1066,6 @@ function computeHotelCardHeight(doc: any, h: HotelVenue): number {
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight = 0
 
-  // Eyebrow slot is reserved even if absent (keeps name baseline consistent
-  // across hotels with / without preferred-partner flag)
   textHeight += SPACE.LEAD_IN
   textHeight += SPACE.IDENTITY_BREATHE  // name
 
@@ -971,7 +1128,6 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
   }
-  // Always reserve eyebrow slot for baseline consistency
   ty += SPACE.LEAD_IN
 
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
@@ -1153,7 +1309,6 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
   const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  // Eyebrow: "ONE EVENING · MUSIC" (or "LIMITED DATES · MUSIC")
   const isSingleDay = h.start_date === h.end_date
   const tag = isSingleDay ? 'ONE EVENING' : 'LIMITED DATES'
   const eyebrowText = h.category ? `${tag} \u00b7 ${h.category.toUpperCase()}` : tag
@@ -1161,18 +1316,15 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
   doc.text(eyebrowText, textX, ty, { charSpace: 0.4 })
   ty += SPACE.LEAD_IN
 
-  // Date line — italic gold serif
   serif(doc, 'italic', 11); doc.setTextColor(...THEME.gold)
   doc.text(formatHappeningDateRange(h.start_date, h.end_date), textX, ty)
   ty += SPACE.META_TO_NAME
 
-  // Name
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
   const nameLines = doc.splitTextToSize(h.name, textWidth)
   doc.text(nameLines[0], textX, ty)
   ty += SPACE.IDENTITY_BREATHE
 
-  // Tagline — italic with thin gold bar on left
   if (h.tagline) {
     sans(doc, 'italic', 9.5); doc.setTextColor(...THEME.inkSoft)
     const taglineLines = doc.splitTextToSize(h.tagline, textWidth - 4)
@@ -1184,7 +1336,6 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     ty += SPACE.WITHIN_BODY
   }
 
-  // Body
   if (h.body) {
     sans(doc, 'normal', 9.5); doc.setTextColor(...THEME.inkSoft)
     const bodyLines = doc.splitTextToSize(h.body, textWidth)
@@ -1192,7 +1343,6 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     ty += SPACE.WITHIN_BODY
   }
 
-  // Bullets
   const bullets = normalizeHappeningBullets(h.bullets)
   if (bullets.length > 0) {
     for (const b of bullets) {
@@ -1209,7 +1359,6 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     ty += SPACE.LINE_TIGHT
   }
 
-  // Venue + address
   if (h.venue_name) {
     sans(doc, 'bold', 8.5); doc.setTextColor(...THEME.muted)
     doc.text(h.venue_name, textX, ty)
@@ -1235,8 +1384,6 @@ function normalizeHappeningBullets(bullets: Happening['bullets']): string[] {
     .filter(Boolean)
 }
 
-// Date range formatting — single day: "28 July 2026"; same month: "28-30 July 2026";
-// same year, different month: "28 July - 2 August 2026"; cross-year: "28 Dec 2026 - 3 Jan 2027".
 function formatHappeningDateRange(startISO: string, endISO: string): string {
   const start = parseISODate(startISO)
   const end   = parseISODate(endISO)

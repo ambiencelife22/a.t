@@ -1,55 +1,47 @@
 // DiningGuidePage.tsx — public dining guide for a destination
 // What it owns:
 //   - Venue data fetch
-//   - Happenings data fetch (S52 — surface='dining' for pop-ups, chef
-//     residencies, wine festivals)
+//   - Happenings data fetch (S52)
 //   - Filter state + URL param sync (cuisine, michelin)
 //   - Frontend default copy + ?? resolution against overlay overrides
-//   - Year + version resolution for PDF (NULL → current year / '1.0')
-//   - Grid layout, error+empty states for the data load
-//   - PDF download trigger (usePdfDownload hook, calls exportGuidePdf)
+//   - Year + version resolution for PDF
+//   - Grid layout with three groups: primary, supplementary, recently closed
+//   - PDF download trigger (usePdfDownload hook)
 //   - "Coming Up" happenings block (S52)
-//   - Plan Your Visit block (always renders — fallback copy when overlay null)
-//   - Accuracy disclaimer block (gated on overlay.accuracy_date non-null)
-//   - Editorial prompt (hasFullAccess=false — teaser state, below grid)
+//   - Plan Your Visit block
+//   - Accuracy disclaimer block
+//   - Editorial prompt (hasFullAccess=false teaser state)
 //
 // What it does not own:
 //   - Path parsing (DiningGuideRoute)
-//   - Destination validation (DiningGuideRoute)
+//   - Destination validation
 //   - Page chrome (GuideLayout)
-//   - Card rendering (DiningCard, HappeningCard), filter chips (DiningGuideFilters), hero (GuideHero)
-//   - ComingUp section chrome (ComingUpSection.tsx)
-//   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
-//   - PDF library loading (lib/usePdfDownload.ts owns this)
-//   - Style objects (lib/guidePageStyles.ts)
+//   - Card rendering (DiningCard, HappeningCard), filters, hero
+//   - ComingUp section chrome
+//   - PDF rendering itself
+//   - PDF library loading (useGuidePdf hook)
+//   - Style objects (guidePageStyles.ts)
 //   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
 //
-// Hero resolution (S40):
-//   overlay?.hero_image_src ?? destination.heroImageSrc ?? null
-//   Canon hero lives on global_destinations. Overlay overrides only when set.
+// Render groups (S52):
+//   1. Primary (is_supplementary=false, operational venues)
+//   2. Supplementary (is_supplementary=true, operational venues) — under "Also nearby"
+//   3. Recently closed (venue_status='permanently_closed' AND
+//      closed_visible_until >= today) — under "Recently closed"
+//   Beyond closed_visible_until, permanently_closed venues are filtered out
+//   entirely. All groups alphabetical within group.
 //
-// Sort (S40):
-//   Non-supplementary venues alphabetical first, supplementary alphabetical last.
-//   A subtle divider renders above the first supplementary venue in the grid.
-//   public_preview_rank is a gating mechanism only — no sort influence.
-//
-// Last updated: S52 — happenings infrastructure added. Parallel
-//   Promise.allSettled fetch (venues + happenings with surface='dining').
-//   ComingUpSection renders above PlanYourVisit. Happenings passed to PDF
-//   handler. Soft-fail on happenings query (supplementary content).
-// Prior: S41 — jsPDF load + handleDownloadPdf extracted to
-//   usePdfDownload hook. No functional changes.
-// Prior: S40C — hasFullAccess prop added. Ungated users see venues
-//   where public_preview_rank IS NOT NULL (teaser cards). Editorial prompt
-//   renders below grid when hasFullAccess=false.
-// Prior: S40 — Neighborhoods removed from FilterState, URL sync, filter logic.
+// Last updated: S52 — Three-group render. Recently closed section added below
+//   supplementary. permanently_closed venues filtered by closed_visible_until
+//   window (45-day default set by tg_set_closed_visible_until trigger).
+// Prior: S52 — happenings infrastructure added.
+// Prior: S41 — jsPDF load + handleDownloadPdf extracted to usePdfDownload hook.
+// Prior: S40C — hasFullAccess prop added.
+// Prior: S40 — Neighborhoods removed from FilterState.
 // Prior: S40 — Supplementary-last sort. Divider above first supplementary venue.
-// Prior: S40 — Always alphabetical sort.
 // Prior: S40 — Canon hero resolution via destination.heroImageSrc.
 // Prior: S40 — PlanYourVisit extracted. Gate removed.
 // Prior: S40 — Inline styles extracted to lib/guidePageStyles.ts.
-// Prior: S39 Add 1 — Added Plan Your Visit block.
-// Prior: S39 — Added accuracy disclaimer block.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../../providers/ToastContext'
@@ -120,6 +112,17 @@ function resolveGuideVersion(overlayVersion: string | null | undefined): string 
   return DEFAULT_GUIDE_VERSION
 }
 
+// ── Today as YYYY-MM-DD (local) — for closed_visible_until comparisons ──────
+// closed_visible_until is a DATE column. Comparison must be local-date based.
+
+function todayISO(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 // ── URL filter state sync ────────────────────────────────────────────────────
 
 function readFilterStateFromUrl(): FilterState {
@@ -167,7 +170,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
 
-  // ── Venue fetch ──────────────────────────────────────────────────────────
+  // ── Venue + happenings fetch ─────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false
@@ -234,30 +237,76 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
     [venues],
   )
 
-  const filteredVenues = useMemo(() => {
-    const visible = hasFullAccess
-      ? venues
-      : venues.filter(v => v.public_preview_rank != null)
+  // ── Group venues: primary, supplementary, recently closed ────────────────
+  // Three-group model. Each group filtered, then alphabetised.
+  //
+  // Group membership rules:
+  //   Primary:           operational AND NOT is_supplementary
+  //   Supplementary:     operational AND is_supplementary
+  //   Recently closed:   permanently_closed AND closed_visible_until >= today
+  //   Excluded:          permanently_closed AND closed_visible_until < today
+  //                      (or null closed_visible_until)
+  //   Other statuses (temporarily_closed, seasonal_closure) flow through
+  //   primary or supplementary based on is_supplementary; status surfaced on
+  //   the card.
 
-    const filtered = visible.filter(v => {
+  const today = useMemo(() => todayISO(), [])
+
+  const { primaryVenues, supplementaryVenues, recentlyClosedVenues } = useMemo(() => {
+    function passesFilters(v: DiningVenue): boolean {
       if (filterState.cuisines.size > 0) {
         if (!v.cuisine_subcategory || !filterState.cuisines.has(v.cuisine_subcategory)) return false
       }
       if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') return false
       if (filterState.highlightedOnly && !v.is_highlighted) return false
       return true
-    })
+    }
 
-    return filtered.sort((a, b) => {
-      if (a.is_supplementary !== b.is_supplementary) return a.is_supplementary ? 1 : -1
-      return a.name.localeCompare(b.name)
-    })
-  }, [venues, filterState, hasFullAccess])
+    function isRecentlyClosed(v: DiningVenue): boolean {
+      if (v.venue_status !== 'permanently_closed') return false
+      if (!v.closed_visible_until) return false
+      return v.closed_visible_until >= today
+    }
 
-  const firstSupplementaryIndex = useMemo(
-    () => filteredVenues.findIndex(v => v.is_supplementary),
-    [filteredVenues],
-  )
+    const visible = hasFullAccess
+      ? venues
+      : venues.filter(v => v.public_preview_rank != null)
+
+    const primary:       DiningVenue[] = []
+    const supplementary: DiningVenue[] = []
+    const closed:        DiningVenue[] = []
+
+    for (const v of visible) {
+      if (!passesFilters(v)) continue
+
+      if (isRecentlyClosed(v)) {
+        closed.push(v)
+        continue
+      }
+
+      if (v.venue_status === 'permanently_closed') continue
+
+      if (v.is_supplementary) {
+        supplementary.push(v)
+      } else {
+        primary.push(v)
+      }
+    }
+
+    const byName = (a: DiningVenue, b: DiningVenue) => a.name.localeCompare(b.name)
+    primary.sort(byName)
+    supplementary.sort(byName)
+    closed.sort(byName)
+
+    return {
+      primaryVenues:        primary,
+      supplementaryVenues:  supplementary,
+      recentlyClosedVenues: closed,
+    }
+  }, [venues, filterState, hasFullAccess, today])
+
+  const totalVisible =
+    primaryVenues.length + supplementaryVenues.length + recentlyClosedVenues.length
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -290,8 +339,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
               <div>
                 <h2 style={sectionTitleH2Style}>Selected tables</h2>
                 <p style={sectionTitleCountStyle}>
-                  {hasFullAccess ? filteredVenues.length : venues.length}{' '}
-                  {(hasFullAccess ? filteredVenues.length : venues.length) === 1 ? 'restaurant' : 'restaurants'}
+                  {hasFullAccess ? totalVisible : venues.length}{' '}
+                  {(hasFullAccess ? totalVisible : venues.length) === 1 ? 'restaurant' : 'restaurants'}
                 </p>
               </div>
               <button
@@ -319,24 +368,47 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
               </button>
             </div>
 
-            {filteredVenues.length === 0 ? (
+            {totalVisible === 0 ? (
               <EmptyState />
             ) : (
               <>
                 <section style={gridStyle}>
-                  {filteredVenues.map((v, i) => (
-                    <React.Fragment key={v.id}>
-                      {i === firstSupplementaryIndex && firstSupplementaryIndex > 0 && (
-                        <div style={supplementaryDividerStyle}>
-                          <span style={supplementaryLabelStyle}>Also nearby</span>
-                        </div>
-                      )}
-                      <DiningCard
-                        venue={v}
-                        hasFullAccess={hasFullAccess}
-                        destinationName={destination.name}
-                      />
-                    </React.Fragment>
+                  {primaryVenues.map(v => (
+                    <DiningCard
+                      key={v.id}
+                      venue={v}
+                      hasFullAccess={hasFullAccess}
+                      destinationName={destination.name}
+                    />
+                  ))}
+
+                  {supplementaryVenues.length > 0 && primaryVenues.length > 0 && (
+                    <div style={supplementaryDividerStyle}>
+                      <span style={supplementaryLabelStyle}>Also nearby</span>
+                    </div>
+                  )}
+                  {supplementaryVenues.map(v => (
+                    <DiningCard
+                      key={v.id}
+                      venue={v}
+                      hasFullAccess={hasFullAccess}
+                      destinationName={destination.name}
+                    />
+                  ))}
+
+                  {recentlyClosedVenues.length > 0 &&
+                    (primaryVenues.length > 0 || supplementaryVenues.length > 0) && (
+                    <div style={supplementaryDividerStyle}>
+                      <span style={supplementaryLabelStyle}>Recently closed</span>
+                    </div>
+                  )}
+                  {recentlyClosedVenues.map(v => (
+                    <DiningCard
+                      key={v.id}
+                      venue={v}
+                      hasFullAccess={hasFullAccess}
+                      destinationName={destination.name}
+                    />
                   ))}
                 </section>
 
