@@ -101,7 +101,7 @@ function activityIsSpan(a: CalendarActivity): boolean {
 }
 
 // 6C drill-down shapes (from the activity_detail EF mode).
-type RoomDetail = { id: string; room_name: string | null; guest_name: string | null; confirmation_number: string | null; party_composition: string | null }
+type RoomDetail = { id: string; room_name: string | null; guest_name: string | null; resolved_additional_guests?: string[] | null; confirmation_number: string | null; party_composition: string | null }
 type PassengerDetail = { id: string; passenger_name: string | null; seat_numbers: string | null; confirmation_number: string | null }
 type VehicleDetail = { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; company: string | null; vehicle_role: string | null }
 type ActivityDetail =

@@ -358,13 +358,14 @@ export function passengerLines(aux: AuxLike): string[] {
 // resolved_guest_name is set by the caller (names.ts) before this runs.
 
 export interface RoomLike {
-  resolved_guest_name?: string | null
-  guest_name?:          string | null
-  additional_guests?:   string[] | null
-  party_composition?:   string | null
-  room_name?:           string | null
-  notes?:               string | null
-  confirmation_number?: string | null
+  resolved_guest_name?:        string | null
+  guest_name?:                 string | null
+  resolved_additional_guests?: string[] | null
+  additional_guests?:          string[] | null
+  party_composition?:          string | null
+  room_name?:                  string | null
+  notes?:                      string | null
+  confirmation_number?:        string | null
 }
 
 export interface RoomDisplay {
@@ -378,7 +379,7 @@ export function roomDisplay(room: RoomLike): RoomDisplay {
   const guests: string[] = []
   const lead = roomGuestName(room)
   if (lead) guests.push(lead)
-  if (room.additional_guests?.length) guests.push(...room.additional_guests)
+  if (room.resolved_additional_guests?.length) guests.push(...room.resolved_additional_guests)
   if (room.party_composition) guests.push(room.party_composition)
   return {
     roomName:  room.room_name ?? null,

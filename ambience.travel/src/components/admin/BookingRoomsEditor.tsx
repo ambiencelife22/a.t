@@ -101,7 +101,7 @@ function draftToPatch(d: RoomDraft): BookingRoomPatch {
     const n = Number(t)
     return Number.isFinite(n) ? n : null
   }
-  const guests = d.additional_guests.map(g => g.trim()).filter(Boolean)
+  const guests = d.additional_guests.filter(Boolean)  // person uuids; drop empty slots
   return {
     person_id:           d.person_id,
     guest_name:          orNull(d.guest_name),
@@ -191,13 +191,19 @@ function RoomFormBody({ draft, setField, setPerson, onResolved, linkedName, part
         <RoomField label='Room Name' value={draft.room_name} onChange={v => setField('room_name', v)} onBlur={() => blurField?.('room_name')} placeholder='Two-Bedroom Suite' />
       </div>
 
-      {/* Additional guests — repeatable */}
+      {/* Additional guests — repeatable, person-linked (uuid). Each slot is a
+          PersonLinkPicker writing a global_people id; no free text. */}
       <div>
         <label style={labelStyle}>Additional Guests</label>
-        {draft.additional_guests.map((g, idx) => (
-          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <input style={{ ...inputStyle, flex: 1 }} value={g} placeholder='Additional guest name'
-              onChange={e => patchGuest(idx, e.target.value)} />
+        {draft.additional_guests.map((pid, idx) => (
+          <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 4 }}>
+            <div style={{ flex: 1 }}>
+              <PersonLinkPicker
+                label=''
+                personId={pid || null}
+                onChange={next => patchGuest(idx, next ?? '')}
+              />
+            </div>
             <button onClick={() => removeGuest(idx)}
               style={{ fontFamily: A.font, fontSize: 10, color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>×</button>
           </div>
@@ -455,7 +461,7 @@ function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: 
             <div style={{ flex: 1, minWidth: 0 }}>
               {r.confirmation_number && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>}
               <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily:A.font }}>{roomGuestName(r) ?? 'Guest'}</div>
-              {r.additional_guests?.length ? <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.additional_guests.join(', ')}</div> : null}
+              {r.additional_guests?.length ? <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>+{r.additional_guests.length} additional guest{r.additional_guests.length === 1 ? '' : 's'}</div> : null}
               {r.party_composition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>}
               {r.room_name          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
               {(r.total != null || r.rate != null) && (

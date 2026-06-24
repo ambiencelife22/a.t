@@ -38,7 +38,7 @@
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildDays } from '../_shared/days.ts'
 import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
-import { resolveRoomGuestName, resolvePartyName } from '../_shared/names.ts'
+import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -228,6 +228,32 @@ for (const t of tripRows) {
 
   if (partnerResult.error) return err('Failed to fetch partners', 500)
 
+  // Resolve room occupants (lead person_id + additional_guests uuids) → names at
+  // the source, so every dossier consumer (brief preview, brief PDF) shows real
+  // names, never raw uuids. Same resolver shape as _shared/trip.ts and
+  // activity_detail — one resolution truth across all three read paths. Party
+  // label is per-trip (brief.prepared_for); the dossier spans trips, so lead
+  // resolution here is person → guest_name override (party-label fallback is
+  // applied where trip context is singular). Additional guests are always people.
+  const dossierRooms = (roomResult.data ?? []) as Array<Record<string, unknown>>
+  const dossierPeopleById = await resolvePeopleByIds(
+    db, [...new Set([
+      ...dossierRooms.map(r => r.person_id).filter(Boolean),
+      ...dossierRooms.flatMap(r => (r.additional_guests as string[] | null) ?? []),
+    ])] as string[],
+  )
+  const resolvedRooms = dossierRooms.map(r => ({
+    ...r,
+    resolved_guest_name: resolvePartyName(
+      r.person_id ? dossierPeopleById[r.person_id as string] : null,
+      r.guest_name as string | null,
+      null,
+    ),
+    resolved_additional_guests: ((r.additional_guests as string[] | null) ?? [])
+      .map(id => formatPersonName(dossierPeopleById[id]))
+      .filter(Boolean),
+  }))
+
   return ok({
     bookingRows,
     hotelMap,
@@ -235,7 +261,7 @@ for (const t of tripRows) {
     partners:  partnerResult.data ?? [],
     house:     houseResult.data ?? null,
     briefs:    briefResult.data ?? [],
-    rooms:     roomResult.data  ?? [],
+    rooms:     resolvedRooms,
     dests:     destResult.data  ?? [],
     engagements: engResult.data ?? [],
   })
@@ -573,14 +599,17 @@ async function handleActivityDetail(
 
     const { data: roomData, error: roomErr } = await db
       .from('travel_booking_rooms')
-      .select('id, room_name, person_id, guest_name, confirmation_number, party_composition, sort_order')
+      .select('id, room_name, person_id, guest_name, additional_guests, confirmation_number, party_composition, sort_order')
       .eq('booking_id', bookingId)
       .order('sort_order', { ascending: true })
     if (roomErr) return err('Failed to fetch rooms', 500)
     const rooms = (roomData ?? []) as Array<Record<string, unknown>>
 
     const peopleById = await resolvePeopleByIds(
-      db, [...new Set(rooms.map(r => r.person_id).filter(Boolean))] as string[],
+      db, [...new Set([
+        ...rooms.map(r => r.person_id).filter(Boolean),
+        ...rooms.flatMap(r => (r.additional_guests as string[] | null) ?? []),
+      ])] as string[],
     )
     const out = rooms.map(r => ({
       id:                  r.id,
@@ -590,6 +619,9 @@ async function handleActivityDetail(
                              r.guest_name as string | null,
                              partyLabel,
                            ),
+      resolved_additional_guests: ((r.additional_guests as string[] | null) ?? [])
+                             .map(id => formatPersonName(peopleById[id]))
+                             .filter(Boolean),
       confirmation_number: r.confirmation_number,
       party_composition:   r.party_composition,
     }))

@@ -19,7 +19,7 @@
 // Created: S55 — _shared/trip.ts extraction (single-source quest #1).
 
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { resolvePartyName } from './names.ts'
+import { resolvePartyName, formatPersonName } from './names.ts'
 
 // ── url_id -> trip_id -> house_id ─────────────────────────────────────────────
 // Returns the ids, or null when the trip cannot be resolved (caller returns 404).
@@ -189,8 +189,13 @@ export async function fetchTripBookings(
   }
 
   // Resolve room guest people (batch) and group rooms by booking with
-  // resolved_guest_name attached.
-  const roomPersonIds = [...new Set(rooms.map(r => r.person_id).filter(Boolean))] as string[]
+  // resolved_guest_name + resolved_additional_guests attached. The id set spans
+  // BOTH the lead person_id and every additional_guests uuid, so one query
+  // resolves all room occupants (lead + additional) — single source.
+  const roomPersonIds = [...new Set([
+    ...rooms.map(r => r.person_id).filter(Boolean),
+    ...rooms.flatMap(r => (r.additional_guests as string[] | null) ?? []),
+  ])] as string[]
   const roomPeopleById: Record<string, Record<string, unknown>> = {}
   if (roomPersonIds.length > 0) {
     const { data: rp } = await db
@@ -208,7 +213,10 @@ export async function fetchTripBookings(
       r.guest_name as string | null,
       partyLabel,
     )
-    ;(roomsByBooking[bid] ??= []).push({ ...r, resolved_guest_name })
+    const resolved_additional_guests = ((r.additional_guests as string[] | null) ?? [])
+      .map(id => formatPersonName(roomPeopleById[id]))
+      .filter(Boolean)
+    ;(roomsByBooking[bid] ??= []).push({ ...r, resolved_guest_name, resolved_additional_guests })
   }
 
   return { bookings, roomsByBooking, canonRoomById, hotelById }

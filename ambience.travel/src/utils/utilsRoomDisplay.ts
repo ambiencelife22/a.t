@@ -44,9 +44,10 @@ export function passengerName(p: PassengerNameLike): string {
 // Web room display parts. Mirror of pdfShared.roomDisplay's structure so web and
 // PDF compose from the same shape. guestLine = lead name · additional · party.
 export interface WebRoomLike extends RoomNameLike {
-  additional_guests?: string[] | null
-  party_composition?: string | null
-  room_name?:         string | null
+  resolved_additional_guests?: string[] | null
+  additional_guests?:          string[] | null
+  party_composition?:          string | null
+  room_name?:                  string | null
 }
 
 export interface WebRoomDisplay {
@@ -58,7 +59,7 @@ export function webRoomDisplay(room: WebRoomLike): WebRoomDisplay {
   const guests: string[] = []
   const lead = roomGuestName(room)
   if (lead) guests.push(lead)
-  if (room.additional_guests?.length) guests.push(...room.additional_guests)
+  if (room.resolved_additional_guests?.length) guests.push(...room.resolved_additional_guests)
   if (room.party_composition) guests.push(room.party_composition)
   return {
     roomName:  room.room_name ?? null,

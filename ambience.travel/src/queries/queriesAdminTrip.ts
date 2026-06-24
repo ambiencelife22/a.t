@@ -215,9 +215,10 @@ export type BookingRoom = {
   sort_order:          number
   created_at:          string
   updated_at:          string
-  resolved_image_src?:  string | null
-  resolved_image_alt?:  string | null
-  resolved_guest_name?: string | null
+  resolved_image_src?:         string | null
+  resolved_image_alt?:         string | null
+  resolved_guest_name?:        string | null
+  resolved_additional_guests?: string[] | null
 }
 
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>

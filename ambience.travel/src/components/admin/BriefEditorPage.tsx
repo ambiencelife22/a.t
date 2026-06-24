@@ -685,10 +685,14 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                         // hence || (fall through on empty), not ?? — matches BookingRoomsEditor's override model.
                         const guestName        = d?.guest_name || roomGuestName(room) || null
                         const partyComposition = d?.party_composition ?? room.party_composition ?? null
-                        const additionalGuests = d?.additional_guests ?? room.additional_guests ?? []
+                        // additional_guests are person uuids; names resolve at the
+                        // dossier source (resolved_additional_guests). Render names,
+                        // never uuids. Draft edits to additional guests show after save
+                        // re-resolves; the persisted room carries resolved names.
+                        const resolvedAdditional = room.resolved_additional_guests ?? []
                         const guestParts: string[] = []
                         if (guestName) guestParts.push(guestName)
-                        if (additionalGuests.length) guestParts.push(...additionalGuests)
+                        if (resolvedAdditional.length) guestParts.push(...resolvedAdditional)
                         if (partyComposition) guestParts.push(partyComposition)
                         const guestLine = guestParts.join(' · ')
                         return (
@@ -960,6 +964,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
               party_composition: draft.party_composition || r.party_composition,
               notes:             draft.notes             || r.notes,
               additional_guests: draft.additional_guests.length ? draft.additional_guests : r.additional_guests,
+              resolved_additional_guests: r.resolved_additional_guests ?? [],
             } : {}),
             ...(imgSrc ? { brief_image_src: imgSrc } : {}),
           }
