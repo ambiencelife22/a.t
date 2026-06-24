@@ -388,6 +388,36 @@ export function roomLine(room: RoomLike): string {
   ].filter(Boolean).join('  \u00b7  ')
 }
 
+// ── Conf pill — confirmation number pill, shared across all PDFs ──────────────
+// Draws a rounded-rect pill with label text. tone='gold' (ambience bookings) or
+// 'faint' (own arrangements). Returns nothing — caller already knows pillH.
+// Standard pill metrics: ppx=5 padding, pillH=6, radius=1.5.
+
+export type ConfPillTone = 'gold' | 'faint'
+
+export function drawConfPill(
+  doc:   any,
+  x:     number,
+  y:     number,
+  label: string,
+  tone:  ConfPillTone = 'gold',
+): number {
+  const ppx = 5; const pillH = 6; const radius = 1.5
+  sans(doc, 'normal', tone === 'gold' ? 8 : 7.5)
+  const pillW = doc.getTextWidth(label) + ppx * 2
+  const color = tone === 'gold' ? T.gold  : T.faint
+  const bg    = tone === 'gold'
+    ? ([250, 247, 240] as [number, number, number])
+    : ([245, 245, 245] as [number, number, number])
+  doc.setFillColor(bg[0], bg[1], bg[2])
+  doc.setDrawColor(color[0], color[1], color[2])
+  doc.setLineWidth(0.3)
+  doc.roundedRect(x, y, pillW, pillH, radius, radius, 'FD')
+  doc.setTextColor(color[0], color[1], color[2])
+  doc.text(label, x + ppx, y + 4.2)
+  return pillW
+}
+
 // ── Own Arrangements chip ───────────────────────────────────────────────────
 // The subtle, elegant client-facing indicator for booked_by='self' (client
 // self-booked). Single source — all three PDFs draw the SAME chip via this helper,

@@ -23,7 +23,8 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay, drawOwnArrangementsChip,
+  fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay,
+  drawOwnArrangementsChip, drawConfPill,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
@@ -60,8 +61,7 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
   const contentX = P.margin + imgW; const contentW = CW - imgW
 
   const ownArr       = isOwnArrangements(booking.booked_by)
-  const pillColor    = ownArr ? T.faint : T.gold
-  const pillBg       = ownArr ? ([245, 245, 245] as [number,number,number]) : ([250, 247, 240] as [number,number,number])
+  // pill tone derived per call: ownArr ? 'faint' : 'gold'
   const bookedByText = bookedByLabel(booking.booked_by)
   const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
   const dateRange    = buildDateRange(booking.start_date, booking.end_date)
@@ -142,15 +142,7 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
   ty += 4
 
   if (headerConf) {
-    sans(doc, 'normal', 8)
-    const pillTextW = doc.getTextWidth(headerConf)
-    const ppx = 5; const pillW = pillTextW + ppx * 2; const pillH = 6
-    doc.setFillColor(pillBg[0], pillBg[1], pillBg[2])
-    doc.setDrawColor(pillColor[0], pillColor[1], pillColor[2])
-    doc.setLineWidth(0.3)
-    doc.roundedRect(tx, ty - pillH + 2, pillW, pillH, 1.5, 1.5, 'FD')
-    doc.setTextColor(pillColor[0], pillColor[1], pillColor[2])
-    doc.text(headerConf, tx + ppx, ty - 0.2)
+    drawConfPill(doc, tx, ty - 4, headerConf, ownArr ? 'faint' : 'gold')
     ty += 7
   }
 
@@ -198,16 +190,10 @@ async function drawHotelCard(doc: any, booking: TripBooking, y: number): Promise
       // Per-room conf pill — right-aligned within content column
       if (roomConf) {
         sans(doc, 'normal', 7.5)
-        const pillTextW = doc.getTextWidth(roomConf)
-        const ppx = 5; const pillW = pillTextW + ppx * 2; const pillH = 6
+        const pillW = doc.getTextWidth(roomConf) + 10
         const px = P.margin + CW - padH - pillW
-        const py = ry + padV - pillH + 4
-        doc.setFillColor(pillBg[0], pillBg[1], pillBg[2])
-        doc.setDrawColor(pillColor[0], pillColor[1], pillColor[2])
-        doc.setLineWidth(0.3)
-        doc.roundedRect(px, py, pillW, pillH, 1.5, 1.5, 'FD')
-        doc.setTextColor(pillColor[0], pillColor[1], pillColor[2])
-        doc.text(roomConf, px + ppx, py + 4.2)
+        const py = ry + padV - 2
+        drawConfPill(doc, px, py, roomConf, ownArr ? 'faint' : 'gold')
       }
 
       ry += thisRowH

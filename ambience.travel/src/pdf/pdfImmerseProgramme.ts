@@ -309,7 +309,7 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
 
   // Resolve hero image
   let heroImageData: string | null = null
-  const heroSrc = data.brief?.hero_image_src || data.trip.destinations[0]?.hero_image_src || null
+  const heroSrc = data.brief?.hero_image_src ?? data.trip.destinations[0]?.hero_image_src ?? null
   if (heroSrc) {
     try {
       const blob = await fetch(heroSrc).then(r => r.blob())

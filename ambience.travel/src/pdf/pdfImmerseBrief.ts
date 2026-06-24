@@ -26,7 +26,7 @@ import {
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, TripAuxBooking } from '../queries/queriesAdminTrip'
-import { bookedByLabel } from '../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ function drawOverviewRow(doc: any, label: string, value: string, y: number): num
 
 // ── Data row ──────────────────────────────────────────────────────────────────
 
-function drawDataRow(doc: any, date: string, name: string, sub: string | null, bookedBy: string | null, y: number): number {
+function drawDataRow(doc: any, date: string, name: string, sub: string | null, bookedBy: string | null, y: number, bookedByRaw?: string | null): number {
   const nameX = P.margin + LABEL_W
   const nameW = CW - LABEL_W
 
@@ -119,10 +119,9 @@ function drawDataRow(doc: any, date: string, name: string, sub: string | null, b
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(sub, nameX, ty + 1); ty += 5
   }
-  if (bookedBy === 'Own Arrangements') {
+  if (isOwnArrangements(bookedByRaw)) {
     drawOwnArrangementsChip(doc, nameX, ty - 2.4); ty += 5.4
-  }
-  if (bookedBy && bookedBy !== 'Own Arrangements') {
+  } else if (bookedBy) {
     sans(doc, 'italic', 7)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(bookedBy, nameX, ty + 1); ty += 4.5
@@ -186,7 +185,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
       const name     = h._hotel_name ?? h.name ?? 'Hotel'
       const subParts = [h.name, h.nights ? `${h.nights} nights` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean)
       const date     = h.start_date ? fmtDate(h.start_date) : '\u2014'
-      y += drawDataRow(doc, date, name, subParts.join('  \u00b7  ') || null, bookedByLabel(h.booked_by), y)
+      y += drawDataRow(doc, date, name, subParts.join('  \u00b7  ') ?? null, bookedByLabel(h.booked_by), y, h.booked_by)
     }
     y += 4
   }
@@ -203,7 +202,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
       const route    = [f.origin, f.destination].filter(Boolean).join('  \u2192  ')
       const meta     = [route, f.cabin_class, f.aircraft_type].filter(Boolean).join('   \u00b7   ') || null
       const paxLines = passengerLines(f)
-      y += drawDataRow(doc, f.start_date ? fmtDate(f.start_date) : '\u2014', f.name ?? 'Flight', meta, bookedByLabel(f.booked_by), y)
+      y += drawDataRow(doc, f.start_date ? fmtDate(f.start_date) : '\u2014', f.name ?? 'Flight', meta ?? null, bookedByLabel(f.booked_by), y, f.booked_by)
       for (const line of paxLines) {
         y = checkOverflow(doc, y, 8)
         sans(doc, 'normal', 7.5)
@@ -225,7 +224,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
     for (const t of transfers) {
       y = checkOverflow(doc, y, 16)
       const sub = [t.origin, t.destination].filter(Boolean).join('  \u2192  ') || null
-      y += drawDataRow(doc, t.start_date ? fmtDate(t.start_date) : '\u2014', t.name ?? 'Transfer', sub, bookedByLabel(t.booked_by), y)
+      y += drawDataRow(doc, t.start_date ? fmtDate(t.start_date) : '\u2014', t.name ?? 'Transfer', sub ?? null, bookedByLabel(t.booked_by), y, t.booked_by)
     }
     y += 4
   }
