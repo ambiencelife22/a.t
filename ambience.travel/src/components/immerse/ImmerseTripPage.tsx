@@ -44,7 +44,7 @@ import { getEventStatusMeta }                 from '../../types/typesEventStatus
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
-import { bookedByLabel, isOwnArrangements }   from '../../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
 import { fmtTime }                            from '../../utils/utilsDates'
 
@@ -127,18 +127,7 @@ function sortKey(time: string | null | undefined): number {
   return parseInt(h, 10) * 60 + parseInt(m ?? '0', 10)
 }
 
-function categoryAccent(category: string | null): string {
-  switch (category) {
-    case 'Flight':     return '#93C5FD'
-    case 'Transfer':   return '#A3E635'
-    case 'Hotel':      return '#C9A84C'
-    case 'Dining':     return '#F9A8D4'
-    case 'Experience': return '#C4B5FD'
-    case 'Leisure':    return '#6EE7B7'
-    case 'Note':       return '#B4AFA5'
-    default:           return '#B4AFA5'
-  }
-}
+// categoryAccent: single source in utilsBooking.ts → categoryAccentHex
 
 // ── useWindowWidth ────────────────────────────────────────────────────────────
 
@@ -692,7 +681,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {cards.map(item => {
-                  const accent      = categoryAccent(item.category)
+                  const accent      = categoryAccentHex(item.category)
                   const dep         = fmtTime(item.start_time)
                   const arr         = fmtTime(item.end_time)
                   const isFlight    = !!(item.flightOrigin || item.flightDestination || item.flightDepartTime || item.flightArriveTime)

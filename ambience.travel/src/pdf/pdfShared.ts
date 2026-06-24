@@ -39,15 +39,7 @@ export const T: Record<string, RGB> = {
   rule:    [220, 215, 205],
   cardBg:  [245, 242, 236],
   white:   [255, 255, 255],
-  // Category accents (programme)
-  catFlight:     [147, 197, 253],
-  catTransfer:   [163, 230, 53],
-  catHotel:      [201, 168, 76],
-  catDining:     [249, 168, 212],
-  catExperience: [196, 181, 253],
-  catLeisure:    [110, 231, 183],
-  catNote:       [180, 175, 165],
-  catOther:      [180, 175, 165],
+  // Category accents moved to utilsBooking.ts → categoryAccentRgb (single source)
 }
 
 // ── Layout constants ──────────────────────────────────────────────────────────

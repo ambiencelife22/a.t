@@ -26,7 +26,7 @@ import {
 } from './pdfShared'
 import type { TripDay, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
 import type { TimelineItem } from '../types/typesTimeline'
-import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, categoryAccentRgb } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -69,18 +69,7 @@ const PROG = {
 
 // ── Category accents ──────────────────────────────────────────────────────────
 
-function categoryAccent(cat: string | null): RGB {
-  const map: Record<string, RGB> = {
-    Flight:     T.catFlight,
-    Transfer:   T.catTransfer,
-    Hotel:      T.catHotel,
-    Dining:     T.catDining,
-    Experience: T.catExperience,
-    Leisure:    T.catLeisure,
-    Note:       T.catNote,
-  }
-  return map[cat ?? ''] ?? T.catOther
-}
+// categoryAccent: single source in utilsBooking.ts → categoryAccentRgb
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -147,7 +136,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
 // ── Entry row ─────────────────────────────────────────────────────────────────
 
 async function renderEntryRow(doc: any, entry: ProgrammeEntry, y: number): Promise<number> {
-  const accent      = categoryAccent(entry.category)
+  const accent      = categoryAccentRgb(entry.category)
   const bookedLabel = bookedByLabel(entry.booked_by)
   const hasImage    = !!entry.image_src
 
