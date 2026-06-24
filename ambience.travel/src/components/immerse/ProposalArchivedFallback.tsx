@@ -80,8 +80,8 @@ export default function ProposalArchivedFallback() {
           maxWidth:   440,
         }}
       >
-        Please reach out to your travel designer to pick things back up — they
-        will be glad to share what&rsquo;s next.
+        Please reach out to your travel designer to pick things back up; they
+        will be glad to share what's next.
       </div>
 
       {/* Hairline + return link (to the public site, consistent with TripNotFound) */}

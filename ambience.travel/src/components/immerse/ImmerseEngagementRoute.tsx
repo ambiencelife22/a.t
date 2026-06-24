@@ -160,12 +160,11 @@ function EngagementRoute({ route }: {
   }
 
   // ── Archived proposal → graceful fallback (AXIS-2) ────────────────────────
-  // Distinct from public_view=false (which 404s upstream in the stage EF). An
-  // archived proposal WAS live; the client holds the link. Degrade to human
-  // contact, never an error or stale content. Covers all proposal-family routes
-  // (auto-as-proposal, /proposal, destination). trip/completed stages route to
-  // ImmerseTripPage and are intentionally unaffected — archive is a proposal axis.
-  if (engagement.proposalVisibility === 'archived') {
+  // Only fires for proposal-family routes (proposal, destination, auto-as-proposal).
+  // trip/completed stages are intentionally unaffected — archive is a proposal axis.
+  const isProposalFamilyRoute = route.kind === 'proposal' || route.kind === 'destination' ||
+    (route.kind === 'auto' && engagement.stage === 'proposal')
+  if (engagement.proposalVisibility === 'archived' && isProposalFamilyRoute) {
     return (
       <ImmerseLayout logoHref={logoHref}>
         <ProposalArchivedFallback />

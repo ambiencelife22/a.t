@@ -67,7 +67,7 @@ export async function fetchTripCore(
   tripId: string,
   houseId: string,
 ): Promise<TripCore> {
-  const [tripResult, briefResult, houseResult, destResult, engResult] = await Promise.all([
+  const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
     db.from('travel_trips')
       .select('id, trip_code, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
       .eq('id', tripId)
@@ -120,18 +120,24 @@ export async function fetchTripCore(
   // Resolve: brief overlay → engagement canon → null.
   const confirmedEngId = (tripResult.data?.confirmed_engagement_id as string | null) ?? null
   let engHeroSrc: string | null = null
+  let engTitle: string | null = null
   if (confirmedEngId) {
     const { data: eng } = await db
       .from('travel_immerse_engagements')
-      .select('hero_image_src')
+      .select('hero_image_src, title')
       .eq('id', confirmedEngId)
       .maybeSingle()
     engHeroSrc = (eng?.hero_image_src as string | null) ?? null
+    engTitle   = (eng?.title          as string | null) ?? null
   }
 
   const brief = briefResult.data as Record<string, unknown> | null
   const resolvedBrief = brief
-    ? { ...brief, hero_image_src: (brief.hero_image_src as string | null) ?? engHeroSrc }
+    ? {
+        ...brief,
+        hero_image_src: (brief.hero_image_src as string | null) ?? engHeroSrc,
+        brief_title:    (brief.brief_title    as string | null) ?? engTitle,
+      }
     : null
 
   return {
