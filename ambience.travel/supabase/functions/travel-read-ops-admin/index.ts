@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
         // Winning engagement status slugs for stage derivation
         db.from('travel_immerse_engagements')
-          .select('id, travel_engagement_statuses(slug)')
+          .select('id, travel_lifecycle_statuses(slug)')
           .in('id', tripRows
             .map(t => t.confirmed_engagement_id as string | null)
             .filter((id): id is string => !!id)
@@ -120,8 +120,8 @@ Deno.serve(async (req: Request) => {
 
       // ── 5. Stage derivation ──────────────────────────────────────────────────
       const slugByEngId = new Map<string, string>()
-      for (const e of (engStatusResult.data ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
-        const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
+      for (const e of (engStatusResult.data ?? []) as Array<{ id: string; travel_lifecycle_statuses: { slug: string } | { slug: string }[] | null }>) {
+        const s = Array.isArray(e.travel_lifecycle_statuses) ? e.travel_lifecycle_statuses[0] : e.travel_lifecycle_statuses
         if (s?.slug) slugByEngId.set(e.id, s.slug)
       }
 

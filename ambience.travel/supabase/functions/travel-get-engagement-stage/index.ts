@@ -43,7 +43,7 @@ const ENGAGEMENT_SELECT_COLUMNS = `
   id, url_id, slug, trip_id, audience, journey_types,
   person_id, status_label, public_view, proposal_visibility,
   engagement_status_id, itinerary_status_id,
-  travel_engagement_statuses (id, slug, label, sort_order, is_active),
+  travel_lifecycle_statuses (id, slug, label, sort_order, is_active),
   travel_itinerary_statuses  (id, slug, label, sort_order, is_active),
   eyebrow, title, hero_tagline, subtitle,
   hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,

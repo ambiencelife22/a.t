@@ -26,7 +26,51 @@ const L = {
   muted: IMMERSE.mutedOnLight, line: IMMERSE.lineOnLight, goldBorder: IMMERSE.goldBorderOnLight,
   goldTint: IMMERSE.goldTintOnLight, gold: ID.gold, serif: FONTS.serif,
   sans: "'Plus Jakarta Sans', sans-serif", band: '#6f5528',
+  // State-band palette (single source for the calendar bar color axis):
+  // completed = muted grey-green; pending = lighter, dashed; confirmed = gold (default).
+  completedBand: '#5a6b58', completedTint: '#E8ECE6', completedBorder: '#C2CDBE',
+  pendingBand:   '#8a7d5e', pendingTint:   '#F4F0E6', pendingBorder: '#D8CFB8',
 } as const
+
+// ── Marker icon set ──────────────────────────────────────────────────────────
+// One coherent inline-SVG set (stay / flight / car) at a shared 14px, 1.4 stroke,
+// currentColor — so every marker reads as one designed family and inherits the
+// surface color. Single source: TransportMark, WeekStay, and the legend all render
+// <MarkerIcon kind=…/>, so the legend can never advertise a marker the grid omits.
+type MarkerKind = 'stay' | 'flight' | 'car'
+
+// Category (engagement registry slug) → marker kind. Flights/jets fly; ground cars
+// (transfer/airport_transfer/car_service/heli) drive; stays reside. Mirrors the
+// SPAN/MOMENT taxonomy but discriminates car-from-flight (the old code drew ✈ for all).
+const CAR_CATEGORIES = new Set(['airport_transfer', 'transfer', 'car_service', 'car_rental', 'heli_transfer', 'public_transport'])
+const FLIGHT_CATEGORIES = new Set(['flight', 'private_jet'])
+function markerKindFor(category: string | null): MarkerKind {
+  if (category && CAR_CATEGORIES.has(category)) return 'car'
+  if (category === 'stay') return 'stay'
+  return 'flight'
+}
+
+function MarkerIcon({ kind, size = 14, color = 'currentColor' }: { kind: MarkerKind; size?: number; color?: string }) {
+  const common = { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: color, strokeWidth: 1.4, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, style: { flexShrink: 0, display: 'block' } }
+  if (kind === 'stay') {
+    // House: roof + body
+    return (<svg {...common}><path d="M2.5 7.2 8 2.8l5.5 4.4" /><path d="M3.7 6.4v6.3h8.6V6.4" /><path d="M6.6 12.7V9.4h2.8v3.3" /></svg>)
+  }
+  if (kind === 'car') {
+    // Sedan: body + roof curve + two wheels
+    return (<svg {...common}><path d="M2 9.5h12l-1.2-3.1a1.4 1.4 0 0 0-1.3-.9H4.5a1.4 1.4 0 0 0-1.3.9L2 9.5Z" /><path d="M2 9.5v2.2h1.2M14 9.5v2.2h-1.2" /><circle cx="4.7" cy="11.7" r="1.1" /><circle cx="11.3" cy="11.7" r="1.1" /></svg>)
+  }
+  // Flight: plane
+  return (<svg {...common}><path d="M8 1.6c.6 0 1 .9 1 2.4v2.3l4.4 2.6v1.4L9 9.1v2.7l1.4 1v1.1L8 13.2l-2.4.7v-1.1l1.4-1V9.1l-4.4 2.2V8.9L7 6.3V4c0-1.5.4-2.4 1-2.4Z" /></svg>)
+}
+
+// One source for a trip's bar styling, keyed off the EF-derived state. Confirmed is
+// the gold default; completed reads muted grey-green; pending is lighter + dashed.
+function stateBandStyle(state: TripState): { bg: string; fg: string; border: string; dashed: boolean } {
+  if (state === 'completed') return { bg: L.completedTint, fg: L.completedBand, border: L.completedBorder, dashed: false }
+  if (state === 'pending')   return { bg: L.pendingTint,   fg: L.pendingBand,   border: L.pendingBorder,   dashed: true }
+  return { bg: L.goldTint, fg: L.band, border: L.goldBorder, dashed: false }
+}
 
 type ConfirmationState = 'confirmed' | 'partially_confirmed' | 'designing'
 type CalendarStay = {
@@ -45,10 +89,11 @@ type CalendarActivity = {
   depart_airport: string | null; arrive_airport: string | null
   flight_number: string | null; airline_name: string | null; end_time: string | null
 }
+type TripState = 'completed' | 'confirmed' | 'pending'
 type CalendarTrip = {
   id: string; trip_code: string; title: string | null
   start_date: string | null; end_date: string | null
-  status_slug: string | null; primary_client_id: string | null
+  status_slug: string | null; state: TripState; primary_client_id: string | null
   stays: CalendarStay[]; activities: CalendarActivity[]
 }
 type ViewMode = 'month' | 'week' | 'agenda'
@@ -182,14 +227,17 @@ export default function CalendarTab() {
       )}
 
       {!loading && !error && trips.length > 0 && (
-        <div style={{ display:'grid', gridTemplateColumns: selectedTrip ? 'minmax(0,1fr) 320px' : '1fr', gap:18, alignItems:'start' }}>
-          <div style={{ minWidth: 0 }}>
-            {view === 'month'  && <MonthView  cursor={cursor} trips={trips} onSelect={setSelectedTripId} />}
-            {view === 'week'   && <WeekView   cursor={cursor} trips={trips} onSelect={setSelectedTripId} />}
-            {view === 'agenda' && <AgendaView trips={trips} onSelect={setSelectedTripId} />}
+        <>
+          {view !== 'agenda' && <CalendarKey view={view} />}
+          <div style={{ display:'grid', gridTemplateColumns: selectedTrip ? 'minmax(0,1fr) 320px' : '1fr', gap:18, alignItems:'start' }}>
+            <div style={{ minWidth: 0 }}>
+              {view === 'month'  && <MonthView  cursor={cursor} trips={trips} onSelect={setSelectedTripId} />}
+              {view === 'week'   && <WeekView   cursor={cursor} trips={trips} onSelect={setSelectedTripId} />}
+              {view === 'agenda' && <AgendaView trips={trips} onSelect={setSelectedTripId} />}
+            </div>
+            {selectedTrip && <TripPanel trip={selectedTrip} onClose={() => setSelectedTripId(null)} />}
           </div>
-          {selectedTrip && <TripPanel trip={selectedTrip} onClose={() => setSelectedTripId(null)} />}
-        </div>
+        </>
       )}
     </div>
   )
@@ -201,6 +249,7 @@ function NavBtn({ label, onClick, wide }: { label: string; onClick: () => void; 
       background:L.panel, border:`1px solid ${L.line}`, borderRadius:999, padding: wide?'8px 14px':'8px 12px', minWidth: wide?0:34 }}>{label}</button>
   )
 }
+
 function Segmented({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
   const opts: ViewMode[] = ['month','week','agenda']
   return (
@@ -216,6 +265,34 @@ function Segmented({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode)
     </div>
   )
 }
+
+// Subtle legend — context-aware: trip-state trio always; stay/flight/car markers
+// only on week view (where they render). Renders the SAME MarkerIcon set the grid
+// uses, so it can never advertise a marker that isn't on screen.
+function CalendarKey({ view }: { view: ViewMode }) {
+  const item = (swatch: React.ReactNode, label: string) => (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+      {swatch}
+      <span style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:L.muted }}>{label}</span>
+    </span>
+  )
+  const bar = (s: TripState) => {
+    const sb = stateBandStyle(s)
+    return <span style={{ width:18, height:11, borderRadius:3, background:sb.bg, border:`1px ${sb.dashed?'dashed':'solid'} ${sb.border}`, flexShrink:0 }} />
+  }
+  const mark = (kind: MarkerKind) => <span style={{ color:L.gold, width:18, display:'flex', justifyContent:'center' }}><MarkerIcon kind={kind} size={13} /></span>
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:18, flexWrap:'wrap', rowGap:8, marginBottom:16 }}>
+      {item(bar('confirmed'), 'Confirmed')}
+      {item(bar('completed'), 'Completed')}
+      {item(bar('pending'),   'Securing')}
+      {view === 'week' && item(mark('stay'),   'Stay')}
+      {view === 'week' && item(mark('flight'), 'Flight')}
+      {view === 'week' && item(mark('car'),    'Car')}
+    </div>
+  )
+}
+
 function Centered({ children, tone }: { children: React.ReactNode; tone?: 'danger' }) {
   return (
     <div style={{ display:'grid', placeItems:'center', minHeight:280, textAlign:'center', color: tone==='danger'?IMMERSE.danger:L.muted, fontSize:14, padding:24, fontFamily:L.sans, lineHeight:1.5 }}>
@@ -290,11 +367,13 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
                     gridAutoRows:`${BAR_H + BAR_GAP}px`, padding:'0 6px', boxSizing:'border-box' }}>
         {bars.map((b, i) => {
           const label = b.trip.title || b.trip.trip_code
+          const sb = stateBandStyle(b.trip.state)
           return (
-            <button key={i} onClick={() => onSelect(b.trip.id)} title={label} style={{
+            <button key={i} onClick={() => onSelect(b.trip.id)} title={`${label}${b.trip.state==='completed'?' · Completed':b.trip.state==='pending'?' · Securing':''}`} style={{
               gridColumn: `${b.startCol+1} / ${b.endCol+2}`, gridRow: b.lane+1,
               height: BAR_H, margin:'0 2px', boxSizing:'border-box', minWidth:0,
-              pointerEvents:'auto', cursor:'pointer', textAlign:'left', background:L.goldTint, color:L.band, border:`1px solid ${L.goldBorder}`,
+              pointerEvents:'auto', cursor:'pointer', textAlign:'left', background:sb.bg, color:sb.fg,
+              border:`1px ${sb.dashed?'dashed':'solid'} ${sb.border}`,
               borderTopLeftRadius: b.continuesLeft?0:999, borderBottomLeftRadius: b.continuesLeft?0:999,
               borderTopRightRadius: b.continuesRight?0:999, borderBottomRightRadius: b.continuesRight?0:999,
               padding:'0 10px', fontSize:11, fontWeight:700, lineHeight:`${BAR_H-2}px`, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:L.sans }}>
@@ -317,7 +396,7 @@ function TransportMark({ trip, activity, onSelect }: { trip: CalendarTrip; activ
     <button onClick={() => onSelect(trip.id)} title={`${time ? time + ' · ' : ''}${name}`} style={{
       display:'flex', alignItems:'baseline', gap:5, width:'100%', textAlign:'left', cursor:'pointer', margin:'3px 0',
       background:'transparent', border:'none', padding:'1px 2px', fontFamily:L.sans, minWidth:0 }}>
-      <span aria-hidden style={{ color:L.gold, fontSize:10, lineHeight:1, flex:'0 0 auto' }}>✈</span>
+      <span style={{ color:L.gold, flex:'0 0 auto', display:'flex' }}><MarkerIcon kind={markerKindFor(activity.category)} size={12} /></span>
       <span style={{ color:L.gold, fontSize:10, fontWeight:700, fontVariantNumeric:'tabular-nums', flex:'0 0 auto' }}>{time}</span>
       <span style={{ color:L.muted, fontSize:10, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</span>
     </button>
@@ -371,8 +450,8 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
                 const phase = isStart?'Begins':isEnd?'Ends':'In progress'
                 return (
                   <button key={`t-${j}`} onClick={()=>onSelect(t.id)} title={`${t.title||t.trip_code} · ${phase}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
-                    borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px solid ${L.goldBorder}`, background:L.goldTint, opacity: (isStart||isEnd)?1:0.86, boxSizing:'border-box', minWidth:0 }}>
-                    <strong style={{ display:'block', fontSize:11.5, color:L.band, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title||t.trip_code}</strong>
+                    borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px ${stateBandStyle(t.state).dashed?'dashed':'solid'} ${stateBandStyle(t.state).border}`, background:stateBandStyle(t.state).bg, opacity: (isStart||isEnd)?1:0.86, boxSizing:'border-box', minWidth:0 }}>
+                    <strong style={{ display:'block', fontSize:11.5, color:stateBandStyle(t.state).fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title||t.trip_code}</strong>
                     <span style={{ fontSize:10, color:L.muted }}>{phase}</span>
                   </button>
                 )
@@ -394,7 +473,9 @@ function WeekStay({ trip, stay, kind, onSelect }: { trip:CalendarTrip; stay:Cale
   return (
     <button onClick={()=>onSelect(trip.id)} title={`${verb}: ${hotel} · ${confLabel(stay)}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
       borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px solid ${partial?L.gold:L.line}`, background:L.panel, borderStyle: tentative?'dashed':'solid', opacity: tentative?0.82:1, boxSizing:'border-box', minWidth:0 }}>
-      <strong style={{ display:'block', fontSize:11.5, color:L.ink }}>{verb}</strong>
+      <strong style={{ display:'flex', alignItems:'center', gap:5, fontSize:11.5, color:L.ink }}>
+        <span style={{ color:L.gold, display:'flex' }}><MarkerIcon kind="stay" size={12} /></span>{verb}
+      </strong>
       <span style={{ display:'block', fontSize:10, color:L.muted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{hotel} · {confLabel(stay)}</span>
     </button>
   )
@@ -492,7 +573,7 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
           <span style={{ fontSize:12, color:L.muted }}>{detail}</span>
         </span>
         <span style={{ alignSelf:'center', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
-          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.gold }}>✈</span>
+          <span style={{ color:L.gold, display:'flex' }}><MarkerIcon kind={markerKindFor(a.category)} size={13} /></span>
           {own && <span style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:L.muted, border:`1px solid ${L.line}`, borderRadius:999, padding:'2px 6px', whiteSpace:'nowrap' }}>{bookedByLabel(a.booked_by)}</span>}
         </span>
       </button>

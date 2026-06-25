@@ -152,10 +152,10 @@ const engStatusSlugByEngId = new Map<string, string>()
 if (winnerEngIds.length > 0) {
   const { data: engStatusRows } = await db
     .from('travel_immerse_engagements')
-    .select('id, travel_engagement_statuses(slug)')
+    .select('id, travel_lifecycle_statuses(slug)')
     .in('id', winnerEngIds)
-  for (const e of (engStatusRows ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
-    const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
+  for (const e of (engStatusRows ?? []) as Array<{ id: string; travel_lifecycle_statuses: { slug: string } | { slug: string }[] | null }>) {
+    const s = Array.isArray(e.travel_lifecycle_statuses) ? e.travel_lifecycle_statuses[0] : e.travel_lifecycle_statuses
     if (s?.slug) engStatusSlugByEngId.set(e.id, s.slug)
   }
 }
@@ -397,23 +397,62 @@ async function handlePublicView(db: SupabaseClient, tripId: string): Promise<Res
 // Params: { range_start?: string (YYYY-MM-DD, default today), range_end?: string }
 // Range filters trips whose [start_date, end_date] overlaps the window.
 
-const CALENDAR_CONFIRMED_SLUGS = ['confirmed', 'paid', 'in_service'] as const
+// Lifecycle slugs the calendar surfaces. Confirmed-band = always visible (any date,
+// past completed trips included). Pending-band = securing stages, visible only within
+// a near-term window (far-future maybes are noise, not ops data). closed_won counts as
+// confirmed-band (a won deal is real). Derivation of the per-trip display state lives
+// in calendarTripState().
+const CALENDAR_CONFIRMED_SLUGS = ['confirmed', 'paid', 'in_service', 'closed_won'] as const
+const CALENDAR_PENDING_SLUGS   = ['requested', 'quoted', 'pending'] as const
+const PENDING_LOOKAHEAD_DAYS   = 120  // pending trips show if starting within ~4 months
+
+// Per-trip display state for the calendar bar. Single source for the color axis.
+//   completed — service is over (end_date < today; reads completed_at once that lands)
+//   confirmed — secured (confirmed/paid/in_service/closed_won)
+//   pending   — still securing (requested/quoted/pending), near-term only
+// Returns null = don't show (pending too far out, or unknown slug).
+function calendarTripState(
+  slug: string | null,
+  endDate: string | null,
+  startDate: string | null,
+  today: string,
+  horizon: string,
+): 'completed' | 'confirmed' | 'pending' | null {
+  if (!slug) return null
+  const confirmed = (CALENDAR_CONFIRMED_SLUGS as readonly string[]).includes(slug)
+  const pending   = (CALENDAR_PENDING_SLUGS   as readonly string[]).includes(slug)
+  if (confirmed) {
+    if (endDate && endDate < today) return 'completed'
+    return 'confirmed'
+  }
+  if (pending) {
+    // Near-term only: starts before the horizon AND hasn't already fully ended.
+    if (startDate && startDate > horizon) return null
+    if (endDate && endDate < today) return null
+    return 'pending'
+  }
+  return null
+}
 
 async function handleCalendar(
   db: SupabaseClient,
   rangeStart: string | null,
   rangeEnd: string | null,
 ): Promise<Response> {
-  const start = rangeStart ?? new Date().toISOString().slice(0, 10)
 
   // 1. Trips with a confirmed engagement, ending on/after the range start.
   //    (A trip with no confirmed_engagement_id is pre-commitment — not shown.)
+  // Show ALL confirmed-stage trips — past (completed) ones stay visible; only an
+  // explicit archive removes a trip (archive state TBD — booking-state arc). When a
+  // range is given (view window), filter to trips overlapping it: end >= range_start
+  // AND start <= range_end. With no range (default load), return everything confirmed
+  // so recently-completed trips like a yesterday check-out never silently vanish.
   let tripQ = db
     .from('travel_trips')
     .select('id, trip_code, public_title, start_date, end_date, confirmed_engagement_id, primary_client_id')
     .not('confirmed_engagement_id', 'is', null)
-    .gte('end_date', start)
-  if (rangeEnd) tripQ = tripQ.lte('start_date', rangeEnd)
+  if (rangeStart) tripQ = tripQ.gte('end_date', rangeStart)
+  if (rangeEnd)   tripQ = tripQ.lte('start_date', rangeEnd)
 
   const { data: tripData, error: tripErr } = await tripQ.order('start_date', { ascending: true })
   if (tripErr) return err('Failed to fetch calendar trips', 500)
@@ -431,18 +470,25 @@ async function handleCalendar(
   if (engIds.length > 0) {
     const { data: engRows, error: engErr } = await db
       .from('travel_immerse_engagements')
-      .select('id, travel_engagement_statuses(slug)')
+      .select('id, travel_lifecycle_statuses(slug)')
       .in('id', engIds)
     if (engErr) return err('Failed to resolve engagement statuses', 500)
-    for (const e of (engRows ?? []) as Array<{ id: string; travel_engagement_statuses: { slug: string } | { slug: string }[] | null }>) {
-      const s = Array.isArray(e.travel_engagement_statuses) ? e.travel_engagement_statuses[0] : e.travel_engagement_statuses
+    for (const e of (engRows ?? []) as Array<{ id: string; travel_lifecycle_statuses: { slug: string } | { slug: string }[] | null }>) {
+      const s = Array.isArray(e.travel_lifecycle_statuses) ? e.travel_lifecycle_statuses[0] : e.travel_lifecycle_statuses
       if (s?.slug) slugByEng.set(e.id, s.slug)
     }
   }
 
+  const today = new Date().toISOString().slice(0, 10)
+  const horizon = (() => { const d = new Date(today + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + PENDING_LOOKAHEAD_DAYS); return d.toISOString().slice(0, 10) })()
+  // Attach the derived display state; keep only trips that earn a place on the board.
+  const stateByTrip = new Map<string, 'completed' | 'confirmed' | 'pending'>()
   const confirmedTrips = trips.filter(t => {
-    const slug = t.confirmed_engagement_id ? slugByEng.get(t.confirmed_engagement_id) : null
-    return !!slug && (CALENDAR_CONFIRMED_SLUGS as readonly string[]).includes(slug)
+    const slug = t.confirmed_engagement_id ? (slugByEng.get(t.confirmed_engagement_id) ?? null) : null
+    const state = calendarTripState(slug, t.end_date, t.start_date, today, horizon)
+    if (!state) return false
+    stateByTrip.set(t.id, state)
+    return true
   })
   if (confirmedTrips.length === 0) return ok({ trips: [] })
 
@@ -561,6 +607,7 @@ async function handleCalendar(
     start_date:    t.start_date,
     end_date:      t.end_date,
     status_slug:   t.confirmed_engagement_id ? (slugByEng.get(t.confirmed_engagement_id) ?? null) : null,
+    state:         stateByTrip.get(t.id) ?? 'confirmed',   // 'completed' | 'confirmed' | 'pending'
     primary_client_id: t.primary_client_id,
     stays: (byTrip.get(t.id) ?? []).map(b => {
       const stayRooms = roomsByBookingId.get(b.id) ?? []

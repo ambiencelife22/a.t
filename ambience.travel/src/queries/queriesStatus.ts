@@ -1,6 +1,6 @@
 // statusQueries.ts — Engagement + itinerary status lookup queries
 // Owns:
-//   - fetchEngagementStatuses()  — all rows of travel_engagement_statuses
+//   - fetchEngagementStatuses()  — all rows of travel_lifecycle_statuses
 //   - fetchItineraryStatuses()   — all rows of travel_itinerary_statuses
 //   - mapEngagementStatus / mapItineraryStatus — row → camelCase mappers,
 //     exported so hydrateEngagement in immerseEngagementQueries.ts can reuse them
@@ -13,7 +13,7 @@
 // hydrateEngagement).
 //
 // Last updated: S30E — Engagement abstraction. Renames mirror DB:
-//   travel_trip_statuses → travel_engagement_statuses; fetchTripStatuses →
+//   travel_trip_statuses → travel_lifecycle_statuses; fetchTripStatuses →
 //   fetchEngagementStatuses; mapTripStatus → mapEngagementStatus;
 //   TripStatus type → EngagementStatus. Itinerary side unchanged —
 //   itinerary lifecycle is journey-engagement-specific.
@@ -42,7 +42,7 @@ type ItineraryStatusRow = EngagementStatusRow   // identical shape
 
 export async function fetchEngagementStatuses(activeOnly = true): Promise<EngagementStatus[]> {
   const query = supabase
-    .from('travel_engagement_statuses')
+    .from('travel_lifecycle_statuses')
     .select('id, slug, label, sort_order, is_active')
     .order('sort_order', { ascending: true })
 

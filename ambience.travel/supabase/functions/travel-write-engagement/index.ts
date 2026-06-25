@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
     //  over the request-scoped serviceClient without tripping no-inner-declarations.)
     const engagementStatusId = async (slug: string): Promise<string | null> => {
       const { data } = await serviceClient
-        .from('travel_engagement_statuses').select('id').eq('slug', slug).maybeSingle()
+        .from('travel_lifecycle_statuses').select('id').eq('slug', slug).maybeSingle()
       return data?.id ?? null
     }
 

@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
           id, url_id, title, audience, is_public_template,
           engagement_status_id, itinerary_status_id, sort_order, created_at,
           iteration_label, trip_id,
-          engagement_status:travel_engagement_statuses(slug, label),
+          engagement_status:travel_lifecycle_statuses(slug, label),
           itinerary_status:travel_itinerary_statuses(slug, label),
           trip:travel_trips!travel_immerse_trips_trip_id_fkey(
             trip_code, public_title, start_date, primary_client_id,
@@ -206,7 +206,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'engagement_statuses') {
       const { data, error } = await serviceClient
-        .from('travel_engagement_statuses')
+        .from('travel_lifecycle_statuses')
         .select('id, slug, label, sort_order')
         .order('sort_order', { ascending: true })
 

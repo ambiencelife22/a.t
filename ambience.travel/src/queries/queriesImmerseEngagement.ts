@@ -59,7 +59,7 @@ type EngagementRow = {
   proposal_visibility:             'active' | 'archived'
   engagement_status_id:            string
   itinerary_status_id:             string
-  travel_engagement_statuses:      StatusJoinRow | null
+  travel_lifecycle_statuses:      StatusJoinRow | null
   travel_itinerary_statuses:       StatusJoinRow | null
   eyebrow:                         string | null
   title:                           string | null
@@ -311,15 +311,15 @@ async function hydrateEngagement(
   const heroFallbacks = await fetchDestinationHeroFallbacks(destinationSlugs)
 
   const stage: EngagementStage = computeEngagementStage({
-    statusSlug: (engagementRow.travel_engagement_statuses?.slug ?? 'requested') as EngagementStatusSlug,
+    statusSlug: (engagementRow.travel_lifecycle_statuses?.slug ?? 'requested') as EngagementStatusSlug,
   })
 
   const clientName = displayRow?.nickname
     ?? displayRow?.first_name
     ?? 'Our VIP Guest'
 
-  const engagementStatus: EngagementStatus = engagementRow.travel_engagement_statuses
-    ? mapEngagementStatus(engagementRow.travel_engagement_statuses)
+  const engagementStatus: EngagementStatus = engagementRow.travel_lifecycle_statuses
+    ? mapEngagementStatus(engagementRow.travel_lifecycle_statuses)
     : EMPTY_ENGAGEMENT_STATUS
 
   const itineraryStatus: ItineraryStatus = engagementRow.travel_itinerary_statuses
