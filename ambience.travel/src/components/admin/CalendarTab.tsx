@@ -237,7 +237,7 @@ export default function CalendarTab() {
       {loading && <Centered>Loading the calendar…</Centered>}
       {error && !loading && <Centered tone="danger">{error}</Centered>}
       {!loading && !error && trips.length === 0 && (
-        <Centered>No trips to show. Confirmed engagements — past, current, and upcoming — appear here.</Centered>
+        <Centered>No trips to show. All confirmed trips — past, current, and upcoming — appear here.</Centered>
       )}
 
       {!loading && !error && trips.length > 0 && (
@@ -520,7 +520,7 @@ function AgendaView({ trips, onSelect }: { trips: CalendarTrip[]; onSelect:(id:s
     }
     return g
   }, [trips])
-  if (groups.length===0) return <Centered>No upcoming milestones.</Centered>
+  if (groups.length===0) return <Centered>No milestones to show.</Centered>
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:ID.radiusMd, background:L.panel, padding:'4px 18px 18px' }}>
       {groups.map((grp, gi) => {
