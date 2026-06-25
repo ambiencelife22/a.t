@@ -502,7 +502,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     ? entries
         .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
         .map(e => {
-          const isFlight = (e.category ?? '').toLowerCase().includes('flight') && e.kind === 'aux'
+          const isFlight = (e.category === 'flight' || e.category === 'private_jet') && e.kind === 'aux'
           let flightOrigin:      string | null = null
           let flightDestination: string | null = null
           if (isFlight && e.subtitle) {

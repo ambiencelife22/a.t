@@ -220,7 +220,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
   for (const a of aux) {
     if (a.brief_show === false) continue
     if (!a.start_date) continue
-    const isFlight = (a.booking_type ?? '').toLowerCase().includes('flight')
+    const isFlight = (a.booking_type ?? '').toLowerCase() === 'flight' || (a.booking_type ?? '').toLowerCase() === 'private jet / charter'
     const route = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
     const subtitle = isFlight
       ? ([route, a.cabin_class, a.aircraft_type].filter(Boolean).join('  \u00b7  ') || null)

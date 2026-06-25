@@ -37,17 +37,23 @@ const L = {
 // currentColor — so every marker reads as one designed family and inherits the
 // surface color. Single source: TransportMark, WeekStay, and the legend all render
 // <MarkerIcon kind=…/>, so the legend can never advertise a marker the grid omits.
-type MarkerKind = 'stay' | 'flight' | 'car'
+type MarkerKind = 'stay' | 'flight' | 'car' | 'dining' | 'event'
 
 // Category (engagement registry slug) → marker kind. Flights/jets fly; ground cars
 // (transfer/airport_transfer/car_service/heli) drive; stays reside. Mirrors the
 // SPAN/MOMENT taxonomy but discriminates car-from-flight (the old code drew ✈ for all).
 const CAR_CATEGORIES = new Set(['airport_transfer', 'transfer', 'car_service', 'car_rental', 'heli_transfer', 'public_transport'])
 const FLIGHT_CATEGORIES = new Set(['flight', 'private_jet'])
+const DINING_CATEGORIES  = new Set(['dining', 'reservation'])
+const EVENT_CATEGORIES   = new Set(['experience', 'tour', 'acquisition', 'arrangement'])
 function markerKindFor(category: string | null): MarkerKind {
-  if (category && CAR_CATEGORIES.has(category)) return 'car'
-  if (category === 'stay') return 'stay'
-  return 'flight'
+  if (!category) return 'event'
+  if (CAR_CATEGORIES.has(category))    return 'car'
+  if (FLIGHT_CATEGORIES.has(category)) return 'flight'
+  if (category === 'stay')             return 'stay'
+  if (DINING_CATEGORIES.has(category)) return 'dining'
+  if (EVENT_CATEGORIES.has(category))  return 'event'
+  return 'event'
 }
 
 function MarkerIcon({ kind, size = 14, color = 'currentColor' }: { kind: MarkerKind; size?: number; color?: string }) {
@@ -61,6 +67,14 @@ function MarkerIcon({ kind, size = 14, color = 'currentColor' }: { kind: MarkerK
     return (<svg {...common}><path d="M2 9.5h12l-1.2-3.1a1.4 1.4 0 0 0-1.3-.9H4.5a1.4 1.4 0 0 0-1.3.9L2 9.5Z" /><path d="M2 9.5v2.2h1.2M14 9.5v2.2h-1.2" /><circle cx="4.7" cy="11.7" r="1.1" /><circle cx="11.3" cy="11.7" r="1.1" /></svg>)
   }
   // Flight: plane
+  if (kind === 'dining') {
+    // Fork and knife
+    return (<svg {...common}><path d="M5 2v5a2 2 0 0 0 2 2v5M5 2c0 2.5 2 3.5 2 5" /><line x1="11" y1="2" x2="11" y2="14" /><path d="M9 2v3.5c0 .8.9 1.5 2 1.5s2-.7 2-1.5V2" /></svg>)
+  }
+  if (kind === 'event') {
+    // Star / sparkle
+    return (<svg {...common}><path d="M8 2v2.5M8 11.5V14M2 8h2.5M11.5 8H14M4.1 4.1l1.8 1.8M10.1 10.1l1.8 1.8M4.1 11.9l1.8-1.8M10.1 5.9l1.8-1.8" /></svg>)
+  }
   return (<svg {...common}><path d="M8 1.6c.6 0 1 .9 1 2.4v2.3l4.4 2.6v1.4L9 9.1v2.7l1.4 1v1.1L8 13.2l-2.4.7v-1.1l1.4-1V9.1l-4.4 2.2V8.9L7 6.3V4c0-1.5.4-2.4 1-2.4Z" /></svg>)
 }
 
@@ -421,7 +435,7 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
             if (s.check_out===iso && !seenOut.has(outKey)) { checkouts.push({trip:t,stay:s}); seenOut.add(outKey) }
           }
           const transport: {trip:CalendarTrip;activity:CalendarActivity}[] = []
-          for (const t of trips) for (const a of t.activities) { if (MOMENT_CATEGORIES.has(a.category ?? '') && a.date===iso) transport.push({trip:t,activity:a}) }
+          for (const t of trips) for (const a of t.activities) { if (a.category !== 'stay' && a.date===iso) transport.push({trip:t,activity:a}) }
           transport.sort((x,y) => (x.activity.time ?? '') < (y.activity.time ?? '') ? -1 : 1)
           const empty = spanning.length===0 && checkins.length===0 && checkouts.length===0 && transport.length===0
           return (
@@ -493,7 +507,7 @@ function AgendaView({ trips, onSelect }: { trips: CalendarTrip[]; onSelect:(id:s
       // Transport (flights/movements) — the agenda previously omitted these entirely.
       // sort:1.5 places a flight between check-out (2) and the next day's check-in.
       for (const a of t.activities) {
-        if (!MOMENT_CATEGORIES.has(a.category ?? '')) continue
+        if (a.category === 'stay') continue
         if (a.date && a.date >= start) acc.push({ date:a.date, sort:1.5, node:{kind:'transport',trip:t,activity:a} })
       }
     }

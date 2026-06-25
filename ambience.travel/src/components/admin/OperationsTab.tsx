@@ -25,6 +25,7 @@ import {
   type OpsPortfolio, type OpsTrip, type OpsBooking, type OpsSummary,
 } from '../../queries/queriesAdminOperations'
 import { updateBookingFields } from '../../queries/queriesAdminTrip'
+import { isHotelBooking, isFlightBooking } from '../../types/typesAuxBookings'
 import type { TripPartner } from '../../queries/queriesAdminTrip'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -242,7 +243,7 @@ function BookingRow({ booking: b, partners, onUpdated }: {
   const { success: showToast, error: showError } = useAdminToast()
 
   const currency = b.currency ?? 'USD'
-  const isHotel  = b.booking_type === 'Hotel'
+  const isHotel  = isHotelBooking(b.booking_type)
 
   async function patch(label: string, fields: Record<string, unknown>) {
     setSaving(label)
@@ -295,8 +296,8 @@ function BookingRow({ booking: b, partners, onUpdated }: {
   const refPartner   = b.referral_partner_id   ? partners[b.referral_partner_id]  : null
   const indivPartner = b.individual_id         ? partners[b.individual_id]        : null
 
-  const typeColor = b.booking_type === 'Hotel'  ? A.gold
-    : b.booking_type === 'Flight' ? '#93c5fd'
+  const typeColor = isHotelBooking(b.booking_type) ? A.gold
+    : isFlightBooking(b.booking_type) ? '#93c5fd'
     : A.border
 
   const supplierName = b._hotel_name ?? b.supplier_name_override ?? null
