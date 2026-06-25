@@ -865,6 +865,40 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         <Field label='status_label (legacy free-text)'>
           <input style={inputStyle} value={draft.status_label ?? ''} onChange={e => patch('status_label', e.target.value || null)} />
         </Field>
+        {/* Close Won — one-action revenue signal */}
+        {(() => {
+          const currentSlug = engagementStatuses.find(s => s.id === draft.engagement_status_id)?.slug
+          const isClosedWon = currentSlug === 'closed_won'
+          const closedWonId = engagementStatuses.find(s => s.slug === 'closed_won')?.id
+          if (!closedWonId) return null
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
+              {!isClosedWon ? (
+                <button
+                  onClick={() => patch('engagement_status_id', closedWonId)}
+                  style={{
+                    fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 7,
+                    background: '#4ade8015', color: '#4ade80',
+                    border: '1px solid #4ade8040', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Mark Close Won
+                </button>
+              ) : (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 7,
+                  background: '#4ade8020', color: '#4ade80',
+                  border: '1px solid #4ade8040',
+                }}>
+                  ✓ Closed Won
+                </span>
+              )}
+              <span style={{ fontSize: 10, color: '#6b7280', fontFamily: 'inherit' }}>
+                {isClosedWon ? 'Revenue recognised. Save to persist any other changes.' : 'Sets engagement status to Closed Won. Save to apply.'}
+              </span>
+            </div>
+          )
+        })()}
       </Section>
 
       {/* Hero primary */}
