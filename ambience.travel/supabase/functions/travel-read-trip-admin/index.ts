@@ -381,21 +381,25 @@ async function handlePublicView(db: SupabaseClient, tripId: string): Promise<Res
   return ok({ publicView: !!(data as { public_view: boolean }).public_view })
 }
 
-// ── Calendar (fleet-wide; confirmed + upcoming) ───────────────────────────────
-// Single source for the admin Calendar tab. Returns confirmed/upcoming trips
-// with their per-hotel bookings (stays) + hotel names, derived from the same
-// canonical tables the dossier uses — NOT a parallel store. The calendar owns
-// no dates; it renders these.
+// ── Calendar (fleet-wide; full pipeline) ──────────────────────────────────────
+// Single source for the admin Calendar tab. Returns all confirmed-stage trips +
+// near-term pending trips, with their per-hotel bookings (stays) + hotel names,
+// derived from the same canonical tables the dossier uses — NOT a parallel store.
+// The calendar owns no dates; it renders these.
 //
-// "Confirmed/upcoming" is DECLARED, not inferred:
-//   - trip status is derived from confirmed_engagement_id's engagement status
-//     slug (post-lifecycle-migration canon).
-//   - included slugs: confirmed | paid | in_service (post-commitment, pre-terminal).
-//   - excluded: requested/quoted/pending (pre-commitment), closed_won (concluded),
-//     cancelled/closed_lost (dead). And end_date >= range_start (not past).
+// Visibility is DECLARED, not inferred (see calendarTripState for the per-trip state):
+//   - confirmed-band (confirmed | paid | in_service | closed_won): ALWAYS shown,
+//     any date — past completed trips stay visible (a yesterday check-out must not
+//     vanish). end_date<today derives the 'completed' state, it does NOT exclude.
+//   - pending-band (requested | quoted | pending): shown only within a near-term
+//     window (PENDING_LOOKAHEAD_DAYS) — far-future maybes are noise, not ops data.
+//   - excluded: cancelled / closed_lost (dead). Archive-only removal is the eventual
+//     model (archive state TBD — pairs with the booking-state arc).
 //
-// Params: { range_start?: string (YYYY-MM-DD, default today), range_end?: string }
-// Range filters trips whose [start_date, end_date] overlaps the window.
+// Params: { range_start?: string (YYYY-MM-DD), range_end?: string }
+// When a range is passed (view paging), trips are filtered to those overlapping the
+// window. With no range (default load), ALL qualifying trips return — nothing is
+// floored out by date.
 
 // Lifecycle slugs the calendar surfaces. Confirmed-band = always visible (any date,
 // past completed trips included). Pending-band = securing stages, visible only within

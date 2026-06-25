@@ -205,7 +205,7 @@ export default function CalendarTab() {
                   border: `1px solid ${L.line}`, padding: 'clamp(18px,3vw,28px)', minHeight: 600 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16, flexWrap:'wrap', marginBottom:18 }}>
         <div>
-          <div style={{ textTransform:'uppercase', letterSpacing:'0.14em', fontSize:11, fontWeight:700, color:L.muted, marginBottom:8 }}>Confirmed and upcoming</div>
+          <div style={{ textTransform:'uppercase', letterSpacing:'0.14em', fontSize:11, fontWeight:700, color:L.muted, marginBottom:8 }}>All trips</div>
           <h1 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:'clamp(28px,4vw,40px)', lineHeight:1.05, letterSpacing:'-0.01em', color:L.ink }}>{headingTitle}</h1>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
@@ -223,7 +223,7 @@ export default function CalendarTab() {
       {loading && <Centered>Loading the calendar…</Centered>}
       {error && !loading && <Centered tone="danger">{error}</Centered>}
       {!loading && !error && trips.length === 0 && (
-        <Centered>No confirmed trips ahead. Confirmed engagements with upcoming dates appear here.</Centered>
+        <Centered>No trips to show. Confirmed engagements — past, current, and upcoming — appear here.</Centered>
       )}
 
       {!loading && !error && trips.length > 0 && (
@@ -399,20 +399,6 @@ function TransportMark({ trip, activity, onSelect }: { trip: CalendarTrip; activ
       <span style={{ color:L.gold, flex:'0 0 auto', display:'flex' }}><MarkerIcon kind={markerKindFor(activity.category)} size={12} /></span>
       <span style={{ color:L.gold, fontSize:10, fontWeight:700, fontVariantNumeric:'tabular-nums', flex:'0 0 auto' }}>{time}</span>
       <span style={{ color:L.muted, fontSize:10, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{name}</span>
-    </button>
-  )
-}
-
-function StayMarker({ trip, stay, kind, onSelect }: { trip: CalendarTrip; stay: CalendarStay; kind:'in'|'out'; onSelect:(id:string)=>void }) {
-  const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
-  const hotel = stay.hotel_name || stay.name || 'Stay'
-  const verb = kind==='in' ? 'Check-in' : 'Check-out'
-  return (
-    <button onClick={() => onSelect(trip.id)} title={`${verb}: ${hotel} · ${confLabel(stay)}`} style={{
-      display:'block', width:'100%', textAlign:'left', cursor:'pointer', margin:'3px 0', background:L.panel, color:L.ink,
-      border:`1px solid ${partial?L.gold:L.line}`, borderStyle: tentative?'dashed':'solid', borderRadius:8, padding:'3px 7px', fontSize:10.5, fontWeight:700,
-      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:L.sans, opacity: tentative?0.8:1 }}>
-      <span style={{ color:L.gold }}>{kind==='in'?'→':'←'}</span> {hotel}
     </button>
   )
 }
