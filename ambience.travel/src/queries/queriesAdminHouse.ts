@@ -70,6 +70,7 @@ export interface HousePerson {
   member_ref: string
   role:       HouseRole
   notes:      string | null
+  sort_order: number
   created_at: string
   updated_at: string
 }
@@ -223,9 +224,29 @@ export async function fetchHouseRoles(): Promise<HouseRole_Registry[]> {
 export async function fetchPeopleForHouse(houseId: string): Promise<HousePerson[]> {
   const { data, error } = await supabase
     .from('a_house_people').select('*').eq('house_id', houseId)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) throw new Error(`Failed to fetch people: ${error.message}`)
   return (data ?? []) as HousePerson[]
+}
+
+// Household rank — the SINGLE SOURCE composition: role tier (from the roles registry
+// sort_order) first, then per-member sort_order within the tier, created_at as the
+// final stable tiebreak. Every member list renders through this so rank is identical
+// everywhere. Unknown roles sort last.
+export function orderHouseholdMembers(
+  people: HousePerson[],
+  roles: HouseRole_Registry[],
+): HousePerson[] {
+  const tierBySlug = new Map(roles.map(r => [r.slug, r.sort_order]))
+  const TIER_LAST = Number.MAX_SAFE_INTEGER
+  return [...people].sort((a, b) => {
+    const ta = tierBySlug.get(a.role) ?? TIER_LAST
+    const tb = tierBySlug.get(b.role) ?? TIER_LAST
+    if (ta !== tb) return ta - tb
+    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+    return a.created_at < b.created_at ? -1 : 1
+  })
 }
 
 export async function createPerson(houseId: string, memberRef: string, role: string, notes: string | null, personId: string | null = null): Promise<void> {
@@ -240,6 +261,13 @@ export async function updatePerson(id: string, patch: Partial<Pick<HousePerson, 
     body: { mode: 'update', id, ...patch },
   })
   if (error) throw new Error(`Failed to update person: ${error.message}`)
+}
+
+export async function reorderPeople(orderedIds: string[]): Promise<void> {
+  const { error } = await supabase.functions.invoke('a-write-house-people', {
+    body: { mode: 'reorder', ordered_ids: orderedIds },
+  })
+  if (error) throw new Error(`Failed to reorder people: ${error.message}`)
 }
 
 export async function deletePerson(id: string): Promise<void> {

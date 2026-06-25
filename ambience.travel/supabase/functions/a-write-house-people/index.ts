@@ -38,7 +38,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'
 
 
-const PERSON_SELECT = 'id, house_id, member_ref, role, notes, person_id, created_at, updated_at'
+const PERSON_SELECT = 'id, house_id, member_ref, role, notes, person_id, sort_order, created_at, updated_at'
 
 // Fields a create may set. house_id + member_ref required (NOT NULL, no default).
 const CREATE_FIELDS = ['house_id', 'member_ref', 'role', 'notes', 'person_id'] as const
@@ -141,7 +141,6 @@ Deno.serve(async (req: Request) => {
       case 'delete': {
         const { id } = body as { id?: string }
         if (!id) return json(400, { error: 'id is required' })
-
         const { error } = await serviceClient
           .from('a_house_people')
           .delete()
@@ -153,7 +152,30 @@ Deno.serve(async (req: Request) => {
         console.info(`a-write-house-people actor=${user.id} action=delete id=${id}`)
         return json(200, { deleted: true, id })
       }
-
+      case 'reorder': {
+        // Batch within-tier ordering. ordered_ids is the full desired order for the
+        // people being reordered; sort_order is written as the array index. Position
+        // is the SINGLE SOURCE for intra-tier rank (role tier itself is derived from
+        // the roles registry at read time, never stored here).
+        const { ordered_ids } = body as { ordered_ids?: string[] }
+        if (!Array.isArray(ordered_ids) || ordered_ids.length === 0) {
+          return json(400, { error: 'ordered_ids (non-empty array) is required' })
+        }
+        let i = 0
+        for (const pid of ordered_ids) {
+          const { error } = await serviceClient
+            .from('a_house_people')
+            .update({ sort_order: i })
+            .eq('id', pid)
+          if (error) {
+            console.error('reorder error:', error)
+            return json(500, { error: 'Failed to reorder house-people' })
+          }
+          i += 1
+        }
+        console.info(`a-write-house-people actor=${user.id} action=reorder count=${ordered_ids.length}`)
+        return json(200, { reordered: ordered_ids.length })
+      }
       default:
         return json(400, { error: `Unknown mode: ${mode}` })
     }

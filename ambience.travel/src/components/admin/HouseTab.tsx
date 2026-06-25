@@ -32,7 +32,7 @@ import {
   fetchDiningHistoryForHouse, fetchPPDForHouse,
   fetchDestinationsForHouse, fetchContactsForHouse,
   fetchProfileForPerson, updateHouse,
-  createPerson, updatePerson, deletePerson,
+  createPerson, updatePerson, deletePerson, reorderPeople, orderHouseholdMembers,
   createPreference, updatePreference, deletePreference,
   createDiningEntry, updateDiningEntry, deleteDiningEntry,
   createDestination, updateDestination, deleteDestination,
@@ -772,18 +772,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 10, padding: '12px 14px' }}>
       <SectionHeader title='Household' onAdd={() => setAddingPerson(true)} adding={addingPerson} />
       {data.people.length === 0 && !addingPerson && <AdminEmptyState message='No members yet.' />}
-      {data.people.map(p => (
-        <div key={p.id} onClick={() => setModalPerson(p)} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, cursor: 'pointer', padding: '4px 0' }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${A.gold}18`, border: `1px solid ${A.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: A.gold, fontFamily: A.font, flexShrink: 0 }}>
-            {p.member_ref.slice(0, 1).toUpperCase()}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{p.member_ref}</div>
-            <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{p.role}</div>
-          </div>
-          <span style={{ fontSize: 12, color: A.faint, opacity: 0.5 }}>›</span>
-        </div>
-      ))}
+      <RosterRoster people={data.people} roles={data.roles} onSelect={setModalPerson} onReload={loadAll} onError={error} />
       {addingPerson && (
         <div style={{ marginTop: 6 }}>
           <AddFormShell>
@@ -1023,6 +1012,82 @@ function SearchResults({ results, personRef, onClose }: {
         </div>
       )}
       {total === 0 && <AdminEmptyState message='Nothing found.' />}
+    </div>
+  )
+}
+
+// ── Household roster — tier-grouped, intra-tier drag-reorder ───────────────────
+// Role owns the tier (from the roles registry sort_order); sort_order owns the
+// position WITHIN a tier. The UI makes both axes legible: tier headers show role's
+// doing, drag reorders within a tier (you can't drag across tiers — role governs
+// that, so the view can never show an order the model would overturn). On drop, the
+// tier's new id order is persisted via reorderPeople. Single source preserved.
+function RosterRoster({ people, roles, onSelect, onReload, onError }: {
+  people: HousePerson[]
+  roles: HouseRole_Registry[]
+  onSelect: (p: HousePerson) => void
+  onReload: () => Promise<void>
+  onError: (msg: string) => void
+}) {
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  // Tier groups in registry order; members within each ordered by sort_order.
+  const tiers = useMemo(() => {
+    const ordered = orderHouseholdMembers(people, roles)
+    const labelBySlug = new Map(roles.map(r => [r.slug, r.label]))
+    const groups: Array<{ slug: string; label: string; members: HousePerson[] }> = []
+    for (const p of ordered) {
+      const last = groups[groups.length - 1]
+      if (last && last.slug === p.role) { last.members.push(p); continue }
+      groups.push({ slug: p.role, label: labelBySlug.get(p.role) ?? p.role, members: [p] })
+    }
+    return groups
+  }, [people, roles])
+
+  async function handleDrop(tierMembers: HousePerson[], targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return }
+    const ids = tierMembers.map(m => m.id)
+    const from = ids.indexOf(dragId); const to = ids.indexOf(targetId)
+    if (from === -1 || to === -1) { setDragId(null); setOverId(null); return }
+    const next = [...ids]; next.splice(from, 1); next.splice(to, 0, dragId)
+    setDragId(null); setOverId(null)
+    try {
+      await reorderPeople(next)
+      await onReload()
+    } catch (e) { onError(e instanceof Error ? e.message : 'Failed to reorder') }
+  }
+
+  return (
+    <div>
+      {tiers.map(tier => (
+        <div key={tier.slug} style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, margin: '6px 0 4px 2px' }}>{tier.label}</div>
+          {tier.members.map(p => (
+            <div
+              key={p.id}
+              draggable
+              onDragStart={() => setDragId(p.id)}
+              onDragOver={e => { e.preventDefault(); if (overId !== p.id) setOverId(p.id) }}
+              onDragLeave={() => { if (overId === p.id) setOverId(null) }}
+              onDrop={e => { e.preventDefault(); handleDrop(tier.members, p.id) }}
+              onClick={() => onSelect(p)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, cursor: 'pointer', padding: '4px 4px',
+                borderRadius: 8, background: overId === p.id ? `${A.gold}12` : 'transparent',
+                opacity: dragId === p.id ? 0.4 : 1, border: overId === p.id ? `1px dashed ${A.gold}55` : '1px solid transparent' }}>
+              <span style={{ color: A.faint, opacity: 0.4, fontSize: 13, cursor: 'grab', flexShrink: 0, lineHeight: 1 }} title='Drag to reorder'>⋮⋮</span>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${A.gold}18`, border: `1px solid ${A.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: A.gold, fontFamily: A.font, flexShrink: 0 }}>
+                {p.member_ref.slice(0, 1).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{p.member_ref}</div>
+                <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{p.role}</div>
+              </div>
+              <span style={{ fontSize: 12, color: A.faint, opacity: 0.5 }}>›</span>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
