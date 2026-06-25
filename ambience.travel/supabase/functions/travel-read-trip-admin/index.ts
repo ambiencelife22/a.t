@@ -471,15 +471,20 @@ async function handleCalendar(
   // 2. Resolve each winning engagement's status slug; keep only confirmed-stage.
   const engIds = [...new Set(trips.map(t => t.confirmed_engagement_id).filter((x): x is string => !!x))]
   const slugByEng = new Map<string, string>()
+  // The engagement title is the canonical display name (engagement = the universal
+  // spine). public_title is an optional override; when null, the calendar reads the
+  // engagement's title — never the bare trip_code if a real name exists upstream.
+  const titleByEng = new Map<string, string>()
   if (engIds.length > 0) {
     const { data: engRows, error: engErr } = await db
       .from('travel_immerse_engagements')
-      .select('id, travel_lifecycle_statuses(slug)')
+      .select('id, title, travel_lifecycle_statuses(slug)')
       .in('id', engIds)
     if (engErr) return err('Failed to resolve engagement statuses', 500)
-    for (const e of (engRows ?? []) as Array<{ id: string; travel_lifecycle_statuses: { slug: string } | { slug: string }[] | null }>) {
+    for (const e of (engRows ?? []) as Array<{ id: string; title: string | null; travel_lifecycle_statuses: { slug: string } | { slug: string }[] | null }>) {
       const s = Array.isArray(e.travel_lifecycle_statuses) ? e.travel_lifecycle_statuses[0] : e.travel_lifecycle_statuses
       if (s?.slug) slugByEng.set(e.id, s.slug)
+      if (e.title) titleByEng.set(e.id, e.title)
     }
   }
 
@@ -607,7 +612,8 @@ async function handleCalendar(
   const out = confirmedTrips.map(t => ({
     id:            t.id,
     trip_code:     t.trip_code,
-    title:         t.public_title,
+    // Engagement title is the source; public_title overrides only when explicitly set.
+    title:         t.public_title ?? (t.confirmed_engagement_id ? (titleByEng.get(t.confirmed_engagement_id) ?? null) : null),
     start_date:    t.start_date,
     end_date:      t.end_date,
     status_slug:   t.confirmed_engagement_id ? (slugByEng.get(t.confirmed_engagement_id) ?? null) : null,
