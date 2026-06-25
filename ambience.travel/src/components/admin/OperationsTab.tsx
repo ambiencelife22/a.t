@@ -24,6 +24,7 @@ import {
   fetchOpsPortfolio,
   type OpsPortfolio, type OpsTrip, type OpsBooking, type OpsSummary,
 } from '../../queries/queriesAdminOperations'
+import { updateBookingFields } from '../../queries/queriesAdminTrip'
 import type { TripPartner } from '../../queries/queriesAdminTrip'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -227,16 +228,72 @@ function PaymentCell({ amount, dueDate, paidAt, label }: {
 
 // ── Booking row (expanded detail) ─────────────────────────────────────────────
 
-function BookingRow({ booking: b, partners }: {
-  booking:  OpsBooking
-  partners: Record<string, TripPartner>
+function BookingRow({ booking: b, partners, onUpdated }: {
+  booking:   OpsBooking
+  partners:  Record<string, TripPartner>
+  onUpdated: () => void
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded]           = useState(false)
+  const [saving, setSaving]               = useState<string | null>(null)
+  const [commPct, setCommPct]             = useState<string>(b.commission_pct?.toString() ?? '')
+  const [commAmt, setCommAmt]             = useState<string>(b.commission_amount?.toString() ?? '')
+  const [invoiceNo, setInvoiceNo]         = useState<string>(b.invoice_number ?? '')
+  const [amenities, setAmenities]         = useState<string>(b.cost?.toString() ?? '')
+  const { success: showToast, error: showError } = useAdminToast()
+
+  const currency = b.currency ?? 'USD'
+  const isHotel  = b.booking_type === 'Hotel'
+
+  async function patch(label: string, fields: Record<string, unknown>) {
+    setSaving(label)
+    try {
+      await updateBookingFields(b.id, fields)
+      await onUpdated()
+      showToast(`${label} updated`)
+    } catch (e) {
+      showError(`Failed to update ${label}`)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function toggleCommissionPaid() {
+    const val = b.commission_paid_at ? null : new Date().toISOString()
+    await patch('Commission', { commission_paid_at: val })
+  }
+
+  async function toggleDepositPaid() {
+    const val = b.deposit_paid_at ? null : new Date().toISOString()
+    await patch('Deposit', { deposit_paid_at: val })
+  }
+
+  async function toggleBalancePaid() {
+    const val = b.balance_paid_at ? null : new Date().toISOString()
+    await patch('Balance', { balance_paid_at: val })
+  }
+
+  async function saveCommission() {
+    const pct = parseFloat(commPct)
+    const amt = parseFloat(commAmt)
+    if (isNaN(pct) && isNaN(amt)) return
+    const fields: Record<string, unknown> = {}
+    if (!isNaN(pct)) fields.commission_pct = pct
+    if (!isNaN(amt)) fields.commission_amount = amt
+    await patch('Commission', fields)
+  }
+
+  async function saveInvoice() {
+    await patch('Invoice', { invoice_number: invoiceNo.trim() || null })
+  }
+
+  async function saveAmenities() {
+    const val = parseFloat(amenities)
+    await patch('Amenities', { cost: isNaN(val) ? null : val })
+  }
 
   const iataPartner  = b.iata_partner_id      ? partners[b.iata_partner_id]      : null
   const refPartner   = b.referral_partner_id   ? partners[b.referral_partner_id]  : null
   const indivPartner = b.individual_id         ? partners[b.individual_id]        : null
-  const currency     = b.currency ?? 'USD'
 
   const typeColor = b.booking_type === 'Hotel'  ? A.gold
     : b.booking_type === 'Flight' ? '#93c5fd'
@@ -287,8 +344,14 @@ function BookingRow({ booking: b, partners }: {
           {b.commission_amount != null ? (
             <>
               <div style={{ fontSize: 13, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commission_amount, currency)}</div>
-              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>
-                {b.commission_pct}% · {b.commission_paid_at ? 'Paid' : 'Unpaid'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.commission_pct}%</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                  background: b.commission_paid_at ? '#4ade8020' : '#fbbf2420',
+                  color:      b.commission_paid_at ? '#4ade80'   : '#fbbf24',
+                  border:     `1px solid ${b.commission_paid_at ? '#4ade8040' : '#fbbf2440'}`,
+                }}>{b.commission_paid_at ? 'Received' : 'Pending'}</span>
               </div>
             </>
           ) : <span style={{ fontSize: 11, color: A.faint }}>--</span>}
@@ -378,6 +441,111 @@ function BookingRow({ booking: b, partners }: {
           {b.notes && (
             <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{b.notes}</div>
           )}
+
+          {/* ── CRM write panel ─────────────────────────────────────────── */}
+          <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Commission */}
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 6 }}>Commission</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  value={commPct}
+                  onChange={e => setCommPct(e.target.value)}
+                  onBlur={saveCommission}
+                  placeholder='Pct %'
+                  style={{ ...inputStyle, width: 64, fontSize: 12 }}
+                />
+                <input
+                  value={commAmt}
+                  onChange={e => setCommAmt(e.target.value)}
+                  onBlur={saveCommission}
+                  placeholder={`Amount ${currency}`}
+                  style={{ ...inputStyle, width: 100, fontSize: 12 }}
+                />
+                <button
+                  onClick={toggleCommissionPaid}
+                  disabled={saving === 'Commission'}
+                  style={{
+                    ...btnP,
+                    fontSize: 11, padding: '4px 12px',
+                    background: b.commission_paid_at ? '#4ade8020' : undefined,
+                    color:      b.commission_paid_at ? '#4ade80'   : undefined,
+                    border:     b.commission_paid_at ? '1px solid #4ade8040' : undefined,
+                  }}
+                >
+                  {b.commission_paid_at ? `Received ${fmtDate(b.commission_paid_at)}` : 'Mark Received'}
+                </button>
+              </div>
+            </div>
+
+            {/* Deposit + Balance */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {b.deposit_amount != null && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Deposit · {fmt(b.deposit_amount, currency)}</div>
+                  <button
+                    onClick={toggleDepositPaid}
+                    disabled={saving === 'Deposit'}
+                    style={{
+                      ...btnG,
+                      fontSize: 11, padding: '4px 12px',
+                      background: b.deposit_paid_at ? '#4ade8015' : undefined,
+                      color:      b.deposit_paid_at ? '#4ade80'   : undefined,
+                      border:     b.deposit_paid_at ? '1px solid #4ade8030' : undefined,
+                    }}
+                  >
+                    {b.deposit_paid_at ? `Paid ${fmtDate(b.deposit_paid_at)}` : b.deposit_due_date ? `Due ${fmtDate(b.deposit_due_date)}` : 'Mark Paid'}
+                  </button>
+                </div>
+              )}
+              {b.balance_amount != null && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Balance · {fmt(b.balance_amount, currency)}</div>
+                  <button
+                    onClick={toggleBalancePaid}
+                    disabled={saving === 'Balance'}
+                    style={{
+                      ...btnG,
+                      fontSize: 11, padding: '4px 12px',
+                      background: b.balance_paid_at ? '#4ade8015' : undefined,
+                      color:      b.balance_paid_at ? '#4ade80'   : undefined,
+                      border:     b.balance_paid_at ? '1px solid #4ade8030' : undefined,
+                    }}
+                  >
+                    {b.balance_paid_at ? `Paid ${fmtDate(b.balance_paid_at)}` : b.balance_due_date ? `Due ${fmtDate(b.balance_due_date)}` : 'Mark Paid'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Invoice + Amenities */}
+            <div style={{ display: 'grid', gridTemplateColumns: isHotel ? '1fr 1fr' : '1fr', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Invoice #</div>
+                <input
+                  value={invoiceNo}
+                  onChange={e => setInvoiceNo(e.target.value)}
+                  onBlur={saveInvoice}
+                  placeholder='Invoice number'
+                  style={{ ...inputStyle, width: '100%', fontSize: 12 }}
+                />
+              </div>
+              {isHotel && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Amenities ({currency}) <span style={{ color: A.faint, fontWeight: 400 }}>absorbed</span></div>
+                  <input
+                    value={amenities}
+                    onChange={e => setAmenities(e.target.value)}
+                    onBlur={saveAmenities}
+                    placeholder='0'
+                    style={{ ...inputStyle, width: '100%', fontSize: 12 }}
+                  />
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
       )}
     </div>
@@ -386,10 +554,11 @@ function BookingRow({ booking: b, partners }: {
 
 // ── Trip group ────────────────────────────────────────────────────────────────
 
-function TripGroup({ trip, partners, defaultExpanded }: {
+function TripGroup({ trip, partners, defaultExpanded, onUpdated }: {
   trip:            OpsTrip
   partners:        Record<string, TripPartner>
   defaultExpanded: boolean
+  onUpdated:       () => void
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
@@ -481,7 +650,7 @@ function TripGroup({ trip, partners, defaultExpanded }: {
           {trip.bookings.length === 0
             ? <AdminEmptyState message='No bookings on this trip.' />
             : trip.bookings.map(b => (
-              <BookingRow key={b.id} booking={b} partners={partners} />
+              <BookingRow key={b.id} booking={b} partners={partners} onUpdated={onUpdated} />
             ))
           }
         </div>
@@ -593,6 +762,12 @@ export function OperationsTab() {
   const [filters, setFilters]     = useState<Filters>({
     status: '', bookingType: '', partnerId: '', search: '',
   })
+
+  function reload() {
+    fetchOpsPortfolio()
+      .then(setPortfolio)
+      .catch(e => error(e instanceof Error ? e.message : 'Failed to load'))
+  }
 
   useEffect(() => {
     fetchOpsPortfolio()
@@ -709,6 +884,7 @@ export function OperationsTab() {
               trip={trip}
               partners={portfolio.partners}
               defaultExpanded={i === 0}
+              onUpdated={reload}
             />
           ))}
         </div>

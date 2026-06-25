@@ -52,6 +52,8 @@ export type OpsBooking = {
   taxes_and_fees:         number | null
   rate_type:              string | null
   price:                  number | null
+  // Amenities (absorbed cost — operator pays, never client-facing)
+  cost:                   number | null
   // Commission
   commission_pct:         number | null
   commission_amount:      number | null
