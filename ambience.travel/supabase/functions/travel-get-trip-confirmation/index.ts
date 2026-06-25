@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
         .order('id',         { ascending: true }),
 
       db.from('travel_trip_aux_bookings')
-        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, confirmation_number, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id')
+        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, confirmation_number, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id, dining_venue_id')
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
@@ -191,7 +191,22 @@ Deno.serve(async (req: Request) => {
       house,
       contacts,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings: await attachDriverDetails(db, await attachPassengers(db, auxBookings, (brief?.prepared_for as string | null) ?? null)),
+      auxBookings: await (async () => {
+        const withPax = await attachDriverDetails(db, await attachPassengers(db, auxBookings, (brief?.prepared_for as string | null) ?? null))
+        const diningVenueIds = [...new Set(
+          (withPax as Record<string, unknown>[]).map(a => a.dining_venue_id).filter(Boolean)
+        )] as string[]
+        if (diningVenueIds.length === 0) return withPax
+        const { data: diningImgs } = await db.from('travel_dining_venues').select('id, image_src').in('id', diningVenueIds)
+        const imgById: Record<string, string | null> = {}
+        for (const d of (diningImgs ?? []) as Record<string, unknown>[]) {
+          imgById[d.id as string] = (d.image_src as string | null) ?? null
+        }
+        return (withPax as Record<string, unknown>[]).map(a => ({
+          ...a,
+          image_src: a.dining_venue_id ? (imgById[a.dining_venue_id as string] ?? null) : null,
+        }))
+      })(),
       urlId: url_id,
       guides: {
         hasDining:         !!diningGuideResult.data,

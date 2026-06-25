@@ -162,6 +162,8 @@ export type TripAuxBooking = {
   cabin_class:         string | null
   seat_type:           string | null
   aircraft_type:       string | null
+  dining_venue_id?:    string | null
+  image_src?:          string | null
   passengers?:         TripAuxPassenger[]
   driver_details?:     TripAuxDriverDetail[]
   created_at:          string

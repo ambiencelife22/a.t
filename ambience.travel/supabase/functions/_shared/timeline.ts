@@ -49,7 +49,6 @@ export type TimelineItem = {
   confirmation_number: string | null
   booked_by:           string | null
   image_src:           string | null
-  confirmation_number: string | null
   guest_label:         string | null
   status:              string | null
   rooms:               TimelineRoom[]
@@ -244,7 +243,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
       category: a.booking_type ?? 'Other',
       title: a.name ?? a.booking_type ?? 'Booking', subtitle, notes: a.notes ?? null,
-      booked_by: a.booked_by ?? null, image_src: null,
+      booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
       rooms: [], passengers,
       source_booking_id: null, source_aux_id: a.id as string, brief_show: true,

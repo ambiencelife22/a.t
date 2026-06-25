@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
         .eq('trip_id', tripId),
 
       db.from('travel_trip_aux_bookings')
-        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, confirmation_number, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id')
+        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, confirmation_number, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id, dining_venue_id')
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
@@ -166,7 +166,25 @@ Deno.serve(async (req: Request) => {
       await attachPassengers(db, (auxResult.data ?? []) as Record<string, unknown>[], partyLabel),
     )
 
-    // ── 10. Dining / experience images for standalone entries ──────────────────
+    // ── 10. Dining venue images for aux bookings (dining_venue_id FK) ──────────
+    const auxDiningIds = [...new Set(
+      (auxBookings as Record<string, unknown>[])
+        .map(a => a.dining_venue_id)
+        .filter(Boolean)
+    )] as string[]
+    const auxDiningImgResult = auxDiningIds.length > 0
+      ? await db.from('travel_dining_venues').select('id, image_src').in('id', auxDiningIds)
+      : { data: [], error: null }
+    const auxDiningImgById: Record<string, string | null> = {}
+    for (const d of (auxDiningImgResult.data ?? []) as Record<string, unknown>[]) {
+      auxDiningImgById[d.id as string] = (d.image_src as string | null) ?? null
+    }
+    const auxBookingsWithImg = (auxBookings as Record<string, unknown>[]).map(a => ({
+      ...a,
+      image_src: a.dining_venue_id ? (auxDiningImgById[a.dining_venue_id as string] ?? null) : null,
+    }))
+
+    // ── 10b. Dining / experience images for standalone entries ─────────────────
     const diningIds     = [...new Set(entries.map(e => e.source_dining_id).filter(Boolean))] as string[]
     const experienceIds = [...new Set(entries.map(e => e.source_experience_id).filter(Boolean))] as string[]
 
@@ -196,7 +214,7 @@ Deno.serve(async (req: Request) => {
     const enrichedEntries = entries.map(e => ({ ...e, image_src: entryImage(e) }))
 
     // ── 11. Build the single-source timeline ───────────────────────────────────
-    const timeline = buildTimeline(enrichedBookings, auxBookings, enrichedEntries)
+    const timeline = buildTimeline(enrichedBookings, auxBookingsWithImg, enrichedEntries)
 
     // ── 12. Destinations + return (core-sourced) ───────────────────────────────
     const destinations = core.destinations
