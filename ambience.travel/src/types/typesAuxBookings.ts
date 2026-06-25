@@ -41,7 +41,7 @@ export const AUX_BOOKING_TYPES = [
   'Tour Guide',
   'Experience / Activity',
   'Private Shopping',
-  'Other',
+  'Dining',  'Other',
 ] as const
 
 export type AuxBookingType = typeof AUX_BOOKING_TYPES[number]
@@ -65,6 +65,7 @@ export const AUX_BOOKING_TYPE_META: Record<AuxBookingType, AuxBookingTypeMeta> =
   'Tour Guide':              { label: 'TOUR GUIDES',             icon: '\uD83D\uDDFA', sort_order: 50 },
   'Experience / Activity':   { label: 'EXPERIENCES',             icon: '\u2728',  sort_order: 55 },
   'Private Shopping':        { label: 'PRIVATE SHOPPING',        icon: '\uD83D\uDED2', sort_order: 60 },
+  'Dining':                  { label: 'DINING',                  icon: '\uD83C\uDF7D', sort_order: 45 },
   'Other':                   { label: 'OTHER',                   icon: '\u00b7',  sort_order: 99 },
 }
 
