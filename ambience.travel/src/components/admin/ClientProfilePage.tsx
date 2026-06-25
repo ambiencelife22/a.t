@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { matchesQuery } from '../../utils/utilsSearch'
 import { C } from '../../tokens/tokensProgramme'
 
 type Tab =
@@ -1657,11 +1658,7 @@ function ClientList({ onSelect }: { onSelect: (client: ClientProfileData) => voi
   const filtered = SAMPLE_CLIENTS.filter(c => {
     const q = search.toLowerCase()
     return (
-      c.firstName.toLowerCase().includes(q) ||
-      c.lastName.toLowerCase().includes(q) ||
-      c.clientCode.toLowerCase().includes(q) ||
-      c.homeBase.toLowerCase().includes(q) ||
-      c.nationality.toLowerCase().includes(q)
+      matchesQuery(q, c.firstName, c.lastName, c.clientCode, c.homeBase, c.nationality)
     )
   })
 

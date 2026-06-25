@@ -49,6 +49,7 @@ import {
 } from '../../queries/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
+import { matchesQuery } from '../../utils/utilsSearch'
 
 // ── Recognition label helper ──────────────────────────────────────────────────
 
@@ -535,9 +536,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
     const q = search.trim().toLowerCase()
     if (!q) return venues
     return venues.filter(v =>
-      v.name.toLowerCase().includes(q) ||
-      (v.cuisine_subcategory ?? '').toLowerCase().includes(q) ||
-      (v.neighborhood ?? '').toLowerCase().includes(q)
+      matchesQuery(q, v.name, v.cuisine_subcategory, v.neighborhood)
     )
   }, [venues, search])
 

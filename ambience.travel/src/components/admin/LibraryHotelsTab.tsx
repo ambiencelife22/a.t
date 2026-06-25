@@ -40,6 +40,7 @@ import {
 } from '../../queries/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
+import { matchesQuery } from '../../utils/utilsSearch'
 
 // ── Recognition summary ───────────────────────────────────────────────────────
 
@@ -371,9 +372,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
     const q = search.trim().toLowerCase()
     if (!q) return hotels
     return hotels.filter(h =>
-      h.name.toLowerCase().includes(q) ||
-      h.short_slug.toLowerCase().includes(q) ||
-      (h.city ?? '').toLowerCase().includes(q)
+      matchesQuery(q, h.name, h.short_slug, h.city)
     )
   }, [hotels, search])
 

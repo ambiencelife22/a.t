@@ -63,6 +63,7 @@ import {
 } from '../../queries/queriesGlobalPeople'
 import { fetchRequestsForHouse, type TravelRequest } from '../../queries/queriesAdminRequests'
 import { PPD_PEOPLE_KEYS as PPD_KEYS } from '../../types/typesPpd'
+import { matchesQuery } from '../../utils/utilsSearch'
 
 // Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
 // They remain here because they are tightly coupled to AllData and house context.
@@ -599,10 +600,7 @@ function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
     const q = search.toLowerCase().trim()
     if (!q) return houses
     return houses.filter(h =>
-      h.display_name.toLowerCase().includes(q) ||
-      h.a_house_id.toLowerCase().includes(q) ||
-      (h.summary ?? '').toLowerCase().includes(q) ||
-      (h.service_style_notes ?? '').toLowerCase().includes(q)
+      matchesQuery(q, h.display_name, h.a_house_id, h.summary, h.service_style_notes)
     )
   }, [houses, search])
 
@@ -729,11 +727,11 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     const query = q.toLowerCase().trim()
     if (!query) return null
     return {
-      preferences:  data.preferences.filter(p => p.pref_key.toLowerCase().includes(query) || p.pref_value.toLowerCase().includes(query)),
-      dining:       data.dining.filter(d => d.restaurant_name.toLowerCase().includes(query) || (d.city ?? '').toLowerCase().includes(query)),
-      destinations: data.destinations.filter(d => d.destination_name.toLowerCase().includes(query) || (d.country ?? '').toLowerCase().includes(query)),
-      contacts:     data.contacts.filter(c => c.name.toLowerCase().includes(query) || (c.role ?? '').toLowerCase().includes(query)),
-      ppd:          data.ppd.filter(p => p.data_key.toLowerCase().includes(query) || p.data_value.toLowerCase().includes(query)),
+      preferences:  data.preferences.filter(p => matchesQuery(query, p.pref_key, p.pref_value)),
+      dining:       data.dining.filter(d => matchesQuery(query, d.restaurant_name, d.city)),
+      destinations: data.destinations.filter(d => matchesQuery(query, d.destination_name, d.country)),
+      contacts:     data.contacts.filter(c => matchesQuery(query, c.name, c.role)),
+      ppd:          data.ppd.filter(p => matchesQuery(query, p.data_key, p.data_value)),
     }
   }, [q, data])
 
@@ -1265,7 +1263,7 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
     const base = data.preferences.filter(p => p.category === cat)
     if (!filter.trim()) return base
     const q = filter.toLowerCase()
-    return base.filter(p => p.pref_key.toLowerCase().includes(q) || p.pref_value.toLowerCase().includes(q))
+    return base.filter(p => matchesQuery(q, p.pref_key, p.pref_value))
   }, [data.preferences, cat, filter])
 
   const catCount = (c: PrefCategory) => data.preferences.filter(p => p.category === c).length

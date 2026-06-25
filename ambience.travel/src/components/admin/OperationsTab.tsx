@@ -26,6 +26,7 @@ import {
 } from '../../queries/queriesAdminOperations'
 import { updateBookingFields } from '../../queries/queriesAdminTrip'
 import { isHotelBooking, isFlightBooking } from '../../types/typesAuxBookings'
+import { matchesQuery } from '../../utils/utilsSearch'
 import type { TripPartner } from '../../queries/queriesAdminTrip'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -814,10 +815,7 @@ export function OperationsTab() {
           b.individual_id === partnerId
         )
         if (q) bookings = bookings.filter(b =>
-          (b.name ?? '').toLowerCase().includes(q) ||
-          (b._hotel_name ?? '').toLowerCase().includes(q) ||
-          trip.trip_code.toLowerCase().includes(q) ||
-          (trip._house_name ?? '').toLowerCase().includes(q)
+          matchesQuery(q, b.name, b._hotel_name, trip.trip_code, trip._house_name)
         )
 
         return { ...trip, bookings }
