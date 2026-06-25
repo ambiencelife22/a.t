@@ -29,6 +29,7 @@ import {
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
+import { isGroundTransportBooking } from '../types/typesAuxBookings'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const padV = 6; const padH = 10
   const bookedByText = bookedByLabel(aux.booked_by)
   const paxLines = passengerLines(aux)
-  const isGroundCar = ['transfer', 'airport transfer', 'car service'].includes((aux.booking_type ?? '').toLowerCase())
+  const isGroundCar = isGroundTransportBooking(aux.booking_type)
   const detailLines = isGroundCar ? driverDetailLines(aux) : paxLines
   // Base block holds name/route/date/cabin; detail lines extend height.
   const baseH = 30

@@ -23,6 +23,7 @@ import type {
 import { getEventStatusMeta } from '../../types/typesEventStatus'
 import { updateBookingBriefFields, createBooking, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
 import type { TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
+import { isFlightBooking, isHotelBooking, isGroundTransportBooking } from '../../types/typesAuxBookings'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import type { ClientDossierData } from '../../pdf/pdfDossierClient'
@@ -334,7 +335,7 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
   onSave: () => void; onCancel: () => void; saving: boolean; saveLabel: string
 }) {
   const set = <K extends keyof AuxDraft>(k: K, v: AuxDraft[K]) => setDraft({ ...draft, [k]: v })
-  const isFlight = draft.booking_type === 'Flight'
+  const isFlight = isFlightBooking(draft.booking_type)
 
   return (
     <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -507,7 +508,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
                 {a.start_date && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.start_date}{a.start_time ? ` ${a.start_time.slice(0, 5)}` : ''}</span>}
               </div>
-              {(a.booking_type ?? '').toLowerCase().includes('flight') && (
+              {isFlightBooking(a.booking_type) && (
                 <AuxPassengersEditor auxBookingId={a.id} initial={a.passengers ?? []} />
               )}
               {['transfer', 'airport transfer', 'car service'].includes((a.booking_type ?? '').toLowerCase()) && (
@@ -556,7 +557,7 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
   const depositPaid  = !!b.deposit_paid_at
   const balancePaid  = !!b.balance_paid_at
   const commTotal    = b.commissionable_rate != null && b.nights != null ? b.commissionable_rate * b.nights : null
-  const typeColor    = b.booking_type === 'Hotel' ? A.gold : b.booking_type === 'Flight' ? '#93c5fd' : A.border
+  const typeColor    = isHotelBooking(b.booking_type) ? A.gold : isFlightBooking(b.booking_type) ? '#93c5fd' : A.border
 
   async function saveBriefFields() {
     setSaving(true)
@@ -775,7 +776,7 @@ function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
     name:                orNull(d.name),
     status:              orNull(d.status),
     confirmation_number: orNull(d.confirmation_number),
-    accom_hotel_id:      d.booking_type === 'Hotel' ? orNull(d.accom_hotel_id) : null,
+    accom_hotel_id:      isHotelBooking(d.booking_type) ? orNull(d.accom_hotel_id) : null,
     start_date:          orNull(d.start_date),
     end_date:            orNull(d.end_date),
     nights:              numOrNull(d.nights),
@@ -802,7 +803,7 @@ function BookingCreator({ tripId, onCreated }: {
   const { success, error } = useAdminToast()
 
   const set = <K extends keyof BookingDraft>(k: K, v: BookingDraft[K]) => setDraft({ ...draft, [k]: v })
-  const isHotel = draft.booking_type === 'Hotel'
+  const isHotel = isHotelBooking(draft.booking_type)
 
   async function handleCreate() {
     setSaving(true)

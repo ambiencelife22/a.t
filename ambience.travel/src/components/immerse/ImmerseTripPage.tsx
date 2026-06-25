@@ -39,7 +39,7 @@ import ImmerseHero                            from './ImmerseHero'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripBooking, TripAuxBooking, TripDay, TripDayEntry } from '../../queries/queriesAdminTrip'
 import type { TimelineItem } from '../../types/typesTimeline'
-import { getAuxTypeMeta }                     from '../../types/typesAuxBookings'
+import { getAuxTypeMeta, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
@@ -423,7 +423,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
                     )
                   })()}
                   {(() => {
-                    const isGroundCar = ['transfer', 'airport transfer', 'car service'].includes((aux.booking_type ?? '').toLowerCase())
+                    const isGroundCar = isGroundTransportBooking(aux.booking_type)
                     const veh = isGroundCar ? (aux.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order) : []
                     if (veh.length === 0) return null
                     return (
@@ -919,9 +919,9 @@ function TripBriefTab({ clientData }: {
 }) {
   const { trip, house, auxBookings } = clientData
 
-  const flights   = auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('flight'))
-  const transfers = auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('transfer'))
-  const hotels    = trip.bookings.filter(b => b.booking_type === 'Hotel' && b.brief_show !== false)
+  const flights   = auxBookings.filter(a => isFlightBooking(a.booking_type))
+  const transfers = auxBookings.filter(a => isTransferBooking(a.booking_type))
+  const hotels    = trip.bookings.filter(b => isHotelBooking(b.booking_type) && b.brief_show !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (

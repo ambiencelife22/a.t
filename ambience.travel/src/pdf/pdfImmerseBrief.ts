@@ -26,6 +26,7 @@ import {
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
 import type { TripBrief, TripBooking, DossierTrip, HouseProfile, TripAuxBooking } from '../queries/queriesAdminTrip'
+import { isFlightBooking, isTransferBooking, isHotelBooking } from '../types/typesAuxBookings'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -175,7 +176,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Accommodation ─────────────────────────────────────────────────────────
 
-  const hotels = trip.bookings.filter((b: TripBooking) => b.booking_type === 'Hotel' && b.brief_show !== false)
+  const hotels = trip.bookings.filter((b: TripBooking) => isHotelBooking(b.booking_type) && b.brief_show !== false)
   if (hotels.length > 0) {
     const rowEstimates = hotels.map(() => estimateDataRowHeight(true, true, 1))
     y = ensureSectionFits(doc, y, estimateSectionHeight(rowEstimates))
@@ -192,7 +193,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Flights ───────────────────────────────────────────────────────────────
 
-  const flights = d.auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('flight'))
+  const flights = d.auxBookings.filter(a => isFlightBooking(a.booking_type))
   if (flights.length > 0) {
     const rowEstimates = flights.map(() => estimateDataRowHeight(true, true, 1))
     y = ensureSectionFits(doc, y, estimateSectionHeight(rowEstimates))
@@ -216,7 +217,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Transfers ─────────────────────────────────────────────────────────────
 
-  const transfers = d.auxBookings.filter(a => (a.booking_type ?? '').toLowerCase().includes('transfer'))
+  const transfers = d.auxBookings.filter(a => isTransferBooking(a.booking_type))
   if (transfers.length > 0) {
     const rowEstimates = transfers.map(() => estimateDataRowHeight(true, true, 1))
     y = ensureSectionFits(doc, y, estimateSectionHeight(rowEstimates))

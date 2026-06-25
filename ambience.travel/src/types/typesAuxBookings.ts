@@ -267,3 +267,29 @@ export const CATEGORY_ACCENT: Record<string, string> = {
 export function getCategoryAccent(category: string | null | undefined): string {
   return CATEGORY_ACCENT[category ?? ''] ?? CATEGORY_ACCENT['Other']
 }
+// ── Booking type predicates — single source ───────────────────────────────────
+// All booking_type checks across the codebase must use these. Never inline
+// string comparisons or .includes() checks on booking_type values.
+
+export function isFlightBooking(bookingType: string | null | undefined): boolean {
+  const t = (bookingType ?? '').toLowerCase()
+  return t === 'flight' || t === 'private jet / charter'
+}
+
+export function isTransferBooking(bookingType: string | null | undefined): boolean {
+  const t = (bookingType ?? '').toLowerCase()
+  return t === 'airport transfer' || t === 'chauffeur / car service' || t === 'transfer'
+}
+
+export function isHotelBooking(bookingType: string | null | undefined): boolean {
+  return (bookingType ?? '') === 'Hotel'
+}
+
+export function isGroundTransportBooking(bookingType: string | null | undefined): boolean {
+  const t = (bookingType ?? '').toLowerCase()
+  return t === 'airport transfer' || t === 'chauffeur / car service' || t === 'transfer'
+}
+
+export function isDiningBooking(bookingType: string | null | undefined): boolean {
+  return (bookingType ?? '').toLowerCase() === 'dining'
+}
