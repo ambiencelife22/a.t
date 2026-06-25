@@ -44,9 +44,9 @@ export type TimelineItem = {
   title:               string
   subtitle:            string | null
   notes:               string | null
+  confirmation_number: string | null
   booked_by:           string | null
   image_src:           string | null
-  confirmation_number: string | null
   guest_label:         string | null
   status:              string | null
   rooms:               TimelineRoom[]

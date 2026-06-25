@@ -150,6 +150,7 @@ export type TripAuxBooking = {
   origin:              string | null
   destination:         string | null
   notes:               string | null
+  confirmation_number: string | null
   booked_by:           string | null
   brief_show:          boolean
   sort_order:          number

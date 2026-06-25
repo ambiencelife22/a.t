@@ -39,7 +39,7 @@ import ImmerseHero                            from './ImmerseHero'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripBooking, TripAuxBooking, TripDay, TripDayEntry } from '../../queries/queriesAdminTrip'
 import type { TimelineItem } from '../../types/typesTimeline'
-import { getAuxTypeMeta, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking } from '../../types/typesAuxBookings'
+import { getAuxTypeMeta, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
@@ -1044,6 +1044,27 @@ function TripBriefTab({ clientData }: {
           ))}
         </BriefSection>
       )}
+
+      {(() => {
+        const dining = auxBookings.filter(a => isDiningBooking(a.booking_type) && a.brief_show !== false)
+        return dining.length > 0 ? (
+          <BriefSection title='Dining'>
+            {dining.map(d => (
+              <BriefRow
+                key={d.id}
+                label={d.start_date ? fmtDate(d.start_date) : '\u2014'}
+                value={d.name ?? 'Dining'}
+                sub={[
+                  d.start_time ? fmtTime(d.start_time) : null,
+                  d.confirmation_number ? `Ref: ${d.confirmation_number}` : null,
+                  d.notes ?? null,
+                ].filter(Boolean).join('  \u00b7  ')}
+                bookedBy={bookedByLabel(d.booked_by)}
+              />
+            ))}
+          </BriefSection>
+        ) : null
+      })()}
 
       {clientData.brief?.important_notes && (clientData.brief.important_notes as string[]).length > 0 && (
         <BriefSection title='Important Notes'>
