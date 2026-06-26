@@ -40,6 +40,7 @@ import { corsHeaders, preflight } from '../_shared/http.ts'
 import { buildDays } from '../_shared/days.ts'
 import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
+import { AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 
 
 type Mode =
@@ -345,13 +346,13 @@ async function handleDayEntries(db: SupabaseClient, tripId: string): Promise<Res
 async function handleAuxBookings(db: SupabaseClient, tripId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_trip_aux_bookings')
-    .select('*')
+    .select(AUX_BOOKING_SELECT)
     .eq('trip_id', tripId)
     .order('start_date', { ascending: true, nullsFirst: false })
     .order('start_time', { ascending: true, nullsFirst: false })
   if (error) return err('Failed to fetch aux bookings', 500)
 
-  const aux = (data ?? []) as Record<string, unknown>[]
+  const aux = ((data ?? []) as unknown as Record<string, unknown>[]).map(flattenAuxType)
   if (aux.length === 0) return ok({ auxBookings: [] })
 
   const ids = aux.map(a => a.id as string)

@@ -22,7 +22,8 @@ import type {
 } from '../../queries/queriesAdminTrip'
 import { getEventStatusMeta } from '../../types/typesEventStatus'
 import { updateBookingBriefFields, createBooking, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
-import type { TripAuxBooking, TripAuxBookingPatch } from '../../queries/queriesAdminTrip'
+import type { TripAuxBooking, TripAuxBookingPatch, EngagementTypeOption } from '../../queries/queriesAdminTrip'
+import { fetchEngagementTypes } from '../../queries/queriesAdminTrip'
 import { isFlightBooking, isHotelBooking, isGroundTransportBooking } from '../../types/typesAuxBookings'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
@@ -230,10 +231,9 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
 // Writes every editable column on travel_trip_aux_bookings (airline_supplier_id
 // deferred — needs a supplier picker, airline_name covers display).
 
-const AUX_TYPES = ['Flight', 'Transfer', 'Car Service', 'Rail', 'Ferry', 'Other']
-
 type AuxDraft = {
-  booking_type:        string
+  engagementTypeId:  string
+  bookingTypeSlug:   string  // derived from registry for predicate checks
   name:                string
   start_date:          string
   start_time:          string
@@ -255,9 +255,9 @@ type AuxDraft = {
   sort_order:          number
 }
 
-function emptyAuxDraft(sortOrder: number): AuxDraft {
+function emptyAuxDraft(sortOrder: number, defaultTypeId = '', defaultSlug = 'flight'): AuxDraft {
   return {
-    booking_type: 'Flight', name: '',
+    engagementTypeId: defaultTypeId, bookingTypeSlug: defaultSlug, name: '',
     start_date: '', start_time: '', end_date: '', end_time: '',
     origin: '', destination: '', airline_supplier_id: '', airline_name: '', flight_number: '',
     depart_airport: '', arrive_airport: '', cabin_class: '',
@@ -268,7 +268,8 @@ function emptyAuxDraft(sortOrder: number): AuxDraft {
 
 function auxToDraft(a: TripAuxBooking): AuxDraft {
   return {
-    booking_type:        a.booking_type        ?? 'Flight',
+    engagementTypeId:  a.engagement_type_id  ?? '',
+    bookingTypeSlug:   a.booking_type        ?? 'flight',
     name:                a.name                ?? '',
     start_date:          a.start_date          ?? '',
     start_time:          a.start_time          ?? '',
@@ -295,7 +296,7 @@ function auxToDraft(a: TripAuxBooking): AuxDraft {
 function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
-    booking_type:        orNull(d.booking_type),
+    engagement_type_id:  d.engagementTypeId ?? null,
     name:                orNull(d.name),
     start_date:          orNull(d.start_date),
     start_time:          orNull(d.start_time),
@@ -330,12 +331,15 @@ function AuxField({ label, value, onChange, placeholder, type = 'text', span }: 
   )
 }
 
-function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
+type EngagementType = EngagementTypeOption
+
+function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagementTypes }: {
   draft: AuxDraft; setDraft: (d: AuxDraft) => void
   onSave: () => void; onCancel: () => void; saving: boolean; saveLabel: string
+  engagementTypes: EngagementType[]
 }) {
   const set = <K extends keyof AuxDraft>(k: K, v: AuxDraft[K]) => setDraft({ ...draft, [k]: v })
-  const isFlight = isFlightBooking(draft.booking_type)
+  const isFlight = isFlightBooking(draft.bookingTypeSlug)
 
   return (
     <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -343,8 +347,12 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div>
           <label style={labelStyle}>Type</label>
-          <select style={inputStyle} value={draft.booking_type} onChange={e => set('booking_type', e.target.value)}>
-            {AUX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          <select style={inputStyle} value={draft.engagementTypeId} onChange={e => {
+            const et = engagementTypes.find(t => t.id === e.target.value)
+            setDraft({ ...draft, engagementTypeId: e.target.value, bookingTypeSlug: et?.slug ?? '' })
+          }}>
+            <option value=''>Select type</option>
+            {engagementTypes.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </div>
         <AuxField label='Name' value={draft.name} onChange={v => set('name', v)} placeholder='Emirates EK 824' />
@@ -365,7 +373,7 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
             <AirlinePicker
               supplierId={draft.airline_supplier_id}
               airlineNameFallback={draft.airline_name}
-              bookingType={draft.booking_type}
+              bookingType={engagementTypes.find(t => t.id === draft.engagementTypeId)?.label ?? ''}
               variant='boxed'
               onChange={value => {
                 // Pick a supplier; clear the free-text override so the supplier wins.
@@ -410,25 +418,37 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel }: {
 }
 
 function AuxBookingsEditor({ tripId }: { tripId: string }) {
-  const [aux,     setAux]     = useState<TripAuxBooking[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [adding,  setAdding]  = useState(false)
-  const [editId,  setEditId]  = useState<string | null>(null)
-  const [draft,   setDraft]   = useState<AuxDraft>(emptyAuxDraft(0))
-  const [saving,  setSaving]  = useState(false)
+  const [aux,             setAux]             = useState<TripAuxBooking[] | null>(null)
+  const [engagementTypes, setEngagementTypes] = useState<EngagementType[]>([])
+  const [loading,         setLoading]         = useState(false)
+  const [adding,          setAdding]          = useState(false)
+  const [editId,          setEditId]          = useState<string | null>(null)
+  const [draft,           setDraft]           = useState<AuxDraft>(emptyAuxDraft(0))
+  const [saving,          setSaving]          = useState(false)
   const { success, error } = useAdminToast()
 
   function load() {
     setLoading(true)
-    fetchTripAuxBookings(tripId)
-      .then(rows => setAux(rows.sort((a, b) => a.sort_order - b.sort_order)))
+    Promise.all([
+      fetchTripAuxBookings(tripId),
+      fetchEngagementTypes(),
+    ])
+      .then(([rows, types]) => {
+        setAux(rows.sort((a, b) => a.sort_order - b.sort_order))
+        setEngagementTypes(types)
+        if (types.length > 0) {
+          const defaultType = types.find(t => t.slug === 'flight') ?? types[0]
+          setDraft(emptyAuxDraft(0, defaultType.id, defaultType.slug))
+        }
+      })
       .catch(e => { setAux([]); error(e instanceof Error ? e.message : 'Failed to load flights') })
       .finally(() => setLoading(false))
   }
 
   function beginAdd() {
     setEditId(null)
-    setDraft(emptyAuxDraft(aux?.length ?? 0))
+    const defaultType = engagementTypes.find(t => t.slug === 'flight') ?? engagementTypes[0]
+    setDraft(emptyAuxDraft(aux?.length ?? 0, defaultType?.id ?? '', defaultType?.slug ?? 'flight'))
     setAdding(true)
   }
 
@@ -494,13 +514,13 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
       {(aux ?? []).map(a => (
         editId === a.id ? (
           <div key={a.id} style={{ marginBottom: 8 }}>
-            <AuxForm draft={draft} setDraft={setDraft} onSave={handleSave} onCancel={() => setEditId(null)} saving={saving} saveLabel='Save Changes' />
+            <AuxForm draft={draft} setDraft={setDraft} onSave={handleSave} onCancel={() => setEditId(null)} saving={saving} saveLabel='Save Changes' engagementTypes={engagementTypes} />
           </div>
         ) : (
           <div key={a.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.booking_type ?? 'Other'}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.booking_type_label ?? a.booking_type ?? 'Other'}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{a.name ?? 'Booking'}</span>
                 {!a.brief_show && <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>hidden</span>}
               </div>
@@ -511,7 +531,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
               {isFlightBooking(a.booking_type) && (
                 <AuxPassengersEditor auxBookingId={a.id} initial={a.passengers ?? []} />
               )}
-              {['transfer', 'airport transfer', 'car service'].includes((a.booking_type ?? '').toLowerCase()) && (
+              {isGroundTransportBooking(a.booking_type) && (
                 <AuxDriverDetailsEditor auxBookingId={a.id} />
               )}
             </div>
@@ -525,7 +545,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
 
       {adding && (
         <div style={{ marginTop: 4 }}>
-          <AuxForm draft={draft} setDraft={setDraft} onSave={handleSave} onCancel={() => setAdding(false)} saving={saving} saveLabel='Add' />
+          <AuxForm draft={draft} setDraft={setDraft} onSave={handleSave} onCancel={() => setAdding(false)} saving={saving} saveLabel='Add' engagementTypes={engagementTypes} />
         </div>
       )}
     </div>

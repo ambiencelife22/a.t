@@ -33,7 +33,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/http.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
-import { resolveTripIds, fetchTripCore, fetchTripBookings } from '../_shared/trip.ts'
+import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
 
@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
         .eq('trip_id', tripId),
 
       db.from('travel_trip_aux_bookings')
-        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, confirmation_number, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id, dining_venue_id')
+        .select(AUX_BOOKING_SELECT)
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
     // ── 9. Aux with resolved passengers + driver details ───────────────────────
     const auxBookings = await attachDriverDetails(
       db,
-      await attachPassengers(db, (auxResult.data ?? []) as Record<string, unknown>[], partyLabel),
+      await attachPassengers(db, (auxResult.data ?? []) as unknown as Record<string, unknown>[], partyLabel),
     )
 
     // ── 10. Dining venue images for aux bookings (dining_venue_id FK) ──────────
@@ -180,7 +180,7 @@ Deno.serve(async (req: Request) => {
       auxDiningImgById[d.id as string] = (d.image_src as string | null) ?? null
     }
     const auxBookingsWithImg = (auxBookings as Record<string, unknown>[]).map(a => ({
-      ...a,
+      ...flattenAuxType(a),
       image_src: a.dining_venue_id ? (auxDiningImgById[a.dining_venue_id as string] ?? null) : null,
     }))
 

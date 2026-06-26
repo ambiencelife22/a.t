@@ -12,7 +12,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
-import { resolveTripIds, fetchTripCore, fetchTripBookings } from '../_shared/trip.ts'
+import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { corsHeaders, preflight } from '../_shared/http.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
         .order('id',         { ascending: true }),
 
       db.from('travel_trip_aux_bookings')
-        .select('id, trip_id, booking_type, name, start_date, start_time, end_date, end_time, origin, destination, notes, confirmation_number, booked_by, brief_show, sort_order, created_at, updated_at, flight_number, airline_name, cabin_class, seat_type, aircraft_type, depart_airport, arrive_airport, airline_supplier_id, dining_venue_id')
+        .select(AUX_BOOKING_SELECT)
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
@@ -192,18 +192,18 @@ Deno.serve(async (req: Request) => {
       contacts,
       destinationName: destinations[0]?.name ?? '',
       auxBookings: await (async () => {
-        const withPax = await attachDriverDetails(db, await attachPassengers(db, auxBookings, (brief?.prepared_for as string | null) ?? null))
+        const withPax = await attachDriverDetails(db, await attachPassengers(db, auxBookings as unknown as Record<string, unknown>[], (brief?.prepared_for as string | null) ?? null))
         const diningVenueIds = [...new Set(
           (withPax as Record<string, unknown>[]).map(a => a.dining_venue_id).filter(Boolean)
         )] as string[]
-        if (diningVenueIds.length === 0) return withPax
+        if (diningVenueIds.length === 0) return (withPax as Record<string, unknown>[]).map(flattenAuxType)
         const { data: diningImgs } = await db.from('travel_dining_venues').select('id, image_src').in('id', diningVenueIds)
         const imgById: Record<string, string | null> = {}
         for (const d of (diningImgs ?? []) as Record<string, unknown>[]) {
           imgById[d.id as string] = (d.image_src as string | null) ?? null
         }
         return (withPax as Record<string, unknown>[]).map(a => ({
-          ...a,
+          ...flattenAuxType(a),
           image_src: a.dining_venue_id ? (imgById[a.dining_venue_id as string] ?? null) : null,
         }))
       })(),

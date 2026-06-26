@@ -141,7 +141,9 @@ export type TripDayEntryPatch = Partial<Omit<TripDayEntry, 'id' | 'trip_id' | 'c
 export type TripAuxBooking = {
   id:                  string
   trip_id:             string
-  booking_type:        string | null
+  engagement_type_id:  string | null
+  booking_type:        string | null  // slug from travel_engagement_types — canonical type field
+  booking_type_label:  string | null  // display label from travel_engagement_types
   name:                string | null
   start_date:          string | null
   start_time:          string | null
@@ -667,4 +669,24 @@ export async function deleteTripDayEntry(id: string): Promise<void> {
 
 export async function setEngagementPublicView(tripId: string, publicView: boolean): Promise<void> {
   await invokeWriteTrip({ mode: 'set_public_view', trip_id: tripId, public_view: publicView })
+}
+// ── Engagement types registry ─────────────────────────────────────────────────
+// Single source for all aux booking type dropdowns. Runtime fetch from
+// travel_engagement_types — never hardcode the list in the frontend.
+// Excludes journey + stay (those are parent/hotel level, not aux bookings).
+
+export type EngagementTypeOption = {
+  id:    string
+  slug:  string
+  label: string
+}
+
+export async function fetchEngagementTypes(): Promise<EngagementTypeOption[]> {
+  const { data, error } = await supabase
+    .from('travel_engagement_types')
+    .select('id, slug, label, sort_order')
+    .not('slug', 'in', '(journey,stay)')
+    .order('sort_order', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as EngagementTypeOption[]
 }

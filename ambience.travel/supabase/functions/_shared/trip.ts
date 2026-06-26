@@ -164,6 +164,33 @@ export interface TripBookingsData {
   hotelById:      Record<string, { name: string; hero_image_src: string | null }>
 }
 
+// ── Aux booking select — single source ────────────────────────────────────────
+// Every EF that reads travel_trip_aux_bookings uses this exact string.
+// engagement_type_id embeds the registry slug + label via FK join.
+// booking_type (text) was dropped in S53G — slug is now the canonical type field.
+
+export const AUX_BOOKING_SELECT = [
+  'id', 'trip_id', 'engagement_type_id',
+  'travel_engagement_types!travel_trip_aux_bookings_engagement_type_id_fkey(slug, label)',
+  'name', 'start_date', 'start_time', 'end_date', 'end_time',
+  'origin', 'destination', 'notes', 'confirmation_number', 'booked_by',
+  'brief_show', 'sort_order', 'created_at', 'updated_at',
+  'flight_number', 'airline_name', 'cabin_class', 'seat_type', 'aircraft_type',
+  'depart_airport', 'arrive_airport', 'airline_supplier_id', 'dining_venue_id',
+].join(', ')
+
+// Flatten the embedded travel_engagement_types join onto an aux booking row.
+// Returns booking_type (slug) + booking_type_label for all consumers.
+export function flattenAuxType(a: Record<string, unknown>): Record<string, unknown> {
+  const et = a.travel_engagement_types as { slug: string; label: string } | { slug: string; label: string }[] | null
+  const etObj = Array.isArray(et) ? et[0] : et
+  return {
+    ...a,
+    booking_type:       etObj?.slug  ?? null,
+    booking_type_label: etObj?.label ?? null,
+  }
+}
+
 export async function fetchTripBookings(
   db: SupabaseClient,
   bookings: Array<Record<string, unknown>>,
