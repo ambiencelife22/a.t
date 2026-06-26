@@ -33,8 +33,8 @@
 // Deployed at: /functions/v1/travel-read-timetracking
 // Last updated: S53C — initial ship + house/engagement resolver modes.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, preflight } from '../_shared/http.ts'
+import { requireAdmin } from '../_shared/auth.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 
 // 2dp rounding gateway (mirrors the write EF) — used for analytics aggregation.
@@ -59,55 +59,12 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}))
     const { mode } = body as { mode?: string }
 
-    if (!mode) {
-      return new Response(
-        JSON.stringify({ error: 'mode is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    if (!mode) return json({ error: 'mode is required' }, 400)
 
-    // ── 2. Verify caller is authenticated ────────────────────────────────────
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const anonClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: userError } = await anonClient.auth.getUser()
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ── 3. Verify caller is admin ─────────────────────────────────────────────
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const { data: profile, error: profileError } = await serviceClient
-      .from('global_profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (profileError || !profile || profile.is_admin !== true) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // ── 2-3. Verify caller is an authenticated admin ─────────────────────────
+    const gate = await requireAdmin(req)
+    if (!gate.ok) return gate.response
+    const { serviceClient } = gate
 
     // ── 4. Dispatch by mode ───────────────────────────────────────────────────
     switch (mode) {
@@ -119,15 +76,9 @@ Deno.serve(async (req: Request) => {
           .order('sort_order', { ascending: true })
         if (error) {
           console.error('activities fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch activities' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch activities' }, 500)
         }
-        return new Response(
-          JSON.stringify({ activities: data ?? [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ activities: data ?? [] }, 200)
       }
 
       case 'rates': {
@@ -138,15 +89,9 @@ Deno.serve(async (req: Request) => {
           .order('role_label', { ascending: true })
         if (error) {
           console.error('rates fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch rates' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch rates' }, 500)
         }
-        return new Response(
-          JSON.stringify({ rates: data ?? [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ rates: data ?? [] }, 200)
       }
 
       case 'entries': {
@@ -166,24 +111,15 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await q
         if (error) {
           console.error('entries fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch entries' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch entries' }, 500)
         }
-        return new Response(
-          JSON.stringify({ entries: data ?? [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ entries: data ?? [] }, 200)
       }
 
       case 'entry': {
         const { id } = body as { id?: string }
         if (!id) {
-          return new Response(
-            JSON.stringify({ error: 'id is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'id is required' }, 400)
         }
         const { data, error } = await serviceClient
           .from('travel_time_entries')
@@ -192,15 +128,9 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
         if (error) {
           console.error('entry fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch entry' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch entry' }, 500)
         }
-        return new Response(
-          JSON.stringify({ entry: data ?? null }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ entry: data ?? null }, 200)
       }
 
       case 'summary_by_house':
@@ -211,10 +141,7 @@ Deno.serve(async (req: Request) => {
           .select(`${groupCol}, hours, billable_amount`)
         if (error) {
           console.error('summary fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch summary' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch summary' }, 500)
         }
         const summary: Record<string, { hours: number; amount: number }> = {}
         for (const r of (data ?? []) as any[]) {
@@ -223,10 +150,7 @@ Deno.serve(async (req: Request) => {
           summary[key].hours  += Number(r.hours ?? 0)
           summary[key].amount += Number(r.billable_amount ?? 0)
         }
-        return new Response(
-          JSON.stringify({ summary }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ summary }, 200)
       }
 
       // ── House picker source (typeahead) ─────────────────────────────────────
@@ -242,15 +166,9 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await q
         if (error) {
           console.error('houses fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch houses' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch houses' }, 500)
         }
-        return new Response(
-          JSON.stringify({ houses: data ?? [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ houses: data ?? [] }, 200)
       }
 
       // ── House members (person picker, scoped to a house) ────────────────────
@@ -260,10 +178,7 @@ Deno.serve(async (req: Request) => {
       case 'house_people': {
         const { house_id } = body as { house_id?: string }
         if (!house_id) {
-          return new Response(
-            JSON.stringify({ error: 'house_id is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'house_id is required' }, 400)
         }
         const { data, error } = await serviceClient
           .from('a_house_people')
@@ -272,10 +187,7 @@ Deno.serve(async (req: Request) => {
           .order('role', { ascending: true })
         if (error) {
           console.error('house_people fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch house people' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch house people' }, 500)
         }
         // Resolve a display name: global_people name -> member_ref fallback.
         const people = (data ?? []).map((m: any) => {
@@ -292,10 +204,7 @@ Deno.serve(async (req: Request) => {
             display_name: resolved,
           }
         })
-        return new Response(
-          JSON.stringify({ people }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ people }, 200)
       }
 
       // ── Engagements for a house (via person spine) ──────────────────────────
@@ -306,10 +215,7 @@ Deno.serve(async (req: Request) => {
       case 'engagements_for_house': {
         const { house_id } = body as { house_id?: string }
         if (!house_id) {
-          return new Response(
-            JSON.stringify({ error: 'house_id is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'house_id is required' }, 400)
         }
         const { data: members, error: mErr } = await serviceClient
           .from('a_house_people')
@@ -318,17 +224,11 @@ Deno.serve(async (req: Request) => {
           .not('person_id', 'is', null)
         if (mErr) {
           console.error('engagements_for_house members error:', mErr)
-          return new Response(
-            JSON.stringify({ error: 'Failed to resolve engagements' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to resolve engagements' }, 500)
         }
         const personIds = [...new Set((members ?? []).map((m: any) => m.person_id).filter(Boolean))]
         if (personIds.length === 0) {
-          return new Response(
-            JSON.stringify({ engagements: [] }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ engagements: [] }, 200)
         }
         const { data, error } = await serviceClient
           .from('travel_immerse_engagements')
@@ -337,15 +237,9 @@ Deno.serve(async (req: Request) => {
           .order('created_at', { ascending: true })
         if (error) {
           console.error('engagements_for_house fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch engagements' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch engagements' }, 500)
         }
-        return new Response(
-          JSON.stringify({ engagements: data ?? [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ engagements: data ?? [] }, 200)
       }
 
       // ── House for an engagement (via person spine) ──────────────────────────
@@ -356,10 +250,7 @@ Deno.serve(async (req: Request) => {
       case 'house_for_engagement': {
         const { engagement_id } = body as { engagement_id?: string }
         if (!engagement_id) {
-          return new Response(
-            JSON.stringify({ error: 'engagement_id is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'engagement_id is required' }, 400)
         }
         const { data: eng, error: eErr } = await serviceClient
           .from('travel_immerse_engagements')
@@ -368,16 +259,10 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
         if (eErr) {
           console.error('house_for_engagement eng error:', eErr)
-          return new Response(
-            JSON.stringify({ error: 'Failed to resolve house' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to resolve house' }, 500)
         }
         if (!eng?.person_id) {
-          return new Response(
-            JSON.stringify({ house: null }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ house: null }, 200)
         }
         const { data: member, error: mErr } = await serviceClient
           .from('a_house_people')
@@ -387,18 +272,12 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
         if (mErr) {
           console.error('house_for_engagement member error:', mErr)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch house' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch house' }, 500)
         }
         const h = member?.a_houses
           ? (Array.isArray(member.a_houses) ? member.a_houses[0] : member.a_houses)
           : null
-        return new Response(
-          JSON.stringify({ house: h }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ house: h }, 200)
       }
 
       // ── Analytics: filtered summary + breakdown + date-desc entry list ──────
@@ -441,10 +320,7 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await q
         if (error) {
           console.error('analytics fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch analytics' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch analytics' }, 500)
         }
 
         const one = (v: any) => (Array.isArray(v) ? v[0] : v)
@@ -514,24 +390,15 @@ Deno.serve(async (req: Request) => {
         // Strip internal keys from the returned entry list.
         const cleanEntries = entries.map(({ _house_id, _engagement_id, _activity_id, _person_id, _performer, ...rest }) => rest)
 
-        return new Response(
-          JSON.stringify({ summary, breakdown, group_by: groupBy, entries: cleanEntries }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ summary, breakdown, group_by: groupBy, entries: cleanEntries }, 200)
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown mode: ${mode}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ error: `Unknown mode: ${mode}` }, 400)
     }
 
   } catch (err) {
     console.error('travel-read-timetracking unexpected error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: 'Internal server error' }, 500)
   }
 })

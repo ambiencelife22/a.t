@@ -35,8 +35,9 @@
 // Deployed at: /functions/v1/travel-read-trip-admin
 // Created: S52
 
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, preflight } from '../_shared/http.ts'
+import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireAdmin } from '../_shared/auth.ts'
+import { json, preflight } from '../_shared/http.ts'
 import { buildDays } from '../_shared/days.ts'
 import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
@@ -60,62 +61,18 @@ type Mode =
   | 'programme_guests'
   | 'programme_guest_search'
 
-// ── Auth helpers ──────────────────────────────────────────────────────────────
-
-async function verifyAdminCaller(
-  req: Request,
-  serviceClient: SupabaseClient,
-): Promise<{ userId: string } | Response> {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
-
-  const anonClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader } } }
-  )
-
-  const { data: { user }, error: userError } = await anonClient.auth.getUser()
-  if (userError || !user) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
-
-  const { data: profile, error: profileError } = await serviceClient
-    .from('global_profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (profileError || !profile || profile.is_admin !== true) {
-    return new Response(
-      JSON.stringify({ error: 'Forbidden' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  }
-
-  return { userId: user.id }
-}
+// ── Response helpers (local sugar over the shared json) ───────────────────────
+// ok/err keep their existing call signatures across all handlers; they now route
+// through _shared/http.ts json() so the response shape + CORS headers are canonical.
+// err synthesizes the { error } envelope and takes (message, status); json takes
+// (body, status) — the envelope is the only difference, preserved here.
 
 function ok(payload: unknown): Response {
-  return new Response(
-    JSON.stringify(payload),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
+  return json(payload, 200)
 }
 
 function err(message: string, status: number): Response {
-  return new Response(
-    JSON.stringify({ error: message }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
+  return json({ error: message }, status)
 }
 
 // ── Mode handlers ─────────────────────────────────────────────────────────────
@@ -927,14 +884,9 @@ Deno.serve(async (req: Request) => {
 
     if (!mode) return err('mode is required', 400)
 
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const authResult = await verifyAdminCaller(req, serviceClient)
-    if (authResult instanceof Response) return authResult
+    const gate = await requireAdmin(req)
+    if (!gate.ok) return gate.response
+    const { serviceClient } = gate
 
     switch (mode as Mode) {
       case 'dossier':
