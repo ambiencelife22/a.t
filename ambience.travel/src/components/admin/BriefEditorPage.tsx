@@ -47,12 +47,12 @@ import type {
   TripBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminTrip'
-import { getAuxTypeMeta, AUX_BOOKING_TYPES, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
+import { getAuxTypeMeta, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
 import { AirlinePicker } from './AirlinePicker'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
 import { bookedByLabel } from '../../utils/utilsBooking'
-import { supabase } from '../../lib/supabase'
+import { fetchEngagementTypes, fetchHouseIdForTrip, type EngagementTypeOption } from '../../queries/queriesAdminTrip'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 import { WelcomeLettersEditor } from './WelcomeLettersEditor'
@@ -121,22 +121,14 @@ function buildDateRange(start: string | null, end: string | null): string {
   return `${fmtDate(start)}\u2013${fmtDate(end)}`
 }
 
-async function resolveHouseIdForTrip(tripId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('travel_bookings')
-    .select('house_id')
-    .eq('trip_id', tripId)
-    .not('house_id', 'is', null)
-    .limit(1)
-    .single()
-  return data?.house_id ?? null
-}
+// resolveHouseIdForTrip → fetchHouseIdForTrip (EF-backed, imported above)
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type AuxDraft = {
-  name:                string
-  booking_type:        string
+  name:              string
+  engagementTypeId:  string
+  bookingTypeSlug:   string
   origin:              string
   destination:         string
   start_date:          string
@@ -228,12 +220,13 @@ function VisibilityToggle({ on, onChange, label }: { on: boolean; onChange: (v: 
 const FLIGHT_NUMBER_REGEX = /^[A-Z]{2,3}\d{1,4}[A-Z]?$/
 const AIRPORT_REGEX       = /^[A-Z]{3,4}$/
 
-function FlightDetailsSubsection({ aux, draft, patch, save, isMobile }: {
+function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTypeLabel }: {
   aux:    TripAuxBooking
   draft:  AuxDraft
   patch:  (id: string, aux: TripAuxBooking, field: keyof AuxDraft, value: string) => void
   save:   (id: string, field: keyof AuxDraft, value: string) => Promise<void>
   isMobile: boolean
+  bookingTypeLabel: string
 }) {
   // Validation states for inline indicators (non-blocking)
   const flightNumberValid = !draft.flight_number || FLIGHT_NUMBER_REGEX.test(draft.flight_number)
@@ -261,7 +254,7 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile }: {
           <AirlinePicker
             supplierId={draft.airline_supplier_id}
             airlineNameFallback={draft.airline_name}
-            bookingType={draft.booking_type}
+            bookingType={bookingTypeLabel}
             variant='field'
             onChange={value => {
               patch(aux.id, aux, 'airline_supplier_id', value)
@@ -393,8 +386,9 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile }: {
 
 // ── BriefAuxEditor ────────────────────────────────────────────────────────────
 
-function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }: {
+function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, engagementTypes }: {
   auxBookings:       TripAuxBooking[]
+  engagementTypes:   EngagementTypeOption[]
   auxDrafts:         Record<string, AuxDraft>
   onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
   isMobile:          boolean
@@ -422,8 +416,9 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
 
   function getDraft(aux: TripAuxBooking): AuxDraft {
     return auxDrafts[aux.id] ?? {
-      name:                aux.name                ?? '',
-      booking_type:        aux.booking_type        ?? '',
+      name:              aux.name              ?? '',
+      engagementTypeId:  aux.engagement_type_id ?? '',
+      bookingTypeSlug:   aux.booking_type       ?? '',
       origin:              aux.origin              ?? '',
       destination:         aux.destination         ?? '',
       start_date:          aux.start_date          ?? '',
@@ -450,8 +445,14 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
   }
 
   async function save(id: string, field: keyof AuxDraft, value: string) {
-    try { await updateTripAuxBooking(id, { [field]: value || null } as any) }
-    catch { /* silent */ }
+    // engagementTypeId/bookingTypeSlug are frontend-only draft keys — never written
+    // directly as patch fields. Type changes go via the type select handler below.
+    if (field === 'engagementTypeId' || field === 'bookingTypeSlug') return
+    try {
+      await updateTripAuxBooking(id, { [field]: value || null } as Parameters<typeof updateTripAuxBooking>[1])
+    } catch (e) {
+      console.error(`[BriefEditorPage] save aux ${id} field=${field}`, e)
+    }
   }
 
   if (sections.length === 0) return (
@@ -486,11 +487,19 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
                       <label style={fieldLabelStyle}>Type</label>
                       <select
                         style={{ ...fieldStyle, cursor: 'pointer' }}
-                        value={draft.booking_type}
-                        onChange={e => { patch(aux.id, aux, 'booking_type', e.target.value); save(aux.id, 'booking_type', e.target.value) }}
+                        value={draft.engagementTypeId}
+                        onChange={e => {
+                          const et = engagementTypes.find(t => t.id === e.target.value)
+                          patch(aux.id, aux, 'engagementTypeId', e.target.value)
+                          patch(aux.id, aux, 'bookingTypeSlug', et?.slug ?? '')
+                          updateTripAuxBooking(aux.id, { engagement_type_id: e.target.value || null }).catch(err =>
+                            console.error('[BriefEditorPage] update engagement_type_id', err)
+                          )
+                        }}
                       >
-                        {AUX_BOOKING_TYPES.map(t => (
-                          <option key={t} value={t}>{t}</option>
+                        <option value=''>Select type</option>
+                        {engagementTypes.map(t => (
+                          <option key={t.id} value={t.id}>{t.label}</option>
                         ))}
                       </select>
                     </div>
@@ -549,18 +558,19 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile }:
                   </div>
 
                   {/* S50 — Flight Details subsection — rendered only for flight types */}
-                  {isFlightType(draft.booking_type) && (
+                  {isFlightType(draft.bookingTypeSlug) && (
                     <FlightDetailsSubsection
                       aux={aux}
                       draft={draft}
                       patch={patch}
                       save={save}
                       isMobile={isMobile}
+                      bookingTypeLabel={engagementTypes.find(t => t.id === draft.engagementTypeId)?.label ?? ''}
                     />
                   )}
 
                   {/* S54b — Per-passenger conf + seats. Shared with the dossier editor. */}
-                  {isFlightType(draft.booking_type) && (
+                  {isFlightType(draft.bookingTypeSlug) && (
                     <AuxPassengersEditor auxBookingId={aux.id} initial={aux.passengers ?? []} />
                   )}
                 </div>
@@ -818,18 +828,21 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
   const [roomImageSrcs, setRoomImageSrcs] = useState<Record<string, string>>({})
   const [roomDrafts,    setRoomDrafts]    = useState<Record<string, RoomDraft>>({})
-  const [auxDrafts,     setAuxDrafts]     = useState<Record<string, AuxDraft>>({})
+  const [auxDrafts,          setAuxDrafts]          = useState<Record<string, AuxDraft>>({})
+  const [engagementTypes,    setEngagementTypes]    = useState<EngagementTypeOption[]>([])
 
   useEffect(() => {
     async function load() {
-      const houseId = await resolveHouseIdForTrip(tripId)
+      const houseId = await fetchHouseIdForTrip(tripId)
       if (!houseId) { setLoadErr('No house linked to this trip. Open the trip from the House tab.'); return }
 
-      const [dossier, auxData, isPublic] = await Promise.all([
+      const [dossier, auxData, isPublic, engTypes] = await Promise.all([
         fetchTripDossierForHouse(houseId),
         fetchTripAuxBookings(tripId),
         fetchEngagementPublicView(tripId),
+        fetchEngagementTypes(),
       ])
+      setEngagementTypes(engTypes)
 
       const found = dossier.trips.find(t => t.id === tripId)
       if (!found) { setLoadErr('Trip not found in dossier.'); return }
@@ -970,7 +983,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       return {
         ...aux,
         name:                d.name                || aux.name,
-        booking_type:        d.booking_type        || aux.booking_type,
+        booking_type:        aux.booking_type,
         origin:              d.origin              || aux.origin,
         destination:         d.destination         || aux.destination,
         start_date:          d.start_date          || aux.start_date,
@@ -1301,6 +1314,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
                 auxDrafts={auxDrafts}
                 onAuxDraftsChange={setAuxDrafts}
                 isMobile={isMobile}
+                engagementTypes={engagementTypes}
               />
             </section>
           )}

@@ -56,6 +56,7 @@ type Mode =
   | 'activity_detail'
   | 'aux_driver_details'
   | 'requests'
+  | 'house_id_for_trip'
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -866,6 +867,19 @@ Deno.serve(async (req: Request) => {
 
       case 'activity_detail':
         return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null, category ?? null)
+
+      case 'house_id_for_trip': {
+        if (!trip_id) return err('trip_id is required for house_id_for_trip mode', 400)
+        const { data, error } = await serviceClient
+          .from('travel_bookings')
+          .select('house_id')
+          .eq('trip_id', trip_id)
+          .not('house_id', 'is', null)
+          .limit(1)
+          .maybeSingle()
+        if (error) return err('Failed to resolve house_id for trip', 500)
+        return ok({ houseId: (data as { house_id: string } | null)?.house_id ?? null })
+      }
 
       case 'requests': {
         if (!house_id) return err('house_id is required for requests mode', 400)

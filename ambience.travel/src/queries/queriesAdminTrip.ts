@@ -690,3 +690,15 @@ export async function fetchEngagementTypes(): Promise<EngagementTypeOption[]> {
     t => t.slug !== 'journey' && t.slug !== 'stay'
   )
 }
+
+// ── House ID for trip ──────────────────────────────────────────────────────────
+// Resolves house_id from the first booking on a trip. Used by BriefEditorPage
+// to bootstrap the dossier load from a trip_id URL param.
+
+export async function fetchHouseIdForTrip(tripId: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('travel-read-trip-admin', {
+    body: { mode: 'house_id_for_trip', trip_id: tripId },
+  })
+  if (error) { console.error('[fetchHouseIdForTrip]', error.message); return null }
+  return (data?.houseId as string | null) ?? null
+}
