@@ -42,12 +42,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, nickname, email, last_initial, is_public_display, over_18_confirmed_at'
+const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, pronouns, nickname, email, last_initial, is_public_display, over_18_confirmed_at'
 
 // Editable columns — the only fields a write may touch. id + timestamps excluded.
 const EDITABLE_FIELDS = [
   'first_name', 'middle_name', 'last_name', 'father_name', 'grandfather_name',
-  'patronymic_connector', 'nickname', 'email', 'phone', 'notes',
+  'patronymic_connector', 'pronouns', 'nickname', 'email', 'phone', 'notes',
   'last_initial', 'is_public_display', 'over_18_confirmed_at',
 ] as const
 
@@ -73,6 +73,7 @@ function shapePerson(p: any) {
     father_name:          p.father_name ?? null,
     grandfather_name:     p.grandfather_name ?? null,
     patronymic_connector: p.patronymic_connector ?? null,
+    pronouns:             p.pronouns ?? null,
     nickname:             p.nickname ?? null,
     email:                p.email ?? null,
     last_initial:         p.last_initial ?? null,

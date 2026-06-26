@@ -198,7 +198,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   // Editable global_people identity (driven by person.person_id).
   const [gp, setGp]               = useState<GlobalPersonResolved | null | 'loading'>('loading')
   const [gpLoaded, setGpLoaded]   = useState(false)
-  const [gpDraft, setGpDraft]     = useState({ first_name: '', middle_name: '', father_name: '', grandfather_name: '', last_name: '', patronymic_connector: '', nickname: '', email: '', phone: '' })
+  const [gpDraft, setGpDraft]     = useState({ first_name: '', middle_name: '', father_name: '', grandfather_name: '', last_name: '', patronymic_connector: '', pronouns: '', nickname: '', email: '', phone: '' })
   const [gpSaving, setGpSaving]   = useState(false)
 
   const personPrefs = useMemo(() => allPreferences.filter(p => p.person_id === person.id), [allPreferences, person.id])
@@ -234,6 +234,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
           grandfather_name:     p.grandfather_name     ?? '',
           last_name:            p.last_name            ?? '',
           patronymic_connector: p.patronymic_connector ?? '',
+          pronouns:             p.pronouns             ?? '',
           nickname:             p.nickname             ?? '',
           email:                p.email                ?? '',
           phone:                p.phone                ?? '',
@@ -264,6 +265,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
         grandfather_name:     gpDraft.grandfather_name.trim()     || null,
         last_name:            gpDraft.last_name.trim()            || null,
         patronymic_connector: gpDraft.patronymic_connector || null,
+        pronouns:             gpDraft.pronouns || null,
         nickname:             gpDraft.nickname.trim()             || null,
         email:                gpDraft.email.trim()                || null,
         phone:                gpDraft.phone.trim()                || null,
@@ -579,6 +581,16 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
                     <div style={{ fontSize: 14, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{assembleFormalName(gpDraft)}</div>
                   </div>
                 )}
+
+                <Field label='Pronouns (internal)'>
+                  <select style={{ ...inputStyle, maxWidth: mobile ? '100%' : 220 }} value={gpDraft.pronouns} onChange={e => setGpDraft(d => ({ ...d, pronouns: e.target.value }))}>
+                    <option value=''>— not set —</option>
+                    <option value='he/him'>he/him</option>
+                    <option value='she/her'>she/her</option>
+                    <option value='they/them'>they/them</option>
+                    <option value='not listed'>not listed</option>
+                  </select>
+                </Field>
 
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                   <Field label='Nickname'>

@@ -45,6 +45,7 @@ export interface GlobalPersonResolved {
   father_name:          string | null
   grandfather_name:     string | null
   patronymic_connector: string | null
+  pronouns:             string | null
   nickname:             string | null
   email:                string | null
   phone:                string | null
@@ -62,6 +63,7 @@ export interface GlobalPersonInput {
   father_name?:          string | null
   grandfather_name?:     string | null
   patronymic_connector?: string | null
+  pronouns?:             string | null
   nickname?:             string | null
   email?:                string | null
   phone?:                string | null
