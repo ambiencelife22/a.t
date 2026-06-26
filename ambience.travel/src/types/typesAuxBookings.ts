@@ -88,6 +88,47 @@ export function getAuxTypeMeta(bookingType: string | null | undefined): AuxBooki
   return { label, icon: '\u00b7', sort_order: 99 }
 }
 
+// ── Section grouping — single source ──────────────────────────────────────────
+// ConfirmationTab, BriefAuxEditor, and BriefPreview all render aux bookings as
+// ordered, typed sections. This is the one implementation. Filters brief_show,
+// sorts by registry sort_order then row sort_order, folds consecutive same-slug
+// bookings into a single section. Keyed on the canonical slug (booking_type),
+// never the display label. Generic over the row type so each surface can pass its
+// own aux shape as long as it carries booking_type, brief_show, and sort_order.
+
+export interface AuxSection<T> {
+  type:  string   // registry slug
+  label: string
+  icon:  string
+  items: T[]
+}
+
+export function groupAuxBySection<T extends { booking_type: string | null; brief_show?: boolean; sort_order: number }>(
+  auxBookings: T[],
+): AuxSection<T>[] {
+  const sorted = auxBookings
+    .filter(a => a.brief_show !== false)
+    .sort((a, b) => {
+      const ma = getAuxTypeMeta(a.booking_type)
+      const mb = getAuxTypeMeta(b.booking_type)
+      if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
+      return a.sort_order - b.sort_order
+    })
+
+  const sections: AuxSection<T>[] = []
+  for (const aux of sorted) {
+    const slug = aux.booking_type ?? 'other'
+    const meta = getAuxTypeMeta(slug)
+    const last = sections[sections.length - 1]
+    if (last && last.type === slug) {
+      last.items.push(aux)
+      continue
+    }
+    sections.push({ type: slug, label: meta.label, icon: meta.icon, items: [aux] })
+  }
+  return sections
+}
+
 // ── Flight-specific gate ──────────────────────────────────────────────────────
 // Slug-based. flight + private_jet are the aviation movement types.
 

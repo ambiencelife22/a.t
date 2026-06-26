@@ -39,7 +39,7 @@ import ImmerseHero                            from './ImmerseHero'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripBooking, TripAuxBooking, TripDay, TripDayEntry } from '../../queries/queriesAdminTrip'
 import type { TimelineItem } from '../../types/typesTimeline'
-import { getAuxTypeMeta, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking } from '../../types/typesAuxBookings'
+import { getAuxTypeMeta, groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
@@ -239,26 +239,7 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  const sortedAux = [...auxBookings]
-    .filter(a => a.brief_show !== false)
-    .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type_label)
-      const mb = getAuxTypeMeta(b.booking_type_label)
-      return ma.sort_order !== mb.sort_order
-        ? ma.sort_order - mb.sort_order
-        : a.sort_order - b.sort_order
-    })
-
-  const auxSections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
-  for (const aux of sortedAux) {
-    const meta = getAuxTypeMeta(aux.booking_type_label)
-    const last = auxSections[auxSections.length - 1]
-    if (last && last.type === (aux.booking_type_label ?? aux.booking_type ?? 'Other')) {
-      last.items.push(aux)
-      continue
-    }
-    auxSections.push({ type: aux.booking_type ?? 'Other', label: meta.label, icon: meta.icon, items: [aux] })
-  }
+const auxSections = groupAuxBySection(auxBookings)
 
   return (
     <div>

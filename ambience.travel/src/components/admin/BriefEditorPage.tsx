@@ -47,7 +47,7 @@ import type {
   TripBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminTrip'
-import { getAuxTypeMeta, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
+import { groupAuxBySection, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
 import { AirlinePicker } from './AirlinePicker'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
@@ -393,26 +393,7 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, e
   onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
   isMobile:          boolean
 }) {
-  const sorted = [...auxBookings]
-    .filter(a => a.brief_show !== false)
-    .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type_label)
-      const mb = getAuxTypeMeta(b.booking_type_label)
-      if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
-      return a.sort_order - b.sort_order
-    })
-
-  const sections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
-  for (const aux of sorted) {
-    const type = aux.booking_type_label ?? aux.booking_type ?? 'Other'
-    const meta = getAuxTypeMeta(type)
-    const last = sections[sections.length - 1]
-    if (last && last.type === type) {
-      last.items.push(aux)
-      continue
-    }
-    sections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
-  }
+  const sections = groupAuxBySection(auxBookings)
 
   function getDraft(aux: TripAuxBooking): AuxDraft {
     return auxDrafts[aux.id] ?? {
@@ -598,26 +579,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  const sortedAux = [...auxBookings]
-    .filter(a => a.brief_show !== false)
-    .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type_label)
-      const mb = getAuxTypeMeta(b.booking_type_label)
-      if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
-      return a.sort_order - b.sort_order
-    })
-
-  const auxSections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
-  for (const aux of sortedAux) {
-    const type = aux.booking_type_label ?? aux.booking_type ?? 'Other'
-    const meta = getAuxTypeMeta(type)
-    const last = auxSections[auxSections.length - 1]
-    if (last && last.type === type) {
-      last.items.push(aux)
-      continue
-    }
-    auxSections.push({ type, label: meta.label, icon: meta.icon, items: [aux] })
-  }
+  const auxSections = groupAuxBySection(auxBookings)
 
   return (
     <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100%', padding: '0 0 40px' }}>
