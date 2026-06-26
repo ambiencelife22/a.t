@@ -15,6 +15,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@4'
+import { json, preflight } from '../_shared/http.ts'
 
 const supabaseUrl     = Deno.env.get('SUPABASE_URL')!
 const supabaseService = Deno.env.get('SERVICE_ROLE_KEY')!
@@ -168,16 +169,7 @@ function getTicketEmailContent(
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
-  }
-
-  const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     const body     = await req.json()
@@ -187,14 +179,13 @@ Deno.serve(async (req: Request) => {
 
     if (!token || !ticketId || !event) {
       console.error('notify-ticket: missing required fields', { token: !!token, ticketId, event })
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: CORS })
+      return json({ error: 'Missing required fields' }, 400)
     }
 
     if (!['opened', 'in_progress', 'resolved'].includes(event)) {
       console.error('notify-ticket: invalid event', event)
-      return new Response(JSON.stringify({ error: 'Invalid event' }), { status: 400, headers: CORS })
+      return json({ error: 'Invalid event' }, 400)
     }
-
     // Verify the caller is an authenticated user
     const anonClient = createClient(supabaseUrl, supabaseAnon, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -202,7 +193,7 @@ Deno.serve(async (req: Request) => {
     const { data: { user: callerUser }, error: authError } = await anonClient.auth.getUser(token)
     if (authError || !callerUser) {
       console.error('notify-ticket: auth failed', authError)
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS })
+      return json({ error: 'Unauthorized' }, 401)
     }
 
     // Service role — fetch ticket + user email
@@ -218,14 +209,14 @@ Deno.serve(async (req: Request) => {
 
     if (ticketError || !ticket) {
       console.error('notify-ticket: ticket not found', ticketId, ticketError)
-      return new Response(JSON.stringify({ error: 'Ticket not found' }), { status: 200, headers: CORS })
+      return json({ error: 'Ticket not found' }, 200)
     }
 
     // Fetch the user's email from auth.users via service role
     const { data: { user: ticketUser }, error: userError } = await serviceClient.auth.admin.getUserById(ticket.user_id)
     if (userError || !ticketUser?.email) {
       console.error('notify-ticket: user not found', ticket.user_id, userError)
-      return new Response(JSON.stringify({ error: 'User not found' }), { status: 200, headers: CORS })
+      return json({ error: 'User not found' }, 200)
     }
 
     // Fetch the most recent admin reply for in_progress / resolved
@@ -263,14 +254,14 @@ Deno.serve(async (req: Request) => {
 
     if (sendError) {
       console.error('notify-ticket: Resend error', sendError)
-      return new Response(JSON.stringify({ error: sendError }), { status: 200, headers: CORS })
+      return json({ error: sendError }, 200)
     }
 
     console.log(`notify-ticket: sent event=${event} ticket=${ticketId} to=${ticketUser.email}`)
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: CORS })
+    return json({ success: true }, 200)
 
   } catch (err: any) {
     console.error('notify-ticket: unexpected error', err)
-    return new Response(JSON.stringify({ error: err.message ?? 'Unknown error' }), { status: 200, headers: CORS })
+    return json({ error: err.message ?? 'Unknown error' }, 200)
   }
 })

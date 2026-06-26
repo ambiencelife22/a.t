@@ -15,14 +15,7 @@
 // Deployed at: /functions/v1/a-read-house
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, preflight } from '../_shared/http.ts'
-
-
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
+import { json, preflight } from '../_shared/http.ts'
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
@@ -30,20 +23,18 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json().catch(() => ({}))
     const { mode } = body as { mode?: string }
-    if (!mode) return json(400, { error: 'mode is required' })
+    if (!mode) return json({ error: 'mode is required' }, 400)
 
     // ── Auth ──────────────────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return json(401, { error: 'Unauthorized' })
-
+    if (!authHeader) return json({ error: 'Unauthorized' }, 401)
     const anonClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     )
     const { data: { user }, error: userError } = await anonClient.auth.getUser()
-    if (userError || !user) return json(401, { error: 'Unauthorized' })
-
+    if (userError || !user) return json({ error: 'Unauthorized' }, 401)
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SERVICE_ROLE_KEY') ?? '',
@@ -53,9 +44,8 @@ Deno.serve(async (req: Request) => {
     const { data: profile, error: profileError } = await serviceClient
       .from('global_profiles').select('is_admin').eq('id', user.id).maybeSingle()
     if (profileError || !profile || profile.is_admin !== true) {
-      return json(403, { error: 'Forbidden' })
+      return json({ error: 'Forbidden' }, 403)
     }
-
     // ── Dispatch ──────────────────────────────────────────────────────────────
     if (mode === 'roles') {
       const { data, error } = await serviceClient
@@ -65,15 +55,15 @@ Deno.serve(async (req: Request) => {
         .order('sort_order', { ascending: true })
       if (error) {
         console.error('roles error:', error)
-        return json(500, { error: 'Failed to fetch roles' })
+        return json({ error: 'Failed to fetch roles' }, 500)
       }
-      return json(200, { roles: data ?? [] })
+      return json({ roles: data ?? [] }, 200)
     }
 
-    return json(400, { error: `Unknown mode: ${mode}` })
+    return json({ error: `Unknown mode: ${mode}` }, 400)
 
   } catch (err) {
     console.error('a-read-house unexpected error:', err)
-    return json(500, { error: 'Internal server error' })
+    return json({ error: 'Internal server error' }, 500)
   }
 })
