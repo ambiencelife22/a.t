@@ -154,6 +154,8 @@ export type TripAuxBooking = {
   notes:               string | null
   confirmation_number: string | null
   booked_by:           string | null
+  guest_name:          string | null   // S53F — reservation-holder name (free text)
+  guest_count:         number | null   // S53F — party size / covers
   brief_show:          boolean
   sort_order:          number
   airline_supplier_id: string | null

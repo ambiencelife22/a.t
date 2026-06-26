@@ -345,7 +345,8 @@ export function isTransferBooking(bookingType: string | null | undefined): boole
 }
 
 export function isHotelBooking(bookingType: string | null | undefined): boolean {
-  return toSlug(bookingType ?? '') === 'stay'
+  const t = toSlug(bookingType ?? '')
+  return t === 'stay' || t === 'hotel' || t === 'accommodation'
 }
 
 export function isGroundTransportBooking(bookingType: string | null | undefined): boolean {

@@ -174,6 +174,7 @@ export const AUX_BOOKING_SELECT = [
   'travel_engagement_types!travel_trip_aux_bookings_engagement_type_id_fkey(slug, label)',
   'name', 'start_date', 'start_time', 'end_date', 'end_time',
   'origin', 'destination', 'notes', 'confirmation_number', 'booked_by',
+  'guest_name', 'guest_count',
   'brief_show', 'sort_order', 'created_at', 'updated_at',
   'flight_number', 'airline_name', 'cabin_class', 'seat_type', 'aircraft_type',
   'depart_airport', 'arrive_airport', 'airline_supplier_id', 'dining_venue_id',

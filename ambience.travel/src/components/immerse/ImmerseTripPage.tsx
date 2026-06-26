@@ -37,7 +37,12 @@ import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
 import ImmerseHero                            from './ImmerseHero'
 import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
-import type { TripBooking, TripAuxBooking, TripDay, TripDayEntry } from '../../queries/queriesAdminTrip'
+import type {
+  ImmerseTripBooking as TripBooking,
+  ImmerseTripAuxBooking as TripAuxBooking,
+  ImmerseTripDay as TripDay,
+  ImmerseTripDayEntry as TripDayEntry,
+} from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'
 import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
@@ -1038,8 +1043,9 @@ function TripBriefTab({ clientData }: {
                 value={d.name ?? 'Dining'}
                 sub={[
                   d.start_time ? fmtTime(d.start_time) : null,
+                  d.guest_name ?? null,
+                  d.guest_count ? `${d.guest_count} guests` : null,
                   d.confirmation_number ? `Ref: ${d.confirmation_number}` : null,
-                  d.notes ?? null,
                 ].filter(Boolean).join('  \u00b7  ')}
                 bookedBy={bookedByLabel(d.booked_by)}
               />

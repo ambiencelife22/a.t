@@ -25,7 +25,13 @@ import {
   fmtDate, buildDateRange, passengerLines, drawOwnArrangementsChip,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
-import type { TripBrief, TripBooking, DossierTrip, HouseProfile, TripAuxBooking } from '../queries/queriesAdminTrip'
+import type {
+  ImmerseTripBrief as TripBrief,
+  ImmerseTripBooking as TripBooking,
+  ImmerseDossierTrip as DossierTrip,
+  ImmerseTripHouse as HouseProfile,
+  ImmerseTripAuxBooking as TripAuxBooking,
+} from '../types/typesImmerse'
 import { isFlightBooking, isTransferBooking, isHotelBooking } from '../types/typesAuxBookings'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 

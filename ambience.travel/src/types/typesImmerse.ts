@@ -1,4 +1,4 @@
-// immerseTypes.ts — shared types for the ambience.travel /immerse/ proposal system
+// typesImmerse.ts — shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
 //
@@ -449,3 +449,254 @@ export interface WelcomeLetterPatch {
 
 // Terminal engagement status for archive (itinerary always → 'archived').
 export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 'closed_lost'>
+
+// ─── Trip client surface (confirmation / programme / brief) ───────────────────
+// Client-owned contracts for the /immerse/ trip pages. ONE-WAY RULE: client files
+// import these; they NEVER import from queriesAdminTrip. These intentionally OMIT
+// ambience's margin (commission_*, net_revenue, commissionable_rate, invoice_number,
+// iata/referral/individual shares) — a client type must not even DESCRIBE the agency's
+// profit. The client's-own-bill fields (price, rates, taxes, deposit/balance) ARE kept;
+// each surface decides what it renders. (Phase 1, S53F. Phase 2 will make the admin
+// types extend these as base & margin so there's a single definition.)
+
+export type ImmerseTripDestination = {
+  id:             string
+  destination_id: string
+  sort_order:     number
+  slug:           string
+  name:           string
+  storage_path:   string | null
+  hero_image_src: string | null
+}
+
+export type ImmerseJourneyStep = {
+  icon:   string
+  label:  string
+  detail: string
+}
+
+export type ImmerseTripHouse = {
+  id:                 string
+  display_name:       string
+  salutation_rule:    string | null
+  travel_style_notes: string | null
+  avoid_notes:        string | null
+  service_notes:      string | null
+}
+
+export type ImmerseTripBrief = {
+  id:                    string
+  trip_id:               string
+  house_id:              string | null
+  brief_title:           string | null
+  brief_subtitle:        string | null
+  prepared_for:          string | null
+  hero_image_src:        string | null
+  hero_image_alt:        string | null
+  snapshot_destination:  string | null
+  snapshot_dates:        string | null
+  snapshot_guests:       string | null
+  snapshot_status:       string | null
+  journey_steps:         ImmerseJourneyStep[]
+  advisor_name:          string | null
+  advisor_email:         string | null
+  advisor_phone:         string | null
+  hotel_contact_note:    string | null
+  important_notes:       string[]
+  footer_tagline:        string | null
+  logo_variant:          string | null
+  programme_show_images: boolean
+  welcome_letter:        string | null
+  show_tab_confirmation: boolean
+  show_tab_programme:    boolean
+  show_tab_brief:        boolean
+  show_tab_contacts:     boolean
+  show_tab_welcome:      boolean
+  show_advisor_phone:    boolean
+  show_advisor_email:    boolean
+  links:                 { label: string; url: string }[]
+  programme_notes:       string | null
+  created_at:            string
+  updated_at:            string
+}
+
+export type ImmerseTripDay = {
+  id:         string | null
+  trip_id:    string
+  entry_date: string
+  show:       boolean
+  day_label:  string | null
+  day_note:   string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type ImmerseTripDayEntry = {
+  id:                  string
+  trip_id:             string
+  entry_date:          string
+  start_time:          string | null
+  end_time:            string | null
+  title:               string
+  subtitle:            string | null
+  category:            string | null
+  booked_by:           string
+  confirmation_number: string | null
+  guest_label:         string | null
+  notes:               string | null
+  brief_show:          boolean
+  sort_order:          number
+  is_auto_derived:     boolean
+  source_booking_id:   string | null
+  source_aux_id:       string | null
+  created_at:          string
+  updated_at:          string
+}
+
+export type ImmerseTripAuxPassenger = {
+  id:                        string
+  aux_booking_id:            string
+  person_id:                 string | null
+  passenger_label:           string | null
+  confirmation_number:       string | null
+  seat_numbers:              string | null
+  sort_order:                number
+  resolved_passenger_label?: string | null
+}
+
+// Driver detail: client-safe. `company` (operator-internal) deliberately OMITTED —
+// matches attachDriverDetails in _shared/names.ts which never sends it client-side.
+export type ImmerseTripAuxDriverDetail = {
+  id:             string
+  aux_booking_id: string
+  driver_name:    string | null
+  driver_phone:   string | null
+  car_model:      string | null
+  plate:          string | null
+  vehicle_role:   string | null
+  sort_order:     number
+}
+
+export type ImmerseTripAuxBooking = {
+  id:                  string
+  trip_id:             string
+  engagement_type_id:  string | null
+  booking_type:        string | null
+  booking_type_label:  string | null
+  name:                string | null
+  start_date:          string | null
+  start_time:          string | null
+  end_date:            string | null
+  end_time:            string | null
+  origin:              string | null
+  destination:         string | null
+  notes:               string | null
+  confirmation_number: string | null
+  booked_by:           string | null
+  guest_name:          string | null   // S53F — reservation-holder name (free text)
+  guest_count:         number | null   // S53F — party size / covers
+  brief_show:          boolean
+  sort_order:          number
+  airline_supplier_id: string | null
+  airline_name:        string | null
+  flight_number:       string | null
+  depart_airport:      string | null
+  arrive_airport:      string | null
+  cabin_class:         string | null
+  seat_type:           string | null
+  aircraft_type:       string | null
+  dining_venue_id?:    string | null
+  image_src?:          string | null
+  passengers?:         ImmerseTripAuxPassenger[]
+  driver_details?:     ImmerseTripAuxDriverDetail[]
+  created_at:          string
+  updated_at:          string
+}
+
+// Room: client's-bill fields KEPT (rate/tax_pct/total/extra_person_fee). No margin
+// exists at room level, so nothing stripped here beyond what admin already lacks.
+export type ImmerseBookingRoom = {
+  id:                  string
+  booking_id:          string
+  room_name:           string | null
+  confirmation_number: string | null
+  guest_name:          string | null
+  party_composition:   string | null
+  notes:               string | null
+  nights:              number | null
+  rate:                number | null
+  tax_pct:             number | null
+  total:               number | null
+  extra_person_fee:    number | null
+  brief_image_src:     string | null
+  additional_guests:   string[] | null
+  person_id:           string | null
+  sort_order:          number
+  created_at:          string
+  updated_at:          string
+  resolved_image_src?:         string | null
+  resolved_image_alt?:         string | null
+  resolved_guest_name?:        string | null
+  resolved_additional_guests?: string[] | null
+}
+
+// Booking: client's-bill KEPT, MARGIN STRIPPED. Omitted vs admin TripBooking:
+// commissionable_rate, commission_pct, commission_amount, net_revenue,
+// commission_paid_at, invoice_number, iata_*, referral_*, individual_*,
+// supplier_*, primary/supplier contact fields, cancellation/booking policy.
+export type ImmerseTripBooking = {
+  id:                  string
+  trip_id:             string
+  house_id:            string | null
+  engagement_id:       string | null
+  booking_type:        string | null
+  name:                string | null
+  status:              string | null
+  confirmation_number: string | null
+  start_date:          string | null
+  end_date:            string | null
+  nights:              number | null
+  total_rate:          number | null
+  taxes_and_fees:      number | null
+  currency:            string | null
+  rate_type:           string | null
+  inclusions:          string | null
+  price:               number | null
+  deposit_amount:      number | null
+  deposit_due_date:    string | null
+  deposit_paid_at:     string | null
+  balance_amount:      number | null
+  balance_due_date:    string | null
+  balance_paid_at:     string | null
+  accom_hotel_id:      string | null
+  party_composition:   string | null
+  brief_category:      string | null
+  brief_show:          boolean
+  brief_image_src:     string | null
+  booked_by:           string | null
+  notes:               string | null
+  sort_order:          number | null
+  created_at:          string | null
+  updated_at:          string | null
+  // Client-resolved
+  _hotel_name:      string | null
+  _hotel_image_src: string | null
+  _rooms:           ImmerseBookingRoom[]
+}
+
+export type ImmerseDossierTrip = {
+  id:                   string
+  trip_code:            string
+  stage:                EngagementStage | null
+  start_date:           string | null
+  end_date:             string | null
+  duration_nights:      number | null
+  trip_type:            string | null
+  destinations:         ImmerseTripDestination[]
+  guest_count_adults:   number | null
+  guest_count_children: number | null
+  bookings:             ImmerseTripBooking[]
+  brief:                ImmerseTripBrief | null
+  url_id:               string | null
+}

@@ -19,7 +19,9 @@
 // Prior: S48 — added apikey + Authorization headers required by
 //   Supabase Edge Function gateway even for public endpoints.
 
-import type { DossierTrip, HouseProfile, TripAuxBooking, TripBrief } from '../queries/queriesAdminTrip'
+import type {
+  ImmerseDossierTrip, ImmerseTripHouse, ImmerseTripAuxBooking, ImmerseTripBrief,
+} from '../types/typesImmerse'
 
 export type TripGuides = {
   hasDining:       boolean
@@ -36,11 +38,11 @@ export type TripContact = {
 }
 
 export type TripClientData = {
-  trip:            DossierTrip
-  brief:           TripBrief | null
-  house:           HouseProfile | null
+  trip:            ImmerseDossierTrip
+  brief:           ImmerseTripBrief | null
+  house:           ImmerseTripHouse | null
   destinationName: string
-  auxBookings:     TripAuxBooking[]
+  auxBookings:     ImmerseTripAuxBooking[]
   guides:          TripGuides
   contacts:        TripContact[]
   urlId:           string

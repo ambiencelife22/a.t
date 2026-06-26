@@ -24,7 +24,12 @@ import {
   T, P, CW, ASSETS,
   fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage, roomLine, driverDetailLines, drawOwnArrangementsChip,
 } from './pdfShared'
-import type { TripDay, DossierTrip, HouseProfile, TripBrief } from '../queries/queriesAdminTrip'
+import type {
+  ImmerseTripDay as TripDay,
+  ImmerseDossierTrip as DossierTrip,
+  ImmerseTripHouse as HouseProfile,
+  ImmerseTripBrief as TripBrief,
+} from '../types/typesImmerse'
 import type { TimelineItem } from '../types/typesTimeline'
 import { bookedByLabel, isOwnArrangements, categoryAccentRgb } from '../utils/utilsBooking'
 

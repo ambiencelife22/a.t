@@ -27,7 +27,14 @@ import {
   drawOwnArrangementsChip, drawConfPill,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
-import type { TripBrief, TripBooking, DossierTrip, HouseProfile, BookingRoom, TripAuxBooking } from '../queries/queriesAdminTrip'
+import type {
+  ImmerseTripBrief as TripBrief,
+  ImmerseTripBooking as TripBooking,
+  ImmerseDossierTrip as DossierTrip,
+  ImmerseTripHouse as HouseProfile,
+  ImmerseBookingRoom as BookingRoom,
+  ImmerseTripAuxBooking as TripAuxBooking,
+} from '../types/typesImmerse'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 import { isGroundTransportBooking } from '../types/typesAuxBookings'
 
