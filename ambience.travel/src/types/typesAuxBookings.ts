@@ -1,7 +1,7 @@
 // typesAuxBookings.ts — Canonical aux booking + day-entry display registry.
 //
 // What it owns:
-//   - AUX_BOOKING_TYPES + AUX_BOOKING_TYPE_META + getAuxTypeMeta
+//   - AUX_BOOKING_TYPE_META + getAuxTypeMeta (icon + display meta, slug-keyed)
 //   - FLIGHT_BOOKING_TYPES + isFlightType
 //   - CABIN_CLASSES + SEAT_TYPES (includes 'Mixed')
 //   - AIRCRAFT_TYPES — curated registry (commercial + private aviation).
@@ -9,28 +9,39 @@
 //     to this file. Data integrity compounds; curated lists are how
 //     enterprise platforms keep reference data clean over years.
 //   - CATEGORY_ACCENT + getCategoryAccent
+//   - Booking type predicates (isFlightBooking, isHotelBooking, etc.)
 //
 // What it does not own:
 //   - Supplier identity / commission terms (see typesSuppliers.ts)
 //   - Booking lifecycle status (see typesEventStatus.ts)
 //   - DB queries, UI rendering
+//   - The canonical type list itself — that lives in travel_engagement_types
+//     (DB registry). This file holds only DISPLAY meta (icons) the registry
+//     does not carry. Type labels + sort_order come from the registry via the
+//     EF (booking_type_label); META is keyed by registry SLUG.
 //
 // Source of truth for:
-//   - travel_trip_aux_bookings.booking_type values
 //   - travel_trip_aux_bookings.cabin_class CHECK constraint
 //   - travel_trip_aux_bookings.seat_type CHECK constraint
 //   - travel_trip_aux_bookings.aircraft_type display values
-//   - travel_trip_day_entries.category display tokens
+//   - travel_trip_day_entries.category accent tokens
 //
-// Last updated: S50 — AIRCRAFT_TYPES curated registry added (commercial +
-//   private aviation, ~75 entries). SEAT_TYPES gains 'Mixed' for parties
-//   with varied seat positions. Aircraft is dropdown-only.
-// Prior: S50 — consolidated from legacy typesAuxBooking.ts (deleted)
-//   plus aux/flight/category concerns extracted from typesSuppliers.ts.
+// S53H: realigned to the 18-type slug registry (travel_engagement_types).
+//   booking_type is a SLUG everywhere (S53G). META re-keyed Title-Case -> slug;
+//   getAuxTypeMeta casing bug fixed (was lowercasing a Title-keyed map -> every
+//   lookup fell through). Predicates rewritten to compare SLUGS (isHotelBooking
+//   = 'stay', isFlightBooking = flight/private_jet, ground = transfer/
+//   airport_transfer/car_service). Curated aircraft/cabin/seat lists untouched.
+// Prior: S50 — AIRCRAFT_TYPES curated registry added (~75 entries). SEAT_TYPES
+//   gains 'Mixed'. Aircraft is dropdown-only.
+// Prior: S50 — consolidated from legacy typesAuxBooking.ts (deleted).
 
-// ── Canonical aux booking types ───────────────────────────────────────────────
-
-// ── Metadata registry — keyed by DB slug ──────────────────────────────────────
+// ── Metadata registry — keyed by DB registry SLUG ─────────────────────────────
+// The 18-type registry (travel_engagement_types) is the source of truth for
+// labels + sort_order; this map adds the one thing the registry lacks: an icon.
+// Keyed by slug so a slug-or-label input both resolve. journey/reservation/
+// arrangement/acquisition are non-movement types but carry icons for any surface
+// that renders them.
 
 export interface AuxBookingTypeMeta {
   label:      string
@@ -39,38 +50,54 @@ export interface AuxBookingTypeMeta {
 }
 
 const AUX_BOOKING_TYPE_META: Record<string, AuxBookingTypeMeta> = {
-  Flight:          { label: 'FLIGHTS',                 icon: '\u2708',       sort_order: 10 },
-  'Private Jet':   { label: 'PRIVATE AVIATION',        icon: '\u2708',       sort_order: 15 },
-  Transfer:        { label: 'TRANSFERS',               icon: '\uD83D\uDE97', sort_order: 20 },
-  'Airport Transfer': { label: 'AIRPORT TRANSFERS',    icon: '\uD83D\uDE97', sort_order: 22 },
-  'Car Service':   { label: 'CHAUFFEUR & CAR SERVICE', icon: '\uD83D\uDE98', sort_order: 25 },
-  Rail:            { label: 'RAIL',                    icon: '\uD83D\uDE86', sort_order: 30 },
-  Cruise:          { label: 'CRUISE',                  icon: '\uD83D\uDEA2', sort_order: 35 },
-  Yacht:           { label: 'YACHT & BOAT',            icon: '\u26F5',       sort_order: 40 },
-  Dining:          { label: 'DINING',                  icon: '\uD83C\uDF7D', sort_order: 45 },
-  'Tour Guide':    { label: 'TOUR GUIDES',             icon: '\uD83D\uDDFA', sort_order: 50 },
-  Experience:      { label: 'EXPERIENCES',             icon: '\u2728',       sort_order: 55 },
-  Shopping:        { label: 'PRIVATE SHOPPING',        icon: '\uD83D\uDED2', sort_order: 60 },
-  Other:           { label: 'OTHER',                   icon: '\u00b7',       sort_order: 99 },
+  acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sort_order: 1 },
+  airport_transfer: { label: 'AIRPORT TRANSFERS', icon: '\uD83D\uDE97', sort_order: 2 },
+  arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sort_order: 3 },
+  car_rental:       { label: 'CAR RENTAL',        icon: '\uD83D\uDE99', sort_order: 4 },
+  car_service:      { label: 'CHAUFFEUR & CAR SERVICE', icon: '\uD83D\uDE98', sort_order: 5 },
+  cruise:           { label: 'CRUISE',            icon: '\uD83D\uDEA2', sort_order: 6 },
+  dining:           { label: 'DINING',            icon: '\uD83C\uDF7D', sort_order: 7 },
+  experience:       { label: 'EXPERIENCES',       icon: '\u2728',       sort_order: 8 },
+  flight:           { label: 'FLIGHTS',           icon: '\u2708',       sort_order: 9 },
+  heli_transfer:    { label: 'HELICOPTER',        icon: '\uD83D\uDE81', sort_order: 10 },
+  journey:          { label: 'JOURNEY',           icon: '\uD83E\uDDED', sort_order: 11 },
+  private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sort_order: 12 },
+  public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sort_order: 13 },
+  reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sort_order: 14 },
+  stay:             { label: 'STAYS',             icon: '\uD83C\uDFE8', sort_order: 15 },
+  tour:             { label: 'TOURS',             icon: '\uD83D\uDDFA', sort_order: 16 },
+  transfer:         { label: 'TRANSFERS',         icon: '\uD83D\uDE97', sort_order: 17 },
+  yacht_charter:    { label: 'YACHT CHARTER',     icon: '\u26F5',       sort_order: 18 },
+  other:            { label: 'OTHER',             icon: '\u00b7',       sort_order: 99 },
+}
+
+// Normalize a slug OR a Title Case label to a registry slug. Accepts both so
+// callers passing booking_type (slug) or booking_type_label (Title Case) both
+// resolve. 'Airport Transfer' -> 'airport_transfer', 'flight' -> 'flight'.
+function toSlug(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s/]+/g, '_')
 }
 
 export function getAuxTypeMeta(bookingType: string | null | undefined): AuxBookingTypeMeta {
-  if (!bookingType) return AUX_BOOKING_TYPE_META['other']
-  const known = AUX_BOOKING_TYPE_META[bookingType.toLowerCase()]
+  if (!bookingType) return AUX_BOOKING_TYPE_META.other
+  const slug = toSlug(bookingType)
+  const known = AUX_BOOKING_TYPE_META[slug]
   if (known) return known
+  // Unknown type: derive a display label, no icon, sort last.
   const label = bookingType.toUpperCase() + (bookingType.endsWith('s') ? '' : 'S')
   return { label, icon: '\u00b7', sort_order: 99 }
 }
 
 // ── Flight-specific gate ──────────────────────────────────────────────────────
+// Slug-based. flight + private_jet are the aviation movement types.
 
 export const FLIGHT_BOOKING_TYPES: ReadonlySet<string> = new Set([
-  'Flight',
-  'Private Jet / Charter',
+  'flight',
+  'private_jet',
 ])
 
 export function isFlightType(bookingType: string | null | undefined): boolean {
-  return FLIGHT_BOOKING_TYPES.has(bookingType ?? '')
+  return FLIGHT_BOOKING_TYPES.has(toSlug(bookingType ?? ''))
 }
 
 // ── Cabin classes ─────────────────────────────────────────────────────────────
@@ -229,53 +256,62 @@ export function isKnownAircraftType(value: string | null | undefined): boolean {
 }
 
 // ── Category accent colours ───────────────────────────────────────────────────
+// Keyed by registry slug. getCategoryAccent normalizes input to a slug, so a
+// label or a slug both resolve.
 
 export const CATEGORY_ACCENT: Record<string, string> = {
-  'flight':           '#93C5FD',
-  'private_jet':      '#93C5FD',
-  'transfer':         '#A3E635',
-  'airport_transfer': '#A3E635',
-  'car_service':      '#A3E635',
-  'rail':             '#A3E635',
-  'stay':             '#C9A84C',
-  'hotel':            '#C9A84C',
-  'cruise':           '#67E8F9',
-  'yacht':            '#67E8F9',
-  'dining':           '#F9A8D4',
-  'experience':       '#C4B5FD',
-  'tour_guide':       '#C4B5FD',
-  'shopping':         '#FDE68A',
-  'leisure':          '#6EE7B7',
-  'note':             '#B4AFA5',
-  'other':            '#B4AFA5',
+  flight:           '#93C5FD',
+  private_jet:      '#93C5FD',
+  transfer:         '#A3E635',
+  airport_transfer: '#A3E635',
+  car_service:      '#A3E635',
+  car_rental:       '#A3E635',
+  heli_transfer:    '#93C5FD',
+  public_transport: '#A3E635',
+  stay:             '#C9A84C',
+  cruise:           '#67E8F9',
+  yacht_charter:    '#67E8F9',
+  dining:           '#F9A8D4',
+  experience:       '#C4B5FD',
+  tour:             '#C4B5FD',
+  acquisition:      '#FDE68A',
+  reservation:      '#B4AFA5',
+  arrangement:      '#B4AFA5',
+  journey:          '#B4AFA5',
+  note:             '#B4AFA5',
+  other:            '#B4AFA5',
 }
 
 export function getCategoryAccent(category: string | null | undefined): string {
-  return CATEGORY_ACCENT[(category ?? '').toLowerCase()] ?? CATEGORY_ACCENT['other']
+  if (!category) return CATEGORY_ACCENT.other
+  return CATEGORY_ACCENT[toSlug(category)] ?? CATEGORY_ACCENT.other
 }
+
 // ── Booking type predicates — single source ───────────────────────────────────
 // All booking_type checks across the codebase must use these. Never inline
 // string comparisons or .includes() checks on booking_type values.
+// Slug-based (S53G): booking_type is a registry slug. Accepts slug or label via
+// toSlug normalization, so a stray Title Case value still resolves correctly.
 
 export function isFlightBooking(bookingType: string | null | undefined): boolean {
-  const t = (bookingType ?? '').toLowerCase()
-  return t === 'flight' || t === 'private jet / charter'
+  const t = toSlug(bookingType ?? '')
+  return t === 'flight' || t === 'private_jet'
 }
 
 export function isTransferBooking(bookingType: string | null | undefined): boolean {
-  const t = (bookingType ?? '').toLowerCase()
-  return t === 'airport transfer' || t === 'chauffeur / car service' || t === 'transfer'
+  const t = toSlug(bookingType ?? '')
+  return t === 'transfer' || t === 'airport_transfer' || t === 'car_service'
 }
 
 export function isHotelBooking(bookingType: string | null | undefined): boolean {
-  return (bookingType ?? '') === 'Hotel'
+  return toSlug(bookingType ?? '') === 'stay'
 }
 
 export function isGroundTransportBooking(bookingType: string | null | undefined): boolean {
-  const t = (bookingType ?? '').toLowerCase()
-  return t === 'airport transfer' || t === 'chauffeur / car service' || t === 'transfer'
+  const t = toSlug(bookingType ?? '')
+  return t === 'transfer' || t === 'airport_transfer' || t === 'car_service'
 }
 
 export function isDiningBooking(bookingType: string | null | undefined): boolean {
-  return (bookingType ?? '').toLowerCase() === 'dining'
+  return toSlug(bookingType ?? '') === 'dining'
 }
