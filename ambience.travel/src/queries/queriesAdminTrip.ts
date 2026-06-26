@@ -682,11 +682,11 @@ export type EngagementTypeOption = {
 }
 
 export async function fetchEngagementTypes(): Promise<EngagementTypeOption[]> {
-  const { data, error } = await supabase
-    .from('travel_engagement_types')
-    .select('id, slug, label, sort_order')
-    .not('slug', 'in', '(journey,stay)')
-    .order('sort_order', { ascending: true })
+  const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', {
+    body: { mode: 'engagement_types' },
+  })
   if (error) throw new Error(error.message)
-  return (data ?? []) as EngagementTypeOption[]
+  return ((data?.rows ?? []) as EngagementTypeOption[]).filter(
+    t => t.slug !== 'journey' && t.slug !== 'stay'
+  )
 }

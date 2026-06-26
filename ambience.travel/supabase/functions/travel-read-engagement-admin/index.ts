@@ -43,6 +43,7 @@ type ReadMode =
   | 'engagement_statuses'
   | 'itinerary_statuses'
   | 'engagement_types'
+  | 'suppliers'
   | 'people'
   | 'trips'
   | 'person_by_id'
@@ -342,6 +343,19 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ row: data ?? null })
+    }
+
+    if (mode === 'suppliers') {
+      const types = body?.supplier_types as string[] | undefined
+      let q = serviceClient
+        .from('travel_suppliers')
+        .select('id, name, supplier_type, is_active, created_at, updated_at')
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+      if (types && types.length > 0) q = q.in('supplier_type', types)
+      const { data, error } = await q
+      if (error) return json({ error: 'Failed to fetch suppliers' }, 500)
+      return json({ suppliers: data ?? [] })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

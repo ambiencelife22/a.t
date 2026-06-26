@@ -66,6 +66,7 @@ type WriteMode =
   | 'update_welcome_letter'
   | 'archive'
   | 'delete_engagement'
+  | 'create_supplier'
   | 'reassign_trip'
 
 const json = (body: unknown, status = 200) =>
@@ -448,6 +449,18 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to reassign trip' }, 500)
       }
       return json({ row: await rowById(id) })
+    }
+
+    if (mode === 'create_supplier') {
+      const { name, supplier_type } = body as { name?: string; supplier_type?: string }
+      if (!name || !supplier_type) return json({ error: 'name, supplier_type required' }, 400)
+      const { data, error } = await serviceClient
+        .from('travel_suppliers')
+        .insert({ name: name.trim(), supplier_type, is_active: true })
+        .select('id, name, supplier_type, is_active, created_at, updated_at')
+        .single()
+      if (error) return json({ error: 'Failed to create supplier' }, 500)
+      return json({ supplier: data })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)
