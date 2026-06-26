@@ -25,7 +25,7 @@ const json = (status: number, body: unknown) =>
   })
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     const body = await req.json().catch(() => ({}))

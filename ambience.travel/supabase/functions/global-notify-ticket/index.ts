@@ -101,6 +101,17 @@ interface TicketEmailContent {
   footerNote?: string
 }
 
+function formatCategory(cat: string): string {
+  const map: Record<string, string> = {
+    bug_report:      'Bug report',
+    feature_request: 'Feature request',
+    billing:         'Billing',
+    account:         'Account',
+    other:           'Other',
+  }
+  return map[cat] ?? cat
+}
+
 function getTicketEmailContent(
   event:      TicketEvent,
   ticketId:   string,
@@ -151,17 +162,6 @@ function getTicketEmailContent(
     body:     bodyParagraphs,
     ctaLabel: 'View ticket',
     footerNote: `If this didn't solve your issue, reply in the app or open a new request. This ticket will close automatically in 7 days.`,
-  }
-
-  function formatCategory(cat: string): string {
-    const map: Record<string, string> = {
-      bug_report:      'Bug report',
-      feature_request: 'Feature request',
-      billing:         'Billing',
-      account:         'Account',
-      other:           'Other',
-    }
-    return map[cat] ?? cat
   }
 }
 
