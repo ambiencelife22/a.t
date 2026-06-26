@@ -6,7 +6,7 @@
 // Security model:
 //   - Public endpoint — no auth required
 //   - url_id is the access token (11-char alphanumeric)
-//   - Service role key (canon SERVICE_ROLE_KEY) bypasses RLS
+//   - Service role via _shared/client.ts createServiceClient (bypasses RLS)
 //   - Returns only programme-relevant data — no financial or admin data
 //
 // Request body: { url_id: string }
@@ -30,8 +30,8 @@
 //   from stored entries to derived timeline items. Resolver drift fixed (was the
 //   ''-returning inline copy; now _shared/names.ts returns string|null).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/http.ts'
+import { createServiceClient } from '../_shared/client.ts'
+import { json, preflight } from '../_shared/http.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
@@ -40,9 +40,7 @@ import { buildDays } from '../_shared/days.ts'
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     // ── 1. Parse + validate url_id ────────────────────────────────────────────
@@ -50,26 +48,16 @@ Deno.serve(async (req: Request) => {
     const { url_id } = body as { url_id?: string }
 
     if (!url_id || !URL_ID_REGEX.test(url_id)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid url_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return json({ error: 'Invalid url_id' }, 400)
     }
 
     // ── 2. Service role client ────────────────────────────────────────────────
-    const db = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    )
+    const db = createServiceClient()
 
     // ── 3. url_id → trip_id → house_id (single-source) ─────────────────────────
     const ids = await resolveTripIds(db, url_id)
     if (!ids) {
-      return new Response(
-        JSON.stringify({ error: 'Not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return json({ error: 'Not found' }, 404)
     }
     const { tripId, houseId } = ids
 
@@ -112,12 +100,8 @@ Deno.serve(async (req: Request) => {
     ])
 
     if (!core.trip) {
-      return new Response(
-        JSON.stringify({ error: 'Trip not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return json({ error: 'Trip not found' }, 404)
     }
-
     const brief      = core.brief
     const partyLabel = (brief?.prepared_for as string | null) ?? null
     const bookings   = (bookingsResult.data ?? []) as Record<string, unknown>[]
@@ -242,16 +226,10 @@ Deno.serve(async (req: Request) => {
       entries:         timeline,
     }
 
-    return new Response(
-      JSON.stringify(payload),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
+    return json(payload, 200)
 
   } catch (err) {
     console.error('travel-get-trip-programme unexpected error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
+    return json({ error: 'Internal server error' }, 500)
   }
 })

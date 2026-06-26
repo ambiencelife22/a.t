@@ -10,10 +10,10 @@
 // Prior: S54 — Contacts people. Brief now carries contact_person_ids
 //   (uuid[] of a_house_people.person_id) + contact_name_format ('first'|'full').
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createServiceClient } from '../_shared/client.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
-import { corsHeaders, preflight } from '../_shared/http.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
@@ -25,25 +25,14 @@ Deno.serve(async (req: Request) => {
     const { url_id } = body as { url_id?: string }
 
     if (!url_id || !URL_ID_REGEX.test(url_id)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid url_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Invalid url_id' }, 400)
     }
 
-    const db = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
+    const db = createServiceClient()
     // url_id → trip_id → house_id (single-source)
     const ids = await resolveTripIds(db, url_id)
     if (!ids) {
-      return new Response(
-        JSON.stringify({ error: 'Not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Not found' }, 404)
     }
     const { tripId, houseId } = ids
 
@@ -92,10 +81,7 @@ Deno.serve(async (req: Request) => {
     ])
 
     if (!core.trip) {
-      return new Response(
-        JSON.stringify({ error: 'Trip not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Trip not found' }, 404)
     }
 
     const trip         = core.trip
@@ -215,16 +201,10 @@ Deno.serve(async (req: Request) => {
       },
     }
 
-    return new Response(
-      JSON.stringify(payload),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json(payload, 200)
 
   } catch (err) {
     console.error('travel-get-trip-confirmation unexpected error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: 'Internal server error' }, 500)
   }
 })
