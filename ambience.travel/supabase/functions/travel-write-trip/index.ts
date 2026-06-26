@@ -29,8 +29,7 @@
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
-import { resolveRoomGuestName } from '../_shared/names.ts'
-
+import { resolveRoomGuestName, formatPersonName } from '../_shared/names.ts'
 type Mode =
   | 'upsert_brief'
   | 'update_booking_brief'
@@ -60,7 +59,9 @@ type Mode =
   | 'create_request'
   | 'update_request'
   | 'delete_request'
-
+  | 'link_programme_guest'
+  | 'unlink_programme_guest'
+  | 'remove_programme_guest'
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
 // returned row carries resolved_guest_name. Walk: room.person_id → global_people;
@@ -472,6 +473,103 @@ async function handleUpdateTripPrimaryClient(db: SupabaseClient, body: Record<st
   return json({ ok: true })
 }
 
+// ── Programme guests (admin link surface) ─────────────────────────────────────
+// A programme guest links a global_people PERSON to a programme via that person's
+// global_profiles.id (written to travel_programme_guests.profile_id). The guest-facing
+// page reads it under RLS as profile_id = auth.uid(), so the value MUST be the auth
+// user id (global_profiles.id), never the person id. We resolve person -> profile here,
+// server-side, and refuse the link if the person has no profile (no login account) —
+// a dead link would silently fail the guest's RLS match. Cardinality is one-person-one-
+// profile (verified); the first profile is taken and duplicates would be an anomaly.
+async function handleLinkProgrammeGuest(
+  db: SupabaseClient,
+  programmeId: string,
+  personId: string,
+): Promise<Response> {
+  // Resolve the person's single profile (auth account).
+  const { data: profile, error: profErr } = await db
+    .from('global_profiles')
+    .select('id')
+    .eq('person_id', personId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (profErr) return json({ error: 'Failed to resolve profile' }, 500)
+  if (!profile?.id) {
+    // Zero-profile guard. Honest refusal, not a dead link.
+    return json({ error: 'no_profile', message: 'This person has no login account yet and cannot be linked.' }, 409)
+  }
+  const profileId = profile.id as string
+
+  // Person already linked to this programme? Idempotent guard.
+  const { data: existing } = await db
+    .from('travel_programme_guests')
+    .select('id')
+    .eq('programme_id', programmeId)
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  if (existing?.id) {
+    return json({ error: 'already_linked', message: 'This person is already a guest on this programme.' }, 409)
+  }
+
+  // Canonical display name from the person.
+  const { data: person } = await db
+    .from('global_people')
+    .select('id, first_name, last_name, nickname')
+    .eq('id', personId)
+    .maybeSingle()
+  const displayName = formatPersonName(person ?? null)
+  if (!displayName) return json({ error: 'no_name', message: 'This person has no usable name to display.' }, 400)
+
+  // is_lead + sort_order computed server-side from current guest count.
+  const { count } = await db
+    .from('travel_programme_guests')
+    .select('id', { count: 'exact', head: true })
+    .eq('programme_id', programmeId)
+  const guestCount = count ?? 0
+
+  const { data: inserted, error: insErr } = await db
+    .from('travel_programme_guests')
+    .insert({
+      programme_id: programmeId,
+      profile_id:   profileId,
+      display_name: displayName,
+      is_lead:      guestCount === 0,
+      sort_order:   guestCount,
+    })
+    .select('id, programme_id, display_name, profile_id, is_lead, sort_order')
+    .single()
+  if (insErr) return json({ error: 'Failed to link guest' }, 500)
+
+  return json({ guest: inserted })
+}
+
+async function handleUnlinkProgrammeGuest(db: SupabaseClient, guestId: string): Promise<Response> {
+  const { error } = await db
+    .from('travel_programme_guests')
+    .update({ profile_id: null })
+    .eq('id', guestId)
+  if (error) return json({ error: 'Failed to unlink guest' }, 500)
+  return json({ success: true })
+}
+
+async function handleRemoveProgrammeGuest(db: SupabaseClient, guestId: string): Promise<Response> {
+  // SELECT * snapshot before DELETE (Dev Standards: row-level recovery path).
+  const { data: snapshot } = await db
+    .from('travel_programme_guests')
+    .select('*')
+    .eq('id', guestId)
+    .maybeSingle()
+
+  const { error } = await db
+    .from('travel_programme_guests')
+    .delete()
+    .eq('id', guestId)
+  if (error) return json({ error: 'Failed to remove guest' }, 500)
+
+  return json({ success: true, removed: snapshot ?? null })
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
 
@@ -626,6 +724,21 @@ Deno.serve(async (req: Request) => {
         const { error } = await db.from('travel_requests').delete().eq('id', id)
         if (error) return json({ error: 'Failed to delete request' }, 500)
         return json({ success: true })
+      }
+      case 'link_programme_guest': {
+        const { programme_id, person_id } = body as { programme_id?: string; person_id?: string }
+        if (!programme_id || !person_id) return json({ error: 'programme_id, person_id required' }, 400)
+        return handleLinkProgrammeGuest(db, programme_id, person_id)
+      }
+      case 'unlink_programme_guest': {
+        const { guest_id } = body as { guest_id?: string }
+        if (!guest_id) return json({ error: 'guest_id required' }, 400)
+        return handleUnlinkProgrammeGuest(db, guest_id)
+      }
+      case 'remove_programme_guest': {
+        const { guest_id } = body as { guest_id?: string }
+        if (!guest_id) return json({ error: 'guest_id required' }, 400)
+        return handleRemoveProgrammeGuest(db, guest_id)
       }
       default:
         return json({ error: `Unknown mode: ${mode}` }, 400)

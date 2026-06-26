@@ -2,20 +2,35 @@
  * Admin-only component for linking guests to a programme.
  *
  * Flow:
- *   1. Type name / nickname / email → live results appear (debounced 250ms)
- *   2. Click a result → confirmation bar appears showing full details
- *   3. Confirm → guest row created + profile_id linked in one step
- *   4. Cancel → back to results
+ *   1. Type name / nickname -> live results appear (debounced 250ms)
+ *   2. Click a linkable result -> confirmation bar appears showing details
+ *   3. Confirm -> guest row created + profile linked server-side in one step
+ *   4. Cancel -> back to results
  *
  * Existing guests shown above search with unlink/remove options.
  * Usage: <GuestLinker programmeId={prog.id} />
  *
- * Last updated: S23 — Renamed programme_guests → travel_programme_guests to
- *   align with S17 table naming convention. travel_clients unchanged.
+ * Identity model: a guest links a global_people PERSON to the programme via that
+ * person's global_profiles.id. Search resolves person -> profile and reports
+ * `linkable` (has a login account). A person with no account is shown but cannot be
+ * linked — surfaced plainly, never written as a dead link.
+ *
+ * S53H: migrated to EF-only via queriesAdminProgramme (zero direct supabase.from()).
+ *   Search source moved from the dropped travel_clients table to global_people.
+ *   Renamed all fields to camelCase. Visual identity unchanged.
  */
 
 import { useEffect, useState, useRef } from 'react'
-import { supabase } from '../../lib/supabase'
+import {
+  fetchProgrammeGuests,
+  searchProgrammeGuestCandidates,
+  linkProgrammeGuest,
+  unlinkProgrammeGuest,
+  removeProgrammeGuest,
+  LinkGuestError,
+  type ProgrammeGuest,
+  type GuestSearchResult,
+} from '../../queries/queriesAdminProgramme'
 
 const A = {
   bg:         '#111210',
@@ -34,41 +49,20 @@ const A = {
   mono:       "'DM Mono', monospace",
 }
 
-interface GuestRow {
-  id:           string
-  display_name: string
-  profile_id:   string | null
-  is_lead:      boolean
-  sort_order:   number
-}
-
-interface ClientResult {
-  profile_id: string
-  first_name: string
-  last_name:  string | null
-  nickname:   string | null
-  email:      string | null
-  phone:      string | null
-}
-
-function fullName(c: ClientResult): string {
-  return [c.first_name, c.last_name].filter(Boolean).join(' ')
-}
-
 export default function GuestLinker({ programmeId }: { programmeId: string }) {
   const [open,      setOpen]      = useState(false)
-  const [guests,    setGuests]    = useState<GuestRow[]>([])
+  const [guests,    setGuests]    = useState<ProgrammeGuest[]>([])
   const [loading,   setLoading]   = useState(false)
   const [loadError, setLoadError] = useState('')
 
   // Search
   const [query,     setQuery]     = useState('')
-  const [results,   setResults]   = useState<ClientResult[]>([])
+  const [results,   setResults]   = useState<GuestSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Confirmation
-  const [pending,   setPending]   = useState<ClientResult | null>(null)
+  const [pending,   setPending]   = useState<GuestSearchResult | null>(null)
   const [saving,    setSaving]    = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -80,15 +74,12 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
   async function loadGuests() {
     setLoading(true)
     setLoadError('')
-    const { data, error } = await supabase
-      .from('travel_programme_guests')
-      .select('id, display_name, profile_id, is_lead, sort_order')
-      .eq('programme_id', programmeId)
-      .order('sort_order')
-    if (error) {
-      setLoadError(`Failed to load guests: ${error.message}`)
+    try {
+      const rows = await fetchProgrammeGuests(programmeId)
+      setGuests(rows)
+    } catch (e) {
+      setLoadError(`Failed to load guests: ${errMessage(e)}`)
     }
-    setGuests((data ?? []) as GuestRow[])
     setLoading(false)
   }
 
@@ -113,18 +104,18 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
 
   async function doSearch(q: string) {
     setSearching(true)
-    const { data } = await supabase
-      .from('travel_clients')
-      .select('profile_id, first_name, last_name, nickname, email, phone')
-      .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,nickname.ilike.%${q}%,email.ilike.%${q}%`)
-      .not('profile_id', 'is', null)
-      .limit(10)
+    try {
+      const found = await searchProgrammeGuestCandidates(q)
+      setResults(found)
+    } catch (e) {
+      setLoadError(`Search failed: ${errMessage(e)}`)
+    }
     setSearching(false)
-    setResults((data ?? []) as ClientResult[])
   }
 
-  function selectResult(client: ClientResult) {
-    setPending(client)
+  function selectResult(candidate: GuestSearchResult) {
+    if (!candidate.linkable) return
+    setPending(candidate)
     setSaveError('')
   }
 
@@ -132,55 +123,37 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
     if (!pending) return
     setSaving(true)
     setSaveError('')
-
-    const displayName = fullName(pending)
-    const isFirst     = guests.length === 0
-
-    const { error } = await supabase
-      .from('travel_programme_guests')
-      .insert({
-        programme_id: programmeId,
-        display_name: displayName,
-        profile_id:   pending.profile_id,
-        is_lead:      isFirst,
-        sort_order:   guests.length,
-      })
-
-    setSaving(false)
-
-    if (error) {
-      setSaveError(`Failed to add guest: ${error.message}`)
-      return
+    try {
+      await linkProgrammeGuest(programmeId, pending.personId)
+      resetSearch()
+      await loadGuests()
+    } catch (e) {
+      setSaveError(linkErrorMessage(e))
     }
-
-    resetSearch()
-    loadGuests()
+    setSaving(false)
   }
 
   async function handleUnlink(guestId: string) {
-    const { error } = await supabase
-      .from('travel_programme_guests')
-      .update({ profile_id: null })
-      .eq('id', guestId)
-    if (error) {
-      setLoadError(`Failed to unlink: ${error.message}`)
-      return
+    try {
+      await unlinkProgrammeGuest(guestId)
+      await loadGuests()
+    } catch (e) {
+      setLoadError(`Failed to unlink: ${errMessage(e)}`)
     }
-    loadGuests()
   }
 
   async function handleRemove(guestId: string, name: string) {
     if (!window.confirm(`Remove ${name} from this programme?`)) return
-    const { error } = await supabase.from('travel_programme_guests').delete().eq('id', guestId)
-    if (error) {
-      setLoadError(`Failed to remove: ${error.message}`)
-      return
+    try {
+      await removeProgrammeGuest(guestId)
+      await loadGuests()
+    } catch (e) {
+      setLoadError(`Failed to remove: ${errMessage(e)}`)
     }
-    loadGuests()
   }
 
-  const alreadyLinked = (profileId: string) =>
-    guests.some(g => g.profile_id === profileId)
+  const alreadyLinked = (profileId: string | null) =>
+    profileId != null && guests.some(g => g.profileId === profileId)
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -198,8 +171,8 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
       >
         {open ? '▾' : '▸'} Guest Access
         {guests.length > 0 && (
-          <span style={{ marginLeft: 6, fontSize: 10, color: guests.every(g => g.profile_id) ? A.positive : A.gold }}>
-            {guests.filter(g => g.profile_id).length}/{guests.length} linked
+          <span style={{ marginLeft: 6, fontSize: 10, color: guests.every(g => g.profileId) ? A.positive : A.gold }}>
+            {guests.filter(g => g.profileId).length}/{guests.length} linked
           </span>
         )}
       </button>
@@ -243,12 +216,12 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{
                         width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                        background: guest.profile_id ? A.positive : A.faint,
+                        background: guest.profileId ? A.positive : A.faint,
                       }} />
                       <span style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
-                        {guest.display_name}
+                        {guest.resolvedName ?? guest.displayName}
                       </span>
-                      {guest.is_lead && (
+                      {guest.isLead && (
                         <span style={{
                           fontSize: 9, fontWeight: 700, letterSpacing: '0.10em',
                           textTransform: 'uppercase', color: A.gold,
@@ -256,12 +229,12 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
                           borderRadius: 100, padding: '1px 6px', fontFamily: A.font,
                         }}>Lead</span>
                       )}
-                      {!guest.profile_id && (
+                      {!guest.profileId && (
                         <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>not linked</span>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      {guest.profile_id && (
+                      {guest.profileId && (
                         <button
                           onClick={() => handleUnlink(guest.id)}
                           style={{ fontSize: 11, color: A.faint, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, textDecoration: 'underline', textUnderlineOffset: 2, padding: 0 }}
@@ -270,7 +243,7 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
                         </button>
                       )}
                       <button
-                        onClick={() => handleRemove(guest.id, guest.display_name)}
+                        onClick={() => handleRemove(guest.id, guest.resolvedName ?? guest.displayName)}
                         style={{ fontSize: 11, color: A.danger, background: 'none', border: 'none', cursor: 'pointer', fontFamily: A.font, padding: 0 }}
                       >
                         Remove
@@ -297,12 +270,12 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
             </div>
 
             {/* Input */}
-            <div style={{ position: 'relative', marginBottom: results.length > 0 ? 0 : 0 }}>
+            <div style={{ position: 'relative' }}>
               <input
                 type='text'
                 value={query}
                 onChange={e => handleQueryChange(e.target.value)}
-                placeholder='Search by name, nickname, or email…'
+                placeholder='Search by name or nickname…'
                 style={{
                   width: '100%', background: A.bgInput,
                   border: `1px solid ${pending ? A.borderGold : A.border}`,
@@ -328,45 +301,44 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
                 borderRadius: '0 0 8px 8px', overflow: 'hidden',
                 marginBottom: 10,
               }}>
-                {results.map((client, i) => {
-                  const linked = alreadyLinked(client.profile_id)
+                {results.map((candidate, i) => {
+                  const linked     = alreadyLinked(candidate.profileId)
+                  const selectable = candidate.linkable && !linked
                   return (
                     <button
-                      key={client.profile_id}
-                      onClick={() => { if (!linked) selectResult(client) }}
-                      disabled={linked}
+                      key={candidate.personId}
+                      onClick={() => selectResult(candidate)}
+                      disabled={!selectable}
                       style={{
                         width: '100%', textAlign: 'left',
                         padding: '10px 12px',
-                        background: linked ? `${A.faint}08` : A.bgInput,
+                        background: selectable ? A.bgInput : `${A.faint}08`,
                         border: 'none',
                         borderTop: i > 0 ? `1px solid ${A.border}` : 'none',
-                        cursor: linked ? 'default' : 'pointer',
+                        cursor: selectable ? 'pointer' : 'default',
                         fontFamily: A.font,
                         transition: 'background 0.1s',
                       }}
-                      onMouseEnter={e => { if (!linked) (e.currentTarget as HTMLButtonElement).style.background = A.bgHover }}
-                      onMouseLeave={e => { if (!linked) (e.currentTarget as HTMLButtonElement).style.background = A.bgInput }}
+                      onMouseEnter={e => { if (selectable) (e.currentTarget as HTMLButtonElement).style.background = A.bgHover }}
+                      onMouseLeave={e => { if (selectable) (e.currentTarget as HTMLButtonElement).style.background = A.bgInput }}
                     >
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: linked ? A.faint : A.text }}>
-                          {fullName(client)}
+                        <span style={{ fontSize: 13, fontWeight: 600, color: selectable ? A.text : A.faint }}>
+                          {candidate.displayName}
                         </span>
-                        {client.nickname && (
-                          <span style={{ fontSize: 12, color: A.muted }}>&quot;{client.nickname}&quot;</span>
+                        {candidate.nickname && (
+                          <span style={{ fontSize: 12, color: A.muted }}>&quot;{candidate.nickname}&quot;</span>
                         )}
                         {linked && (
                           <span style={{ fontSize: 10, color: A.positive, marginLeft: 4 }}>already linked</span>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        {client.email && (
-                          <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{client.email}</span>
-                        )}
-                        {client.phone && (
-                          <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{client.phone}</span>
-                        )}
-                      </div>
+                      {/* Honest direction: a person with no login account can't be linked. */}
+                      {!candidate.linkable && !linked && (
+                        <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
+                          No login account yet — can&apos;t be linked
+                        </div>
+                      )}
                     </button>
                   )
                 })}
@@ -376,7 +348,7 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
             {/* No results */}
             {!searching && query.trim().length >= 2 && results.length === 0 && !pending && (
               <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, padding: '8px 0' }}>
-                No clients found matching &quot;{query}&quot;.
+                No people found matching &quot;{query}&quot;.
               </div>
             )}
 
@@ -391,18 +363,10 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
                 <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginBottom: 6 }}>
                   Add this guest to the programme?
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 2 }}>
-                  {fullName(pending)}
+                <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 12 }}>
+                  {pending.displayName}
                   {pending.nickname && (
                     <span style={{ fontWeight: 400, color: A.muted }}> &quot;{pending.nickname}&quot;</span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-                  {pending.email && (
-                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{pending.email}</span>
-                  )}
-                  {pending.phone && (
-                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.mono }}>{pending.phone}</span>
                   )}
                 </div>
                 {saveError && (
@@ -442,4 +406,16 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
       )}
     </div>
   )
+}
+
+// ── Error helpers ──────────────────────────────────────────────────────────────
+
+function errMessage(e: unknown): string {
+  return e instanceof Error ? e.message : 'Unexpected error'
+}
+
+// Link failures carry a typed reason so the UI gives precise direction.
+function linkErrorMessage(e: unknown): string {
+  if (e instanceof LinkGuestError) return e.message
+  return `Failed to add guest: ${errMessage(e)}`
 }
