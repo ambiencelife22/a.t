@@ -676,6 +676,74 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   const isMobileW   = width < 600
                   const stackLayout = isMobileW && !!item.image_src
 
+                  // Hotel stays render in the Confirmation card style (concise image
+                  // header + clean nested rooms), not the generic programme card.
+                  const isHotelStay = item.category === 'stay' && item.rooms.length > 0
+                  if (isHotelStay) {
+                    return (
+                      <div key={item.id} style={{
+                        background: '#fff', border: `0.5px solid ${RULE}`,
+                        borderRadius: 12, overflow: 'hidden', boxSizing: 'border-box',
+                      }}>
+                        <div style={{ display: 'flex', minHeight: 100 }}>
+                          {item.image_src && (
+                            <div
+                              style={{
+                                width: 'clamp(100px,30%,200px)', flexShrink: 0,
+                                background: CARD_BG, position: 'relative', overflow: 'hidden',
+                                cursor: 'zoom-in',
+                              }}
+                              onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
+                            >
+                              <img src={item.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                                <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>
+                                  {item.categoryLabel ?? 'Hotel'}
+                                </span>
+                                {item.status && <StatusPill status={item.status} />}
+                              </div>
+                              <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>{item.title}</div>
+                            </div>
+                            {bookedByLabel(item.booked_by) && (
+                              <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                          {item.rooms.map((room, ri) => {
+                            const rd = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name })
+                            return (
+                              <div key={room.id} style={{
+                                display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                                gap: 16, padding: '12px 20px',
+                                borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none',
+                                flexWrap: 'wrap',
+                              }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  {rd.roomName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</div>}
+                                  {rd.guestLine && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</div>}
+                                  {room.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
+                                </div>
+                                {room.confirmation_number && (
+                                  <div style={{
+                                    display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                                    border: `1px solid ${GOLD}`, borderRadius: 5, padding: '3px 10px', background: '#FAF7F0',
+                                  }}>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: GOLD }}>Conf #: {room.confirmation_number}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  }
+
                   return (
                     <div key={item.id} style={{
                       background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 12,
@@ -724,11 +792,14 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
-                              const guestLine = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name }).guestLine
+                              const rd = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name })
                               return (
                                 <div key={room.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                                    {guestLine && <span style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{guestLine}</span>}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      {rd.roomName && <span style={{ display: 'block', fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</span>}
+                                      {rd.guestLine && <span style={{ display: 'block', fontSize: 12, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</span>}
+                                    </div>
                                     {room.confirmation_number && (
                                       <span style={{
                                         display: 'inline-flex', alignItems: 'center', flexShrink: 0,
@@ -947,15 +1018,40 @@ function TripBriefTab({ clientData }: {
 
       {hotels.length > 0 && (
         <BriefSection title='Accommodation'>
-          {hotels.map(h => (
-            <BriefRow
-              key={h.id}
-              label={buildDateRange(h.start_date, h.end_date) || '\u2014'}
-              value={h._hotel_name ?? h.name ?? 'Hotel'}
-              sub={[h.name, h.nights ? `${h.nights} nights` : null, h.confirmation_number ? `Conf: ${h.confirmation_number}` : null].filter(Boolean).join(' \u00b7 ')}
-              bookedBy={bookedByLabel(h.booked_by)}
-            />
-          ))}
+          {hotels.map(h => {
+            const rooms = h._rooms ?? []
+            // Group room categories with counts (e.g. "Deluxe King Terrace ×4")
+            const catCounts = rooms.reduce((acc: Record<string, number>, r: any) => {
+              const name = r.room_name ?? 'Room'
+              acc[name] = (acc[name] ?? 0) + 1
+              return acc
+            }, {})
+            const categories = Object.entries(catCounts)
+              .map(([name, n]) => (n > 1 ? `${name} \u00d7${n}` : name))
+            return (
+              <div key={h.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
+                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
+                  {buildDateRange(h.start_date, h.end_date) || '\u2014'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
+                    {h._hotel_name ?? h.name ?? 'Hotel'}
+                  </div>
+                  {h.nights && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2 }}>{`${h.nights} nights`}</div>}
+                  {categories.length > 0 && (
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {categories.map((c, i) => (
+                        <div key={i} style={{ fontSize: 11, color: MUTED, fontFamily: SANS, wordBreak: 'break-word' }}>{c}</div>
+                      ))}
+                    </div>
+                  )}
+                  {bookedByLabel(h.booked_by) && (
+                    <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 2, fontStyle: 'italic' }}>{bookedByLabel(h.booked_by)}</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </BriefSection>
       )}
 

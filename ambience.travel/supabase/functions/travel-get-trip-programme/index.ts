@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
     const entries    = (entriesResult.data ?? []) as Record<string, unknown>[]
 
     // ── 6. Shared bookings enrich: rooms + resolved guest names + lookup maps ───
-    const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel)
+    const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel, houseId)
 
     // ── 7. Programme image composition (canon-default, override-first) ─────────
     // First-room-per-booking image (room override → canon room image).

@@ -196,6 +196,7 @@ export async function fetchTripBookings(
   db: SupabaseClient,
   bookings: Array<Record<string, unknown>>,
   partyLabel: string | null,
+  houseId: string,
 ): Promise<TripBookingsData> {
   const bookingIds = bookings.map(b => b.id as string)
 
@@ -258,6 +259,38 @@ export async function fetchTripBookings(
     for (const g of (rp ?? []) as Array<Record<string, unknown>>) roomPeopleById[g.id as string] = g
   }
 
+  // Room ORDER is DERIVED LIVE from each occupant's house-role rank (single-source:
+  // a_house_roles.sort_order). a_house_people.role is FREE TEXT, so resolve in two
+  // steps (registry slug->rank, then this house's person->role). Nothing stored on
+  // the room; order always reflects the current hierarchy. A room ranks by its
+  // HIGHEST occupant (min rank over lead person_id + additional_guests), so a room
+  // holding the principal sorts to the top regardless of who else shares it.
+  const roleRankByPerson: Record<string, number> = {}
+  if (roomPersonIds.length > 0) {
+    const { data: roles } = await db.from('a_house_roles').select('slug, sort_order')
+    const rankBySlug: Record<string, number> = {}
+    for (const r of (roles ?? []) as Array<Record<string, unknown>>) {
+      rankBySlug[r.slug as string] = r.sort_order as number
+    }
+    const { data: hpRows } = await db
+      .from('a_house_people')
+      .select('person_id, role')
+      .eq('house_id', houseId)
+      .in('person_id', roomPersonIds)
+    for (const hp of (hpRows ?? []) as Array<Record<string, unknown>>) {
+      const rank = rankBySlug[hp.role as string]
+      if (rank != null) roleRankByPerson[hp.person_id as string] = rank
+    }
+  }
+  const roomRank = (r: Record<string, unknown>): number => {
+    const ids = [
+      r.person_id as string | null,
+      ...((r.additional_guests as string[] | null) ?? []),
+    ].filter(Boolean) as string[]
+    const ranks = ids.map(id => roleRankByPerson[id]).filter(v => v != null) as number[]
+    return ranks.length ? Math.min(...ranks) : Number.MAX_SAFE_INTEGER
+  }
+
   const roomsByBooking: Record<string, Array<Record<string, unknown>>> = {}
   for (const r of rooms) {
     const bid = r.booking_id as string
@@ -270,6 +303,19 @@ export async function fetchTripBookings(
       .map(id => formatPersonName(roomPeopleById[id]))
       .filter(Boolean)
     ;(roomsByBooking[bid] ??= []).push({ ...r, resolved_guest_name, resolved_additional_guests })
+  }
+
+  // Order rooms within each booking by derived occupant hierarchy (rank asc =
+  // highest standing first). Stable tiebreak on stored sort_order then room_name
+  // so equal-rank occupants stay deterministic.
+  for (const bid of Object.keys(roomsByBooking)) {
+    roomsByBooking[bid].sort((a, b) => {
+      const ra = roomRank(a), rb = roomRank(b)
+      if (ra !== rb) return ra - rb
+      const sa = (a.sort_order as number) ?? 0, sb = (b.sort_order as number) ?? 0
+      if (sa !== sb) return sa - sb
+      return ((a.room_name as string) ?? '').localeCompare((b.room_name as string) ?? '')
+    })
   }
 
   return { bookings, roomsByBooking, canonRoomById, hotelById }

@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
 
     // shared bookings enrich (rooms + resolved guest names + canon/hotel maps)
     const partyLabel = (brief?.prepared_for as string | null) ?? null
-    const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel)
+    const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel, houseId)
 
     // ── Contacts: resolve brief.contact_person_ids → house people (S54) ───────
     const contacts: Array<{
