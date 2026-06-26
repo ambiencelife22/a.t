@@ -242,8 +242,8 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type)
-      const mb = getAuxTypeMeta(b.booking_type)
+      const ma = getAuxTypeMeta(a.booking_type_label)
+      const mb = getAuxTypeMeta(b.booking_type_label)
       return ma.sort_order !== mb.sort_order
         ? ma.sort_order - mb.sort_order
         : a.sort_order - b.sort_order
@@ -251,9 +251,9 @@ function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
 
   const auxSections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
   for (const aux of sortedAux) {
-    const meta = getAuxTypeMeta(aux.booking_type)
+    const meta = getAuxTypeMeta(aux.booking_type_label)
     const last = auxSections[auxSections.length - 1]
-    if (last && last.type === (aux.booking_type ?? 'Other')) {
+    if (last && last.type === (aux.booking_type_label ?? aux.booking_type ?? 'Other')) {
       last.items.push(aux)
       continue
     }
@@ -479,7 +479,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
   }, [activeDate, onActiveDayChange])
 
   type CardItem = {
-    id: string; category: string | null; start_time: string | null
+    id: string; category: string | null; categoryLabel: string | null; start_time: string | null
     end_time: string | null; title: string; subtitle: string | null
     notes: string | null; confirmation_number: string | null
     guest_label: string | null; booked_by: string | null
@@ -516,6 +516,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
           return {
             id:                  e.id,
             category:            e.category,
+            categoryLabel:       e.categoryLabel,
             start_time:          e.start_time,
             end_time:            e.end_time,
             title:               e.title,
@@ -721,7 +722,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
                             <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>
-                              {item.category ?? 'Other'}
+                              {item.categoryLabel ?? item.category ?? 'Other'}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

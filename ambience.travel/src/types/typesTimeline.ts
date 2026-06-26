@@ -41,6 +41,7 @@ export type TimelineItem = {
   start_time:          string | null
   end_time:            string | null
   category:            string | null
+  categoryLabel:       string | null
   title:               string
   subtitle:            string | null
   notes:               string | null

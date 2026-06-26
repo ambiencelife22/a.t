@@ -30,23 +30,7 @@
 
 // ── Canonical aux booking types ───────────────────────────────────────────────
 
-export const AUX_BOOKING_TYPES = [
-  'Flight',
-  'Private Jet / Charter',
-  'Airport Transfer',
-  'Chauffeur / Car Service',
-  'Rail / Train',
-  'Cruise Line',
-  'Yacht / Boat Charter',
-  'Tour Guide',
-  'Experience / Activity',
-  'Private Shopping',
-  'Dining',  'Other',
-] as const
-
-export type AuxBookingType = typeof AUX_BOOKING_TYPES[number]
-
-// ── Metadata registry ─────────────────────────────────────────────────────────
+// ── Metadata registry — keyed by DB slug ──────────────────────────────────────
 
 export interface AuxBookingTypeMeta {
   label:      string
@@ -54,24 +38,25 @@ export interface AuxBookingTypeMeta {
   sort_order: number
 }
 
-export const AUX_BOOKING_TYPE_META: Record<AuxBookingType, AuxBookingTypeMeta> = {
-  'Flight':                  { label: 'FLIGHTS',                 icon: '\u2708',  sort_order: 10 },
-  'Private Jet / Charter':   { label: 'PRIVATE AVIATION',        icon: '\u2708',  sort_order: 15 },
-  'Airport Transfer':        { label: 'AIRPORT TRANSFERS',       icon: '\uD83D\uDE97', sort_order: 20 },
-  'Chauffeur / Car Service': { label: 'CHAUFFEUR & CAR SERVICE', icon: '\uD83D\uDE98', sort_order: 25 },
-  'Rail / Train':            { label: 'RAIL',                    icon: '\uD83D\uDE86', sort_order: 30 },
-  'Cruise Line':             { label: 'CRUISE',                  icon: '\uD83D\uDEA2', sort_order: 35 },
-  'Yacht / Boat Charter':    { label: 'YACHT & BOAT',            icon: '\u26F5',  sort_order: 40 },
-  'Tour Guide':              { label: 'TOUR GUIDES',             icon: '\uD83D\uDDFA', sort_order: 50 },
-  'Experience / Activity':   { label: 'EXPERIENCES',             icon: '\u2728',  sort_order: 55 },
-  'Private Shopping':        { label: 'PRIVATE SHOPPING',        icon: '\uD83D\uDED2', sort_order: 60 },
-  'Dining':                  { label: 'DINING',                  icon: '\uD83C\uDF7D', sort_order: 45 },
-  'Other':                   { label: 'OTHER',                   icon: '\u00b7',  sort_order: 99 },
+const AUX_BOOKING_TYPE_META: Record<string, AuxBookingTypeMeta> = {
+  Flight:          { label: 'FLIGHTS',                 icon: '\u2708',       sort_order: 10 },
+  'Private Jet':   { label: 'PRIVATE AVIATION',        icon: '\u2708',       sort_order: 15 },
+  Transfer:        { label: 'TRANSFERS',               icon: '\uD83D\uDE97', sort_order: 20 },
+  'Airport Transfer': { label: 'AIRPORT TRANSFERS',    icon: '\uD83D\uDE97', sort_order: 22 },
+  'Car Service':   { label: 'CHAUFFEUR & CAR SERVICE', icon: '\uD83D\uDE98', sort_order: 25 },
+  Rail:            { label: 'RAIL',                    icon: '\uD83D\uDE86', sort_order: 30 },
+  Cruise:          { label: 'CRUISE',                  icon: '\uD83D\uDEA2', sort_order: 35 },
+  Yacht:           { label: 'YACHT & BOAT',            icon: '\u26F5',       sort_order: 40 },
+  Dining:          { label: 'DINING',                  icon: '\uD83C\uDF7D', sort_order: 45 },
+  'Tour Guide':    { label: 'TOUR GUIDES',             icon: '\uD83D\uDDFA', sort_order: 50 },
+  Experience:      { label: 'EXPERIENCES',             icon: '\u2728',       sort_order: 55 },
+  Shopping:        { label: 'PRIVATE SHOPPING',        icon: '\uD83D\uDED2', sort_order: 60 },
+  Other:           { label: 'OTHER',                   icon: '\u00b7',       sort_order: 99 },
 }
 
 export function getAuxTypeMeta(bookingType: string | null | undefined): AuxBookingTypeMeta {
-  if (!bookingType) return AUX_BOOKING_TYPE_META['Other']
-  const known = AUX_BOOKING_TYPE_META[bookingType as AuxBookingType]
+  if (!bookingType) return AUX_BOOKING_TYPE_META['other']
+  const known = AUX_BOOKING_TYPE_META[bookingType.toLowerCase()]
   if (known) return known
   const label = bookingType.toUpperCase() + (bookingType.endsWith('s') ? '' : 'S')
   return { label, icon: '\u00b7', sort_order: 99 }
@@ -246,26 +231,27 @@ export function isKnownAircraftType(value: string | null | undefined): boolean {
 // ── Category accent colours ───────────────────────────────────────────────────
 
 export const CATEGORY_ACCENT: Record<string, string> = {
-  'Flight':                  '#93C5FD',
-  'Private Jet / Charter':   '#93C5FD',
-  'Airport Transfer':        '#A3E635',
-  'Chauffeur / Car Service': '#A3E635',
-  'Rail / Train':            '#A3E635',
-  'Hotel':                   '#C9A84C',
-  'Accommodation':           '#C9A84C',
-  'Cruise Line':             '#67E8F9',
-  'Yacht / Boat Charter':    '#67E8F9',
-  'Dining':                  '#F9A8D4',
-  'Experience / Activity':   '#C4B5FD',
-  'Tour Guide':              '#C4B5FD',
-  'Private Shopping':        '#FDE68A',
-  'Leisure':                 '#6EE7B7',
-  'Note':                    '#B4AFA5',
-  'Other':                   '#B4AFA5',
+  'flight':           '#93C5FD',
+  'private_jet':      '#93C5FD',
+  'transfer':         '#A3E635',
+  'airport_transfer': '#A3E635',
+  'car_service':      '#A3E635',
+  'rail':             '#A3E635',
+  'stay':             '#C9A84C',
+  'hotel':            '#C9A84C',
+  'cruise':           '#67E8F9',
+  'yacht':            '#67E8F9',
+  'dining':           '#F9A8D4',
+  'experience':       '#C4B5FD',
+  'tour_guide':       '#C4B5FD',
+  'shopping':         '#FDE68A',
+  'leisure':          '#6EE7B7',
+  'note':             '#B4AFA5',
+  'other':            '#B4AFA5',
 }
 
 export function getCategoryAccent(category: string | null | undefined): string {
-  return CATEGORY_ACCENT[category ?? ''] ?? CATEGORY_ACCENT['Other']
+  return CATEGORY_ACCENT[(category ?? '').toLowerCase()] ?? CATEGORY_ACCENT['other']
 }
 // ── Booking type predicates — single source ───────────────────────────────────
 // All booking_type checks across the codebase must use these. Never inline

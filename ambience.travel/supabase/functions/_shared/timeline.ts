@@ -43,6 +43,7 @@ export type TimelineItem = {
   start_time:          string | null
   end_time:            string | null
   category:            string | null
+  categoryLabel:       string | null
   title:               string
   subtitle:            string | null
   notes:               string | null
@@ -77,9 +78,10 @@ type BookingLike = {
 }
 
 type AuxLike = {
-  id?:            unknown
-  booking_type?:  string | null
-  name?:          string | null
+  id?:                  unknown
+  booking_type?:        string | null
+  booking_type_label?:  string | null
+  name?:                string | null
   start_date?:    string | null
   start_time?:    string | null
   end_time?:      string | null
@@ -186,7 +188,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         }))
       out.push({
         id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: b.start_date,
-        start_time: null, end_time: null, category: 'Hotel',
+        start_time: null, end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `${checkinLabel} \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
         // Booking-level conf shown by the card when there are no per-room rows.
@@ -201,7 +203,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
     if (b.end_date) {
       out.push({
         id: `checkout-${b.id}`, kind: 'hotel_checkout', entry_date: b.end_date,
-        start_time: null, end_time: null, category: 'Hotel',
+        start_time: null, end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `Check-out \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
         confirmation_number: null, guest_label: null,
@@ -241,7 +243,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
     out.push({
       id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
-      category: a.booking_type ?? 'arrangement',
+      category: a.booking_type ?? 'arrangement', categoryLabel: a.booking_type_label ?? null,
       title: a.name ?? a.booking_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
@@ -264,7 +266,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
     out.push({
       id: e.id as string, kind: 'entry', entry_date: e.entry_date as string,
       start_time: (e.start_time as string | null) ?? null, end_time: (e.end_time as string | null) ?? null,
-      category: (e.category as string | null) ?? null, title: (e.title as string) ?? '', subtitle: (e.subtitle as string | null) ?? null,
+      category: (e.category as string | null) ?? null, categoryLabel: null, title: (e.title as string) ?? '', subtitle: (e.subtitle as string | null) ?? null,
       notes: (e.notes as string | null) ?? null, booked_by: (e.booked_by as string | null) ?? null,
       image_src: (e.image_src as string | null) ?? null,
       confirmation_number: (e.confirmation_number as string | null) ?? null,

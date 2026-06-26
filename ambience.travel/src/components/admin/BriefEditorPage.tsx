@@ -396,15 +396,15 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, e
   const sorted = [...auxBookings]
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type)
-      const mb = getAuxTypeMeta(b.booking_type)
+      const ma = getAuxTypeMeta(a.booking_type_label)
+      const mb = getAuxTypeMeta(b.booking_type_label)
       if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
       return a.sort_order - b.sort_order
     })
 
   const sections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
   for (const aux of sorted) {
-    const type = aux.booking_type ?? 'Other'
+    const type = aux.booking_type_label ?? aux.booking_type ?? 'Other'
     const meta = getAuxTypeMeta(type)
     const last = sections[sections.length - 1]
     if (last && last.type === type) {
@@ -601,15 +601,15 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
   const sortedAux = [...auxBookings]
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type)
-      const mb = getAuxTypeMeta(b.booking_type)
+      const ma = getAuxTypeMeta(a.booking_type_label)
+      const mb = getAuxTypeMeta(b.booking_type_label)
       if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
       return a.sort_order - b.sort_order
     })
 
   const auxSections: { type: string; label: string; icon: string; items: TripAuxBooking[] }[] = []
   for (const aux of sortedAux) {
-    const type = aux.booking_type ?? 'Other'
+    const type = aux.booking_type_label ?? aux.booking_type ?? 'Other'
     const meta = getAuxTypeMeta(type)
     const last = auxSections[auxSections.length - 1]
     if (last && last.type === type) {
