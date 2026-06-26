@@ -2,15 +2,14 @@
 //
 // Edge Function: a-write-ppd
 // Writes (INSERT or DELETE) to a_ppd_people and a_ppd_contacts.
-// This is the ONLY path for PPD writes \u2014 frontend code never touches
+// This is the ONLY path for PPD writes — frontend code never touches
 // these tables directly.
 //
 // Security model:
-//   - JWT REQUIRED \u2014 verify_jwt = true (Supabase platform-level gate, JWT ON)
-//   - Caller must be authenticated (valid JWT in Authorization header)
-//   - Caller must be an admin (global_profiles.is_admin = true)
+//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate, JWT ON)
+//   - Caller must be authenticated AND admin — enforced via requireAdmin
+//     (_shared/auth.ts). The gate returns a service client that bypasses RLS.
 //   - a_ppd_* tables have no direct client write policy
-//   - This function uses the service role key to bypass RLS
 //   - All writes logged to console.info with actor + action + table + id
 //
 // Request body:
@@ -28,9 +27,9 @@
 //   }
 //
 // Response:
-//   { ok: true, row: <inserted row> }     \u2014 on insert success
-//   { ok: true }                          \u2014 on delete success
-//   { error: string }                     \u2014 on failure (status reflects reason)
+//   { ok: true, row: <inserted row> }     — on insert success
+//   { ok: true }                          — on delete success
+//   { error: string }                     — on failure (status reflects reason)
 //
 // Validation:
 //   - data_key for people writes validated against PPD_PEOPLE_KEYS (in-code)
@@ -40,13 +39,14 @@
 //   - id required for delete
 //
 // Deployed at: /functions/v1/a-write-ppd
-// Last updated: S52 \u2014 initial ship. Closes the highest-priority gap
-//   identified in the Client Data Edge Function Plan (PPD writes were
-//   previously RLS-only, with no in-code auth or validation).
+// Last updated: S53H — migrated to shared canon: requireAdmin gate (was a
+//   hand-rolled anon→getUser→service→is_admin preamble), imported json (was a
+//   local re-roll of _shared/http.ts json). No change to validation or write logic.
+// Prior: S52 — initial ship. Closes the highest-priority gap identified in the
+//   Client Data Edge Function Plan (PPD writes were previously RLS-only).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, preflight } from '../_shared/http.ts'
-
+import { preflight, json } from '../_shared/http.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 // ── Canonical PPD key registries ──────────────────────────────────────────────
 // Mirrors src/types/typesPpd.ts on the frontend. Both files MUST stay in sync.
@@ -93,6 +93,13 @@ interface RequestBody {
   payload?: Record<string, unknown>
 }
 
+// ── Response helpers — built on the shared json() ─────────────────────────────
+// Local sugar over _shared/http.ts json. Shape: json(body, status).
+
+const ok          = (body: Record<string, unknown>): Response => json(body, 200)
+const badRequest  = (message: string):               Response => json({ error: message }, 400)
+const serverError = (message: string):               Response => json({ error: message }, 500)
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') return preflight()
@@ -112,37 +119,12 @@ Deno.serve(async (req: Request) => {
       return badRequest('payload required')
     }
 
-    // ── 2. Verify caller is authenticated ────────────────────────────────────
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return unauthorized()
+    // ── 2. Verify caller is an authenticated admin ───────────────────────────
+    const gate = await requireAdmin(req)
+    if (!gate.ok) return gate.response
+    const { serviceClient, user } = gate
 
-    const anonClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: userError } = await anonClient.auth.getUser()
-    if (userError || !user) return unauthorized()
-
-    // ── 3. Verify caller is admin ────────────────────────────────────────────
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const { data: profile, error: profileError } = await serviceClient
-      .from('global_profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (profileError || !profile || profile.is_admin !== true) {
-      return forbidden()
-    }
-
-    // ── 4. Dispatch on action ─────────────────────────────────────────────────
+    // ── 3. Dispatch on action ─────────────────────────────────────────────────
     const tableName = table === 'people' ? 'a_ppd_people' : 'a_ppd_contacts'
 
     if (action === 'delete') {
@@ -242,18 +224,3 @@ Deno.serve(async (req: Request) => {
     return serverError('Internal server error')
   }
 })
-
-// ── Response helpers ──────────────────────────────────────────────────────────
-
-function json(status: number, body: Record<string, unknown>): Response {
-  return new Response(
-    JSON.stringify(body),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
-}
-
-function ok(body: Record<string, unknown>):           Response { return json(200, body) }
-function badRequest(message: string):                 Response { return json(400, { error: message }) }
-function unauthorized():                              Response { return json(401, { error: 'Unauthorized' }) }
-function forbidden():                                 Response { return json(403, { error: 'Forbidden' }) }
-function serverError(message: string):                Response { return json(500, { error: message }) }

@@ -13,9 +13,17 @@
 //   const { serviceClient, user } = gate
 //
 // Webhook/cron and public EFs do NOT use these — they have bespoke auth
-// (Stripe signature, x-cron-secret, or none) and stay as-is.
+// (Stripe signature, x-cron-secret, or none) and stay as-is. They obtain a
+// service client directly from _shared/client.ts createServiceClient() AFTER
+// their own verification has passed.
+//
+// S53H: service-client construction extracted to _shared/client.ts. Anon
+// (JWT-bound) client construction stays private here — the only legitimate use
+// of an anon client is identity verification inside these gates, so it is not
+// exported anywhere. Gate logic is unchanged from S54.
 
 import { createClient, type SupabaseClient, type User } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createServiceClient } from './client.ts'
 import { json } from './http.ts'
 
 type AuthOk = {
@@ -29,12 +37,14 @@ type AuthFail = {
 }
 type AuthResult = AuthOk | AuthFail
 
-// Build the service client (bypasses RLS). Shared by both gates.
-function buildServiceClient(): SupabaseClient {
+// Anon client bound to the caller's JWT. RLS applies. PRIVATE — used only to
+// verify identity (getUser) inside the gates below. Never exported: the only
+// way to obtain an authenticated context is through requireUser / requireAdmin.
+function createAnonClient(authHeader: string): SupabaseClient {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-    { auth: { autoRefreshToken: false, persistSession: false } },
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: authHeader } } },
   )
 }
 
@@ -44,16 +54,12 @@ export async function requireUser(req: Request): Promise<AuthResult> {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return { ok: false, response: json({ error: 'Unauthorized' }, 401) }
 
-  const anonClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    { global: { headers: { Authorization: authHeader } } },
-  )
+  const anonClient = createAnonClient(authHeader)
 
   const { data: { user }, error } = await anonClient.auth.getUser()
   if (error || !user) return { ok: false, response: json({ error: 'Unauthorized' }, 401) }
 
-  return { ok: true, serviceClient: buildServiceClient(), user }
+  return { ok: true, serviceClient: createServiceClient(), user }
 }
 
 // Verify the caller is authenticated AND an admin (global_profiles.is_admin).
