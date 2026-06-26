@@ -57,6 +57,9 @@ type Mode =
   | 'create_trip'
   | 'update_trip'
   | 'update_trip_primary_client'
+  | 'create_request'
+  | 'update_request'
+  | 'delete_request'
 
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
@@ -598,6 +601,32 @@ Deno.serve(async (req: Request) => {
         return handleUpdateTrip(db, body as Record<string, unknown>)
       case 'update_trip_primary_client':
         return handleUpdateTripPrimaryClient(db, body as Record<string, unknown>)
+      case 'create_request': {
+        const { house_id, request_body, channel, received_at, trip_id, engagement_id, handled_by, notes } = body as Record<string, unknown>
+        if (!house_id || !request_body) return json({ error: 'house_id, request_body required' }, 400)
+        const { error } = await db.from('travel_requests').insert({
+          house_id, request_body, channel: channel ?? null,
+          received_at: received_at ?? new Date().toISOString(),
+          trip_id: trip_id ?? null, engagement_id: engagement_id ?? null,
+          handled_by: handled_by ?? null, notes: notes ?? null, status: 'New',
+        })
+        if (error) return json({ error: 'Failed to create request' }, 500)
+        return json({ success: true })
+      }
+      case 'update_request': {
+        const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
+        if (!id || !patch) return json({ error: 'id, patch required' }, 400)
+        const { error } = await db.from('travel_requests').update(patch).eq('id', id)
+        if (error) return json({ error: 'Failed to update request' }, 500)
+        return json({ success: true })
+      }
+      case 'delete_request': {
+        const { id } = body as { id?: string }
+        if (!id) return json({ error: 'id required' }, 400)
+        const { error } = await db.from('travel_requests').delete().eq('id', id)
+        if (error) return json({ error: 'Failed to delete request' }, 500)
+        return json({ success: true })
+      }
       default:
         return json({ error: `Unknown mode: ${mode}` }, 400)
     }

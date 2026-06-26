@@ -55,6 +55,7 @@ type Mode =
   | 'calendar'
   | 'activity_detail'
   | 'aux_driver_details'
+  | 'requests'
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -865,6 +866,17 @@ Deno.serve(async (req: Request) => {
 
       case 'activity_detail':
         return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null, category ?? null)
+
+      case 'requests': {
+        if (!house_id) return err('house_id is required for requests mode', 400)
+        const { data, error } = await serviceClient
+          .from('travel_requests')
+          .select('id, house_id, trip_id, engagement_id, channel, received_at, request_body, status, handled_by, notes, created_at, updated_at')
+          .eq('house_id', house_id)
+          .order('received_at', { ascending: false })
+        if (error) return err('Failed to fetch requests', 500)
+        return ok({ requests: data ?? [] })
+      }
 
       default:
         return err(`Unknown mode: ${mode}`, 400)
