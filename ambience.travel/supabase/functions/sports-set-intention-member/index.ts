@@ -1,55 +1,64 @@
 // supabase/functions/sports-set-intention-member/index.ts
-// Admin-triggered: sets is_intention_member on a user's SPORTS subscription.
+// Admin-triggered: sets is_intention_member on a user profile.
 //
-// Auth: Pattern A — JWT verification OFF (bespoke). Caller sends admin session
-//   token in body as { token }; the function verifies it via a per-request
-//   token-scoped client, then checks is_admin on the caller's profile. This
-//   body-token model does NOT use requireAdmin (that reads the Authorization
-//   header). Service-role writes use the canonical createServiceClient factory;
-//   responses use shared json/preflight. (Matches sports-grant-free-positions.)
+// Auth: Pattern A — JWT verification OFF.
+//   Caller sends admin session token in body as { token }.
+//   Function verifies token, checks is_admin on profile, then proceeds.
+//   (Matches sports-grant-free-positions exactly.)
 //
 // WHY THIS EXISTS (S66F):
+//   Previously queriesAdmin.setIntentionMember wrote is_intention_member
+//   directly under the admin's authenticated JWT:
+//     supabase.from('global_profiles').update({ is_intention_member }).eq('id', userId)
 //   The S66F P0-A mitigation revokes UPDATE on global_profiles from the
-//   authenticated role, so is_intention_member has no client write path. This EF
-//   moves the write to the service role, admin-gated, on Pattern A.
+//   authenticated role, so is_intention_member has no client write path.
+//   This EF moves the write to the service role, admin-gated, on Pattern A —
+//   so the existing body-token client call needs only to be repointed here.
 //
 // Input:  { token: string, targetUserId: string, value: boolean }
 // Output: { ok: true, targetUserId: string, is_intention_member: boolean } | { error: string }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createServiceClient } from '../_shared/client.ts'
-import { json, preflight } from '../_shared/http.ts'
 
-const serviceClient = createServiceClient()
+const serviceClient = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SERVICE_ROLE_KEY') ?? '',
+)
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 const SPORTS_PRODUCT = 'sports'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return preflight()
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
   if (req.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405)
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   }
 
   let body: { token?: string; targetUserId?: string; value?: boolean }
   try {
     body = await req.json()
   } catch {
-    return json({ error: 'Invalid JSON' }, 400)
+    return new Response('Invalid JSON', { status: 400, headers: corsHeaders })
   }
 
   const { token, targetUserId, value } = body
 
   if (!token || !targetUserId || value == null) {
-    return json({ error: 'Missing token, targetUserId, or value' }, 400)
+    return new Response('Missing token, targetUserId, or value', { status: 400, headers: corsHeaders })
   }
 
   if (typeof value !== 'boolean') {
-    return json({ error: 'value must be a boolean' }, 400)
+    return new Response('value must be a boolean', { status: 400, headers: corsHeaders })
   }
 
-  // Verify the body token via a per-request token-scoped anon client.
-  // Bespoke auth — NOT a service client, so it stays hand-built (no shared helper).
+  // Verify caller is admin
   const userClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -57,7 +66,7 @@ Deno.serve(async (req) => {
   )
   const { data: { user }, error: authErr } = await userClient.auth.getUser()
   if (authErr || !user) {
-    return json({ error: 'Unauthorized' }, 401)
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
   }
 
   const { data: callerProfile } = await serviceClient
@@ -67,10 +76,10 @@ Deno.serve(async (req) => {
     .single()
 
   if (!callerProfile?.is_admin) {
-    return json({ error: 'Forbidden — admin only' }, 403)
+    return new Response('Forbidden — admin only', { status: 403, headers: corsHeaders })
   }
 
-  // Resolve target's person_id (is_intention_member is per person+product now).
+  // Resolve target's person_id (is_intention_member is per person+product now)
   const { data: targetAccount, error: acctErr } = await serviceClient
     .from('global_profiles')
     .select('person_id')
@@ -78,7 +87,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (acctErr || !targetAccount?.person_id) {
-    return json({ error: 'Target user not found' }, 404)
+    return new Response('Target user not found', { status: 404, headers: corsHeaders })
   }
 
   // UPSERT is_intention_member on the SPORTS subscription row.
@@ -93,10 +102,16 @@ Deno.serve(async (req) => {
 
   if (upsertErr) {
     console.error('set-intention-member upsert error:', upsertErr)
-    return json({ error: 'DB update failed' }, 500)
+    return new Response(
+      JSON.stringify({ error: 'DB update failed' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
 
   console.log(`set-intention-member: set ${value} on ${targetUserId}`)
 
-  return json({ ok: true, targetUserId, is_intention_member: value }, 200)
+  return new Response(
+    JSON.stringify({ ok: true, targetUserId, is_intention_member: value }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
 })
