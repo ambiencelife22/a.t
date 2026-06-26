@@ -2,50 +2,47 @@
 // Returns the last 24 Stripe invoices for the authenticated user.
 // Free tier users with no stripe_customer_id get an empty array — not an error.
 //
-// Auth: JWT verification OFF. Client sends session.access_token in body as { token }.
+// Auth: JWT verification OFF (bespoke). Client sends session.access_token in body
+//   as { token }; verified via a per-request token-scoped client. This body-token
+//   model is sanctioned-bespoke per _shared/auth.ts — it does NOT use requireUser/
+//   requireAdmin (those read the Authorization header). Service-role reads use the
+//   canonical createServiceClient factory; responses use shared json/preflight.
 // Input:  { token: string }
 // Output: { invoices: Invoice[] }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'npm:stripe@14'
+import { createServiceClient } from '../_shared/client.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const serviceClient = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-)
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+const serviceClient = createServiceClient()
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { token?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token } = body
   if (!token) {
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
-  // Verify JWT via per-request user-scoped client
+  // Verify the body token via a per-request token-scoped anon client.
+  // Bespoke auth — NOT a service client, so it stays hand-built (no shared helper).
   const userClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -54,22 +51,19 @@ Deno.serve(async (req) => {
 
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
-  // Get stripe_customer_id from profile
+  // Get stripe_customer_id from profile (service role).
   const { data: profile } = await serviceClient
     .from('global_profiles')
     .select('stripe_customer_id')
     .eq('id', user.id)
     .single()
 
-  // No customer yet — free tier user, return empty
+  // No customer yet — free tier user, return empty (not an error).
   if (!profile?.stripe_customer_id) {
-    return new Response(
-      JSON.stringify({ invoices: [] }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ invoices: [] }, 200)
   }
 
   try {
@@ -90,16 +84,10 @@ Deno.serve(async (req) => {
       invoice_pdf:         inv.invoice_pdf,
     }))
 
-    return new Response(
-      JSON.stringify({ invoices }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ invoices }, 200)
 
   } catch (err) {
     console.error('get-invoices error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })
