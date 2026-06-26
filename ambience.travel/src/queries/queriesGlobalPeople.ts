@@ -40,7 +40,11 @@ async function invokeWrite<T>(body: Record<string, unknown>): Promise<T> {
 export interface GlobalPersonResolved {
   id:                   string
   first_name:           string | null
+  middle_name:          string | null
   last_name:            string | null
+  father_name:          string | null
+  grandfather_name:     string | null
+  patronymic_connector: string | null
   nickname:             string | null
   email:                string | null
   phone:                string | null
@@ -53,7 +57,11 @@ export interface GlobalPersonResolved {
 // Editable fields for create/update. All optional — create defaults NOT NULLs.
 export interface GlobalPersonInput {
   first_name?:           string | null
+  middle_name?:          string | null
   last_name?:            string | null
+  father_name?:          string | null
+  grandfather_name?:     string | null
+  patronymic_connector?: string | null
   nickname?:             string | null
   email?:                string | null
   phone?:                string | null

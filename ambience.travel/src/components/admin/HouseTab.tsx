@@ -156,6 +156,27 @@ type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contact
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
+// Formal name assembly — the patronymic chain. Single rule, used by the Profile-tab
+// live preview now and mirrored by the canonical formatName() formatter later:
+//   given + [middle] + [connector] father + [connector] grandfather + [family]
+// Each part included only if present; the bin/bint connector prefixes father AND
+// grandfather when set. Western names (no middle/patronymic/connector) collapse to
+// "First Last" naturally.
+function assembleFormalName(parts: {
+  first_name?: string; middle_name?: string; father_name?: string
+  grandfather_name?: string; last_name?: string; patronymic_connector?: string
+}): string {
+  const c = (parts.patronymic_connector ?? '').trim()
+  const seg: string[] = []
+  const push = (v?: string) => { const t = (v ?? '').trim(); if (t) seg.push(t) }
+  push(parts.first_name)
+  push(parts.middle_name)
+  if ((parts.father_name ?? '').trim())      { if (c) seg.push(c); push(parts.father_name) }
+  if ((parts.grandfather_name ?? '').trim()) { if (c) seg.push(c); push(parts.grandfather_name) }
+  push(parts.last_name)
+  return seg.join(' ')
+}
+
 function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, onReload }: {
   person:         HousePerson
   houseId:        string
@@ -177,7 +198,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   // Editable global_people identity (driven by person.person_id).
   const [gp, setGp]               = useState<GlobalPersonResolved | null | 'loading'>('loading')
   const [gpLoaded, setGpLoaded]   = useState(false)
-  const [gpDraft, setGpDraft]     = useState({ first_name: '', last_name: '', nickname: '', email: '', phone: '' })
+  const [gpDraft, setGpDraft]     = useState({ first_name: '', middle_name: '', father_name: '', grandfather_name: '', last_name: '', patronymic_connector: '', nickname: '', email: '', phone: '' })
   const [gpSaving, setGpSaving]   = useState(false)
 
   const personPrefs = useMemo(() => allPreferences.filter(p => p.person_id === person.id), [allPreferences, person.id])
@@ -207,11 +228,15 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
       .then(p => {
         setGp(p)
         if (p) setGpDraft({
-          first_name: p.first_name ?? '',
-          last_name:  p.last_name  ?? '',
-          nickname:   p.nickname   ?? '',
-          email:      p.email      ?? '',
-          phone:      p.phone      ?? '',
+          first_name:           p.first_name           ?? '',
+          middle_name:          p.middle_name          ?? '',
+          father_name:          p.father_name          ?? '',
+          grandfather_name:     p.grandfather_name     ?? '',
+          last_name:            p.last_name            ?? '',
+          patronymic_connector: p.patronymic_connector ?? '',
+          nickname:             p.nickname             ?? '',
+          email:                p.email                ?? '',
+          phone:                p.phone                ?? '',
         })
       })
       .catch(() => setGp(null))
@@ -233,11 +258,15 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
     setGpSaving(true)
     try {
       const updated = await updateGlobalPerson(person.person_id, {
-        first_name: gpDraft.first_name.trim() || null,
-        last_name:  gpDraft.last_name.trim()  || null,
-        nickname:   gpDraft.nickname.trim()   || null,
-        email:      gpDraft.email.trim()      || null,
-        phone:      gpDraft.phone.trim()      || null,
+        first_name:           gpDraft.first_name.trim()           || null,
+        middle_name:          gpDraft.middle_name.trim()          || null,
+        father_name:          gpDraft.father_name.trim()          || null,
+        grandfather_name:     gpDraft.grandfather_name.trim()     || null,
+        last_name:            gpDraft.last_name.trim()            || null,
+        patronymic_connector: gpDraft.patronymic_connector || null,
+        nickname:             gpDraft.nickname.trim()             || null,
+        email:                gpDraft.email.trim()                || null,
+        phone:                gpDraft.phone.trim()                || null,
       })
       setGp(updated)
       success('Identity saved.')
@@ -515,13 +544,43 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 12, borderBottom: `1px solid ${A.border}` }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Registry Identity</div>
+
+                {/* Name chain — reading order. Western names use first+last and leave
+                    the middle/patronymic fields blank; one form serves both. */}
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                   <Field label='First Name'>
                     <input style={inputStyle} value={gpDraft.first_name} onChange={e => setGpDraft(d => ({ ...d, first_name: e.target.value }))} />
                   </Field>
-                  <Field label='Last Name'>
+                  <Field label='Middle Name'>
+                    <input style={inputStyle} value={gpDraft.middle_name} onChange={e => setGpDraft(d => ({ ...d, middle_name: e.target.value }))} />
+                  </Field>
+                  <Field label="Father's Name">
+                    <input style={inputStyle} value={gpDraft.father_name} onChange={e => setGpDraft(d => ({ ...d, father_name: e.target.value }))} />
+                  </Field>
+                  <Field label="Grandfather's Name">
+                    <input style={inputStyle} value={gpDraft.grandfather_name} onChange={e => setGpDraft(d => ({ ...d, grandfather_name: e.target.value }))} />
+                  </Field>
+                  <Field label='Family / Last Name'>
                     <input style={inputStyle} value={gpDraft.last_name} onChange={e => setGpDraft(d => ({ ...d, last_name: e.target.value }))} />
                   </Field>
+                  <Field label='Connector'>
+                    <select style={inputStyle} value={gpDraft.patronymic_connector} onChange={e => setGpDraft(d => ({ ...d, patronymic_connector: e.target.value }))}>
+                      <option value=''>— none —</option>
+                      <option value='bin'>bin (son of)</option>
+                      <option value='bint'>bint (daughter of)</option>
+                    </select>
+                  </Field>
+                </div>
+
+                {/* Live formal-name preview — the chain assembled as you type. */}
+                {assembleFormalName(gpDraft) && (
+                  <div style={{ padding: '8px 12px', background: `${A.gold}0c`, border: `1px solid ${A.gold}25`, borderRadius: 8 }}>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 3 }}>Formal name</div>
+                    <div style={{ fontSize: 14, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{assembleFormalName(gpDraft)}</div>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                   <Field label='Nickname'>
                     <input style={inputStyle} value={gpDraft.nickname} onChange={e => setGpDraft(d => ({ ...d, nickname: e.target.value }))} />
                   </Field>

@@ -45,7 +45,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const PERSON_SELECT = 'id, first_name, last_name, nickname, email, phone, last_initial'
+const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, nickname, email, phone, last_initial'
 
 // Flatten + resolve display_name. Mirrors the team EF's shapeMember pattern.
 function shapePerson(p: any) {
@@ -54,14 +54,18 @@ function shapePerson(p: any) {
     [p.first_name, p.last_name].filter(Boolean).join(' ') ||
     'Person'
   return {
-    id:           p.id,
-    first_name:   p.first_name ?? null,
-    last_name:    p.last_name ?? null,
-    nickname:     p.nickname ?? null,
-    email:        p.email ?? null,
-    phone:        p.phone ?? null,
-    last_initial: p.last_initial ?? null,
-    display_name: display,
+    id:                   p.id,
+    first_name:           p.first_name ?? null,
+    middle_name:          p.middle_name ?? null,
+    last_name:            p.last_name ?? null,
+    father_name:          p.father_name ?? null,
+    grandfather_name:     p.grandfather_name ?? null,
+    patronymic_connector: p.patronymic_connector ?? null,
+    nickname:             p.nickname ?? null,
+    email:                p.email ?? null,
+    phone:                p.phone ?? null,
+    last_initial:         p.last_initial ?? null,
+    display_name:         display,
   }
 }
 
@@ -138,7 +142,7 @@ Deno.serve(async (req: Request) => {
         if (search && search.trim()) {
           const term = `%${search.trim()}%`
           q = q.or(
-            `first_name.ilike.${term},last_name.ilike.${term},nickname.ilike.${term},email.ilike.${term}`
+            `first_name.ilike.${term},middle_name.ilike.${term},last_name.ilike.${term},father_name.ilike.${term},grandfather_name.ilike.${term},nickname.ilike.${term},email.ilike.${term}`
           )
         }
 
