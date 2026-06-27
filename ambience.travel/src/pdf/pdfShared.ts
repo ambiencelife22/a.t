@@ -11,14 +11,17 @@
 //       prepared-for centred italic. One source of truth.
 //   - drawFrostedLogoCard() — top-left pill (used inside drawPdfHero)
 //   - stampPageChrome() — footer rule + tagline + page count (all PDFs)
-//   - addCreAmPage() — new page with cream background
+//   - addCreamPage() — new page with cream background
 //
 // What it does not own:
 //   - Section renderers (rooms, entries, flights, overview rows)
 //   - jsPDF lifecycle (each PDF file owns its own doc + save)
 //   - Font loading / registration (pdfFonts.ts)
 //
-// Last updated: S43 Add 2C — extracted from pdfImmerseConfirmation,
+// Last updated: S53G — hero metadata spacing pass. Gold rule thicker (0.5pt),
+//   all metadata steps loosened (6–8pt), charSpace on date range (0.3),
+//   subtitle larger (11pt), eyebrow charSpace wider (0.6), titleY nudged up.
+// Prior: S43 Add 2C — extracted from pdfImmerseConfirmation,
 //   pdfImmerseBrief, pdfImmerseProgramme. Single source of truth.
 //   Hero: programme-style overlay + brief-style logo card + Cormorant eyebrow.
 
@@ -204,52 +207,55 @@ export async function drawPdfHero(doc: any, params: HeroParams): Promise<number>
   doc.setTextColor(T.cream[0], T.cream[1], T.cream[2])
   const titleLines = doc.splitTextToSize(title, CW)
   const titleBlockH = titleLines.length * 9
-  const titleY = (P.heroH - titleBlockH) / 2 + 6
+  // S53G: nudged up slightly (was +6)
+  const titleY = (P.heroH - titleBlockH) / 2 + 4
   for (let i = 0; i < titleLines.length; i++) {
     doc.text(titleLines[i], P.w / 2, titleY + i * 9, { align: 'center' })
   }
 
   // ── Metadata below hero, in cream ──────────────────────────────────────
+  // S53G: all steps loosened, gold rule thicker, eyebrow charSpace wider,
+  // subtitle larger, date range tracked.
 
   let y = P.heroH + 8
 
   // Gold rule
-  drawRule(doc, P.margin, y, CW, T.gold, 0.4)
-  y += 6
+  drawRule(doc, P.margin, y, CW, T.gold, 0.5)
+  y += 8
 
   // Subtitle (brief_subtitle)
   if (subtitle) {
     doc.setFont('CormorantGaramond', 'italic')
-    doc.setFontSize(10)
+    doc.setFontSize(11)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
     doc.text(subtitle, P.w / 2, y, { align: 'center' })
-    y += 5
+    y += 7
   }
 
   // Doc type eyebrow
   doc.setFont('CormorantGaramond', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-  doc.text(docType, P.w / 2, y, { align: 'center', charSpace: 0.2 })
-  y += 5
+  doc.text(docType, P.w / 2, y, { align: 'center', charSpace: 0.6 })
+  y += 7
 
   // Prepared for
   if (preparedFor) {
     serif(doc, 'italic', 10)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(`Prepared for ${preparedFor}`, P.w / 2, y, { align: 'center' })
-    y += 5
+    y += 6
   }
 
   // Date range
   if (dateRange) {
-    sans(doc, 'normal', 8)
+    sans(doc, 'normal', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(dateRange, P.w / 2, y, { align: 'center' })
-    y += 5
+    doc.text(dateRange, P.w / 2, y, { align: 'center', charSpace: 0.3 })
+    y += 6
   }
 
-  return y + 4
+  return y + 6
 }
 
 // ── Footer chrome — one source of truth for all PDFs ─────────────────────────
@@ -386,6 +392,45 @@ export function roomLine(room: RoomLike): string {
     d.board,
     d.conf ? `#${d.conf}` : null,
   ].filter(Boolean).join('  \u00b7  ')
+}
+
+// ── Dining status — shared cancellation/terms model for PDFs ──────────────────
+// Mirrors diningPillModel in ImmerseTripPage. Returns the label + an RGB tone.
+export interface DiningStatusLike {
+  show_cancellation?:            boolean | null
+  dining_status?:                string | null
+  cancellation_penalty_applied?: boolean | null
+  cancellation_note?:            string | null
+  venue?: { booking_terms?: string | null } | null
+}
+
+export function diningPdfStatus(d: DiningStatusLike): { label: string; tone: RGB } | null {
+  if (d.show_cancellation === false) return null
+  const cancelled = d.dining_status === 'cancelled'
+  const penalty   = d.cancellation_penalty_applied === true
+  const red: RGB  = [180, 50, 31]
+  if (cancelled && penalty) return { label: d.cancellation_note ?? 'Cancelled \u2014 penalty applies', tone: red }
+  if (cancelled)            return { label: d.cancellation_note ?? 'Cancelled', tone: T.muted }
+  if (d.venue?.booking_terms) return { label: d.venue.booking_terms, tone: T.gold }
+  return null
+}
+
+export function isDiningCancelled(d: DiningStatusLike): boolean {
+  return d.dining_status === 'cancelled' && d.show_cancellation !== false
+}
+
+// ── Greeter line — meet_greet contact composition for PDFs ────────────────────
+export interface GreeterLike {
+  contact_name?:  string | null
+  contact_phone?: string | null
+  notes?:         string | null
+}
+export function greeterLines(g: GreeterLike): string[] {
+  const out: string[] = []
+  const contact = [g.contact_name, g.contact_phone].filter(Boolean).join('  \u00b7  ')
+  if (contact) out.push(contact)
+  if (g.notes) out.push(g.notes)
+  return out
 }
 
 // ── Conf pill — confirmation number pill, shared across all PDFs ──────────────

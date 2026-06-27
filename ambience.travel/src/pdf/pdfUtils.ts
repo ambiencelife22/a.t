@@ -141,10 +141,12 @@ export async function makeCoverCropAsync(
   srcNh:   number,
   destWmm: number,
   destHmm: number,
-  pxPerMm = 4,
+  pxPerMm = 12,
+  radiusMm = 0,
 ): Promise<{ data: string; format: 'PNG' | 'JPEG' }> {
   const outW  = Math.round(destWmm * pxPerMm)
   const outH  = Math.round(destHmm * pxPerMm)
+  const rad   = Math.round(radiusMm * pxPerMm)
   const scale = Math.max(outW / srcNw, outH / srcNh)
   const sw    = Math.round(srcNw * scale)
   const sh    = Math.round(srcNh * scale)
@@ -160,11 +162,26 @@ export async function makeCoverCropAsync(
         c.height = outH
         const ctx = c.getContext('2d')
         if (!ctx) { resolve({ data: srcData, format }); return }
-        if (format !== 'PNG') { ctx.fillStyle = '#FAF7F2'; ctx.fillRect(0, 0, outW, outH) }
+        // Rounded-corner clip — bake the radius into the image data so it
+        // composites cleanly over any page background (PNG keeps the corners
+        // transparent; JPEG can't, so rounding forces a PNG result).
+        if (rad > 0) {
+          ctx.beginPath()
+          ctx.moveTo(rad, 0)
+          ctx.arcTo(outW, 0, outW, outH, rad)
+          ctx.arcTo(outW, outH, 0, outH, rad)
+          ctx.arcTo(0, outH, 0, 0, rad)
+          ctx.arcTo(0, 0, outW, 0, rad)
+          ctx.closePath()
+          ctx.clip()
+        }
         ctx.drawImage(img, -ox, -oy, sw, sh)
-        resolve(format === 'PNG'
-          ? { data: c.toDataURL('image/png'),         format: 'PNG'  }
-          : { data: c.toDataURL('image/jpeg', 0.88),  format: 'JPEG' })
+        // When rounded, always emit PNG so the clipped corners stay transparent.
+        resolve(rad > 0
+          ? { data: c.toDataURL('image/png'), format: 'PNG' }
+          : (format === 'PNG'
+              ? { data: c.toDataURL('image/png'),        format: 'PNG'  }
+              : { data: c.toDataURL('image/jpeg', 0.88), format: 'JPEG' }))
       } catch { resolve({ data: srcData, format }) }
     }
     img.onerror = () => resolve({ data: srcData, format })
