@@ -61,6 +61,7 @@ const AUX_BOOKING_TYPE_META: Record<string, AuxBookingTypeMeta> = {
   flight:           { label: 'FLIGHTS',           icon: '\u2708',       sort_order: 9 },
   heli_transfer:    { label: 'HELICOPTER',        icon: '\uD83D\uDE81', sort_order: 10 },
   journey:          { label: 'JOURNEY',           icon: '\uD83E\uDDED', sort_order: 11 },
+  meet_greet:       { label: 'AIRPORT MEET & GREET', icon: '\uD83E\uDEAA', sort_order: 9.5 },
   private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sort_order: 12 },
   public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sort_order: 13 },
   reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sort_order: 14 },
@@ -319,6 +320,7 @@ export const CATEGORY_ACCENT: Record<string, string> = {
   reservation:      '#B4AFA5',
   arrangement:      '#B4AFA5',
   journey:          '#B4AFA5',
+  meet_greet:       '#A3E635',
   note:             '#B4AFA5',
   other:            '#B4AFA5',
 }
@@ -356,4 +358,8 @@ export function isGroundTransportBooking(bookingType: string | null | undefined)
 
 export function isDiningBooking(bookingType: string | null | undefined): boolean {
   return toSlug(bookingType ?? '') === 'dining'
+}
+
+export function isMeetGreetBooking(bookingType: string | null | undefined): boolean {
+  return toSlug(bookingType ?? '') === 'meet_greet'
 }

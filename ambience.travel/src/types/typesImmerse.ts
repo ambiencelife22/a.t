@@ -596,6 +596,21 @@ export type ImmerseTripAuxBooking = {
   booked_by:           string | null
   guest_name:          string | null   // S53F — reservation-holder name (free text)
   guest_count:         number | null   // S53F — party size / covers
+  contact_name:        string | null   // S53F — service-contact (e.g. greeter)
+  contact_phone:       string | null   // S53F — service-contact phone
+  dining_status:                string | null
+  cancellation_penalty_applied: boolean | null
+  cancellation_note:            string | null
+  show_cancellation:            boolean | null
+  venue?: {
+    address:         string | null
+    maps_url:        string | null
+    phone:           string | null
+    dress_code:      string | null
+    children_policy: string | null
+    table_hold_note: string | null
+    booking_terms:   string | null
+  } | null
   brief_show:          boolean
   sort_order:          number
   airline_supplier_id: string | null
@@ -632,6 +647,7 @@ export type ImmerseBookingRoom = {
   brief_image_src:     string | null
   additional_guests:   string[] | null
   person_id:           string | null
+  check_in_time:       string | null
   sort_order:          number
   created_at:          string
   updated_at:          string
@@ -655,6 +671,10 @@ export type ImmerseTripBooking = {
   status:              string | null
   confirmation_number: string | null
   start_date:          string | null
+  check_in_date:       string | null
+  start_time:          string | null
+  check_in_note:       string | null
+  check_out_note:      string | null
   end_date:            string | null
   nights:              number | null
   total_rate:          number | null

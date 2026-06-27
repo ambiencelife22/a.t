@@ -13,6 +13,7 @@ export type TimelineRoom = {
   party_composition:   string | null
   confirmation_number: string | null
   notes:               string | null
+  check_in_time: string | null
 }
 
 export type TimelineDriverDetail = {
@@ -50,6 +51,23 @@ export type TimelineItem = {
   image_src:           string | null
   guest_label:         string | null
   status:              string | null
+  contact_name:                 string | null
+  contact_phone:                string | null
+  guest_name:                   string | null
+  guest_count:                  number | null
+  dining_status:                string | null
+  cancellation_penalty_applied: boolean | null
+  cancellation_note:            string | null
+  show_cancellation:            boolean | null
+  venue: {
+    address:         string | null
+    maps_url:        string | null
+    phone:           string | null
+    dress_code:      string | null
+    children_policy: string | null
+    table_hold_note: string | null
+    booking_terms:   string | null
+  } | null
   rooms:               TimelineRoom[]
   passengers:          TimelinePassenger[]
   driver_details:      TimelineDriverDetail[]
