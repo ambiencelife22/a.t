@@ -334,10 +334,15 @@ function timeRank(t: string | null): number {
 }
 
 // Position within a day. Lower sorts earlier.
+// Hotel check-out floats to the top (morning departure). Hotel check-in sorts by
+// its time when one is set (a 09:00 check-in slots among the morning items); an
+// untimed check-in falls to the bottom (afternoon arrival, the legacy default).
 function dayPosition(item: TimelineItem): number {
-  if (item.kind === 'hotel_checkout') return -1            // top of day
-  if (item.kind === 'hotel_checkin')  return 100000        // bottom of day
-  return timeRank(item.start_time)                         // timed items between
+  if (item.kind === 'hotel_checkout') return -1                          // top of day
+  if (item.kind === 'hotel_checkin') {
+    return item.start_time ? timeRank(item.start_time) : 100000          // timed → by time; untimed → bottom
+  }
+  return timeRank(item.start_time)                                       // timed items between
 }
 
 export function timelineComparator(a: TimelineItem, b: TimelineItem): number {
