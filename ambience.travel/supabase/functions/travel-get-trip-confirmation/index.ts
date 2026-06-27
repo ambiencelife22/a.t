@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
       // confirmation needs financial-adjacent columns (deposit/balance paid, taxes)
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, created_at, updated_at')
+        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, created_at, updated_at')
         .eq('house_id', houseId)
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
@@ -183,15 +183,27 @@ Deno.serve(async (req: Request) => {
           (withPax as Record<string, unknown>[]).map(a => a.dining_venue_id).filter(Boolean)
         )] as string[]
         if (diningVenueIds.length === 0) return (withPax as Record<string, unknown>[]).map(flattenAuxType)
-        const { data: diningImgs } = await db.from('travel_dining_venues').select('id, image_src').in('id', diningVenueIds)
-        const imgById: Record<string, string | null> = {}
-        for (const d of (diningImgs ?? []) as Record<string, unknown>[]) {
-          imgById[d.id as string] = (d.image_src as string | null) ?? null
-        }
-        return (withPax as Record<string, unknown>[]).map(a => ({
-          ...flattenAuxType(a),
-          image_src: a.dining_venue_id ? (imgById[a.dining_venue_id as string] ?? null) : null,
-        }))
+        const { data: diningVenues } = await db.from('travel_dining_venues')
+          .select('id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
+          .in('id', diningVenueIds)
+        const venueById: Record<string, Record<string, unknown>> = {}
+        for (const d of (diningVenues ?? []) as Record<string, unknown>[]) venueById[d.id as string] = d
+        return (withPax as Record<string, unknown>[]).map(a => {
+          const v = a.dining_venue_id ? venueById[a.dining_venue_id as string] : null
+          return {
+            ...flattenAuxType(a),
+            image_src: (v?.image_src as string | null) ?? null,
+            venue: v ? {
+              address:         (v.address as string | null) ?? null,
+              maps_url:        (v.maps_url as string | null) ?? null,
+              phone:           (v.phone as string | null) ?? null,
+              dress_code:      (v.dress_code as string | null) ?? null,
+              children_policy: (v.children_policy as string | null) ?? null,
+              table_hold_note: (v.table_hold_note as string | null) ?? null,
+              booking_terms:   (v.booking_terms as string | null) ?? null,
+            } : null,
+          }
+        })
       })(),
       urlId: url_id,
       guides: {

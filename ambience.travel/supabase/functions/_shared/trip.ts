@@ -175,6 +175,8 @@ export const AUX_BOOKING_SELECT = [
   'name', 'start_date', 'start_time', 'end_date', 'end_time',
   'origin', 'destination', 'notes', 'confirmation_number', 'booked_by',
   'guest_name', 'guest_count',
+  'contact_name', 'contact_phone',
+  'dining_status', 'cancellation_penalty_applied', 'cancellation_note', 'show_cancellation',
   'brief_show', 'sort_order', 'created_at', 'updated_at',
   'flight_number', 'airline_name', 'cabin_class', 'seat_type', 'aircraft_type',
   'depart_airport', 'arrive_airport', 'airline_supplier_id', 'dining_venue_id',
@@ -204,7 +206,7 @@ export async function fetchTripBookings(
   // additional_guests is confirmation-only but harmless to programme.
   const roomsResult = bookingIds.length > 0
     ? await db.from('travel_booking_rooms')
-        .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, sort_order, created_at, updated_at')
+        .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, check_in_time, sort_order, created_at, updated_at')
         .in('booking_id', bookingIds)
         .order('sort_order', { ascending: true })
     : { data: [], error: null }

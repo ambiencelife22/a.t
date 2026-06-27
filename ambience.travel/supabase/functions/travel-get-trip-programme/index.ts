@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
       // Bookings — programme's column set (no financial cols; derives hotel items)
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order')
+        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, end_date, nights, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order')
         .eq('house_id', houseId)
         .eq('trip_id', tripId),
 
@@ -156,17 +156,29 @@ Deno.serve(async (req: Request) => {
         .map(a => a.dining_venue_id)
         .filter(Boolean)
     )] as string[]
-    const auxDiningImgResult = auxDiningIds.length > 0
-      ? await db.from('travel_dining_venues').select('id, image_src').in('id', auxDiningIds)
+    const auxDiningVenueResult = auxDiningIds.length > 0
+      ? await db.from('travel_dining_venues')
+          .select('id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
+          .in('id', auxDiningIds)
       : { data: [], error: null }
-    const auxDiningImgById: Record<string, string | null> = {}
-    for (const d of (auxDiningImgResult.data ?? []) as Record<string, unknown>[]) {
-      auxDiningImgById[d.id as string] = (d.image_src as string | null) ?? null
-    }
-    const auxBookingsWithImg = (auxBookings as Record<string, unknown>[]).map(a => ({
-      ...flattenAuxType(a),
-      image_src: a.dining_venue_id ? (auxDiningImgById[a.dining_venue_id as string] ?? null) : null,
-    }))
+    const auxVenueById: Record<string, Record<string, unknown>> = {}
+    for (const d of (auxDiningVenueResult.data ?? []) as Record<string, unknown>[]) auxVenueById[d.id as string] = d
+    const auxBookingsWithImg = (auxBookings as Record<string, unknown>[]).map(a => {
+      const v = a.dining_venue_id ? auxVenueById[a.dining_venue_id as string] : null
+      return {
+        ...flattenAuxType(a),
+        image_src: (v?.image_src as string | null) ?? null,
+        venue: v ? {
+          address:         (v.address as string | null) ?? null,
+          maps_url:        (v.maps_url as string | null) ?? null,
+          phone:           (v.phone as string | null) ?? null,
+          dress_code:      (v.dress_code as string | null) ?? null,
+          children_policy: (v.children_policy as string | null) ?? null,
+          table_hold_note: (v.table_hold_note as string | null) ?? null,
+          booking_terms:   (v.booking_terms as string | null) ?? null,
+        } : null,
+      }
+    })
 
     // ── 10b. Dining / experience images for standalone entries ─────────────────
     const diningIds     = [...new Set(entries.map(e => e.source_dining_id).filter(Boolean))] as string[]

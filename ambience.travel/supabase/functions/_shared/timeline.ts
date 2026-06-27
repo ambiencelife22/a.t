@@ -25,6 +25,7 @@ export type TimelineRoom = {
   party_composition:   string | null
   confirmation_number: string | null
   notes:               string | null
+  check_in_time:       string | null
 }
 
 export type TimelinePassenger = {
@@ -52,6 +53,23 @@ export type TimelineItem = {
   image_src:           string | null
   guest_label:         string | null
   status:              string | null
+  contact_name:                 string | null
+  contact_phone:                string | null
+  guest_name:                   string | null
+  guest_count:                  number | null
+  dining_status:                string | null
+  cancellation_penalty_applied: boolean | null
+  cancellation_note:            string | null
+  show_cancellation:            boolean | null
+  venue: {
+    address:         string | null
+    maps_url:        string | null
+    phone:           string | null
+    dress_code:      string | null
+    children_policy: string | null
+    table_hold_note: string | null
+    booking_terms:   string | null
+  } | null
   rooms:               TimelineRoom[]
   passengers:          TimelinePassenger[]
   source_booking_id:   string | null
@@ -66,6 +84,7 @@ type BookingLike = {
   booking_type?:     string | null
   name?:             string | null
   start_date?:       string | null
+  check_in_date?:    string | null
   end_date?:         string | null
   brief_show?:       boolean
   booked_by?:        string | null
@@ -174,7 +193,10 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
     const img = b.brief_image_src ?? b._hotel_image_src ?? null
     const checkinLabel = reCheckin.has(b.id as string) ? 'Re-Check-in' : 'Check-in'
 
-    if (b.start_date) {
+    // Guest-facing check-in day: check_in_date overrides start_date when the
+    // financial start precedes actual arrival (early-check-in half-rate night).
+    const checkInDay = (b.check_in_date as string | null) ?? b.start_date
+    if (checkInDay) {
       const rooms: TimelineRoom[] = (b._rooms ?? [])
         .slice()
         .sort((x, y) => ((x.sort_order as number) ?? 0) - ((y.sort_order as number) ?? 0))
@@ -185,16 +207,21 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
           party_composition:   (r.party_composition as string | null) ?? null,
           confirmation_number: (r.confirmation_number as string | null) ?? null,
           notes:               (r.notes as string | null) ?? null,
+          check_in_time:       (r.check_in_time as string | null) ?? null,
         }))
       out.push({
-        id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: b.start_date,
-        start_time: null, end_time: null, category: 'stay', categoryLabel: 'Hotel',
+        id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: checkInDay,
+        start_time: (b.start_time as string | null) ?? null, end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `${checkinLabel} \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
         // Booking-level conf shown by the card when there are no per-room rows.
         confirmation_number: (b.confirmation_number as string | null) ?? null,
         guest_label: null,
         status: (b.status as string | null) ?? null,
+        contact_name: null, contact_phone: null,
+        guest_name: null, guest_count: null, dining_status: null,
+        cancellation_penalty_applied: null, cancellation_note: null,
+        show_cancellation: null, venue: null,
         rooms, passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -208,6 +235,10 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         booked_by: b.booked_by ?? null, image_src: img,
         confirmation_number: null, guest_label: null,
         status: (b.status as string | null) ?? null,
+        contact_name: null, contact_phone: null,
+        guest_name: null, guest_count: null, dining_status: null,
+        cancellation_penalty_applied: null, cancellation_note: null,
+        show_cancellation: null, venue: null,
         rooms: [], passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -247,6 +278,15 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
       title: a.name ?? a.booking_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
+      contact_name: (a.contact_name as string | null) ?? null,
+      contact_phone: (a.contact_phone as string | null) ?? null,
+      guest_name: (a.guest_name as string | null) ?? null,
+      guest_count: (a.guest_count as number | null) ?? null,
+      dining_status: (a.dining_status as string | null) ?? null,
+      cancellation_penalty_applied: (a.cancellation_penalty_applied as boolean | null) ?? null,
+      cancellation_note: (a.cancellation_note as string | null) ?? null,
+      show_cancellation: (a.show_cancellation as boolean | null) ?? null,
+      venue: (a.venue as TimelineItem['venue']) ?? null,
       rooms: [], passengers,
       source_booking_id: null, source_aux_id: a.id as string, brief_show: true,
     })
@@ -271,6 +311,10 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       image_src: (e.image_src as string | null) ?? null,
       confirmation_number: (e.confirmation_number as string | null) ?? null,
       guest_label: (e.guest_label as string | null) ?? null, status: null,
+      contact_name: null, contact_phone: null,
+      guest_name: null, guest_count: null, dining_status: null,
+      cancellation_penalty_applied: null, cancellation_note: null,
+      show_cancellation: null, venue: null,
       rooms: [], passengers: [],
       source_booking_id: null, source_aux_id: (e.source_aux_id as string | null) ?? null,
       brief_show: true,
