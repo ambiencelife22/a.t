@@ -1333,15 +1333,45 @@ function TripBriefTab({ clientData }: {
 
       {transfers.length > 0 && (
         <BriefSection title='Transfers'>
-          {transfers.map(t => (
-            <BriefRow
-              key={t.id}
-              label={t.start_date ? fmtDate(t.start_date) : '\u2014'}
-              value={t.name ?? 'Transfer'}
-              sub={[t.origin, t.destination].filter(Boolean).join(' \u2192 ')}
-              bookedBy={bookedByLabel(t.booked_by)}
-            />
-          ))}
+          {transfers.map(t => {
+            const route = [t.origin, t.destination].filter(Boolean).join(' \u2192 ')
+            const veh = (t.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+            return (
+              <div key={t.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
+                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
+                  {t.start_date ? fmtDate(t.start_date) : '\u2014'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
+                    {t.name ?? 'Transfer'}
+                  </div>
+                  {route && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{route}</div>}
+
+                  {veh.length > 0 && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {veh.map(v => (
+                        <div key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{v.driver_name || 'Driver'}</span>
+                          {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS }}>{v.vehicle_role}</span>}
+                          {[v.driver_phone, v.car_model, v.plate].filter(Boolean).length > 0 && (
+                            <span style={{ fontSize: 11, color: MUTED, fontFamily: 'DM Mono, monospace' }}>
+                              {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {bookedByLabel(t.booked_by) && (
+                    <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 4, fontStyle: 'italic' }}>
+                      {bookedByLabel(t.booked_by)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </BriefSection>
       )}
 

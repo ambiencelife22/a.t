@@ -30,7 +30,7 @@ import { assertJsPdf, loadImg, loadSvg, serif, sans, drawRule } from './pdfUtils
 import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtDate, fmtTime, buildDateRange, passengerLines, greeterLines,
+  fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, greeterLines,
   diningPdfStatus, isDiningCancelled, drawOwnArrangementsChip,
   drawPdfHero, stampPageChrome, addCreamPage,
 } from './pdfShared'
@@ -293,6 +293,17 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
         bookedBy:    bookedByLabel(t.booked_by),
         bookedByRaw: t.booked_by,
       }, y)
+      // Driver/vehicle lines in card-bg pill rows (matches flight passenger style).
+      const driverLines = driverDetailLines(t)
+      for (const line of driverLines) {
+        y = checkOverflow(doc, y, 9)
+        doc.setFillColor(T.cardBg[0], T.cardBg[1], T.cardBg[2])
+        doc.rect(P.margin + LABEL_W, y - 3.5, CW - LABEL_W, 6.5, 'F')
+        sans(doc, 'normal', 7.5)
+        doc.setTextColor(T.inkSoft[0], T.inkSoft[1], T.inkSoft[2])
+        doc.text(line, P.margin + LABEL_W + 3, y + 0.5); y += 7.5
+      }
+      if (driverLines.length > 0) y += 3
     }
     y += 10
   }
