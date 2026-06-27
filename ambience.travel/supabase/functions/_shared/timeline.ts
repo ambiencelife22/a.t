@@ -4,17 +4,19 @@
 // calls buildTimeline and returns the result as `entries`; the programme tab and
 // PDF render the stream as-is (no client-side derivation).
 //
-// Replaces three hand-aligned parallel derivations (S53G interim): the tab's
-// cards builder, the PDF's mergeDayEntries hotel block, and any EF inline copy.
-// One comparator, one merge, here.
-//
 // Hotel check-in/out are DERIVED from bookings (never stored). Standalone entries
 // (dining, experiences, notes — anything without a booking source) pass through.
 // Aux (flights/transfers) are derived from aux bookings, carrying passengers.
 //
-// Same-day ordering canon: a day flows check-out (morning, depart) → timed items
-// (by start_time) → check-in (afternoon, arrive). Untimed checkout sorts to the
-// top, untimed checkin to the bottom, timed items slot between by time.
+// Same-day ordering canon: check-out (morning, depart) → timed items (by
+// start_time) → untimed check-in (afternoon, arrive). A check-in WITH a start_time
+// sorts by that time among the day's items (e.g. a 09:00 check-in slots in the
+// morning); an untimed check-in falls to the bottom.
+//
+// Check-in/out NOTES (e.g. an early-check-in half-rate arrangement) ride on the
+// derived items so every surface — confirmation, programme, brief, all PDFs —
+// shows the concierge's intention. The note is guest-facing context, never an
+// internal artifact.
 
 // ── Public item shape ─────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ export type TimelineItem = {
   image_src:           string | null
   guest_label:         string | null
   status:              string | null
+  check_in_note:                string | null
+  check_out_note:               string | null
   contact_name:                 string | null
   contact_phone:                string | null
   guest_name:                   string | null
@@ -89,6 +93,8 @@ type BookingLike = {
   brief_show?:       boolean
   booked_by?:        string | null
   status?:           string | null
+  check_in_note?:    string | null
+  check_out_note?:   string | null
   _hotel_name?:      string | null
   _hotel_image_src?: string | null
   brief_image_src?:  string | null
@@ -141,31 +147,25 @@ type EntryLike = {
 export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
 
-  // Pre-pass: rank each hotel booking among same-hotel stays on this trip, in
-  // date order. A booking that is the 2nd+ stay at the same hotel is a
-  // "Re-Check-in" (split stay — guest returns). Keyed by hotel name (no clean
-  // hotel_id on the row); same hotel = same name. Stable by start_date then id.
+  // Pre-pass: detect re-check-ins (split stays). Group by hotel identity + exact
+  // date range; bookings sharing hotel AND start+end are concurrent rooms (one
+  // check-in). A booking at the same hotel with a DIFFERENT range is a re-check-in.
+  // Stay identity uses the FINANCIAL range (start_date/end_date) — that is the
+  // true booking span; the guest-facing check-in day is derived separately below.
   const reCheckin = new Set<string>()
-  // Group by hotel + exact date range. Bookings sharing the same hotel AND
-  // the same start+end are concurrent rooms (one check-in, not a re-check-in).
-  // Only a booking at the same hotel with a DIFFERENT date range is a re-check-in.
   const byHotelStay = new Map<string, BookingLike[]>()
   for (const b of bookings) {
     if (b.brief_show === false) continue
     const hasR = (b._rooms?.length ?? 0) > 0
     if (b.booking_type !== 'Hotel' && !hasR) continue
     if (!b.start_date) continue
-    // Key = hotel identity + date range. accom_hotel_id is canonical; fall back
-    // to hotel name for legacy rows without it.
     const hotelKey = (b.accom_hotel_id ?? b._hotel_name ?? b.name ?? 'Hotel') as string
     const stayKey  = `${hotelKey}::${b.start_date}::${b.end_date ?? ''}`
     const list = byHotelStay.get(stayKey) ?? []
     list.push(b)
     byHotelStay.set(stayKey, list)
   }
-  // Now detect re-check-ins: same hotel, different date range = sequential stay.
-  // Group all stays per hotel, sort by start_date; 2nd+ distinct date range = re-check-in.
-  const byHotel = new Map<string, string[]>() // hotelKey → sorted unique stayKeys
+  const byHotel = new Map<string, string[]>()
   for (const stayKey of byHotelStay.keys()) {
     const hotelKey = stayKey.split('::')[0]
     const list = byHotel.get(hotelKey) ?? []
@@ -174,10 +174,9 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
   }
   for (const stayKeys of byHotel.values()) {
     if (stayKeys.length < 2) continue
-    stayKeys.sort() // sorts by start_date since stayKey starts with hotelKey::start_date
+    stayKeys.sort()
     stayKeys.forEach((stayKey, i) => {
       if (i === 0) return
-      // All bookings in this stay group are re-check-ins
       for (const b of byHotelStay.get(stayKey) ?? []) {
         reCheckin.add(b.id as string)
       }
@@ -214,10 +213,11 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         start_time: (b.start_time as string | null) ?? null, end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `${checkinLabel} \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
-        // Booking-level conf shown by the card when there are no per-room rows.
         confirmation_number: (b.confirmation_number as string | null) ?? null,
         guest_label: null,
         status: (b.status as string | null) ?? null,
+        check_in_note: (b.check_in_note as string | null) ?? null,
+        check_out_note: null,
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
@@ -235,6 +235,8 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         booked_by: b.booked_by ?? null, image_src: img,
         confirmation_number: null, guest_label: null,
         status: (b.status as string | null) ?? null,
+        check_in_note: null,
+        check_out_note: (b.check_out_note as string | null) ?? null,
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
@@ -278,6 +280,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
       title: a.name ?? a.booking_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
+      check_in_note: null, check_out_note: null,
       contact_name: (a.contact_name as string | null) ?? null,
       contact_phone: (a.contact_phone as string | null) ?? null,
       guest_name: (a.guest_name as string | null) ?? null,
@@ -294,14 +297,11 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
   return out
 }
 
-// Standalone stored entries — anything NOT sourced from a booking. Hotel entries
-// that still carry a source_booking_id are derived now and excluded here to avoid
-// double-rendering; truly standalone items (dining, experiences, notes) pass through.
+// Standalone stored entries — anything NOT sourced from a booking.
 export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
   for (const e of entries) {
     if (e.brief_show === false) continue
-    // A booking-sourced entry is a redundant copy of a derived hotel item — skip.
     if (e.source_booking_id) continue
     out.push({
       id: e.id as string, kind: 'entry', entry_date: e.entry_date as string,
@@ -311,6 +311,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       image_src: (e.image_src as string | null) ?? null,
       confirmation_number: (e.confirmation_number as string | null) ?? null,
       guest_label: (e.guest_label as string | null) ?? null, status: null,
+      check_in_note: null, check_out_note: null,
       contact_name: null, contact_phone: null,
       guest_name: null, guest_count: null, dining_status: null,
       cancellation_penalty_applied: null, cancellation_note: null,
@@ -325,8 +326,6 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
 
 // ── Comparator + merge ─────────────────────────────────────────────────────────
 
-// Within a day: checkout (morning) → timed items by start_time → checkin (afternoon).
-// Untimed non-hotel items sort with timed (treated as end-of-timed) but before checkin.
 function timeRank(t: string | null): number {
   if (!t) return 9999
   const [h, m] = t.split(':')
@@ -338,11 +337,11 @@ function timeRank(t: string | null): number {
 // its time when one is set (a 09:00 check-in slots among the morning items); an
 // untimed check-in falls to the bottom (afternoon arrival, the legacy default).
 function dayPosition(item: TimelineItem): number {
-  if (item.kind === 'hotel_checkout') return -1                          // top of day
+  if (item.kind === 'hotel_checkout') return -1
   if (item.kind === 'hotel_checkin') {
-    return item.start_time ? timeRank(item.start_time) : 100000          // timed → by time; untimed → bottom
+    return item.start_time ? timeRank(item.start_time) : 100000
   }
-  return timeRank(item.start_time)                                       // timed items between
+  return timeRank(item.start_time)
 }
 
 export function timelineComparator(a: TimelineItem, b: TimelineItem): number {
@@ -350,7 +349,6 @@ export function timelineComparator(a: TimelineItem, b: TimelineItem): number {
   const pa = dayPosition(a)
   const pb = dayPosition(b)
   if (pa !== pb) return pa - pb
-  // stable-ish final tiebreak by id
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
 }
 

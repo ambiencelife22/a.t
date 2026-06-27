@@ -550,6 +550,8 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     notes: string | null; confirmation_number: string | null
     guest_label: string | null; booked_by: string | null
     image_src: string | null; status: string | null
+    checkInNote:  string | null
+    checkOutNote: string | null
     description: string | null
     bookingType:   string | null
     contactName:   string | null
@@ -603,6 +605,8 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             booked_by:           e.booked_by,
             image_src:           e.image_src,
             status:              e.status,
+            checkInNote:         e.check_in_note ?? null,
+            checkOutNote:        e.check_out_note ?? null,
             description:         null,
             bookingType:         e.category,
             contactName:         e.contact_name ?? null,
@@ -808,6 +812,8 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 {item.status && <StatusPill status={item.status} />}
                               </div>
                               <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>{item.title}</div>
+                              {item.checkInNote && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
+                              {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
                               {item.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-in ${fmtTime(item.start_time)}`}</div>}
                             </div>
                             {bookedByLabel(item.booked_by) && (
@@ -1255,6 +1261,7 @@ function TripBriefTab({ clientData }: {
                     {h._hotel_name ?? h.name ?? 'Hotel'}
                   </div>
                   {h.nights && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2 }}>{`${h.nights} nights`}</div>}
+                  {h.check_in_note && <div style={{ fontSize: 11, color: GOLD, fontFamily: SANS, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
                   {categories.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {categories.map((c, i) => (

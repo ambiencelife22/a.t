@@ -51,6 +51,8 @@ export type TimelineItem = {
   image_src:           string | null
   guest_label:         string | null
   status:              string | null
+  check_in_note:                string | null
+  check_out_note:               string | null
   contact_name:                 string | null
   contact_phone:                string | null
   guest_name:                   string | null

@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
       // Bookings — programme's column set (no financial cols; derives hotel items)
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, end_date, nights, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order')
+        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order')
         .eq('house_id', houseId)
         .eq('trip_id', tripId),
 

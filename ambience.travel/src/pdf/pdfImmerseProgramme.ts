@@ -164,8 +164,17 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       if (contact) diningDetail.push(contact)
     }
 
-    // detailLines: rooms + vehicles + greeters + dining (NOT passengers — rendered as pills)
-    const detailLines = [...roomLinesWithCheckIn, ...vehLines, ...greetLines, ...diningDetail]
+    // Check-in/out notes lead the detail lines (concierge intention, e.g. early
+    // check-in half-rate). Rooms, vehicles, greeters, dining follow. Passengers
+    // are rendered separately as pills, so they're excluded here.
+    const detailLines = [
+      ...(it.check_in_note ? [it.check_in_note] : []),
+      ...(it.check_out_note ? [it.check_out_note] : []),
+      ...roomLinesWithCheckIn,
+      ...vehLines,
+      ...greetLines,
+      ...diningDetail,
+    ]
 
     return {
       id:                  it.id,

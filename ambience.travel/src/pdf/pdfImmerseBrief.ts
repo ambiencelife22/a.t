@@ -236,6 +236,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
       const subParts = [
         h.nights ? `${h.nights} nights` : null,
         cats.length ? cats.join('  \u00b7  ') : null,
+        h.check_in_note ?? null,
       ].filter(Boolean)
       y += drawDataRow(doc, {
         date:        buildDateRange(h.check_in_date ?? h.start_date, h.end_date) || '\u2014',
