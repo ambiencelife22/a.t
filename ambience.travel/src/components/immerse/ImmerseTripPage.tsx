@@ -44,7 +44,7 @@ import type {
   ImmerseTripDayEntry as TripDayEntry,
 } from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'
-import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking } from '../../types/typesAuxBookings'
+import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking, isMeetGreetBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
@@ -170,6 +170,47 @@ function StatusPill({ status }: { status: string | null }) {
   )
 }
 
+// Dining cancellation/terms pill — single model, both surfaces.
+// active + booking_terms → gold advisory; cancelled + penalty → red; cancelled no-penalty → neutral.
+function diningPillModel(opts: {
+  showCancellation: boolean | null
+  diningStatus:     string | null
+  penaltyApplied:   boolean | null
+  cancellationNote: string | null
+  bookingTerms:     string | null
+}): { color: string; label: string } | null {
+  if (opts.showCancellation === false) return null
+  const cancelled = opts.diningStatus === 'cancelled'
+  const penalty   = opts.penaltyApplied === true
+  if (cancelled && penalty) return { color: '#B4321F', label: opts.cancellationNote ?? 'Cancelled — penalty applies' }
+  if (cancelled)            return { color: MUTED,     label: opts.cancellationNote ?? 'Cancelled' }
+  if (opts.bookingTerms)    return { color: GOLD,      label: opts.bookingTerms }
+  return null
+}
+
+function DiningPillBox({ model }: { model: { color: string; label: string } | null }) {
+  if (!model) return null
+  return (
+    <div style={{
+      display: 'inline-block', marginTop: 6, padding: '6px 12px',
+      border: `1px solid ${model.color}`, borderRadius: 8,
+      background: `${model.color}0F`,
+    }}>
+      <span style={{ fontSize: 11, fontFamily: SANS, color: model.color, lineHeight: 1.5 }}>{model.label}</span>
+    </div>
+  )
+}
+
+function DiningPill({ aux }: { aux: TripAuxBooking }) {
+  return <DiningPillBox model={diningPillModel({
+    showCancellation: aux.show_cancellation ?? null,
+    diningStatus:     aux.dining_status ?? null,
+    penaltyApplied:   aux.cancellation_penalty_applied ?? null,
+    cancellationNote: aux.cancellation_note ?? null,
+    bookingTerms:     aux.venue?.booking_terms ?? null,
+  })} />
+}
+
 // ── Image lightbox ────────────────────────────────────────────────────────────
 
 function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
@@ -258,7 +299,7 @@ const auxSections = groupAuxBySection(auxBookings)
             const bookedByText = bookedByLabel(booking.booked_by)
             const pillColor    = ownArr ? FAINT : GOLD
             const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
-            const dateRange    = buildDateRange(booking.start_date, booking.end_date)
+            const dateRange    = buildDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
             const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
             const rooms        = booking._rooms ?? []
 
@@ -284,6 +325,9 @@ const auxSections = groupAuxBySection(auxBookings)
                     <div>
                       <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
                       {dateRange && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>{dateRange}</div>}
+                      {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
+                      {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
+                      {booking.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-in ${fmtTime(booking.start_time)}`}</div>}
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
                     </div>
                     <div style={{ marginTop: 12 }}>
@@ -329,6 +373,7 @@ const auxSections = groupAuxBySection(auxBookings)
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {room.room_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{room.room_name}</div>}
                             {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{guests}</div>}
+                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-in ${fmtTime(room.check_in_time)}`}</div>}
                           </div>
                           {room.confirmation_number && (
                             <div style={{
@@ -371,7 +416,7 @@ const auxSections = groupAuxBySection(auxBookings)
               }}>
                 <div style={{ fontSize: 22, color: GOLD, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {aux.name && <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 3 }}>{aux.name}</div>}
+                  {aux.name && <div style={{ fontSize: 16, fontFamily: SERIF, color: aux.dining_status === 'cancelled' ? FAINT : INK, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{fmtDate(aux.start_date)}</div>}
                   {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 4 }}>{timeStr}</div>}
@@ -426,6 +471,41 @@ const auxSections = groupAuxBySection(auxBookings)
                       </div>
                     )
                   })()}
+                  {isMeetGreetBooking(aux.booking_type) && (aux.contact_name || aux.contact_phone) && (
+                    <div style={{ marginTop: 8 }}>
+                      {aux.contact_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK }}>{aux.contact_name}</div>}
+                      {aux.contact_phone && (
+                        <a href={`tel:${aux.contact_phone.replace(/\s+/g, '')}`} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{aux.contact_phone}</a>
+                      )}
+                      {aux.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
+                    </div>
+                  )}
+                  {isDiningBooking(aux.booking_type) && (() => {
+                    const v = aux.venue
+                    const guestLine = [aux.guest_name, aux.guest_count ? `${aux.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
+                    const rows: { label: string; value: string }[] = []
+                    if (v?.address)         rows.push({ label: 'Address',  value: v.address })
+                    if (v?.phone)           rows.push({ label: 'Phone',    value: v.phone })
+                    if (v?.dress_code)      rows.push({ label: 'Dress',    value: v.dress_code })
+                    if (v?.children_policy) rows.push({ label: 'Children', value: v.children_policy })
+                    if (v?.table_hold_note) rows.push({ label: 'Table',    value: v.table_hold_note })
+                    return (
+                      <div style={{ marginTop: 8 }}>
+                        {guestLine && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: rows.length ? 8 : 0 }}>{guestLine}</div>}
+                        {rows.map((r, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginTop: i ? 4 : 0, flexWrap: 'wrap' }}>
+                            <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>{r.label}</div>
+                            <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                              {r.label === 'Address' && v?.maps_url
+                                ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: GOLD, textDecoration: 'none' }}>{r.value}</a>
+                                : r.value}
+                            </div>
+                          </div>
+                        ))}
+                        <DiningPill aux={aux} />
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             )
@@ -471,6 +551,16 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     guest_label: string | null; booked_by: string | null
     image_src: string | null; status: string | null
     description: string | null
+    bookingType:   string | null
+    contactName:   string | null
+    contactPhone:  string | null
+    guestName:     string | null
+    guestCount:    number | null
+    diningStatus:  string | null
+    cancellationPenaltyApplied: boolean | null
+    cancellationNote: string | null
+    showCancellation: boolean | null
+    venue: { address: string | null; maps_url: string | null; phone: string | null; dress_code: string | null; children_policy: string | null; table_hold_note: string | null; booking_terms: string | null } | null
     flightOrigin:      string | null
     flightDestination: string | null
     flightDepartTime:  string | null
@@ -478,7 +568,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     seatNumbers:       string | null
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-    rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null }[]
+    rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; check_in_time: string | null }[]
     driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
   }
 
@@ -514,6 +604,16 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             image_src:           e.image_src,
             status:              e.status,
             description:         null,
+            bookingType:         e.category,
+            contactName:         e.contact_name ?? null,
+            contactPhone:        e.contact_phone ?? null,
+            guestName:           e.guest_name ?? null,
+            guestCount:          e.guest_count ?? null,
+            diningStatus:        e.dining_status ?? null,
+            cancellationPenaltyApplied: e.cancellation_penalty_applied ?? null,
+            cancellationNote:    e.cancellation_note ?? null,
+            showCancellation:    e.show_cancellation ?? null,
+            venue:               e.venue ?? null,
             flightOrigin,
             flightDestination,
             flightDepartTime:    isFlight ? e.start_time : null,
@@ -535,6 +635,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               party_composition:   r.party_composition,
               confirmation_number: r.confirmation_number,
               notes:               r.notes,
+              check_in_time:       r.check_in_time,
             })),
             driverDetails:       (e.driver_details ?? []).map(d => ({
               id:           d.id,
@@ -707,6 +808,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 {item.status && <StatusPill status={item.status} />}
                               </div>
                               <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>{item.title}</div>
+                              {item.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-in ${fmtTime(item.start_time)}`}</div>}
                             </div>
                             {bookedByLabel(item.booked_by) && (
                               <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
@@ -726,6 +828,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {rd.roomName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</div>}
                                   {rd.guestLine && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</div>}
+                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-in ${fmtTime(room.check_in_time)}`}</div>}
                                   {room.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>
                                 {room.confirmation_number && (
@@ -739,6 +842,116 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               </div>
                             )
                           })}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Airport greeter — concise card: who's meeting, phone, flight ref, time.
+                  if (isMeetGreetBooking(item.bookingType) && (item.contactName || item.contactPhone)) {
+                    return (
+                      <div key={item.id} style={{
+                        background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 12,
+                        overflow: 'hidden', borderLeft: `3px solid ${accent}`,
+                        padding: '16px 20px', boxSizing: 'border-box',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>
+                            {item.categoryLabel ?? 'Airport Meet & Greet'}
+                          </span>
+                          {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</span>}
+                        </div>
+                        <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 6 }}>{item.title}</div>
+                        {item.contactName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK }}>{item.contactName}</div>}
+                        {item.contactPhone && (
+                          <a href={`tel:${item.contactPhone.replace(/\s+/g, '')}`} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{item.contactPhone}</a>
+                        )}
+                        {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginTop: 4 }}>{item.notes}</div>}
+                      </div>
+                    )
+                  }
+
+                  // Dining — essentials inline + pill + collapsible reservation details.
+                  if (item.bookingType === 'dining') {
+                    const pill = diningPillModel({
+                      showCancellation: item.showCancellation,
+                      diningStatus:     item.diningStatus,
+                      penaltyApplied:   item.cancellationPenaltyApplied,
+                      cancellationNote: item.cancellationNote,
+                      bookingTerms:     item.venue?.booking_terms ?? null,
+                    })
+                    const cancelled = item.diningStatus === 'cancelled'
+                    const essentials = [item.guestName, item.guestCount ? `${item.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
+                    const v = item.venue
+                    const hasDetails = !!(v?.address || v?.phone || v?.dress_code || v?.children_policy || v?.table_hold_note)
+                    return (
+                      <div key={item.id} style={{
+                        background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 12,
+                        overflow: 'hidden', display: 'flex',
+                        flexDirection: stackLayout ? 'column' : 'row',
+                        minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
+                        boxSizing: 'border-box',
+                      }}>
+                        {item.image_src && (
+                          <div
+                            style={{ width: stackLayout ? '100%' : 'clamp(120px,28%,200px)', height: stackLayout ? 200 : 'auto', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden', cursor: 'zoom-in' }}
+                            onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
+                          >
+                            <img src={item.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accent }} />
+                          </div>
+                        )}
+                        <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', minWidth: 0, borderLeft: (!stackLayout && !item.image_src) ? `3px solid ${accent}` : 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+                              <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{item.categoryLabel ?? 'Dining'}</span>
+                            </div>
+                            {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</span>}
+                          </div>
+                          <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: cancelled ? FAINT : INK, lineHeight: 1.3, marginBottom: 4, textDecoration: cancelled ? 'line-through' : 'none' }}>{item.title}</div>
+                          {essentials && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{essentials}</div>}
+                          <DiningPillBox model={pill} />
+                          {hasDetails && (
+                            <details style={{ marginTop: 10 }}>
+                              <summary style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, cursor: 'pointer', listStyle: 'none' }}>Reservation details</summary>
+                              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {v?.address && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Address</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                                      {v.maps_url ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: GOLD, textDecoration: 'none' }}>{v.address}</a> : v.address}
+                                    </div>
+                                  </div>
+                                )}
+                                {v?.phone && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Phone</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK }}>{v.phone}</div>
+                                  </div>
+                                )}
+                                {v?.dress_code && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Dress</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5 }}>{v.dress_code}</div>
+                                  </div>
+                                )}
+                                {v?.children_policy && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Children</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5 }}>{v.children_policy}</div>
+                                  </div>
+                                )}
+                                {v?.table_hold_note && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Table</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5 }}>{v.table_hold_note}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </details>
+                          )}
+                          {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', lineHeight: 1.5, marginTop: 6 }}>{item.notes}</div>}
                         </div>
                       </div>
                     )
@@ -992,13 +1205,17 @@ function TripBriefTab({ clientData }: {
     )
   }
 
-  function BriefRow({ label, value, sub, bookedBy }: { label: string; value: string; sub?: string; bookedBy?: string }) {
+  function BriefRow({ label, value, sub, bookedBy, cancelled, cancellationNote }: { label: string; value: string; sub?: string; bookedBy?: string; cancelled?: boolean; cancellationNote?: string | null }) {
     return (
       <div style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
         <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>{label}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>{value}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: cancelled ? FAINT : INK, fontFamily: SANS, wordBreak: 'break-word', textDecoration: cancelled ? 'line-through' : 'none' }}>{value}</span>
+            {cancelled && <span style={{ fontSize: 8, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B4321F', border: '1px solid #B4321F', borderRadius: 4, padding: '1px 6px' }}>Cancelled</span>}
+          </div>
           {sub      && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{sub}</div>}
+          {cancelled && cancellationNote && <div style={{ fontSize: 11, color: '#B4321F', fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{cancellationNote}</div>}
           {bookedBy && <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 2, fontStyle: 'italic' }}>{bookedBy}</div>}
         </div>
       </div>
@@ -1031,7 +1248,7 @@ function TripBriefTab({ clientData }: {
             return (
               <div key={h.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
-                  {buildDateRange(h.start_date, h.end_date) || '\u2014'}
+                  {buildDateRange(h.check_in_date ?? h.start_date, h.end_date) || '\u2014'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
@@ -1129,10 +1346,34 @@ function TripBriefTab({ clientData }: {
       )}
 
       {(() => {
+        const greeters = auxBookings.filter(a => isMeetGreetBooking(a.booking_type) && a.brief_show !== false)
+        return greeters.length > 0 ? (
+          <BriefSection title='Airport Meet & Greet'>
+            {greeters.map(g => (
+              <BriefRow
+                key={g.id}
+                label={g.start_date ? fmtDate(g.start_date) : '\u2014'}
+                value={g.name ?? 'Airport Meet & Greet'}
+                sub={[
+                  g.start_time ? fmtTime(g.start_time) : null,
+                  g.contact_name ?? null,
+                  g.contact_phone ?? null,
+                  g.notes ?? null,
+                ].filter(Boolean).join('  \u00b7  ')}
+                bookedBy={bookedByLabel(g.booked_by)}
+              />
+            ))}
+          </BriefSection>
+        ) : null
+      })()}
+
+      {(() => {
         const dining = auxBookings.filter(a => isDiningBooking(a.booking_type) && a.brief_show !== false)
         return dining.length > 0 ? (
           <BriefSection title='Dining'>
-            {dining.map(d => (
+            {dining.map(d => {
+              const cancelled = d.dining_status === 'cancelled' && d.show_cancellation !== false
+              return (
               <BriefRow
                 key={d.id}
                 label={d.start_date ? fmtDate(d.start_date) : '\u2014'}
@@ -1144,8 +1385,11 @@ function TripBriefTab({ clientData }: {
                   d.confirmation_number ? `Ref: ${d.confirmation_number}` : null,
                 ].filter(Boolean).join('  \u00b7  ')}
                 bookedBy={bookedByLabel(d.booked_by)}
+                cancelled={cancelled}
+                cancellationNote={d.cancellation_penalty_applied ? d.cancellation_note : null}
               />
-            ))}
+              )
+            })}
           </BriefSection>
         ) : null
       })()}
