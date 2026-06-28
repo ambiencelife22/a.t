@@ -3,19 +3,17 @@
 // Edge Function: travel-read-expenses
 // Class A — admin-only. All read paths for the Financial Module v1.
 //
-// Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
-//   - Caller must be authenticated + admin (global_profiles.is_admin = true)
-//   - Service role reads. NEVER exposed on any client surface.
-//
 // Modes:
 //   by_engagement      { engagement_id }  → { expenses[], summary }
 //   by_engagement_full { engagement_id }  → { engagement, bookings[], expenses[], summary }
-//   by_destination     { destination_id } → { expenses[] } (proactive/uninstructed only)
-//   summary            { engagement_id }  → { net_margin, total_commission, ... }
-//   pipeline           {}                 → { trips[] } all confirmed engagements with financials
+//     bookings[] each contain nested rooms[] from travel_booking_rooms
+//   by_destination     { destination_id } → { expenses[] }
+//   summary            { engagement_id }  → financial summary
+//   pipeline           {}                 → all confirmed trips with financials
 //
-// Last updated: S53G — added by_engagement_full mode (per-booking financial breakdown)
+// Last updated: S53G v3 — by_engagement_full: rooms nested under bookings,
+//   net_revenue computed as commission minus partner shares,
+//   booking_type_label resolved from travel_accom_hotels for hotel bookings.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
@@ -34,8 +32,8 @@ const EXPENSE_SELECT = `
 `
 
 const BOOKING_FINANCIAL_SELECT = `
-  id, name, booking_type, start_date, end_date, nights, currency,
-  price, cost,
+  id, name, booking_type, accom_hotel_id, start_date, end_date, nights, currency,
+  cost,
   total_rate, total_rate_usd,
   commissionable_rate, commissionable_rate_usd,
   commission_pct, commission_amount, commission_amount_usd, commission_paid_at,
@@ -45,6 +43,12 @@ const BOOKING_FINANCIAL_SELECT = `
   deposit_amount, deposit_due_date, deposit_paid_at,
   balance_amount, balance_due_date, balance_paid_at,
   invoice_number, rate_type, sort_order
+`
+
+const ROOM_SELECT = `
+  id, booking_id, room_name, confirmation_number, guest_name,
+  nights, rate, tax_pct, total, sort_order, check_in_time,
+  deposit_amount, balance_amount, brief_image_src
 `
 
 function deriveSummary(expenses: Array<Record<string, unknown>>) {
@@ -62,6 +66,15 @@ function groupBy<T extends Record<string, unknown>>(arr: T[], key: string): Reco
     ;(out[k] ??= []).push(item)
   }
   return out
+}
+
+// Net revenue = commission minus all partner shares
+function computeNetRevenue(b: Record<string, unknown>): number {
+  const comm     = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  const referral = (b.referral_share_amt   ?? 0) as number
+  const iata     = (b.iata_share_amt       ?? 0) as number
+  const indiv    = (b.individual_share_amt ?? 0) as number
+  return Math.round((comm - referral - iata - indiv) * 100) / 100
 }
 
 Deno.serve(async (req: Request) => {
@@ -90,8 +103,6 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── by_engagement_full ───────────────────────────────────────────────────
-    // Returns the engagement title + per-booking financial breakdown + expenses.
-    // This is the full picture needed for the engagement finance view.
     if (mode === 'by_engagement_full') {
       const engagement_id = body?.engagement_id as string | undefined
       if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
@@ -118,31 +129,74 @@ Deno.serve(async (req: Request) => {
       const bookings = (bookingsRes.data ?? []) as Array<Record<string, unknown>>
       const expenses = (expensesRes.data ?? []) as Array<Record<string, unknown>>
 
-      // Derived totals from bookings
+      // Fetch rooms for all bookings
+      const bookingIds = bookings.map(b => b.id as string)
+      const roomsByBooking: Record<string, Array<Record<string, unknown>>> = {}
+      if (bookingIds.length > 0) {
+        const { data: rooms } = await db
+          .from('travel_booking_rooms')
+          .select(ROOM_SELECT)
+          .in('booking_id', bookingIds)
+          .order('sort_order', { ascending: true })
+        for (const r of (rooms ?? []) as Array<Record<string, unknown>>) {
+          const bid = r.booking_id as string
+          ;(roomsByBooking[bid] ??= []).push(r)
+        }
+      }
+
+      // Resolve hotel names for hotel bookings
+      const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter(Boolean))] as string[]
+      const hotelById: Record<string, string> = {}
+      if (hotelIds.length > 0) {
+        const { data: hotels } = await db
+          .from('travel_accom_hotels')
+          .select('id, name')
+          .in('id', hotelIds)
+        for (const h of (hotels ?? []) as Array<Record<string, unknown>>) {
+          hotelById[h.id as string] = h.name as string
+        }
+      }
+
+      // Summary — computed from original bookings (Record<string, unknown>[]) before enrichment
       const total_commission    = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const commission_received = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const total_net_revenue   = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_rate          = bookings.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
       const total_amenities     = bookings.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
+      const total_referral      = bookings.reduce((s, b) => s + ((b.referral_share_amt ?? 0) as number), 0)
+      const total_iata          = bookings.reduce((s, b) => s + ((b.iata_share_amt ?? 0) as number), 0)
+      const total_individual    = bookings.reduce((s, b) => s + ((b.individual_share_amt ?? 0) as number), 0)
+      const deposit_outstanding = bookings.filter(b => b.deposit_amount && !b.deposit_paid_at).reduce((s, b) => s + ((b.deposit_amount ?? 0) as number), 0)
+      const balance_outstanding = bookings.filter(b => b.balance_amount && !b.balance_paid_at).reduce((s, b) => s + ((b.balance_amount ?? 0) as number), 0)
+
+      // Enrich bookings with rooms + resolved hotel name + net_revenue
+      const enrichedBookings = bookings.map(b => ({
+        ...b,
+        hotel_name:      b.accom_hotel_id ? (hotelById[b.accom_hotel_id as string] ?? b.name) : b.name,
+        net_revenue_usd: computeNetRevenue(b),
+        rooms:           roomsByBooking[b.id as string] ?? [],
+      }))
 
       const expenseSummary = deriveSummary(expenses)
-      const net_margin = total_commission - expenseSummary.total_absorbed
+      const net_margin = total_net_revenue - expenseSummary.total_absorbed
 
       const summary = {
         total_commission,
         commission_received,
-        commission_outstanding: total_commission - commission_received,
+        commission_outstanding:  total_commission - commission_received,
         total_rate,
         total_amenities,
+        total_net_revenue,
+        total_referral,
+        total_iata,
+        total_individual,
+        deposit_outstanding,
+        balance_outstanding,
         ...expenseSummary,
         net_margin,
       }
 
-      return json({
-        engagement: engRes.data,
-        bookings,
-        expenses,
-        summary,
-      })
+      return json({ engagement: engRes.data, bookings: enrichedBookings, expenses, summary })
     }
 
     // ── by_destination ───────────────────────────────────────────────────────
@@ -165,21 +219,22 @@ Deno.serve(async (req: Request) => {
       if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
-        db.from('travel_bookings').select('commission_amount, commission_amount_usd, commission_paid_at, cost').eq('engagement_id', engagement_id),
+        db.from('travel_bookings').select('commission_amount, commission_amount_usd, commission_paid_at, cost, referral_share_amt, iata_share_amt, individual_share_amt').eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses').select('total_amount, billing_status').eq('engagement_id', engagement_id),
       ])
 
-      const bs = (bookings ?? []) as Array<{ commission_amount: number | null; commission_amount_usd: number | null; commission_paid_at: string | null; cost: number | null }>
+      const bs = (bookings ?? []) as Array<Record<string, unknown>>
       const es = (expenses ?? []) as Array<{ total_amount: number; billing_status: string }>
 
-      const total_commission    = bs.reduce((s, b) => s + (b.commission_amount_usd ?? b.commission_amount ?? 0), 0)
-      const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (b.commission_amount_usd ?? b.commission_amount ?? 0), 0)
+      const total_commission    = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + e.total_amount, 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + e.total_amount, 0)
       const total_outstanding   = es.filter(e => e.billing_status === 'billed').reduce((s, e) => s + e.total_amount, 0)
-      const net_margin          = total_commission - total_absorbed
+      const net_margin          = total_net_revenue - total_absorbed
 
-      return json({ summary: { total_commission, commission_received, commission_outstanding: total_commission - commission_received, total_absorbed, total_billable, total_outstanding, net_margin } })
+      return json({ summary: { total_commission, commission_received, commission_outstanding: total_commission - commission_received, total_net_revenue, total_absorbed, total_billable, total_outstanding, net_margin } })
     }
 
     // ── pipeline ─────────────────────────────────────────────────────────────
@@ -202,7 +257,7 @@ Deno.serve(async (req: Request) => {
 
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
-        db.from('travel_bookings').select('engagement_id, commission_amount, commission_amount_usd, commission_paid_at, cost, total_rate_usd, total_rate').in('engagement_id', engIds),
+        db.from('travel_bookings').select('engagement_id, commission_amount, commission_amount_usd, commission_paid_at, cost, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt').in('engagement_id', engIds),
         db.from('travel_engagement_expenses').select('engagement_id, total_amount, billing_status').in('engagement_id', engIds),
       ])
 
@@ -211,25 +266,28 @@ Deno.serve(async (req: Request) => {
 
       const trips = confirmed.map(e => {
         const trip = e.travel_trips as Record<string, unknown> | null
-        const bs = (bByEng[e.id as string] ?? []) as Array<{ commission_amount: number | null; commission_amount_usd: number | null; commission_paid_at: string | null; cost: number | null; total_rate_usd: number | null; total_rate: number | null }>
-        const es = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; billing_status: string }>
-        const total_commission    = bs.reduce((s, b) => s + (b.commission_amount_usd ?? b.commission_amount ?? 0), 0)
-        const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (b.commission_amount_usd ?? b.commission_amount ?? 0), 0)
-        const total_amenities     = bs.reduce((s, b) => s + (b.cost ?? 0), 0)
-        const total_rate          = bs.reduce((s, b) => s + (b.total_rate_usd ?? b.total_rate ?? 0), 0)
+        const bs   = (bByEng[e.id as string] ?? []) as Array<Record<string, unknown>>
+        const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; billing_status: string }>
+
+        const total_commission    = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+        const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+        const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
+        const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
+        const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
         const total_absorbed      = es.filter(x => x.billing_status === 'absorbed' || x.billing_status === 'written_off').reduce((s, x) => s + x.total_amount, 0) + total_amenities
         const total_billable      = es.filter(x => x.billing_status === 'billable').reduce((s, x) => s + x.total_amount, 0)
         const total_outstanding   = es.filter(x => x.billing_status === 'billed').reduce((s, x) => s + x.total_amount, 0)
-        const net_margin          = total_commission - total_absorbed
+        const net_margin          = total_net_revenue - total_absorbed
         const s = e.travel_lifecycle_statuses as { slug: string } | { slug: string }[] | null
         const status_slug = Array.isArray(s) ? s[0]?.slug : s?.slug
+
         return {
           engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
           trip_code: trip?.trip_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, commission_received,
           commission_outstanding: total_commission - commission_received,
-          total_rate, total_amenities,
+          total_rate, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
         }
       })

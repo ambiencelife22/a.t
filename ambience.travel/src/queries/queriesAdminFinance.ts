@@ -53,6 +53,12 @@ export type EngagementSummaryFull = {
   commission_outstanding:  number
   total_rate:              number
   total_amenities:         number
+  total_net_revenue:       number
+  total_referral:          number
+  total_iata:              number
+  total_individual:        number
+  deposit_outstanding:     number
+  balance_outstanding:     number
   total_absorbed:          number
   total_billable:          number
   total_outstanding:       number
