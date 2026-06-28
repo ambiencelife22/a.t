@@ -39,7 +39,7 @@ import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { buildDays } from '../_shared/days.ts'
-import { deriveConfirmation, roomConfirmationCount } from '../_shared/confirmation.ts'
+import { deriveElementStatus, type ChildStatus } from '../_shared/elementStatus.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
 import { AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 
@@ -585,17 +585,32 @@ async function handleCalendar(
     accom_hotel_id: string | null; confirmation_number: string | null
   }>
 
-  // 3b. Room confirmation numbers per booking — the evidence the derivation reads.
+  // 3a. Lifecycle status registry — resolve status_id -> {slug,label,sort_order}.
+  // Fetched once; the single source for resolving any element's status in this EF.
+  const statusById = new Map<string, ChildStatus>()
+  {
+    const { data: regData, error: regErr } = await db
+      .from('travel_lifecycle_statuses')
+      .select('id, slug, label, sort_order')
+    if (regErr) return err('Failed to fetch lifecycle statuses', 500)
+    for (const s of (regData ?? []) as Array<{ id: string; slug: string; label: string; sort_order: number }>) {
+      statusById.set(s.id, { slug: s.slug, label: s.label, sort_order: s.sort_order })
+    }
+  }
+
+  // 3b. Per-booking room statuses — the children the rollup derives from.
   const calBookingIds = bookings.map(b => b.id)
-  const roomsByBookingId = new Map<string, Array<{ confirmation_number: string | null }>>()
+  const roomsByBookingId = new Map<string, ChildStatus[]>()
   if (calBookingIds.length > 0) {
     const { data: roomData, error: roomErr } = await db
       .from('travel_booking_rooms')
-      .select('booking_id, confirmation_number')
+      .select('booking_id, status_id')
       .in('booking_id', calBookingIds)
     if (roomErr) return err('Failed to fetch calendar rooms', 500)
-    for (const r of (roomData ?? []) as Array<{ booking_id: string; confirmation_number: string | null }>) {
-      ;(roomsByBookingId.get(r.booking_id) ?? roomsByBookingId.set(r.booking_id, []).get(r.booking_id)!).push({ confirmation_number: r.confirmation_number })
+    for (const r of (roomData ?? []) as Array<{ booking_id: string; status_id: string | null }>) {
+      const cs = r.status_id ? statusById.get(r.status_id) : undefined
+      if (!cs) continue  // a room with no resolvable status contributes nothing to the rollup
+      ;(roomsByBookingId.get(r.booking_id) ?? roomsByBookingId.set(r.booking_id, []).get(r.booking_id)!).push(cs)
     }
   }
 
@@ -690,12 +705,15 @@ async function handleCalendar(
     primary_client_id: t.primary_client_id,
     stays: (byTrip.get(t.id) ?? []).map(b => {
       const stayRooms = roomsByBookingId.get(b.id) ?? []
-      const confirmation = deriveConfirmation({
-        rooms: stayRooms,
-        bookingConfirmationNumber: b.confirmation_number,
-        bookingStatus: b.status,
-      })
-      const roomCount = roomConfirmationCount(stayRooms)
+      // Single canonical rollup over the rooms' statuses. Mapped to the calendar's
+      // quiet three-state display contract (elegant-design: an overview shows the
+      // coarse honest state; richer per-stage display belongs on detail surfaces).
+      const rollup = deriveElementStatus(stayRooms)
+      const confirmation =
+        rollup.kind === 'confirmed' ? 'confirmed'
+        : rollup.kind === 'partial' ? 'partially_confirmed'
+        : 'designing'  // 'pending' or 'empty' -> not-yet-confirmed at calendar granularity
+      const roomCount = { confirmed: rollup.confirmed, total: rollup.total }
       return {
         id:           b.id,
         name:         b.name,

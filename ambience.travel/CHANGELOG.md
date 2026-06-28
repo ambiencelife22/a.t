@@ -82,3 +82,31 @@ Pending (Phases 4-6): deriveElementStatus(children) rollup helper that retires
 _shared/confirmation.ts (the original confirmation-vs-status drift bug becomes
 structurally impossible once status is universal); read EFs return status_id +
 label + derived rollup; client + PDF render the status ladder.
+
+### [ARC] Arc B Phase 4+5 (calendar surface) — canonical status rollup; confirmation.ts retired
+
+The element-status rollup is now a single canonical helper, per Dev Standards II
+(no parallel-shipped implementations). Scoped to the admin calendar as the first
+proven vertical; client confirmation/programme surfaces are a later slice.
+
+- New `_shared/elementStatus.ts` — `deriveElementStatus(children)`: the one rollup
+  over Universal Element Status. All eligible children >= confirmed -> Confirmed;
+  some -> Partial (n/m exposed); none -> lowest stage; no eligible -> empty.
+  Off-ladder children (guest_managed/undetermined) EXCLUDED from the math — a
+  guest-arranged element neither confirms nor un-confirms its parent. Derived at
+  read, never stored.
+- `travel-read-trip-admin` (calendar mode) re-keyed: fetches the lifecycle registry
+  once into a resolver map, reads each room's status_id, rolls up via the helper.
+  Output contract preserved (confirmation / rooms_confirmed / rooms_total) so
+  CalendarTab is unchanged — the derivation source moved from conf-number inference
+  to status_id, drift eliminated.
+- `_shared/confirmation.ts` DELETED. It inferred confirmed-ness from
+  confirmation_number; that inference now lives at the source (the Phase 2 trigger
+  + status_id). Keeping it would parallel-ship two truths — the exact drift it was
+  built to prevent, reborn on a new axis. Its rollup + per-child-honesty logic
+  survive, re-keyed onto status, in elementStatus.ts.
+- Verified live: 6 trips / 15 stays all roll up confirmed n/n from real status_id.
+
+Pending: client EFs (travel-get-trip-confirmation, travel-get-trip-programme) still
+derive confirmation independently — not yet on the canonical helper (separate slice).
+Phase 6 (richer per-stage render on detail/client surfaces) also pending.
