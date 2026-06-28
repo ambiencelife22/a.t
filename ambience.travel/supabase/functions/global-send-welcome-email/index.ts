@@ -3,7 +3,7 @@
    JWT verify is OFF. user_id and email arrive in the request body.
    Uses service role to fetch display_name and set welcome_email_sent_at after sending.
    A failed send logs and returns 200 — must never block dashboard load.
-   Auth pattern: data in body only. CORS pattern matches all other Edge Functions.
+   Auth pattern: data in body only (bespoke). Client + json/preflight from _shared.
 
    S66F Phase 2:
      - display_name read moved global_profiles -> sports_user_prefs (person-scoped).
@@ -11,26 +11,23 @@
        (per person_id, product='sports'). Per-product stamp: a SPORTS welcome and
        a future TRAVEL welcome are independent. UPSERT on (person_id, product) —
        the subscription row may not exist yet.
-     - env key SUPABASE_SERVICE_ROLE_KEY -> SERVICE_ROLE_KEY (canon).
-*/
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { Resend } from 'npm:resend@4'
 
-const supabaseUrl     = Deno.env.get('SUPABASE_URL')!
-const supabaseService = Deno.env.get('SERVICE_ROLE_KEY')!
-const resend          = new Resend(Deno.env.get('RESEND_API_KEY'))
+   S53I EF consolidation Phase 2:
+     - inline createClient(...) -> createServiceClient() (_shared/client.ts).
+     - raw new Response(JSON.stringify(...)) -> shared json (_shared/http.ts).
+     - inline OPTIONS handler -> preflight (_shared/http.ts).
+     - bespoke body-only auth preserved; no gate (JWT verify is OFF by design).
+*/
+import { Resend } from 'npm:resend@4'
+import { createServiceClient } from '../_shared/client.ts'
+import { json, preflight } from '../_shared/http.ts'
+
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 
 const SPORTS_PRODUCT = 'sports'
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin':  '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
-  }
+  if (req.method === 'OPTIONS') return preflight()
 
   try {
     const body   = await req.json()
@@ -39,15 +36,10 @@ Deno.serve(async (req: Request) => {
 
     if (!userId || !email) {
       console.error('send-welcome-email: missing user_id or email', body)
-      return new Response(JSON.stringify({ error: 'Missing user_id or email' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      })
+      return json({ error: 'Missing user_id or email' }, 400)
     }
 
-    const serviceClient = createClient(supabaseUrl, supabaseService, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    const serviceClient = createServiceClient()
 
     // Resolve person_id from the account (display_name + stamp are person-scoped now)
     const { data: account } = await serviceClient
@@ -125,10 +117,7 @@ Deno.serve(async (req: Request) => {
 
     if (sendError) {
       console.error('send-welcome-email: Resend error', sendError)
-      return new Response(JSON.stringify({ error: sendError }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      })
+      return json({ error: sendError }, 200)
     }
 
     // Mark welcome email as sent — prevents re-send on subsequent logins.
@@ -146,16 +135,10 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`send-welcome-email: sent to ${email}`)
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    })
+    return json({ success: true }, 200)
 
   } catch (err: any) {
     console.error('send-welcome-email: unexpected error', err)
-    return new Response(JSON.stringify({ error: err.message ?? 'Unknown error' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    })
+    return json({ error: err.message ?? 'Unknown error' }, 200)
   }
 })

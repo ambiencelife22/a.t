@@ -11,7 +11,15 @@
 // ROWS keyed by (person_id, product), not per-product columns. The Stripe
 // metadata.product value is the row key. stripe_customer_id stays on
 // global_profiles (account-level). first_charge_at + all subscription fields go
-// to global_subscriptions. Env key -> SERVICE_ROLE_KEY (canon).
+// to global_subscriptions.
+//
+// S53I EF consolidation Phase 2 (narrow recipe):
+//   - inline createClient(...) -> createServiceClient() (_shared/client.ts).
+//   - duplicate _shared/http.ts import removed (was declared twice — redeclare bug).
+//   - import trimmed to preflight only (the sole shared helper used here).
+//   - Stripe RESPONSES intentionally stay bare new Response(...) text/plain:
+//     Stripe is the only caller, expects a plain 2xx/4xx, not a JSON/CORS envelope.
+//     Signature verification path untouched (bespoke auth).
 //
 // Events handled:
 //   checkout.session.completed
@@ -19,10 +27,9 @@
 //   invoice.payment_succeeded / payment_failed
 //   payment_intent.succeeded  (Lifetime one-time)
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, json, preflight } from '../_shared/http.ts'
+import { createServiceClient } from '../_shared/client.ts'
+import { preflight } from '../_shared/http.ts'
 import Stripe from 'npm:stripe@14'
-import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import { Resend } from 'npm:resend@4'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -32,10 +39,7 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? ''
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-)
+const supabase = createServiceClient()
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 
