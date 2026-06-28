@@ -113,6 +113,9 @@ export function groupAuxBySection<T extends { booking_type: string | null; brief
       const ma = getAuxTypeMeta(a.booking_type)
       const mb = getAuxTypeMeta(b.booking_type)
       if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
+      const aKey = `${(a as any).start_date ?? ''}${(a as any).start_time ?? ''}`
+      const bKey = `${(b as any).start_date ?? ''}${(b as any).start_time ?? ''}`
+      if (aKey !== bKey) return aKey < bKey ? -1 : 1
       return a.sort_order - b.sort_order
     })
 
