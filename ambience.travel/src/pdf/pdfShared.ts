@@ -217,11 +217,8 @@ export async function drawPdfHero(doc: any, params: HeroParams): Promise<number>
   // S53G: all steps loosened, gold rule thicker, eyebrow charSpace wider,
   // subtitle larger, date range tracked.
 
-  let y = P.heroH + 8
-
-  // Gold rule
-  drawRule(doc, P.margin, y, CW, T.gold, 0.5)
-  y += 8
+  // S53I: gold rule removed (reclaimed vertical space; no real gain).
+  let y = P.heroH + 10
 
   // Subtitle (brief_subtitle)
   if (subtitle) {

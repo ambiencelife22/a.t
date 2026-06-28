@@ -60,6 +60,7 @@ type ProgrammeEntry = {
   brief_show:          boolean
   image_src:           string | null
   detailLines:         string[]
+  noteLines:           string[]   // S55-P2: gold-italic concierge notes, own treatment
   passengerLines:      string[]   // S53G: separated for pill rendering
   diningCancelled:     boolean
   diningPill:          { label: string; tone: [number, number, number] } | null
@@ -168,12 +169,16 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     // check-in half-rate). Rooms, vehicles, greeters, dining follow. Passengers
     // are rendered separately as pills, so they're excluded here.
     const detailLines = [
-      ...(it.check_in_note ? [it.check_in_note] : []),
-      ...(it.check_out_note ? [it.check_out_note] : []),
       ...roomLinesWithCheckIn,
       ...vehLines,
       ...greetLines,
       ...diningDetail,
+    ]
+    // S55-P2: concierge check-in/out notes carried separately for gold-italic
+    // treatment (parity with Confirmation + Brief); was plain ink in detailLines.
+    const noteLines = [
+      ...(it.check_in_note ? [it.check_in_note] : []),
+      ...(it.check_out_note ? [it.check_out_note] : []),
     ]
 
     return {
@@ -191,6 +196,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       brief_show:          it.brief_show,
       image_src:           it.image_src,
       detailLines,
+      noteLines,
       passengerLines:      paxLines,
       diningCancelled,
       diningPill,
@@ -216,10 +222,25 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
   else if (bookedLabel)                   h += 6
 
   if (entry.subtitle)              h += PROG.lineH + 1
-  h += entry.detailLines.length   * PROG.lineH
+  h += entry.noteLines.length     * (PROG.lineH + 0.5)
+  // Detail lines may wrap (venue policy terms); count wrapped rows so the row
+  // height matches what drawEntryRow actually renders.
+  {
+    const imageColW2 = hasImage ? PROG.imgW + 3 : 0
+    const contentW2  = CW - PROG.timeColW - PROG.barW - PROG.barGap - imageColW2
+    sans(doc, 'normal', 8)
+    for (const line of entry.detailLines) {
+      h += doc.splitTextToSize(line, contentW2 - 2).length * PROG.lineH
+    }
+  }
   // S53G: passenger pills each take pillH
   h += entry.passengerLines.length * (PROG.pillH + 1)
-  if (entry.diningPill)            h += PROG.lineH + 1
+  if (entry.diningPill) {
+    const imageColW3 = hasImage ? PROG.imgW + 3 : 0
+    const contentW3  = CW - PROG.timeColW - PROG.barW - PROG.barGap - imageColW3
+    sans(doc, 'normal', 7.5)
+    h += doc.splitTextToSize(entry.diningPill.label, contentW3 - 2).length * PROG.lineH + 1
+  }
   if (entry.guest_label)           h += 5
   if (entry.confirmation_number)   h += 5
   h += PROG.entryPadV
@@ -302,12 +323,27 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     doc.text(entry.subtitle, contentX, ty + 4); ty += PROG.lineH + 1
   }
 
-  // Detail lines (rooms, vehicles, greeters, dining)
+   // S55-P2: concierge check-in/out notes — gold italic, the intention voice,
+  // parity with Confirmation + Brief surfaces (was plain ink in detailLines).
+  for (const line of entry.noteLines) {
+    sans(doc, 'italic', 7.5)
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    for (const wl of doc.splitTextToSize(line, contentW - 2)) {
+      doc.text(wl, contentX, ty + 4)
+      ty += PROG.lineH
+    }
+  }
+  if (entry.noteLines.length > 0) ty += 0.5
+  // Detail lines (rooms, vehicles, greeters, dining). Long lines (venue policy
+  // terms) wrap fully — never truncated. The PDF may be the only surface a guest
+  // sees; it must carry the complete terms, not a fragment.
   for (const line of entry.detailLines) {
     sans(doc, 'normal', 8)
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-    doc.text((doc.splitTextToSize(line, contentW - 2))[0] ?? line, contentX, ty + 4)
-    ty += PROG.lineH
+    for (const wl of doc.splitTextToSize(line, contentW - 2)) {
+      doc.text(wl, contentX, ty + 4)
+      ty += PROG.lineH
+    }
   }
 
   // S53G: passenger lines as card-bg pill rows
@@ -323,12 +359,15 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     }
   }
 
-  // Dining pill
+  // Dining pill — wraps fully (cancellation/booking terms); never truncated.
   if (entry.diningPill) {
     sans(doc, 'normal', 7.5)
     doc.setTextColor(entry.diningPill.tone[0], entry.diningPill.tone[1], entry.diningPill.tone[2])
-    const pillLines = doc.splitTextToSize(entry.diningPill.label, contentW - 2)
-    doc.text(pillLines[0] ?? entry.diningPill.label, contentX, ty + 4); ty += PROG.lineH + 1
+    for (const pl of doc.splitTextToSize(entry.diningPill.label, contentW - 2)) {
+      doc.text(pl, contentX, ty + 4)
+      ty += PROG.lineH
+    }
+    ty += 1
   }
 
   if (entry.guest_label) {
