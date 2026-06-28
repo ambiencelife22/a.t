@@ -207,3 +207,73 @@ export async function linkEngagement(expenseId: string, engagementId: string): P
   if (data?.error) throw new Error(data.error)
   return data.expense as Expense
 }
+
+// ── Payment platform + rate type registry ─────────────────────────────────────
+
+export type PaymentPlatform = {
+  id:              string
+  slug:            string
+  label:           string
+  default_fee_pct: number
+  sort_order:      number
+  is_active:       boolean
+}
+
+export type RateType = {
+  id:         string
+  slug:       string
+  label:      string
+  sort_order: number
+  is_active:  boolean
+}
+
+export async function fetchPaymentPlatforms(): Promise<PaymentPlatform[]> {
+  const { data, error } = await supabase
+    .from('travel_payment_platforms')
+    .select('id, slug, label, default_fee_pct, sort_order, is_active')
+    .eq('is_active', true)
+    .order('sort_order')
+  if (error) throw new Error(error.message)
+  return data as PaymentPlatform[]
+}
+
+export async function fetchRateTypes(): Promise<RateType[]> {
+  const { data, error } = await supabase
+    .from('travel_rate_types')
+    .select('id, slug, label, sort_order, is_active')
+    .eq('is_active', true)
+    .order('sort_order')
+  if (error) throw new Error(error.message)
+  return data as RateType[]
+}
+
+export async function markCommissionReceived(payload: {
+  booking_id:      string
+  platform_id?:    string
+  received_amount: number
+  fee_pct?:        number
+  fee_amt?:        number
+  received_at?:    string
+}): Promise<void> {
+  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
+    body: { mode: 'mark_commission_received', ...payload },
+  })
+  if (error) throw new Error(await extractError(error))
+  if (data?.error) throw new Error(data.error)
+}
+
+export async function updateBookingFinancial(bookingId: string, patch: Record<string, unknown>): Promise<void> {
+  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
+    body: { mode: 'update_booking_financial', booking_id: bookingId, patch },
+  })
+  if (error) throw new Error(await extractError(error))
+  if (data?.error) throw new Error(data.error)
+}
+
+export async function setHotelPlatform(hotelId: string, platformId: string | null): Promise<void> {
+  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
+    body: { mode: 'set_hotel_platform', hotel_id: hotelId, platform_id: platformId },
+  })
+  if (error) throw new Error(await extractError(error))
+  if (data?.error) throw new Error(data.error)
+}

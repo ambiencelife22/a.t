@@ -4,19 +4,22 @@
 // Class A — admin-only. All write paths for the Financial Module v1.
 //
 // Modes:
-//   create_expense  — create expense header
-//   update_expense  — patch expense header fields
-//   delete_expense  — hard delete; refused if billing_status = 'billed'
-//   create_item     — add line item; auto-recalcs parent total_amount
-//   update_item     — patch item; recalcs parent total if amount changed
-//   delete_item     — hard delete item; recalcs parent total
-//   link_engagement — retroactively link proactive expense to engagement
-//   mark_billed     — set billing_status = billed
-//   mark_paid       — set billing_status = paid
-//   write_off       — set billing_status = written_off
+//   create_expense           — create expense header
+//   update_expense           — patch expense header fields
+//   delete_expense           — hard delete; refused if billing_status = 'billed'
+//   create_item              — add line item; auto-recalcs parent total_amount
+//   update_item              — patch item; recalcs parent total if amount changed
+//   delete_item              — hard delete item; recalcs parent total
+//   link_engagement          — retroactively link proactive expense to engagement
+//   mark_billed              — set billing_status = billed
+//   mark_paid                — set billing_status = paid
+//   write_off                — set billing_status = written_off
+//   mark_commission_received — record commission receipt with platform + fee
+//   update_booking_financial — patch financial fields on a booking
+//   set_hotel_platform       — set default_payment_platform_id on travel_accom_hotels
 //
-// Last updated: S53G v2 — shared helpers extracted to _shared/expenses.ts.
-//   created_by resolution fixed: auth user → global_profiles.person_id → global_team.
+// Last updated: S53G v2 — mark_commission_received, update_booking_financial,
+//   set_hotel_platform added. created_by chain fixed. recalcTotal typed.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
@@ -33,6 +36,9 @@ type Mode =
   | 'mark_billed'
   | 'mark_paid'
   | 'write_off'
+  | 'mark_commission_received'
+  | 'update_booking_financial'
+  | 'set_hotel_platform'
 
 async function recalcTotal(db: SupabaseClient, expenseId: string): Promise<void> {
   const { data } = await db
@@ -43,8 +49,6 @@ async function recalcTotal(db: SupabaseClient, expenseId: string): Promise<void>
   await db.from('travel_engagement_expenses').update({ total_amount: total }).eq('id', expenseId)
 }
 
-// Resolve the global_team.id for the calling admin user.
-// Chain: auth user.id → global_profiles.person_id → global_team.person_id → global_team.id
 async function resolveTeamMemberId(db: SupabaseClient, authUserId: string): Promise<string | null> {
   const { data: profile } = await db
     .from('global_profiles')
@@ -53,7 +57,6 @@ async function resolveTeamMemberId(db: SupabaseClient, authUserId: string): Prom
     .maybeSingle()
   const personId = (profile as { person_id: string | null } | null)?.person_id ?? null
   if (!personId) return null
-
   const { data: teamRow } = await db
     .from('global_team')
     .select('id')
@@ -146,7 +149,6 @@ Deno.serve(async (req: Request) => {
       if (!item_type)     return json({ error: 'item_type is required' }, 400)
       if (!description)   return json({ error: 'description is required' }, 400)
       if (amount == null) return json({ error: 'amount is required' }, 400)
-
       const { data, error } = await db.from('travel_expense_items').insert({
         expense_id, item_type, description, amount,
         receipt_ref:   (body?.receipt_ref   as string | undefined) ?? null,
@@ -235,6 +237,86 @@ Deno.serve(async (req: Request) => {
         .eq('id', expense_id).select('*').single()
       if (error) { console.error('write_off error:', error); return json({ error: 'Failed to write off' }, 500) }
       return json({ expense: data })
+    }
+
+    // ── mark_commission_received ─────────────────────────────────────────────
+    // Records commission receipt with platform, gross amount, fee, and net.
+    // fee_amt may be supplied directly or computed from fee_pct × received_amount.
+    // Sets commission_paid_at to now() if not already set.
+    if (mode === 'mark_commission_received') {
+      const booking_id              = body?.booking_id              as string | undefined
+      const platform_id             = body?.platform_id             as string | undefined
+      const received_amount         = body?.received_amount         as number | undefined
+      const fee_pct                 = body?.fee_pct                 as number | undefined
+      const fee_amt                 = body?.fee_amt                 as number | undefined
+      const received_at             = (body?.received_at            as string | undefined) ?? new Date().toISOString()
+
+      if (!booking_id)       return json({ error: 'booking_id is required' }, 400)
+      if (received_amount == null) return json({ error: 'received_amount is required' }, 400)
+
+      // Compute fee and net
+      const resolvedFeePct = fee_pct ?? null
+      const resolvedFeeAmt = fee_amt != null
+        ? fee_amt
+        : (resolvedFeePct != null ? Math.round(received_amount * resolvedFeePct / 100 * 100) / 100 : 0)
+      const net_received = Math.round((received_amount - resolvedFeeAmt) * 100) / 100
+
+      const patch: Record<string, unknown> = {
+        commission_received_amount:    received_amount,
+        commission_payment_fee_pct:    resolvedFeePct,
+        commission_payment_fee_amt:    resolvedFeeAmt,
+        commission_net_received:       net_received,
+        commission_paid_at:            received_at,
+      }
+      if (platform_id) patch.commission_payment_platform_id = platform_id
+
+      const { data, error } = await db
+        .from('travel_bookings')
+        .update(patch)
+        .eq('id', booking_id)
+        .select('id, commission_received_amount, commission_payment_fee_pct, commission_payment_fee_amt, commission_net_received, commission_paid_at, commission_payment_platform_id')
+        .single()
+      if (error) { console.error('mark_commission_received error:', error); return json({ error: 'Failed to record commission receipt' }, 500) }
+      return json({ booking: data })
+    }
+
+    // ── update_booking_financial ─────────────────────────────────────────────
+    // Patches financial fields on a booking. Allowed fields only — never id,
+    // trip_id, engagement_id, created_at. Operator edits commission_pct,
+    // invoice_number, rate_type_id, selling_price, etc.
+    if (mode === 'update_booking_financial') {
+      const booking_id = body?.booking_id as string | undefined
+      const patch      = { ...(body?.patch as Record<string, unknown> | undefined ?? {}) }
+      if (!booking_id || Object.keys(patch).length === 0) {
+        return json({ error: 'booking_id and patch are required' }, 400)
+      }
+      // Guard: strip identity + relational fields that must never be patched here
+      const BLOCKED = new Set(['id', 'trip_id', 'engagement_id', 'created_at', 'updated_at', 'house_id'])
+      for (const k of BLOCKED) delete patch[k]
+      if (Object.keys(patch).length === 0) return json({ error: 'No patchable fields provided' }, 400)
+
+      const { data, error } = await db
+        .from('travel_bookings')
+        .update(patch)
+        .eq('id', booking_id)
+        .select('id')
+        .single()
+      if (error) { console.error('update_booking_financial error:', error); return json({ error: 'Failed to update booking' }, 500) }
+      return json({ ok: true, id: (data as { id: string }).id })
+    }
+
+    // ── set_hotel_platform ───────────────────────────────────────────────────
+    // Sets the default payment platform on a hotel.
+    if (mode === 'set_hotel_platform') {
+      const hotel_id    = body?.hotel_id    as string | undefined
+      const platform_id = body?.platform_id as string | undefined
+      if (!hotel_id) return json({ error: 'hotel_id is required' }, 400)
+      const { error } = await db
+        .from('travel_accom_hotels')
+        .update({ default_payment_platform_id: platform_id ?? null })
+        .eq('id', hotel_id)
+      if (error) { console.error('set_hotel_platform error:', error); return json({ error: 'Failed to set hotel platform' }, 500) }
+      return json({ ok: true })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)
