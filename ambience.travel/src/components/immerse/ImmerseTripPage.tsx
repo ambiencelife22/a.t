@@ -51,7 +51,7 @@ import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgra
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
-import { fmtTime }                            from '../../utils/utilsDates'
+import { fmtTime, localDateStr } from '../../utils/utilsDates'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
@@ -525,7 +525,8 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
   onActiveDayChange?: (label: string, openSidebar: () => void) => void
 }) {
   const visibleDays = days.filter(d => d.show)
-  const [activeDate,  setActiveDate]  = useState(visibleDays[0]?.entry_date ?? null)
+  const defaultDate = visibleDays.find(d => d.entry_date === localDateStr())?.entry_date ?? visibleDays[0]?.entry_date ?? null
+  const [activeDate,  setActiveDate]  = useState(defaultDate)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [lightbox,    setLightbox]    = useState<{ src: string; alt: string } | null>(null)
   const width    = useWindowWidth()

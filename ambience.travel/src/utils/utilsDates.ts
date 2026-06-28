@@ -1,4 +1,4 @@
-/* lib/dates.ts
+/* utils/utilsDates.ts
  * Shared date formatting helpers for ambience.travel.
  * Canonical date rendering across the travel app.
  *
@@ -76,6 +76,18 @@ export function formatDateShort(iso: string | null | undefined): string {
 // 24-hour clock with am/pm period in parens (am: hour < 12, pm: hour >= 12;
 // midnight is am, noon is pm). Single source for time display across every
 // surface — admin editors, client page, all PDFs.
+// ── Today — local browser date ────────────────────────────────────────────────
+// Returns YYYY-MM-DD in the user's local timezone. Safe for comparing against
+// Postgres date columns (which are also date-only, no tz component).
+// DEBT P2: destination-aware date requires global_destinations.timezone (IANA)
+// + Intl.DateTimeFormat lookup. Currently uses browser local time — acceptable
+// since guests are typically in or traveling to the destination.
+
+export function localDateStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function fmtTime(t: string | null | undefined): string {
   if (!t) return ''
   const [h, m] = t.split(':')
