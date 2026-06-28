@@ -3,7 +3,7 @@
 // All reads + writes go through travel-read-expenses and travel-write-expenses
 // EFs via supabase.functions.invoke. Zero direct supabase.from() calls.
 //
-// Last updated: S53G — initial build.
+// Last updated: S53G v2 — EngagementFull type + fetchEngagementFull added.
 
 import { supabase } from '../lib/supabase'
 
@@ -47,21 +47,29 @@ export type Expense = {
   items:          ExpenseItem[]
 }
 
-export type ExpenseSummary = {
-  total_absorbed:    number
-  total_billable:    number
-  total_outstanding: number
-  total_paid:        number
-}
-
-export type EngagementSummary = {
+export type EngagementSummaryFull = {
   total_commission:        number
   commission_received:     number
   commission_outstanding:  number
+  total_rate:              number
+  total_amenities:         number
   total_absorbed:          number
   total_billable:          number
   total_outstanding:       number
+  total_paid:              number
   net_margin:              number
+}
+
+export type EngagementFull = {
+  engagement: {
+    id:      string
+    title:   string | null
+    url_id:  string
+    travel_trips: { trip_code: string | null; start_date: string | null; end_date: string | null } | null
+  }
+  bookings: Record<string, unknown>[]
+  expenses: Expense[]
+  summary:  EngagementSummaryFull
 }
 
 export type PipelineTrip = {
@@ -76,6 +84,8 @@ export type PipelineTrip = {
   total_commission:        number
   commission_received:     number
   commission_outstanding:  number
+  total_rate:              number | null
+  total_amenities:         number
   total_absorbed:          number
   total_billable:          number
   total_outstanding:       number
@@ -93,18 +103,6 @@ export type CreateExpensePayload = {
   currency?:       string
   billing_status?: BillingStatus
   notes?:          string | null
-}
-
-export type CreateItemPayload = {
-  expense_id:    string
-  item_type:     string
-  description:   string
-  amount:        number
-  receipt_ref?:  string | null
-  deductibility?: string
-  paid_by?:      string | null
-  paid_at?:      string | null
-  sort_order?:   number
 }
 
 // ── Error helper ──────────────────────────────────────────────────────────────
@@ -131,22 +129,13 @@ export async function fetchPipeline(): Promise<PipelineTrip[]> {
   return data.trips as PipelineTrip[]
 }
 
-export async function fetchExpensesByEngagement(engagementId: string): Promise<{ expenses: Expense[]; summary: ExpenseSummary }> {
+export async function fetchEngagementFull(engagementId: string): Promise<EngagementFull> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'by_engagement', engagement_id: engagementId },
+    body: { mode: 'by_engagement_full', engagement_id: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
-  return { expenses: data.expenses as Expense[], summary: data.summary as ExpenseSummary }
-}
-
-export async function fetchEngagementSummary(engagementId: string): Promise<EngagementSummary> {
-  const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'summary', engagement_id: engagementId },
-  })
-  if (error) throw new Error(await extractError(error))
-  if (data?.error) throw new Error(data.error)
-  return data.summary as EngagementSummary
+  return data as EngagementFull
 }
 
 // ── Write functions ────────────────────────────────────────────────────────────
@@ -175,32 +164,6 @@ export async function deleteExpense(id: string): Promise<void> {
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.message ?? data.error)
-}
-
-export async function createItem(payload: CreateItemPayload): Promise<ExpenseItem> {
-  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'create_item', ...payload },
-  })
-  if (error) throw new Error(await extractError(error))
-  if (data?.error) throw new Error(data.error)
-  return data.item as ExpenseItem
-}
-
-export async function updateItem(id: string, patch: Partial<CreateItemPayload>): Promise<ExpenseItem> {
-  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_item', id, patch },
-  })
-  if (error) throw new Error(await extractError(error))
-  if (data?.error) throw new Error(data.error)
-  return data.item as ExpenseItem
-}
-
-export async function deleteItem(id: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'delete_item', id },
-  })
-  if (error) throw new Error(await extractError(error))
-  if (data?.error) throw new Error(data.error)
 }
 
 export async function markBilled(expenseId: string): Promise<Expense> {
