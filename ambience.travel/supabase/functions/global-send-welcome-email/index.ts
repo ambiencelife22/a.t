@@ -1,15 +1,15 @@
 /* global-send-welcome-email/index.ts
-   Edge Function — called from App.tsx on profile load when welcome_email_sent_at is NULL.
+   Edge Function - called from App.tsx on profile load when welcome_email_sent_at is NULL.
    JWT verify is OFF. user_id and email arrive in the request body.
    Uses service role to fetch display_name and set welcome_email_sent_at after sending.
-   A failed send logs and returns 200 — must never block dashboard load.
+   A failed send logs and returns 200 - must never block dashboard load.
    Auth pattern: data in body only (bespoke). Client + json/preflight from _shared.
 
    S66F Phase 2:
      - display_name read moved global_profiles -> sports_user_prefs (person-scoped).
      - welcome_email_sent_at write moved global_profiles -> global_subscriptions
        (per person_id, product='sports'). Per-product stamp: a SPORTS welcome and
-       a future TRAVEL welcome are independent. UPSERT on (person_id, product) —
+       a future TRAVEL welcome are independent. UPSERT on (person_id, product) -
        the subscription row may not exist yet.
 
    S53I EF consolidation Phase 2:
@@ -86,13 +86,13 @@ Deno.serve(async (req: Request) => {
 </style>
 </head>
 <body>
-  <!-- bgcolor table — forces dark background in Apple Mail and Gmail which ignore body background-color -->
+  <!-- bgcolor table - forces dark background in Apple Mail and Gmail which ignore body background-color -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1A1D1A" style="background:#1A1D1A; min-height:100%;">
     <tr><td>
       <div class="header"><div class="logo">ambience.SPORTS</div></div>
       <div class="container">
         <div class="heading">${greeting}</div>
-        <div class="body">ambience.SPORTS tracks your wagering operation with the kind of clarity most people never have. Every position, every book, every dollar — visible.</div>
+        <div class="body">ambience.SPORTS tracks your wagering operation with the kind of clarity most people never have. Every position, every book, every dollar, visible.</div>
         <div class="body">Start by logging your first position. The picture builds from there.</div>
         <div class="cta-wrap">
           <a class="cta" href="https://sports.ambience.life">Open ambience.SPORTS</a>
@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: sendError }, 200)
     }
 
-    // Mark welcome email as sent — prevents re-send on subsequent logins.
+    // Mark welcome email as sent - prevents re-send on subsequent logins.
     // Per-product stamp on the SPORTS subscription row; upsert as it may not exist.
     if (personId) {
       await serviceClient
@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
         )
     }
     if (!personId) {
-      console.error('send-welcome-email: no person_id for user', userId, '— stamp not written')
+      console.error('send-welcome-email: no person_id for user', userId, '- stamp not written')
     }
 
     console.log(`send-welcome-email: sent to ${email}`)

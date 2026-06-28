@@ -3,11 +3,11 @@
 // This is the ONLY function that writes subscription state to the DB.
 //
 // Auth: Stripe signature verification (stripe-signature header).
-// JWT verification OFF — this endpoint is called by Stripe, not the app.
+// JWT verification OFF - this endpoint is called by Stripe, not the app.
 //
 // S66F Phase 2: subscription state moved global_profiles -> global_subscriptions
 // (per person_id, product). This COMPLETES the multi-product billing intent the
-// old code flagged ("future products get their own columns") — but as per-product
+// old code flagged ("future products get their own columns") - but as per-product
 // ROWS keyed by (person_id, product), not per-product columns. The Stripe
 // metadata.product value is the row key. stripe_customer_id stays on
 // global_profiles (account-level). first_charge_at + all subscription fields go
@@ -15,7 +15,7 @@
 //
 // S53I EF consolidation Phase 2 (narrow recipe):
 //   - inline createClient(...) -> createServiceClient() (_shared/client.ts).
-//   - duplicate _shared/http.ts import removed (was declared twice — redeclare bug).
+//   - duplicate _shared/http.ts import removed (was declared twice - redeclare bug).
 //   - import trimmed to preflight only (the sole shared helper used here).
 //   - Stripe RESPONSES intentionally stay bare new Response(...) text/plain:
 //     Stripe is the only caller, expects a plain 2xx/4xx, not a JSON/CORS envelope.
@@ -71,7 +71,7 @@ async function getPersonId(userId: string): Promise<string | null> {
   return data?.person_id ?? null
 }
 
-// Account-level write (e.g. stripe_customer_id) — stays on global_profiles.
+// Account-level write (e.g. stripe_customer_id) - stays on global_profiles.
 async function updateAccount(userId: string, fields: Record<string, unknown>) {
   const { error } = await supabase
     .from('global_profiles')
@@ -80,7 +80,7 @@ async function updateAccount(userId: string, fields: Record<string, unknown>) {
   if (error) { console.error('updateAccount error:', error) }
 }
 
-// Subscription write — upsert into global_subscriptions on (person_id, product).
+// Subscription write - upsert into global_subscriptions on (person_id, product).
 // Upsert because a user's first subscription event may precede any existing row.
 async function upsertSubscription(personId: string, product: string, fields: Record<string, unknown>) {
   const { error } = await supabase
@@ -92,7 +92,7 @@ async function upsertSubscription(personId: string, product: string, fields: Rec
   if (error) { console.error('upsertSubscription error:', error) }
 }
 
-// Stamp first_charge_at only if not already set (never overwrite) — on the
+// Stamp first_charge_at only if not already set (never overwrite) - on the
 // SPORTS subscription row.
 async function stampFirstChargeIfNeeded(personId: string, product: string) {
   const { data } = await supabase
@@ -101,7 +101,7 @@ async function stampFirstChargeIfNeeded(personId: string, product: string) {
     .eq('person_id', personId)
     .eq('product', product)
     .maybeSingle()
-  if (data?.first_charge_at) { return } // already stamped — never overwrite
+  if (data?.first_charge_at) { return } // already stamped - never overwrite
   await upsertSubscription(personId, product, { first_charge_at: new Date().toISOString() })
 }
 
@@ -149,7 +149,7 @@ function renderEmail(opts: {
 </style>
 </head>
 <body>
-  <!-- bgcolor table — forces dark background in Apple Mail and Gmail which ignore body background-color -->
+  <!-- bgcolor table - forces dark background in Apple Mail and Gmail which ignore body background-color -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1A1D1A" style="background:#1A1D1A; min-height:100%;">
     <tr><td>
       <div class="header"><div class="logo">ambience.SPORTS</div></div>
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
       const userId     = await getUserIdFromCustomer(customerId)
       if (!userId) { return new Response('ok') }
 
-      // stripe_customer_id is account-level — stays on global_profiles.
+      // stripe_customer_id is account-level - stays on global_profiles.
       await updateAccount(userId, { stripe_customer_id: customerId })
     }
 
@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
         fields.has_used_trial = true
       }
 
-      // Clear re-engagement stamps on resubscribe — allows fresh sends on future lapses
+      // Clear re-engagement stamps on resubscribe - allows fresh sends on future lapses
       if (event.type === 'customer.subscription.created') {
         fields.re_engagement_30_sent_at = null
         fields.re_engagement_60_sent_at = null
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
 
       const product = sub.metadata?.product ?? DEFAULT_PRODUCT
 
-      // Do NOT clear tier — preserve for read-only UX. Do NOT delete data.
+      // Do NOT clear tier - preserve for read-only UX. Do NOT delete data.
       await upsertSubscription(personId, product, {
         subscription_status: 'canceled',
         current_period_end:  new Date(sub.current_period_end * 1000).toISOString(),
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
         const html = renderEmail({
           heading:  'Your subscription has ended.',
           body: [
-            'Your ambience.SPORTS subscription has ended. Your account is now in read-only mode — your full history is safe and nothing has been deleted.',
+            'Your ambience.SPORTS subscription has ended. Your account is now in read-only mode, your full history is safe and nothing has been deleted.',
             'Whenever you\'re ready, resubscribing takes 30 seconds and picks up exactly where you left off.',
           ],
           ctaLabel:   'Resubscribe',
@@ -331,7 +331,7 @@ Deno.serve(async (req) => {
           ],
           ctaLabel:   'Update payment method',
           ctaUrl:     `${APP_URL}/#update-payment`,
-          footerNote: 'If you\'ve already resolved this, no action is needed — your subscription will resume automatically on the next retry.',
+          footerNote: 'If you\'ve already resolved this, no action is needed, your subscription will resume automatically on the next retry.',
         })
         await sendEmail(email, 'Payment issue with your ambience.SPORTS subscription', html)
         console.log(`stripe-webhook: PaymentFailedEmail sent to ${email}`)
