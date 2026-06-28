@@ -110,3 +110,36 @@ proven vertical; client confirmation/programme surfaces are a later slice.
 Pending: client EFs (travel-get-trip-confirmation, travel-get-trip-programme) still
 derive confirmation independently — not yet on the canonical helper (separate slice).
 Phase 6 (richer per-stage render on detail/client surfaces) also pending.
+
+### [DEBT] Engagement-level export/branding control — ONE location, not per-surface
+
+Status: NOT BUILT. Logged as debt so it is built correctly when picked up.
+
+The need: an admin must be able to export a trip's PDFs (brief / confirmation /
+programme) under an alternate branding — AlfaOne Concierge, or unbranded — while
+the GUEST always sees ambience. "Admin only, not public."
+
+The mission constraint (Dev Standards II, single source): export/branding is a
+property of the ENGAGEMENT (the universal spine), controlled in ONE location with
+sublevels as needed. It must NOT be a picker duplicated across ItineraryEditorPage,
+TripDossierSection, and BriefEditorPage — three pickers would be three sources of
+truth for "how does this trip print," the exact drift extraction exists to kill.
+
+Architecture when built:
+  - Branding/export identity lives once, on the engagement (or a single engagement-
+    scoped export-settings surface), NOT on travel_trip_briefs.logo_variant read by
+    the guest EFs (that path leaks the variant to the guest download).
+  - The three PDF exporters (pdfImmerseBrief/Confirmation/Programme) take an explicit
+    branding param (default 'ambience'); they stop reading brief.logo_variant for the
+    guest path.
+  - Guest surface (ImmerseTripPage) passes nothing -> always ambience. Structurally
+    cannot emit AlfaOne. This isolation is the security property, must be verified.
+  - Admin export: ONE engagement-level control supplies the variant. Every admin
+    surface that can export reads that one control; none owns its own picker.
+  - stampPageChrome footer must follow the variant too (currently hard-codes
+    ambience.travel) — already drafted, not shipped.
+
+Current state: drawFrostedLogoCard already supports variant 'alfaone'/'unbranded';
+brief.logo_variant exists and is admin-set in BriefEditorPage. But it is Model A
+(stored on brief, read by guest EFs) — wrong for admin-only. Rebuild as engagement-
+scoped, export-time, guest-isolated.
