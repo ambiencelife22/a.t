@@ -47,14 +47,17 @@ export function useImmerseProgrammePdf() {
       .catch(err => console.error('PDF library load error:', err))
   }, [])
 
-  async function handleDownloadProgramme(data: DailyProgrammeData) {
+  async function handleDownloadProgramme(
+    data: DailyProgrammeData,
+    branding: import('../pdf/pdfImmerseProgramme').ExportBranding = 'ambience',
+  ) {
     if (!pdfReady) {
       toastRef.current.info('PDF library is still loading. Try again in a moment.')
       return
     }
     setPdfDownloading(true)
     try {
-      await exportDailyProgrammePdf(data)
+      await exportDailyProgrammePdf(data, branding)
     } catch (err) {
       console.error('Programme export failed:', err)
       const msg = err instanceof Error ? err.message : 'Unknown error'

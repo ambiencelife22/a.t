@@ -498,6 +498,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
+  const [exportBranding, setExportBranding] = useState<'ambience' | 'alfaone' | 'unbranded'>('ambience')
 
   useEffect(() => {
     async function load() {
@@ -589,8 +590,18 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{trip.trip_code}</span>
           <span style={{ fontSize: 10, color: MUTED }}>Daily Programme</span>
         </div>
+        <select
+          value={exportBranding}
+          onChange={e => setExportBranding(e.target.value as 'ambience' | 'alfaone' | 'unbranded')}
+          title='Export branding (admin only — guest always sees ambience)'
+          style={{ ...inputStyle, width: 'auto', fontSize: 10, padding: '4px 8px' }}
+        >
+          <option value='ambience'>ambience</option>
+          <option value='alfaone'>AlfaOne</option>
+          <option value='unbranded'>Unbranded</option>
+        </select>
         <button
-          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days, entriesByDate: entriesByDate as unknown as Record<string, import('../../types/typesTimeline').TimelineItem[]> })}
+          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days, entriesByDate: entriesByDate as unknown as Record<string, import('../../types/typesTimeline').TimelineItem[]> }, exportBranding)}
           disabled={!pdfReady || pdfDownloading || days.length === 0}
           style={{
             ...btnBase,

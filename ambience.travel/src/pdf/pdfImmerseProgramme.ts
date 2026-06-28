@@ -475,7 +475,12 @@ function drawEmptyDay(doc: any, day: TripDay, dayIdx: number, y: number): number
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise<void> {
+export type ExportBranding = 'ambience' | 'alfaone' | 'unbranded'
+
+export async function exportDailyProgrammePdf(
+  data: DailyProgrammeData,
+  branding: ExportBranding = 'ambience',
+): Promise<void> {
   const jsPDF    = assertJsPdf()
   const fontData = await loadGuideFonts()
   const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
@@ -509,7 +514,7 @@ export async function exportDailyProgrammePdf(data: DailyProgrammeData): Promise
     heroImageData,
     emblem,
     logo,
-    logoVariant:   data.brief?.logo_variant ?? null,
+    logoVariant:   branding,
   })
 
   y += 6
