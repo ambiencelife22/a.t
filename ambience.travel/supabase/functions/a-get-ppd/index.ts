@@ -5,11 +5,9 @@
 //
 // Security model:
 //   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
-//   - Caller must be authenticated (valid JWT in Authorization header)
-//   - Caller must be an admin (global_profiles.is_admin = true)
-//   - a_ppd_* tables have no direct client read policy
-//   - This function uses the service role key to bypass RLS
-//   - Never called with the anon key
+//   - Caller authenticated + admin, enforced via the shared requireAdmin gate
+//     (_shared/auth.ts). Service role via createServiceClient (_shared/client.ts).
+//   - a_ppd_* tables have no direct client read policy; reads bypass RLS via service role.
 //
 // Request body:
 //   { house_id: string, person_id?: string, contact_id?: string }
@@ -19,25 +17,15 @@
 //
 // Response:
 //   { people: HousePPDEntry[], contacts: ContactPPDEntry[] }
-//   people[].person_id is a global_people id.
 //
 // Deployed at: /functions/v1/a-get-ppd
-// Last updated: S53D POST-PHASE-4 — the reconcile is complete. a_ppd_people
-//   now has a single person_id column that FKs to global_people (the old
-//   a_house_people-linked column was dropped, global_person_id was renamed to
-//   person_id in migration_s53d_01). This EF reads person_id directly. The
-//   transitional COALESCE/normalise and the global_person_id references from
-//   the pre-Phase-4 version are removed.
-//   SERVICE_ROLE_KEY env var (S66F canon; was SUPABASE_SERVICE_ROLE_KEY drift).
-//   a_ppd_contacts remains UNCHANGED — contacts re-key to the spine is still
-//   scoped-out / not built. Do not re-point contacts without verifying the
-//   table has a global-person column first.
-// Prior: S53D (pre-Phase-4) — transitional global_person_id re-point.
-// Prior: S50 — renamed get-ppd -> a-get-ppd. Prior: S64B — initial ship.
+// Last updated: S53H Phase 2 — onto requireAdmin + createServiceClient + shared json.
+//   a_ppd_people.person_id FKs to global_people directly (Phase 4 done). Contacts
+//   re-key to the spine remains scoped-out — do not re-point a_ppd_contacts without
+//   verifying the table has a global-person column first.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, preflight } from '../_shared/http.ts'
-
+import { requireAdmin } from '../_shared/auth.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
@@ -51,58 +39,15 @@ Deno.serve(async (req: Request) => {
       contact_id?: string | undefined
     }
 
-    if (!house_id) {
-      return new Response(
-        JSON.stringify({ error: 'house_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    if (!house_id) return json({ error: 'house_id is required' }, 400)
 
-    // ── 2. Verify caller is authenticated ────────────────────────────────────
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // ── 2. Verify caller is an authenticated admin ───────────────────────────
+    const gate = await requireAdmin(req)
+    if (!gate.ok) return gate.response
+    const { serviceClient } = gate
 
-    const anonClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: userError } = await anonClient.auth.getUser()
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ── 3. Verify caller is admin ─────────────────────────────────────────────
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
-    const { data: profile, error: profileError } = await serviceClient
-      .from('global_profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (profileError || !profile || profile.is_admin !== true) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ── 4. Fetch PPD data via service role ────────────────────────────────────
-    // a_ppd_people.person_id now FKs to global_people directly (Phase 4 done).
+    // ── 3. Fetch PPD data via service role ────────────────────────────────────
+    // a_ppd_people.person_id FKs to global_people directly (Phase 4 done).
     let peopleQuery = serviceClient
       .from('a_ppd_people')
       .select('id, house_id, person_id, data_key, data_value, access_note, created_at, updated_at')
@@ -118,10 +63,7 @@ Deno.serve(async (req: Request) => {
 
     if (peopleError) {
       console.error('a_ppd_people fetch error:', peopleError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch PPD people data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Failed to fetch PPD people data' }, 500)
     }
 
     // a_ppd_contacts — UNCHANGED (contacts re-key to spine not yet built).
@@ -140,23 +82,14 @@ Deno.serve(async (req: Request) => {
 
     if (contactsError) {
       console.error('a_ppd_contacts fetch error:', contactsError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch PPD contacts data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Failed to fetch PPD contacts data' }, 500)
     }
 
-    // ── 5. Return ─────────────────────────────────────────────────────────────
-    return new Response(
-      JSON.stringify({ people: people ?? [], contacts: contacts ?? [] }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    // ── 4. Return ─────────────────────────────────────────────────────────────
+    return json({ people: people ?? [], contacts: contacts ?? [] }, 200)
 
   } catch (err) {
     console.error('a-get-ppd unexpected error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: 'Internal server error' }, 500)
   }
 })
