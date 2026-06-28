@@ -39,11 +39,8 @@
 // Last updated: S54c — initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, pronouns, nickname, email, phone, last_initial'
 
@@ -72,7 +69,7 @@ function shapePerson(p: any) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   try {
@@ -81,19 +78,13 @@ Deno.serve(async (req: Request) => {
     const { mode } = body as { mode?: string }
 
     if (!mode) {
-      return new Response(
-        JSON.stringify({ error: 'mode is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'mode is required' }, 400)
     }
 
     // ── 2. Verify caller is authenticated ────────────────────────────────────
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Unauthorized' }, 401)
     }
 
     const anonClient = createClient(
@@ -104,10 +95,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: userError } = await anonClient.auth.getUser()
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Unauthorized' }, 401)
     }
 
     // ── 3. Verify caller is admin (SERVICE_ROLE_KEY per S66F canon) ────────────
@@ -124,10 +112,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle()
 
     if (profileError || !profile || profile.is_admin !== true) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Forbidden' }, 403)
     }
 
     // ── 4. Dispatch by mode ───────────────────────────────────────────────────
@@ -150,25 +135,16 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await q
         if (error) {
           console.error('list fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch people' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch people' }, 500)
         }
-        return new Response(
-          JSON.stringify({ people: (data ?? []).map(shapePerson) }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ people: (data ?? []).map(shapePerson) }, 200)
       }
 
       // Single person by id.
       case 'by_id': {
         const { id } = body as { id?: string }
         if (!id) {
-          return new Response(
-            JSON.stringify({ error: 'id is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'id is required' }, 400)
         }
         const { data, error } = await serviceClient
           .from('global_people')
@@ -177,25 +153,16 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
         if (error) {
           console.error('by_id fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch person' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch person' }, 500)
         }
-        return new Response(
-          JSON.stringify({ person: data ? shapePerson(data) : null }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ person: data ? shapePerson(data) : null }, 200)
       }
 
       // Batch by id list (for resolving multiple person_ids at once).
       case 'by_ids': {
         const { ids } = body as { ids?: string[] }
         if (!Array.isArray(ids) || ids.length === 0) {
-          return new Response(
-            JSON.stringify({ error: 'ids (non-empty array) is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'ids (non-empty array) is required' }, 400)
         }
         const { data, error } = await serviceClient
           .from('global_people')
@@ -203,29 +170,17 @@ Deno.serve(async (req: Request) => {
           .in('id', ids)
         if (error) {
           console.error('by_ids fetch error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch people' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to fetch people' }, 500)
         }
-        return new Response(
-          JSON.stringify({ people: (data ?? []).map(shapePerson) }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ people: (data ?? []).map(shapePerson) }, 200)
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown mode: ${mode}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ error: `Unknown mode: ${mode}` }, 400)
     }
 
   } catch (err) {
     console.error('global-read-people unexpected error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: 'Internal server error' }, 500)
   }
 })

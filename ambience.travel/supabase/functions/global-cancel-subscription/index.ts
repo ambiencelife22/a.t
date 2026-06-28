@@ -8,6 +8,7 @@
 // Output: { canceledAt: string, currentPeriodEnd: string }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import Stripe from 'https://esm.sh/stripe@14?target=deno'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -20,36 +21,32 @@ const supabase = createClient(
   Deno.env.get('SERVICE_ROLE_KEY') ?? '',
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { token?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token } = body
   if (!token) {
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
   // Verify user JWT
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   // Get Stripe customer ID from profile
@@ -60,19 +57,19 @@ Deno.serve(async (req) => {
     .single()
 
   if (profileError || !profile) {
-    return new Response('Profile not found', { status: 404, headers: corsHeaders })
+    return json({ error: 'Profile not found' }, 404)
   }
 
   if (!profile.stripe_customer_id) {
-    return new Response('No Stripe customer found', { status: 400, headers: corsHeaders })
+    return json({ error: 'No Stripe customer found' }, 400)
   }
 
   if (profile.subscription_tier === 'lifetime') {
-    return new Response('Lifetime subscriptions cannot be canceled', { status: 400, headers: corsHeaders })
+    return json({ error: 'Lifetime subscriptions cannot be canceled' }, 400)
   }
 
   if (profile.subscription_tier === 'free') {
-    return new Response('No active subscription to cancel', { status: 400, headers: corsHeaders })
+    return json({ error: 'No active subscription to cancel' }, 400)
   }
 
   try {
@@ -95,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     if (!subscription) {
-      return new Response('No active subscription found in Stripe', { status: 404, headers: corsHeaders })
+      return json({ error: 'No active subscription found in Stripe' }, 404)
     }
 
     // Cancel at period end — user keeps access until current period expires
@@ -105,20 +102,14 @@ Deno.serve(async (req) => {
 
     // stripe-webhook will update subscription_status when it actually cancels.
     // We return the scheduled cancel info so the UI can reflect it immediately.
-    return new Response(
-      JSON.stringify({
+    return json({
         canceledAt:        new Date().toISOString(),
         currentPeriodEnd:  new Date(canceled.current_period_end * 1000).toISOString(),
         cancelAtPeriodEnd: canceled.cancel_at_period_end,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      }, 200)
 
   } catch (err: unknown) {
     console.error('cancel-subscription error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

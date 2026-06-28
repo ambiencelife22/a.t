@@ -9,7 +9,9 @@
 // Output: { subscriptionId: string, newPriceId: string, currentPeriodEnd: string }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import Stripe from 'npm:stripe@14'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
@@ -21,34 +23,30 @@ const supabase = createClient(
   Deno.env.get('SERVICE_ROLE_KEY') ?? '',
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { token?: string; priceId?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token, priceId } = body
   if (!token) {
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
   if (!priceId) {
-    return new Response('Missing priceId', { status: 400, headers: corsHeaders })
+    return json({ error: 'Missing priceId' }, 400)
   }
 
   // Only allow switching between Pro Monthly and Pro Annual — not to Lifetime
@@ -56,13 +54,13 @@ Deno.serve(async (req) => {
   const proAnnual  = Deno.env.get('STRIPE_PRICE_PRO_ANNUAL')
 
   if (priceId !== proMonthly && priceId !== proAnnual) {
-    return new Response('priceId must be Pro Monthly or Pro Annual', { status: 400, headers: corsHeaders })
+    return json({ error: 'priceId must be Pro Monthly or Pro Annual' }, 400)
   }
 
   // Verify user JWT
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   // Get profile
@@ -73,15 +71,15 @@ Deno.serve(async (req) => {
     .single()
 
   if (profileError || !profile) {
-    return new Response('Profile not found', { status: 404, headers: corsHeaders })
+    return json({ error: 'Profile not found' }, 404)
   }
 
   if (!profile.stripe_customer_id) {
-    return new Response('No Stripe customer found', { status: 400, headers: corsHeaders })
+    return json({ error: 'No Stripe customer found' }, 400)
   }
 
   if (profile.subscription_tier !== 'pro') {
-    return new Response('Only Pro subscriptions can be updated this way', { status: 400, headers: corsHeaders })
+    return json({ error: 'Only Pro subscriptions can be updated this way' }, 400)
   }
 
   try {
@@ -105,12 +103,12 @@ Deno.serve(async (req) => {
     }
 
     if (!subscription) {
-      return new Response('No active subscription found', { status: 404, headers: corsHeaders })
+      return json({ error: 'No active subscription found' }, 404)
     }
 
     const currentItemId = subscription.items.data[0]?.id
     if (!currentItemId) {
-      return new Response('Could not find subscription item', { status: 500, headers: corsHeaders })
+      return json({ error: 'Could not find subscription item' }, 500)
     }
 
     // Update the subscription — Stripe prorates automatically
@@ -125,20 +123,14 @@ Deno.serve(async (req) => {
 
     // stripe-webhook will update subscription_tier/status when next invoice settles.
     // Tier stays 'pro' either way — only the billing interval changes.
-    return new Response(
-      JSON.stringify({
+    return json({
         subscriptionId:   updated.id,
         newPriceId:       priceId,
         currentPeriodEnd: new Date(updated.current_period_end * 1000).toISOString(),
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      }, 200)
 
   } catch (err) {
     console.error('update-subscription error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

@@ -20,7 +20,9 @@
 //   payment_intent.succeeded  (Lifetime one-time)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import Stripe from 'npm:stripe@14'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import { Resend } from 'npm:resend@4'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -40,10 +42,6 @@ const resend = new Resend(Deno.env.get('RESEND_API_KEY'))
 const APP_URL = 'https://sports.ambience.life'
 const DEFAULT_PRODUCT = 'sports'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -184,7 +182,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   const signature = req.headers.get('stripe-signature')

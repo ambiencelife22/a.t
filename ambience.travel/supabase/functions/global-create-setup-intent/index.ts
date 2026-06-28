@@ -12,7 +12,9 @@
 // ambience products under the same Stripe customer.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import Stripe from 'npm:stripe@14'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
 type Product = 'sports' | 'life' | 'travel'
 
@@ -26,10 +28,6 @@ const serviceClient = createClient(
   Deno.env.get('SERVICE_ROLE_KEY') ?? '',
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const VALID_PRODUCTS: Product[] = ['sports', 'life', 'travel']
 
@@ -71,24 +69,24 @@ function getProductPriceIds(product: Product): string[] {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   let body: { token?: string; product?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token, product } = body
 
   if (!token) {
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
   if (!product || !VALID_PRODUCTS.includes(product as Product)) {
-    return new Response('Missing or invalid product', { status: 400, headers: corsHeaders })
+    return json({ error: 'Missing or invalid product' }, 400)
   }
 
   const typedProduct = product as Product
@@ -103,7 +101,7 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) {
     console.error('create-setup-intent: auth failed', authError?.message)
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   // Get stripe_customer_id from profile
@@ -114,7 +112,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (!profile?.stripe_customer_id) {
-    return new Response('No Stripe customer found', { status: 400, headers: corsHeaders })
+    return json({ error: 'No Stripe customer found' }, 400)
   }
 
   try {
@@ -152,15 +150,9 @@ Deno.serve(async (req) => {
       },
     })
 
-    return new Response(
-      JSON.stringify({ clientSecret: setupIntent.client_secret }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ clientSecret: setupIntent.client_secret }, 200)
   } catch (err) {
     console.error('create-setup-intent error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

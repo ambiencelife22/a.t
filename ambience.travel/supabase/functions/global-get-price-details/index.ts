@@ -8,7 +8,9 @@
 //           type: 'recurring' | 'one_time' }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import Stripe from 'npm:stripe@14'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
 const mode   = (Deno.env.get('STRIPE_MODE') ?? 'test').toUpperCase() as 'TEST' | 'LIVE'
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -16,10 +18,6 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   httpClient: Stripe.createFetchHttpClient(),
 })
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 // Returns all known price IDs across all products and modes.
 // Add new products here as they launch.
@@ -46,24 +44,24 @@ function isValidPriceId(priceId: string): boolean {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   let body: { token?: string; priceId?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token, priceId } = body
 
   if (!token) {
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
   if (!priceId || !isValidPriceId(priceId)) {
-    return new Response('Invalid priceId', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid priceId' }, 400)
   }
 
   // Verify user JWT
@@ -75,28 +73,22 @@ Deno.serve(async (req) => {
 
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   try {
     const price = await stripe.prices.retrieve(priceId)
 
-    return new Response(
-      JSON.stringify({
+    return json({
         amount:             price.unit_amount,
         currency:           price.currency,
         type:               price.type,
         interval:           price.recurring?.interval           ?? null,
         interval_count:     price.recurring?.interval_count     ?? null,
         trial_period_days:  price.recurring?.trial_period_days  ?? null,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      }, 200)
   } catch (err) {
     console.error('get-price-details error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })

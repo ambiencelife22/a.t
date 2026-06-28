@@ -8,6 +8,7 @@
 // Output: { tier, status, trialEndsAt, currentPeriodEnd, hasFullAccess }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
 // Inlined from lib/subscription.ts — avoids _shared bundling issues
 function hasFullAccess(profile: {
@@ -25,36 +26,32 @@ const supabase = createClient(
   Deno.env.get('SERVICE_ROLE_KEY') ?? '',
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { token?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token } = body
   if (!token) {
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
   // Verify user JWT
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -64,7 +61,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (profileError || !profile) {
-    return new Response('Profile not found', { status: 404, headers: corsHeaders })
+    return json({ error: 'Profile not found' }, 404)
   }
 
   const subProfile = {
@@ -74,14 +71,11 @@ Deno.serve(async (req) => {
     currentPeriodEnd:   profile.current_period_end   ?? null,
   }
 
-  return new Response(
-    JSON.stringify({
+  return json({
       tier:            subProfile.subscriptionTier,
       status:          subProfile.subscriptionStatus,
       trialEndsAt:     subProfile.trialEndsAt,
       currentPeriodEnd: subProfile.currentPeriodEnd,
       hasFullAccess:   hasFullAccess(subProfile),
-    }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
+    }, 200)
 })

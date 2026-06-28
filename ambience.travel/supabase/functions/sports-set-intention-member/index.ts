@@ -19,43 +19,40 @@
 // Output: { ok: true, targetUserId: string, is_intention_member: boolean } | { error: string }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
 const serviceClient = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SERVICE_ROLE_KEY') ?? '',
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const SPORTS_PRODUCT = 'sports'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { token?: string; targetUserId?: string; value?: boolean }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON' }, 400)
   }
 
   const { token, targetUserId, value } = body
 
   if (!token || !targetUserId || value == null) {
-    return new Response('Missing token, targetUserId, or value', { status: 400, headers: corsHeaders })
+    return json({ error: 'Missing token, targetUserId, or value' }, 400)
   }
 
   if (typeof value !== 'boolean') {
-    return new Response('value must be a boolean', { status: 400, headers: corsHeaders })
+    return json({ error: 'value must be a boolean' }, 400)
   }
 
   // Verify caller is admin
@@ -66,7 +63,7 @@ Deno.serve(async (req) => {
   )
   const { data: { user }, error: authErr } = await userClient.auth.getUser()
   if (authErr || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   const { data: callerProfile } = await serviceClient
@@ -76,7 +73,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (!callerProfile?.is_admin) {
-    return new Response('Forbidden — admin only', { status: 403, headers: corsHeaders })
+    return json({ error: 'Forbidden — admin only' }, 403)
   }
 
   // Resolve target's person_id (is_intention_member is per person+product now)
@@ -87,7 +84,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (acctErr || !targetAccount?.person_id) {
-    return new Response('Target user not found', { status: 404, headers: corsHeaders })
+    return json({ error: 'Target user not found' }, 404)
   }
 
   // UPSERT is_intention_member on the SPORTS subscription row.
@@ -102,16 +99,10 @@ Deno.serve(async (req) => {
 
   if (upsertErr) {
     console.error('set-intention-member upsert error:', upsertErr)
-    return new Response(
-      JSON.stringify({ error: 'DB update failed' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: 'DB update failed' }, 500)
   }
 
   console.log(`set-intention-member: set ${value} on ${targetUserId}`)
 
-  return new Response(
-    JSON.stringify({ ok: true, targetUserId, is_intention_member: value }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  )
+  return json({ ok: true, targetUserId, is_intention_member: value }, 200)
 })

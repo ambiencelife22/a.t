@@ -29,17 +29,14 @@
 // Last updated: S53C — initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const VALID_ROLES = ['owner', 'admin', 'member']
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   try {
@@ -48,19 +45,13 @@ Deno.serve(async (req: Request) => {
     const { mode } = body as { mode?: string }
 
     if (!mode) {
-      return new Response(
-        JSON.stringify({ error: 'mode is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'mode is required' }, 400)
     }
 
     // ── 2. Verify caller is authenticated ────────────────────────────────────
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Unauthorized' }, 401)
     }
 
     const anonClient = createClient(
@@ -71,10 +62,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: userError } = await anonClient.auth.getUser()
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Unauthorized' }, 401)
     }
 
     // ── 3. Verify caller is admin (SERVICE_ROLE_KEY per S66F canon) ────────────
@@ -91,10 +79,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle()
 
     if (profileError || !profile || profile.is_admin !== true) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Forbidden' }, 403)
     }
 
     // ── 4. Dispatch by mode ───────────────────────────────────────────────────
@@ -106,16 +91,10 @@ Deno.serve(async (req: Request) => {
           default_rate_id?: string | null; is_active?: boolean
         }
         if (!person_id) {
-          return new Response(
-            JSON.stringify({ error: 'person_id is required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'person_id is required' }, 400)
         }
         if (role !== undefined && !VALID_ROLES.includes(role)) {
-          return new Response(
-            JSON.stringify({ error: `role must be one of ${VALID_ROLES.join(', ')}` }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: `role must be one of ${VALID_ROLES.join(', ')}` }, 400)
         }
         // Build the upsert row. Only include provided fields so we don't clobber
         // existing values with undefined on update.
@@ -131,25 +110,16 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
         if (error) {
           console.error('upsert_member error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to save team member' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to save team member' }, 500)
         }
-        return new Response(
-          JSON.stringify({ member: data }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ member: data }, 200)
       }
 
       // Toggle active flag (soft enable/disable without deleting history).
       case 'set_active': {
         const { person_id, is_active } = body as { person_id?: string; is_active?: boolean }
         if (!person_id || typeof is_active !== 'boolean') {
-          return new Response(
-            JSON.stringify({ error: 'person_id and is_active (boolean) are required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'person_id and is_active (boolean) are required' }, 400)
         }
         const { data, error } = await serviceClient
           .from('global_team')
@@ -159,29 +129,17 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
         if (error) {
           console.error('set_active error:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to update team member' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return json({ error: 'Failed to update team member' }, 500)
         }
-        return new Response(
-          JSON.stringify({ member: data }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ member: data }, 200)
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown mode: ${mode}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ error: `Unknown mode: ${mode}` }, 400)
     }
 
   } catch (err) {
     console.error('global-write-team unexpected error:', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: 'Internal server error' }, 500)
   }
 })

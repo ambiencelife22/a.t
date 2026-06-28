@@ -12,7 +12,9 @@
 // To go live: set STRIPE_MODE=live in Supabase secrets. No other changes needed.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 import Stripe from 'npm:stripe@14'
+import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
 const mode   = (Deno.env.get('STRIPE_MODE') ?? 'test').toUpperCase() as 'TEST' | 'LIVE'
 
@@ -26,10 +28,6 @@ const serviceClient = createClient(
   Deno.env.get('SERVICE_ROLE_KEY') ?? '',
 )
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 // ── Price ID helpers ──────────────────────────────────────────────────────────
 
@@ -82,34 +80,34 @@ async function getOrCreateCustomer(userId: string, email: string): Promise<{ cus
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return preflight()
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: corsHeaders })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   let body: { token?: string; priceId?: string; product?: string }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON body', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid JSON body' }, 400)
   }
 
   const { token, priceId, product = 'sports' } = body  // default 'sports' for back-compat
 
   if (!token) {
     console.error('create-checkout-session: missing token')
-    return new Response('Missing token', { status: 401, headers: corsHeaders })
+    return json({ error: 'Missing token' }, 401)
   }
 
   if (!priceId) {
-    return new Response('Missing priceId', { status: 400, headers: corsHeaders })
+    return json({ error: 'Missing priceId' }, 400)
   }
 
   if (!isValidPriceId(priceId)) {
     console.error(`create-checkout-session: invalid priceId ${priceId} for mode ${mode}`)
-    return new Response('Invalid priceId', { status: 400, headers: corsHeaders })
+    return json({ error: 'Invalid priceId' }, 400)
   }
 
   // Verify user JWT using a per-request user-scoped client
@@ -122,7 +120,7 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) {
     console.error('create-checkout-session: auth failed', authError?.message)
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    return json({ error: 'Unauthorized' }, 401)
   }
 
   console.log(`create-checkout-session: user verified ${user.id} mode=${mode}`)
@@ -148,10 +146,7 @@ Deno.serve(async (req) => {
         await serviceClient.from('global_profiles').update({ stripe_customer_id: customerId }).eq('id', userId)
       }
 
-      return new Response(
-        JSON.stringify({ clientSecret: paymentIntent.client_secret, type: 'payment' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ clientSecret: paymentIntent.client_secret, type: 'payment' }, 200)
     }
 
     // ── Pro subscription ─────────────────────────────────────────────────────
@@ -182,10 +177,7 @@ Deno.serve(async (req) => {
 
       if (!clientSecret) {
         console.error('No client_secret on trial setup intent', subscription.id)
-        return new Response(
-          JSON.stringify({ error: 'Could not retrieve setup client secret' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return json({ error: 'Could not retrieve setup client secret' }, 500)
       }
 
       // Write stripe_customer_id only after successful subscription creation
@@ -193,10 +185,7 @@ Deno.serve(async (req) => {
         await serviceClient.from('global_profiles').update({ stripe_customer_id: customerId }).eq('id', userId)
       }
 
-      return new Response(
-        JSON.stringify({ clientSecret, subscriptionId: subscription.id, type: 'trial' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ clientSecret, subscriptionId: subscription.id, type: 'trial' }, 200)
     }
 
     // ── Paid subscription (no trial) ─────────────────────────────────────────
@@ -215,10 +204,7 @@ Deno.serve(async (req) => {
 
     if (!clientSecret) {
       console.error('No client_secret on subscription payment intent', subscription.id)
-      return new Response(
-        JSON.stringify({ error: 'Could not retrieve payment client secret' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return json({ error: 'Could not retrieve payment client secret' }, 500)
     }
 
     // Write stripe_customer_id only after successful subscription creation
@@ -226,16 +212,10 @@ Deno.serve(async (req) => {
       await serviceClient.from('global_profiles').update({ stripe_customer_id: customerId }).eq('id', userId)
     }
 
-    return new Response(
-      JSON.stringify({ clientSecret, subscriptionId: subscription.id, type: 'subscription' }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ clientSecret, subscriptionId: subscription.id, type: 'subscription' }, 200)
 
   } catch (err) {
     console.error('create-checkout-session error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
   }
 })
