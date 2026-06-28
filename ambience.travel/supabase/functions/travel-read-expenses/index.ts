@@ -11,71 +11,22 @@
 //   summary            { engagement_id }  → financial summary
 //   pipeline           {}                 → all confirmed trips with financials
 //
-// Last updated: S53G v3 — by_engagement_full: rooms nested under bookings,
-//   net_revenue computed as commission minus partner shares,
-//   booking_type_label resolved from travel_accom_hotels for hotel bookings.
+// Last updated: S53G v3 — shared helpers extracted to _shared/expenses.ts.
+//   Rooms nested under bookings. Net revenue = commission minus partner shares.
+//   Hotel name resolved from travel_accom_hotels.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
+import {
+  EXPENSE_SELECT,
+  BOOKING_FINANCIAL_SELECT,
+  ROOM_SELECT,
+  deriveSummary,
+  groupBy,
+  computeNetRevenue,
+} from '../_shared/expenses.ts'
 
 type Mode = 'by_engagement' | 'by_engagement_full' | 'by_destination' | 'summary' | 'pipeline'
-
-const EXPENSE_SELECT = `
-  id, engagement_id, booking_id, destination_id, team_member_id,
-  expense_type, description, total_amount, currency, billing_status,
-  paid_at, billed_at, reimbursed_at, linked_at, notes,
-  created_by, created_at, updated_at,
-  items:travel_expense_items(
-    id, expense_id, item_type, description, amount,
-    receipt_ref, deductibility, recipient_id, paid_by, paid_at, sort_order
-  )
-`
-
-const BOOKING_FINANCIAL_SELECT = `
-  id, name, booking_type, accom_hotel_id, start_date, end_date, nights, currency,
-  cost,
-  total_rate, total_rate_usd,
-  commissionable_rate, commissionable_rate_usd,
-  commission_pct, commission_amount, commission_amount_usd, commission_paid_at,
-  net_revenue, net_revenue_usd,
-  taxes_and_fees, taxes_and_fees_usd,
-  referral_share_amt, iata_share_amt, individual_share_amt,
-  deposit_amount, deposit_due_date, deposit_paid_at,
-  balance_amount, balance_due_date, balance_paid_at,
-  invoice_number, rate_type, sort_order
-`
-
-const ROOM_SELECT = `
-  id, booking_id, room_name, confirmation_number, guest_name,
-  nights, rate, tax_pct, total, sort_order, check_in_time,
-  deposit_amount, balance_amount, brief_image_src
-`
-
-function deriveSummary(expenses: Array<Record<string, unknown>>) {
-  const absorbed    = expenses.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + (e.total_amount as number), 0)
-  const billable    = expenses.filter(e => e.billing_status === 'billable').reduce((s, e) => s + (e.total_amount as number), 0)
-  const outstanding = expenses.filter(e => e.billing_status === 'billed').reduce((s, e) => s + (e.total_amount as number), 0)
-  const paid        = expenses.filter(e => e.billing_status === 'paid').reduce((s, e) => s + (e.total_amount as number), 0)
-  return { total_absorbed: absorbed, total_billable: billable, total_outstanding: outstanding, total_paid: paid }
-}
-
-function groupBy<T extends Record<string, unknown>>(arr: T[], key: string): Record<string, T[]> {
-  const out: Record<string, T[]> = {}
-  for (const item of arr) {
-    const k = item[key] as string
-    ;(out[k] ??= []).push(item)
-  }
-  return out
-}
-
-// Net revenue = commission minus all partner shares
-function computeNetRevenue(b: Record<string, unknown>): number {
-  const comm     = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
-  const referral = (b.referral_share_amt   ?? 0) as number
-  const iata     = (b.iata_share_amt       ?? 0) as number
-  const indiv    = (b.individual_share_amt ?? 0) as number
-  return Math.round((comm - referral - iata - indiv) * 100) / 100
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
@@ -122,14 +73,14 @@ Deno.serve(async (req: Request) => {
           .order('created_at', { ascending: false }),
       ])
 
-      if (engRes.error) { console.error(engRes.error); return json({ error: 'Failed to fetch engagement' }, 500) }
+      if (engRes.error)      { console.error(engRes.error);      return json({ error: 'Failed to fetch engagement' }, 500) }
       if (bookingsRes.error) { console.error(bookingsRes.error); return json({ error: 'Failed to fetch bookings' }, 500) }
       if (expensesRes.error) { console.error(expensesRes.error); return json({ error: 'Failed to fetch expenses' }, 500) }
 
       const bookings = (bookingsRes.data ?? []) as Array<Record<string, unknown>>
       const expenses = (expensesRes.data ?? []) as Array<Record<string, unknown>>
 
-      // Fetch rooms for all bookings
+      // Rooms
       const bookingIds = bookings.map(b => b.id as string)
       const roomsByBooking: Record<string, Array<Record<string, unknown>>> = {}
       if (bookingIds.length > 0) {
@@ -144,7 +95,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Resolve hotel names for hotel bookings
+      // Hotel names
       const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter(Boolean))] as string[]
       const hotelById: Record<string, string> = {}
       if (hotelIds.length > 0) {
@@ -157,7 +108,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Summary — computed from original bookings (Record<string, unknown>[]) before enrichment
+      // Summary from original bookings before enrichment
       const total_commission    = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const commission_received = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const total_net_revenue   = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
@@ -169,7 +120,7 @@ Deno.serve(async (req: Request) => {
       const deposit_outstanding = bookings.filter(b => b.deposit_amount && !b.deposit_paid_at).reduce((s, b) => s + ((b.deposit_amount ?? 0) as number), 0)
       const balance_outstanding = bookings.filter(b => b.balance_amount && !b.balance_paid_at).reduce((s, b) => s + ((b.balance_amount ?? 0) as number), 0)
 
-      // Enrich bookings with rooms + resolved hotel name + net_revenue
+      // Enrich bookings
       const enrichedBookings = bookings.map(b => ({
         ...b,
         hotel_name:      b.accom_hotel_id ? (hotelById[b.accom_hotel_id as string] ?? b.name) : b.name,
@@ -178,12 +129,10 @@ Deno.serve(async (req: Request) => {
       }))
 
       const expenseSummary = deriveSummary(expenses)
-      const net_margin = total_net_revenue - expenseSummary.total_absorbed
-
       const summary = {
         total_commission,
         commission_received,
-        commission_outstanding:  total_commission - commission_received,
+        commission_outstanding: total_commission - commission_received,
         total_rate,
         total_amenities,
         total_net_revenue,
@@ -193,7 +142,7 @@ Deno.serve(async (req: Request) => {
         deposit_outstanding,
         balance_outstanding,
         ...expenseSummary,
-        net_margin,
+        net_margin: total_net_revenue - expenseSummary.total_absorbed,
       }
 
       return json({ engagement: engRes.data, bookings: enrichedBookings, expenses, summary })
@@ -219,8 +168,12 @@ Deno.serve(async (req: Request) => {
       if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
-        db.from('travel_bookings').select('commission_amount, commission_amount_usd, commission_paid_at, cost, referral_share_amt, iata_share_amt, individual_share_amt').eq('engagement_id', engagement_id),
-        db.from('travel_engagement_expenses').select('total_amount, billing_status').eq('engagement_id', engagement_id),
+        db.from('travel_bookings')
+          .select('commission_amount, commission_amount_usd, commission_paid_at, cost, referral_share_amt, iata_share_amt, individual_share_amt')
+          .eq('engagement_id', engagement_id),
+        db.from('travel_engagement_expenses')
+          .select('total_amount, billing_status')
+          .eq('engagement_id', engagement_id),
       ])
 
       const bs = (bookings ?? []) as Array<Record<string, unknown>>
@@ -232,16 +185,20 @@ Deno.serve(async (req: Request) => {
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + e.total_amount, 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + e.total_amount, 0)
       const total_outstanding   = es.filter(e => e.billing_status === 'billed').reduce((s, e) => s + e.total_amount, 0)
-      const net_margin          = total_net_revenue - total_absorbed
 
-      return json({ summary: { total_commission, commission_received, commission_outstanding: total_commission - commission_received, total_net_revenue, total_absorbed, total_billable, total_outstanding, net_margin } })
+      return json({ summary: {
+        total_commission, commission_received,
+        commission_outstanding: total_commission - commission_received,
+        total_net_revenue, total_absorbed, total_billable, total_outstanding,
+        net_margin: total_net_revenue - total_absorbed,
+      }})
     }
 
     // ── pipeline ─────────────────────────────────────────────────────────────
     if (mode === 'pipeline') {
       const { data: engRows, error: engErr } = await db
         .from('travel_immerse_engagements')
-        .select(`id, trip_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_trips!trip_id(trip_code, start_date, end_date, primary_client_id)`)
+        .select('id, trip_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_trips!trip_id(trip_code, start_date, end_date, primary_client_id)')
         .is('parent_engagement_id', null)
         .not('trip_id', 'is', null)
         .order('created_at', { ascending: false })
@@ -257,8 +214,12 @@ Deno.serve(async (req: Request) => {
 
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
-        db.from('travel_bookings').select('engagement_id, commission_amount, commission_amount_usd, commission_paid_at, cost, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt').in('engagement_id', engIds),
-        db.from('travel_engagement_expenses').select('engagement_id, total_amount, billing_status').in('engagement_id', engIds),
+        db.from('travel_bookings')
+          .select('engagement_id, commission_amount, commission_amount_usd, commission_paid_at, cost, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt')
+          .in('engagement_id', engIds),
+        db.from('travel_engagement_expenses')
+          .select('engagement_id, total_amount, billing_status')
+          .in('engagement_id', engIds),
       ])
 
       const bByEng = groupBy((bookings ?? []) as Array<Record<string, unknown>>, 'engagement_id')
