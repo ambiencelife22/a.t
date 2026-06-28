@@ -38,7 +38,7 @@
 
 import { isTripUrlId } from '../utils/utilsImmersePath'
 
-export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips' | 'time' | 'calendar' // S55: + 'calendar'
+export type AdminProduct = 'immerse' | 'programme' | 'guides' | 'library' | 'house' | 'operations' | 'trips' | 'time' | 'calendar' | 'finance'
 
 export type AdminTab =
   | { product: 'immerse';    tab: 'engagements'; urlId: string | null }
@@ -54,6 +54,8 @@ export type AdminTab =
   | { product: 'operations'; tab: 'bookings' }
   | { product: 'time';       tab: 'entries' } // S53C
   | { product: 'time';       tab: 'analytics' } // S53C analytics surface
+  | { product: 'finance';    tab: 'pipeline' }
+  | { product: 'finance';    tab: 'engagement'; engagementId: string }
   | { product: 'trips';      tab: 'brief';      tripId: string }
   | { product: 'trips';      tab: 'itinerary';  tripId: string }
   | { product: 'programme';  tab: ProgrammeTabId }
@@ -132,6 +134,13 @@ export function parseAdminHash(hash: string): AdminTab {
     return { product: 'time', tab: 'entries' }
   }
 
+  if (product === 'finance') {
+    if (tab === 'engagement' && rest[0] && UUID_RE.test(rest[0])) {
+      return { product: 'finance', tab: 'engagement', engagementId: rest[0] }
+    }
+    return { product: 'finance', tab: 'pipeline' }
+  }
+
   if (product === 'trips') {
     // #admin/trips/<trip-uuid>/brief   OR   #admin/trips/<trip-uuid>/itinerary
     const tripId = tab        // second segment is the trip UUID
@@ -186,6 +195,10 @@ export function buildAdminHash(target: AdminTab): string {
   // S53C: time tracking
   if (target.product === 'time') {
     return target.tab === 'analytics' ? '#admin/time/analytics' : '#admin/time'
+  }
+  if (target.product === 'finance') {
+    if (target.tab === 'engagement') return `#admin/finance/engagement/${target.engagementId}`
+    return '#admin/finance'
   }
   if (target.product === 'trips') {
     return `#admin/trips/${target.tripId}/${target.tab}`

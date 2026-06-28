@@ -44,6 +44,7 @@ type SidebarLink =
   | { kind: 'operations-bookings' }
   | { kind: 'time-entries' } // S53C
   | { kind: 'time-analytics' } // S53C
+     | { kind: 'finance-pipeline' }
   | { kind: 'programme'; tab: ProgrammeTabId }
 
 type SidebarItem = {
@@ -98,7 +99,11 @@ const TIME_ITEMS: SidebarItem[] = [
   { key: 'time-analytics', label: 'Analytics',  link: { kind: 'time-analytics' } },
 ]
 
-const PROGRAMME_ITEMS: SidebarItem[] = [
+const FINANCE_ITEMS: SidebarItem[] = [
+  { key: 'finance-pipeline', label: 'Pipeline', link: { kind: 'finance-pipeline' } },
+]
+
+  const PROGRAMME_ITEMS: SidebarItem[] = [
   { key: 'p-programmes',    label: 'Programmes',        link: { kind: 'programme', tab: 'programmes' } },
   { key: 'p-letters',       label: 'Welcome Letters',   link: { kind: 'programme', tab: 'letters' } },
   { key: 'p-listings',      label: 'Listings',          link: { kind: 'programme', tab: 'listings' } },
@@ -121,6 +126,7 @@ const GROUPS: SidebarGroup[] = [
   { key: 'house',      icon: Home,       items: HOUSE_ITEMS      },
   { key: 'operations', icon: LayoutGrid, items: OPERATIONS_ITEMS },
   { key: 'time',       icon: LayoutGrid, items: TIME_ITEMS       }, // S53C
+  { key: 'finance',    icon: LayoutGrid, items: FINANCE_ITEMS    },
   { key: 'programme',  icon: LayoutGrid, items: PROGRAMME_ITEMS  },
 ]
 
@@ -166,7 +172,10 @@ function isActive(item: SidebarItem, current: AdminTab): boolean {
   if (item.link.kind === 'time-analytics') { // S53C
     return current.product === 'time' && current.tab === 'analytics'
   }
-  return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
+  if (item.link.kind === 'finance-pipeline') {
+       return current.product === 'finance'
+     }
+     return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
 }
 
 function isGroupActive(group: SidebarGroup, current: AdminTab): boolean {
@@ -213,7 +222,11 @@ function hashFor(item: SidebarItem): string {
   if (item.link.kind === 'time-analytics') { // S53C
     return buildAdminHash({ product: 'time', tab: 'analytics' })
   }
-  return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
+  if (item.link.kind === 'finance-pipeline') {
+       return buildAdminHash({ product: 'finance', tab: 'pipeline' })
+     }
+     return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
+
 }
 
 // ─── Group header row ─────────────────────────────────────────────────────────
@@ -422,7 +435,8 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
     ...HOUSE_ITEMS,
     ...OPERATIONS_ITEMS,
     ...TIME_ITEMS, // S53C
-    ...PROGRAMME_ITEMS,
+    ...FINANCE_ITEMS,
+     ...PROGRAMME_ITEMS,
   ]
 
   function currentValue(): string {
@@ -476,7 +490,10 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
         <optgroup label='Time'>
           {TIME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
-        <optgroup label='Programme'>
+        <optgroup label='Finance'>
+           {FINANCE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+         </optgroup>
+         <optgroup label='Programme'>
           {PROGRAMME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
         </optgroup>
       </select>
