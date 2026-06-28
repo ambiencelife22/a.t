@@ -34,7 +34,7 @@ export const BOOKING_FINANCIAL_SELECT = `
 export const ROOM_SELECT = `
   id, booking_id, room_name, confirmation_number, guest_name,
   nights, rate, tax_pct, total, sort_order, check_in_time,
-  deposit_amount, balance_amount, brief_image_src
+  brief_image_src
 `
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

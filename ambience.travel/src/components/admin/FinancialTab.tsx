@@ -168,7 +168,6 @@ type RoomRow = {
   confirmation_number: string | null; guest_name: string | null
   nights: number | null; rate: number | null; tax_pct: number | null; total: number | null
   sort_order: number; check_in_time: string | null
-  deposit_amount: number | null; balance_amount: number | null
 }
 
 function RoomLine({ room }: { room: RoomRow }) {
@@ -407,6 +406,7 @@ export function EngagementFinanceView({ engagementId }: { engagementId: string }
   }
 
   useEffect(() => { load() }, [engagementId])
+  useEffect(() => { if (data) console.log('bookings', JSON.stringify(data.bookings?.[0]?.rooms)) }, [data])
 
   const summary  = data?.summary
   const bookings = (data?.bookings ?? []) as BookingRow[]
