@@ -1,4 +1,4 @@
-// guidePdf.ts — PDF export for guide pages (dining + experiences + shopping + hotels)
+// pdfGuide.ts — PDF export for guide pages (dining + experiences + shopping + hotels)
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Cover page (full-bleed hero image, big title with year + version, emblem)
@@ -320,24 +320,38 @@ async function renderCoverPage(ctx: RenderCtx) {
     }
   }
 
-  const titleY = 74
+  // Eyebrow: destination name (universal pattern S52)
+  const eyebrowY = 68
+  sans(doc, 'normal', 10)
+  doc.setTextColor(...THEME.gold)
+  doc.text(copy.eyebrow.toUpperCase(), PAGE.margin + 4, eyebrowY, { charSpace: 1.2 })
+
+  // Title: "The {Variant} Guide" + year stacked
+  const titleY = eyebrowY + 12
   serif(doc, 'normal', 42)
   doc.setTextColor(...THEME.ink)
-  const titleText  = `${destination.name} ${capitalize(variant)} Guide ${guideYear}`
-  const titleLines = doc.splitTextToSize(titleText, PAGE.width - PAGE.margin * 2 - 8)
+  const titleLines = doc.splitTextToSize(copy.headline, PAGE.width - PAGE.margin * 2 - 8)
   let yCursor = titleY
-  for (let i = 0; i < Math.min(titleLines.length, 3); i++) {
+  for (let i = 0; i < Math.min(titleLines.length, 2); i++) {
     doc.text(titleLines[i], PAGE.margin + 4, yCursor)
     yCursor += 15
   }
 
+  // Year — same serif, slightly smaller
+  serif(doc, 'normal', 28)
+  doc.setTextColor(...THEME.ink)
+  doc.text(String(guideYear), PAGE.margin + 4, yCursor + 4)
+  yCursor += 12
+
+  // Version pill
   sans(doc, 'normal', 9)
   doc.setTextColor(...THEME.gold)
-  doc.text(`V${guideVersion.toUpperCase()}`, PAGE.margin + 4, yCursor + 2, { charSpace: 0.6 })
+  doc.text(`V${guideVersion.toUpperCase()}`, PAGE.margin + 4, yCursor + 8, { charSpace: 0.6 })
 
+  // Gold rule
   doc.setDrawColor(...THEME.gold)
   doc.setLineWidth(0.6)
-  doc.line(PAGE.margin + 4, yCursor + 8, PAGE.margin + 28, yCursor + 8)
+  doc.line(PAGE.margin + 4, yCursor + 14, PAGE.margin + 28, yCursor + 14)
 
   sans(doc, 'normal', 11)
   doc.setTextColor(...THEME.muted)
@@ -1518,7 +1532,7 @@ function stampPageChrome(ctx: RenderCtx) {
     doc.setPage(i)
 
     if (i > 1) {
-      const eyebrowText = `${destination.name.toUpperCase()} ${variant.toUpperCase()} GUIDE`
+      const eyebrowText = `${destination.name.toUpperCase()} \u00b7 ${variant.toUpperCase()} GUIDE`
       sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
       doc.text(eyebrowText, PAGE.margin, 14, { charSpace: 0.5 })
       doc.text(String(i).padStart(2, '0'), PAGE.width - PAGE.margin, 14, { align: 'right' })
