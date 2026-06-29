@@ -263,7 +263,7 @@ function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): Con
   if (opts.variant === 'dining') {
     const groups = groupDiningVenuesForPdf(opts.venues as DiningVenue[])
     if (groups.supplementary.length > 0 && groups.primary.length > 0) {
-      items.push({ page: -1, title: 'Also Nearby', blurb: `Beyond central ${destName}` })
+      items.push({ page: -1, title: 'Also Nearby', blurb: `Beyond the highlights ${destName}` })
     }
     if (groups.recentlyClosed.length > 0 && (groups.primary.length > 0 || groups.supplementary.length > 0)) {
       items.push({ page: -1, title: 'Recently Closed', blurb: 'Kept here briefly for reference' })
