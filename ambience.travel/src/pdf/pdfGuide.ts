@@ -348,17 +348,6 @@ async function renderCoverPage(ctx: RenderCtx) {
   doc.setTextColor(...THEME.gold)
   doc.text(`V${guideVersion.toUpperCase()}`, PAGE.margin + 4, yCursor + 8, { charSpace: 0.6 })
 
-  // Gold rule
-  doc.setDrawColor(...THEME.gold)
-  doc.setLineWidth(0.6)
-  doc.line(PAGE.margin + 4, yCursor + 14, PAGE.margin + 28, yCursor + 14)
-
-  sans(doc, 'normal', 11)
-  doc.setTextColor(...THEME.muted)
-  const introLines = doc.splitTextToSize(copy.intro, PAGE.width - PAGE.margin * 2 - 60)
-  let introY = yCursor + 18
-  for (const line of introLines) { doc.text(line, PAGE.margin + 4, introY); introY += 5.5 }
-
   const heroTop = 162; const heroBottom = 270
   let heroDrawn = false
   if (heroImageSrc) {
