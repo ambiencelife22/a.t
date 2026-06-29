@@ -320,35 +320,34 @@ async function renderCoverPage(ctx: RenderCtx) {
     }
   }
 
-  // Eyebrow: destination name (universal pattern S52)
-  const eyebrowY = 68
-  sans(doc, 'normal', 10)
-  doc.setTextColor(...THEME.gold)
-  doc.text(copy.eyebrow.toUpperCase(), PAGE.margin + 4, eyebrowY, { charSpace: 1.2 })
-
-  // Title: "The {Variant} Guide" + year stacked
-  const titleY = eyebrowY + 12
-  serif(doc, 'normal', 42)
-  doc.setTextColor(...THEME.ink)
-  const titleLines = doc.splitTextToSize(copy.headline, PAGE.width - PAGE.margin * 2 - 8)
-  let yCursor = titleY
-  for (let i = 0; i < Math.min(titleLines.length, 2); i++) {
-    doc.text(titleLines[i], PAGE.margin + 4, yCursor)
-    yCursor += 15
-  }
-
-  // Year — same serif, slightly smaller
-  serif(doc, 'normal', 28)
-  doc.setTextColor(...THEME.ink)
-  doc.text(String(guideYear), PAGE.margin + 4, yCursor + 4)
-  yCursor += 12
-
-  // Version pill
+  // Title block — anchored just above the hero as one tight composition.
+  // Eyebrow + headline + metadata read as a single editorial unit.
+  const eyebrowY = 96
   sans(doc, 'normal', 9)
   doc.setTextColor(...THEME.gold)
-  doc.text(`V${guideVersion.toUpperCase()}`, PAGE.margin + 4, yCursor + 8, { charSpace: 0.6 })
+  doc.text(copy.eyebrow.toUpperCase(), PAGE.margin + 4, eyebrowY, { charSpace: 1.4 })
 
-  const heroTop = 162; const heroBottom = 270
+  const titleY = eyebrowY + 14
+  serif(doc, 'normal', 38)
+  doc.setTextColor(...THEME.ink)
+  doc.text(copy.headline, PAGE.margin + 4, titleY)
+
+  // Metadata line — year and version inline, restrained
+  sans(doc, 'normal', 9.5)
+  doc.setTextColor(...THEME.muted)
+  doc.text(
+    `${guideYear}  \u00b7  V${guideVersion.toUpperCase()}`,
+    PAGE.margin + 4,
+    titleY + 12,
+    { charSpace: 0.6 },
+  )
+
+  // Gold rule
+  doc.setDrawColor(...THEME.gold)
+  doc.setLineWidth(0.6)
+  doc.line(PAGE.margin + 4, titleY + 20, PAGE.margin + 28, titleY + 20)
+
+  const heroTop = 148; const heroBottom = 275
   let heroDrawn = false
   if (heroImageSrc) {
     try {
@@ -734,9 +733,9 @@ async function renderDiningGroupedCards(ctx: RenderCtx, venues: DiningVenue[], s
     if (groups.primary.length > 0) {
       y = renderGroupSectionBreak(
         doc,
-        'Beyond the Center',
+        'Beyond The Highlighted',
         'Also Nearby',
-        `Worth the journey from central ${destination.name}. Tables outside the main circuit, kept here for those who want a fuller picture of the city's dining landscape.`,
+        `Additional tables guests have considered.`,
       )
     }
 

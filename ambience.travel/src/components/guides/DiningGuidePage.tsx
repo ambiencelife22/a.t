@@ -369,9 +369,9 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
                   {supplementaryVenues.length > 0 && primaryVenues.length > 0 && (
                     <GuideSectionBreak
-                      eyebrow="Beyond the Center"
+                      eyebrow="Beyond The Highlighted"
                       heading="Also Nearby"
-                      descriptor={`Worth the journey from central ${destination.name}. Tables outside the main circuit, kept here for those who want a fuller picture of the city's dining landscape.`}
+                      descriptor={`Additional tables guests have considered.`}
                     />
                   )}
                   {supplementaryVenues.map(v => (
