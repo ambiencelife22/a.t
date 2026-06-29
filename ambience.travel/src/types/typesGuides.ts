@@ -72,39 +72,38 @@ export type GuideOverlayPatch = Partial<GuideOverlayDraft>
  * Used when overlay field is NULL.
  */
 export interface GuideVariantCopy {
-  defaultEyebrow:  string
-  productLabel:    string  // "Dining Guide" / "Hotels Guide" etc. — used in modal header + page chrome
+  defaultHeadline: string  // "The Dining Guide" / "The Hotels Guide" etc.
+  productLabel:    string  // "Dining Guide" / "Hotels Guide" — used in modal header + page chrome
   itemNoun:        string  // "venue" / "experience" / "hotel" / "shop" — for count rendering
   itemNounPlural:  string
 }
 
 export const GUIDE_COPY: Record<GuideVariant, GuideVariantCopy> = {
   dining: {
-    defaultEyebrow: 'Curated Dining',
-    productLabel:   'Dining Guide',
-    itemNoun:       'venue',
-    itemNounPlural: 'venues',
+    defaultHeadline: 'The Dining Guide',
+    productLabel:    'Dining Guide',
+    itemNoun:        'venue',
+    itemNounPlural:  'venues',
   },
   experiences: {
-    defaultEyebrow: 'Curated Experiences',
-    productLabel:   'Experiences Guide',
-    itemNoun:       'experience',
-    itemNounPlural: 'experiences',
+    defaultHeadline: 'The Experiences Guide',
+    productLabel:    'Experiences Guide',
+    itemNoun:        'experience',
+    itemNounPlural:  'experiences',
   },
   hotels: {
-    defaultEyebrow: 'Curated Hotels',
-    productLabel:   'Hotels Guide',
-    itemNoun:       'hotel',
-    itemNounPlural: 'hotels',
+    defaultHeadline: 'The Hotels Guide',
+    productLabel:    'Hotels Guide',
+    itemNoun:        'hotel',
+    itemNounPlural:  'hotels',
   },
   shopping: {
-    defaultEyebrow: 'Selected Shopping',
-    productLabel:   'Shopping Guide',
-    itemNoun:       'shop',
-    itemNounPlural: 'shops',
+    defaultHeadline: 'The Shopping Guide',
+    productLabel:    'Shopping Guide',
+    itemNoun:        'shop',
+    itemNounPlural:  'shops',
   },
 }
-
 /**
  * Returns true if the variant supports per-user access grants.
  * dining + experiences have grants; hotels + shopping do not (yet).

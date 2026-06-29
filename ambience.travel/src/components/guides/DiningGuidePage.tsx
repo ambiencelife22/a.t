@@ -85,17 +85,11 @@ import {
   emptyStateTextStyle,
 } from '../../styles/stylesGuidePage'
 
+import { GUIDE_COPY } from '../../types/typesGuides'
+
 interface DiningGuidePageProps {
   destination:   GuideDestination
   hasFullAccess: boolean
-}
-
-// ── Frontend default copy ────────────────────────────────────────────────────
-
-const DEFAULT_EYEBROW = 'Curated Dining'
-
-function defaultHeadline(destinationName: string): string {
-  return `${destinationName} Dining`
 }
 
 function defaultIntro(destinationName: string): string {
@@ -167,8 +161,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   // ── Resolved hero copy ───────────────────────────────────────────────────
 
   const overlay      = destination.overlay
-  const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
-  const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
+  const heroEyebrow  = overlay?.eyebrow_override  ?? destination.name
+  const heroHeadline = overlay?.headline_override ?? GUIDE_COPY.dining.defaultHeadline
   const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
   const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
