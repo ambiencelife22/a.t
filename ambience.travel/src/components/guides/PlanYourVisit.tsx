@@ -61,13 +61,13 @@ const FALLBACK_COPY: Record<GuideVariant, {
 }> = {
   dining: {
     heading: 'Plan Your Visit',
-    intro:   'A few notes to help you get the most from these tables.',
+    intro:   'A few notes on how these tables work.',
     bullets: [
-      'Reservations at the most considered restaurants open weeks or months ahead. Book before you travel, not after you arrive.',
-      'Tasting menus often require a credit card guarantee. Cancellation policies are strict -- treat the booking as a commitment.',
-      'Many fine-dining rooms are closed Sunday and Monday. Build flexibility into your week to avoid a blank evening.',
-      'Lunch is frequently the better value at high-end establishments -- same kitchen, shorter format, lower price.',
-      'If a table is full, ask to be added to a cancellation list. Last-minute spots open more often than you might expect.',
+      'The most sought-after rooms book weeks or months ahead. Worth deciding which tables matter to you before the trip.',
+      'Tasting menus typically hold a card on file with strict cancellation windows. Be mindful when committing to a long evening.',
+      'Sundays and Mondays are quiet across most of the fine-dining circuit. The week tends to shape itself around that pattern.',
+      'Lunch service at the chef-led rooms often runs as the more relaxed window, with the same kitchen at a different rhythm.',
+      'Cancellation lists are worth a quiet word with the maître d\'. Tables open more often than the booking site suggests.',
     ],
   },
   experiences: {
