@@ -63,7 +63,7 @@ const FALLBACK_COPY: Record<GuideVariant, {
     heading: 'Plan Your Visit',
     intro:   'A few notes on how these tables work.',
     bullets: [
-      'The most sought-after rooms book weeks or months ahead. Worth deciding which tables matter to you before the trip.',
+      'The most sought-after venues book weeks. Worth deciding which tables matter to you before the trip.',
       'Tasting menus typically hold a card on file with strict cancellation windows. Be mindful when committing to a long evening.',
       'Sundays and Mondays are quiet across most of the fine-dining circuit. The week tends to shape itself around that pattern.',
       'Lunch service at the chef-led rooms often runs as the more relaxed window, with the same kitchen at a different rhythm.',
