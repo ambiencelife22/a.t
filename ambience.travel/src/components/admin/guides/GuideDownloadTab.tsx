@@ -107,8 +107,8 @@ export default function GuideDownloadTab({
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
-            headline: overlay?.headline_override ?? `${destinationName} dining`,
+            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
+            headline: overlay?.headline_override ?? copy.defaultHeadline,
             intro:    overlay?.intro_override    ?? '',
           },
           heroImageSrc,
@@ -133,8 +133,8 @@ export default function GuideDownloadTab({
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
-            headline: overlay?.headline_override ?? `${destinationName} experiences`,
+            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
+            headline: overlay?.headline_override ?? copy.defaultHeadline,
             intro:    overlay?.intro_override    ?? '',
           },
           heroImageSrc,
@@ -159,8 +159,8 @@ export default function GuideDownloadTab({
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
-            headline: overlay?.headline_override ?? `${destinationName} Hotels`,
+            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
+            headline: overlay?.headline_override ?? copy.defaultHeadline,
             intro:    overlay?.intro_override    ?? '',
           },
           heroImageSrc,
@@ -186,8 +186,8 @@ export default function GuideDownloadTab({
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? copy.defaultEyebrow,
-            headline: overlay?.headline_override ?? `${destinationName} Shopping`,
+            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
+            headline: overlay?.headline_override ?? copy.defaultHeadline,
             intro:    overlay?.intro_override    ?? '',
           },
           heroImageSrc,

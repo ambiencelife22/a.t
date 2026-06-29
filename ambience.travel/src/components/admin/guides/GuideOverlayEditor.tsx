@@ -155,14 +155,14 @@ export default function GuideOverlayEditor({
       </Field>
 
       {/* Headline / intro */}
-      <Field label={`Eyebrow override (NULL = "${copy.defaultEyebrow}" default)`}>
+      <Field label={`Eyebrow override (NULL = "${destinationName}" default)`}>
         <input
           style={inputStyle}
           value={draft.eyebrow_override ?? ''}
           onChange={e => patch('eyebrow_override', e.target.value || null)}
         />
       </Field>
-      <Field label='Headline override (NULL = default)'>
+      <Field label={`Headline override (NULL = "${copy.defaultHeadline}" default)`}>
         <input
           style={inputStyle}
           value={draft.headline_override ?? ''}
