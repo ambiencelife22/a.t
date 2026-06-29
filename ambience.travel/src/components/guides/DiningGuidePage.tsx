@@ -426,7 +426,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
-                  The venues and recognition listed in this guide reflect our knowledge as of {overlay.accuracy_date}. The dining industry evolves continuously — restaurants close, chefs move, and accolades are reassigned. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.
+                  The venues and recognition listed in this guide reflect our knowledge as of {overlay.accuracy_date}. The dining industry evolves continuously... restaurants close, chefs move, and accolades are reassigned. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.
                 </p>
               </div>
             )}
