@@ -46,6 +46,10 @@ import type {
 } from '../../queries/queriesAdminTrip'
 import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
+import type { TimelineItem } from '../../types/typesTimeline'
+
+const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-programme`
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -385,7 +389,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
 
 function ItineraryPreview({ days, entriesByDate, trip, house }: {
   days:           TripDay[]
-  entriesByDate:  Record<string, TripDayEntry[]>
+  entriesByDate:  Record<string, TimelineItem[]>
   trip:           DossierTrip
   house:          HouseProfile | null
 }) {
@@ -500,6 +504,14 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
   const [exportBranding, setExportBranding] = useState<'ambience' | 'alfaone' | 'unbranded'>('ambience')
 
+  // Canonical programme timeline — the SAME EF the guest reads (travel-get-trip-
+  // programme via _shared/timeline.ts). The admin must NOT rebuild the programme
+  // from stored day-entries (that table holds only standalone overlay rows, not
+  // the derived check-ins/flights/dining). One source for "what's in the
+  // programme": the EF. Stored day_entries remain for overlay EDITING only.
+  const [timelineEntries, setTimelineEntries] = useState<TimelineItem[]>([])
+  const [timelineDays,    setTimelineDays]    = useState<TripDay[] | null>(null)
+
   useEffect(() => {
     async function load() {
       const houseId = await resolveHouseIdForTrip(tripId)
@@ -522,6 +534,28 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
   }, [tripId])
 
+  // Pull the canonical programme timeline from the guest EF once we know url_id.
+  useEffect(() => {
+    const urlId = trip?.url_id
+    if (!urlId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(PROGRAMME_FN, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+          body:    JSON.stringify({ url_id: urlId }),
+        })
+        if (!res.ok) return
+        const payload = await res.json()
+        if (cancelled) return
+        setTimelineEntries((payload?.entries as TimelineItem[]) ?? [])
+        setTimelineDays((payload?.days as TripDay[]) ?? null)
+      } catch { /* preview falls back to stored entries */ }
+    })()
+    return () => { cancelled = true }
+  }, [trip?.url_id])
+
   function updateDayLocal(entryDate: string, patch: TripDayPatch) {
     setDays(prev => prev.map(d => d.entry_date === entryDate ? { ...d, ...patch } : d))
   }
@@ -538,9 +572,18 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
     setEntries(prev => [...prev, entry])
   }
 
-  // Group entries by date for preview + editor
-  const entriesByDate: Record<string, TripDayEntry[]> = {}
+  // Overlay entries (stored day_entries) — used ONLY by the left-panel editor
+  // for standalone-entry CRUD. NOT the programme content source.
+  const overlayByDate: Record<string, TripDayEntry[]> = {}
   for (const e of entries) {
+    if (!overlayByDate[e.entry_date]) overlayByDate[e.entry_date] = []
+    overlayByDate[e.entry_date].push(e)
+  }
+
+  // Programme content — the canonical EF timeline (same as guest). Preview +
+  // export read this. Empty until the EF fetch resolves.
+  const entriesByDate: Record<string, TimelineItem[]> = {}
+  for (const e of timelineEntries) {
     if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
     entriesByDate[e.entry_date].push(e)
   }
@@ -552,7 +595,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => setPreviewKey(k => k + 1), 300)
   }, [])
-  useEffect(() => { schedulePreview() }, [days, entries, schedulePreview])
+  useEffect(() => { schedulePreview() }, [days, entries, timelineEntries, schedulePreview])
 
   if (loadErr) {
     return (
@@ -601,7 +644,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           <option value='unbranded'>Unbranded</option>
         </select>
         <button
-          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days, entriesByDate: entriesByDate as unknown as Record<string, import('../../types/typesTimeline').TimelineItem[]> }, exportBranding)}
+          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days: timelineDays ?? days, entriesByDate }, exportBranding)}
           disabled={!pdfReady || pdfDownloading || days.length === 0}
           style={{
             ...btnBase,
@@ -630,7 +673,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
               <DayBlock
                 key={day.entry_date}
                 day={day}
-                entries={(entriesByDate[day.entry_date] ?? []).sort((a, b) => a.sort_order - b.sort_order)}
+                entries={(overlayByDate[day.entry_date] ?? []).sort((a, b) => a.sort_order - b.sort_order)}
                 onDayUpdate={updateDayLocal}
                 onEntryUpdate={updateEntryLocal}
                 onEntryDelete={deleteEntryLocal}
@@ -650,7 +693,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
             <div style={{ maxWidth: 520, margin: '0 auto', boxShadow: '0 4px 24px rgba(0,0,0,0.12)', borderRadius: 4, overflow: 'hidden' }}>
               <ItineraryPreview
                 key={previewKey}
-                days={days}
+                days={timelineDays ?? days}
                 entriesByDate={entriesByDate}
                 trip={trip}
                 house={house}
