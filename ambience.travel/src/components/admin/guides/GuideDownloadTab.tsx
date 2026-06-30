@@ -16,30 +16,26 @@
  *   - The modal shell
  *   - The PDF rendering itself (pdfGuide.ts)
  *   - The CDN load (useGuidePdf)
+ *   - Destination + overlay fetch (queriesGuides.getGuideDestination —
+ *     one generic, variant-discriminated reader replaces the four
+ *     getXxxGuideDestination functions)
  *
- * Last updated: S52 — initial build.
+ * Last updated: S53 — Consumes generic getGuideDestination(variant, slug)
+ *   from queriesGuides. Eliminates four per-variant destination fetch
+ *   imports; each branch calls the single generic. Venue fetchers stay
+ *   per-variant (each has its own table + shape).
+ * Prior: S52 — initial build.
  */
 
 import { useState } from 'react'
 import { A } from '../../../tokens/tokensAdmin'
 import { useToast } from '../../../providers/ToastContext'
 import { useGuidePdf } from '../../../hooks/useGuidePdf'
-import {
-  getGuideDestination,
-  getDiningVenuesByDestination,
-} from '../../../queries/queriesGuidesDining'
-import {
-  getExperiencesGuideDestination,
-  getExperienceVenuesByDestination,
-} from '../../../queries/queriesGuidesExperiences'
-import {
-  getHotelGuideDestination,
-  getHotelsByDestination,
-} from '../../../queries/queriesGuidesHotels'
-import {
-  getShoppingGuideDestination,
-  fetchShoppingForDestination,
-} from '../../../queries/queriesGuidesShopping'
+import { getGuideDestination } from '../../../queries/queriesGuides'
+import { getDiningVenuesByDestination } from '../../../queries/queriesGuidesDining'
+import { getExperienceVenuesByDestination } from '../../../queries/queriesGuidesExperiences'
+import { getHotelsByDestination } from '../../../queries/queriesGuidesHotels'
+import { fetchShoppingForDestination } from '../../../queries/queriesGuidesShopping'
 import { fetchActiveHappeningsForDestination } from '../../../queries/queriesGuidesHappenings'
 import {
   type GuideVariant,
@@ -90,11 +86,12 @@ export default function GuideDownloadTab({
       })
 
       // Variant-discriminated fetch. Each branch resolves to the right
-      // (destination, venues) pair for ExportGuidePdfOptions.
+      // (destination, venues) pair for ExportGuidePdfOptions. The destination
+      // fetch is now generic — only the venue fetcher differs per variant.
       let payload
       if (variant === 'dining') {
         const [destination, venues, happenings] = await Promise.all([
-          getGuideDestination(destinationSlug),
+          getGuideDestination('dining', destinationSlug),
           getDiningVenuesByDestination(destinationSlug),
           happeningsPromise,
         ])
@@ -120,7 +117,7 @@ export default function GuideDownloadTab({
       }
       if (variant === 'experiences') {
         const [destination, venues, happenings] = await Promise.all([
-          getExperiencesGuideDestination(destinationSlug),
+          getGuideDestination('experiences', destinationSlug),
           getExperienceVenuesByDestination(destinationSlug),
           happeningsPromise,
         ])
@@ -146,13 +143,13 @@ export default function GuideDownloadTab({
       }
       if (variant === 'hotels') {
         const [destination, venues, happenings] = await Promise.all([
-          getHotelGuideDestination(destinationSlug),
+          getGuideDestination('hotels', destinationSlug),
           getHotelsByDestination(destinationSlug),
           happeningsPromise,
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
-        const heroImageSrc = overlay?.hero_image_src ?? null
+        const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
         payload = {
           variant:      'hotels' as const,
           destination,
@@ -171,9 +168,8 @@ export default function GuideDownloadTab({
         }
       }
       if (variant === 'shopping') {
-        // shopping
         const [destination, venues, happenings] = await Promise.all([
-          getShoppingGuideDestination(destinationSlug),
+          getGuideDestination('shopping', destinationSlug),
           fetchShoppingForDestination(destinationId),
           happeningsPromise,
         ])

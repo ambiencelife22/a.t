@@ -19,6 +19,8 @@
 //   - Filter state (PDF renders the full venue set, minus permanently_closed
 //     past the visibility window — treated as data hygiene)
 //   - Image loading, SVG rasterisation, font helpers, draw helpers (pdfUtils.ts)
+//   - Destination shape — GuideDestination lives in typesGuides as the
+//     single source of truth across all four variants
 //
 // Variants:
 //   dining      — DiningVenue[], recognition marks, cuisine/neighborhood meta.
@@ -31,11 +33,13 @@
 //   All variants accept optional happenings[] — rendered as its own page.
 //   BaseGuidePdfOptions hoists shared fields off the variant union.
 //
-// Last updated: S52 — Editorial chapter break treatment for dining groups.
-//   "Also Nearby" and "Recently Closed" now each open on a new page with
-//   eyebrow + serif heading + descriptor, mirroring the web page treatment.
-//   renderGroupSectionBreak replaces the lightweight inline subsection divider.
-//   Contents page lists subsections when they exist.
+// Last updated: S53 — Destination type consolidated. All four branches of
+//   ExportGuidePdfOptions now use the canonical GuideDestination from
+//   typesGuides. Removed four per-variant destination type imports
+//   (GuideDestination, ExperiencesGuideDestination, ShoppingGuideDestination,
+//   HotelGuideDestination) — they all collapsed to one type during the S53
+//   globalization refactor.
+// Prior: S52 — Editorial chapter break treatment for dining groups.
 // Prior: S52 — Three-group dining layout introduced with inline dividers.
 // Prior: S52 — SPACE scale established. Role-based vertical spacing.
 // Prior: S51 — logoVariant option ('ambience' | 'alfaone' | 'unbranded')
@@ -45,11 +49,12 @@
 // Prior: S52 — happenings section added.
 // Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
 
-import type { DiningVenue, GuideDestination } from '../queries/queriesGuidesDining'
-import type { ExperienceVenue, ExperiencesGuideDestination } from '../queries/queriesGuidesExperiences'
+import type { DiningVenue } from '../queries/queriesGuidesDining'
+import type { ExperienceVenue } from '../queries/queriesGuidesExperiences'
 import type { Happening } from '../queries/queriesGuidesHappenings'
-import type { Shop, ShoppingGuideDestination } from '../queries/queriesGuidesShopping'
-import type { HotelVenue, HotelGuideDestination } from '../queries/queriesGuidesHotels'
+import type { Shop } from '../queries/queriesGuidesShopping'
+import type { HotelVenue } from '../queries/queriesGuidesHotels'
+import type { GuideDestination } from '../types/typesGuides'
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import {
   assertJsPdf, loadImg, loadSvg,
@@ -124,17 +129,17 @@ export type ExportGuidePdfOptions =
     })
   | (BaseGuidePdfOptions & {
       variant:     'experiences'
-      destination: ExperiencesGuideDestination
+      destination: GuideDestination
       venues:      ExperienceVenue[]
     })
   | (BaseGuidePdfOptions & {
       variant:     'shopping'
-      destination: ShoppingGuideDestination
+      destination: GuideDestination
       venues:      Shop[]
     })
   | (BaseGuidePdfOptions & {
       variant:     'hotels'
-      destination: HotelGuideDestination
+      destination: GuideDestination
       venues:      HotelVenue[]
     })
 

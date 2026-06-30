@@ -3,10 +3,10 @@
 //   - Venue data fetch
 //   - Happenings data fetch (S52 — time-bound destination content)
 //   - Filter state (experience_category)
-//   - Frontend default copy + ?? resolution against overlay overrides
+//   - Overlay resolution against typesGuides defaults
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error + empty states
-//   - PDF download trigger (usePdfDownload hook, calls exportGuidePdf)
+//   - PDF download trigger (useGuidePdf hook, calls exportGuidePdf)
 //   - At-a-glance bullets block
 //   - "Coming Up" happenings block (S52)
 //   - Plan Your Visit block
@@ -18,9 +18,10 @@
 //   - Page chrome (GuideLayout)
 //   - Card rendering (ExperienceCard, HappeningCard), hero (GuideHero)
 //   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
-//   - PDF library loading (lib/usePdfDownload.ts owns this)
-//   - Style objects (lib/guidePageStyles.ts)
+//   - PDF library loading (useGuidePdf hook)
+//   - Style objects (stylesGuidePage.ts)
 //   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
+//   - Per-variant default copy (typesGuides.ts — GUIDE_COPY)
 //
 // No filter state for Michelin/highlighted — travel_experiences has no
 // such columns. Category filter only.
@@ -31,15 +32,19 @@
 // exist. This page has no trip context so passes no date narrowing — all
 // future happenings for the destination are returned by the query.
 //
-// Last updated: S52 — SelectedShopping section removed (shopping moved to
+// Last updated: S53 — Universal eyebrow/headline pattern. Eyebrow defaults
+//   to destination name. Headline defaults to GUIDE_COPY.experiences.defaultHeadline
+//   ("The Experiences Guide"). GuideDestination consumed from typesGuides.
+//   Bugfix: venues are now actually populated from fetch (prior code dropped
+//   venuesResult on the floor). Bugfix: duplicated happenings handler removed.
+// Prior: S52 — SelectedShopping section removed (shopping moved to
 //   its own /shopping route with travel_shopping_guides overlay).
 //   ComingUp swapped to shared ComingUpSection component. Happenings fetch
 //   passes surface='experiences' (defensive cross-cutting filter).
 // Prior: S52 — "Coming Up" happenings section added below the
 //   at-a-glance block. Renders silently when no happenings exist.
-// Prior: S41 — PDF download added via usePdfDownload hook.
-// Prior: S40B — experience_category filter added. Category chips
-//   render above the grid when multiple categories are present.
+// Prior: S41 — PDF download added via useGuidePdf hook.
+// Prior: S40B — experience_category filter added.
 // Prior: S41 — initial build.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -47,7 +52,6 @@ import { useToast } from '../../providers/ToastContext'
 import {
   getExperienceVenuesByDestination,
   type ExperienceVenue,
-  type ExperiencesGuideDestination,
 } from '../../queries/queriesGuidesExperiences'
 import {
   fetchActiveHappeningsForDestination,
@@ -59,6 +63,7 @@ import { ComingUpSection } from './ComingUpSection'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
+import { GUIDE_COPY, type GuideDestination } from '../../types/typesGuides'
 import {
   pageStyle,
   sectionTitleStyle,
@@ -77,17 +82,13 @@ import {
 } from '../../styles/stylesGuidePage'
 
 interface ExperiencesGuidePageProps {
-  destination:   ExperiencesGuideDestination
+  destination:   GuideDestination
   hasFullAccess: boolean
 }
 
 // ── Frontend default copy ────────────────────────────────────────────────────
-
-const DEFAULT_EYEBROW = 'Curated Experiences'
-
-function defaultHeadline(destinationName: string): string {
-  return `${destinationName} Experiences`
-}
+// Eyebrow + headline defaults live in typesGuides.ts (GUIDE_COPY).
+// Intro default stays local pending future centralization.
 
 function defaultIntro(destinationName: string): string {
   return `A selective experiences guide for ${destinationName}`
@@ -232,9 +233,11 @@ export default function ExperiencesGuidePage({
   const [loading,        setLoading]        = useState(true)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
+  // ── Resolved hero copy ───────────────────────────────────────────────────
+
   const overlay      = destination.overlay
-  const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
-  const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
+  const heroEyebrow  = overlay?.eyebrow_override  ?? destination.name
+  const heroHeadline = overlay?.headline_override ?? GUIDE_COPY.experiences.defaultHeadline
   const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
   const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
@@ -243,6 +246,8 @@ export default function ExperiencesGuidePage({
     () => overlay?.at_a_glance_bullets ?? [],
     [overlay],
   )
+
+  // ── Venue + happenings fetch ─────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false
@@ -256,13 +261,14 @@ export default function ExperiencesGuidePage({
         ])
         if (cancelled) return
 
-        if (happeningsResult.status === 'fulfilled') {
-          setHappenings(happeningsResult.value)
+        if (venuesResult.status === 'fulfilled') {
+          setVenues(venuesResult.value)
         }
-        if (happeningsResult.status !== 'fulfilled') {
-          // Soft-fail — happenings are supplementary. Log only.
-          console.error('ExperiencesGuidePage: failed to load happenings', happeningsResult.reason)
-          setHappenings([])
+        if (venuesResult.status !== 'fulfilled') {
+          console.error('ExperiencesGuidePage: failed to load experiences', venuesResult.reason)
+          const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
+          toastRef.current.error(`Couldn't load experiences: ${msg}`)
+          setVenues([])
         }
 
         if (happeningsResult.status === 'fulfilled') {
@@ -337,7 +343,9 @@ export default function ExperiencesGuidePage({
                 <h2 style={sectionTitleH2Style}>Selected experiences</h2>
                 <p style={sectionTitleCountStyle}>
                   {visibleVenues.length}{' '}
-                  {visibleVenues.length === 1 ? 'experience' : 'experiences'}
+                  {visibleVenues.length === 1
+                    ? GUIDE_COPY.experiences.itemNoun
+                    : GUIDE_COPY.experiences.itemNounPlural}
                 </p>
               </div>
               {hasFullAccess && (
@@ -405,7 +413,7 @@ export default function ExperiencesGuidePage({
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
-                  The experiences listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability, pricing, and operators change, ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
+                  The experiences listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability, pricing, and operators change. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
                 </p>
               </div>
             )}
@@ -440,7 +448,7 @@ function EditorialPrompt({ destinationName }: { destinationName: string }) {
         textTransform: 'uppercase' as const,
         color:         ID.gold,
       }}>
-        {destinationName} {'\u00B7'} Experiences Guide
+        {destinationName} {'\u00B7'} {GUIDE_COPY.experiences.productLabel}
       </div>
       <p style={{
         fontSize:   'clamp(22px, 3.5vw, 32px)',

@@ -5,7 +5,7 @@
 //   - Happenings data fetch (surface='shopping' — pop-ups, trunk shows,
 //     capsule launches)
 //   - Filter state (shop_type)
-//   - Frontend default copy + ?? resolution against overlay overrides
+//   - Overlay resolution against typesGuides defaults
 //   - Year + version resolution for PDF (NULL → current year / '1.0')
 //   - Grid layout, error + empty states
 //   - PDF download trigger (variant: 'shopping')
@@ -20,7 +20,8 @@
 //   - Page chrome (GuideLayout)
 //   - Card rendering (ShopCard, HappeningCard), hero (GuideHero)
 //   - PDF rendering itself (lib/guidePdf.ts owns full lifecycle)
-//   - Style objects (lib/guidePageStyles.ts)
+//   - Style objects (stylesGuidePage.ts)
+//   - Per-variant default copy (typesGuides.ts — GUIDE_COPY)
 //
 // Filter: shop_type chips (Fashion / Jewelry / Sandals / etc.).
 //   Locked taxonomy from typesShopping.ts SHOP_TYPES.
@@ -32,14 +33,18 @@
 // surfaced happenings exist. Page has no trip context — fetches all future
 // happenings with surfaces @> ['shopping'].
 //
-// Last updated: S52 — initial build.
+// Last updated: S53 — Universal eyebrow/headline pattern. Eyebrow defaults
+//   to destination name. Headline defaults to GUIDE_COPY.shopping.defaultHeadline
+//   ("The Shopping Guide"). GuideDestination consumed from typesGuides.
+//   Count noun corrected to use GUIDE_COPY.shopping.itemNoun ("shop") rather
+//   than the prior generic "venue".
+// Prior: S52 — initial build.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../../providers/ToastContext'
 import {
   fetchShoppingForDestination,
   type Shop,
-  type ShoppingGuideDestination,
 } from '../../queries/queriesGuidesShopping'
 import {
   fetchActiveHappeningsForDestination,
@@ -51,6 +56,7 @@ import { ComingUpSection } from './ComingUpSection'
 import { GuideHero } from './GuideHero'
 import { PlanYourVisit } from './PlanYourVisit'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
+import { GUIDE_COPY, type GuideDestination } from '../../types/typesGuides'
 import {
   pageStyle,
   sectionTitleStyle,
@@ -69,17 +75,13 @@ import {
 } from '../../styles/stylesGuidePage'
 
 interface ShoppingGuidePageProps {
-  destination:   ShoppingGuideDestination
+  destination:   GuideDestination
   hasFullAccess: boolean
 }
 
 // ── Frontend default copy ────────────────────────────────────────────────────
-
-const DEFAULT_EYEBROW = 'Selected Shopping'
-
-function defaultHeadline(destinationName: string): string {
-  return `${destinationName} Shopping`
-}
+// Eyebrow + headline defaults live in typesGuides.ts (GUIDE_COPY).
+// Intro default stays local pending future centralization.
 
 function defaultIntro(destinationName: string): string {
   return `A selective shopping guide for ${destinationName}`
@@ -224,9 +226,11 @@ export default function ShoppingGuidePage({
   const [loading,        setLoading]        = useState(true)
   const [activeShopType, setActiveShopType] = useState<string | null>(null)
 
+  // ── Resolved hero copy ───────────────────────────────────────────────────
+
   const overlay      = destination.overlay
-  const heroEyebrow  = overlay?.eyebrow_override  ?? DEFAULT_EYEBROW
-  const heroHeadline = overlay?.headline_override ?? defaultHeadline(destination.name)
+  const heroEyebrow  = overlay?.eyebrow_override  ?? destination.name
+  const heroHeadline = overlay?.headline_override ?? GUIDE_COPY.shopping.defaultHeadline
   const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
   const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
   const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
@@ -235,6 +239,8 @@ export default function ShoppingGuidePage({
     () => overlay?.at_a_glance_bullets ?? [],
     [overlay],
   )
+
+  // ── Shop + happenings fetch ──────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false
@@ -329,7 +335,9 @@ export default function ShoppingGuidePage({
                 <h2 style={sectionTitleH2Style}>Selected shopping</h2>
                 <p style={sectionTitleCountStyle}>
                   {visibleShops.length}{' '}
-                  {visibleShops.length === 1 ? 'venue' : 'venues'}
+                  {visibleShops.length === 1
+                    ? GUIDE_COPY.shopping.itemNoun
+                    : GUIDE_COPY.shopping.itemNounPlural}
                 </p>
               </div>
               {hasFullAccess && (
@@ -400,7 +408,7 @@ export default function ShoppingGuidePage({
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
-                  The venues listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability and operators change, ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
+                  The {GUIDE_COPY.shopping.itemNounPlural} listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability and operators change. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
                 </p>
               </div>
             )}
@@ -435,7 +443,7 @@ function EditorialPrompt({ destinationName }: { destinationName: string }) {
         textTransform: 'uppercase' as const,
         color:         ID.gold,
       }}>
-        {destinationName} {'\u00B7'} Shopping Guide
+        {destinationName} {'\u00B7'} {GUIDE_COPY.shopping.productLabel}
       </div>
       <p style={{
         fontSize:   'clamp(22px, 3.5vw, 32px)',

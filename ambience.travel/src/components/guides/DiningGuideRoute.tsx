@@ -1,127 +1,29 @@
-// DiningGuideRoute.tsx — route entry for the dining guide
-// What it owns:
-//   - Path parsing (extract destinationSlug from window.location)
-//   - Destination validation (look up against global_destinations)
-//   - Grant check (dining_guide_for_user view via checkGuideGrant)
-//   - Error handling (toast + NotFoundPage on bad slug)
-//   - Layout/page composition (GuideLayout wrapping DiningGuidePage)
-// What it does not own: page chrome (GuideLayout), data fetch (DiningGuidePage),
-//   filter state, card rendering, 404 chrome (NotFoundPage).
+// DiningGuideRoute.tsx — thin route wrapper for the dining guide.
 //
-// Grant states:
-//   no_session  → hasFullAccess=false (teaser + editorial strip)
-//   no_grant    → hasFullAccess=false (teaser + editorial strip)
-//   granted     → hasFullAccess=true (full access)
+// All route logic lives in useGuideRoute (path parsing, overlay gate,
+// grant check, state machine, error handling). This file picks the variant
+// and renders the right page component.
 //
-// Grant check failures default to teaser — never block page render.
-//
-// Prior: S40C — Grant check added. All non-granted states render
-//   teaser via DiningGuidePage hasFullAccess={false}. Grant check errors
-//   isolated — fall back to teaser, never notFound.
+// Last updated: S53 — collapsed to thin wrapper. Logic moved to useGuideRoute.
+//   Path parsing, destination fetch, overlay gate, grant resolution all live
+//   in the shared hook. Also fixes prior bug where hasFullAccess was hardcoded
+//   true regardless of grant check result.
+// Prior: S40C — Grant check added.
 // Prior: S40 — NotFoundPage replaces null return on failed destination load.
-// Prior: S39 — Fixed toast loop via toastRef pattern.
 
-import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import DiningGuidePage from './DiningGuidePage'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
-import { useToast } from '../../providers/ToastContext'
-import {
-  getGuideDestination,
-  checkGuideGrant,
-  type GuideDestination,
-} from '../../queries/queriesGuidesDining'
+import { useGuideRoute } from '../../hooks/useGuideRoute'
 
-const GUIDES_HOST = 'guides.ambience.travel'
-const HOME_URL    = 'https://ambience.travel/'
-
-function resolveDestinationSlug(): string | null {
-  const pathname     = window.location.pathname.replace(/\/+$/, '')
-  const isGuidesHost = window.location.hostname === GUIDES_HOST
-
-  let stripped: string
-  if (isGuidesHost) {
-    stripped = pathname.replace(/^\/+/, '')
-  }
-  if (!isGuidesHost) {
-    if (!pathname.startsWith('/guides/')) return null
-    stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
-  }
-
-  const parts = (stripped!).split('/').filter(Boolean)
-  if (parts.length === 2 && parts[1] === 'dining') {
-    return parts[0]
-  }
-  return null
-}
-
-type RouteState =
-  | { phase: 'loading' }
-  | { phase: 'ready';    destination: GuideDestination; hasFullAccess: boolean }
-  | { phase: 'notFound'; message: string }
+const HOME_URL = 'https://ambience.travel/'
 
 export default function DiningGuideRoute() {
-  const { toast }         = useToast()
-  const toastRef          = useRef(toast)
-  const [state, setState] = useState<RouteState>({ phase: 'loading' })
+  const state = useGuideRoute('dining')
 
-  useEffect(() => { toastRef.current = toast }, [toast])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      const slug = resolveDestinationSlug()
-
-      if (!slug) {
-        if (cancelled) return
-        setState({ phase: 'notFound', message: "We couldn't find that page." })
-        return
-      }
-
-      try {
-        const dest = await getGuideDestination(slug)
-        if (cancelled) return
-
-        if (!dest) {
-          toastRef.current.warning(`We couldn't find that destination.`)
-          setState({ phase: 'notFound', message: "We couldn't find that destination." })
-          return
-        }
-
-        let hasFullAccess = false
-        try {
-          const grant = await checkGuideGrant(slug)
-          hasFullAccess = grant.status === 'granted'
-        } catch (grantErr) {
-          console.warn('DiningGuideRoute: grant check failed, defaulting to teaser', grantErr)
-          hasFullAccess = false
-        }
-        if (cancelled) return
-
-        setState({
-          phase:         'ready',
-          destination:   dest,
-          hasFullAccess: true,
-        })
-      } catch (err) {
-        console.error('DiningGuideRoute: failed to load destination', err)
-        if (cancelled) return
-        toastRef.current.warning('Something went wrong loading that guide.')
-        setState({ phase: 'notFound', message: 'Something went wrong. Please try again.' })
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [])
-
-  if (state.phase === 'loading') return <RouteLoading />
-
-  if (state.phase === 'notFound') {
-    return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
-  }
+  if (state.phase === 'loading')  return <RouteLoading />
+  if (state.phase === 'notFound') return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
 
   return (
     <GuideLayout>

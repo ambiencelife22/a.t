@@ -2,26 +2,37 @@
  *
  * One canonical overlay shape across all four guide variants
  * (dining, experiences, hotels, shopping). All four travel_*_guides
- * tables share the identical 17-column DB shape (verified S52 kickoff
- * via information_schema). This file is the single source of truth
- * for the editor layer.
+ * tables share the identical 13-column DB shape. This file is the single
+ * source of truth for the guide layer — editor, public reader, route layer.
  *
  * What it owns:
  *   - GuideVariant union
- *   - GuideTableName mapping
- *   - GuideOverlayDraft — the canonical 17-field shape for the editor
- *   - GuideOverlayPatch — partial of the draft for save dispatch
- *   - Per-variant copy defaults (eyebrow, headline, intro placeholders)
+ *   - GUIDE_TABLE_NAMES (overlay tables)
+ *   - GUIDE_GRANT_TABLE_NAMES (writable grants tables)
+ *   - GUIDE_GRANT_VIEW_NAMES (readable per-user grants views)
+ *   - GUIDE_ROUTE_SEGMENTS (URL path segments)
+ *   - GuideOverlay — canonical overlay shape (public reader + editor)
+ *   - GuideOverlayDraft, GuideOverlayPatch — editor aliases
+ *   - GuideDestination — generic destination shape, replaces four
+ *     near-identical per-variant types
+ *   - GrantStatus — shared grant check result
+ *   - GUIDE_COPY — per-variant copy defaults
  *
  * What it does not own:
- *   - Venue types (variant-specific, live in their own query files)
- *   - Grants types (variant-specific, live in queriesAdminGuides.ts)
- *   - Query functions (live in queriesAdminGuides.ts)
+ *   - Venue types (variant-specific, in queriesGuides<X>.ts)
+ *   - Query functions (queriesGuides.ts for shared, queriesGuides<X>.ts
+ *     for variant-specific reads)
  *
- * Last updated: S52 — initial build.
+ * Last updated: S53 — Generic GuideDestination + GrantStatus consolidation.
+ *   Eliminates duplicated overlay/destination types across four query files
+ *   and the route layer. Adds GUIDE_GRANT_VIEW_NAMES + GUIDE_ROUTE_SEGMENTS
+ *   for the generic destination fetch and the useGuideRoute hook.
+ * Prior: S52 — initial build.
  */
 
 export type GuideVariant = 'dining' | 'experiences' | 'hotels' | 'shopping'
+
+// ── DB table + view mappings ─────────────────────────────────────────────────
 
 export const GUIDE_TABLE_NAMES: Record<GuideVariant, string> = {
   dining:      'travel_dining_guides',
@@ -33,19 +44,32 @@ export const GUIDE_TABLE_NAMES: Record<GuideVariant, string> = {
 export const GUIDE_GRANT_TABLE_NAMES: Partial<Record<GuideVariant, string>> = {
   dining:      'travel_dining_guide_grants',
   experiences: 'travel_experiences_guide_grants',
-  // hotels + shopping have no grants table yet — P1 carry
+  // hotels + shopping have no grants table yet
 }
+
+export const GUIDE_GRANT_VIEW_NAMES: Partial<Record<GuideVariant, string>> = {
+  dining:      'travel_dining_guide_for_user',
+  experiences: 'travel_experiences_guide_for_user',
+  // hotels + shopping have no grants view yet
+}
+
+// ── Route segment mapping (URL path) ────────────────────────────────────────
+
+export const GUIDE_ROUTE_SEGMENTS: Record<GuideVariant, string> = {
+  dining:      'dining',
+  experiences: 'experiences',
+  hotels:      'hotels',
+  shopping:    'shopping',
+}
+
+// ── Overlay shape ───────────────────────────────────────────────────────────
 
 /**
  * The canonical guide overlay shape. Every travel_*_guides table carries
- * exactly these fields. The editor authors all of them; the PDF reads
- * all of them.
- *
- * Note: id + global_destination_id are present in every variant's admin
- * type (AdminDiningGuide etc.) but are not part of the editor draft —
- * they're identity, not content.
+ * exactly these fields. The editor authors them; the PDF reads them; the
+ * public guide page reads them. One type, four tables.
  */
-export interface GuideOverlayDraft {
+export interface GuideOverlay {
   hero_image_src:          string | null
   hero_image_alt:          string | null
   eyebrow_override:        string | null
@@ -61,20 +85,42 @@ export interface GuideOverlayDraft {
   plan_your_visit_bullets: string[] | null
 }
 
-/**
- * Partial overlay for save dispatch. Editor builds this from diff of
- * draft vs. original to avoid touching unchanged fields.
- */
-export type GuideOverlayPatch = Partial<GuideOverlayDraft>
+/** Alias for editor clarity. Same shape. */
+export type GuideOverlayDraft = GuideOverlay
+
+/** Partial overlay for editor save dispatch (diff of draft vs original). */
+export type GuideOverlayPatch = Partial<GuideOverlay>
+
+// ── Destination shape (generic) ─────────────────────────────────────────────
 
 /**
- * Per-variant defaults for editor placeholders and PDF copy fallbacks.
- * Used when overlay field is NULL.
+ * Canonical destination shape for guide pages. Single type used by all four
+ * variants. Replaces GuideDestination, ExperiencesGuideDestination,
+ * ShoppingGuideDestination, HotelGuideDestination — they all collapse here.
  */
+export interface GuideDestination {
+  id:           string
+  slug:         string
+  name:         string
+  heroImageSrc: string | null
+  heroImageAlt: string | null
+  overlay:      GuideOverlay | null
+}
+
+// ── Grant status (shared) ───────────────────────────────────────────────────
+
+export type GrantStatus =
+  | { status: 'granted' }
+  | { status: 'no_grant' }
+  | { status: 'no_session' }
+  | { status: 'ungated' }  // variants without grant infrastructure (hotels, shopping)
+
+// ── Per-variant copy defaults ───────────────────────────────────────────────
+
 export interface GuideVariantCopy {
-  defaultHeadline: string  // "The Dining Guide" / "The Hotels Guide" etc.
-  productLabel:    string  // "Dining Guide" / "Hotels Guide" — used in modal header + page chrome
-  itemNoun:        string  // "venue" / "experience" / "hotel" / "shop" — for count rendering
+  defaultHeadline: string
+  productLabel:    string
+  itemNoun:        string
   itemNounPlural:  string
 }
 
@@ -104,11 +150,9 @@ export const GUIDE_COPY: Record<GuideVariant, GuideVariantCopy> = {
     itemNounPlural:  'shops',
   },
 }
-/**
- * Returns true if the variant supports per-user access grants.
- * dining + experiences have grants; hotels + shopping do not (yet).
- * Used to gate the Access tab visibility in GuideEditModal.
- */
+
+// ── Variant helpers ─────────────────────────────────────────────────────────
+
 export function variantHasGrants(variant: GuideVariant): boolean {
   return variant === 'dining' || variant === 'experiences'
 }

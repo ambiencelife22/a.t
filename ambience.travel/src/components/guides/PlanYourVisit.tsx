@@ -1,19 +1,22 @@
 // PlanYourVisit.tsx — Plan Your Visit section for guide pages
 // What it owns:
 //   - Full-width section render below the venue grid
-//   - Fallback copy by guide variant (dining | experiences | accommodation)
+//   - Fallback copy by guide variant (dining | experiences | hotels | shopping)
 //     when overlay fields are null — always renders if mounted
-//   - Entrance animation via useVisible + fadeUp from lib/animations
+//   - Entrance animation via useVisible + fadeUp from utilsAnimations
 //
 // What it does not own:
-//   - Overlay data fetching (DiningGuidePage owns this)
+//   - Overlay data fetching (each XxxGuidePage owns this)
 //   - Gate logic — caller decides whether to render
-//   - Style objects (lib/guidePageStyles.ts)
+//   - Style objects (stylesGuidePage.ts)
+//   - Variant union — typesGuides.GuideVariant is the single source of truth
+//   - Overlay shape — typesGuides.GuideOverlay is the single source of truth
 //
 // Fallback copy:
-//   dining        — reservation + planning tips, destination-agnostic
+//   dining        — reservation + planning tips
 //   experiences   — booking + timing tips
-//   accommodation — check-in + property tips
+//   hotels        — check-in + property tips (was 'accommodation' pre-S53)
+//   shopping      — maison + atelier tips
 //   (extend FALLBACK_COPY as new guide variants ship)
 //
 // Override vs suppress vs fallback — applies to heading, intro, bullets:
@@ -21,15 +24,23 @@
 //   "" (empty)    → suppress entirely (intentional hide)
 //   "some text"   → use override content
 //
-// Last updated: S49 — empty-string-hide convention applied to heading, intro,
+// Last updated: S53 — Consumes canonical GuideVariant + GuideOverlay from
+//   typesGuides. Local GuideVariant union removed (was a narrower
+//   redeclaration using 'accommodation' instead of 'hotels'). Local
+//   DiningGuideOverlay import removed (the type was lifted to typesGuides
+//   as GuideOverlay). Fallback key 'accommodation' renamed to 'hotels' to
+//   match canonical variant naming. PlanYourVisit is now the single Plan
+//   Your Visit surface for all four guide variants — no per-variant
+//   divergence, no type duplication.
+// Prior: S49 — empty-string-hide convention applied to heading, intro,
 //   and bullets. Matches ?? vs || pattern used across the rest of the codebase.
 //   null = fallback, "" = suppress, content = use content.
 // Prior: S40 — Created. Full section treatment with gold scan line,
-//   serif heading, gold rule, responsive bullet grid. Styles in guidePageStyles.
+//   serif heading, gold rule, responsive bullet grid. Styles in stylesGuidePage.
 
 import React from 'react'
 import { useVisible, fadeUp } from '../../utils/utilsAnimations'
-import type { DiningGuideOverlay } from '../../queries/queriesGuidesDining'
+import type { GuideOverlay, GuideVariant } from '../../types/typesGuides'
 import {
   pyvSectionStyle,
   pyvScanLineStyle,
@@ -46,13 +57,10 @@ import {
   pyvItemTextStyle,
 } from '../../styles/stylesGuidePage'
 
-// ── Guide variant type ────────────────────────────────────────────────────────
-
-export type GuideVariant = 'dining' | 'experiences' | 'accommodation' | 'shopping'
-
 // ── Fallback copy ─────────────────────────────────────────────────────────────
 // Used when overlay fields are null. Destination-agnostic.
-// Add a block here when a new guide variant ships.
+// Keys match the canonical GuideVariant union from typesGuides — add a block
+// here when a new guide variant ships.
 
 const FALLBACK_COPY: Record<GuideVariant, {
   heading: string
@@ -81,12 +89,12 @@ const FALLBACK_COPY: Record<GuideVariant, {
       'Confirm what is included and what is not before you arrive. Gratuity, transport, and equipment are often separate.',
     ],
   },
-  accommodation: {
+  hotels: {
     heading: 'Plan Your Visit',
     intro:   'A few notes to help you settle in smoothly.',
     bullets: [
-      'Check-in times vary. If you are arriving early or late, inform the property in advance -- most will accommodate with notice.',
-      'Confirm what is included in your stay: breakfast, transfers, and resort fees are often handled separately.',
+      'Check-in times vary. If you are arriving early or late, inform the property in advance. Most will accommodate with notice.',
+      'Confirm what is included in your stay. Breakfast, transfers, and resort fees are often handled separately.',
       'For properties with limited connectivity, download any offline maps or reading material before you arrive.',
       'Concierge teams at smaller properties can arrange things that are not listed anywhere. Ask early in your stay, not the night before.',
       'Late check-out is often available if the room is not needed immediately. A quiet word the evening before is usually enough.',
@@ -96,11 +104,11 @@ const FALLBACK_COPY: Record<GuideVariant, {
     heading: 'Plan Your Visit',
     intro:   'A few notes to help you get the most from these venues.',
     bullets: [
-      'Several maisons offer private viewings or after-hours appointments. Pre-arrange where the visit warrants it -- the experience is markedly different from a walk-in.',
+      'Several maisons offer private viewings or after-hours appointments. Pre-arrange where the visit warrants it. The experience is markedly different from a walk-in.',
       'Stock rotates with the season. If a specific piece matters, call ahead to confirm availability before making the journey.',
-      'For ateliers offering made-to-measure or private fittings (sandals, jewellery, tailoring), book ahead -- workshop schedules fill weeks in advance during peak season.',
+      'For ateliers offering made-to-measure or private fittings (sandals, jewellery, tailoring), book ahead. Workshop schedules fill weeks in advance during peak season.',
       'Mid-week mornings are calmer than weekend afternoons in any luxury village. Staff have more time and the room is yours.',
-      'For purchases made outside your home country, ask about tax refund schemes at the till -- most require paperwork and a stamp at departure.',
+      'For purchases made outside your home country, ask about tax refund schemes at the till. Most require paperwork and a stamp at departure.',
     ],
   },
 }
@@ -125,7 +133,7 @@ function resolveBullets(override: string[] | null | undefined, fallback: string[
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface PlanYourVisitProps {
-  overlay: DiningGuideOverlay | null
+  overlay: GuideOverlay | null
   variant: GuideVariant
 }
 

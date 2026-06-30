@@ -1,71 +1,58 @@
-// hotelGuideQueries.ts — read path for the hotels guide page
-// What it owns: fetch hotels + per-destination guide overlay row.
-// What it does not own: gating logic (will move to hotel_guide_for_user view
-// when grants ship).
+// queriesGuidesHotels.ts — read path for hotels.
 //
-// Mirrors lib/diningGuideQueries.ts shape. Hotels carry richer canonical
-// fields (structured address, prestige badges, brand FK) so the type is
+// What it owns:
+//   - HotelVenue type
+//   - getHotelsByDestination — fetches travel_accom_hotels for a slug
+//
+// What it does not own:
+//   - Destination + overlay fetch → queriesGuides.getGuideDestination
+//   - Grant check → queriesGuides.checkGuideGrant (hotels currently ungated)
+//   - GuideDestination type → typesGuides
+//
+// Mirrors lib/queriesGuidesDining.ts shape. Hotels carry richer canonical
+// fields (structured address, prestige badges, brand FK) so HotelVenue is
 // wider than DiningVenue.
 //
-// Last updated: S37 — initial. Pattern lifted from diningGuideQueries.ts.
+// Last updated: S53 — Destination + overlay code lifted to queriesGuides.ts.
+//   Removed HotelGuideOverlay, HotelGuideDestination, getHotelGuideDestination.
+//   This file is now purely the hotel read path.
+// Prior: S37 — initial. Pattern lifted from queriesGuidesDining.ts.
 
 import { supabase } from '../lib/supabase'
 
 export interface HotelVenue {
-  id: string
-  slug: string
-  short_slug: string
-  name: string
-  description: string | null
-  address: string | null
-  city: string | null
-  zip_code: string | null
-  latitude: number | null
-  longitude: number | null
-  google_maps_url: string | null
-  website_url: string | null
-  hero_image_src: string | null
-  hero_image_alt: string | null
-  image_credit: string | null
-  image_credit_url: string | null
-  image_license: string | null
-  bullets: unknown
-  stars: number | null
-  michelin_keys: number | null
-  forbes_rating: number | null
+  id:                   string
+  slug:                 string
+  short_slug:           string
+  name:                 string
+  description:          string | null
+  address:              string | null
+  city:                 string | null
+  zip_code:             string | null
+  latitude:             number | null
+  longitude:            number | null
+  google_maps_url:      string | null
+  website_url:          string | null
+  hero_image_src:       string | null
+  hero_image_alt:       string | null
+  image_credit:         string | null
+  image_credit_url:     string | null
+  image_license:        string | null
+  bullets:              unknown
+  stars:                number | null
+  michelin_keys:        number | null
+  forbes_rating:        number | null
   is_preferred_partner: boolean
-  is_supplementary: boolean
-  brand_id: string | null
-  brand2_id: string | null
-  sort_order: number
-}
-
-export interface HotelGuideOverlay {
-  hero_image_src:          string | null
-  hero_image_alt:          string | null
-  headline_override:       string | null
-  intro_override:          string | null
-  eyebrow_override:        string | null
-  guide_year:              number | null
-  guide_version:           string | null
-  accuracy_date:           string | null
-  at_a_glance_bullets:     string[] | null
-  plan_your_visit_heading: string | null
-  plan_your_visit_intro:   string | null
-  plan_your_visit_bullets: string[] | null
-}
-
-export interface HotelGuideDestination {
-  id: string
-  slug: string
-  name: string
-  overlay: HotelGuideOverlay | null
+  is_supplementary:     boolean
+  brand_id:             string | null
+  brand2_id:            string | null
+  sort_order:           number
 }
 
 /**
  * Fetches all active hotels for a given destination slug. Orders by
- * is_supplementary ascending then name ascending — supplementary entries fall
- * to bottom regardless of name. Mirrors the dining ordering convention.
+ * is_supplementary ascending then name ascending — supplementary entries
+ * fall to bottom regardless of name. Mirrors the dining ordering convention.
  */
 export async function getHotelsByDestination(
   destinationSlug: string,
@@ -77,7 +64,9 @@ export async function getHotelsByDestination(
     .single()
 
   if (destError) {
-    throw new Error(`Failed to resolve destination "${destinationSlug}": ${destError.message}`)
+    throw new Error(
+      `Failed to resolve destination "${destinationSlug}": ${destError.message}`,
+    )
   }
   if (!dest) {
     throw new Error(`Destination "${destinationSlug}" not found`)
@@ -101,65 +90,11 @@ export async function getHotelsByDestination(
     .eq('destination_id', dest.id)
     .eq('is_active', true)
     .order('is_supplementary', { ascending: true })
-    .order('name', { ascending: true })
+    .order('name',             { ascending: true })
 
   if (error) {
     throw new Error(`Failed to fetch hotels: ${error.message}`)
   }
 
   return (data ?? []) as HotelVenue[]
-}
-
-/**
- * Resolves destination metadata + hotel guide overlay for header rendering.
- * Returns null if the destination doesn't exist.
- *
- * Overlay row may be missing — callers should ?? each overlay field against
- * frontend defaults. Supabase returns the joined overlay as a single object
- * (not array) when the FK column has a UNIQUE constraint — see S36 standing
- * rule on 1:1 nested-select shape.
- */
-export async function getHotelGuideDestination(
-  destinationSlug: string,
-): Promise<HotelGuideDestination | null> {
-  const { data, error } = await supabase
-    .from('global_destinations')
-    .select(`
-      id, slug, name,
-      overlay:travel_hotel_guides(
-        hero_image_src,
-        hero_image_alt,
-        headline_override,
-        intro_override,
-        eyebrow_override,
-        guide_year,
-        guide_version,
-        accuracy_date,
-        at_a_glance_bullets,
-        plan_your_visit_heading,
-        plan_your_visit_intro,
-        plan_your_visit_bullets
-      )
-    `)
-    .eq('slug', destinationSlug)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(`Failed to fetch destination: ${error.message}`)
-  }
-  if (!data) return null
-
-  const raw = (data as unknown as { overlay: HotelGuideOverlay | HotelGuideOverlay[] | null }).overlay
-  const overlay: HotelGuideOverlay | null =
-    Array.isArray(raw)
-      ? (raw.length > 0 ? raw[0] : null)
-      : (raw ?? null)
-
-  return {
-    id:   (data as { id: string }).id,
-    slug: (data as { slug: string }).slug,
-    name: (data as { name: string }).name,
-    overlay,
-  }
 }

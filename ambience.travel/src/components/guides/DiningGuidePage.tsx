@@ -53,8 +53,8 @@ import { useToast } from '../../providers/ToastContext'
 import {
   getDiningVenuesByDestination,
   type DiningVenue,
-  type GuideDestination,
 } from '../../queries/queriesGuidesDining'
+import type { GuideDestination } from '../../types/typesGuides'
 import {
   fetchActiveHappeningsForDestination,
   type Happening,

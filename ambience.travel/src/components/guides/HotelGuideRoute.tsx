@@ -1,102 +1,39 @@
-// HotelGuideRoute.tsx — route entry for the hotels guide
-// Mirrors DiningGuideRoute. Path parsing + destination validation +
-// redirect on miss. Page receives validated destination as guaranteed-non-null.
+// HotelGuideRoute.tsx — thin route wrapper for the hotels guide.
 //
-// Path shape:
-//   guides.ambience.travel/<dest>/hotels           (production subdomain)
-//   ambience.travel/guides/<dest>/hotels           (main domain fallback)
-//   localhost:5173/guides/<dest>/hotels            (local dev)
+// All route logic lives in useGuideRoute (path parsing, overlay gate,
+// grant check, state machine, error handling). This file picks the variant
+// and renders the right page component.
 //
+// Note on naming: file is `HotelGuideRoute` (historical singular) but the
+// variant in the type system is 'hotels' (plural) and the URL segment is
+// '/hotels' (plural). This is fine — the file name is internal; the variant
+// + segment are the source of truth.
+//
+// Last updated: S53 — collapsed to thin wrapper. Logic moved to useGuideRoute.
+//   Overlay gate now applies — destinations without a travel_hotel_guides
+//   row resolve to 404 rather than rendering chrome with no data.
 // Prior: S37 — initial build.
 
-import { useEffect, useRef, useState } from 'react'
 import GuideLayout from '../layouts/GuideLayout'
 import HotelGuidePage from './HotelGuidePage'
 import RouteLoading from '../RouteLoading'
-import { useToast } from '../../providers/ToastContext'
-import { getHotelGuideDestination, type HotelGuideDestination } from '../../queries/queriesGuidesHotels'
+import NotFoundPage from '../NotFoundPage'
+import { useGuideRoute } from '../../hooks/useGuideRoute'
 
-const GUIDES_HOST = 'guides.ambience.travel'
-const HOME_URL    = 'https://ambience.travel/'
-
-function resolveDestinationSlug(): string | null {
-  const pathname     = window.location.pathname.replace(/\/+$/, '')
-  const isGuidesHost = window.location.hostname === GUIDES_HOST
-
-  let stripped: string
-  if (isGuidesHost) {
-    stripped = pathname.replace(/^\/+/, '')
-  }
-  if (!isGuidesHost) {
-    if (!pathname.startsWith('/guides/')) return null
-    stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
-  }
-
-  const parts = (stripped!).split('/').filter(Boolean)
-  if (parts.length === 2 && parts[1] === 'hotels') {
-    return parts[0]
-  }
-  return null
-}
+const HOME_URL = 'https://ambience.travel/'
 
 export default function HotelGuideRoute() {
-  const { toast }    = useToast()
-  const toastRef     = useRef(toast)
-  useEffect(() => { toastRef.current = toast }, [toast])
+  const state = useGuideRoute('hotels')
 
-  const [destination, setDestination] = useState<HotelGuideDestination | null>(null)
-  const [loading,     setLoading]     = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      const slug = resolveDestinationSlug()
-
-      if (!slug) {
-        if (cancelled) return
-        toastRef.current.warning(`We couldn't find that page. Returning home.`)
-        window.history.replaceState(null, '', HOME_URL)
-        window.dispatchEvent(new PopStateEvent('popstate'))
-        setLoading(false)
-        return
-      }
-
-      try {
-        const dest = await getHotelGuideDestination(slug)
-        if (cancelled) return
-
-        if (!dest) {
-          toastRef.current.warning(`We couldn't find that destination. Returning home.`)
-          window.history.replaceState(null, '', HOME_URL)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-          setLoading(false)
-          return
-        }
-
-        setDestination(dest)
-        setLoading(false)
-      } catch (err) {
-        console.error('HotelGuideRoute: failed to load destination', err)
-        if (cancelled) return
-        toastRef.current.warning('Something went wrong loading that guide. Returning home.')
-        window.history.replaceState(null, '', HOME_URL)
-        window.dispatchEvent(new PopStateEvent('popstate'))
-        setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [])
-
-  if (loading) return <RouteLoading />
-
-  if (!destination) return null
+  if (state.phase === 'loading')  return <RouteLoading />
+  if (state.phase === 'notFound') return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
 
   return (
     <GuideLayout>
-      <HotelGuidePage destination={destination} />
+      <HotelGuidePage
+        destination={state.destination}
+        hasFullAccess={state.hasFullAccess}
+      />
     </GuideLayout>
   )
 }
