@@ -1,29 +1,50 @@
-// RecognitionKey.tsx — shared recognition definitions for dining guide + hotel keys
-// What it owns:
-//   - The single source of truth for what each recognition mark means
-//     (◆ ambience Pick, ★ stars, BIB Gourmand, Green Star, 50 Best, Michelin Keys)
-//   - <RecognitionKeyStrip /> — discreet page-top legend (dining)
-//   - <RecognitionMark /> — single-mark pill with hover tooltip (dining + hotels)
-//
-// Last updated: S53C — Added 'keys' kind. Michelin Keys (hotel distinction,
-//   1–3) render as N gold key glyphs, matching the stars idiom (keyCount mirrors
-//   starCount). Consumed by the hotel cards (ImmerseHotelOptions) the same way
-//   dining cards consume the restaurant marks. NOTE: this file lives in the
-//   dining module and imports DiningVenue for the dining-only helper; the mark
-//   renderer itself is generic. Follow-up: lift RecognitionMark/MarkGlyph/defs
-//   into a neutral shared module so dining + hotels both import it cleanly.
-// Prior: S40B — Added 'highlighted' kind. ambience Pick pill renders
-//   for venues where is_highlighted = true. Serif italic 'a' glyph, gold border.
-// Prior: S37 — Initial ship.
+/* GuideRecognitionKey.tsx — recognition marks for the guide layer.
+ *
+ * Single source of truth for what each recognition mark means:
+ *   {'\u25C6'} Highlighted
+ *   {'\u2605'} Michelin Stars
+ *   BIB Bib Gourmand
+ *   Green Star
+ *   50 Best
+ *   Michelin Keys
+ *
+ * What it owns:
+ *   - GuideRecognitionKeyStrip — page-top legend
+ *   - GuideRecognitionMark — single-mark pill with hover tooltip
+ *   - deriveRecognitionKindsFromVenues — dining-specific helper
+ *
+ * What it does not own:
+ *   - The card that renders a mark (GuideCardDining, GuideCardHotels)
+ *   - The recognition data (comes from the venue/hotel row)
+ *
+ * Cross-variant use: dining cards use every mark except keys. Hotel cards
+ * use keys. deriveRecognitionKindsFromVenues is dining-only for now; a
+ * hotels equivalent will land when the strip appears on the hotels page.
+ *
+ * Last updated: S53 — Renamed to convention (was RecognitionKey). Exports
+ *   renamed to GuideRecognitionMark, GuideRecognitionKeyStrip. Behaviour
+ *   unchanged.
+ * Prior: S53C — Added 'keys' kind. Michelin Keys (hotel distinction, 1-3)
+ *   render as N gold key glyphs, matching the stars idiom.
+ * Prior: S40B — Added 'highlighted' kind.
+ * Prior: S37 — initial.
+ */
 
 import React from 'react'
-import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
+import { ID, IMMERSE } from '../../tokens/tokensLanding'
+import type { DiningVenue } from '../../queries/queriesGuidesDining'
 
 export const GREEN_STAR_COLOR = '#3aa55a'
 
-// ── Definitions ───────────────────────────────────────────────────────────────
+// ── Definitions ──────────────────────────────────────────────────────────────
 
-export type RecognitionKind = 'highlighted' | 'stars' | 'bib' | 'green' | 'fifty_best' | 'keys'
+export type RecognitionKind =
+  | 'highlighted'
+  | 'stars'
+  | 'bib'
+  | 'green'
+  | 'fifty_best'
+  | 'keys'
 
 interface RecognitionDef {
   kind:        RecognitionKind
@@ -64,15 +85,15 @@ const RECOGNITION_DEFS: Record<RecognitionKind, RecognitionDef> = {
   },
 }
 
-// ── Single mark renderer ──────────────────────────────────────────────────────
+// ── Single mark renderer ─────────────────────────────────────────────────────
 
-interface RecognitionMarkProps {
+interface GuideRecognitionMarkProps {
   kind:       RecognitionKind
   starCount?: number
   keyCount?:  number
 }
 
-export function RecognitionMark({ kind, starCount, keyCount }: RecognitionMarkProps) {
+export function GuideRecognitionMark({ kind, starCount, keyCount }: GuideRecognitionMarkProps) {
   const def         = RECOGNITION_DEFS[kind]
   const tooltipText = `${def.shortLabel}: ${def.description}`
 
@@ -83,8 +104,9 @@ export function RecognitionMark({ kind, starCount, keyCount }: RecognitionMarkPr
   )
 }
 
-// Single Michelin Key glyph — a small key drawn in gold, matched to the
-// existing icon weight (cf. the connecting-suites svg in ImmerseHotelOptions).
+// ── Michelin Key glyph ───────────────────────────────────────────────────────
+// Matched to the connecting-suites svg weight in ImmerseHotelOptions.
+
 function KeyGlyph() {
   return (
     <svg width='13' height='13' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true' style={{ display: 'block' }}>
@@ -94,19 +116,29 @@ function KeyGlyph() {
   )
 }
 
-function MarkGlyph({ kind, starCount, keyCount }: { kind: RecognitionKind; starCount?: number; keyCount?: number }) {
+// ── Mark glyph dispatch ──────────────────────────────────────────────────────
+
+function MarkGlyph({
+  kind,
+  starCount,
+  keyCount,
+}: {
+  kind:       RecognitionKind
+  starCount?: number
+  keyCount?:  number
+}) {
   if (kind === 'highlighted') {
-    return <span style={ambiencePillStyle}>◆</span>
+    return <span style={ambiencePillStyle}>{'\u25C6'}</span>
   }
   if (kind === 'stars') {
     const count = Math.max(1, Math.min(3, starCount ?? 1))
-    return <span style={starsGlyphStyle}>{'★'.repeat(count)}</span>
+    return <span style={starsGlyphStyle}>{'\u2605'.repeat(count)}</span>
   }
   if (kind === 'bib') {
     return <span style={bibPillStyle}>BIB</span>
   }
   if (kind === 'green') {
-    return <span style={greenStarGlyphStyle}>{'★'}</span>
+    return <span style={greenStarGlyphStyle}>{'\u2605'}</span>
   }
   if (kind === 'fifty_best') {
     return <span style={fiftyPillStyle}>50 BEST</span>
@@ -122,13 +154,13 @@ function MarkGlyph({ kind, starCount, keyCount }: { kind: RecognitionKind; starC
   return null
 }
 
-// ── Page-top key strip ────────────────────────────────────────────────────────
+// ── Page-top key strip ───────────────────────────────────────────────────────
 
-export interface RecognitionKeyStripProps {
+export interface GuideRecognitionKeyStripProps {
   presentKinds: Set<RecognitionKind>
 }
 
-export function RecognitionKeyStrip({ presentKinds }: RecognitionKeyStripProps) {
+export function GuideRecognitionKeyStrip({ presentKinds }: GuideRecognitionKeyStripProps) {
   if (presentKinds.size === 0) return null
 
   const order: RecognitionKind[] = ['highlighted', 'stars', 'bib', 'green', 'fifty_best']
@@ -154,28 +186,26 @@ export function RecognitionKeyStrip({ presentKinds }: RecognitionKeyStripProps) 
   )
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-import type { DiningVenue } from '../../queries/queriesGuidesDining'
+// ── Helper: dining-specific derivation from venue set ────────────────────────
 
 export function deriveRecognitionKindsFromVenues(venues: DiningVenue[]): Set<RecognitionKind> {
   const set = new Set<RecognitionKind>()
   for (const v of venues) {
-    if (v.is_highlighted)                                   set.add('highlighted')
-    if (v.michelin_award === 'star' && v.michelin_stars)    set.add('stars')
-    if (v.michelin_award === 'bib_gourmand')                set.add('bib')
-    if (v.michelin_green_star)                              set.add('green')
-    if (v.worlds_50_best)                                   set.add('fifty_best')
+    if (v.is_highlighted)                                set.add('highlighted')
+    if (v.michelin_award === 'star' && v.michelin_stars) set.add('stars')
+    if (v.michelin_award === 'bib_gourmand')             set.add('bib')
+    if (v.michelin_green_star)                           set.add('green')
+    if (v.worlds_50_best)                                set.add('fifty_best')
   }
   return set
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const markWrapperStyle: React.CSSProperties = {
-  display:     'inline-flex',
-  alignItems:  'center',
-  cursor:      'help',
+  display:    'inline-flex',
+  alignItems: 'center',
+  cursor:     'help',
 }
 
 const ambiencePillStyle: React.CSSProperties = {
@@ -191,27 +221,27 @@ const ambiencePillStyle: React.CSSProperties = {
 }
 
 const starsGlyphStyle: React.CSSProperties = {
-  color:          ID.gold,
-  fontSize:       16,
-  letterSpacing:  '0.05em',
-  lineHeight:     1,
+  color:         ID.gold,
+  fontSize:      16,
+  letterSpacing: '0.05em',
+  lineHeight:    1,
 }
 
 const bibPillStyle: React.CSSProperties = {
-  borderRadius:    999,
-  padding:         '5px 10px',
-  fontSize:        10,
-  letterSpacing:   '0.18em',
-  textTransform:   'uppercase',
-  border:          `1px solid ${IMMERSE.goldBorder}`,
-  color:           ID.gold,
-  background:      IMMERSE.goldTint,
-  fontWeight:      700,
+  borderRadius:  999,
+  padding:       '5px 10px',
+  fontSize:      10,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  border:        `1px solid ${IMMERSE.goldBorder}`,
+  color:         ID.gold,
+  background:    IMMERSE.goldTint,
+  fontWeight:    700,
 }
 
 const greenStarGlyphStyle: React.CSSProperties = {
-  color:    GREEN_STAR_COLOR,
-  fontSize: 16,
+  color:      GREEN_STAR_COLOR,
+  fontSize:   16,
   lineHeight: 1,
 }
 
@@ -227,7 +257,6 @@ const fiftyPillStyle: React.CSSProperties = {
   fontWeight:    600,
 }
 
-// Michelin Keys — N key glyphs in a gold-tinted pill, mirroring the stars idiom.
 const keysGlyphStyle: React.CSSProperties = {
   display:      'inline-flex',
   alignItems:   'center',
@@ -240,15 +269,15 @@ const keysGlyphStyle: React.CSSProperties = {
 }
 
 const keyStripStyle: React.CSSProperties = {
-  display:    'flex',
-  alignItems: 'center',
-  gap:        24,
-  padding:    '14px 18px',
-  border:     `1px solid ${IMMERSE.tableBorder}`,
+  display:      'flex',
+  alignItems:   'center',
+  gap:          24,
+  padding:      '14px 18px',
+  border:       `1px solid ${IMMERSE.tableBorder}`,
   borderRadius: 22,
-  background:  'rgba(255,255,255,0.02)',
+  background:   'rgba(255,255,255,0.02)',
   marginBottom: 18,
-  flexWrap:    'wrap',
+  flexWrap:     'wrap',
 }
 
 const keyLabelStyle: React.CSSProperties = {

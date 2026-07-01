@@ -25,7 +25,7 @@ import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../
 import { C } from '../../types/typesLanding'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
-import { RecognitionMark } from '../guides/RecognitionKey'
+import { GuideRecognitionMark } from '../guides/GuideRecognitionKey'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption } from '../../types/typesImmerse'
 
 // ─── Room slide model (S53C) ──────────────────────────────────────────────────
@@ -838,7 +838,7 @@ function HotelDetailPanel({ hotel, onLightbox, arrowsAndDots, hotelDesktopArrows
           </div>
           {hotel.michelinKeys ? (
             <div style={{ marginTop: 10, display: 'flex' }}>
-              <RecognitionMark kind='keys' keyCount={hotel.michelinKeys} />
+              <GuideRecognitionMark kind='keys' keyCount={hotel.michelinKeys} />
             </div>
           ) : null}
         </div>

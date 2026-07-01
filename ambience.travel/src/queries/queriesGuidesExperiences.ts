@@ -10,7 +10,16 @@
 //   - GuideDestination type → typesGuides
 //   - GrantStatus type → typesGuides
 //
-// Last updated: S53 — Destination + grant code lifted to queriesGuides.ts.
+// Last updated: S53 — public_preview_rank added to type + SELECT. Aligns
+//   travel_experiences with the canonical Gateable contract in
+//   utilsGuideGating. Requires DB migration:
+//     ALTER TABLE travel_experiences ADD COLUMN public_preview_rank INTEGER;
+//     UPDATE travel_experiences SET public_preview_rank = ranked.rn
+//       FROM (SELECT id, ROW_NUMBER() OVER (
+//         PARTITION BY global_destination_id ORDER BY name) AS rn
+//         FROM travel_experiences WHERE is_active = TRUE) ranked
+//       WHERE travel_experiences.id = ranked.id;
+// Prior: S53 — Destination + grant code lifted to queriesGuides.ts.
 //   Removed ExperiencesGuideOverlay, ExperiencesGuideDestination, GrantStatus,
 //   checkExperiencesGuideGrant, getExperiencesGuideDestination. This file is
 //   now purely the experience read path.
@@ -37,6 +46,7 @@ export interface ExperienceVenue {
   image_license:       string | null
   sort_order:          number
   experience_category: string | null
+  public_preview_rank: number | null
 }
 
 export async function getExperienceVenuesByDestination(
@@ -64,7 +74,8 @@ export async function getExperienceVenuesByDestination(
       kicker, tagline, body, bullets_heading, bullets,
       address, maps_url,
       image_src, image_alt, image_credit, image_credit_url, image_license,
-      sort_order, experience_category
+      sort_order, experience_category,
+      public_preview_rank
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)

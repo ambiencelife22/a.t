@@ -1,28 +1,45 @@
-// ExperienceCard.tsx — single experience card for the experiences guide page
-// What it owns: card chrome, image, kicker, name, body, bullets, address block.
-// What it does not own: gating logic (consumes hasFullAccess prop), layout.
-//
-// No recognition marks — travel_experiences has no michelin/highlighted columns.
-// No image_2 — single image only.
-// No tags, cuisine, neighborhood — not on travel_experiences schema.
-// No venue_status banner — not on travel_experiences schema.
-// Kicker occupies the eyebrow slot.
-//
-// Last updated: S41 — initial build.
+/* GuideCardExperiences.tsx — single experience card for the experiences guide.
+ *
+ * What it owns: card chrome, image, kicker, name, body, bullets, address block.
+ * What it does not own: gating decision (utilsGuideGating: cardBodyMode),
+ *   layout, filter state.
+ *
+ * Shape notes:
+ *   No recognition marks — travel_experiences has no michelin/highlighted columns.
+ *   No image_2 — single image only.
+ *   No tags, cuisine, neighborhood — not on travel_experiences schema.
+ *   No venue_status banner — not on travel_experiences schema.
+ *   Kicker occupies the eyebrow slot.
+ *
+ * Body-mode logic:
+ *   'full'   — render body + bullets. Full-access viewers, or experiences
+ *              marked publicly previewable (public_preview_rank != null)
+ *              once that column is added to travel_experiences.
+ *   'teaser' — render teaser line only. Public viewers, experiences not
+ *              marked publicly previewable.
+ *
+ * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ *   isTeaser derivation. Ready for public_preview_rank on
+ *   travel_experiences; behaviour is identical until that column ships.
+ * Prior: S41 — initial build.
+ */
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { resolveMapsUrl } from '../../utils/utilsMapsUrl'
+import { cardBodyMode } from '../../utils/utilsGuideGating'
 import type { ExperienceVenue } from '../../queries/queriesGuidesExperiences'
 
-interface ExperienceCardProps {
+interface GuideCardExperiencesProps {
   venue:           ExperienceVenue
   hasFullAccess:   boolean
   destinationName: string
 }
 
-export function ExperienceCard({ venue, hasFullAccess, destinationName }: ExperienceCardProps) {
-  const isTeaser = !hasFullAccess
+export function GuideCardExperiences({ venue, hasFullAccess, destinationName }: GuideCardExperiencesProps) {
+  const bodyMode = cardBodyMode(venue, hasFullAccess)
+  const isTeaser = bodyMode === 'teaser'
+
   return (
     <article style={cardStyle}>
       <ImageBlock venue={venue} isTeaser={isTeaser} />
@@ -102,7 +119,7 @@ function AddressBlock({ venue }: { venue: ExperienceVenue }) {
     <div style={addressStyle}>
       {mapsUrl ? (
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={addressLinkStyle}>
-          {venue.address ?? 'View on map'} <span style={addressArrowStyle}>↗</span>
+          {venue.address ?? 'View on map'} <span style={addressArrowStyle}>{'\u2197'}</span>
         </a>
       ) : (
         venue.address
@@ -125,9 +142,9 @@ const cardStyle: React.CSSProperties = {
 }
 
 const imageWrapStyle: React.CSSProperties = {
-  height:   310,
-  position: 'relative',
-  overflow: 'hidden',
+  height:     310,
+  position:   'relative',
+  overflow:   'hidden',
   background: ID.panel2,
 }
 
@@ -147,13 +164,13 @@ const imageOverlayStyle: React.CSSProperties = {
 }
 
 const nameFallbackStyle: React.CSSProperties = {
-  height:          310,
-  display:         'flex',
-  alignItems:      'center',
-  justifyContent:  'center',
-  padding:         '0 32px',
-  background:      `linear-gradient(135deg, ${IMMERSE.goldTint}, rgba(154,169,120,0.06)), ${ID.panel2}`,
-  borderBottom:    `1px solid ${IMMERSE.tableBorder}`,
+  height:         310,
+  display:        'flex',
+  alignItems:     'center',
+  justifyContent: 'center',
+  padding:        '0 32px',
+  background:     `linear-gradient(135deg, ${IMMERSE.goldTint}, rgba(154,169,120,0.06)), ${ID.panel2}`,
+  borderBottom:   `1px solid ${IMMERSE.tableBorder}`,
 }
 
 const nameFallbackTextStyle: React.CSSProperties = {
@@ -209,11 +226,11 @@ const bulletsStyle: React.CSSProperties = {
 }
 
 const bulletItemStyle: React.CSSProperties = {
-  fontSize:   14,
-  color:      '#ddd4c3',
-  lineHeight: 1.55,
+  fontSize:    14,
+  color:       '#ddd4c3',
+  lineHeight:  1.55,
   paddingLeft: 16,
-  position:   'relative',
+  position:    'relative',
 }
 
 const teaserStyle: React.CSSProperties = {
@@ -225,22 +242,22 @@ const teaserStyle: React.CSSProperties = {
 }
 
 const addressStyle: React.CSSProperties = {
-  paddingTop:  16,
-  borderTop:   `1px solid ${IMMERSE.tableBorder}`,
-  color:       '#958f84',
-  fontSize:    12,
-  lineHeight:  1.45,
-  marginTop:   'auto',
+  paddingTop: 16,
+  borderTop:  `1px solid ${IMMERSE.tableBorder}`,
+  color:      '#958f84',
+  fontSize:   12,
+  lineHeight: 1.45,
+  marginTop:  'auto',
 }
 
 const addressLinkStyle: React.CSSProperties = {
-  color:           '#958f84',
-  textDecoration:  'none',
-  borderBottom:    '1px solid transparent',
-  transition:      'border-color 200ms ease, color 200ms ease',
-  display:         'inline-flex',
-  alignItems:      'center',
-  gap:             4,
+  color:          '#958f84',
+  textDecoration: 'none',
+  borderBottom:   '1px solid transparent',
+  transition:     'border-color 200ms ease, color 200ms ease',
+  display:        'inline-flex',
+  alignItems:     'center',
+  gap:            4,
 }
 
 const addressArrowStyle: React.CSSProperties = {

@@ -1,52 +1,37 @@
-// DiningGuidePage.tsx — public dining guide for a destination
-// What it owns:
-//   - Venue data fetch
-//   - Happenings data fetch (S52)
-//   - Filter state + URL param sync (cuisine, michelin)
-//   - Frontend default copy + ?? resolution against overlay overrides
-//   - Year + version resolution for PDF
-//   - Grid layout with three groups: primary, supplementary, recently closed
-//   - PDF download trigger (usePdfDownload hook)
-//   - "Coming Up" happenings block (S52)
-//   - Plan Your Visit block
-//   - Accuracy disclaimer block
-//   - Editorial prompt (hasFullAccess=false teaser state)
-//
-// What it does not own:
-//   - Path parsing (DiningGuideRoute)
-//   - Destination validation
-//   - Page chrome (GuideLayout)
-//   - Card rendering (DiningCard, HappeningCard), filters, hero
-//   - ComingUp section chrome
-//   - PDF rendering itself
-//   - PDF library loading (useGuidePdf hook)
-//   - Style objects (guidePageStyles.ts)
-//   - PYV section chrome + fallback copy (PlanYourVisit.tsx)
-//   - Section break rendering (GuideSectionBreak.tsx)
-//
-// Render groups (S52):
-//   1. Primary (is_supplementary=false, operational venues)
-//   2. Supplementary (is_supplementary=true, operational venues)
-//      Editorial section break above: "Also Nearby"
-//   3. Recently closed (venue_status='permanently_closed' AND
-//      closed_visible_until >= today)
-//      Editorial section break above: "Recently Closed"
-//   Beyond closed_visible_until, permanently_closed venues are filtered out
-//   entirely. All groups alphabetical within group.
-//
-// Last updated: S52 — GuideSectionBreak component replaces the lightweight
-//   supplementaryDivider treatment. "Also nearby" and "Recently closed" now
-//   render as full editorial section breaks with eyebrow + serif heading +
-//   descriptor. Treats each as a deliberate chapter rather than a row separator.
-// Prior: S52 — Three-group render added.
-// Prior: S52 — happenings infrastructure added.
-// Prior: S41 — jsPDF load + handleDownloadPdf extracted to usePdfDownload hook.
-// Prior: S40C — hasFullAccess prop added.
-// Prior: S40 — Neighborhoods removed from FilterState.
-// Prior: S40 — Supplementary-last sort. Divider above first supplementary venue.
-// Prior: S40 — Canon hero resolution via destination.heroImageSrc.
-// Prior: S40 — PlanYourVisit extracted. Gate removed.
-// Prior: S40 — Inline styles extracted to lib/guidePageStyles.ts.
+/* GuidePageDining.tsx — public dining guide for a destination.
+ *
+ * What it owns:
+ *   - Venue data fetch
+ *   - Happenings data fetch
+ *   - Filter state + URL param sync (cuisine, michelin, highlighted)
+ *   - Group derivation (primary, supplementary, recently closed)
+ *   - Section title rendering
+ *   - PDF download trigger dispatch
+ *
+ * What it does not own:
+ *   - Path parsing (DiningGuideRoute)
+ *   - Destination validation (DiningGuideRoute)
+ *   - Page chrome (GuideLayout)
+ *   - Card rendering (GuideCardDining)
+ *   - Hero rendering (GuideHero) and hero copy resolution (useGuideHero)
+ *   - Gating decisions (utilsGuideGating)
+ *   - Editorial prompt chrome (GuideEditorialPrompt)
+ *   - At-a-glance chrome (GuideAtAGlance)
+ *   - Plan Your Visit chrome (GuidePlanYourVisit)
+ *   - ComingUp chrome (GuideComingUpSection)
+ *   - Section header + count formatting (typesGuides: formatSectionHeader)
+ *   - PDF year/version resolution (utilsGuidePdf)
+ *   - Style objects (stylesGuidePage)
+ *
+ * Last updated: S53 — Nine-file guide-layer extraction. All shared behaviour
+ *   moves to utilsGuideGating, useGuideHero, GuideEditorialPrompt, GuideAtAGlance,
+ *   and the extended GUIDE_COPY. Inline editorial prompt, loading state,
+ *   empty state, hero resolution, PDF resolvers, and gating math all gone.
+ * Prior: S52 — GuideSectionBreak component. Three-group render.
+ *   Happenings infrastructure.
+ * Prior: S41 — usePdfDownload hook extraction.
+ * Prior: S40C — hasFullAccess prop added.
+ */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../../providers/ToastContext'
@@ -54,25 +39,39 @@ import {
   getDiningVenuesByDestination,
   type DiningVenue,
 } from '../../queries/queriesGuidesDining'
-import type { GuideDestination } from '../../types/typesGuides'
 import {
   fetchActiveHappeningsForDestination,
   type Happening,
 } from '../../queries/queriesGuidesHappenings'
 import { useGuidePdf } from '../../hooks/useGuidePdf'
-import { DiningCard } from './DiningCard'
+import { useGuideHero } from '../../hooks/useGuideHero'
+import { GuideCardDining } from './GuideCardDining'
 import { GuideHero } from './GuideHero'
 import { GuideSectionBreak } from './GuideSectionBreak'
-import { DiningGuideFilters, type FilterState } from './DiningGuideFilters'
-import { RecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './RecognitionKey'
-import { ComingUpSection } from './ComingUpSection'
-import { PlanYourVisit } from './PlanYourVisit'
-import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
+import { GuideFiltersDining, type FilterState } from './GuideFiltersDining'
+import { GuideRecognitionKeyStrip, deriveRecognitionKindsFromVenues } from './GuideRecognitionKey'
+import { GuideComingUpSection } from './GuideComingUpSection'
+import { GuidePlanYourVisit } from './GuidePlanYourVisit'
+import { GuideAtAGlance } from './GuideAtAGlance'
+import { GuideEditorialPrompt } from './GuideEditorialPrompt'
+import {
+  GUIDE_COPY,
+  formatSectionHeader,
+  type GuideDestination,
+} from '../../types/typesGuides'
+import {
+  filterVisibleItems,
+  shouldShowAdvisorExtras,
+  shouldShowEditorialPrompt,
+} from '../../utils/utilsGuideGating'
+import {
+  resolveGuideYear,
+  resolveGuideVersion,
+} from '../../utils/utilsGuidePdf'
 import {
   pageStyle,
   sectionTitleStyle,
   sectionTitleH2Style,
-  sectionTitleCountStyle,
   downloadBtnStyle,
   downloadBtnDisabledStyle,
   downloadIconStyle,
@@ -85,29 +84,11 @@ import {
   emptyStateTextStyle,
 } from '../../styles/stylesGuidePage'
 
-import { GUIDE_COPY } from '../../types/typesGuides'
+const VARIANT = 'dining' as const
 
-interface DiningGuidePageProps {
+interface GuidePageDiningProps {
   destination:   GuideDestination
   hasFullAccess: boolean
-}
-
-function defaultIntro(destinationName: string): string {
-  return `A selective dining guide for ${destinationName}`
-}
-
-// ── PDF year + version defaults ──────────────────────────────────────────────
-
-const DEFAULT_GUIDE_VERSION = '1.0'
-
-function resolveGuideYear(overlayYear: number | null | undefined): number {
-  if (overlayYear != null) return overlayYear
-  return new Date().getFullYear()
-}
-
-function resolveGuideVersion(overlayVersion: string | null | undefined): string {
-  if (overlayVersion != null && overlayVersion.trim().length > 0) return overlayVersion
-  return DEFAULT_GUIDE_VERSION
 }
 
 // ── Today as YYYY-MM-DD (local) — for closed_visible_until comparisons ──────
@@ -144,7 +125,7 @@ function writeFilterStateToUrl(state: FilterState) {
 
 // ── Page Component ───────────────────────────────────────────────────────────
 
-export default function DiningGuidePage({ destination, hasFullAccess }: DiningGuidePageProps) {
+export default function GuidePageDining({ destination, hasFullAccess }: GuidePageDiningProps) {
   const { toast } = useToast()
   const toastRef  = useRef(toast)
   useEffect(() => { toastRef.current = toast }, [toast])
@@ -156,16 +137,15 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   const [loading,     setLoading]     = useState(true)
   const [filterState, setFilterState] = useState<FilterState>(() => readFilterStateFromUrl())
 
+  const hero    = useGuideHero(destination, VARIANT)
+  const overlay = destination.overlay
+
+  const atAGlanceBullets = useMemo(
+    () => overlay?.at_a_glance_bullets ?? [],
+    [overlay],
+  )
+
   const hasHighlightedItems = useMemo(() => venues.some(v => v.is_highlighted), [venues])
-
-  // ── Resolved hero copy ───────────────────────────────────────────────────
-
-  const overlay      = destination.overlay
-  const heroEyebrow  = overlay?.eyebrow_override  ?? destination.name
-  const heroHeadline = overlay?.headline_override ?? GUIDE_COPY.dining.defaultHeadline
-  const heroIntro    = overlay?.intro_override    ?? defaultIntro(destination.name)
-  const heroImageSrc = overlay?.hero_image_src    ?? destination.heroImageSrc ?? null
-  const heroImageAlt = overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null
 
   // ── Venue + happenings fetch ─────────────────────────────────────────────
 
@@ -182,9 +162,8 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
         if (venuesResult.status === 'fulfilled') {
           setVenues(venuesResult.value)
-        }
-        if (venuesResult.status !== 'fulfilled') {
-          console.error('DiningGuidePage: failed to load venues', venuesResult.reason)
+        } else {
+          console.error('GuidePageDining: failed to load venues', venuesResult.reason)
           const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load dining venues: ${msg}`)
           setVenues([])
@@ -192,16 +171,15 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
 
         if (happeningsResult.status === 'fulfilled') {
           setHappenings(happeningsResult.value)
-        }
-        if (happeningsResult.status !== 'fulfilled') {
-          console.error('DiningGuidePage: failed to load happenings', happeningsResult.reason)
+        } else {
+          console.error('GuidePageDining: failed to load happenings', happeningsResult.reason)
           setHappenings([])
         }
 
         setLoading(false)
       } catch (err) {
         if (cancelled) return
-        console.error('DiningGuidePage: unexpected load error', err)
+        console.error('GuidePageDining: unexpected load error', err)
         const msg = err instanceof Error ? err.message : 'Unknown error'
         toastRef.current.error(`Couldn't load dining venues: ${msg}`)
         setVenues([])
@@ -253,9 +231,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
       return v.closed_visible_until >= today
     }
 
-    const visible = hasFullAccess
-      ? venues
-      : venues.filter(v => v.public_preview_rank != null)
+    const visible = filterVisibleItems(venues, hasFullAccess)
 
     const primary:       DiningVenue[] = []
     const supplementary: DiningVenue[] = []
@@ -298,11 +274,11 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   return (
     <>
       <GuideHero
-        eyebrow={heroEyebrow}
-        headline={heroHeadline}
-        intro={heroIntro}
-        imageSrc={heroImageSrc}
-        imageAlt={heroImageAlt}
+        eyebrow={hero.eyebrow}
+        headline={hero.headline}
+        intro={hero.intro}
+        imageSrc={hero.imageSrc}
+        imageAlt={hero.imageAlt}
       />
 
       <main style={pageStyle}>
@@ -310,9 +286,11 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
           <LoadingState />
         ) : (
           <>
-            <RecognitionKeyStrip presentKinds={presentRecognitionKinds} />
+            {atAGlanceBullets.length > 0 && <GuideAtAGlance bullets={atAGlanceBullets} />}
 
-            <DiningGuideFilters
+            <GuideRecognitionKeyStrip presentKinds={presentRecognitionKinds} />
+
+            <GuideFiltersDining
               state={filterState}
               onChange={setFilterState}
               availableCuisines={availableCuisines}
@@ -321,22 +299,18 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
             />
 
             <div style={sectionTitleStyle}>
-              <div>
-                <h2 style={sectionTitleH2Style}>Selected tables</h2>
-                <p style={sectionTitleCountStyle}>
-                  {hasFullAccess ? totalVisible : venues.length}{' '}
-                  {(hasFullAccess ? totalVisible : venues.length) === 1 ? 'restaurant' : 'restaurants'}
-                </p>
-              </div>
+              <h2 style={sectionTitleH2Style}>
+                {formatSectionHeader(VARIANT, totalVisible)}
+              </h2>
               <button
                 type="button"
                 onClick={() => handleDownloadPdf({
-                  variant:      'dining',
+                  variant:      VARIANT,
                   destination,
                   venues,
                   happenings,
-                  copy:         { eyebrow: heroEyebrow, headline: heroHeadline, intro: heroIntro },
-                  heroImageSrc,
+                  copy:         { eyebrow: hero.eyebrow, headline: hero.headline, intro: hero.intro },
+                  heroImageSrc: hero.imageSrc,
                   guideYear:    resolveGuideYear(overlay?.guide_year),
                   guideVersion: resolveGuideVersion(overlay?.guide_version),
                   accuracyDate: overlay?.accuracy_date ?? null,
@@ -346,10 +320,10 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   ...downloadBtnStyle,
                   ...(pdfReady && !pdfDownloading ? {} : downloadBtnDisabledStyle),
                 }}
-                title={pdfReady ? 'Download this guide as a PDF' : 'PDF library loading…'}
+                title={pdfReady ? 'Download this guide as a PDF' : 'PDF library loading\u2026'}
               >
-                <span aria-hidden style={downloadIconStyle}>↓</span>
-                {pdfDownloading ? 'Preparing…' : 'Download PDF'}
+                <span aria-hidden style={downloadIconStyle}>{'\u2193'}</span>
+                {pdfDownloading ? 'Preparing\u2026' : 'Download PDF'}
               </button>
             </div>
 
@@ -359,7 +333,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
               <>
                 <section style={gridStyle}>
                   {primaryVenues.map(v => (
-                    <DiningCard
+                    <GuideCardDining
                       key={v.id}
                       venue={v}
                       hasFullAccess={hasFullAccess}
@@ -375,7 +349,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                     />
                   )}
                   {supplementaryVenues.map(v => (
-                    <DiningCard
+                    <GuideCardDining
                       key={v.id}
                       venue={v}
                       hasFullAccess={hasFullAccess}
@@ -392,7 +366,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                     />
                   )}
                   {recentlyClosedVenues.map(v => (
-                    <DiningCard
+                    <GuideCardDining
                       key={v.id}
                       venue={v}
                       hasFullAccess={hasFullAccess}
@@ -401,26 +375,28 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   ))}
                 </section>
 
-                {!hasFullAccess && totalVisible < venues.length && (
-                  <EditorialPrompt destinationName={destination.name} />
+                {shouldShowEditorialPrompt(totalVisible, venues.length, hasFullAccess) && (
+                  <GuideEditorialPrompt variant={VARIANT} destinationName={destination.name} />
                 )}
               </>
             )}
 
-            {hasFullAccess && (
-              <ComingUpSection
+            {shouldShowAdvisorExtras(hasFullAccess) && (
+              <GuideComingUpSection
                 happenings={happenings}
                 hasFullAccess={hasFullAccess}
                 destinationName={destination.name}
               />
             )}
 
-            {hasFullAccess && <PlanYourVisit overlay={overlay} variant="dining" />}
+            {shouldShowAdvisorExtras(hasFullAccess) && (
+              <GuidePlanYourVisit overlay={overlay} variant={VARIANT} />
+            )}
 
             {overlay?.accuracy_date && (
               <div style={disclaimerStyle}>
                 <p style={disclaimerTextStyle}>
-                  The venues and recognition listed in this guide reflect our knowledge as of {overlay.accuracy_date}. The dining industry evolves continuously... restaurants close, chefs move, and accolades are reassigned. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.
+                  The venues and recognition listed in this guide reflect our knowledge as of {overlay.accuracy_date}. The dining industry evolves continuously; restaurants close, chefs move, and accolades are reassigned. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.
                 </p>
               </div>
             )}
@@ -431,64 +407,12 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
   )
 }
 
-// ── Editorial Prompt ─────────────────────────────────────────────────────────
-
-function EditorialPrompt({ destinationName }: { destinationName: string }) {
-  return (
-    <div style={{
-      marginTop:     48,
-      padding:       'clamp(40px, 6vw, 64px) clamp(24px, 6vw, 48px)',
-      textAlign:     'center',
-      display:       'flex',
-      flexDirection: 'column',
-      alignItems:    'center',
-      gap:           20,
-      background:    ID.panel,
-      borderTop:     `1px solid ${IMMERSE.tableBorder}`,
-      borderBottom:  `1px solid ${IMMERSE.tableBorder}`,
-      borderRadius:  24,
-    }}>
-      <div style={{
-        fontSize:      11,
-        fontWeight:    700,
-        letterSpacing: '0.2em',
-        textTransform: 'uppercase',
-        color:         ID.gold,
-      }}>
-        {destinationName} · Dining Guide
-      </div>
-      <p style={{
-        fontSize:   'clamp(22px, 3.5vw, 32px)',
-        fontWeight: 400,
-        fontFamily: FONTS.serif,
-        color:      ID.text,
-        lineHeight: 1.2,
-        margin:     0,
-        maxWidth:   480,
-        fontStyle:  'italic',
-      }}>
-        There is more to this table.
-      </p>
-      <p style={{
-        fontSize:   14,
-        color:      ID.muted,
-        lineHeight: 1.6,
-        margin:     0,
-        maxWidth:   400,
-      }}>
-        The full {destinationName} dining guide is available to invited guests.
-        Contact your ambience team member to request access.
-      </p>
-    </div>
-  )
-}
-
 // ── Loading + Empty States ───────────────────────────────────────────────────
 
 function LoadingState() {
   return (
     <div style={messageBlockStyle}>
-      <p style={messageTextStyle}>Setting the table.</p>
+      <p style={messageTextStyle}>{GUIDE_COPY[VARIANT].loadingStateText}</p>
     </div>
   )
 }
@@ -496,9 +420,7 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div style={emptyStateStyle}>
-      <p style={emptyStateTextStyle}>
-        Nothing here for those filters yet. Try widening the search.
-      </p>
+      <p style={emptyStateTextStyle}>{GUIDE_COPY[VARIANT].emptyStateText}</p>
     </div>
   )
 }

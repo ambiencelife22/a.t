@@ -1,42 +1,38 @@
-// PlanYourVisit.tsx — Plan Your Visit section for guide pages
-// What it owns:
-//   - Full-width section render below the venue grid
-//   - Fallback copy by guide variant (dining | experiences | hotels | shopping)
-//     when overlay fields are null — always renders if mounted
-//   - Entrance animation via useVisible + fadeUp from utilsAnimations
-//
-// What it does not own:
-//   - Overlay data fetching (each XxxGuidePage owns this)
-//   - Gate logic — caller decides whether to render
-//   - Style objects (stylesGuidePage.ts)
-//   - Variant union — typesGuides.GuideVariant is the single source of truth
-//   - Overlay shape — typesGuides.GuideOverlay is the single source of truth
-//
-// Fallback copy:
-//   dining        — reservation + planning tips
-//   experiences   — booking + timing tips
-//   hotels        — check-in + property tips (was 'accommodation' pre-S53)
-//   shopping      — maison + atelier tips
-//   (extend FALLBACK_COPY as new guide variants ship)
-//
-// Override vs suppress vs fallback — applies to heading, intro, bullets:
-//   null          → use fallback copy (no override set)
-//   "" (empty)    → suppress entirely (intentional hide)
-//   "some text"   → use override content
-//
-// Last updated: S53 — Consumes canonical GuideVariant + GuideOverlay from
-//   typesGuides. Local GuideVariant union removed (was a narrower
-//   redeclaration using 'accommodation' instead of 'hotels'). Local
-//   DiningGuideOverlay import removed (the type was lifted to typesGuides
-//   as GuideOverlay). Fallback key 'accommodation' renamed to 'hotels' to
-//   match canonical variant naming. PlanYourVisit is now the single Plan
-//   Your Visit surface for all four guide variants — no per-variant
-//   divergence, no type duplication.
-// Prior: S49 — empty-string-hide convention applied to heading, intro,
-//   and bullets. Matches ?? vs || pattern used across the rest of the codebase.
-//   null = fallback, "" = suppress, content = use content.
-// Prior: S40 — Created. Full section treatment with gold scan line,
-//   serif heading, gold rule, responsive bullet grid. Styles in stylesGuidePage.
+/* GuidePlanYourVisit.tsx — Plan Your Visit section for guide pages.
+ *
+ * What it owns:
+ *   - Full-width section render below the venue grid
+ *   - Fallback copy by guide variant (dining, experiences, hotels, shopping)
+ *     when overlay fields are null, always renders if mounted
+ *   - Entrance animation via useVisible + fadeUp from utilsAnimations
+ *
+ * What it does not own:
+ *   - Overlay data fetching (each GuidePage<X> owns this)
+ *   - Gate logic — caller decides whether to render
+ *   - Style objects (stylesGuidePage.ts)
+ *   - Variant union (typesGuides.GuideVariant is the single source of truth)
+ *   - Overlay shape (typesGuides.GuideOverlay is the single source of truth)
+ *
+ * Fallback copy per variant (extend FALLBACK_COPY when a new variant ships):
+ *   dining        — reservation + planning tips
+ *   experiences   — booking + timing tips
+ *   hotels        — check-in + property tips
+ *   shopping      — maison + atelier tips
+ *
+ * Override vs suppress vs fallback for heading, intro, bullets:
+ *   null          — use fallback copy (no override set)
+ *   ""            — suppress entirely (intentional hide)
+ *   "some text"   — use override content
+ *
+ * Last updated: S53 — Renamed to convention (was PlanYourVisit).
+ *   Consumers updated to import GuidePlanYourVisit.
+ * Prior: S53 — Consumes canonical GuideVariant + GuideOverlay from
+ *   typesGuides. Fallback key 'accommodation' renamed to 'hotels' to
+ *   match canonical variant naming.
+ * Prior: S49 — empty-string-hide convention applied to heading, intro,
+ *   and bullets. null = fallback, "" = suppress, content = use content.
+ * Prior: S40 — Created.
+ */
 
 import React from 'react'
 import { useVisible, fadeUp } from '../../utils/utilsAnimations'
@@ -57,10 +53,10 @@ import {
   pyvItemTextStyle,
 } from '../../styles/stylesGuidePage'
 
-// ── Fallback copy ─────────────────────────────────────────────────────────────
+// ── Fallback copy ────────────────────────────────────────────────────────────
 // Used when overlay fields are null. Destination-agnostic.
-// Keys match the canonical GuideVariant union from typesGuides — add a block
-// here when a new guide variant ships.
+// Keys match the GuideVariant union from typesGuides — add a block here
+// when a new guide variant ships.
 
 const FALLBACK_COPY: Record<GuideVariant, {
   heading: string
@@ -71,11 +67,11 @@ const FALLBACK_COPY: Record<GuideVariant, {
     heading: 'Plan Your Visit',
     intro:   'A few notes on how these tables work.',
     bullets: [
-      'The most sought-after tables book weeks. Worth deciding which tables matter to you before the trip.',
+      'The most sought-after tables book weeks out. Worth deciding which tables matter to you before the trip.',
       'Tasting menus typically hold a card on file with strict cancellation windows. Be mindful when committing to a long evening.',
       'Sundays and Mondays are quiet across most of the fine-dining circuit. The week tends to shape itself around that pattern.',
       'Lunch service at the chef-led rooms often runs as the more relaxed window, with the same kitchen at a different rhythm.',
-      'Cancellation lists are worth a quiet word with the maître d\'. Tables open more often than the booking site suggests.',
+      'Cancellation lists are worth a quiet word with the ma\u00EEtre d\'. Tables open more often than the booking site suggests.',
     ],
   },
   experiences: {
@@ -113,33 +109,33 @@ const FALLBACK_COPY: Record<GuideVariant, {
   },
 }
 
-// ── Override resolution ───────────────────────────────────────────────────────
+// ── Override resolution ──────────────────────────────────────────────────────
 // null    → use fallback (no override set)
 // ""      → suppress (intentional hide, renders nothing)
 // content → use override
 
 function resolveField(override: string | null | undefined, fallback: string): string | null {
-  if (override === '')   return null       // explicit suppress
-  if (override == null)  return fallback   // no override — use fallback
-  return override.trim() || fallback       // whitespace-only treated as no override
+  if (override === '')  return null       // explicit suppress
+  if (override == null) return fallback   // no override — use fallback
+  return override.trim() || fallback      // whitespace-only treated as no override
 }
 
 function resolveBullets(override: string[] | null | undefined, fallback: string[]): string[] {
-  if (override === null)              return fallback   // no override — use fallback
-  if (override !== undefined && override.length === 0) return []  // explicit empty array = suppress
+  if (override === null)                               return fallback  // no override — use fallback
+  if (override !== undefined && override.length === 0) return []        // explicit empty array = suppress
   return override ?? fallback
 }
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+// ── Props ────────────────────────────────────────────────────────────────────
 
-interface PlanYourVisitProps {
+interface GuidePlanYourVisitProps {
   overlay: GuideOverlay | null
   variant: GuideVariant
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component ────────────────────────────────────────────────────────────────
 
-export function PlanYourVisit({ overlay, variant }: PlanYourVisitProps) {
+export function GuidePlanYourVisit({ overlay, variant }: GuidePlanYourVisitProps) {
   const { ref, visible } = useVisible(0.12)
   const fallback = FALLBACK_COPY[variant]
 
@@ -171,7 +167,7 @@ export function PlanYourVisit({ overlay, variant }: PlanYourVisitProps) {
           <ul style={{ ...fadeUp(visible, 140), ...pyvListStyle }}>
             {bullets.map((b, i) => (
               <li key={i} style={pyvItemStyle}>
-                <span style={pyvDotStyle} aria-hidden>·</span>
+                <span style={pyvDotStyle} aria-hidden>{'\u00B7'}</span>
                 <span style={pyvItemTextStyle}>{b}</span>
               </li>
             ))}

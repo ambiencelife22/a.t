@@ -1,33 +1,36 @@
-// DiningGuideRoute.tsx — thin route wrapper for the dining guide.
+// GuideRouteHotels.tsx — thin route wrapper for the hotels guide.
 //
 // All route logic lives in useGuideRoute (path parsing, overlay gate,
 // grant check, state machine, error handling). This file picks the variant
 // and renders the right page component.
 //
+// Note on naming: file is `HotelGuideRoute` (historical singular) but the
+// variant in the type system is 'hotels' (plural) and the URL segment is
+// '/hotels' (plural). This is fine — the file name is internal; the variant
+// + segment are the source of truth.
+//
 // Last updated: S53 — collapsed to thin wrapper. Logic moved to useGuideRoute.
-//   Path parsing, destination fetch, overlay gate, grant resolution all live
-//   in the shared hook. Also fixes prior bug where hasFullAccess was hardcoded
-//   true regardless of grant check result.
-// Prior: S40C — Grant check added.
-// Prior: S40 — NotFoundPage replaces null return on failed destination load.
+//   Overlay gate now applies — destinations without a travel_hotel_guides
+//   row resolve to 404 rather than rendering chrome with no data.
+// Prior: S37 — initial build.
 
 import GuideLayout from '../layouts/GuideLayout'
-import DiningGuidePage from './DiningGuidePage'
+import GuidePageHotels from './GuidePageHotels'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
 import { useGuideRoute } from '../../hooks/useGuideRoute'
 
 const HOME_URL = 'https://ambience.travel/'
 
-export default function DiningGuideRoute() {
-  const state = useGuideRoute('dining')
+export default function GuideRouteHotels() {
+  const state = useGuideRoute('hotels')
 
   if (state.phase === 'loading')  return <RouteLoading />
   if (state.phase === 'notFound') return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
 
   return (
     <GuideLayout>
-      <DiningGuidePage
+      <GuidePageHotels
         destination={state.destination}
         hasFullAccess={state.hasFullAccess}
       />

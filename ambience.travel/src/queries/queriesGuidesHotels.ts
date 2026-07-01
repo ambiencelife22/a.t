@@ -13,7 +13,16 @@
 // fields (structured address, prestige badges, brand FK) so HotelVenue is
 // wider than DiningVenue.
 //
-// Last updated: S53 — Destination + overlay code lifted to queriesGuides.ts.
+// Last updated: S53 — public_preview_rank added to type + SELECT. Aligns
+//   travel_accom_hotels with the canonical Gateable contract in
+//   utilsGuideGating. Requires DB migration:
+//     ALTER TABLE travel_accom_hotels ADD COLUMN public_preview_rank INTEGER;
+//     UPDATE travel_accom_hotels SET public_preview_rank = ranked.rn
+//       FROM (SELECT id, ROW_NUMBER() OVER (
+//         PARTITION BY destination_id ORDER BY name) AS rn
+//         FROM travel_accom_hotels WHERE is_active = TRUE) ranked
+//       WHERE travel_accom_hotels.id = ranked.id;
+// Prior: S53 — Destination + overlay code lifted to queriesGuides.ts.
 //   Removed HotelGuideOverlay, HotelGuideDestination, getHotelGuideDestination.
 //   This file is now purely the hotel read path.
 // Prior: S37 — initial. Pattern lifted from queriesGuidesDining.ts.
@@ -47,6 +56,7 @@ export interface HotelVenue {
   brand_id:             string | null
   brand2_id:            string | null
   sort_order:           number
+  public_preview_rank:  number | null
 }
 
 /**
@@ -85,7 +95,8 @@ export async function getHotelsByDestination(
       stars, michelin_keys, forbes_rating,
       is_preferred_partner, is_supplementary,
       brand_id, brand2_id,
-      sort_order
+      sort_order,
+      public_preview_rank
     `)
     .eq('destination_id', dest.id)
     .eq('is_active', true)

@@ -16,18 +16,31 @@
 //   - Admin clients see all rows (via separate RLS policy)
 //   - Industry-data classification — no Edge Function needed
 //
-// Last updated: S52 — optional startDate/endDate args added for future
-//   trip-aware callers (immerse pages that know the guest's stay window).
-//   The current ExperiencesGuidePage caller does not pass dates and gets
-//   all future happenings for the destination.
-// Prior: S52 — initial ship for the What's On section on the experiences
+// Last updated: S53 — public_preview_rank added to type. select('*') pulls
+//   it once the column ships. Aligns travel_happenings with the canonical
+//   Gateable contract in utilsGuideGating. Requires DB migration:
+//     ALTER TABLE travel_happenings ADD COLUMN public_preview_rank INTEGER;
+//     UPDATE travel_happenings SET public_preview_rank = ranked.rn
+//       FROM (SELECT id, ROW_NUMBER() OVER (
+//         PARTITION BY global_destination_id ORDER BY start_date, name) AS rn
+//         FROM travel_happenings WHERE is_active = TRUE AND is_public = TRUE)
+//         ranked
+//       WHERE travel_happenings.id = ranked.id;
+//   Follow-up debt: replace select('*') with an explicit column list to
+//   match the standard pattern in queriesGuidesDining and
+//   queriesGuidesExperiences.
+// Prior: S52 — optional startDate/endDate args added for future trip-aware
+//   callers (immerse pages that know the guest's stay window). The current
+//   GuidePageExperiences caller does not pass dates and gets all future
+//   happenings for the destination.
+// Prior: S52 — initial ship for the Coming Up section on the experiences
 //   guide. Les Grimaldines (28 July 2026 St Tropez) is the first seeded
 //   happening.
 
 import { supabase } from '../lib/supabase'
 import type { HappeningCategory, HappeningSurface } from '../types/typesHappenings'
 
-// ── Type ──────────────────────────────────────────────────────────────────────
+// ── Type ─────────────────────────────────────────────────────────────────────
 
 export interface Happening {
   id:                    string
@@ -51,12 +64,13 @@ export interface Happening {
   is_active:             boolean
   is_public:             boolean
   sort_order:            number
+  public_preview_rank:   number | null
   surfaces:              HappeningSurface[]
   created_at:            string
   updated_at:            string
 }
 
-// ── Reads ─────────────────────────────────────────────────────────────────────
+// ── Reads ────────────────────────────────────────────────────────────────────
 
 /**
  * Fetch active happenings for a destination.

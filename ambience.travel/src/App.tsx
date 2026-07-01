@@ -10,14 +10,18 @@
  *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
  *   ambience.travel/immerse/:url_id/confirmation         → ImmerseTripPage (confirmation tab)
  *   ambience.travel/immerse/:url_id/programme            → ImmerseTripPage (programme tab)
- *   ambience.travel/guides/:destination/dining           → DiningGuideRoute (S35)
- *   ambience.travel/guides/:destination/hotels           → HotelGuideRoute (S37)
+ *   ambience.travel/guides/:destination/dining           → GuideRouteDining (S35)
+ *   ambience.travel/guides/:destination/hotels           → GuideRouteHotels (S37)
+ *   ambience.travel/guides/:destination/experiences      → GuideRouteExperiences
+ *   ambience.travel/guides/:destination/shopping         → GuideRouteShopping
  *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
  *   immerse.ambience.travel/:url_id/confirmation         → ImmerseTripPage (confirmation tab)
  *   immerse.ambience.travel/:url_id/programme            → ImmerseTripPage (programme tab)
- *   guides.ambience.travel/:destination/dining           → DiningGuideRoute (S35)
- *   guides.ambience.travel/:destination/hotels           → HotelGuideRoute (S37)
+ *   guides.ambience.travel/:destination/dining           → GuideRouteDining (S35)
+ *   guides.ambience.travel/:destination/hotels           → GuideRouteHotels (S37)
+ *   guides.ambience.travel/:destination/experiences      → GuideRouteExperiences
+ *   guides.ambience.travel/:destination/shopping         → GuideRouteShopping
  *   programme.ambience.travel/#admin                     → ProgrammeAdmin (existing, untouched)
  *   programme.ambience.travel/?signup=1                  → Auth signup
  *   programme.ambience.travel/stays/:id                  → Auth → full-page ProgrammeRoute
@@ -35,8 +39,10 @@
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/confirmation          → ImmerseTripPage (confirmation tab)
  *   localhost:5173/immerse/:url_id/programme             → ImmerseTripPage (programme tab)
- *   localhost:5173/guides/:destination/dining            → DiningGuideRoute (S35)
- *   localhost:5173/guides/:destination/hotels            → HotelGuideRoute (S37)
+ *   localhost:5173/guides/:destination/dining            → GuideRouteDining (S35)
+ *   localhost:5173/guides/:destination/hotels            → GuideRouteHotels (S37)
+ *   localhost:5173/guides/:destination/experiences       → GuideRouteExperiences
+ *   localhost:5173/guides/:destination/shopping          → GuideRouteShopping
  *
  * Admin routing (S33): hash === '#admin' is hostname-disambiguated.
  *   - programme.ambience.travel/#admin OR localhost:5173/programme/#admin
@@ -52,20 +58,25 @@
  *   depending on programme.ambience.travel for session establishment.
  *   Signup mode (?signup=1) is unaffected — remains programme-context only.
  *
- * Prior: S53 — Journey programme surface retired. Superseded by ImmerseTripPage
- *   + Programme tab. /journeys/:id routes and 'preview-journey' route removed.
- *   ProgrammeRoute now serves only stay-type programmes.
- * Prior: /confirmation + /programme routes now resolve to ImmerseTripPage with
- *   an initialTab (confirmation/programme) — legacy TripConfirmationPage +
- *   TripProgrammePage retired, consolidating to one trip surface. Still handled
- *   inside ImmerseEngagementRoute via RESERVED_SEGMENTS intercept.
+ * Last updated: S53 — Guide route imports point at the renamed
+ *   GuideRoute<Variant> files under src/components/guides/.
+ *   DiningGuideRoute → GuideRouteDining, HotelGuideRoute → GuideRouteHotels,
+ *   ExperiencesGuideRoute → GuideRouteExperiences,
+ *   ShoppingGuideRoute → GuideRouteShopping.
+ * Prior: S53 — Journey programme surface retired. Superseded by
+ *   ImmerseTripPage + Programme tab. /journeys/:id routes and
+ *   'preview-journey' route removed. ProgrammeRoute now serves only
+ *   stay-type programmes.
+ * Prior: /confirmation + /programme routes now resolve to ImmerseTripPage
+ *   with an initialTab (confirmation/programme) — legacy
+ *   TripConfirmationPage + TripProgrammePage retired, consolidating to one
+ *   trip surface. Still handled inside ImmerseEngagementRoute via
+ *   RESERVED_SEGMENTS intercept.
  * Prior: S48 — Added confirmation + programme routes under immerse surface.
- *   Handled inside ImmerseEngagementRoute via RESERVED_SEGMENTS intercept —
- *   no changes to App.tsx routing logic required.
  * Prior: S40D — Added 'login' route at /login for admin auth.
  * Prior: S37 — Added 'guides-hotels' route. resolveGuidePath() now
  *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
- *   on surface. New lazy import HotelGuideRoute. Mirrors S35 dining shape.
+ *   on surface. Mirrors S35 dining shape.
  */
 
 import { useEffect, useState, useContext, lazy, Suspense } from 'react'
@@ -92,10 +103,10 @@ const Profile                  = lazy(() => import('./components/Profile'))
 const Auth                     = lazy(() => import('./components/Auth'))
 const SignatureExperiencePage  = lazy(() => import('./components/landing/experiences/SignatureExperiencePage'))
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
-const DiningGuideRoute         = lazy(() => import('./components/guides/DiningGuideRoute'))
-const HotelGuideRoute          = lazy(() => import('./components/guides/HotelGuideRoute'))
-const ExperiencesGuideRoute    = lazy(() => import('./components/guides/ExperiencesGuideRoute'))
-const ShoppingGuideRoute       = lazy(() => import('./components/guides/ShoppingGuideRoute'))
+const GuideRouteDining         = lazy(() => import('./components/guides/GuideRouteDining'))
+const GuideRouteHotels         = lazy(() => import('./components/guides/GuideRouteHotels'))
+const GuideRouteExperiences    = lazy(() => import('./components/guides/GuideRouteExperiences'))
+const GuideRouteShopping       = lazy(() => import('./components/guides/GuideRouteShopping'))
 
 type Route =
   | 'landing'
@@ -295,7 +306,7 @@ export default function App() {
   if (route === 'guides-dining') {
     return (
       <Suspense fallback={<RouteLoading />}>
-        <DiningGuideRoute />
+        <GuideRouteDining />
       </Suspense>
     )
   }
@@ -303,7 +314,7 @@ export default function App() {
   if (route === 'guides-hotels') {
     return (
       <Suspense fallback={<RouteLoading />}>
-        <HotelGuideRoute />
+        <GuideRouteHotels />
       </Suspense>
     )
   }
@@ -311,7 +322,7 @@ export default function App() {
   if (route === 'guides-experiences') {
     return (
       <Suspense fallback={<RouteLoading />}>
-        <ExperiencesGuideRoute />
+        <GuideRouteExperiences />
       </Suspense>
     )
   }
@@ -319,7 +330,7 @@ export default function App() {
   if (route === 'guides-shopping') {
     return (
       <Suspense fallback={<RouteLoading />}>
-        <ShoppingGuideRoute />
+        <GuideRouteShopping />
       </Suspense>
     )
   }

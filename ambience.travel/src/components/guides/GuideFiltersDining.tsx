@@ -1,12 +1,18 @@
-// DiningGuideFilters.tsx — pill row of filter chips for the dining guide
-// What it owns: chip rendering, multi-select cuisine state, Michelin toggle,
-//   ambience Pick toggle.
-// What it does not own: filtered-result computation (parent owns that).
-//
-// Prior: S40B — Added highlightedOnly to FilterState. ambience Pick
-//   chip renders when hasHighlightedItems is true.
-// Prior: S40 — Neighborhoods removed.
-// Prior: S35 — Initial ship.
+/* GuideFiltersDining.tsx — pill row of filter chips for the dining guide.
+ *
+ * Chips: All, Highlighted (when items exist), one per cuisine subcategory,
+ * Michelin (when items exist).
+ *
+ * What it owns: chip rendering, multi-select cuisine state dispatch,
+ *   Michelin and Highlighted toggle dispatch.
+ * What it does not own: filtered-result computation (parent owns that).
+ *
+ * Last updated: S53 — Renamed to convention. Behaviour unchanged.
+ * Prior: S40B — Added highlightedOnly to FilterState. Highlighted chip
+ *   renders when hasHighlightedItems is true.
+ * Prior: S40 — Neighborhoods removed.
+ * Prior: S35 — initial.
+ */
 
 import React from 'react'
 import { ID, IMMERSE } from '../../tokens/tokensLanding'
@@ -17,7 +23,7 @@ export interface FilterState {
   highlightedOnly: boolean
 }
 
-export interface FilterChipsProps {
+interface GuideFiltersDiningProps {
   state:               FilterState
   onChange:            (next: FilterState) => void
   availableCuisines:   string[]
@@ -25,13 +31,13 @@ export interface FilterChipsProps {
   hasHighlightedItems: boolean
 }
 
-export function DiningGuideFilters({
+export function GuideFiltersDining({
   state,
   onChange,
   availableCuisines,
   hasMichelinItems,
   hasHighlightedItems,
-}: FilterChipsProps) {
+}: GuideFiltersDiningProps) {
   const isAllActive = state.cuisines.size === 0 && !state.michelinOnly && !state.highlightedOnly
 
   function handleAll() {
@@ -83,6 +89,8 @@ export function DiningGuideFilters({
   )
 }
 
+// ── Chip ─────────────────────────────────────────────────────────────────────
+
 interface ChipProps {
   active:   boolean
   onClick:  () => void
@@ -104,15 +112,17 @@ function Chip({ active, onClick, children }: ChipProps) {
   )
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const filtersStyle: React.CSSProperties = {
-  display:       'flex',
-  gap:           10,
-  flexWrap:      'wrap',
-  padding:       16,
-  border:        `1px solid ${IMMERSE.tableBorder}`,
-  borderRadius:  26,
-  background:    'rgba(255,255,255,0.03)',
-  marginBottom:  26,
+  display:      'flex',
+  gap:          10,
+  flexWrap:     'wrap',
+  padding:      16,
+  border:       `1px solid ${IMMERSE.tableBorder}`,
+  borderRadius: 26,
+  background:   'rgba(255,255,255,0.03)',
+  marginBottom: 26,
 }
 
 const chipBaseStyle: React.CSSProperties = {
@@ -132,8 +142,8 @@ const chipInactiveStyle: React.CSSProperties = {
 }
 
 const chipActiveStyle: React.CSSProperties = {
-  border:      `1px solid ${ID.text}`,
-  background:  ID.text,
-  color:       '#141610',
-  fontWeight:  600,
+  border:     `1px solid ${ID.text}`,
+  background: ID.text,
+  color:      '#141610',
+  fontWeight: 600,
 }

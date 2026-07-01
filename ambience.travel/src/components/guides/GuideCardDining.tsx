@@ -1,30 +1,41 @@
-// DiningCard.tsx — single dining venue card for the guide page
-// What it owns: card chrome, image grid, status banner, meta-row, name, body, tags, address, recognition marks.
-// What it does not own: gating logic (consumes hasFullAccess prop), filter state, layout.
-//
-// Last updated: S40C — AddressBlock extracted from FullBody. Address now renders
-//   on both teaser and full access cards. TeaserBody renders above AddressBlock.
-// Prior: S39 — FullBody address block now renders when maps_url is set
-//   even without an address. Falls back to "View on map" link text.
-// Prior: S37 — Added 50 Best as fourth recognition tier. Replaced
-//   inline glyph rendering with shared RecognitionMark component (lives in
-//   RecognitionKey.tsx) — same definitions reused by the page-top key strip.
-//   Each pill carries a hover tooltip describing what it means.
-// Prior: S37 — Replaced single MICHELIN pill with structured recognition marks
-//   (★ stars + BIB pill + Green Star).
-// Prior: S37 — Added status banner. Reads venue.venue_status.
-// Prior: S36 — Collapsed two-register canon. Reads venue.body.
-// Prior: S35 — Initial ship.
+/* GuideCardDining.tsx — single dining venue card for the guide page.
+ *
+ * What it owns: card chrome, image grid, status banner, meta-row, name,
+ *   body, tags, address, recognition marks.
+ * What it does not own: gating decision (utilsGuideGating: cardBodyMode),
+ *   layout, filter state.
+ *
+ * Body-mode logic:
+ *   'full'   — render body + tags. Full access viewers, or items marked
+ *              publicly previewable (public_preview_rank != null).
+ *   'teaser' — render teaser line only. Public viewers, items not
+ *              publicly previewable.
+ *
+ * Last updated: S53 — cardBodyMode() replaces inline isTeaser derivation.
+ *   Rule stays the same; single source of truth for the derivation.
+ * Prior: S40C — AddressBlock extracted from FullBody. Address on both
+ *   teaser and full access cards.
+ * Prior: S39 — FullBody address block renders when maps_url is set even
+ *   without an address. Falls back to "View on map" link text.
+ * Prior: S37 — Added 50 Best as fourth recognition tier. Replaced inline
+ *   glyph rendering with shared GuideRecognitionMark component.
+ * Prior: S37 — Replaced single MICHELIN pill with structured recognition
+ *   marks (stars + BIB pill + Green Star).
+ * Prior: S37 — Added status banner. Reads venue.venue_status.
+ * Prior: S36 — Collapsed two-register canon. Reads venue.body.
+ * Prior: S35 — Initial ship.
+ */
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { resolveMapsUrl } from '../../utils/utilsMapsUrl'
+import { cardBodyMode } from '../../utils/utilsGuideGating'
 import type { DiningVenue, VenueStatus } from '../../queries/queriesGuidesDining'
-import { RecognitionMark } from './RecognitionKey'
+import { GuideRecognitionMark } from './GuideRecognitionKey'
 
-interface DiningCardProps {
-  venue: DiningVenue
-  hasFullAccess: boolean
+interface GuideCardDiningProps {
+  venue:           DiningVenue
+  hasFullAccess:   boolean
   destinationName: string
 }
 
@@ -34,16 +45,9 @@ const STATUS_LABELS: Record<Exclude<VenueStatus, 'operational'>, string> = {
   seasonal_closure:   'Closed for the Season',
 }
 
-export function DiningCard({ venue, hasFullAccess, destinationName }: DiningCardProps) {
-  // Cards render full body when either:
-  //   (a) the viewer has advisor-level access, or
-  //   (b) the venue itself has been marked publicly previewable
-  //       (public_preview_rank set — post-S53 public-open, all venues carry a rank)
-  //
-  // This lets the parent keep hasFullAccess as the gate for advisor extras
-  // (PDF download, PlanYourVisit, happenings) while cards render their full
-  // content whenever the venue is publicly listed.
-  const isTeaser = !hasFullAccess && venue.public_preview_rank == null
+export function GuideCardDining({ venue, hasFullAccess, destinationName }: GuideCardDiningProps) {
+  const bodyMode = cardBodyMode(venue, hasFullAccess)
+  const isTeaser = bodyMode === 'teaser'
 
   return (
     <article style={cardStyle}>
@@ -87,11 +91,11 @@ function RecognitionMarks({ venue }: { venue: DiningVenue }) {
 
   return (
     <div style={recognitionRowStyle}>
-      {hasHighlight && <RecognitionMark kind="highlighted" />}
-      {hasStar      && <RecognitionMark kind="stars" starCount={venue.michelin_stars!} />}
-      {hasBib       && <RecognitionMark kind="bib" />}
-      {hasGreen     && <RecognitionMark kind="green" />}
-      {hasFifty     && <RecognitionMark kind="fifty_best" />}
+      {hasHighlight && <GuideRecognitionMark kind="highlighted" />}
+      {hasStar      && <GuideRecognitionMark kind="stars" starCount={venue.michelin_stars!} />}
+      {hasBib       && <GuideRecognitionMark kind="bib" />}
+      {hasGreen     && <GuideRecognitionMark kind="green" />}
+      {hasFifty     && <GuideRecognitionMark kind="fifty_best" />}
     </div>
   )
 }
@@ -99,7 +103,7 @@ function RecognitionMarks({ venue }: { venue: DiningVenue }) {
 // ── Image Grid ───────────────────────────────────────────────────────────────
 
 interface ImageGridProps {
-  venue: DiningVenue
+  venue:    DiningVenue
   isTeaser: boolean
 }
 
@@ -134,9 +138,9 @@ function ImageGrid({ venue, isTeaser }: ImageGridProps) {
 }
 
 interface ImageTileProps {
-  src: string
-  alt: string | null
-  name: string
+  src:      string
+  alt:      string | null
+  name:     string
   isTeaser: boolean
 }
 
@@ -146,10 +150,7 @@ function ImageTile({ src, alt, name, isTeaser }: ImageTileProps) {
       <img
         src={src}
         alt={alt ?? name}
-        style={{
-          ...imageTileImgStyle,
-          opacity: isTeaser ? 0.7 : 1,
-        }}
+        style={{ ...imageTileImgStyle, opacity: isTeaser ? 0.7 : 1 }}
         loading="lazy"
       />
       <div style={imageTileOverlayStyle} />
@@ -158,16 +159,13 @@ function ImageTile({ src, alt, name, isTeaser }: ImageTileProps) {
 }
 
 interface NameFallbackPanelProps {
-  name: string
+  name:     string
   isTeaser: boolean
 }
 
 function NameFallbackPanel({ name, isTeaser }: NameFallbackPanelProps) {
   return (
-    <div style={{
-      ...nameFallbackStyle,
-      opacity: isTeaser ? 0.7 : 1,
-    }}>
+    <div style={{ ...nameFallbackStyle, opacity: isTeaser ? 0.7 : 1 }}>
       <span style={nameFallbackTextStyle}>{name}</span>
     </div>
   )
@@ -218,7 +216,6 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
 }
 
 // ── Address Block ────────────────────────────────────────────────────────────
-// Renders on both teaser and full access cards.
 
 function AddressBlock({ venue }: { venue: DiningVenue }) {
   const mapsUrl = resolveMapsUrl(venue.maps_url, venue.address)
@@ -227,7 +224,7 @@ function AddressBlock({ venue }: { venue: DiningVenue }) {
     <div style={addressStyle}>
       {mapsUrl ? (
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={addressLinkStyle}>
-          {venue.address ?? 'View on map'} <span style={addressArrowStyle}>↗</span>
+          {venue.address ?? 'View on map'} <span style={addressArrowStyle}>{'\u2197'}</span>
         </a>
       ) : (
         venue.address
@@ -239,192 +236,192 @@ function AddressBlock({ venue }: { venue: DiningVenue }) {
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const cardStyle: React.CSSProperties = {
-  border: `1px solid ${IMMERSE.tableBorder}`,
-  background: 'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))',
-  borderRadius: 30,
-  overflow: 'hidden',
-  minHeight: 720,
-  boxShadow: '0 20px 60px rgba(0,0,0,0.20)',
-  display: 'flex',
+  border:        `1px solid ${IMMERSE.tableBorder}`,
+  background:    'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))',
+  borderRadius:  30,
+  overflow:      'hidden',
+  minHeight:     720,
+  boxShadow:     '0 20px 60px rgba(0,0,0,0.20)',
+  display:       'flex',
   flexDirection: 'column',
 }
 
 const imageGridStyle: React.CSSProperties = {
-  height: 310,
-  display: 'grid',
-  gap: 1,
+  height:     310,
+  display:    'grid',
+  gap:        1,
   background: 'rgba(247,241,231,0.1)',
 }
 
 const imageTileStyle: React.CSSProperties = {
-  minWidth: 0,
-  position: 'relative',
-  overflow: 'hidden',
+  minWidth:   0,
+  position:   'relative',
+  overflow:   'hidden',
   background: ID.panel2,
 }
 
 const imageTileImgStyle: React.CSSProperties = {
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  display: 'block',
+  width:      '100%',
+  height:     '100%',
+  objectFit:  'cover',
+  display:    'block',
   transition: 'opacity 240ms ease',
 }
 
 const imageTileOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  background: IMMERSE.imageOverlaySoft,
+  position:      'absolute',
+  inset:         0,
+  background:    IMMERSE.imageOverlaySoft,
   pointerEvents: 'none',
 }
 
 const nameFallbackStyle: React.CSSProperties = {
-  height: 310,
-  display: 'flex',
-  alignItems: 'center',
+  height:         310,
+  display:        'flex',
+  alignItems:     'center',
   justifyContent: 'center',
-  padding: '0 32px',
-  background: `linear-gradient(135deg, ${IMMERSE.goldTint}, rgba(154,169,120,0.06)), ${ID.panel2}`,
-  borderBottom: `1px solid ${IMMERSE.tableBorder}`,
+  padding:        '0 32px',
+  background:     `linear-gradient(135deg, ${IMMERSE.goldTint}, rgba(154,169,120,0.06)), ${ID.panel2}`,
+  borderBottom:   `1px solid ${IMMERSE.tableBorder}`,
 }
 
 const nameFallbackTextStyle: React.CSSProperties = {
-  fontFamily: FONTS.serif,
-  fontSize: 38,
-  fontWeight: 400,
+  fontFamily:    FONTS.serif,
+  fontSize:      38,
+  fontWeight:    400,
   letterSpacing: '-0.04em',
-  color: ID.muted,
-  textAlign: 'center',
-  lineHeight: 1.05,
-  fontStyle: 'italic',
+  color:         ID.muted,
+  textAlign:     'center',
+  lineHeight:    1.05,
+  fontStyle:     'italic',
 }
 
 const cardBodyStyle: React.CSSProperties = {
-  padding: 26,
-  flex: 1,
-  display: 'flex',
+  padding:       26,
+  flex:          1,
+  display:       'flex',
   flexDirection: 'column',
 }
 
 const statusBannerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 14px',
+  display:      'flex',
+  alignItems:   'center',
+  gap:          8,
+  padding:      '10px 14px',
   marginBottom: 16,
   borderRadius: 12,
-  border: '1px solid rgba(216, 155, 122, 0.35)',
-  background: 'rgba(216, 155, 122, 0.08)',
+  border:       '1px solid rgba(216, 155, 122, 0.35)',
+  background:   'rgba(216, 155, 122, 0.08)',
 }
 
 const statusBannerDotStyle: React.CSSProperties = {
-  width: 8,
-  height: 8,
+  width:        8,
+  height:       8,
   borderRadius: '50%',
-  background: '#D89B7A',
-  flexShrink: 0,
+  background:   '#D89B7A',
+  flexShrink:   0,
 }
 
 const statusBannerTextStyle: React.CSSProperties = {
-  color: '#D89B7A',
-  fontSize: 12,
+  color:         '#D89B7A',
+  fontSize:      12,
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
-  fontWeight: 600,
+  fontWeight:    600,
 }
 
 const metaRowStyle: React.CSSProperties = {
-  display: 'flex',
+  display:        'flex',
   justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 12,
-  marginBottom: 14,
-  minHeight: 24,
+  alignItems:     'center',
+  gap:            12,
+  marginBottom:   14,
+  minHeight:      24,
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: ID.gold,
-  fontSize: 11,
+  color:         ID.gold,
+  fontSize:      11,
   letterSpacing: '0.18em',
   textTransform: 'uppercase',
 }
 
 const neighborhoodStyle: React.CSSProperties = {
-  color: ID.muted,
-  fontSize: 11,
+  color:         ID.muted,
+  fontSize:      11,
   letterSpacing: '0.1em',
   textTransform: 'uppercase',
 }
 
 const nameStyle: React.CSSProperties = {
-  fontFamily: FONTS.serif,
-  fontSize: 35,
-  fontWeight: 400,
-  lineHeight: 1.02,
+  fontFamily:    FONTS.serif,
+  fontSize:      35,
+  fontWeight:    400,
+  lineHeight:    1.02,
   letterSpacing: '-0.05em',
-  margin: '0 0 14px',
-  color: ID.text,
+  margin:        '0 0 14px',
+  color:         ID.text,
 }
 
 const recognitionRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
+  display:      'flex',
+  alignItems:   'center',
+  gap:          10,
   marginBottom: 16,
-  minHeight: 22,
+  minHeight:    22,
 }
 
 const descriptionStyle: React.CSSProperties = {
-  color: '#ddd4c3',
+  color:      '#ddd4c3',
   lineHeight: 1.62,
-  fontSize: 15.5,
-  margin: '0 0 18px',
+  fontSize:   15.5,
+  margin:     '0 0 18px',
 }
 
 const tagsStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 8,
+  display:      'flex',
+  flexWrap:     'wrap',
+  gap:          8,
   marginBottom: 18,
 }
 
 const tagPillStyle: React.CSSProperties = {
-  color: '#d8d1c1',
-  background: 'rgba(255,255,255,0.045)',
-  border: `1px solid ${IMMERSE.tableBorder}`,
-  padding: '7px 10px',
+  color:        '#d8d1c1',
+  background:   'rgba(255,255,255,0.045)',
+  border:       `1px solid ${IMMERSE.tableBorder}`,
+  padding:      '7px 10px',
   borderRadius: 999,
-  fontSize: 12,
+  fontSize:     12,
 }
 
 const addressStyle: React.CSSProperties = {
   paddingTop: 16,
-  borderTop: `1px solid ${IMMERSE.tableBorder}`,
-  color: '#958f84',
-  fontSize: 12,
+  borderTop:  `1px solid ${IMMERSE.tableBorder}`,
+  color:      '#958f84',
+  fontSize:   12,
   lineHeight: 1.45,
-  marginTop: 'auto',
+  marginTop:  'auto',
 }
 
 const addressLinkStyle: React.CSSProperties = {
-  color: '#958f84',
+  color:          '#958f84',
   textDecoration: 'none',
-  borderBottom: `1px solid transparent`,
-  transition: 'border-color 200ms ease, color 200ms ease',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
+  borderBottom:   '1px solid transparent',
+  transition:     'border-color 200ms ease, color 200ms ease',
+  display:        'inline-flex',
+  alignItems:     'center',
+  gap:            4,
 }
 
 const addressArrowStyle: React.CSSProperties = {
-  color: ID.gold,
+  color:    ID.gold,
   fontSize: 11,
 }
 
 const teaserStyle: React.CSSProperties = {
-  color: ID.dim,
-  fontSize: 14,
-  fontStyle: 'italic',
-  margin: '0 0 16px',
+  color:      ID.dim,
+  fontSize:   14,
+  fontStyle:  'italic',
+  margin:     '0 0 16px',
   lineHeight: 1.55,
 }

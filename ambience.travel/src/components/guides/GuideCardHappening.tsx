@@ -1,34 +1,53 @@
-// HappeningCard.tsx — single happening card for time-bound destination content
-//
-// Conceptually distinct from ExperienceCard:
-//   - Happenings have inherent time windows (Les Grimaldines: 28 July 2026)
-//   - Date is the defining attribute, given first-class visual treatment
-//   - "ONE EVENING" / "LIMITED DATES" eyebrow replaces category-only kicker
-//
-// Shape consistency: same card chrome, dimensions, image treatment, and
-// address block as ExperienceCard so the grid stays cohesive. The difference
-// is internal — date pill, tagline as italic blockquote, website link.
-//
-// What it owns: card chrome, image, date pill, name, tagline, body, bullets,
-//   website link, address block.
-// What it does not own: gating logic (consumes hasFullAccess), layout.
-//
-// Last updated: S52 — initial build for the Coming Up section on
-//   ExperiencesGuidePage.
+/* GuideCardHappening.tsx — single happening card for time-bound content.
+ *
+ * Conceptually distinct from GuideCardExperiences:
+ *   Happenings have inherent time windows (e.g. Les Grimaldines: 28 July 2026).
+ *   Date is the defining attribute, given first-class visual treatment.
+ *   "One Evening" or "Limited Dates" eyebrow replaces the category-only kicker.
+ *
+ * Shape consistency: same card chrome, dimensions, image treatment, and
+ * address block as GuideCardExperiences so the grid stays cohesive. The
+ * difference is internal — date pill, tagline as italic blockquote,
+ * website link.
+ *
+ * What it owns: card chrome, image, date pill, name, tagline, body,
+ *   bullets, website link, address block, teaser body.
+ * What it does not own: gating decision (utilsGuideGating: cardBodyMode),
+ *   layout.
+ *
+ * Cross-variant use: rendered inside ComingUpSection on the dining,
+ * experiences, shopping, and hotels guides. Not tied to a single
+ * GuideVariant.
+ *
+ * Body-mode logic:
+ *   'full'   — render tagline + body + bullets + website. Full-access
+ *              viewers, or happenings marked publicly previewable
+ *              (public_preview_rank != null) once that column is added.
+ *   'teaser' — render teaser line only. Public viewers, happenings not
+ *              publicly previewable.
+ *
+ * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ *   isTeaser derivation. Ready for public_preview_rank on
+ *   travel_happenings; behaviour is identical until that column ships.
+ * Prior: S52 — initial build for the Coming Up section.
+ */
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { resolveMapsUrl } from '../../utils/utilsMapsUrl'
+import { cardBodyMode } from '../../utils/utilsGuideGating'
 import type { Happening } from '../../queries/queriesGuidesHappenings'
 
-interface HappeningCardProps {
+interface GuideCardHappeningProps {
   happening:       Happening
   hasFullAccess:   boolean
   destinationName: string
 }
 
-export function HappeningCard({ happening, hasFullAccess, destinationName }: HappeningCardProps) {
-  const isTeaser = !hasFullAccess
+export function GuideCardHappening({ happening, hasFullAccess, destinationName }: GuideCardHappeningProps) {
+  const bodyMode = cardBodyMode(happening, hasFullAccess)
+  const isTeaser = bodyMode === 'teaser'
+
   return (
     <article style={cardStyle}>
       <ImageBlock happening={happening} isTeaser={isTeaser} />
@@ -70,7 +89,7 @@ function ImageBlock({ happening, isTeaser }: { happening: Happening; isTeaser: b
 }
 
 // ── Date eyebrow ─────────────────────────────────────────────────────────────
-// "ONE EVENING" for single-day, "LIMITED DATES" for multi-day, with
+// "One Evening" for single-day, "Limited Dates" for multi-day, with
 // optional category appended in muted weight.
 
 function DateEyebrow({ happening }: { happening: Happening }) {
@@ -81,7 +100,7 @@ function DateEyebrow({ happening }: { happening: Happening }) {
       <span style={eyebrowTagStyle}>{tag}</span>
       {happening.category && (
         <>
-          <span style={eyebrowDividerStyle}>·</span>
+          <span style={eyebrowDividerStyle}>{'\u00B7'}</span>
           <span style={eyebrowCategoryStyle}>{happening.category}</span>
         </>
       )}
@@ -90,7 +109,7 @@ function DateEyebrow({ happening }: { happening: Happening }) {
 }
 
 // ── Date line ────────────────────────────────────────────────────────────────
-// Prominent date treatment — serif, large, the defining attribute of the card.
+// The defining visual attribute of the card. Serif, large.
 
 function DateLine({ happening }: { happening: Happening }) {
   return (
@@ -120,7 +139,11 @@ function formatFullDate(d: { year: number; month: number; day: number }): string
   return `${d.day} ${MONTHS[d.month]} ${d.year}`
 }
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const MONTHS = [
+  'January', 'February', 'March',     'April',
+  'May',     'June',     'July',      'August',
+  'September','October',  'November',  'December',
+]
 
 // ── Full body ────────────────────────────────────────────────────────────────
 
@@ -250,13 +273,13 @@ const cardBodyStyle: React.CSSProperties = {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  display:      'flex',
-  alignItems:   'center',
-  gap:          8,
-  marginBottom: 10,
-  fontSize:     11,
-  letterSpacing:'0.18em',
-  textTransform:'uppercase',
+  display:       'flex',
+  alignItems:    'center',
+  gap:           8,
+  marginBottom:  10,
+  fontSize:      11,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
 }
 
 const eyebrowTagStyle: React.CSSProperties = {
@@ -295,15 +318,15 @@ const nameStyle: React.CSSProperties = {
 }
 
 const taglineStyle: React.CSSProperties = {
-  fontFamily: FONTS.serif,
-  fontStyle:  'italic',
-  fontSize:   16.5,
-  color:      ID.text,
-  lineHeight: 1.4,
-  margin:     '0 0 16px',
+  fontFamily:  FONTS.serif,
+  fontStyle:   'italic',
+  fontSize:    16.5,
+  color:       ID.text,
+  lineHeight:  1.4,
+  margin:      '0 0 16px',
   paddingLeft: 14,
-  borderLeft: `2px solid ${ID.gold}`,
-  opacity:    0.92,
+  borderLeft:  `2px solid ${ID.gold}`,
+  opacity:     0.92,
 }
 
 const descriptionStyle: React.CSSProperties = {

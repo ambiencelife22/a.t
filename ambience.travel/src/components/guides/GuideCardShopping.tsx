@@ -1,30 +1,45 @@
-// ShoppingCard.tsx — single shopping card for the Selected shopping section.
-//
-// Conceptually distinct from ExperienceCard:
-//   - Shopping is a reference list (where to buy), not a narrative (what to do)
-//   - Cards are more compact: smaller image, denser type, 3-column grid
-//   - Shop type as eyebrow ("FASHION", "JEWELRY", etc.)
-//   - "By appointment" pill when relevant
-//
-// What it owns: card chrome, image, name, type eyebrow, by-appointment pill,
-//   tagline, body, bullets, address block.
-// What it does not own: gating logic (consumes hasFullAccess), layout, grid.
-//
-// Last updated: S52 — initial build for the Selected shopping section.
+/* GuideCardShopping.tsx — single shopping card for the shopping guide.
+ *
+ * Conceptually distinct from GuideCardExperiences:
+ *   Shopping is a reference list (where to buy), not a narrative.
+ *   Cards are more compact: smaller image, denser type, 3-column grid.
+ *   Shop type carries as eyebrow ("FASHION", "JEWELRY").
+ *   "By Appointment" pill when relevant.
+ *
+ * What it owns: card chrome, image, name, type eyebrow, by-appointment pill,
+ *   tagline, body, bullets, address block, teaser body.
+ * What it does not own: gating decision (utilsGuideGating: cardBodyMode),
+ *   layout, grid.
+ *
+ * Body-mode logic:
+ *   'full'   — render tagline + body + bullets. Full-access viewers, or
+ *              shops marked publicly previewable (public_preview_rank
+ *              != null) once that column is added to travel_shopping.
+ *   'teaser' — render teaser line only. Public viewers, shops not marked
+ *              publicly previewable.
+ *
+ * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ *   isTeaser derivation. Ready for public_preview_rank on
+ *   travel_shopping; behaviour is identical until that column ships.
+ * Prior: S52 — initial.
+ */
 
 import React from 'react'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { resolveMapsUrl } from '../../utils/utilsMapsUrl'
+import { cardBodyMode } from '../../utils/utilsGuideGating'
 import type { Shop } from '../../queries/queriesGuidesShopping'
 
-interface ShopCardProps {
+interface GuideCardShoppingProps {
   shop:            Shop
   hasFullAccess:   boolean
   destinationName: string
 }
 
-export function ShopCard({ shop, hasFullAccess, destinationName }: ShopCardProps) {
-  const isTeaser = !hasFullAccess
+export function GuideCardShopping({ shop, hasFullAccess, destinationName }: GuideCardShoppingProps) {
+  const bodyMode = cardBodyMode(shop, hasFullAccess)
+  const isTeaser = bodyMode === 'teaser'
+
   return (
     <article style={cardStyle}>
       <ImageBlock shop={shop} isTeaser={isTeaser} />
@@ -65,7 +80,6 @@ function ImageBlock({ shop, isTeaser }: { shop: Shop; isTeaser: boolean }) {
 }
 
 // ── Eyebrow ──────────────────────────────────────────────────────────────────
-// "FASHION" or "FASHION · BY APPOINTMENT"
 
 function Eyebrow({ shop }: { shop: Shop }) {
   if (!shop.shop_type && !shop.by_appointment) return null
@@ -75,7 +89,7 @@ function Eyebrow({ shop }: { shop: Shop }) {
         <span style={eyebrowTypeStyle}>{shop.shop_type.toUpperCase()}</span>
       )}
       {shop.shop_type && shop.by_appointment && (
-        <span style={eyebrowDividerStyle}>{'\u00b7'}</span>
+        <span style={eyebrowDividerStyle}>{'\u00B7'}</span>
       )}
       {shop.by_appointment && (
         <span style={eyebrowAppointmentStyle}>By Appointment</span>
