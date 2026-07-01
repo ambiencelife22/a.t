@@ -72,3 +72,40 @@ export function deriveElementStatus(children: ChildStatus[]): ElementRollup {
   const lowest = [...eligible].sort((a, b) => a.sort_order - b.sort_order)[0]
   return { kind: 'pending', confirmed: 0, total, displaySlug: lowest.slug, displayLabel: lowest.label }
 }
+
+// ── Payment exception (Arc B Phase 6) ─────────────────────────────────────────
+//
+// Guest-surface payment signal, SEPARATE from the lifecycle rollup above. The
+// rollup answers "what stage are the children at"; this answers "does this
+// booking need the guest's payment attention". Two questions, two helpers — but
+// both canonical here so no surface computes payment state inline.
+//
+// Exception fires when EITHER:
+//   (1) an admin has forced it (payment_exception_override === true), OR
+//   (2) the balance is overdue by fact: a due date in the past with no payment
+//       recorded (balance_due_date < today AND balance_paid_at IS NULL).
+//
+// A not-yet-due balance is NOT an exception — it is simply future, and stays
+// silent. Red is reserved for action-needed, never for future-due. A deposit is
+// not considered here; "settled" on the guest surface means the BALANCE is paid.
+//
+// today: pass the comparison date as 'YYYY-MM-DD'. UTC date is the first cut;
+// destination-aware comparison is the same debt logged for the programme "today"
+// default (global_destinations.timezone + Intl). Both dates are plain calendar
+// dates, so a lexical string compare is correct and avoids Date() UTC-parse traps.
+
+export interface PaymentExceptionInput {
+  balance_due_date:           string | null
+  balance_paid_at:            string | null
+  payment_exception_override: boolean | null
+}
+
+export function derivePaymentException(
+  b: PaymentExceptionInput,
+  today: string,
+): boolean {
+  if (b.payment_exception_override === true) return true
+  if (b.balance_paid_at) return false
+  if (!b.balance_due_date) return false
+  return b.balance_due_date < today
+}

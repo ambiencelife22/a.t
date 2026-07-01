@@ -699,6 +699,11 @@ export type ImmerseTripBooking = {
   sort_order:          number | null
   created_at:          string | null
   updated_at:          string | null
+  // Derived on the wire by travel-get-trip-confirmation only. Optional because
+  // admin surfaces construct ImmerseTripBooking without computing it; absent
+  // reads as "no exception". The raw balance date/override that produce it are
+  // never sent to the client.
+  payment_exception?:  boolean
   // Client-resolved
   _hotel_name:      string | null
   _hotel_image_src: string | null

@@ -76,6 +76,7 @@ function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
   const contentW = CW - HOTEL_IMG_W
   const rooms    = booking._rooms ?? []
   const headerConf = rooms.length === 0 && booking.confirmation_number
+  const hasException = booking.payment_exception === true
 
   serif(doc, 'normal', 11)
   const nameLines = doc.splitTextToSize(booking._hotel_name ?? booking.name ?? 'Hotel', contentW - HOTEL_PADH * 2)
@@ -86,6 +87,7 @@ function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
     + (booking.check_out_note ? 4.5 : 0)
     + (booking.start_time ? 5 : 0)
     + (booking.party_composition ? 5 : 0)
+    + (hasException ? 6 : 0)
     + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
     + HOTEL_PADV
   const headerH = Math.max(36, headerContentH, HOTEL_IMG_H + HOTEL_PADV * 2)
@@ -148,6 +150,12 @@ async function drawHotelHeader(doc: any, booking: TripBooking, y: number, m: Hot
   if (booking.party_composition) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text((doc.splitTextToSize(booking.party_composition, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 5 }
 
   ty += 4
+  if (booking.payment_exception === true) {
+    sans(doc, 'bold', 7)
+    doc.setTextColor(180, 50, 31)
+    doc.text('PAYMENT OUTSTANDING', tx, ty, { charSpace: 0.4 })
+    ty += 6
+  }
   if (headerConf) { drawConfPill(doc, tx, ty - 4, headerConf, ownArr ? 'faint' : 'gold'); ty += 7 }
   if (isOwnArrangements(booking.booked_by)) { drawOwnArrangementsChip(doc, tx, ty - 3.6) }
   if (!isOwnArrangements(booking.booked_by)) { sans(doc, 'italic', 7.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(bookedByText, tx, ty) }

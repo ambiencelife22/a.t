@@ -13,6 +13,7 @@
 import { createServiceClient } from '../_shared/client.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { json, preflight } from '../_shared/http.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
@@ -58,7 +59,7 @@ Deno.serve(async (req: Request) => {
 
       // confirmation needs financial-adjacent columns (deposit/balance paid, taxes)
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, created_at, updated_at')
+        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override, created_at, updated_at')
         .eq('house_id', houseId)
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
@@ -136,6 +137,8 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const todayUTC = new Date().toISOString().slice(0, 10)
+
     const fullBookings = bookings.map((b: any) => {
       const hotel = b.accom_hotel_id ? (hotelById[b.accom_hotel_id] ?? null) : null
       const bookingRooms = roomsByBooking[b.id] ?? []
@@ -158,6 +161,12 @@ Deno.serve(async (req: Request) => {
         price:            null, deposit_amount: null, deposit_due_date: null,
         // S43 Add 2: deposit_paid_at + balance_paid_at passed through from DB (not nulled)
         balance_amount:   null, balance_due_date: null,
+        // Only the derived boolean reaches the payload; the raw date + override
+        // are read for the compute but never re-exposed to the guest.
+        payment_exception: derivePaymentException(
+          { balance_due_date: b.balance_due_date ?? null, balance_paid_at: b.balance_paid_at ?? null, payment_exception_override: b.payment_exception_override ?? null },
+          todayUTC,
+        ),
         commission_pct:   null, commission_amount: null, net_revenue: null,
         commission_paid_at: null, invoice_number: null,
         iata_partner_id:  null, iata_share_pct: null, iata_share_amt: null,

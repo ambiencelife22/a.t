@@ -331,6 +331,14 @@ const auxSections = groupAuxBySection(auxBookings)
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
                     </div>
                     <div style={{ marginTop: 12 }}>
+                      {booking.payment_exception && (
+                        <div style={{
+                          display: 'inline-block', marginBottom: 6, padding: '3px 10px',
+                          border: '1px solid #B4321F', borderRadius: 5, background: '#B4321F0F',
+                        }}>
+                          <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B4321F' }}>Payment Outstanding</span>
+                        </div>
+                      )}
                       {/* Booking-level conf shows only when there are no rooms (each room carries its own) */}
                       {rooms.length === 0 && booking.confirmation_number && (
                         <div style={{
