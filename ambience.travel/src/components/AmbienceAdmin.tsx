@@ -55,7 +55,6 @@ const GuidesHotelsTab      = lazyWithReload(() => import('./admin/GuidesHotelsTa
 const GuidesExperiencesTab = lazyWithReload(() => import('./admin/GuidesExperiencesTab'))
 const GuidesShoppingTab    = lazyWithReload(() => import('./admin/GuidesShoppingTab'))
 const HouseTab             = lazyWithReload(() => import('./admin/HouseTab'))
-const OperationsTab        = lazyWithReload(() => import('./admin/OperationsTab').then(m => ({ default: m.OperationsTab })))
 const TimeTrackingTab      = lazyWithReload(() => import('./admin/TimeTrackingTab'))
 const TimeAnalyticsTab     = lazyWithReload(() => import('./admin/TimeAnalyticsTab'))
 const CalendarTab          = lazyWithReload(() => import('./admin/CalendarTab'))
@@ -66,7 +65,6 @@ const BriefEditorPage      = lazyWithReload(() => import('./admin/BriefEditorPag
 const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEditorPage'))
 
 // Financial
-const FinancialTab         = lazyWithReload(() => import('./admin/FinancialTab'))
 const OutlookTab           = lazyWithReload(() => import('./admin/OutlookTab'))
 const TripDetail           = lazyWithReload(() => import('./admin/TripDetail'))
 const StudioDashboard      = lazyWithReload(() => import('./admin/StudioDashboard'))
@@ -216,8 +214,6 @@ function TabContent({ tab }: { tab: AdminTab }) {
   }
 
   if (tab.product === 'studio') {
-    if (tab.tab === 'finance')              return <FinancialTab />
-    if (tab.tab === 'finance-engagement')   return <FinancialTab engagementId={tab.engagementId} />
     if (tab.tab === 'time')                 return <TimeTrackingTab />
     if (tab.tab === 'time-analytics')       return <TimeAnalyticsTab />
     return <StudioDashboard />
@@ -247,7 +243,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
 
   if (tab.product === 'house')      return <HouseTab />
   if (tab.product === 'calendar')   return <CalendarTab />
-  if (tab.product === 'operations') return <OperationsTab />
+  if (tab.product === 'operations') return <StudioDashboard />
 
   if (tab.product === 'time') {
     if (tab.tab === 'analytics') return <TimeAnalyticsTab />
@@ -255,8 +251,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
   }
 
   if (tab.product === 'finance') {
-    if (tab.tab === 'engagement') return <FinancialTab engagementId={tab.engagementId} />
-    return <FinancialTab />
+    return <StudioDashboard />
   }
 
   if (tab.product === 'programme') {
