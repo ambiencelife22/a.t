@@ -169,7 +169,7 @@ function TripActionPanel({ trip, house }: {
         {pdfDownloading ? 'Generating...' : 'Download Confirmation Brief'}
       </button>
       <button
-        onClick={() => navigateAdmin({ product: 'trips', tab: 'itinerary', tripId: trip.id })}
+        onClick={() => navigateAdmin({ product: 'trips', tab: 'programme', tripId: trip.id })}
         style={{ ...btnBase, background: A.bgCard, color: A.muted, border: `1px solid ${A.border}` }}
       >
         Daily Programme

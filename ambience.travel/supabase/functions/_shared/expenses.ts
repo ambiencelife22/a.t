@@ -19,7 +19,9 @@ export const EXPENSE_SELECT = `
 `
 
 export const BOOKING_FINANCIAL_SELECT = `
-  id, name, booking_type, accom_hotel_id, start_date, end_date, nights, currency,
+  id, trip_id, engagement_id, name, booking_type, status, confirmation_number,
+  accom_hotel_id, supplier_id, supplier_name_override,
+  start_date, end_date, nights, currency, price,
   cost,
   total_rate, total_rate_usd,
   commissionable_rate, commissionable_rate_usd,
@@ -28,10 +30,14 @@ export const BOOKING_FINANCIAL_SELECT = `
   commission_net_received,
   net_revenue, net_revenue_usd,
   taxes_and_fees, taxes_and_fees_usd,
-  referral_share_amt, iata_share_amt, individual_share_amt,
+  referral_partner_id, referral_share_pct, referral_share_amt,
+  iata_partner_id, iata_share_pct, iata_share_amt,
+  individual_id, individual_share_pct, individual_share_amt,
   deposit_amount, deposit_due_date, deposit_paid_at,
   balance_amount, balance_due_date, balance_paid_at,
+  payment_exception_override,
   invoice_number, rate_type, sort_order,
+  cancellation_policy, notes,
   selling_price, selling_price_usd,
   rate_type_id,
   commission_payment_platform_id,

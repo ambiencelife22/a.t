@@ -1,15 +1,19 @@
 /* AmbienceAdmin.tsx
  * Top-level admin shell for ambience.travel/#admin (and localhost:5173/#admin).
- * Mounts both the Immerse and Programme product groups behind a single sidebar.
  *
- * Last updated: S43 Add 2 — all tab imports converted to lazy() for code
- *   splitting. AmbienceAdmin chunk: 541KB → distributed across per-tab chunks.
- *   Suspense wrapper added around TabContent with AdminLoading fallback.
- * Prior: S49 — import programme tabs directly from ProgrammeAdmin.tsx.
- * Prior: S45 — Added ItineraryEditorPage at #admin/trips/{tripId}/itinerary.
- * Prior: S46 — Added BriefEditorPage at #admin/trips/{tripId}/brief.
- * Prior: S40D — Added House product group (HouseTab).
- * Prior: S36 — Wired Library + Guides product groups.
+ * Last updated: S53G Phase 1 — new 5-group taxonomy wired into TabContent.
+ *   Legacy products (immerse, guides, library, house, operations, time, calendar,
+ *   finance, programme) still dispatch correctly via alias routes in utilsAdminPath.
+ *   New products (trips, clients, content, residences, studio) wired to placeholder
+ *   or existing components as appropriate — full surface builds happen in Phase 3+.
+ *   'itinerary' tab renamed to 'programme' throughout.
+ *
+ * Prior: S43 Add 2 — lazy() code splitting + Suspense.
+ * Prior: S49 — programme tabs imported from ProgrammeAdmin.tsx.
+ * Prior: S45 — ItineraryEditorPage at #admin/trips/{tripId}/itinerary.
+ * Prior: S46 — BriefEditorPage at #admin/trips/{tripId}/brief.
+ * Prior: S40D — House product group.
+ * Prior: S36 — Library + Guides product groups.
  * Prior: S33
  */
 
@@ -20,11 +24,6 @@ import { parseAdminHash, type AdminTab } from '../utils/utilsAdminPath'
 import { A } from '../tokens/tokensAdmin'
 import { AdminToastProvider } from './admin/_adminPrimitives'
 
-// Stale-chunk recovery: after a deploy, Vite re-hashes chunks and the old
-// hashes 404 — the SPA host serves index.html (HTML) for the missing .js,
-// the browser rejects the MIME type, and the dynamic import throws, blanking
-// the tree. Catch that once, force-reload to fetch the current build, and
-// guard against reload loops. A genuine import error (already retried) rethrows.
 function lazyWithReload<T extends { default: React.ComponentType<any> }>(
   factory: () => Promise<T>,
 ) {
@@ -34,32 +33,42 @@ function lazyWithReload<T extends { default: React.ComponentType<any> }>(
       if (!sessionStorage.getItem(KEY)) {
         sessionStorage.setItem(KEY, '1')
         window.location.reload()
-        return new Promise<T>(() => {}) // never resolves; reload takes over
+        return new Promise<T>(() => {})
       }
-      throw err // already retried after a reload — surface the real failure
+      throw err
     }),
   )
 }
 
+// ── Lazy imports ──────────────────────────────────────────────────────────────
+
 const AdminSidebar         = lazyWithReload(() => import('./admin/AdminSidebar'))
+
+// Legacy surfaces (still used during Phase 1-2 transition)
 const EngagementsListTab   = lazyWithReload(() => import('./admin/EngagementsListTab'))
 const EngagementDetailTab  = lazyWithReload(() => import('./admin/EngagementDetailTab'))
 const ShowcasesListTab     = lazyWithReload(() => import('./admin/ShowcasesListTab'))
 const LibraryDiningTab     = lazyWithReload(() => import('./admin/LibraryDiningTab'))
+const LibraryHotelsTab     = lazyWithReload(() => import('./admin/LibraryHotelsTab'))
 const GuidesDiningTab      = lazyWithReload(() => import('./admin/GuidesDiningTab'))
 const GuidesHotelsTab      = lazyWithReload(() => import('./admin/GuidesHotelsTab'))
-const LibraryHotelsTab     = lazyWithReload(() => import('./admin/LibraryHotelsTab'))
 const GuidesExperiencesTab = lazyWithReload(() => import('./admin/GuidesExperiencesTab'))
 const GuidesShoppingTab    = lazyWithReload(() => import('./admin/GuidesShoppingTab'))
 const HouseTab             = lazyWithReload(() => import('./admin/HouseTab'))
-const BriefEditorPage      = lazyWithReload(() => import('./admin/BriefEditorPage'))
-const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEditorPage'))
 const OperationsTab        = lazyWithReload(() => import('./admin/OperationsTab').then(m => ({ default: m.OperationsTab })))
 const TimeTrackingTab      = lazyWithReload(() => import('./admin/TimeTrackingTab'))
 const TimeAnalyticsTab     = lazyWithReload(() => import('./admin/TimeAnalyticsTab'))
-const ClientProfilePage    = lazyWithReload(() => import('./admin/ClientProfilePage'))
 const CalendarTab          = lazyWithReload(() => import('./admin/CalendarTab'))
+const ClientProfilePage    = lazyWithReload(() => import('./admin/ClientProfilePage'))
+
+// Full-page editors (cream canvas — bypass admin chrome)
+const BriefEditorPage      = lazyWithReload(() => import('./admin/BriefEditorPage'))
+const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEditorPage'))
+
+// Financial
 const FinancialTab         = lazyWithReload(() => import('./admin/FinancialTab'))
+
+// Residences (was Programme)
 const ProgrammesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
 const WelcomeLettersTab    = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.WelcomeLettersTab })))
 const ListingsTab          = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ListingsTab })))
@@ -67,7 +76,7 @@ const PropertySectionsTab  = lazyWithReload(() => import('./admin/ProgrammeAdmin
 const PropertiesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.PropertiesTab })))
 const AccessDeniedPageTab  = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.AccessDeniedPageTab })))
 
-// ── Loading fallback ──────────────────────────────────────────────────────────
+// ── Loading / access denied ───────────────────────────────────────────────────
 
 function AdminLoading() {
   return (
@@ -76,8 +85,6 @@ function AdminLoading() {
     </div>
   )
 }
-
-// ── Access denied ─────────────────────────────────────────────────────────────
 
 function AccessDenied() {
   return (
@@ -113,22 +120,20 @@ function AdminShell() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // App mounted successfully — clear the stale-chunk reload guard so a future
-  // genuine chunk failure can still trigger its one recovery reload.
   useEffect(() => { sessionStorage.removeItem('admin-chunk-reload') }, [])
 
   // Full-page cream editors — bypass standard admin chrome
+  if (tab.product === 'trips' && tab.tab === 'programme') {
+    return (
+      <Suspense fallback={<AdminLoading />}>
+        <ItineraryEditorPage tripId={tab.tripId} />
+      </Suspense>
+    )
+  }
   if (tab.product === 'trips' && tab.tab === 'brief') {
     return (
       <Suspense fallback={<AdminLoading />}>
         <BriefEditorPage tripId={tab.tripId} />
-      </Suspense>
-    )
-  }
-  if (tab.product === 'trips' && tab.tab === 'itinerary') {
-    return (
-      <Suspense fallback={<AdminLoading />}>
-        <ItineraryEditorPage tripId={tab.tripId} />
       </Suspense>
     )
   }
@@ -167,8 +172,61 @@ function AdminShell() {
 }
 
 // ── Tab dispatch ──────────────────────────────────────────────────────────────
+// Phase 1: new products dispatch here. Legacy products still resolve via
+// utilsAdminPath aliases and land on their existing components.
+// Phase 3+ will replace the legacy dispatches with new TripDetail, ClientsTab, etc.
 
 function TabContent({ tab }: { tab: AdminTab }) {
+
+  // ── New taxonomy ────────────────────────────────────────────────────────────
+
+  if (tab.product === 'trips') {
+    // list + detail tabs: placeholder until Phase 3 TripDetail is built.
+    // For now, fall through to EngagementsListTab / EngagementDetailTab
+    // so the admin remains functional during the transition.
+    if (tab.tab === 'list')     return <EngagementsListTab />
+    if (tab.tab === 'overview') return <EngagementDetailTab urlId={tab.urlId} />
+    // bookings, contacts, activity: Phase 3 surfaces, show list for now
+    return <EngagementsListTab />
+  }
+
+  if (tab.product === 'clients') {
+    // Phase 5: ClientsTab. For now, HouseTab is the nearest equivalent.
+    return <HouseTab />
+  }
+
+  if (tab.product === 'content') {
+    // Unified content surface — dispatches to existing guide/library tabs
+    // Phase 3+: these will merge into a single ContentTab per category
+    if (tab.tab === 'dining')      return <GuidesDiningTab />
+    if (tab.tab === 'experiences') return <GuidesExperiencesTab />
+    if (tab.tab === 'hotels')      return <GuidesHotelsTab />
+    if (tab.tab === 'shopping')    return <GuidesShoppingTab />
+    return <GuidesDiningTab />
+  }
+
+  if (tab.product === 'residences') {
+    if (tab.tab === 'list')           return <ProgrammesTab />
+    if (tab.tab === 'letters')        return <WelcomeLettersTab />
+    if (tab.tab === 'listings')       return <ListingsTab />
+    if (tab.tab === 'sections')       return <PropertySectionsTab />
+    if (tab.tab === 'properties')     return <PropertiesTab />
+    if (tab.tab === 'access-denied')  return <AccessDeniedPageTab />
+    if (tab.tab === 'client-profile') return <ClientProfilePage />
+    return <ProgrammesTab />
+  }
+
+  if (tab.product === 'studio') {
+    if (tab.tab === 'finance')              return <FinancialTab />
+    if (tab.tab === 'finance-engagement')   return <FinancialTab engagementId={tab.engagementId} />
+    if (tab.tab === 'time')                 return <TimeTrackingTab />
+    if (tab.tab === 'time-analytics')       return <TimeAnalyticsTab />
+    // dashboard: Phase 6 StudioDashboard. CalendarTab as placeholder.
+    return <CalendarTab />
+  }
+
+  // ── Legacy aliases (kept until Phase 7 dissolution) ──────────────────────
+
   if (tab.product === 'immerse') {
     if (tab.tab === 'engagements') {
       if (tab.urlId) return <EngagementDetailTab urlId={tab.urlId} />
@@ -189,16 +247,18 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'hotels') return <LibraryHotelsTab destinationId={tab.destinationId} />
   }
 
- if (tab.product === 'calendar')   return <CalendarTab />
-     if (tab.product === 'finance') {
-       if (tab.tab === 'engagement') return <FinancialTab engagementId={tab.engagementId} />
-       return <FinancialTab />
-     }
   if (tab.product === 'house')      return <HouseTab />
+  if (tab.product === 'calendar')   return <CalendarTab />
   if (tab.product === 'operations') return <OperationsTab />
+
   if (tab.product === 'time') {
     if (tab.tab === 'analytics') return <TimeAnalyticsTab />
     return <TimeTrackingTab />
+  }
+
+  if (tab.product === 'finance') {
+    if (tab.tab === 'engagement') return <FinancialTab engagementId={tab.engagementId} />
+    return <FinancialTab />
   }
 
   if (tab.product === 'programme') {
@@ -211,6 +271,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'client-profile') return <ClientProfilePage />
   }
 
+  // Default: trips list
   return <EngagementsListTab />
 }
 

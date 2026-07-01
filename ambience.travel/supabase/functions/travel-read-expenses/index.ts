@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
       // Enrich bookings
       const enrichedBookings = bookings.map(b => ({
         ...b,
-        hotel_name:      b.accom_hotel_id ? (hotelById[b.accom_hotel_id as string] ?? b.name) : b.name,
+        _hotel_name:     b.accom_hotel_id ? (hotelById[b.accom_hotel_id as string] ?? null) : null,
         net_revenue_usd: computeNetRevenue(b),
         rooms:           roomsByBooking[b.id as string] ?? [],
       }))
