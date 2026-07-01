@@ -1,62 +1,25 @@
-// AdminSidebar.tsx — Admin navigation for the 5-group taxonomy.
+// AdminSidebar.tsx — Admin navigation, 5-group taxonomy.
+// S53I Phase 2: rebuilt for confirmed 5-group architecture (Trips, Clients,
+// Content, Residences, Studio). Legacy groups (immerse, guides, library, house,
+// operations, time, finance, programme) dissolved — all routing aliased in
+// utilsAdminPath.ts and still functional; sidebar now reflects the target state.
 //
-// Groups (confirmed S53G Admin Redesign v2, locked):
-//   Trips      — pipeline list + per-trip detail (overview/bookings/contacts/activity)
-//   Clients    — households + profiles + trip history
-//   Content    — Dining / Hotels / Experiences / Shopping (library+guides unified)
-//   Residences — list / letters / listings / sections / properties / access-denied / client-profile
-//   Studio     — dashboard / Finance pipeline / Effort Log / Time Analytics
-//
-// Replaces the legacy sidebar (immerse/guides/library/house/operations/time/
-// calendar/finance/programme groups). Legacy routes still parse + dispatch
-// correctly in utilsAdminPath + AmbienceAdmin; the sidebar just no longer
-// exposes them. They dissolve in Phase 7.
-//
-// Last updated: S53I — Phase 2 sidebar (5-group taxonomy).
+// Prior: S53G Phase 1 — legacy taxonomy (immerse, guides, library, house,
+//   operations, time, finance, programme).
 
 import { useState } from 'react'
-import { buildAdminHash, navigateAdmin, type AdminTab } from '../../utils/utilsAdminPath'
+import { Plane, BookOpen, Library, Home, LayoutGrid } from './_adminIcons'
+import {
+  buildAdminHash,
+  navigateAdmin,
+  type AdminTab,
+  type ContentTabId,
+  type ResidenceTabId,
+  type StudioTabId,
+} from '../../utils/utilsAdminPath'
 import { A } from '../../tokens/tokensAdmin'
 
-// ── Icons (inline SVG — no external dep) ─────────────────────────────────────
-
-function IconTrips({ active }: { active: boolean }) {
-  return (
-    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
-      <path d='M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' />
-    </svg>
-  )
-}
-function IconClients({ active }: { active: boolean }) {
-  return (
-    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
-      <path d='M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' /><circle cx='9' cy='7' r='4' /><path d='M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' />
-    </svg>
-  )
-}
-function IconContent({ active }: { active: boolean }) {
-  return (
-    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
-      <path d='M4 19.5A2.5 2.5 0 016.5 17H20' /><path d='M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z' />
-    </svg>
-  )
-}
-function IconResidences({ active }: { active: boolean }) {
-  return (
-    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
-      <rect x='2' y='3' width='20' height='14' rx='2' ry='2' /><path d='M8 21h8M12 17v4' />
-    </svg>
-  )
-}
-function IconStudio({ active }: { active: boolean }) {
-  return (
-    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
-      <rect x='3' y='3' width='7' height='7' /><rect x='14' y='3' width='7' height='7' /><rect x='14' y='14' width='7' height='7' /><rect x='3' y='14' width='7' height='7' />
-    </svg>
-  )
-}
-
-// ── Group definitions ─────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type NavItem = {
   key:    string
@@ -66,190 +29,144 @@ type NavItem = {
 }
 
 type NavGroup = {
-  key:    string
-  label:  string
-  Icon:   (props: { active: boolean }) => React.ReactElement
-  items:  NavItem[]
-  active: (tab: AdminTab) => boolean
+  key:   string
+  label: string
+  icon:  (props: { size?: number; color?: string; strokeWidth?: number }) => React.ReactElement
+  items: NavItem[]
 }
+
+// ── Groups ────────────────────────────────────────────────────────────────────
 
 const GROUPS: NavGroup[] = [
   {
-    key: 'trips', label: 'Trips',
-    Icon: IconTrips,
-    active: tab => tab.product === 'trips',
+    key: 'trips', label: 'Trips', icon: Plane,
     items: [
       {
         key: 'trips-list', label: 'All Trips',
         hash: buildAdminHash({ product: 'trips', tab: 'list' }),
-        active: tab => tab.product === 'trips' && tab.tab === 'list',
+        active: t => t.product === 'trips' && t.tab === 'list',
       },
     ],
   },
   {
-    key: 'clients', label: 'Clients',
-    Icon: IconClients,
-    active: tab => tab.product === 'clients',
+    key: 'clients', label: 'Clients', icon: Home,
     items: [
       {
         key: 'clients-list', label: 'Households',
         hash: buildAdminHash({ product: 'clients', tab: 'list' }),
-        active: tab => tab.product === 'clients',
+        active: t => t.product === 'clients',
       },
     ],
   },
   {
-    key: 'content', label: 'Content',
-    Icon: IconContent,
-    active: tab => tab.product === 'content',
+    key: 'content', label: 'Content', icon: BookOpen,
+    items: (
+      ['dining', 'experiences', 'hotels', 'shopping'] as ContentTabId[]
+    ).map(tab => ({
+      key:    `content-${tab}`,
+      label:  tab.charAt(0).toUpperCase() + tab.slice(1),
+      hash:   buildAdminHash({ product: 'content', tab }),
+      active: (t: AdminTab) => t.product === 'content' && t.tab === tab,
+    })),
+  },
+  {
+    key: 'residences', label: 'Residences', icon: Library,
     items: [
-      {
-        key: 'content-dining', label: 'Dining',
-        hash: buildAdminHash({ product: 'content', tab: 'dining' }),
-        active: tab => tab.product === 'content' && tab.tab === 'dining',
-      },
-      {
-        key: 'content-hotels', label: 'Hotels',
-        hash: buildAdminHash({ product: 'content', tab: 'hotels' }),
-        active: tab => tab.product === 'content' && tab.tab === 'hotels',
-      },
-      {
-        key: 'content-experiences', label: 'Experiences',
-        hash: buildAdminHash({ product: 'content', tab: 'experiences' }),
-        active: tab => tab.product === 'content' && tab.tab === 'experiences',
-      },
-      {
-        key: 'content-shopping', label: 'Shopping',
-        hash: buildAdminHash({ product: 'content', tab: 'shopping' }),
-        active: tab => tab.product === 'content' && tab.tab === 'shopping',
-      },
+      { key: 'res-list',     label: 'Residences',        hash: buildAdminHash({ product: 'residences', tab: 'list' }),           active: (t: AdminTab) => t.product === 'residences' && t.tab === 'list' },
+      { key: 'res-letters',  label: 'Welcome Letters',   hash: buildAdminHash({ product: 'residences', tab: 'letters' }),        active: (t: AdminTab) => t.product === 'residences' && t.tab === 'letters' },
+      { key: 'res-listings', label: 'Listings',          hash: buildAdminHash({ product: 'residences', tab: 'listings' }),       active: (t: AdminTab) => t.product === 'residences' && t.tab === 'listings' },
+      { key: 'res-sections', label: 'Property Sections', hash: buildAdminHash({ product: 'residences', tab: 'sections' }),       active: (t: AdminTab) => t.product === 'residences' && t.tab === 'sections' },
+      { key: 'res-props',    label: 'Properties',        hash: buildAdminHash({ product: 'residences', tab: 'properties' }),     active: (t: AdminTab) => t.product === 'residences' && t.tab === 'properties' },
+      { key: 'res-access',   label: 'Access Denied',     hash: buildAdminHash({ product: 'residences', tab: 'access-denied' }),  active: (t: AdminTab) => t.product === 'residences' && t.tab === 'access-denied' },
+      { key: 'res-profile',  label: 'Client Profile',    hash: buildAdminHash({ product: 'residences', tab: 'client-profile' }), active: (t: AdminTab) => t.product === 'residences' && t.tab === 'client-profile' },
     ],
   },
   {
-    key: 'residences', label: 'Residences',
-    Icon: IconResidences,
-    active: tab => tab.product === 'residences',
+    key: 'studio', label: 'Studio', icon: LayoutGrid,
     items: [
-      {
-        key: 'res-list',     label: 'Residences',
-        hash: buildAdminHash({ product: 'residences', tab: 'list' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'list',
-      },
-      {
-        key: 'res-letters',  label: 'Welcome Letters',
-        hash: buildAdminHash({ product: 'residences', tab: 'letters' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'letters',
-      },
-      {
-        key: 'res-listings', label: 'Listings',
-        hash: buildAdminHash({ product: 'residences', tab: 'listings' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'listings',
-      },
-      {
-        key: 'res-sections', label: 'Property Sections',
-        hash: buildAdminHash({ product: 'residences', tab: 'sections' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'sections',
-      },
-      {
-        key: 'res-props',    label: 'Properties',
-        hash: buildAdminHash({ product: 'residences', tab: 'properties' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'properties',
-      },
-      {
-        key: 'res-denied',   label: 'Access Denied',
-        hash: buildAdminHash({ product: 'residences', tab: 'access-denied' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'access-denied',
-      },
-      {
-        key: 'res-profile',  label: 'Client Profile',
-        hash: buildAdminHash({ product: 'residences', tab: 'client-profile' }),
-        active: tab => tab.product === 'residences' && tab.tab === 'client-profile',
-      },
-    ],
-  },
-  {
-    key: 'studio', label: 'Studio',
-    Icon: IconStudio,
-    active: tab => tab.product === 'studio',
-    items: [
-      {
-        key: 'studio-dash',  label: 'Dashboard',
-        hash: buildAdminHash({ product: 'studio', tab: 'dashboard' }),
-        active: tab => tab.product === 'studio' && tab.tab === 'dashboard',
-      },
-      {
-        key: 'studio-fin',   label: 'Finance',
-        hash: buildAdminHash({ product: 'studio', tab: 'finance' }),
-        active: tab => tab.product === 'studio' && (tab.tab === 'finance' || tab.tab === 'finance-engagement'),
-      },
-      {
-        key: 'studio-time',  label: 'Effort Log',
-        hash: buildAdminHash({ product: 'studio', tab: 'time' }),
-        active: tab => tab.product === 'studio' && tab.tab === 'time',
-      },
-      {
-        key: 'studio-analytics', label: 'Time Analytics',
-        hash: buildAdminHash({ product: 'studio', tab: 'time-analytics' }),
-        active: tab => tab.product === 'studio' && tab.tab === 'time-analytics',
-      },
+      { key: 'studio-dash',     label: 'Dashboard',  hash: buildAdminHash({ product: 'studio', tab: 'dashboard' }),      active: (t: AdminTab) => t.product === 'studio' && t.tab === 'dashboard' },
+      { key: 'studio-finance',  label: 'Finance',    hash: buildAdminHash({ product: 'studio', tab: 'finance' }),        active: (t: AdminTab) => t.product === 'studio' && t.tab === 'finance' },
+      { key: 'studio-time',     label: 'Effort Log', hash: buildAdminHash({ product: 'studio', tab: 'time' }),           active: (t: AdminTab) => t.product === 'studio' && t.tab === 'time' },
+      { key: 'studio-analytics',label: 'Analytics',  hash: buildAdminHash({ product: 'studio', tab: 'time-analytics' }), active: (t: AdminTab) => t.product === 'studio' && t.tab === 'time-analytics' },
     ],
   },
 ]
 
-// ── Row components ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function GroupHeader({ group, tab, expanded, onToggle }: {
-  group: NavGroup; tab: AdminTab; expanded: boolean; onToggle: () => void
-}) {
-  const [hov, setHov] = useState(false)
-  const active = group.active(tab)
-  return (
-    <button
-      onClick={onToggle}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        width: '100%', padding: '9px 16px',
-        background: hov ? 'rgba(216,181,106,0.04)' : 'transparent',
-        border: 'none',
-        borderLeft: active ? `2px solid ${A.gold}` : '2px solid transparent',
-        cursor: 'pointer', textAlign: 'left',
-        transition: 'background 120ms ease',
-      }}
-    >
-      <group.Icon active={active} />
-      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, letterSpacing: '0.04em', color: active ? A.gold : A.muted, fontFamily: A.font, flex: 1, transition: 'color 120ms ease' }}>
-        {group.label}
-      </span>
-      <svg width='10' height='10' viewBox='0 0 10 10' style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', opacity: 0.4 }}>
-        <path d='M2 3.5 L5 6.5 L8 3.5' stroke={A.muted} strokeWidth={1.5} fill='none' strokeLinecap='round' strokeLinejoin='round' />
-      </svg>
-    </button>
-  )
+function isGroupActive(group: NavGroup, tab: AdminTab): boolean {
+  return group.items.some(item => item.active(tab))
 }
 
-function NavRow({ item, tab }: { item: NavItem; tab: AdminTab }) {
-  const [hov, setHov] = useState(false)
-  const active = item.active(tab)
+// ── Item row ──────────────────────────────────────────────────────────────────
+
+function ItemRow({ item, active }: { item: NavItem; active: boolean }) {
+  const [hovered, setHovered] = useState(false)
   return (
     <a
       href={item.hash}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        display: 'block', padding: '7px 16px 7px 41px',
-        fontSize: 12, fontWeight: active ? 600 : 400,
-        color: active ? A.gold : A.muted,
-        fontFamily: A.font,
-        background: active ? 'rgba(216,181,106,0.08)' : hov ? 'rgba(216,181,106,0.04)' : 'transparent',
-        borderLeft: active ? `2px solid ${A.gold}` : '2px solid transparent',
-        textDecoration: 'none', letterSpacing: '0.01em',
-        transition: 'background 120ms ease',
+        display:        'block',
+        padding:        '7px 16px 7px 41px',
+        fontSize:       12,
+        fontWeight:     active ? 600 : 400,
+        color:          active ? A.gold : A.muted,
+        fontFamily:     A.font,
+        background:     active ? 'rgba(216,181,106,0.08)' : hovered ? 'rgba(216,181,106,0.04)' : 'transparent',
+        borderLeft:     active ? `2px solid ${A.gold}` : '2px solid transparent',
+        textDecoration: 'none',
+        transition:     'background 120ms ease',
+        letterSpacing:  '0.01em',
       }}
     >
       {item.label}
     </a>
+  )
+}
+
+// ── Group header ──────────────────────────────────────────────────────────────
+
+function GroupHeader({ group, tab, expanded, onToggle }: {
+  group:    NavGroup
+  tab:      AdminTab
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const active = isGroupActive(group, tab)
+  const Icon   = group.icon
+
+  return (
+    <button
+      onClick={onToggle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display:    'flex',
+        alignItems: 'center',
+        gap:        10,
+        width:      '100%',
+        padding:    '9px 16px',
+        background: hovered ? 'rgba(216,181,106,0.04)' : 'transparent',
+        border:     'none',
+        borderLeft: active ? `2px solid ${A.gold}` : '2px solid transparent',
+        cursor:     'pointer',
+        transition: 'background 120ms ease, border-color 120ms ease',
+        textAlign:  'left',
+      }}
+    >
+      <span style={{ flexShrink: 0, display: 'flex' }}>
+        <Icon size={15} color={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} />
+      </span>
+      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, letterSpacing: '0.04em', color: active ? A.gold : A.muted, fontFamily: A.font, flex: 1, transition: 'color 120ms ease' }}>
+        {group.label}
+      </span>
+      <svg width={10} height={10} viewBox='0 0 10 10' style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', opacity: 0.4 }}>
+        <path d='M2 3.5 L5 6.5 L8 3.5' stroke={A.muted} strokeWidth={1.5} fill='none' strokeLinecap='round' strokeLinejoin='round' />
+      </svg>
+    </button>
   )
 }
 
@@ -259,24 +176,16 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>(
     () => Object.fromEntries(GROUPS.map(g => [g.key, true]))
   )
+  const toggle = (key: string) => setExpanded(p => ({ ...p, [key]: !p[key] }))
 
   return (
-    <div style={{
-      width: 220, flexShrink: 0,
-      background: A.bgCard, borderRight: `1px solid ${A.border}`,
-      paddingTop: 12, overflowY: 'auto',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div style={{ width: 220, flexShrink: 0, background: A.bgCard, borderRight: `1px solid ${A.border}`, paddingTop: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1 }}>
-        {GROUPS.map(group => (
-          <div key={group.key}>
-            <GroupHeader
-              group={group} tab={tab}
-              expanded={expanded[group.key]}
-              onToggle={() => setExpanded(p => ({ ...p, [group.key]: !p[group.key] }))}
-            />
-            {expanded[group.key] && group.items.map(item => (
-              <NavRow key={item.key} item={item} tab={tab} />
+        {GROUPS.map(g => (
+          <div key={g.key}>
+            <GroupHeader group={g} tab={tab} expanded={expanded[g.key]} onToggle={() => toggle(g.key)} />
+            {expanded[g.key] && g.items.map(item => (
+              <ItemRow key={item.key} item={item} active={item.active(tab)} />
             ))}
           </div>
         ))}
@@ -284,7 +193,7 @@ function DesktopSidebar({ tab }: { tab: AdminTab }) {
 
       <div style={{ padding: '16px 16px 20px', borderTop: `1px solid ${A.border}`, marginTop: 8 }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>ambience</div>
-        <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.muted, fontFamily: A.font, opacity: 0.6 }}>admin</div>
+        <div style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.muted, fontFamily: A.font, opacity: 0.6 }}>admin</div>
       </div>
     </div>
   )
@@ -304,13 +213,7 @@ function MobileSelector({ tab }: { tab: AdminTab }) {
           const item = all.find(i => i.key === e.target.value)
           if (item) window.location.hash = item.hash
         }}
-        style={{
-          width: '100%', background: A.bgInput,
-          border: `1px solid ${A.borderGold}`, borderRadius: 10,
-          color: A.gold, padding: '10px 14px',
-          fontSize: 13, fontWeight: 700, fontFamily: A.font,
-          outline: 'none', colorScheme: 'dark',
-        }}
+        style={{ width: '100%', background: A.bgInput, border: `1px solid ${A.borderGold}`, borderRadius: 10, color: A.gold, padding: '10px 14px', fontSize: 13, fontWeight: 700, fontFamily: A.font, outline: 'none', colorScheme: 'dark' }}
       >
         {GROUPS.map(g => (
           <optgroup key={g.key} label={g.label}>
