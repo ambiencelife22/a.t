@@ -67,6 +67,9 @@ export type OpsBooking = {
   balance_amount:         number | null
   balance_due_date:       string | null
   balance_paid_at:        string | null
+  // Guest payment signal — admin force-flag for the "Payment Outstanding" line.
+  // null = defer to date logic (overdue balance); true = force. Never false.
+  payment_exception_override: boolean | null
   // Partners
   iata_partner_id:        string | null
   iata_share_pct:         number | null

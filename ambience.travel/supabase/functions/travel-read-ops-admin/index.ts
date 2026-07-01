@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
       // ── 2. Parallel: bookings + partners + engagement statuses ───────────────
       const [bookResult, partnerResult, engStatusResult] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, trip_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, currency, commissionable_rate, total_rate, taxes_and_fees, rate_type, price, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, cost, cancellation_policy, notes, sort_order, created_at')
+          .select('id, trip_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, end_date, nights, currency, commissionable_rate, total_rate, taxes_and_fees, rate_type, price, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, payment_exception_override, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, cost, cancellation_policy, notes, sort_order, created_at')
           .in('trip_id', tripIds)
           .order('start_date', { ascending: true, nullsFirst: false }),
 

@@ -274,6 +274,15 @@ function BookingRow({ booking: b, partners, onUpdated }: {
     await patch('Balance', { balance_paid_at: val })
   }
 
+  async function togglePaymentException() {
+    // Manual override for the guest-facing "Payment Outstanding" signal. NULL =
+    // defer to date logic (balance_due_date < today AND balance_paid_at null);
+    // true = force the signal on regardless of dates (verbal deadline, hold
+    // dropping, etc). Never set false — absence of override IS the off state.
+    const val = b.payment_exception_override ? null : true
+    await patch('Payment signal', { payment_exception_override: val })
+  }
+
   async function saveCommission() {
     const pct = parseFloat(commPct)
     const amt = parseFloat(commAmt)
@@ -519,6 +528,29 @@ function BookingRow({ booking: b, partners, onUpdated }: {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Payment-outstanding override — forces the guest "Payment Outstanding" signal */}
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Guest Payment Signal</div>
+              <button
+                onClick={togglePaymentException}
+                disabled={saving === 'Payment signal'}
+                style={{
+                  ...btnG,
+                  fontSize: 11, padding: '4px 12px',
+                  background: b.payment_exception_override ? '#f8717118' : undefined,
+                  color:      b.payment_exception_override ? '#f87171'   : undefined,
+                  border:     b.payment_exception_override ? '1px solid #f8717140' : undefined,
+                }}
+              >
+                {b.payment_exception_override ? 'Payment Outstanding — forced ON' : 'Force "Payment Outstanding"'}
+              </button>
+              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
+                {b.payment_exception_override
+                  ? 'Guest sees the signal regardless of due dates.'
+                  : 'Off: guest sees it only when the balance is past due and unpaid.'}
+              </div>
             </div>
 
             {/* Invoice + Amenities */}
