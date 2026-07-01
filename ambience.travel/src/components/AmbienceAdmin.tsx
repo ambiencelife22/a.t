@@ -67,6 +67,7 @@ const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEdito
 
 // Financial
 const FinancialTab         = lazyWithReload(() => import('./admin/FinancialTab'))
+const OutlookTab           = lazyWithReload(() => import('./admin/OutlookTab'))
 
 // Residences (was Programme)
 const ProgrammesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
@@ -186,7 +187,8 @@ function TabContent({ tab }: { tab: AdminTab }) {
     // so the admin remains functional during the transition.
     if (tab.tab === 'list')     return <EngagementsListTab />
     if (tab.tab === 'overview') return <EngagementDetailTab urlId={tab.urlId} />
-    // bookings, contacts, activity: Phase 3 surfaces, show list for now
+    if (tab.tab === 'bookings') return <OutlookTab urlId={tab.urlId} />
+    // contacts, activity: Phase 3 surfaces, show list for now
     return <EngagementsListTab />
   }
 

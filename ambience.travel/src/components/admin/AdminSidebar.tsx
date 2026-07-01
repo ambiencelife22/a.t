@@ -1,515 +1,330 @@
-/* AdminSidebar.tsx
- * Sidebar navigation for AmbienceAdmin. Groups by product (Immerse, Guides,
- * Library, House, Operations, Time, Programme). Future products (LIFE, MONEY) shown disabled.
- *
- * Last updated: S53C — Added Time group (Effort Log tab). Reuses LayoutGrid
- *   icon pending a dedicated Clock icon in _adminIcons.
- * Prior: S44 — Added Operations group (Bookings tab).
- * Prior: S43 — Phase 1 redesign: custom SVG icons, no group headers,
- *   hover states, bottom wordmark, motion system aligned.
- * Prior: S40D — Added HOUSE group (ambience.HOUSE CRM).
- * Prior: S36 — Library/dining link now passes destinationId: null.
- * Prior: S36 — Added Guides + Library groups (Dining tab in each).
- * Prior: S33
- */
+// AdminSidebar.tsx — Admin navigation for the 5-group taxonomy.
+//
+// Groups (confirmed S53G Admin Redesign v2, locked):
+//   Trips      — pipeline list + per-trip detail (overview/bookings/contacts/activity)
+//   Clients    — households + profiles + trip history
+//   Content    — Dining / Hotels / Experiences / Shopping (library+guides unified)
+//   Residences — list / letters / listings / sections / properties / access-denied / client-profile
+//   Studio     — dashboard / Finance pipeline / Effort Log / Time Analytics
+//
+// Replaces the legacy sidebar (immerse/guides/library/house/operations/time/
+// calendar/finance/programme groups). Legacy routes still parse + dispatch
+// correctly in utilsAdminPath + AmbienceAdmin; the sidebar just no longer
+// exposes them. They dissolve in Phase 7.
+//
+// Last updated: S53I — Phase 2 sidebar (5-group taxonomy).
 
 import { useState } from 'react'
-import {
-  Plane,
-  BookOpen,
-  Library,
-  Home,
-  LayoutGrid,
-} from './_adminIcons'
-import {
-  buildAdminHash,
-  type AdminTab,
-  type ProgrammeTabId,
-} from '../../utils/utilsAdminPath'
+import { buildAdminHash, navigateAdmin, type AdminTab } from '../../utils/utilsAdminPath'
 import { A } from '../../tokens/tokensAdmin'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ── Icons (inline SVG — no external dep) ─────────────────────────────────────
 
-type SidebarLink =
-  | { kind: 'immerse-engagements' }
-  | { kind: 'immerse-showcases' }
-  | { kind: 'guides-dining' }
-  | { kind: 'guides-experiences' }
-  | { kind: 'guides-hotels' }
-  | { kind: 'guides-shopping' }
-  | { kind: 'library-dining' }
-  | { kind: 'library-hotels' }
-  | { kind: 'house-houses' }
-  | { kind: 'calendar' }
-  | { kind: 'operations-bookings' }
-  | { kind: 'time-entries' } // S53C
-  | { kind: 'time-analytics' } // S53C
-     | { kind: 'finance-pipeline' }
-  | { kind: 'programme'; tab: ProgrammeTabId }
-
-type SidebarItem = {
-  key:       string
-  label:     string
-  link:      SidebarLink
-  disabled?: boolean
+function IconTrips({ active }: { active: boolean }) {
+  return (
+    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' />
+    </svg>
+  )
+}
+function IconClients({ active }: { active: boolean }) {
+  return (
+    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' /><circle cx='9' cy='7' r='4' /><path d='M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' />
+    </svg>
+  )
+}
+function IconContent({ active }: { active: boolean }) {
+  return (
+    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M4 19.5A2.5 2.5 0 016.5 17H20' /><path d='M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z' />
+    </svg>
+  )
+}
+function IconResidences({ active }: { active: boolean }) {
+  return (
+    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
+      <rect x='2' y='3' width='20' height='14' rx='2' ry='2' /><path d='M8 21h8M12 17v4' />
+    </svg>
+  )
+}
+function IconStudio({ active }: { active: boolean }) {
+  return (
+    <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={active ? A.gold : A.muted} strokeWidth={active ? 2 : 1.5} strokeLinecap='round' strokeLinejoin='round'>
+      <rect x='3' y='3' width='7' height='7' /><rect x='14' y='3' width='7' height='7' /><rect x='14' y='14' width='7' height='7' /><rect x='3' y='14' width='7' height='7' />
+    </svg>
+  )
 }
 
-type IconComponent = (props: { size?: number; color?: string; strokeWidth?: number }) => React.ReactElement
+// ── Group definitions ─────────────────────────────────────────────────────────
 
-type SidebarGroup = {
-  key:   string
-  icon:  IconComponent
-  items: SidebarItem[]
+type NavItem = {
+  key:    string
+  label:  string
+  hash:   string
+  active: (tab: AdminTab) => boolean
 }
 
-// ─── Item definitions ─────────────────────────────────────────────────────────
-
-const IMMERSE_ITEMS: SidebarItem[] = [
-  { key: 'immerse-engagements', label: 'Engagements', link: { kind: 'immerse-engagements' } },
-  { key: 'immerse-showcases',   label: 'Showcases',   link: { kind: 'immerse-showcases' } },
-]
-
-const GUIDES_ITEMS: SidebarItem[] = [
-  { key: 'guides-dining',      label: 'Dining',       link: { kind: 'guides-dining' } },
-  { key: 'guides-experiences', label: 'Experiences',  link: { kind: 'guides-experiences' } },
-  { key: 'guides-hotels',      label: 'Hotels',       link: { kind: 'guides-hotels' } },
-  { key: 'guides-shopping',    label: 'Shopping',     link: { kind: 'guides-shopping' } },
-]
-
-const LIBRARY_ITEMS: SidebarItem[] = [
-  { key: 'library-dining',  label: 'Dining',  link: { kind: 'library-dining' } },
-  { key: 'library-hotels',  label: 'Hotels',  link: { kind: 'library-hotels' } },
-]
-
-const HOUSE_ITEMS: SidebarItem[] = [
-  { key: 'house-houses', label: 'Houses', link: { kind: 'house-houses' } },
-]
-
-const CALENDAR_ITEMS: SidebarItem[] = [
-  { key: 'calendar', label: 'Calendar', link: { kind: 'calendar' } },
-]
-
-const OPERATIONS_ITEMS: SidebarItem[] = [
-  { key: 'operations-bookings', label: 'Bookings', link: { kind: 'operations-bookings' } },
-]
-
-// S53C: Time tracking group
-const TIME_ITEMS: SidebarItem[] = [
-  { key: 'time-entries',   label: 'Effort Log', link: { kind: 'time-entries' } },
-  { key: 'time-analytics', label: 'Analytics',  link: { kind: 'time-analytics' } },
-]
-
-const FINANCE_ITEMS: SidebarItem[] = [
-  { key: 'finance-pipeline', label: 'Pipeline', link: { kind: 'finance-pipeline' } },
-]
-
-  const PROGRAMME_ITEMS: SidebarItem[] = [
-  { key: 'p-programmes',    label: 'Programmes',        link: { kind: 'programme', tab: 'programmes' } },
-  { key: 'p-letters',       label: 'Welcome Letters',   link: { kind: 'programme', tab: 'letters' } },
-  { key: 'p-listings',      label: 'Listings',          link: { kind: 'programme', tab: 'listings' } },
-  { key: 'p-sections',      label: 'Property Sections', link: { kind: 'programme', tab: 'sections' } },
-  { key: 'p-properties',    label: 'Properties',        link: { kind: 'programme', tab: 'properties' } },
-  { key: 'p-access-denied', label: 'Access Denied',     link: { kind: 'programme', tab: 'access-denied' } },
-  { key: 'p-client',        label: 'Client Profile',    link: { kind: 'programme', tab: 'client-profile' } },
-]
-
-const SOON_ITEMS: SidebarItem[] = [
-  { key: 'life',  label: 'LIFE',  link: { kind: 'immerse-engagements' }, disabled: true },
-  { key: 'money', label: 'MONEY', link: { kind: 'immerse-engagements' }, disabled: true },
-]
-
-const GROUPS: SidebarGroup[] = [
-  { key: 'calendar',   icon: LayoutGrid, items: CALENDAR_ITEMS   },
-  { key: 'immerse',    icon: Plane,      items: IMMERSE_ITEMS    },
-  { key: 'guides',     icon: BookOpen,   items: GUIDES_ITEMS     },
-  { key: 'library',    icon: Library,    items: LIBRARY_ITEMS    },
-  { key: 'house',      icon: Home,       items: HOUSE_ITEMS      },
-  { key: 'operations', icon: LayoutGrid, items: OPERATIONS_ITEMS },
-  { key: 'time',       icon: LayoutGrid, items: TIME_ITEMS       }, // S53C
-  { key: 'finance',    icon: LayoutGrid, items: FINANCE_ITEMS    },
-  { key: 'programme',  icon: LayoutGrid, items: PROGRAMME_ITEMS  },
-]
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function isActive(item: SidebarItem, current: AdminTab): boolean {
-  if (item.link.kind === 'immerse-engagements') {
-    return current.product === 'immerse' && current.tab === 'engagements'
-  }
-  if (item.link.kind === 'immerse-showcases') {
-    return current.product === 'immerse' && current.tab === 'showcases'
-  }
-  if (item.link.kind === 'guides-dining') {
-    return current.product === 'guides' && current.tab === 'dining'
-  }
-  if (item.link.kind === 'guides-experiences') {
-    return current.product === 'guides' && current.tab === 'experiences'
-  }
-  if (item.link.kind === 'guides-hotels') {
-    return current.product === 'guides' && current.tab === 'hotels'
-  }
-  if (item.link.kind === 'guides-shopping') {
-    return current.product === 'guides' && current.tab === 'shopping'
-  }
-  if (item.link.kind === 'library-dining') {
-    return current.product === 'library' && current.tab === 'dining'
-  }
-  if (item.link.kind === 'library-hotels') {
-    return current.product === 'library' && current.tab === 'hotels'
-  }
-  if (item.link.kind === 'house-houses') {
-    return current.product === 'house'
-  }
-  if (item.link.kind === 'calendar') {
-    return current.product === 'calendar'
-  }
-  if (item.link.kind === 'operations-bookings') {
-    return current.product === 'operations'
-  }
-  if (item.link.kind === 'time-entries') { // S53C
-    return current.product === 'time' && current.tab === 'entries'
-  }
-  if (item.link.kind === 'time-analytics') { // S53C
-    return current.product === 'time' && current.tab === 'analytics'
-  }
-  if (item.link.kind === 'finance-pipeline') {
-       return current.product === 'finance'
-     }
-     return current.product === 'programme' && current.tab === (item.link as { tab: ProgrammeTabId }).tab
+type NavGroup = {
+  key:    string
+  label:  string
+  Icon:   (props: { active: boolean }) => React.ReactElement
+  items:  NavItem[]
+  active: (tab: AdminTab) => boolean
 }
 
-function isGroupActive(group: SidebarGroup, current: AdminTab): boolean {
-  return group.items.some(item => isActive(item, current))
-}
+const GROUPS: NavGroup[] = [
+  {
+    key: 'trips', label: 'Trips',
+    Icon: IconTrips,
+    active: tab => tab.product === 'trips',
+    items: [
+      {
+        key: 'trips-list', label: 'All Trips',
+        hash: buildAdminHash({ product: 'trips', tab: 'list' }),
+        active: tab => tab.product === 'trips' && tab.tab === 'list',
+      },
+    ],
+  },
+  {
+    key: 'clients', label: 'Clients',
+    Icon: IconClients,
+    active: tab => tab.product === 'clients',
+    items: [
+      {
+        key: 'clients-list', label: 'Households',
+        hash: buildAdminHash({ product: 'clients', tab: 'list' }),
+        active: tab => tab.product === 'clients',
+      },
+    ],
+  },
+  {
+    key: 'content', label: 'Content',
+    Icon: IconContent,
+    active: tab => tab.product === 'content',
+    items: [
+      {
+        key: 'content-dining', label: 'Dining',
+        hash: buildAdminHash({ product: 'content', tab: 'dining' }),
+        active: tab => tab.product === 'content' && tab.tab === 'dining',
+      },
+      {
+        key: 'content-hotels', label: 'Hotels',
+        hash: buildAdminHash({ product: 'content', tab: 'hotels' }),
+        active: tab => tab.product === 'content' && tab.tab === 'hotels',
+      },
+      {
+        key: 'content-experiences', label: 'Experiences',
+        hash: buildAdminHash({ product: 'content', tab: 'experiences' }),
+        active: tab => tab.product === 'content' && tab.tab === 'experiences',
+      },
+      {
+        key: 'content-shopping', label: 'Shopping',
+        hash: buildAdminHash({ product: 'content', tab: 'shopping' }),
+        active: tab => tab.product === 'content' && tab.tab === 'shopping',
+      },
+    ],
+  },
+  {
+    key: 'residences', label: 'Residences',
+    Icon: IconResidences,
+    active: tab => tab.product === 'residences',
+    items: [
+      {
+        key: 'res-list',     label: 'Residences',
+        hash: buildAdminHash({ product: 'residences', tab: 'list' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'list',
+      },
+      {
+        key: 'res-letters',  label: 'Welcome Letters',
+        hash: buildAdminHash({ product: 'residences', tab: 'letters' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'letters',
+      },
+      {
+        key: 'res-listings', label: 'Listings',
+        hash: buildAdminHash({ product: 'residences', tab: 'listings' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'listings',
+      },
+      {
+        key: 'res-sections', label: 'Property Sections',
+        hash: buildAdminHash({ product: 'residences', tab: 'sections' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'sections',
+      },
+      {
+        key: 'res-props',    label: 'Properties',
+        hash: buildAdminHash({ product: 'residences', tab: 'properties' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'properties',
+      },
+      {
+        key: 'res-denied',   label: 'Access Denied',
+        hash: buildAdminHash({ product: 'residences', tab: 'access-denied' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'access-denied',
+      },
+      {
+        key: 'res-profile',  label: 'Client Profile',
+        hash: buildAdminHash({ product: 'residences', tab: 'client-profile' }),
+        active: tab => tab.product === 'residences' && tab.tab === 'client-profile',
+      },
+    ],
+  },
+  {
+    key: 'studio', label: 'Studio',
+    Icon: IconStudio,
+    active: tab => tab.product === 'studio',
+    items: [
+      {
+        key: 'studio-dash',  label: 'Dashboard',
+        hash: buildAdminHash({ product: 'studio', tab: 'dashboard' }),
+        active: tab => tab.product === 'studio' && tab.tab === 'dashboard',
+      },
+      {
+        key: 'studio-fin',   label: 'Finance',
+        hash: buildAdminHash({ product: 'studio', tab: 'finance' }),
+        active: tab => tab.product === 'studio' && (tab.tab === 'finance' || tab.tab === 'finance-engagement'),
+      },
+      {
+        key: 'studio-time',  label: 'Effort Log',
+        hash: buildAdminHash({ product: 'studio', tab: 'time' }),
+        active: tab => tab.product === 'studio' && tab.tab === 'time',
+      },
+      {
+        key: 'studio-analytics', label: 'Time Analytics',
+        hash: buildAdminHash({ product: 'studio', tab: 'time-analytics' }),
+        active: tab => tab.product === 'studio' && tab.tab === 'time-analytics',
+      },
+    ],
+  },
+]
 
-function hashFor(item: SidebarItem): string {
-  if (item.link.kind === 'immerse-engagements') {
-    return buildAdminHash({ product: 'immerse', tab: 'engagements', urlId: null })
-  }
-  if (item.link.kind === 'immerse-showcases') {
-    return buildAdminHash({ product: 'immerse', tab: 'showcases' })
-  }
-  if (item.link.kind === 'guides-dining') {
-    return buildAdminHash({ product: 'guides', tab: 'dining' })
-  }
-  if (item.link.kind === 'guides-experiences') {
-    return buildAdminHash({ product: 'guides', tab: 'experiences' })
-  }
-  if (item.link.kind === 'guides-hotels') {
-    return buildAdminHash({ product: 'guides', tab: 'hotels' })
-  }
-  if (item.link.kind === 'guides-shopping') {
-    return buildAdminHash({ product: 'guides', tab: 'shopping' })
-  }
-  if (item.link.kind === 'library-dining') {
-    return buildAdminHash({ product: 'library', tab: 'dining', destinationId: null })
-  }
-  if (item.link.kind === 'library-hotels') {
-    return buildAdminHash({ product: 'library', tab: 'hotels', destinationId: null })
-  }
-  if (item.link.kind === 'house-houses') {
-    return buildAdminHash({ product: 'house', tab: 'houses' })
-  }
-  if (item.link.kind === 'calendar') {
-    return buildAdminHash({ product: 'calendar', tab: 'calendar' })
-  }
-  if (item.link.kind === 'operations-bookings') {
-    return buildAdminHash({ product: 'operations', tab: 'bookings' })
-  }
-  if (item.link.kind === 'time-entries') { // S53C
-    return buildAdminHash({ product: 'time', tab: 'entries' })
-  }
-  if (item.link.kind === 'time-analytics') { // S53C
-    return buildAdminHash({ product: 'time', tab: 'analytics' })
-  }
-  if (item.link.kind === 'finance-pipeline') {
-       return buildAdminHash({ product: 'finance', tab: 'pipeline' })
-     }
-     return buildAdminHash({ product: 'programme', tab: (item.link as { tab: ProgrammeTabId }).tab })
+// ── Row components ────────────────────────────────────────────────────────────
 
-}
-
-// ─── Group header row ─────────────────────────────────────────────────────────
-
-function GroupRow({
-  group,
-  current,
-  expanded,
-  onToggle,
-}: {
-  group:    SidebarGroup
-  current:  AdminTab
-  expanded: boolean
-  onToggle: () => void
+function GroupHeader({ group, tab, expanded, onToggle }: {
+  group: NavGroup; tab: AdminTab; expanded: boolean; onToggle: () => void
 }) {
-  const [hovered, setHovered] = useState(false)
-  const active = isGroupActive(group, current)
-  const Icon   = group.icon
-
+  const [hov, setHov] = useState(false)
+  const active = group.active(tab)
   return (
     <button
       onClick={onToggle}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
-        display:    'flex',
-        alignItems: 'center',
-        gap:        10,
-        width:      '100%',
-        padding:    '9px 16px',
-        background: hovered ? 'rgba(216,181,106,0.04)' : 'transparent',
-        border:     'none',
+        display: 'flex', alignItems: 'center', gap: 10,
+        width: '100%', padding: '9px 16px',
+        background: hov ? 'rgba(216,181,106,0.04)' : 'transparent',
+        border: 'none',
         borderLeft: active ? `2px solid ${A.gold}` : '2px solid transparent',
-        cursor:     'pointer',
-        transition: 'background 120ms ease, border-color 120ms ease',
-        textAlign:  'left',
+        cursor: 'pointer', textAlign: 'left',
+        transition: 'background 120ms ease',
       }}
     >
-      <span style={{ flexShrink: 0, transition: 'color 120ms ease', display: 'flex' }}>
-        <Icon
-          size={15}
-          color={active ? A.gold : A.muted}
-          strokeWidth={active ? 2 : 1.5}
-        />
+      <group.Icon active={active} />
+      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, letterSpacing: '0.04em', color: active ? A.gold : A.muted, fontFamily: A.font, flex: 1, transition: 'color 120ms ease' }}>
+        {group.label}
       </span>
-      <span style={{
-        fontSize:      11,
-        fontWeight:    active ? 600 : 400,
-        letterSpacing: '0.04em',
-        color:         active ? A.gold : A.muted,
-        fontFamily:    A.font,
-        transition:    'color 120ms ease, font-weight 120ms ease',
-        flex:          1,
-      }}>
-        {group.key.charAt(0).toUpperCase() + group.key.slice(1)}
-      </span>
-      <svg
-        width={10}
-        height={10}
-        viewBox='0 0 10 10'
-        style={{
-          flexShrink: 0,
-          transform:  expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 150ms ease',
-          opacity:    0.4,
-        }}
-      >
+      <svg width='10' height='10' viewBox='0 0 10 10' style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', opacity: 0.4 }}>
         <path d='M2 3.5 L5 6.5 L8 3.5' stroke={A.muted} strokeWidth={1.5} fill='none' strokeLinecap='round' strokeLinejoin='round' />
       </svg>
     </button>
   )
 }
 
-// ─── Individual nav item row ──────────────────────────────────────────────────
-
-function SidebarRow({ item, active }: { item: SidebarItem; active: boolean }) {
-  const [hovered, setHovered] = useState(false)
-
-  const baseStyle: React.CSSProperties = {
-    display:        'block',
-    padding:        '7px 16px 7px 41px',
-    fontSize:       12,
-    fontWeight:     active ? 600 : 400,
-    color:          item.disabled ? A.faint : (active ? A.gold : A.muted),
-    fontFamily:     A.font,
-    background:     active
-      ? 'rgba(216,181,106,0.08)'
-      : hovered
-        ? 'rgba(216,181,106,0.04)'
-        : 'transparent',
-    borderLeft:     active ? `2px solid ${A.gold}` : '2px solid transparent',
-    textDecoration: 'none',
-    cursor:         item.disabled ? 'default' : 'pointer',
-    pointerEvents:  item.disabled ? 'none' : 'auto',
-    transition:     'background 120ms ease',
-    letterSpacing:  '0.01em',
-  }
-
-  if (item.disabled) {
-    return (
-      <div style={baseStyle}>
-        {item.label}
-        <span style={{ fontSize: 9, color: A.faint, marginLeft: 6, letterSpacing: '0.08em' }}>
-          soon
-        </span>
-      </div>
-    )
-  }
-
+function NavRow({ item, tab }: { item: NavItem; tab: AdminTab }) {
+  const [hov, setHov] = useState(false)
+  const active = item.active(tab)
   return (
     <a
-      href={hashFor(item)}
-      style={baseStyle}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      href={item.hash}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'block', padding: '7px 16px 7px 41px',
+        fontSize: 12, fontWeight: active ? 600 : 400,
+        color: active ? A.gold : A.muted,
+        fontFamily: A.font,
+        background: active ? 'rgba(216,181,106,0.08)' : hov ? 'rgba(216,181,106,0.04)' : 'transparent',
+        borderLeft: active ? `2px solid ${A.gold}` : '2px solid transparent',
+        textDecoration: 'none', letterSpacing: '0.01em',
+        transition: 'background 120ms ease',
+      }}
     >
       {item.label}
     </a>
   )
 }
 
-// ─── Desktop sidebar ──────────────────────────────────────────────────────────
+// ── Desktop sidebar ───────────────────────────────────────────────────────────
 
 function DesktopSidebar({ tab }: { tab: AdminTab }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(GROUPS.map(g => [g.key, true]))
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(GROUPS.map(g => [g.key, true]))
   )
-
-  function toggle(key: string) {
-    setExpanded(prev => ({ ...prev, [key]: !prev[key] }))
-  }
 
   return (
     <div style={{
-      width:         220,
-      flexShrink:    0,
-      background:    A.bgCard,
-      borderRight:   `1px solid ${A.border}`,
-      paddingTop:    12,
-      overflowY:     'auto',
-      display:       'flex',
-      flexDirection: 'column',
+      width: 220, flexShrink: 0,
+      background: A.bgCard, borderRight: `1px solid ${A.border}`,
+      paddingTop: 12, overflowY: 'auto',
+      display: 'flex', flexDirection: 'column',
     }}>
       <div style={{ flex: 1 }}>
         {GROUPS.map(group => (
           <div key={group.key}>
-            <GroupRow
-              group={group}
-              current={tab}
+            <GroupHeader
+              group={group} tab={tab}
               expanded={expanded[group.key]}
-              onToggle={() => toggle(group.key)}
+              onToggle={() => setExpanded(p => ({ ...p, [group.key]: !p[group.key] }))}
             />
             {expanded[group.key] && group.items.map(item => (
-              <SidebarRow key={item.key} item={item} active={isActive(item, tab)} />
+              <NavRow key={item.key} item={item} tab={tab} />
             ))}
           </div>
         ))}
-
-        <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 8, paddingTop: 4 }}>
-          {SOON_ITEMS.map(item => (
-            <SidebarRow key={item.key} item={item} active={false} />
-          ))}
-        </div>
       </div>
 
-      <div style={{
-        padding:   '16px 16px 20px',
-        borderTop: `1px solid ${A.border}`,
-        marginTop: 8,
-      }}>
-        <div style={{
-          fontSize:      9,
-          fontWeight:    700,
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-          color:         A.muted,
-          fontFamily:    A.font,
-          lineHeight:    1.6,
-        }}>
-          ambience
-        </div>
-        <div style={{
-          fontSize:      9,
-          fontWeight:    400,
-          letterSpacing: '0.16em',
-          textTransform: 'uppercase',
-          color:         A.muted,
-          fontFamily:    A.font,
-          opacity:       0.6,
-        }}>
-          admin
-        </div>
+      <div style={{ padding: '16px 16px 20px', borderTop: `1px solid ${A.border}`, marginTop: 8 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>ambience</div>
+        <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.muted, fontFamily: A.font, opacity: 0.6 }}>admin</div>
       </div>
     </div>
   )
 }
 
-// ─── Mobile selector ──────────────────────────────────────────────────────────
+// ── Mobile selector ───────────────────────────────────────────────────────────
 
 function MobileSelector({ tab }: { tab: AdminTab }) {
-  const all: SidebarItem[] = [
-    ...IMMERSE_ITEMS,
-    ...GUIDES_ITEMS,
-    ...LIBRARY_ITEMS,
-    ...CALENDAR_ITEMS,
-    ...HOUSE_ITEMS,
-    ...OPERATIONS_ITEMS,
-    ...TIME_ITEMS, // S53C
-    ...FINANCE_ITEMS,
-     ...PROGRAMME_ITEMS,
-  ]
-
-  function currentValue(): string {
-    const found = all.find(i => isActive(i, tab))
-    return found?.key ?? all[0].key
-  }
-
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const item = all.find(i => i.key === e.target.value)
-    if (!item) return
-    window.location.hash = hashFor(item)
-  }
+  const all = GROUPS.flatMap(g => g.items)
+  const current = all.find(i => i.active(tab))?.key ?? all[0].key
 
   return (
     <div style={{ marginBottom: 20 }}>
       <select
-        value={currentValue()}
-        onChange={handleChange}
+        value={current}
+        onChange={e => {
+          const item = all.find(i => i.key === e.target.value)
+          if (item) window.location.hash = item.hash
+        }}
         style={{
-          width:        '100%',
-          background:   A.bgInput,
-          border:       `1px solid ${A.borderGold}`,
-          borderRadius: 10,
-          color:        A.gold,
-          padding:      '10px 14px',
-          fontSize:     13,
-          fontWeight:   700,
-          fontFamily:   A.font,
-          outline:      'none',
-          colorScheme:  'dark',
+          width: '100%', background: A.bgInput,
+          border: `1px solid ${A.borderGold}`, borderRadius: 10,
+          color: A.gold, padding: '10px 14px',
+          fontSize: 13, fontWeight: 700, fontFamily: A.font,
+          outline: 'none', colorScheme: 'dark',
         }}
       >
-        <optgroup label='Immerse'>
-          {IMMERSE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='Guides'>
-          {GUIDES_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='Library'>
-          {LIBRARY_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='Calendar'>
-          {CALENDAR_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='House'>
-          {HOUSE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='Operations'>
-          {OPERATIONS_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='Time'>
-          {TIME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
-        <optgroup label='Finance'>
-           {FINANCE_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-         </optgroup>
-         <optgroup label='Programme'>
-          {PROGRAMME_ITEMS.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
-        </optgroup>
+        {GROUPS.map(g => (
+          <optgroup key={g.key} label={g.label}>
+            {g.items.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+          </optgroup>
+        ))}
       </select>
     </div>
   )
 }
 
-// ─── Export ───────────────────────────────────────────────────────────────────
+// ── Export ────────────────────────────────────────────────────────────────────
 
-export default function AdminSidebar({
-  tab,
-  mobile = false,
-}: {
-  tab:     AdminTab
-  mobile?: boolean
-}) {
+export default function AdminSidebar({ tab, mobile = false }: { tab: AdminTab; mobile?: boolean }) {
   if (mobile) return <MobileSelector tab={tab} />
   return <DesktopSidebar tab={tab} />
 }
