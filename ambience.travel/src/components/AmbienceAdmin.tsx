@@ -68,6 +68,8 @@ const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEdito
 // Financial
 const FinancialTab         = lazyWithReload(() => import('./admin/FinancialTab'))
 const OutlookTab           = lazyWithReload(() => import('./admin/OutlookTab'))
+const TripDetail           = lazyWithReload(() => import('./admin/TripDetail'))
+const StudioDashboard      = lazyWithReload(() => import('./admin/StudioDashboard'))
 
 // Residences (was Programme)
 const ProgrammesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
@@ -182,13 +184,8 @@ function TabContent({ tab }: { tab: AdminTab }) {
   // ── New taxonomy ────────────────────────────────────────────────────────────
 
   if (tab.product === 'trips') {
-    // list + detail tabs: placeholder until Phase 3 TripDetail is built.
-    // For now, fall through to EngagementsListTab / EngagementDetailTab
-    // so the admin remains functional during the transition.
-    if (tab.tab === 'list')     return <EngagementsListTab />
-    if (tab.tab === 'overview') return <EngagementDetailTab urlId={tab.urlId} />
-    if (tab.tab === 'bookings') return <OutlookTab urlId={tab.urlId} />
-    // contacts, activity: Phase 3 surfaces, show list for now
+    if (tab.tab === 'list') return <EngagementsListTab />
+    if ('urlId' in tab) return <TripDetail urlId={tab.urlId} activeTab={tab.tab} />
     return <EngagementsListTab />
   }
 
@@ -223,8 +220,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'finance-engagement')   return <FinancialTab engagementId={tab.engagementId} />
     if (tab.tab === 'time')                 return <TimeTrackingTab />
     if (tab.tab === 'time-analytics')       return <TimeAnalyticsTab />
-    // dashboard: Phase 6 StudioDashboard. CalendarTab as placeholder.
-    return <CalendarTab />
+    return <StudioDashboard />
   }
 
   // ── Legacy aliases (kept until Phase 7 dissolution) ──────────────────────

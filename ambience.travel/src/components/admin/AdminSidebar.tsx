@@ -39,12 +39,12 @@ type NavGroup = {
 
 const GROUPS: NavGroup[] = [
   {
-    key: 'trips', label: 'Trips', icon: Plane,
+    key: 'trips', label: 'Engagements', icon: Plane,
     items: [
       {
-        key: 'trips-list', label: 'All Trips',
+        key: 'trips-list', label: 'All Engagements',
         hash: buildAdminHash({ product: 'trips', tab: 'list' }),
-        active: t => t.product === 'trips' && t.tab === 'list',
+        active: t => t.product === 'trips',
       },
     ],
   },
