@@ -24,6 +24,7 @@ import {
   markBilled,
   markPaid,
   writeOff,
+  updateBookingFinancial,
   type EngagementFull,
   type Expense,
   type BillingStatus,
@@ -58,19 +59,6 @@ function marginColor(n: number): string {
 function pct(n: number | null | undefined): string {
   if (n == null) return ''
   return ` (${n.toFixed(1)}%)`
-}
-
-// ── Write EF call (update_booking_financial) ──────────────────────────────────
-// Routes through travel-write-expenses, which patches arbitrary booking fields.
-
-async function updateBookingFinancial(bookingId: string, fields: Record<string, unknown>): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('travel-write-expenses', {
-    body: { mode: 'update_booking_financial', booking_id: bookingId, fields },
-  })
-  if (error) throw error
-  if (data && typeof data === 'object' && 'error' in data) {
-    throw new Error((data as { error: string }).error)
-  }
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
