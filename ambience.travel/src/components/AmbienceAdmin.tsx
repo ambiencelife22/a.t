@@ -183,7 +183,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
 
   if (tab.product === 'trips') {
     if (tab.tab === 'list') return <EngagementsListTab />
-    if ('urlId' in tab) return <EngagementDetail urlId={tab.urlId} activeTab={tab.tab} />
+    if ('urlId' in tab) return <EngagementDetail urlId={tab.urlId} />
     return <EngagementsListTab />
   }
 
