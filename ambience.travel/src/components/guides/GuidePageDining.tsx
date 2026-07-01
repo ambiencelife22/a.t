@@ -160,20 +160,22 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
         ])
         if (cancelled) return
 
-        if (venuesResult.status === 'fulfilled') {
-          setVenues(venuesResult.value)
-        } else {
+        if (venuesResult.status === 'rejected') {
           console.error('GuidePageDining: failed to load venues', venuesResult.reason)
           const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load dining venues: ${msg}`)
           setVenues([])
         }
+        if (venuesResult.status === 'fulfilled') {
+          setVenues(venuesResult.value)
+        }
 
-        if (happeningsResult.status === 'fulfilled') {
-          setHappenings(happeningsResult.value)
-        } else {
+        if (happeningsResult.status === 'rejected') {
           console.error('GuidePageDining: failed to load happenings', happeningsResult.reason)
           setHappenings([])
+        }
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
         }
 
         setLoading(false)
@@ -249,9 +251,9 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
 
       if (v.is_supplementary) {
         supplementary.push(v)
-      } else {
-        primary.push(v)
+        continue
       }
+      primary.push(v)
     }
 
     const byName = (a: DiningVenue, b: DiningVenue) => a.name.localeCompare(b.name)
@@ -345,7 +347,7 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
                     <GuideSectionBreak
                       eyebrow="Beyond The Highlighted"
                       heading="Also Nearby"
-                      descriptor={`Additional tables guests have considered.`}
+                      descriptor="Additional tables worth considering."
                     />
                   )}
                   {supplementaryVenues.map(v => (

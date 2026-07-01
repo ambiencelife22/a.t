@@ -26,7 +26,8 @@
  *   - PDF year/version resolution (utilsGuidePdf)
  *   - Style objects (stylesGuidePage)
  *
- * Last updated: S53 — Nine-file guide-layer extraction. Every shared piece
+ * Last updated: S53 — No else / else if anywhere. Guard clauses only.
+ * Prior: S53 — Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
  * Prior: S53 — Universal eyebrow/headline pattern via GUIDE_COPY.experiences.
  *   Venues bugfix, duplicated happenings handler removed.
@@ -129,20 +130,22 @@ export default function GuidePageExperiences({
         ])
         if (cancelled) return
 
-        if (venuesResult.status === 'fulfilled') {
-          setVenues(venuesResult.value)
-        } else {
+        if (venuesResult.status === 'rejected') {
           console.error('GuidePageExperiences: failed to load experiences', venuesResult.reason)
           const msg = venuesResult.reason instanceof Error ? venuesResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load experiences: ${msg}`)
           setVenues([])
         }
+        if (venuesResult.status === 'fulfilled') {
+          setVenues(venuesResult.value)
+        }
 
-        if (happeningsResult.status === 'fulfilled') {
-          setHappenings(happeningsResult.value)
-        } else {
+        if (happeningsResult.status === 'rejected') {
           console.error('GuidePageExperiences: failed to load happenings', happeningsResult.reason)
           setHappenings([])
+        }
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
         }
 
         setLoading(false)

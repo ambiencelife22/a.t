@@ -29,7 +29,8 @@
  * Filter shape simpler than dining — no cuisine taxonomy on hotels.
  * Active filters: stars threshold, forbes-rated-only, preferred-partners-only.
  *
- * Last updated: S53 — Nine-file guide-layer extraction. Every shared piece
+ * Last updated: S53 — No else / else if anywhere. Guard clauses only.
+ * Prior: S53 — Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
  * Prior: S53 — Brought to feature parity with dining/experiences/shopping.
  *   Added hasFullAccess prop, happenings fetch, PDF download, at-a-glance,
@@ -152,20 +153,22 @@ export default function GuidePageHotels({
         ])
         if (cancelled) return
 
-        if (hotelsResult.status === 'fulfilled') {
-          setHotels(hotelsResult.value)
-        } else {
+        if (hotelsResult.status === 'rejected') {
           console.error('GuidePageHotels: failed to load hotels', hotelsResult.reason)
           const msg = hotelsResult.reason instanceof Error ? hotelsResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load hotels: ${msg}`)
           setHotels([])
         }
+        if (hotelsResult.status === 'fulfilled') {
+          setHotels(hotelsResult.value)
+        }
 
-        if (happeningsResult.status === 'fulfilled') {
-          setHappenings(happeningsResult.value)
-        } else {
+        if (happeningsResult.status === 'rejected') {
           console.error('GuidePageHotels: failed to load happenings', happeningsResult.reason)
           setHappenings([])
+        }
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
         }
 
         setLoading(false)

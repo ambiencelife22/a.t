@@ -126,20 +126,22 @@ export default function GuidePageShopping({
         ])
         if (cancelled) return
 
-        if (shopsResult.status === 'fulfilled') {
-          setShops(shopsResult.value)
-        } else {
+        if (shopsResult.status === 'rejected') {
           console.error('GuidePageShopping: failed to load shops', shopsResult.reason)
           const msg = shopsResult.reason instanceof Error ? shopsResult.reason.message : 'Unknown error'
           toastRef.current.error(`Couldn't load shopping: ${msg}`)
           setShops([])
         }
+        if (shopsResult.status === 'fulfilled') {
+          setShops(shopsResult.value)
+        }
 
-        if (happeningsResult.status === 'fulfilled') {
-          setHappenings(happeningsResult.value)
-        } else {
+        if (happeningsResult.status === 'rejected') {
           console.error('GuidePageShopping: failed to load happenings', happeningsResult.reason)
           setHappenings([])
+        }
+        if (happeningsResult.status === 'fulfilled') {
+          setHappenings(happeningsResult.value)
         }
 
         setLoading(false)
