@@ -25,6 +25,29 @@ Tags: **[DB]** = live schema/data change in Supabase (not in repo diffs).
 
 ---
 
+## 2026-07-01
+
+### [DB] payment_exception_override on travel_bookings (Arc B Phase 6, first client slice)
+
+Added nullable boolean travel_bookings.payment_exception_override. Live schema
+change (Supabase), not in repo diffs. Admin force-flag for the guest-facing
+"Payment Outstanding" signal. NULL/false defers to date logic; true forces the
+exception. Consumed only by _shared/elementStatus.ts derivePaymentException.
+
+Scope note: this is the FIRST client-facing Phase 6 slice, but a narrow one — a
+payment-exception signal, NOT the full per-stage status render. The confirmation
+EF (travel-get-trip-confirmation) now derives ONE boolean (payment_exception) via
+the canonical helper and exposes it guest-side; it does NOT yet roll up
+lifecycle status via deriveElementStatus. So the Phase 4+5 "pending" note below
+(client EFs not yet on the canonical rollup) still stands for status; only the
+payment-exception axis shipped. derivePaymentException fires on
+override===true OR (balance_due_date < today AND balance_paid_at null); not-yet-due
+stays silent. UTC today (destination-aware is logged debt). Rendered red,
+exception-only, on web (ImmerseTripPage) + PDF (pdfImmerseConfirmation); silent
+otherwise. Admin set-toggle in FinancialTab pending.
+
+---
+
 ## 2026-06-27
 
 ### [DB][ARC] Arc B — Universal Element Status, Phases 1-3 (data + behavior + history)
