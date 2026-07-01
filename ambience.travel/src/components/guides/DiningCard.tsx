@@ -35,7 +35,15 @@ const STATUS_LABELS: Record<Exclude<VenueStatus, 'operational'>, string> = {
 }
 
 export function DiningCard({ venue, hasFullAccess, destinationName }: DiningCardProps) {
-  const isTeaser = !hasFullAccess
+  // Cards render full body when either:
+  //   (a) the viewer has advisor-level access, or
+  //   (b) the venue itself has been marked publicly previewable
+  //       (public_preview_rank set — post-S53 public-open, all venues carry a rank)
+  //
+  // This lets the parent keep hasFullAccess as the gate for advisor extras
+  // (PDF download, PlanYourVisit, happenings) while cards render their full
+  // content whenever the venue is publicly listed.
+  const isTeaser = !hasFullAccess && venue.public_preview_rank == null
 
   return (
     <article style={cardStyle}>
