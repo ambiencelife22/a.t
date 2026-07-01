@@ -392,7 +392,7 @@ export default function ExperiencesGuidePage({
                   ))}
                 </section>
 
-                {!hasFullAccess && (
+                {!hasFullAccess && visibleVenues.length < venues.length && (
                   <EditorialPrompt destinationName={destination.name} />
                 )}
               </>

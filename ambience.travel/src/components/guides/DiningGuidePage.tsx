@@ -401,7 +401,7 @@ export default function DiningGuidePage({ destination, hasFullAccess }: DiningGu
                   ))}
                 </section>
 
-                {!hasFullAccess && (
+                {!hasFullAccess && totalVisible < venues.length && (
                   <EditorialPrompt destinationName={destination.name} />
                 )}
               </>

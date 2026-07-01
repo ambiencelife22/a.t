@@ -387,7 +387,7 @@ export default function ShoppingGuidePage({
                   ))}
                 </section>
 
-                {!hasFullAccess && (
+                {!hasFullAccess && visibleShops.length < shops.length && (
                   <EditorialPrompt destinationName={destination.name} />
                 )}
               </>

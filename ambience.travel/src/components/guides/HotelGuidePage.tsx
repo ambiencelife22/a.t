@@ -351,7 +351,7 @@ export default function HotelGuidePage({
                   ))}
                 </section>
 
-                {!hasFullAccess && (
+                {!hasFullAccess && filteredHotels.length < hotels.length && (
                   <EditorialPrompt destinationName={destination.name} />
                 )}
               </>
