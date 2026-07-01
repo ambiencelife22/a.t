@@ -66,7 +66,7 @@ const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEdito
 
 // Financial
 const OutlookTab           = lazyWithReload(() => import('./admin/OutlookTab'))
-const TripDetail           = lazyWithReload(() => import('./admin/TripDetail'))
+const EngagementDetail     = lazyWithReload(() => import('./admin/EngagementDetail'))
 const StudioDashboard      = lazyWithReload(() => import('./admin/StudioDashboard'))
 
 // Residences (was Programme)
@@ -183,7 +183,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
 
   if (tab.product === 'trips') {
     if (tab.tab === 'list') return <EngagementsListTab />
-    if ('urlId' in tab) return <TripDetail urlId={tab.urlId} activeTab={tab.tab} />
+    if ('urlId' in tab) return <EngagementDetail urlId={tab.urlId} activeTab={tab.tab} />
     return <EngagementsListTab />
   }
 

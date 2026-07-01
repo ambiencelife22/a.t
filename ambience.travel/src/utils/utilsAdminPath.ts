@@ -80,14 +80,14 @@ export type AdminProduct =
 
 // ── Tab ID types ──────────────────────────────────────────────────────────────
 
-// Detail tabs rendered inline within TripDetail (url_id based routing)
-export type TripDetailTabId = 'overview' | 'bookings' | 'contacts' | 'activity'
+// Detail tabs rendered inline within EngagementDetail (url_id based routing)
+export type EngagementDetailTabId = 'overview' | 'bookings' | 'contacts' | 'activity'
 
 // Full-page editor tabs (trip uuid based routing)
-export type TripEditorTabId = 'programme' | 'brief'
+export type EngagementEditorTabId = 'programme' | 'brief'
 
 // Union for external consumers
-export type TripTabId = TripDetailTabId | TripEditorTabId
+export type EngagementTabId = EngagementDetailTabId | EngagementEditorTabId
 
 export type ContentTabId = 'dining' | 'experiences' | 'hotels' | 'shopping'
 
@@ -121,7 +121,7 @@ export type ProgrammeTabId =
 export type AdminTab =
   // ── New taxonomy ──
   | { product: 'trips';      tab: 'list' }
-  | { product: 'trips';      tab: TripDetailTabId; urlId: string }      // inline detail tabs (url_id based)
+  | { product: 'trips';      tab: EngagementDetailTabId; urlId: string }      // inline detail tabs (url_id based)
   | { product: 'trips';      tab: 'programme';     tripId: string }     // full-page editor (uuid based)
   | { product: 'trips';      tab: 'brief';         tripId: string }     // full-page editor (uuid based)
   | { product: 'clients';    tab: 'list' }
@@ -195,7 +195,7 @@ export function parseAdminHash(hash: string): AdminTab {
 
     // Detail tabs: #admin/trips/<url_id>[/<tab>]
     if (URL_ID_RE.test(seg1) || isTripUrlId(seg1)) {
-      const detailTab = seg2 as TripTabId | undefined
+      const detailTab = seg2 as EngagementTabId | undefined
       if (!detailTab || detailTab === 'overview')  return { product: 'trips', tab: 'overview',  urlId: seg1 }
       if (detailTab === 'bookings')                return { product: 'trips', tab: 'bookings',  urlId: seg1 }
       if (detailTab === 'contacts')                return { product: 'trips', tab: 'contacts',  urlId: seg1 }
@@ -311,11 +311,11 @@ export function buildAdminHash(target: AdminTab): string {
   if (target.product === 'trips') {
     if (target.tab === 'list') return '#admin/trips'
     if (target.tab === 'programme' || target.tab === 'brief') {
-      const t = target as { tab: TripEditorTabId; tripId: string }
+      const t = target as { tab: EngagementEditorTabId; tripId: string }
       return `#admin/trips/${t.tripId}/${t.tab}`
     }
     // Detail tabs keyed by url_id (overview, bookings, contacts, activity)
-    const t = target as { tab: TripDetailTabId; urlId: string }
+    const t = target as { tab: EngagementDetailTabId; urlId: string }
     return `#admin/trips/${t.urlId}${t.tab === 'overview' ? '' : `/${t.tab}`}`
   }
   if (target.product === 'clients') {

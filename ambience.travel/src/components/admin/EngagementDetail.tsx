@@ -15,18 +15,18 @@
 
 import { useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
-import { navigateAdmin, buildAdminHash, type TripDetailTabId } from '../../utils/utilsAdminPath'
+import { buildAdminHash, type EngagementDetailTabId } from '../../utils/utilsAdminPath'
 import EngagementDetailTab from './EngagementDetailTab'
 import OutlookTab from './OutlookTab'
 
-const TABS: { id: TripDetailTabId; label: string; ready: boolean }[] = [
+const TABS: { id: EngagementDetailTabId; label: string; ready: boolean }[] = [
   { id: 'overview',  label: 'Overview',  ready: true },
   { id: 'bookings',  label: 'Bookings',  ready: true },
   { id: 'contacts',  label: 'Contacts',  ready: false },
   { id: 'activity',  label: 'Activity',  ready: false },
 ]
 
-export default function TripDetail({ urlId, activeTab }: { urlId: string; activeTab: TripDetailTabId }) {
+export default function EngagementDetail({ urlId, activeTab }: { urlId: string; activeTab: EngagementDetailTabId }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {/* Tab bar */}

@@ -266,7 +266,7 @@ export async function fetchTripBookings(
   // steps (registry slug->rank, then this house's person->role). Nothing stored on
   // the room; order always reflects the current hierarchy. A room ranks by its
   // HIGHEST occupant (min rank over lead person_id + additional_guests), so a room
-  // holding the principal sorts to the top regardless of who else shares it.
+  // holding the principal sorts to the top regardless of who shares it.
   const roleRankByPerson: Record<string, number> = {}
   if (roomPersonIds.length > 0) {
     const { data: roles } = await db.from('a_house_roles').select('slug, sort_order')

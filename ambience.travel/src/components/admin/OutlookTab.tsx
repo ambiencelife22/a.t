@@ -4,7 +4,7 @@
 // (travel-read-expenses by_engagement_full), one write path
 // (travel-write-expenses update_booking_financial).
 //
-// Mounted at #admin/trips/<url_id>/bookings (TripDetailTabId: 'bookings').
+// Mounted at #admin/trips/<url_id>/bookings (EngagementDetailTabId: 'bookings').
 // Receives urlId (11-char) and resolves engagement_id internally.
 //
 // Sections: margin banner · bookings (rooms + write panel) · expenses.
