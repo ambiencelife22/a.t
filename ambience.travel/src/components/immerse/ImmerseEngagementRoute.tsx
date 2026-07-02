@@ -154,7 +154,10 @@ function EngagementRoute({ route }: {
   if (error === 'not-found' || !engagement) {
     return (
       <ImmerseLayout>
-        <NotFound message='This page is not available.' />
+        <NotFound
+          message='This page is not publicly visible.'
+          subMessage='Please reach out to your travel designer to pick things back up — they will be glad to share what&apos;s next.'
+        />
       </ImmerseLayout>
     )
   }

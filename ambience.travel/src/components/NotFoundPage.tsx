@@ -23,18 +23,20 @@
 import { ID, FONTS } from '../tokens/tokensLanding'
 
 interface NotFoundPageProps {
-  message?:  string
-  homeUrl?:  string
-  homeLabel?: string
+  message?:    string
+  subMessage?: string
+  homeUrl?:    string
+  homeLabel?:  string
 }
 
 const HOME_URL   = 'https://ambience.travel'
 const HOME_LABEL = 'Return to ambience.travel'
 
 export default function NotFoundPage({
-  message  = "We couldn't find that page.",
-  homeUrl  = HOME_URL,
-  homeLabel = HOME_LABEL,
+  message    = "We couldn't find that page.",
+  subMessage,
+  homeUrl    = HOME_URL,
+  homeLabel  = HOME_LABEL,
 }: NotFoundPageProps) {
   return (
     <div style={wrapStyle}>
@@ -49,6 +51,11 @@ export default function NotFoundPage({
 
         {/* Message */}
         <p style={messageStyle}>{message}</p>
+        {subMessage && (
+          <p style={{ margin: 0, fontSize: 15, fontFamily: FONTS.serif, fontWeight: 400, color: ID.muted, lineHeight: 1.6, letterSpacing: '-0.01em' }}>
+            {subMessage}
+          </p>
+        )}
 
         {/* Return link */}
         <a href={homeUrl} style={linkStyle}>
