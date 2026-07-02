@@ -15,6 +15,7 @@ import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { json, preflight } from '../_shared/http.ts'
+import { checkPublicView } from '../_shared/visibility.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
@@ -31,6 +32,10 @@ Deno.serve(async (req: Request) => {
 
     const db = createServiceClient()
     // url_id → trip_id → house_id (single-source)
+    // Gate on public_view before serving any data.
+    const visibilityGate = await checkPublicView(db, url_id)
+    if (visibilityGate) return visibilityGate
+
     const ids = await resolveTripIds(db, url_id)
     if (!ids) {
       return json({ error: 'Not found' }, 404)

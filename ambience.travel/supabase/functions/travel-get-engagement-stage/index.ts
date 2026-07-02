@@ -35,6 +35,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'
+import { checkPublicView } from '../_shared/visibility.ts'
 
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
@@ -91,14 +92,10 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Gate on public_view — hidden engagements look identical to non-existent
-    // ones. Same 404 response, no information leak.
-    if (!(engagement as any).public_view) {
-      return new Response(
-        JSON.stringify({ error: 'Not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    /// Gate on public_view — via shared helper (single source of truth).
+    // Hidden engagements return 404, indistinguishable from non-existent.
+    const visibilityGate = await checkPublicView(db, url_id)
+    if (visibilityGate) return visibilityGate
 
     const tripId = (engagement as any).trip_id as string | null
     let hasTripContent = false

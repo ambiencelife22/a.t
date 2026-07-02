@@ -32,6 +32,7 @@
 
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
+import { checkPublicView } from '../_shared/visibility.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
@@ -55,6 +56,9 @@ Deno.serve(async (req: Request) => {
     const db = createServiceClient()
 
     // ── 3. url_id → trip_id → house_id (single-source) ─────────────────────────
+    const visibilityGate = await checkPublicView(db, url_id)
+    if (visibilityGate) return visibilityGate
+
     const ids = await resolveTripIds(db, url_id)
     if (!ids) {
       return json({ error: 'Not found' }, 404)
