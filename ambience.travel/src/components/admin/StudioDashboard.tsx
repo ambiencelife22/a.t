@@ -254,6 +254,7 @@ export default function StudioDashboard() {
   }, [])
 
   function goTo(eng: PipelineTrip) {
+    if (!eng.url_id) return
     navigateAdmin({ product: 'trips', tab: 'overview', urlId: eng.url_id })
   }
 
