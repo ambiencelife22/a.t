@@ -49,6 +49,7 @@
 // Prior: S52 — happenings section added.
 // Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
 
+import { formatMonthYear } from '../utils/utilsDates'
 import type { DiningVenue } from '../queries/queriesGuidesDining'
 import type { ExperienceVenue } from '../queries/queriesGuidesExperiences'
 import type { Happening } from '../queries/queriesGuidesHappenings'
@@ -1501,7 +1502,7 @@ function renderClosingPage(ctx: RenderCtx) {
 
 function renderDisclaimer(doc: any, accuracyDate: string, startY: number) {
   const text =
-    `The venues listed in this guide reflect our knowledge as of ${accuracyDate}. ` +
+    `The venues listed in this guide reflect our knowledge as of ${formatMonthYear(accuracyDate)}. ` +
     `Availability, pricing, and operators change. ` +
     `ambience makes every effort to keep this information current but cannot guarantee its accuracy ` +
     `at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.`

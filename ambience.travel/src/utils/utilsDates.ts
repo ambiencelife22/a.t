@@ -14,11 +14,21 @@
  *
  * Created S23. Extracted from PropertyIntroSection.tsx after a date-only
  * rendering audit found six Postgres date columns consumed across three files.
+ *
+ * Last updated: S53 — Two new formatters added:
+ *   formatMonthYear   — "May 2026"    — guide accuracy disclaimers
+ *   formatDateLong    — "01 July 2026" — general app DD Month YYYY
+ * Both follow the UTC-safe parse pattern established in S23.
  */
 
 const MONTHS = [
   'January', 'February', 'March',     'April',   'May',      'June',
   'July',    'August',   'September', 'October', 'November', 'December',
+]
+
+const MONTHS_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
 const DAYS_OF_WEEK = [
@@ -57,11 +67,6 @@ export function formatDateWithWeekday(iso: string | null | undefined): string {
 // ── Short form ───────────────────────────────────────────────────────────────
 // Returns "25 Apr 2026" — for compact contexts like admin list views.
 
-const MONTHS_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
-
 export function formatDateShort(iso: string | null | undefined): string {
   if (!iso) return ''
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -72,10 +77,36 @@ export function formatDateShort(iso: string | null | undefined): string {
   return `${day} ${MONTHS_SHORT[month]} ${year}`
 }
 
-// "15:05" -> "15:05 (pm)", "08:40" -> "08:40 (am)", "00:30" -> "00:30 (am)".
-// 24-hour clock with am/pm period in parens (am: hour < 12, pm: hour >= 12;
-// midnight is am, noon is pm). Single source for time display across every
-// surface — admin editors, client page, all PDFs.
+// ── Month + year ─────────────────────────────────────────────────────────────
+// Returns "May 2026" — used in guide accuracy disclaimers where a precise day
+// is not meaningful; the month of currency is the relevant signal.
+// First-of-month ISO values (2026-05-01) render as "May 2026".
+
+export function formatMonthYear(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  const year  = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10) - 1
+  return `${MONTHS[month]} ${year}`
+}
+
+// ── Long form with zero-padded day ───────────────────────────────────────────
+// Returns "01 July 2026" — DD Month YYYY, day always two digits.
+// Use for general app surfaces where the full date matters and
+// typographic consistency requires zero-padding (e.g. confirmation pages,
+// programme headers, export labels).
+
+export function formatDateLong(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  const year  = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10) - 1
+  const day   = parseInt(m[3], 10)
+  return `${String(day).padStart(2, '0')} ${MONTHS[month]} ${year}`
+}
+
 // ── Today — local browser date ────────────────────────────────────────────────
 // Returns YYYY-MM-DD in the user's local timezone. Safe for comparing against
 // Postgres date columns (which are also date-only, no tz component).
@@ -87,6 +118,12 @@ export function localDateStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+// ── Time formatter ───────────────────────────────────────────────────────────
+// "15:05" -> "15:05 (pm)", "08:40" -> "08:40 (am)", "00:30" -> "00:30 (am)".
+// 24-hour clock with am/pm period in parens (am: hour < 12, pm: hour >= 12;
+// midnight is am, noon is pm). Single source for time display across every
+// surface — admin editors, client page, all PDFs.
 
 export function fmtTime(t: string | null | undefined): string {
   if (!t) return ''

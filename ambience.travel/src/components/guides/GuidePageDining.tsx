@@ -54,6 +54,7 @@ import { GuideComingUpSection } from './GuideComingUpSection'
 import { GuidePlanYourVisit } from './GuidePlanYourVisit'
 import { GuideAtAGlance } from './GuideAtAGlance'
 import { GuideEditorialPrompt } from './GuideEditorialPrompt'
+import { GuideDisclaimer } from './GuideDisclaimer'
 import {
   GUIDE_COPY,
   formatSectionHeader,
@@ -76,8 +77,8 @@ import {
   downloadBtnDisabledStyle,
   downloadIconStyle,
   gridStyle,
-  disclaimerStyle,
-  disclaimerTextStyle,
+
+
   messageBlockStyle,
   messageTextStyle,
   emptyStateStyle,
@@ -396,11 +397,7 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
             )}
 
             {overlay?.accuracy_date && (
-              <div style={disclaimerStyle}>
-                <p style={disclaimerTextStyle}>
-                  The venues and recognition listed in this guide reflect our knowledge as of {overlay.accuracy_date}. The dining industry evolves continuously; restaurants close, chefs move, and accolades are reassigned. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading. This guide, including any exported PDF, is provided for inspiration and planning purposes only.
-                </p>
-              </div>
+              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracy_date} />
             )}
           </>
         )}

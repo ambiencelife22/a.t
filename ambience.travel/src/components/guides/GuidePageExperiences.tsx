@@ -55,6 +55,7 @@ import { GuideChipFilters } from './GuideChipFilters'
 import { GuidePlanYourVisit } from './GuidePlanYourVisit'
 import { GuideAtAGlance } from './GuideAtAGlance'
 import { GuideEditorialPrompt } from './GuideEditorialPrompt'
+import { GuideDisclaimer } from './GuideDisclaimer'
 import {
   GUIDE_COPY,
   formatSectionHeader,
@@ -77,8 +78,8 @@ import {
   downloadBtnDisabledStyle,
   downloadIconStyle,
   gridStyle,
-  disclaimerStyle,
-  disclaimerTextStyle,
+
+
   messageBlockStyle,
   messageTextStyle,
   emptyStateStyle,
@@ -272,11 +273,7 @@ export default function GuidePageExperiences({
             )}
 
             {overlay?.accuracy_date && (
-              <div style={disclaimerStyle}>
-                <p style={disclaimerTextStyle}>
-                  The experiences listed in this guide reflect our knowledge as of {overlay.accuracy_date}. Availability, pricing, and operators change. ambience makes every effort to keep this information current but cannot guarantee its accuracy at the time of reading.
-                </p>
-              </div>
+              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracy_date} />
             )}
           </>
         )}
