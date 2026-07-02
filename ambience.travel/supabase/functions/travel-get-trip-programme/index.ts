@@ -20,6 +20,12 @@
 //     - standalone stored entries (dining/experience/notes — no source_booking_id)
 //   The programme tab + PDF render this stream as-is. No client-side derivation.
 //
+//   Check-in time resolution (S53G derived check-in feature):
+//     1. Derived: same-day arrival aux item end_time + booking.transfer_minutes
+//     2. Fallback: hotel standard_checkin_time (joined from travel_accom_hotels)
+//     3. null
+//   Early/late approved times surface as check_in_note/check_out_note.
+//
 //   Image resolution (canon-default, override-first), applied per item:
 //     hotel item → room override → canon room image → booking override → hotel hero
 //     dining     → travel_dining_venues.image_src
@@ -29,6 +35,10 @@
 // S53G+ : migrated to _shared/ (http + names + timeline). Hotel check-in/out moved
 //   from stored entries to derived timeline items. Resolver drift fixed (was the
 //   ''-returning inline copy; now _shared/names.ts returns string|null).
+// S53G v3: derived check-in time — bookings SELECT extended with transfer_minutes,
+//   early_checkin_approved_time, late_checkout_approved_time, and hotel policy
+//   join (standard_checkin_time, standard_checkout_time). enrichBookingWithHotelPolicy
+//   applied before buildTimeline call.
 
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
@@ -37,6 +47,7 @@ import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
 import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
+import { enrichBookingWithHotelPolicy } from '../_shared/expenses.ts'
 
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
@@ -55,7 +66,7 @@ Deno.serve(async (req: Request) => {
     // ── 2. Service role client ────────────────────────────────────────────────
     const db = createServiceClient()
 
-    // ── 3. url_id → trip_id → house_id (single-source) ─────────────────────────
+    // ── 3. url_id → trip_id → house_id (single-source) ───────────────────────
     const visibilityGate = await checkPublicView(db, url_id)
     if (visibilityGate) return visibilityGate
 
@@ -65,7 +76,7 @@ Deno.serve(async (req: Request) => {
     }
     const { tripId, houseId } = ids
 
-    // ── 5. Parallel fetch — core (single-source) + programme-specific ──────────
+    // ── 5. Parallel fetch — core (single-source) + programme-specific ─────────
     const [
       core,
       bookingsResult,
@@ -75,9 +86,24 @@ Deno.serve(async (req: Request) => {
     ] = await Promise.all([
       fetchTripCore(db, tripId, houseId),
 
-      // Bookings — programme's column set (no financial cols; derives hotel items)
+      // Bookings — programme column set + derived check-in columns (S53G v3).
+      // travel_accom_hotels join brings standard_checkin/checkout_time for the
+      // hotel policy fallback in deriveCheckinTime() inside timeline.ts.
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order')
+        .select(`
+          id, trip_id, house_id, booking_type, name, status, confirmation_number,
+          start_date, check_in_date, start_time, check_in_note, check_out_note,
+          end_date, nights, party_composition, brief_show, brief_image_src,
+          booked_by, accom_hotel_id, sort_order,
+          transfer_minutes,
+          early_checkin_approved_time,
+          late_checkout_approved_time,
+          checkin_time_is_estimate,
+          travel_accom_hotels!accom_hotel_id(
+            standard_checkin_time,
+            standard_checkout_time
+          )
+        `)
         .eq('house_id', houseId)
         .eq('trip_id', tripId),
 
@@ -111,7 +137,7 @@ Deno.serve(async (req: Request) => {
     const bookings   = (bookingsResult.data ?? []) as Record<string, unknown>[]
     const entries    = (entriesResult.data ?? []) as Record<string, unknown>[]
 
-    // ── 6. Shared bookings enrich: rooms + resolved guest names + lookup maps ───
+    // ── 6. Shared bookings enrich: rooms + resolved guest names + lookup maps ──
     const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel, houseId)
 
     // ── 7. Programme image composition (canon-default, override-first) ─────────
@@ -125,36 +151,37 @@ Deno.serve(async (req: Request) => {
       roomImgByBooking[bid] = roomOverride ?? canonImg
     }
 
-    // ── 8. Enrich bookings: _hotel_name, _hotel_image_src, _rooms (resolved) ────
+    // ── 8. Enrich bookings: _hotel_name, _hotel_image_src, _rooms, hotel policy ─
+    // enrichBookingWithHotelPolicy flattens the travel_accom_hotels join into
+    // _standard_checkin_time / _standard_checkout_time — the shape timeline.ts
+    // expects in BookingLike. All other enrichment is unchanged.
     const enrichedBookings = bookings.map(b => {
-      const bid = b.id as string
+      const bid     = b.id as string
       const hotelId = b.accom_hotel_id as string | null
-      const hotel = hotelId ? (hotelById[hotelId] ?? null) : null
+      const hotel   = hotelId ? (hotelById[hotelId] ?? null) : null
 
-      // Per-booking display image: room override/canon → booking override → hotel hero
       const displayImg =
         roomImgByBooking[bid]
         ?? (b.brief_image_src as string | null)
         ?? (hotel?.hero_image_src ?? null)
 
-      // rooms already carry resolved_guest_name from fetchTripBookings
       const enrichedRooms = roomsByBooking[bid] ?? []
 
-      return {
+      return enrichBookingWithHotelPolicy({
         ...b,
         _hotel_name:      hotel?.name ?? null,
         _hotel_image_src: displayImg,
         _rooms:           enrichedRooms,
-      }
+      })
     })
 
-    // ── 9. Aux with resolved passengers + driver details ───────────────────────
+    // ── 9. Aux with resolved passengers + driver details ──────────────────────
     const auxBookings = await attachDriverDetails(
       db,
       await attachPassengers(db, (auxResult.data ?? []) as unknown as Record<string, unknown>[], partyLabel),
     )
 
-    // ── 10. Dining venue images for aux bookings (dining_venue_id FK) ──────────
+    // ── 10. Dining venue images for aux bookings (dining_venue_id FK) ─────────
     const auxDiningIds = [...new Set(
       (auxBookings as Record<string, unknown>[])
         .map(a => a.dining_venue_id)
@@ -166,7 +193,9 @@ Deno.serve(async (req: Request) => {
           .in('id', auxDiningIds)
       : { data: [], error: null }
     const auxVenueById: Record<string, Record<string, unknown>> = {}
-    for (const d of (auxDiningVenueResult.data ?? []) as Record<string, unknown>[]) auxVenueById[d.id as string] = d
+    for (const d of (auxDiningVenueResult.data ?? []) as Record<string, unknown>[]) {
+      auxVenueById[d.id as string] = d
+    }
     const auxBookingsWithImg = (auxBookings as Record<string, unknown>[]).map(a => {
       const v = a.dining_venue_id ? auxVenueById[a.dining_venue_id as string] : null
       return {
@@ -205,7 +234,6 @@ Deno.serve(async (req: Request) => {
       expImgById[e.id as string] = (e.image_src as string | null) ?? null
     }
 
-    // Attach resolved image_src to standalone entries (non-booking sources).
     const entryImage = (e: Record<string, unknown>): string | null => {
       if (e.source_dining_id)     return diningImgById[e.source_dining_id as string] ?? null
       if (e.source_experience_id) return expImgById[e.source_experience_id as string] ?? null
@@ -213,13 +241,17 @@ Deno.serve(async (req: Request) => {
     }
     const enrichedEntries = entries.map(e => ({ ...e, image_src: entryImage(e) }))
 
-    // ── 11. Build the single-source timeline ───────────────────────────────────
+    // ── 11. Build the single-source timeline ──────────────────────────────────
+    // enrichedBookings now carry _standard_checkin_time / _standard_checkout_time
+    // (from enrichBookingWithHotelPolicy) and transfer_minutes / approved time
+    // columns from the DB. buildTimeline passes aux through buildHotelItems so
+    // deriveCheckinTime() can match same-day arrivals.
     const timeline = buildTimeline(enrichedBookings, auxBookingsWithImg, enrichedEntries)
 
-    // ── 12. Destinations + return (core-sourced) ───────────────────────────────
+    // ── 12. Destinations + return ─────────────────────────────────────────────
     const destinations = core.destinations
 
-    // ── 13. Return ─────────────────────────────────────────────────────────────
+    // ── 13. Return ────────────────────────────────────────────────────────────
     const trip = core.trip as Record<string, unknown>
     const payload = {
       trip: {

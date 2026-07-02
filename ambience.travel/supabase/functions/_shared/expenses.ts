@@ -2,7 +2,11 @@
 // Shared constants and helpers for the Financial Module.
 // Imported by travel-read-expenses and travel-write-expenses.
 // Single source — no duplication across EFs.
-// Last updated: S53G v2 — rate_type_id, payment_platform, net_rate selling_price,
+// Last updated: S53G v3 — derived check-in time columns added.
+//   transfer_minutes, early_checkin_approved_time, late_checkout_approved_time
+//   added to BOOKING_FINANCIAL_SELECT. Hotel policy times joined from
+//   travel_accom_hotels via accom_hotel_id FK.
+// Prior: S53G v2 — rate_type_id, payment_platform, net_rate selling_price,
 //   commission receipt columns added. computeNetRevenue rate-type-aware.
 
 // ── Select strings ────────────────────────────────────────────────────────────
@@ -41,14 +45,24 @@ export const BOOKING_FINANCIAL_SELECT = `
   selling_price, selling_price_usd,
   rate_type_id,
   commission_payment_platform_id,
+  transfer_minutes,
+  early_checkin_approved_time,
+  late_checkout_approved_time,
   travel_rate_types!rate_type_id(slug, label),
-  travel_payment_platforms!commission_payment_platform_id(slug, label, default_fee_pct)
+  travel_payment_platforms!commission_payment_platform_id(slug, label, default_fee_pct),
+  travel_accom_hotels!accom_hotel_id(
+    standard_checkin_time,
+    standard_checkout_time
+  )
 `
 
+// ROOM_SELECT — party_composition added for timeline room shape.
+// check_in_time is the room-level override; when null the booking-level
+// derived check-in time (from buildHotelItems in timeline.ts) applies.
 export const ROOM_SELECT = `
   id, booking_id, room_name, confirmation_number, guest_name,
-  nights, rate, tax_pct, total, sort_order, check_in_time,
-  brief_image_src
+  party_composition, nights, rate, tax_pct, total,
+  sort_order, check_in_time, brief_image_src
 `
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -103,4 +117,25 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   const iata     = (b.iata_share_amt       ?? 0) as number
   const indiv    = (b.individual_share_amt ?? 0) as number
   return Math.round((base - referral - iata - indiv) * 100) / 100
+}
+
+// ── Booking enrichment helper ─────────────────────────────────────────────────
+// Flattens the travel_accom_hotels join into _standard_checkin_time and
+// _standard_checkout_time on the booking row — the shape timeline.ts expects.
+// Call this after fetching bookings with BOOKING_FINANCIAL_SELECT before
+// passing them to buildTimeline().
+
+export function enrichBookingWithHotelPolicy(
+  b: Record<string, unknown>
+): Record<string, unknown> {
+  const hotel = b.travel_accom_hotels as {
+    standard_checkin_time:  string | null
+    standard_checkout_time: string | null
+  } | null
+
+  return {
+    ...b,
+    _standard_checkin_time:  hotel?.standard_checkin_time  ?? null,
+    _standard_checkout_time: hotel?.standard_checkout_time ?? null,
+  }
 }
