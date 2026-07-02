@@ -203,3 +203,29 @@ Steps applied live in Supabase:
 Render: formatMonthYear(iso) → "May 2026" for guide accuracy disclaimers.
 formatDateLong(iso) → "01 July 2026" for general app use. Both in utilsDates.ts,
 following the S23 UTC-safe parse pattern (no new Date(iso)).
+
+### [DB] maps_url format constraint — universal across all guide tables
+
+Added CHECK constraint `chk_maps_url_format` to five tables:
+`travel_dining_venues`, `travel_experiences`, `travel_happenings`,
+`travel_programme_properties`, `travel_shopping`.
+
+Constraint enforces Google Maps short-link format only:
+  `^https://(maps\.app\.goo\.gl|share\.google|goo\.gl/maps)/`
+
+Rejects raw long-form Google Maps URLs. Accepts all three known
+short-link formats. Four pre-existing non-compliant rows corrected
+before constraint applied (China Tang London, Château de La
+Messardière St Tropez, Valentino St Tropez, Pucci St Tropez).
+
+One standard, enforced universally at the DB level across every
+guide surface. The constraint is the globalization.
+
+### [DB] Guide views rebuilt with security_invoker=true
+
+`travel_dining_guide_for_user` and `travel_experiences_guide_for_user`
+recreated with `WITH (security_invoker = true)`. Supabase security
+advisor was flagging both views as SECURITY DEFINER due to the
+auth.uid() subselect pattern. security_invoker ensures RLS and
+permissions are evaluated as the querying user, not the view creator.
+Correct posture for user-scoped grants views.
