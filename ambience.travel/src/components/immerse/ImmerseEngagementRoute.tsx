@@ -12,7 +12,6 @@
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseEngagementPage from './ImmerseEngagementPage'
-import ImmerseTripPage from './ImmerseTripPage'
 import NotFoundPage from '../NotFoundPage'
 import ProposalArchivedFallback from './ProposalArchivedFallback'
 import {
@@ -42,10 +41,10 @@ export function buildImmerseNavItems(
 // ── Route state ───────────────────────────────────────────────────────────────
 
 type RouteState =
-  | { phase: 'loading'                                          }
-  | { phase: 'not-found'                                        }
-  | { phase: 'not-public'                                       }
-  | { phase: 'archived'                                         }
+  | { phase: 'loading'    }
+  | { phase: 'not-found'  }
+  | { phase: 'not-public' }
+  | { phase: 'archived'   }
   | { phase: 'proposal';  data: ImmerseEngagementData }
   | { phase: 'confirmed'; data: TripClientData        }
   | { phase: 'error'                                            }
@@ -125,14 +124,21 @@ export default function ImmerseEngagementRoute({
   }
 
   if (state.phase === 'proposal') {
-    return <ImmerseEngagementPage data={state.data} />
+    return (
+      <ImmerseEngagementPage
+        data={{ stage: 'proposal', urlId, engagement: state.data }}
+        activeTab={activeTab}
+        activeDestSlug={activeDestSlug}
+      />
+    )
   }
 
   if (state.phase === 'confirmed') {
     return (
-      <ImmerseTripPage
-        urlId={urlId}
-        initialTab={activeTab as any}
+      <ImmerseEngagementPage
+        data={{ stage: 'confirmed', urlId, engagement: state.data }}
+        activeTab={activeTab}
+        activeDestSlug={activeDestSlug}
       />
     )
   }

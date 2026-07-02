@@ -1,73 +1,98 @@
-// ImmerseEngagementPage.tsx — DB-wired engagement overview page
-// Route: /immerse/{url_id} — private + public-template engagements
-//   (public templates use 'pub' prefix convention on url_id, e.g. pubMuirRzSW)
-// Renders hero + welcome letter + route strip + (optional) secondary hero + destination rows + pricing
-// Does not own destination subpages (see DestinationPage)
+// ImmerseEngagementPage.tsx — Unified client-facing engagement surface.
 //
-// Last updated: S53B Closing — hero eyebrow now respects
-//   engagement.heroEyebrowOverride. When populated, replaces guestName
-//   with a single elegant line ("For Safiya & Family"). NULL preserves
-//   the existing clientName fallback ("Our VIP Guest").
-// Prior: S30E stage 2 — File renamed ImmerseTripPage.tsx → ImmerseEngagementPage.tsx.
-// Prior: S30E stage 1 — Type rename ImmerseTripData → ImmerseEngagementData.
-// Prior: S30 — Welcome letter wired between Hero 1 and Route Strip.
+// Collapse A: one component, two render arms, one stage discriminant.
+//
+//   proposal  → Hero + Welcome Letter + Route Strip + Destinations + Pricing
+//   confirmed → ImmerseTripPage (tabs: Confirmation, Programme, Brief, Contacts)
+//
+// Receives EngagementClientData from ImmerseEngagementRoute — data already
+// fetched, no internal fetch here. ImmerseTripPage re-fetches for the confirmed
+// arm (its internal hook) — acceptable until Collapse A phase 2 passes data down.
+//
+// ImmerseTripPage is NOT modified. It remains the confirmed render authority.
+// This file is the composition layer only.
+//
+// Last updated: S53I — Collapse A page layer. Replaces the 72-line proposal-only
+// wrapper. ImmerseTripPage dissolution is Collapse A phase 2.
 
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
-import { ImmerseRouteStrip } from './ImmerseEngagementComponents'
-import { ImmerseDestinationRows } from './ImmerseEngagementComponents'
-import { ImmerseEngagementPricing } from './ImmerseEngagementComponents'
+import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
+import ImmerseTripPage from './ImmerseTripPage'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
-import type { ImmerseEngagementData } from '../../types/typesImmerse'
+import type { EngagementClientData } from '../../types/typesImmerseClient'
 
-export default function ImmerseEngagementPage({ data }: { data: ImmerseEngagementData | null }) {
-  if (!data) return null
+interface Props {
+  data:            EngagementClientData
+  activeTab?:      string | null
+  activeDestSlug?: string | null
+}
 
-  // Overview is always the active item here (this IS the overview route).
-  const navItems = buildImmerseNavItems(data, null)
+export default function ImmerseEngagementPage({
+  data,
+  activeTab      = null,
+  activeDestSlug = null,
+}: Props) {
+
+  // ── Confirmed arm ───────────────────────────────────────────────────────────
+  // ImmerseTripPage owns the full confirmed render (tabs, bookings, programme,
+  // brief, contacts). Delegate entirely — no duplication.
+  if (data.stage === 'confirmed') {
+    return (
+      <ImmerseTripPage
+        urlId={data.urlId}
+        initialTab={activeTab as any ?? undefined}
+      />
+    )
+  }
+
+  // ── Proposal arm ───────────────────────────────────────────────────────────
+  const eng      = data.engagement
+  const navItems = buildImmerseNavItems(eng, activeDestSlug)
   const logoHref = window.location.hostname === 'immerse.ambience.travel'
-    ? `/${data.urlId}`
-    : `/immerse/${data.urlId}`
+    ? `/${eng.urlId}`
+    : `/immerse/${eng.urlId}`
 
-  // S53B Closing — eyebrow override. When populated, replaces clientName
-  // with a single elegant tailored line (e.g. "For Safiya & Family").
-  const guestNameRendered = data.heroEyebrowOverride ?? data.clientName
+  const guestNameRendered = eng.heroEyebrowOverride ?? eng.clientName
 
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>
       <ImmerseHero
         guestName={guestNameRendered}
         titlePrefix=''
-        title={data.title}
-        dateLabel={data.statusLabel}
-        itineraryStage={data.itineraryStatus.label}
-        subtitle={data.subtitle}
-        pills={data.heroPills}
-        heroImageSrc={data.heroImageSrc}
-        heroImageAlt={data.heroImageAlt}
+        title={eng.title}
+        dateLabel={eng.statusLabel}
+        itineraryStage={eng.itineraryStatus.label}
+        subtitle={eng.subtitle}
+        pills={eng.heroPills}
+        heroImageSrc={eng.heroImageSrc}
+        heroImageAlt={eng.heroImageAlt}
         primaryHref='#destinations'
         primaryLabel='View destinations'
         secondaryHref='#pricing'
         secondaryLabel='Pricing overview'
       />
 
-      <ImmerseWelcomeLetter {...data.welcomeLetter} />
+      <ImmerseWelcomeLetter {...eng.welcomeLetter} />
 
-      {data.routeStops.length > 0 && data.destinationRows.filter(r => r.subpageStatus === 'live').length > 1 && <ImmerseRouteStrip data={data} />}
+      {eng.routeStops.length > 0 &&
+        eng.destinationRows.filter(r => r.subpageStatus === 'live').length > 1 && (
+          <ImmerseRouteStrip data={eng} />
+        )}
 
-      {data.heroImageSrc2 && (
+      {eng.heroImageSrc2 && (
         <ImmerseHeroBlock
-          imageSrc={data.heroImageSrc2}
-          imageAlt={data.heroImageAlt2}
-          title={data.heroTitle2}
-          subtitle={data.heroSubtitle2}
+          imageSrc={eng.heroImageSrc2}
+          imageAlt={eng.heroImageAlt2}
+          title={eng.heroTitle2}
+          subtitle={eng.heroSubtitle2}
         />
       )}
 
-      <ImmerseDestinationRows data={data} />
-      <ImmerseEngagementPricing data={data} />
+      <ImmerseDestinationRows data={eng} />
+      <ImmerseEngagementPricing data={eng} />
     </ImmerseLayout>
   )
 }
