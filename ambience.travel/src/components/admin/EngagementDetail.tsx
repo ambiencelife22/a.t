@@ -1,15 +1,8 @@
 // EngagementDetail.tsx — One engagement, one interface.
-// One continuous scroll: engagement editor flows directly into financial outlook.
-// No tabs. No switching. Everything visible.
+// One continuous scroll: engagement editor + financial outlook.
+// Both render immediately — no gate, no flash, no sequencing.
 //
-// Resolves url_id -> engagement_id once at this level and passes it down to
-// both EngagementDetailTab and OutlookTab — eliminates the double lookup that
-// was causing the flash (OutlookTab was doing its own independent resolution).
-//
-// Route: #admin/trips/<url_id>
-// Full-page editors (Programme, Brief) bypass this shell — intercepted in AdminShell.
-//
-// Last updated: S53I — single url_id resolution, passed to both children.
+// Last updated: S53I — removed engagementReady gate.
 
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
@@ -18,9 +11,8 @@ import EngagementDetailTab from './EngagementDetailTab'
 import OutlookTab from './OutlookTab'
 
 export default function EngagementDetail({ urlId }: { urlId: string }) {
-  const [engagementId,    setEngagementId]    = useState<string | null>(null)
-  const [notFound,        setNotFound]        = useState(false)
-  const [engagementReady, setEngagementReady] = useState(false)
+  const [engagementId, setEngagementId] = useState<string | null>(null)
+  const [notFound,     setNotFound]     = useState(false)
 
   useEffect(() => {
     setEngagementId(null)
@@ -54,13 +46,10 @@ export default function EngagementDetail({ urlId }: { urlId: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <EngagementDetailTab urlId={urlId} onReady={() => setEngagementReady(true)} />
-
-      {engagementReady && (
-        <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 32, paddingTop: 32 }}>
-          <OutlookTab urlId={urlId} engagementId={engagementId} />
-        </div>
-      )}
+      <EngagementDetailTab urlId={urlId} />
+      <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 32, paddingTop: 32 }}>
+        <OutlookTab urlId={urlId} engagementId={engagementId} />
+      </div>
     </div>
   )
 }
