@@ -33,6 +33,7 @@ import {
   fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, greeterLines,
   diningPdfStatus, isDiningCancelled, drawOwnArrangementsChip,
   drawPdfHero, stampPageChrome, addCreamPage,
+  type ExportBranding,
 } from './pdfShared'
 import type {
   ImmerseTripBrief as TripBrief,
@@ -180,7 +181,7 @@ function drawDataRow(doc: any, o: DataRowOpts, y: number): number {
 
 // ── Main render ───────────────────────────────────────────────────────────────
 
-async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo: Img | null) {
+async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo: Img | null, branding: ExportBranding = 'ambience') {
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
@@ -195,9 +196,8 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
     heroImageData: d.heroImageData,
     emblem,
     logo,
-    logoVariant:   brief?.logo_variant ?? null,
+    logoVariant:   branding,
   })
-
   y += 4
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -419,7 +419,7 @@ function buildFilename(d: TripBriefPdfData): string {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export async function exportTripBriefPdf(data: TripBriefPdfData): Promise<void> {
+export async function exportTripBriefPdf(data: TripBriefPdfData, branding: ExportBranding = 'ambience'): Promise<void> {
   const jsPDF    = assertJsPdf()
   const fontData = await loadGuideFonts()
   const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
@@ -430,7 +430,7 @@ export async function exportTripBriefPdf(data: TripBriefPdfData): Promise<void> 
     loadSvg(ASSETS.logoSvg, 800),
   ])
 
-  await renderAll(doc, data, emblem, logo)
+  await renderAll(doc, data, emblem, logo, branding)
   stampPageChrome(doc, data.brief)
   doc.save(buildFilename(data))
 }

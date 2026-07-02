@@ -475,7 +475,8 @@ function drawEmptyDay(doc: any, day: TripDay, dayIdx: number, y: number): number
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export type ExportBranding = 'ambience' | 'alfaone' | 'unbranded'
+import type { ExportBranding } from './pdfShared'
+export type { ExportBranding }
 
 export async function exportDailyProgrammePdf(
   data: DailyProgrammeData,

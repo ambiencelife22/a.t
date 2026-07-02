@@ -100,6 +100,11 @@ export function addCreamPage(doc: any): number {
 }
 
 // ── Frosted logo card — top-left pill ─────────────────────────────────────────
+// ── Export branding ───────────────────────────────────────────────────────────
+// Single source for all PDF exporters. Guest surface must never pass 'alfaone'
+// (security property — no per-surface picker, engagement-scoped control only).
+export type ExportBranding = 'ambience' | 'alfaone' | 'unbranded'
+
 // Used inside drawPdfHero. Shared logic for all logo_variant values.
 
 export function drawFrostedLogoCard(

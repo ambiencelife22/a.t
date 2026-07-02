@@ -26,6 +26,7 @@ import {
   fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay,
   drawOwnArrangementsChip, drawConfPill, greeterLines, diningPdfStatus, isDiningCancelled,
   drawPdfHero, stampPageChrome, addCreamPage,
+  type ExportBranding,
 } from './pdfShared'
 import type {
   ImmerseTripBrief as TripBrief,
@@ -477,7 +478,7 @@ function drawContactBlock(
 
 // ── Main render ───────────────────────────────────────────────────────────────
 
-async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null, logo: Img | null) {
+async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null, logo: Img | null, branding: ExportBranding = 'ambience') {
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
@@ -493,9 +494,8 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     heroImageData: d.heroImageData,
     emblem,
     logo,
-    logoVariant:   brief?.logo_variant ?? null,
+    logoVariant:   branding,
   })
-
   const FOOTER_MARGIN = 18
 
   // ── Hotel cards ───────────────────────────────────────────────────────────
@@ -605,7 +605,7 @@ function buildFilename(d: ConfirmationBriefData): string {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export async function exportConfirmationBriefPdf(data: ConfirmationBriefData): Promise<void> {
+export async function exportConfirmationBriefPdf(data: ConfirmationBriefData, branding: ExportBranding = 'ambience'): Promise<void> {
   const jsPDF = assertJsPdf()
   const fontData = await loadGuideFonts()
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
@@ -616,7 +616,7 @@ export async function exportConfirmationBriefPdf(data: ConfirmationBriefData): P
     loadSvg(ASSETS.logoSvg, 800),
   ])
 
-  await renderAll(doc, data, emblem, logo)
+  await renderAll(doc, data, emblem, logo, branding)
   stampPageChrome(doc, data.brief)
   doc.save(buildFilename(data))
 }

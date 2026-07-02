@@ -50,11 +50,11 @@ export function useImmerseConfirmationPdf() {
   }, [])
 
   // Confirmation Brief PDF — accommodation cards + flights (card layout)
-  async function handleDownloadBrief(data: ConfirmationBriefData) {
+  async function handleDownloadBrief(data: ConfirmationBriefData, branding: import('../pdf/pdfShared').ExportBranding = 'ambience') {
     if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
     setPdfDownloading(true)
     try {
-      await exportConfirmationBriefPdf(data)
+      await exportConfirmationBriefPdf(data, branding)
     } catch (err) {
       console.error('Confirmation PDF export failed:', err)
       toastRef.current.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -64,11 +64,11 @@ export function useImmerseConfirmationPdf() {
   }
 
   // Trip Brief PDF — structured summary (overview table + sections)
-  async function handleDownloadTripBrief(data: TripBriefPdfData) {
+  async function handleDownloadTripBrief(data: TripBriefPdfData, branding: import('../pdf/pdfShared').ExportBranding = 'ambience') {
     if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
     setPdfDownloading(true)
     try {
-      await exportTripBriefPdf(data)
+      await exportTripBriefPdf(data, branding)
     } catch (err) {
       console.error('Trip Brief PDF export failed:', err)
       toastRef.current.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
