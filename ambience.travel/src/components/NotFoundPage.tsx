@@ -97,12 +97,12 @@ const emblemStyle: React.CSSProperties = {
 
 const messageStyle: React.CSSProperties = {
   margin:        0,
-  fontSize:      20,
+  fontSize:      18,
   fontFamily:    FONTS.serif,
   fontWeight:    400,
-  letterSpacing: '-0.02em',
+  letterSpacing: '-0.01em',
   color:         ID.text,
-  lineHeight:    1.3,
+  lineHeight:    1.6,
 }
 
 const linkStyle: React.CSSProperties = {
