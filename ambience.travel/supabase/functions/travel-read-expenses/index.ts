@@ -168,18 +168,22 @@ Deno.serve(async (req: Request) => {
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
         db.from('travel_bookings')
-          .select('commission_amount, commission_amount_usd, commission_paid_at, cost, referral_share_amt, iata_share_amt, individual_share_amt')
+          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
           .eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses')
           .select('total_amount, billing_status')
           .eq('engagement_id', engagement_id),
       ])
-
       const bs = (bookings ?? []) as Array<Record<string, unknown>>
       const es = (expenses ?? []) as Array<{ total_amount: number; billing_status: string }>
 
+      // Attach commission splits so computeNetRevenue is partner-aware (upstream
+      // not re-subtracted). One source: _shared/bookings.ts.
+      const summarySplits = await fetchSplitsByBooking(db, bs.map(b => b.id as string))
+      for (const b of bs) { (b as Record<string, unknown>)._splits = summarySplits[b.id as string] ?? [] }
+
       const total_commission    = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-      const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + e.total_amount, 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + e.total_amount, 0)
@@ -214,14 +218,19 @@ Deno.serve(async (req: Request) => {
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
         db.from('travel_bookings')
-          .select('engagement_id, commission_amount, commission_amount_usd, commission_paid_at, cost, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt')
+          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
           .in('engagement_id', engIds),
         db.from('travel_engagement_expenses')
           .select('engagement_id, total_amount, billing_status')
           .in('engagement_id', engIds),
       ])
 
-      const bByEng = groupBy((bookings ?? []) as Array<Record<string, unknown>>, 'engagement_id')
+      // Attach splits so computeNetRevenue is partner-aware per booking. One source.
+      const pipelineBookings = (bookings ?? []) as Array<Record<string, unknown>>
+      const pipelineSplits = await fetchSplitsByBooking(db, pipelineBookings.map(b => b.id as string))
+      for (const b of pipelineBookings) { (b as Record<string, unknown>)._splits = pipelineSplits[b.id as string] ?? [] }
+
+      const bByEng = groupBy(pipelineBookings, 'engagement_id')
       const eByEng = groupBy((expensesAll ?? []) as Array<Record<string, unknown>>, 'engagement_id')
 
       const trips = confirmed.map(e => {
@@ -230,7 +239,7 @@ Deno.serve(async (req: Request) => {
         const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; billing_status: string }>
 
         const total_commission    = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-        const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+        const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
