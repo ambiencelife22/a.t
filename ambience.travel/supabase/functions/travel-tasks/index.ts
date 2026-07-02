@@ -40,6 +40,7 @@ type Mode =
   | 'update'
   | 'complete'
   | 'reopen'
+  | 'na'
   | 'delete'
 
 // Row as stored, plus the assignee name resolved via global_team.person_id → global_people.
@@ -192,6 +193,16 @@ Deno.serve(async (req: Request) => {
         .update({ status: 'open', completed_at: null })
         .eq('id', id).select(TASK_SELECT).single()
       if (error) { console.error('reopen error:', error); return json({ error: 'Failed to reopen task' }, 500) }
+      return json({ task: shape(data as unknown as TaskQueryRow) })
+    }
+
+    if (mode === 'na') {
+      const id = body?.id as string | undefined
+      if (!id) return json({ error: 'id is required' }, 400)
+      const { data, error } = await db.from('travel_tasks')
+        .update({ status: 'n/a', completed_at: new Date().toISOString() })
+        .eq('id', id).select(TASK_SELECT).single()
+      if (error) { console.error('na error:', error); return json({ error: 'Failed to mark N/A' }, 500) }
       return json({ task: shape(data as unknown as TaskQueryRow) })
     }
 
