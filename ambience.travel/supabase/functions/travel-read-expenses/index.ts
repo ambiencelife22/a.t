@@ -25,6 +25,7 @@ import {
   groupBy,
   computeNetRevenue,
 } from '../_shared/expenses.ts'
+import { fetchHotelsByIds, fetchSplitsByBooking } from '../_shared/bookings.ts'
 
 type Mode = 'by_engagement' | 'by_engagement_full' | 'by_destination' | 'summary' | 'pipeline'
 
@@ -95,22 +96,20 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Hotel names
+      // Hotel names — one source (_shared/bookings.ts).
       const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter(Boolean))] as string[]
-      const hotelById: Record<string, string> = {}
-      if (hotelIds.length > 0) {
-        const { data: hotels } = await db
-          .from('travel_accom_hotels')
-          .select('id, name')
-          .in('id', hotelIds)
-        for (const h of (hotels ?? []) as Array<Record<string, unknown>>) {
-          hotelById[h.id as string] = h.name as string
-        }
+      const hotelMap = await fetchHotelsByIds(db, hotelIds)
+
+      // Commission splits (per booking) — attached before summary + enrichment so
+      // computeNetRevenue reads b._splits in both.
+      const splitsByBooking = await fetchSplitsByBooking(db, bookingIds)
+      for (const b of bookings) {
+        (b as Record<string, unknown>)._splits = splitsByBooking[b.id as string] ?? []
       }
 
       // Summary from original bookings before enrichment
       const total_commission    = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-      const commission_received = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const commission_received = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const total_net_revenue   = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_rate          = bookings.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
       const total_amenities     = bookings.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
@@ -123,7 +122,7 @@ Deno.serve(async (req: Request) => {
       // Enrich bookings
       const enrichedBookings = bookings.map(b => ({
         ...b,
-        _hotel_name:     b.accom_hotel_id ? (hotelById[b.accom_hotel_id as string] ?? null) : null,
+        _hotel_name:     b.accom_hotel_id ? (hotelMap[b.accom_hotel_id as string]?.name ?? null) : null,
         net_revenue_usd: computeNetRevenue(b),
         rooms:           roomsByBooking[b.id as string] ?? [],
       }))

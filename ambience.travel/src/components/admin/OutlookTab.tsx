@@ -268,6 +268,17 @@ function BookingRow({ booking: b, platforms, onUpdated }: { booking: BookingFina
   const [commAmt,   setCommAmt]   = useState(b.commission_amount?.toString() ?? '')
   const [invoiceNo, setInvoiceNo] = useState(b.invoice_number ?? '')
   const [amenities, setAmenities] = useState(b.cost?.toString() ?? '')
+
+  // Re-sync editable fields when the source booking value changes (external
+  // edit, SQL fix, or a reload after a receipt write). Without this, the input
+  // holds its mount-time value and blindly writes it back on blur, silently
+  // clobbering any change made to the row while this component stayed mounted.
+  // Keyed on the source value, not on keystrokes — local edits change state,
+  // not b, so typing is never interrupted.
+  useEffect(() => { setCommPct(b.commission_pct?.toString() ?? '') },     [b.commission_pct])
+  useEffect(() => { setCommAmt(b.commission_amount?.toString() ?? '') },  [b.commission_amount])
+  useEffect(() => { setInvoiceNo(b.invoice_number ?? '') },               [b.invoice_number])
+  useEffect(() => { setAmenities(b.cost?.toString() ?? '') },             [b.cost])
   const toast = useAdminToast()
 
   const currency = b.currency ?? 'USD'

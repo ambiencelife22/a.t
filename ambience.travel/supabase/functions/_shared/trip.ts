@@ -20,6 +20,7 @@
 
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { resolvePartyName, formatPersonName } from './names.ts'
+import { fetchHotelsByIds } from './bookings.ts'
 
 // ── url_id -> trip_id -> house_id ─────────────────────────────────────────────
 // Returns the ids, or null when the trip cannot be resolved (caller returns 404).
@@ -228,21 +229,9 @@ export async function fetchTripBookings(
     }
   }
 
-  // Canon hotels (name + hero) via accom_hotel_id.
+  // Canon hotels (name + hero) via accom_hotel_id — one source (_shared/bookings.ts).
   const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter(Boolean))] as string[]
-  const hotelById: Record<string, { name: string; hero_image_src: string | null }> = {}
-  if (hotelIds.length > 0) {
-    const { data: hotels } = await db
-      .from('travel_accom_hotels')
-      .select('id, name, hero_image_src')
-      .in('id', hotelIds)
-    for (const h of (hotels ?? []) as Array<Record<string, unknown>>) {
-      hotelById[h.id as string] = {
-        name:           (h.name as string) ?? '',
-        hero_image_src: (h.hero_image_src as string | null) ?? null,
-      }
-    }
-  }
+  const hotelById = await fetchHotelsByIds(db, hotelIds)
 
   // Resolve room guest people (batch) and group rooms by booking with
   // resolved_guest_name + resolved_additional_guests attached. The id set spans

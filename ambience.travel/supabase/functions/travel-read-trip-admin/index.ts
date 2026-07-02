@@ -42,6 +42,7 @@ import { buildDays } from '../_shared/days.ts'
 import { deriveElementStatus, type ChildStatus } from '../_shared/elementStatus.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
 import { AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { fetchHotelsByIds } from '../_shared/bookings.ts'
 
 
 type Mode =
@@ -145,16 +146,7 @@ for (const t of tripRows) {
       .map(b => b.accom_hotel_id as string | null)
       .filter((id): id is string => !!id)
   )]
-  const hotelMap: Record<string, { name: string; hero_image_src: string | null }> = {}
-  if (hotelIds.length > 0) {
-    const { data: hotelData } = await db
-      .from('travel_accom_hotels')
-      .select('id, name, hero_image_src')
-      .in('id', hotelIds)
-    for (const h of (hotelData ?? []) as { id: string; name: string; hero_image_src: string | null }[]) {
-      hotelMap[h.id] = { name: h.name, hero_image_src: h.hero_image_src }
-    }
-  }
+  const hotelMap = await fetchHotelsByIds(db, hotelIds)
 
   const bookingIds = bookingRows.map(b => b.id as string)
 
@@ -616,12 +608,9 @@ async function handleCalendar(
 
   // 4. Hotel names for accom bookings.
   const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter((x): x is string => !!x))]
+  const hotelMapCal = await fetchHotelsByIds(db, hotelIds)
   const hotelName = new Map<string, string>()
-  if (hotelIds.length > 0) {
-    const { data: hotelData } = await db
-      .from('travel_accom_hotels').select('id, name').in('id', hotelIds)
-    for (const h of (hotelData ?? []) as Array<{ id: string; name: string }>) hotelName.set(h.id, h.name)
-  }
+  for (const [id, h] of Object.entries(hotelMapCal)) hotelName.set(id, h.name)
 
   // 4b. Activities (typed child engagements) — the engagement-spine read. Stay +
   //     Transport children today; dining/experience/etc. flow through automatically

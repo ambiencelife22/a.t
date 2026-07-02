@@ -84,6 +84,28 @@ export function groupBy<T extends Record<string, unknown>>(arr: T[], key: string
   return out
 }
 
+// Split node shape (travel_commission_splits). resolved_amount is the overlay
+// (your override); estimated_amount is canon (the rule's suggestion). Overlay wins.
+type CommissionSplit = {
+  flow: string                       // 'upstream' | 'downstream'
+  resolved_amount: number | null
+  estimated_amount: number | null
+}
+
+// Amount to use for a split: overlay (resolved) wins, else canon (estimated).
+function splitAmount(s: CommissionSplit): number {
+  return (s.resolved_amount ?? s.estimated_amount ?? 0)
+}
+
+// Sum of downstream payouts (ambience's own distributions). Upstream is NOT
+// summed here — it's already deducted before ambience received the money
+// (baked into commission_net_received); subtracting it again double-counts.
+function sumDownstream(splits: CommissionSplit[]): number {
+  return splits
+    .filter(s => s.flow === 'downstream')
+    .reduce((sum, s) => sum + splitAmount(s), 0)
+}
+
 // Net revenue — rate-type-aware single source.
 // commissionable: net_received (after platform fee) minus partner shares.
 //   Falls back to commission_amount_usd if not yet received.
@@ -105,14 +127,21 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
     return Math.round((selling - cost) * 100) / 100
   }
 
-  // commissionable / package / fallback
-  // Use net_received if commission has been received, else commission_amount
-  const netReceived  = b.commission_net_received != null
-    ? (b.commission_net_received as number)
-    : null
-  const commAmt      = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
-  const base         = netReceived ?? commAmt
+// commissionable / package / fallback
+  // base = what reached ambience (net of any upstream partner cut, which is
+  // already baked into commission_net_received).
+  const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  const base    = (b.commission_net_received as number | null) ?? commAmt
 
+  // Splits govern when present: subtract only DOWNSTREAM payouts (ambience's
+  // own distributions). Upstream is already gone from base — never re-subtract.
+  const splits = b._splits as CommissionSplit[] | undefined
+  if (splits && splits.length > 0) {
+    return Math.round((base - sumDownstream(splits)) * 100) / 100
+  }
+
+  // Legacy fallback (no splits yet): flat share columns. Retained so bookings
+  // not yet migrated to the tree don't regress. Dropped when flat cols retire.
   const referral = (b.referral_share_amt   ?? 0) as number
   const iata     = (b.iata_share_amt       ?? 0) as number
   const indiv    = (b.individual_share_amt ?? 0) as number
