@@ -166,3 +166,40 @@ Current state: drawFrostedLogoCard already supports variant 'alfaone'/'unbranded
 brief.logo_variant exists and is admin-set in BriefEditorPage. But it is Model A
 (stored on brief, read by guest EFs) — wrong for admin-only. Rebuild as engagement-
 scoped, export-time, guest-isolated.
+
+## 2026-07-02
+
+### [DB] public_preview_rank aligned across all guide item tables
+
+Added `public_preview_rank INTEGER` (nullable) to four tables previously missing
+it: `travel_experiences`, `travel_shopping`, `travel_accom_hotels`,
+`travel_happenings`. Backfilled with ROW_NUMBER() OVER (PARTITION BY
+destination_id ORDER BY name) per table, matching the pattern established on
+`travel_dining_venues` in S53. All rows that should be publicly previewable now
+carry a non-null rank.
+
+Result: 56/56 experiences, 25/25 shopping, 575/575 hotels, 1/1 happenings ranked.
+
+This closes the Gateable contract gap — `utilsGuideGating.Gateable` is now strict
+(`public_preview_rank: number | null`, required, no index signature). All five
+guide item types (DiningVenue, ExperienceVenue, Shop, HotelVenue, Happening)
+satisfy the contract structurally. TypeScript enforces alignment at every callsite.
+
+### [DB] accuracy_date migrated to DATE NOT NULL on all guide overlay tables
+
+`accuracy_date` migrated from `text` (nullable, mixed free-text format) to
+`DATE NOT NULL` on: `travel_dining_guides`, `travel_experiences_guides`,
+`travel_hotel_guides`, `travel_shopping_guides`.
+
+Steps applied live in Supabase:
+1. Normalised free-text "May 2026" / "June 2026" to first-of-month ISO via
+   TO_DATE() on all four tables.
+2. Backfilled NULL rows (travel_experiences_guides ×2, travel_hotel_guides ×1)
+   to 2026-07-01.
+3. Dropped dependent views travel_dining_guide_for_user and
+   travel_experiences_guide_for_user, ran ALTER COLUMN TYPE DATE on all four
+   tables, added NOT NULL, recreated both views with identical definitions.
+
+Render: formatMonthYear(iso) → "May 2026" for guide accuracy disclaimers.
+formatDateLong(iso) → "01 July 2026" for general app use. Both in utilsDates.ts,
+following the S23 UTC-safe parse pattern (no new Date(iso)).
