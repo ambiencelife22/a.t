@@ -438,15 +438,16 @@ function ExpenseRow({ expense, onAction }: { expense: Expense; onAction: () => v
 
 // ── OutlookTab ────────────────────────────────────────────────────────────────
 
-export default function OutlookTab({ urlId }: { urlId: string }) {
-  const [engagementId, setEngagementId] = useState<string | null>(null)
+export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { urlId: string; engagementId?: string }) {
+  const [engagementId, setEngagementId] = useState<string | null>(engagementIdProp ?? null)
   const [data,    setData]    = useState<EngagementFull | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const toast = useAdminToast()
 
-  // Resolve url_id -> engagement_id on mount.
+  // Resolve url_id -> engagement_id only when not passed from parent.
   useEffect(() => {
+    if (engagementIdProp) { setEngagementId(engagementIdProp); return }
     supabase
       .from('travel_immerse_engagements')
       .select('id')
@@ -456,7 +457,7 @@ export default function OutlookTab({ urlId }: { urlId: string }) {
         if (error || !eng) { toast.error('Engagement not found'); setLoading(false); return }
         setEngagementId(eng.id)
       })
-  }, [urlId])
+  }, [urlId, engagementIdProp])
 
   async function load() {
     if (!engagementId) return
