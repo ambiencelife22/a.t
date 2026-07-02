@@ -213,12 +213,13 @@ export async function linkEngagement(expenseId: string, engagementId: string): P
 // ── Payment platform + rate type registry ─────────────────────────────────────
 
 export type PaymentPlatform = {
-  id:              string
-  slug:            string
-  label:           string
-  default_fee_pct: number
-  sort_order:      number
-  is_active:       boolean
+  id:               string
+  slug:             string
+  label:            string
+  default_fee_pct:  number
+  default_fee_flat: number | null
+  sort_order:       number
+  is_active:        boolean
 }
 
 export type RateType = {
@@ -232,7 +233,7 @@ export type RateType = {
 export async function fetchPaymentPlatforms(): Promise<PaymentPlatform[]> {
   const { data, error } = await supabase
     .from('travel_payment_platforms')
-    .select('id, slug, label, default_fee_pct, sort_order, is_active')
+    .select('id, slug, label, default_fee_pct, default_fee_flat, sort_order, is_active')
     .eq('is_active', true)
     .order('sort_order')
   if (error) throw new Error(error.message)

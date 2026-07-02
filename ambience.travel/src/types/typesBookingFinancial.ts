@@ -73,6 +73,15 @@ export type BookingFinancial = {
   commission_amount_usd?: number | null
   commission_paid_at:     string | null
   invoice_number:         string | null
+  // Receipt detail — recorded by mark_commission_received, selected by
+  // BOOKING_FINANCIAL_SELECT. Present after a receipt is captured.
+  commission_received_amount?:     number | null
+  commission_payment_fee_pct?:     number | null
+  commission_payment_fee_amt?:     number | null
+  commission_net_received?:        number | null
+  commission_payment_platform_id?: string | null
+  // Resolved platform join (travel_payment_platforms!commission_payment_platform_id).
+  travel_payment_platforms?: { slug: string; label: string; default_fee_pct: number } | null
 
   // ── Net revenue (rate-type-aware; _shared/expenses.ts computeNetRevenue) ───
   net_revenue:            number | null

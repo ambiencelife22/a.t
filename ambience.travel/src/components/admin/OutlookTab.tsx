@@ -25,10 +25,13 @@ import {
   markPaid,
   writeOff,
   updateBookingFinancial,
+  fetchPaymentPlatforms,
+  markCommissionReceived,
   type EngagementFull,
   type Expense,
   type BillingStatus,
   type CreateExpensePayload,
+  type PaymentPlatform,
 } from '../../queries/queriesAdminFinance'
 import { isHotelBooking } from '../../types/typesAuxBookings'
 
@@ -128,9 +131,137 @@ function RoomLine({ room }: { room: BookingFinancialRoom }) {
   )
 }
 
+// ── Commission receipt ────────────────────────────────────────────────────────
+// Single source for receipt math. FX: when foreign bank opens, add fxRate here
+// and normalize to USD before send — see P2 debt (commission receipt FX support).
+function computeReceipt(gross: number, feePct: number, feeFlat: number): { feeAmt: number; net: number } {
+  const feeAmt = (gross * feePct / 100) + (feeFlat ?? 0)
+  return { feeAmt, net: gross - feeAmt }
+}
+
+function CommissionReceipt({ booking: b, platforms, onDone }: { booking: BookingFinancial; platforms: PaymentPlatform[]; onDone: () => void }) {
+  const received = !!b.commission_paid_at
+  const [open,    setOpen]    = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const toast = useAdminToast()
+
+  const defaultGross = b.commission_amount_usd ?? b.commission_amount ?? 0
+  const [platformId, setPlatformId] = useState<string>(b.commission_payment_platform_id ?? '')
+  const [gross,   setGross]   = useState(defaultGross ? defaultGross.toString() : '')
+  const [feePct,  setFeePct]  = useState(b.commission_payment_fee_pct?.toString() ?? '')
+  const [feeFlat, setFeeFlat] = useState('')
+
+  // Currency label — hard-coded to booking currency for now. FX: becomes a
+  // selector when foreign bank opens (see P2 debt).
+  const currency = b.currency ?? 'USD'
+
+  function selectPlatform(id: string) {
+    setPlatformId(id)
+    const p = platforms.find(x => x.id === id)
+    if (!p) return
+    setFeePct(p.default_fee_pct ? p.default_fee_pct.toString() : '')
+    setFeeFlat(p.default_fee_flat != null ? p.default_fee_flat.toString() : '')
+  }
+
+  const grossN = parseFloat(gross)
+  const pctN   = parseFloat(feePct)  || 0
+  const flatN  = parseFloat(feeFlat) || 0
+  const valid  = !isNaN(grossN) && grossN >= 0
+  const { feeAmt, net } = valid ? computeReceipt(grossN, pctN, flatN) : { feeAmt: 0, net: 0 }
+
+  async function confirm() {
+    if (!valid) return
+    setSaving(true)
+    try {
+      await markCommissionReceived({
+        booking_id:      b.id,
+        platform_id:     platformId || undefined,
+        received_amount: Math.round(grossN * 100) / 100,
+        fee_pct:         pctN,
+        fee_amt:         Math.round(feeAmt * 100) / 100,
+      })
+      await onDone()
+      toast.success('Commission receipt recorded')
+      setOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to record receipt')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function clearReceipt() {
+    setSaving(true)
+    try {
+      await updateBookingFinancial(b.id, { commission_paid_at: null })
+      await onDone()
+      toast.success('Receipt cleared')
+    } catch {
+      toast.error('Failed to clear receipt')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (received && !open) {
+    const platformLabel = b.travel_payment_platforms?.label ?? null
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4ade80', fontFamily: A.font, border: '1px solid #4ade8040', background: '#4ade8020', borderRadius: 100, padding: '4px 12px' }}>
+          Received {fmtDate(b.commission_paid_at)}
+        </span>
+        <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
+          {platformLabel ? `${platformLabel} · ` : ''}
+          {b.commission_received_amount != null ? `${usdDec(b.commission_received_amount)} gross` : ''}
+          {b.commission_payment_fee_amt ? ` · fee ${usdDec(b.commission_payment_fee_amt)}` : ''}
+          {b.commission_net_received != null ? ` · net ${usdDec(b.commission_net_received)}` : ''}
+        </span>
+        <button onClick={clearReceipt} disabled={saving} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Clear</button>
+      </div>
+    )
+  }
+
+  if (!open) {
+    return <button onClick={() => setOpen(true)} style={{ ...btnP, fontSize: 11, padding: '4px 12px' }}>Record Receipt</button>
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, border: `1px solid ${A.border}`, borderRadius: 10, padding: 12, background: A.bg }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={labelS}>Platform</label>
+          <select value={platformId} onChange={e => selectPlatform(e.target.value)} style={{ ...inputS, width: 150, fontSize: 12 }}>
+            <option value=''>— select —</option>
+            {platforms.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={labelS}>Gross ({currency})</label>
+          <input value={gross} onChange={e => setGross(e.target.value)} placeholder='0.00' style={{ ...inputS, width: 110, fontSize: 12 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={labelS}>Fee %</label>
+          <input value={feePct} onChange={e => setFeePct(e.target.value)} placeholder='0' style={{ ...inputS, width: 64, fontSize: 12 }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={labelS}>Flat ({currency})</label>
+          <input value={feeFlat} onChange={e => setFeeFlat(e.target.value)} placeholder='0' style={{ ...inputS, width: 80, fontSize: 12 }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>Fee {usdDec(feeAmt)}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>Net {usdDec(net)}</span>
+        <div style={{ flex: 1 }} />
+        <button onClick={confirm} disabled={!valid || saving} style={{ ...btnP, fontSize: 11, padding: '4px 14px', opacity: (!valid || saving) ? 0.5 : 1 }}>{saving ? 'Saving…' : 'Confirm'}</button>
+        <button onClick={() => setOpen(false)} style={{ ...btnG, fontSize: 11, padding: '4px 12px' }}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 // ── Booking row ───────────────────────────────────────────────────────────────
 
-function BookingRow({ booking: b, onUpdated }: { booking: BookingFinancial; onUpdated: () => void }) {
+function BookingRow({ booking: b, platforms, onUpdated }: { booking: BookingFinancial; platforms: PaymentPlatform[]; onUpdated: () => void }) {
   const [expanded,  setExpanded]  = useState(false)
   const [saving,    setSaving]    = useState<string | null>(null)
   const [commPct,   setCommPct]   = useState(b.commission_pct?.toString() ?? '')
@@ -170,7 +301,6 @@ function BookingRow({ booking: b, onUpdated }: { booking: BookingFinancial; onUp
     }
   }
 
-  async function toggleCommPaid()   { await patch('Commission',     { commission_paid_at:   b.commission_paid_at ? null : new Date().toISOString() }) }
   async function toggleDepositPaid() { await patch('Deposit',        { deposit_paid_at:      b.deposit_paid_at   ? null : new Date().toISOString() }) }
   async function toggleBalancePaid() { await patch('Balance',        { balance_paid_at:      b.balance_paid_at   ? null : new Date().toISOString() }) }
   async function togglePaymentSignal() {
@@ -257,13 +387,11 @@ function BookingRow({ booking: b, onUpdated }: { booking: BookingFinancial; onUp
         {/* Commission */}
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 6 }}>Commission</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
             <input value={commPct} onChange={e => setCommPct(e.target.value)} onBlur={saveCommission} placeholder='Pct %' style={{ ...inputS, width: 64, fontSize: 12 }} />
             <input value={commAmt} onChange={e => setCommAmt(e.target.value)} onBlur={saveCommission} placeholder={`Amount ${currency}`} style={{ ...inputS, width: 100, fontSize: 12 }} />
-            <button onClick={toggleCommPaid} disabled={saving === 'Commission'} style={{ ...btnP, fontSize: 11, padding: '4px 12px', background: b.commission_paid_at ? '#4ade8020' : undefined, color: b.commission_paid_at ? '#4ade80' : undefined, border: b.commission_paid_at ? '1px solid #4ade8040' : undefined }}>
-              {b.commission_paid_at ? `Received ${fmtDate(b.commission_paid_at)}` : 'Mark Received'}
-            </button>
           </div>
+          <CommissionReceipt booking={b} platforms={platforms} onDone={onUpdated} />
         </div>
 
         {/* Deposit + Balance */}
@@ -443,7 +571,10 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
   const [data,    setData]    = useState<EngagementFull | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
+  const [platforms, setPlatforms] = useState<PaymentPlatform[]>([])
   const toast = useAdminToast()
+
+  useEffect(() => { fetchPaymentPlatforms().then(setPlatforms).catch(() => setPlatforms([])) }, [])
 
   // Resolve url_id -> engagement_id only when not passed from parent.
   useEffect(() => {
@@ -531,7 +662,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
                 Bookings · {bookings.length}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {bookings.map(b => <BookingRow key={b.id} booking={b} onUpdated={load} />)}
+                {bookings.map(b => <BookingRow key={b.id} booking={b} platforms={platforms} onUpdated={load} />)}
               </div>
             </div>
           )}
