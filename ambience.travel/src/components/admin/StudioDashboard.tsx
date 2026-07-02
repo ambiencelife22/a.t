@@ -255,7 +255,7 @@ export default function StudioDashboard() {
 
   function goTo(eng: PipelineTrip) {
     if (!eng.url_id) return
-    navigateAdmin({ product: 'trips', tab: 'overview', urlId: eng.url_id })
+    navigateAdmin({ product: 'trips', tab: 'bookings', urlId: eng.url_id })
   }
 
   const today = new Date().toISOString().slice(0, 10)
