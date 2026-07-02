@@ -540,7 +540,7 @@ function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; url
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export default function EngagementDetailTab({ urlId }: { urlId: string }) {
+export default function EngagementDetailTab({ urlId, onReady }: { urlId: string; onReady?: () => void }) {
   const [row, setRow]                              = useState<EngagementDetailRow | null>(null)
   const [draft, setDraft]                          = useState<EngagementDetailRow | null>(null)
   const [counts, setCounts]                        = useState<ChildCounts | null>(null)
@@ -583,6 +583,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       showToast(`Failed to load: ${e.message ?? 'unknown error'}`, 'error')
     }
     setLoading(false)
+    onReady?.()
   }
 
   useEffect(() => { load() }, [urlId])

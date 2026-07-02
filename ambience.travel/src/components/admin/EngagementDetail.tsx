@@ -18,8 +18,9 @@ import EngagementDetailTab from './EngagementDetailTab'
 import OutlookTab from './OutlookTab'
 
 export default function EngagementDetail({ urlId }: { urlId: string }) {
-  const [engagementId, setEngagementId] = useState<string | null>(null)
-  const [notFound,     setNotFound]     = useState(false)
+  const [engagementId,    setEngagementId]    = useState<string | null>(null)
+  const [notFound,        setNotFound]        = useState(false)
+  const [engagementReady, setEngagementReady] = useState(false)
 
   useEffect(() => {
     setEngagementId(null)
@@ -53,11 +54,13 @@ export default function EngagementDetail({ urlId }: { urlId: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <EngagementDetailTab urlId={urlId} />
+      <EngagementDetailTab urlId={urlId} onReady={() => setEngagementReady(true)} />
 
-      <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 32, paddingTop: 32 }}>
-        <OutlookTab urlId={urlId} engagementId={engagementId} />
-      </div>
+      {engagementReady && (
+        <div style={{ borderTop: `1px solid ${A.border}`, marginTop: 32, paddingTop: 32 }}>
+          <OutlookTab urlId={urlId} engagementId={engagementId} />
+        </div>
+      )}
     </div>
   )
 }
