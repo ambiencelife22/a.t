@@ -4,16 +4,32 @@
 // proposal  → ImmerseEngagementPage (destination rows, pricing, welcome)
 // confirmed → ImmerseTripPage (confirmation, programme, brief, contacts)
 //
-// Both page components are unchanged in this layer — the unified page
-// component (ImmerseEngagementPage rewritten) is the next Collapse A step.
+// Phase dispatch:
+//   loading    → ImmerseLayout shell (blank, no flash)
+//   not-found  → NotFoundPage (dark, full page — engagement does not exist)
+//   not-public → ImmerseNotPublicFallback (cream, full page — visibility gate)
+//   error      → NotFoundPage (dark, full page — unexpected failure)
+//   archived   → ProposalArchivedFallback (cream — proposal was archived)
+//   proposal   → ImmerseEngagementPage (stage=proposal)
+//   confirmed  → ImmerseEngagementPage (stage=confirmed)
 //
-// Last updated: S53I — Collapse A route layer.
+// not-public is deliberately distinct from not-found:
+//   not-found  = engagement does not exist (genuine 404)
+//   not-public = engagement exists, public_view=false (visibility gate)
+//   Both show full-page screens with no ImmerseLayout chrome. Different
+//   surfaces, different messages, different colours.
+//
+// Last updated: S53 — not-public routes to ImmerseNotPublicFallback instead
+//   of NotFoundPage. P0 gate screen: branded cream surface with tailored
+//   message rather than the generic dark 404.
+// Prior: S53I — Collapse A route layer.
 
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseEngagementPage from './ImmerseEngagementPage'
 import NotFoundPage from '../NotFoundPage'
 import ProposalArchivedFallback from './ProposalArchivedFallback'
+import ImmerseNotPublicFallback from './ImmerseNotPublicFallback'
 import {
   fetchEngagementClientData,
 } from '../../queries/queriesImmerseClient'
@@ -47,7 +63,7 @@ type RouteState =
   | { phase: 'archived'   }
   | { phase: 'proposal';  data: ImmerseEngagementData }
   | { phase: 'confirmed'; data: TripClientData        }
-  | { phase: 'error'                                            }
+  | { phase: 'error'                                  }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -81,8 +97,6 @@ function useEngagementRoute(urlId: string): RouteState {
 
 // ── Route component ───────────────────────────────────────────────────────────
 
-const NOT_VISIBLE_MSG = 'This page is not publicly visible. Please reach out to your travel designer to pick things back up; they will be glad to share what\u2019s next.'
-
 interface ImmerseEngagementRouteProps {
   activeDestSlug?: string | null
   activeTab?:      string | null
@@ -90,7 +104,6 @@ interface ImmerseEngagementRouteProps {
 
 function extractUrlId(): string {
   const parts = window.location.pathname.split('/').filter(Boolean)
-  // /immerse/:url_id[/:dest] or immerse.ambience.travel/:url_id[/:dest]
   const immerseIdx = parts.indexOf('immerse')
   if (immerseIdx !== -1) return parts[immerseIdx + 1] ?? ''
   return parts[0] ?? ''
@@ -112,11 +125,11 @@ export default function ImmerseEngagementRoute({
   }
 
   if (state.phase === 'not-found' || state.phase === 'error') {
-    return <NotFoundPage message={NOT_VISIBLE_MSG} />
+    return <NotFoundPage message="We couldn't find that page." />
   }
 
   if (state.phase === 'not-public') {
-    return <NotFoundPage message={NOT_VISIBLE_MSG} />
+    return <ImmerseNotPublicFallback />
   }
 
   if (state.phase === 'archived') {

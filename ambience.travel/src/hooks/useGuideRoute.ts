@@ -4,24 +4,33 @@
 //   - Path parsing (extract destinationSlug from window.location)
 //   - Destination + overlay fetch (via queriesGuides.getGuideDestination)
 //   - Overlay gate — destinations without an overlay for the requested
-//     variant resolve to notFound (e.g. miami/shopping when no
-//     travel_shopping_guides row exists for Miami)
+//     variant resolve to notPublic (distinct from notFound — the destination
+//     exists but the guide for this variant is not publicly visible)
 //   - Grant check + hasFullAccess resolution
 //   - Error handling
-//   - Loading / ready / notFound state machine
+//   - Loading / ready / notPublic / notFound state machine
 //
 // What it does not own:
 //   - The actual page component — route files render the variant-specific
 //     page after the hook returns 'ready'
 //   - GuideLayout chrome
 //
-// Standing rule (S53):
-//   No destination should render the guide framework without data. If no
-//   overlay exists for the requested variant, the route resolves to 404.
-//   This prevents shells like miami/shopping showing chrome with no content.
+// Phase semantics:
+//   loading   — fetch in flight
+//   ready     — destination + overlay found, hasFullAccess resolved
+//   notPublic — destination found, overlay missing for this variant.
+//               The guide exists but is not publicly visible. Route renders
+//               the variant-specific GuideGate* screen inside GuideLayout.
+//   notFound  — destination slug unresolvable, destination not in DB, or
+//               unexpected error. Route renders NotFoundPage (dark, full page).
 //
-// Last updated: S53 — initial build. Consolidates four near-identical route
-//   files into one hook + four thin wrappers. Adds the overlay gate.
+// Last updated: S53 — Added notPublic phase. Overlay gate previously resolved
+//   to notFound with message "This guide isn't available yet." — indistinguishable
+//   from a genuine 404 and showing a dark full-page error for a deliberate
+//   visibility decision. notPublic now routes to the variant-specific
+//   GuideGate* inline screen inside GuideLayout.
+// Prior: S53 — initial build. Consolidated four near-identical route files
+//   into one hook + four thin wrappers. Added overlay gate.
 
 import { useEffect, useRef, useState } from 'react'
 import { useToast } from '../providers/ToastContext'
@@ -38,11 +47,12 @@ import {
 const GUIDES_HOST = 'guides.ambience.travel'
 
 export type GuideRouteState =
-  | { phase: 'loading' }
-  | { phase: 'ready';    destination: GuideDestination; hasFullAccess: boolean }
-  | { phase: 'notFound'; message: string }
+  | { phase: 'loading'   }
+  | { phase: 'ready';     destination: GuideDestination; hasFullAccess: boolean }
+  | { phase: 'notPublic'; destination: GuideDestination }
+  | { phase: 'notFound';  message: string }
 
-// ── Path parsing ────────────────────────────────────────────────────────────
+// ── Path parsing ─────────────────────────────────────────────────────────────
 //
 // On guides.ambience.travel: /miami/shopping → slug=miami, segment=shopping
 // On ambience.travel:        /guides/miami/shopping → slug=miami, segment=shopping
@@ -53,10 +63,11 @@ function resolveDestinationSlug(variant: GuideVariant): string | null {
   const pathname     = window.location.pathname.replace(/\/+$/, '')
   const isGuidesHost = window.location.hostname === GUIDES_HOST
 
-  let stripped: string
+  let stripped = ''
   if (isGuidesHost) {
     stripped = pathname.replace(/^\/+/, '')
-  } else {
+  }
+  if (!isGuidesHost) {
     if (!pathname.startsWith('/guides/')) return null
     stripped = pathname.replace(/^\/guides\/?/, '').replace(/^\/+/, '')
   }
@@ -68,7 +79,7 @@ function resolveDestinationSlug(variant: GuideVariant): string | null {
   return null
 }
 
-// ── Hook ────────────────────────────────────────────────────────────────────
+// ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useGuideRoute(variant: GuideVariant): GuideRouteState {
   const { toast }         = useToast()
@@ -99,18 +110,18 @@ export function useGuideRoute(variant: GuideVariant): GuideRouteState {
           return
         }
 
-        // Overlay gate — the actual "miami/shopping" fix. A destination
-        // without an overlay for this variant resolves to 404 rather than
-        // rendering chrome with no data.
+        // Overlay gate — destination exists but no guide overlay for this
+        // variant. This is a deliberate visibility decision, not a 404.
+        // Route renders the variant-specific GuideGate* screen inline inside
+        // GuideLayout so the guest still sees destination context.
         if (!dest.overlay) {
-          setState({ phase: 'notFound', message: "This guide isn't available yet." })
+          setState({ phase: 'notPublic', destination: dest })
           return
         }
 
         let hasFullAccess = false
         try {
           const grant = await checkGuideGrant(variant, slug)
-          // 'granted' or 'ungated' (variant has no grant infrastructure) → full access
           hasFullAccess = grant.status === 'granted' || grant.status === 'ungated'
         } catch (grantErr) {
           console.warn(`useGuideRoute(${variant}): grant check failed, defaulting to teaser`, grantErr)
@@ -118,11 +129,7 @@ export function useGuideRoute(variant: GuideVariant): GuideRouteState {
         }
         if (cancelled) return
 
-        setState({
-          phase:         'ready',
-          destination:   dest,
-          hasFullAccess,
-        })
+        setState({ phase: 'ready', destination: dest, hasFullAccess })
       } catch (err) {
         console.error(`useGuideRoute(${variant}): failed to load destination`, err)
         if (cancelled) return

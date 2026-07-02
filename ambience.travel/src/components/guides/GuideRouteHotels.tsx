@@ -1,20 +1,16 @@
 // GuideRouteHotels.tsx — thin route wrapper for the hotels guide.
 //
-// All route logic lives in useGuideRoute (path parsing, overlay gate,
-// grant check, state machine, error handling). This file picks the variant
-// and renders the right page component.
+// Phase dispatch:
+//   loading   → RouteLoading
+//   notPublic → GuideGateHotels inline inside GuideLayout
+//   notFound  → NotFoundPage (dark, full page — genuine 404)
+//   ready     → GuidePageHotels inside GuideLayout
 //
-// Note on naming: file is `HotelGuideRoute` (historical singular) but the
-// variant in the type system is 'hotels' (plural) and the URL segment is
-// '/hotels' (plural). This is fine — the file name is internal; the variant
-// + segment are the source of truth.
-//
-// Last updated: S53 — collapsed to thin wrapper. Logic moved to useGuideRoute.
-//   Overlay gate now applies — destinations without a travel_hotel_guides
-//   row resolve to 404 rather than rendering chrome with no data.
-// Prior: S37 — initial build.
+// Last updated: S53 — notPublic phase added.
+// Prior: S53 — collapsed to thin wrapper.
 
 import GuideLayout from '../layouts/GuideLayout'
+import { GuideGate } from './GuideGate'
 import GuidePageHotels from './GuidePageHotels'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
@@ -27,6 +23,14 @@ export default function GuideRouteHotels() {
 
   if (state.phase === 'loading')  return <RouteLoading />
   if (state.phase === 'notFound') return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
+
+  if (state.phase === 'notPublic') {
+    return (
+      <GuideLayout>
+        <GuideGate variant='hotels' destinationName={state.destination.name} />
+      </GuideLayout>
+    )
+  }
 
   return (
     <GuideLayout>

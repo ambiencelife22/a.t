@@ -2,16 +2,21 @@
 //
 // All route logic lives in useGuideRoute (path parsing, overlay gate,
 // grant check, state machine, error handling). This file picks the variant
-// and renders the right page component.
+// and renders the right page or gate component.
 //
-// Last updated: S53 — collapsed to thin wrapper. Logic moved to useGuideRoute.
-//   Path parsing, destination fetch, overlay gate, grant resolution all live
-//   in the shared hook. Also fixes prior bug where hasFullAccess was hardcoded
-//   true regardless of grant check result.
-// Prior: S40C — Grant check added.
-// Prior: S40 — NotFoundPage replaces null return on failed destination load.
+// Phase dispatch:
+//   loading   → RouteLoading
+//   notPublic → GuideGateDining inline inside GuideLayout
+//   notFound  → NotFoundPage (dark, full page — genuine 404)
+//   ready     → GuidePageDining inside GuideLayout
+//
+// Last updated: S53 — notPublic phase added. Overlay-gated guides now render
+//   GuideGateDining inside GuideLayout instead of a dark NotFoundPage. Guest
+//   sees destination hero then the tailored gate message.
+// Prior: S53 — collapsed to thin wrapper.
 
 import GuideLayout from '../layouts/GuideLayout'
+import { GuideGate } from './GuideGate'
 import GuidePageDining from './GuidePageDining'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
@@ -24,6 +29,14 @@ export default function GuideRouteDining() {
 
   if (state.phase === 'loading')  return <RouteLoading />
   if (state.phase === 'notFound') return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
+
+  if (state.phase === 'notPublic') {
+    return (
+      <GuideLayout>
+        <GuideGate variant='dining' destinationName={state.destination.name} />
+      </GuideLayout>
+    )
+  }
 
   return (
     <GuideLayout>

@@ -1,13 +1,16 @@
 // GuideRouteShopping.tsx — thin route wrapper for the shopping guide.
 //
-// All route logic lives in useGuideRoute (path parsing, overlay gate,
-// grant check, state machine, error handling). This file picks the variant
-// and renders the right page component.
+// Phase dispatch:
+//   loading   → RouteLoading
+//   notPublic → GuideGateShopping inline inside GuideLayout
+//   notFound  → NotFoundPage (dark, full page — genuine 404)
+//   ready     → GuidePageShopping inside GuideLayout
 //
-// Last updated: S53 — collapsed to thin wrapper. Logic moved to useGuideRoute.
-// Prior: S52 — initial build.
+// Last updated: S53 — notPublic phase added.
+// Prior: S53 — collapsed to thin wrapper.
 
 import GuideLayout from '../layouts/GuideLayout'
+import { GuideGate } from './GuideGate'
 import GuidePageShopping from './GuidePageShopping'
 import RouteLoading from '../RouteLoading'
 import NotFoundPage from '../NotFoundPage'
@@ -20,6 +23,14 @@ export default function GuideRouteShopping() {
 
   if (state.phase === 'loading')  return <RouteLoading />
   if (state.phase === 'notFound') return <NotFoundPage message={state.message} homeUrl={HOME_URL} />
+
+  if (state.phase === 'notPublic') {
+    return (
+      <GuideLayout>
+        <GuideGate variant='shopping' destinationName={state.destination.name} />
+      </GuideLayout>
+    )
+  }
 
   return (
     <GuideLayout>
