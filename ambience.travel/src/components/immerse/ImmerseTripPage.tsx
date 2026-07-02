@@ -1680,9 +1680,14 @@ function TripLoading() {
 
 function TripNotFound() {
   return (
-    <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: '0 24px', textAlign: 'center' }}>
-      <div style={{ fontSize: 20, fontFamily: SERIF, color: INK }}>This trip is not available.</div>
-      <a href='https://ambience.travel' style={{ fontSize: 13, color: GOLD, fontFamily: SANS, textDecoration: 'none' }}>Return to ambience.travel {'\u2192'}</a>
+    <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, padding: '0 24px', textAlign: 'center' }}>
+      <img src='/emblem.png' alt='' style={{ width: 40, height: 40, opacity: 0.35 }} />
+      <div style={{ fontSize: 22, fontFamily: SERIF, color: INK, maxWidth: 480, lineHeight: 1.5 }}>
+        This page is not publicly visible.
+      </div>
+      <div style={{ fontSize: 15, fontFamily: SANS, color: MUTED, maxWidth: 420, lineHeight: 1.7 }}>
+        Please reach out to your travel designer to pick things back up — they will be glad to share what&apos;s next.
+      </div>
     </div>
   )
 }

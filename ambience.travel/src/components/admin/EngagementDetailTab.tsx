@@ -1087,8 +1087,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       <Section title='Client Visibility'>
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
           Controls what the client sees on this proposal's link. <strong style={{ color: A.text }}>Active</strong> shows
-          the proposal. <strong style={{ color: A.text }}>Archived</strong> shows a graceful "this proposal is no longer
-          active — reach out to your travel designer" notice instead, without breaking the link.
+          the proposal. <strong style={{ color: A.text }}>Archived</strong> shows a graceful "This page is not publicly visible, please reach out to your travel designer for more information" notice instead, without breaking the link.
           This is separate from the engagement's status: an archived proposal is not cancelled, just no longer shown.
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1113,8 +1112,8 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           </button>
           <div style={{ fontSize: 12, color: draft.proposal_visibility === 'archived' ? A.gold : A.muted, fontFamily: A.font, fontWeight: 600 }}>
             {draft.proposal_visibility === 'archived'
-              ? 'Archived — client sees the "ask your travel designer" notice'
-              : 'Active — client sees the full proposal'}
+              ? 'Archived: client sees the "ask your travel designer" notice'
+              : 'Active: client sees the full proposal'}
           </div>
         </div>
       </Section>
