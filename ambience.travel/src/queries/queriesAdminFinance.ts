@@ -96,6 +96,8 @@ export type PipelineTrip = {
   total_billable:          number
   total_outstanding:       number
   net_margin:              number
+  total_commission_native: number
+  currency:                string
 }
 
 export type CreateExpensePayload = {

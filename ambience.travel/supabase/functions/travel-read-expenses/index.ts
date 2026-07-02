@@ -204,7 +204,7 @@ Deno.serve(async (req: Request) => {
         .order('created_at', { ascending: false })
       if (engErr) { console.error(engErr); return json({ error: 'Failed to fetch pipeline' }, 500) }
 
-      const confirmedSlugs = new Set(['confirmed', 'paid', 'in_service', 'closed_won'])
+      const confirmedSlugs = new Set(['confirmed', 'paid', 'in_service'])
       const confirmed = ((engRows ?? []) as Array<Record<string, unknown>>).filter(e => {
         const s = e.travel_lifecycle_statuses as { slug: string } | { slug: string }[] | null
         const slug = Array.isArray(s) ? s[0]?.slug : s?.slug
@@ -242,6 +242,10 @@ Deno.serve(async (req: Request) => {
         const s = e.travel_lifecycle_statuses as { slug: string } | { slug: string }[] | null
         const status_slug = Array.isArray(s) ? s[0]?.slug : s?.slug
 
+        const total_commission_native = bs.reduce((s, b) => s + ((b.commission_amount ?? 0) as number), 0)
+        const currencies = [...new Set(bs.map(b => b.currency).filter(Boolean))] as string[]
+        const currency = currencies.length === 1 ? currencies[0] : currencies.length > 1 ? 'MIXED' : 'USD'
+
         return {
           engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
           trip_code: trip?.trip_code ?? null, start_date: trip?.start_date ?? null,
@@ -250,6 +254,7 @@ Deno.serve(async (req: Request) => {
           commission_outstanding: total_commission - commission_received,
           total_rate, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
+          total_commission_native, currency,
         }
       })
       return json({ trips })
