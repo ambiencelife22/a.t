@@ -34,30 +34,23 @@ export async function fetchEngagementClientData(
   urlId: string
 ): Promise<FetchEngagementResult> {
   // Step 1: try confirmed EF (confirmation/brief — primary state)
-  try {
-    const confirmedData = await fetchTripClientData(urlId)
-    if (confirmedData) {
-      return {
-        type: 'data',
-        data: { stage: 'confirmed', urlId, engagement: confirmedData },
-      }
+  const confirmedData = await fetchTripClientData(urlId)
+  if (confirmedData) {
+    return {
+      type: 'data',
+      data: { stage: 'confirmed', urlId, engagement: confirmedData },
     }
-  } catch {
-    // confirmed EF failed — try proposal
   }
 
   // Step 2: try proposal EF (fallback)
-  try {
-    const proposalData = await getImmerseEngagement(urlId)
-    if (proposalData) {
-      return {
-        type: 'data',
-        data: { stage: 'proposal', urlId, engagement: proposalData },
-      }
+  const proposalData = await getImmerseEngagement(urlId)
+  if (proposalData) {
+    return {
+      type: 'data',
+      data: { stage: 'proposal', urlId, engagement: proposalData },
     }
-  } catch {
-    // proposal EF also failed
   }
 
+  console.warn('[fetchEngagementClientData] both EFs returned null for urlId:', urlId)
   return { type: 'not-found' }
 }
