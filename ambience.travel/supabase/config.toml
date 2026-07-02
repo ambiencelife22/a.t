@@ -100,11 +100,6 @@ api_url = "http://127.0.0.1"
 # OpenAI API Key to use for Supabase AI in the Supabase Studio.
 openai_api_key = "env(OPENAI_API_KEY)"
 
-# Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
-# are monitored, and you can view the emails that would have been sent from the web interface.
-[local_smtp]
-enabled = true
-# sender_name = "Admin"
 
 [storage]
 enabled = true
@@ -235,7 +230,6 @@ otp_expiry = 3600
 # user = "apikey"
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
-# sender_name = "Admin"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

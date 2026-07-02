@@ -13,6 +13,7 @@
 //   #admin/trips                                   → trips pipeline list
 //   #admin/trips/<url_id>                          → trip detail — overview tab
 //   #admin/trips/<url_id>/bookings                 → trip detail — bookings + finance tab
+//   #admin/trips/<url_id>/tasks                    → trip detail — tasks tab
 //   #admin/trips/<url_id>/contacts                 → trip detail — contacts tab
 //   #admin/trips/<url_id>/activity                 → trip detail — activity tab
 //   #admin/trips/<trip_uuid>/programme             → full-page programme editor (ItineraryEditorPage)
@@ -81,7 +82,7 @@ export type AdminProduct =
 // ── Tab ID types ──────────────────────────────────────────────────────────────
 
 // Detail tabs rendered inline within EngagementDetail (url_id based routing)
-export type EngagementDetailTabId = 'overview' | 'bookings' | 'contacts' | 'activity'
+export type EngagementDetailTabId = 'overview' | 'bookings' | 'tasks' | 'contacts' | 'activity'
 
 // Full-page editor tabs (trip uuid based routing)
 export type EngagementEditorTabId = 'programme' | 'brief'
@@ -199,6 +200,7 @@ export function parseAdminHash(hash: string): AdminTab {
       if (!detailTab || detailTab === 'overview')  return { product: 'trips', tab: 'overview',  urlId: seg1 }
       if (detailTab === 'bookings')                return { product: 'trips', tab: 'bookings',  urlId: seg1 }
       if (detailTab === 'contacts')                return { product: 'trips', tab: 'contacts',  urlId: seg1 }
+      if (detailTab === 'tasks')                   return { product: 'trips', tab: 'tasks',     urlId: seg1 }
       if (detailTab === 'activity')                return { product: 'trips', tab: 'activity',  urlId: seg1 }
       return { product: 'trips', tab: 'overview', urlId: seg1 }
     }

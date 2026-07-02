@@ -8,10 +8,12 @@ import { A } from '../../tokens/tokensAdmin'
 import { buildAdminHash, type EngagementDetailTabId } from '../../utils/utilsAdminPath'
 import EngagementDetailTab from './EngagementDetailTab'
 import OutlookTab from './OutlookTab'
+import TasksSection from './TasksSection'
 
 const TABS: { id: EngagementDetailTabId; label: string; ready: boolean }[] = [
   { id: 'overview',  label: 'Overview',  ready: true  },
   { id: 'bookings',  label: 'Bookings',  ready: true  },
+  { id: 'tasks',     label: 'Tasks',     ready: true  },
   { id: 'contacts',  label: 'Contacts',  ready: false },
   { id: 'activity',  label: 'Activity',  ready: false },
 ]
@@ -55,6 +57,7 @@ export default function EngagementDetail({ urlId, activeTab }: {
       {/* Tab content */}
       {activeTab === 'overview' && <EngagementDetailTab urlId={urlId} />}
       {activeTab === 'bookings' && <OutlookTab urlId={urlId} />}
+      {activeTab === 'tasks'    && <TasksSection urlId={urlId} />}
       {activeTab === 'contacts' && <Placeholder label='Contacts' />}
       {activeTab === 'activity' && <Placeholder label='Activity' />}
     </div>
