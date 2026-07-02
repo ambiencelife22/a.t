@@ -45,7 +45,7 @@
 //   #admin/house                                   → clients
 //   #admin/operations/bookings                     → studio/finance (nearest equivalent)
 //   #admin/time[/analytics]                        → studio/time[/analytics]
-//   #admin/calendar                                → studio
+//   #admin/calendar                                → calendar (CalendarTab)
 //   #admin/finance[/engagement/<id>]               → studio/finance[/engagement/<id>]
 //   #admin/programme/<tab>                         → residences/<tab> (tab slugs unchanged)
 //
@@ -278,7 +278,7 @@ export function parseAdminHash(hash: string): AdminTab {
   }
 
   if (product === 'calendar') {
-    return { product: 'studio', tab: 'dashboard' }
+    return { product: 'calendar', tab: 'calendar' }
   }
 
   if (product === 'operations') {

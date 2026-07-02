@@ -85,6 +85,7 @@ const GROUPS: NavGroup[] = [
     key: 'studio', label: 'Studio', icon: LayoutGrid,
     items: [
       { key: 'studio-dash',     label: 'Dashboard',  hash: buildAdminHash({ product: 'studio', tab: 'dashboard' }),      active: (t: AdminTab) => t.product === 'studio' && t.tab === 'dashboard' },
+      { key: 'studio-calendar', label: 'Calendar',   hash: buildAdminHash({ product: 'calendar', tab: 'calendar' }),     active: (t: AdminTab) => t.product === 'calendar' },
       { key: 'studio-finance',  label: 'Finance',    hash: buildAdminHash({ product: 'studio', tab: 'finance' }),        active: (t: AdminTab) => t.product === 'studio' && t.tab === 'finance' },
       { key: 'studio-time',     label: 'Effort Log', hash: buildAdminHash({ product: 'studio', tab: 'time' }),           active: (t: AdminTab) => t.product === 'studio' && t.tab === 'time' },
       { key: 'studio-analytics',label: 'Analytics',  hash: buildAdminHash({ product: 'studio', tab: 'time-analytics' }), active: (t: AdminTab) => t.product === 'studio' && t.tab === 'time-analytics' },
