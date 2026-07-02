@@ -68,6 +68,7 @@ const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEdito
 const OutlookTab           = lazyWithReload(() => import('./admin/OutlookTab'))
 const EngagementDetail     = lazyWithReload(() => import('./admin/EngagementDetail'))
 const StudioDashboard      = lazyWithReload(() => import('./admin/StudioDashboard'))
+const GlobalTasksTab       = lazyWithReload(() => import('./admin/GlobalTasksTab'))
 
 // Residences (was Programme)
 const ProgrammesTab        = lazyWithReload(() => import('./admin/ProgrammeAdmin').then(m => ({ default: m.ProgrammesTab })))
@@ -214,6 +215,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
   }
 
   if (tab.product === 'studio') {
+    if (tab.tab === 'tasks')                return <GlobalTasksTab />
     if (tab.tab === 'time')                 return <TimeTrackingTab />
     if (tab.tab === 'time-analytics')       return <TimeAnalyticsTab />
     return <StudioDashboard />

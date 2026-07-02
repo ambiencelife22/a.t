@@ -36,6 +36,7 @@ const ALERT_WINDOW_DAYS = 7  // single source for the notification horizon
 type Mode =
   | 'by_engagement'
   | 'by_range'
+  | 'all_open'
   | 'create'
   | 'update'
   | 'complete'
@@ -69,6 +70,17 @@ const TASK_SELECT = `
   )
 `
 
+// all_open adds the engagement title + url_id so the fleet-wide inbox can label
+// and link each row. Kept separate so by_engagement/by_range + shape() are untouched.
+const TASK_SELECT_WITH_ENGAGEMENT = `
+  id, engagement_id, stay_id, template_id, title, due_date, status,
+  assigned_to, note, created_at, completed_at,
+  assignee:global_team!travel_tasks_assigned_to_fkey(
+    person:global_people!global_team_person_id_fkey(first_name, last_name, nickname)
+  ),
+  engagement:travel_immerse_engagements!travel_tasks_engagement_id_fkey(title, url_id)
+`
+
 function todayISO(): string { return new Date().toISOString().slice(0, 10) }
 function addDaysISO(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n)
@@ -90,6 +102,20 @@ function shape(r: TaskQueryRow) {
     assigned_to: r.assigned_to, assignee_name,
     note: r.note, created_at: r.created_at, completed_at: r.completed_at,
     is_overdue, is_notifying,
+  }
+}
+
+// Row + shape for all_open: the base task plus engagement title/url_id.
+type TaskEngagementRow = TaskQueryRow & {
+  engagement: { title: string | null; url_id: string | null } | null
+}
+
+function shapeWithEngagement(r: TaskEngagementRow) {
+  const base = shape(r)
+  return {
+    ...base,
+    engagement_title:  r.engagement?.title ?? null,
+    engagement_url_id: r.engagement?.url_id ?? null,
   }
 }
 
@@ -135,6 +161,25 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await q
       if (error) { console.error('by_range error:', error); return json({ error: 'Failed to fetch tasks' }, 500) }
       return json({ tasks: ((data ?? []) as unknown as TaskQueryRow[]).map(shape) })
+    }
+
+    // all_open — fleet-wide inbox: every open task across all engagements,
+    // overdue-first, with the engagement title + url_id joined so each row can
+    // link back to its engagement. Includes null-due-date tasks (they still need
+    // doing) — this is why it's distinct from by_range, which filters on due_date.
+    if (mode === 'all_open') {
+      const viewer = (body?.viewer_team_id as string | undefined) ?? null
+
+      let q = db.from('travel_tasks').select(TASK_SELECT_WITH_ENGAGEMENT).eq('status', 'open')
+      // Fleet-wide inbox shows ALL open tasks. A viewer_team_id (Stage 4) will
+      // narrow to global + own; today, no viewer = everything open.
+      if (viewer) q = q.or(`assigned_to.is.null,assigned_to.eq.${viewer}`)
+      // Overdue-first: due_date ascending with nulls last, then oldest-created.
+      q = q.order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true })
+
+      const { data, error } = await q
+      if (error) { console.error('all_open error:', error); return json({ error: 'Failed to fetch tasks' }, 500) }
+      return json({ tasks: ((data ?? []) as unknown as TaskEngagementRow[]).map(shapeWithEngagement) })
     }
 
     // ── Writes ───────────────────────────────────────────────────────────────

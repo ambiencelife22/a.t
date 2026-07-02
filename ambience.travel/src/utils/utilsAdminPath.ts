@@ -103,6 +103,7 @@ export type ResidenceTabId =
 
 export type StudioTabId =
   | 'dashboard'
+  | 'tasks'
   | 'finance'
   | 'time'
   | 'time-analytics'
@@ -232,6 +233,7 @@ export function parseAdminHash(hash: string): AdminTab {
 
   if (product === 'studio') {
     if (!seg1 || seg1 === 'dashboard') return { product: 'studio', tab: 'dashboard' }
+    if (seg1 === 'tasks') return { product: 'studio', tab: 'tasks' }
     if (seg1 === 'finance') {
       if (seg2 === 'engagement' && seg3 && UUID_RE.test(seg3)) {
         return { product: 'studio', tab: 'finance-engagement', engagementId: seg3 }
@@ -334,6 +336,7 @@ export function buildAdminHash(target: AdminTab): string {
   }
   if (target.product === 'studio') {
     if (target.tab === 'dashboard')         return '#admin/studio'
+    if (target.tab === 'tasks')             return '#admin/studio/tasks'
     if (target.tab === 'finance')           return '#admin/studio/finance'
     if (target.tab === 'finance-engagement') return `#admin/studio/finance/engagement/${target.engagementId}`
     if (target.tab === 'time')              return '#admin/studio/time'
