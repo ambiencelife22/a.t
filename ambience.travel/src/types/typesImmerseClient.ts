@@ -1,0 +1,97 @@
+// typesImmerseClient.ts — Unified client-facing engagement type.
+//
+// Collapse A: replaces the two parallel client render paths:
+//   - ImmerseEngagementData (proposal surface)
+//   - TripClientData (confirmed surface)
+//
+// Architecture: discriminated union by stage, not a flattened superset.
+// A flattened superset with 40+ optional fields forces every consumer to
+// guess what's populated. The union is honest — each stage carries exactly
+// what it knows, nothing more.
+//
+// The route resolver (ImmerseEngagementRoute) returns EngagementClientData.
+// The page component (ImmerseEngagementPage) switches on stage.
+// Each section renders from the appropriate sub-shape.
+//
+// Lifecycle stages that map to each arm:
+//   proposal  → requested, quoted, pending
+//   confirmed → confirmed, paid, in_service, closed_won
+//
+// Last updated: S53I — Collapse A types layer.
+
+import type {
+  ImmerseEngagementData,
+} from './typesImmerse'
+
+import type { ImmerseDossierTrip, ImmerseTripBrief, ImmerseTripHouse, ImmerseTripAuxBooking } from './typesImmerse'
+
+export type TripGuides = {
+  hasDining:       boolean
+  hasExperiences:  boolean
+  destinationSlug: string | null
+}
+
+export type TripContact = {
+  id:    string
+  name:  string
+  role:  string | null
+  email: string | null
+  phone: string | null
+}
+
+export type TripClientData = {
+  trip:            ImmerseDossierTrip
+  brief:           ImmerseTripBrief | null
+  house:           ImmerseTripHouse | null
+  destinationName: string
+  auxBookings:     ImmerseTripAuxBooking[]
+  guides:          TripGuides
+  contacts:        TripContact[]
+  urlId:           string
+}
+
+// ── Discriminated union ───────────────────────────────────────────────────────
+
+export type EngagementClientStage = 'proposal' | 'confirmed'
+
+export type EngagementClientData =
+  | {
+      stage:      'proposal'
+      urlId:      string
+      engagement: ImmerseEngagementData
+    }
+  | {
+      stage:      'confirmed'
+      urlId:      string
+      engagement: TripClientData
+    }
+
+// ── Stage resolution ──────────────────────────────────────────────────────────
+// Maps lifecycle status slugs to the two render arms.
+// Any status not in CONFIRMED_SLUGS falls back to proposal.
+
+const CONFIRMED_SLUGS = new Set([
+  'confirmed',
+  'paid',
+  'in_service',
+  'closed_won',
+])
+
+export function resolveStage(statusSlug: string | null | undefined): EngagementClientStage {
+  if (!statusSlug) return 'proposal'
+  return CONFIRMED_SLUGS.has(statusSlug) ? 'confirmed' : 'proposal'
+}
+
+// ── Type guards ───────────────────────────────────────────────────────────────
+
+export function isProposalData(
+  data: EngagementClientData
+): data is Extract<EngagementClientData, { stage: 'proposal' }> {
+  return data.stage === 'proposal'
+}
+
+export function isConfirmedData(
+  data: EngagementClientData
+): data is Extract<EngagementClientData, { stage: 'confirmed' }> {
+  return data.stage === 'confirmed'
+}
