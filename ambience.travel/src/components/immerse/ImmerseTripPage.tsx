@@ -36,7 +36,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
 import ImmerseHero                            from './ImmerseHero'
-import { fetchTripClientData, type TripClientData } from '../../queries/queriesImmerseTrip'
+import { fetchTripClientData } from '../../queries/queriesImmerseTrip'
+import type { TripClientData } from '../../types/typesImmerseClient'
 import type {
   ImmerseTripBooking as TripBooking,
   ImmerseTripAuxBooking as TripAuxBooking,
@@ -1451,83 +1452,12 @@ function TripBriefTab({ clientData }: {
         </BriefSection>
       )}
 
-      {(clientData.guides?.hasDining || clientData.guides?.hasExperiences) && (
-        <BriefSection title='Guides'>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {clientData.guides.hasDining && (
-              <a
-                href={`https://guides.ambience.travel/${clientData.guides.destinationSlug}/dining`}
-                target='_blank'
-                rel='noopener noreferrer'
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'space-between',
-                  padding:        '14px 18px',
-                  borderRadius:   10,
-                  border:         `1px solid ${RULE}`,
-                  background:     '#fff',
-                  cursor:         'pointer',
-                  transition:     'border-color 150ms',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>🍽</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>Dining Guide</div>
-                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{clientData.destinationName}</div>
-                    </div>
-                  </div>
-                  <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
-                    <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                    <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                  </svg>
-                </div>
-              </a>
-            )}
-            {clientData.guides.hasExperiences && (
-              <a
-                href={`https://guides.ambience.travel/${clientData.guides.destinationSlug}/experiences`}
-                target='_blank'
-                rel='noopener noreferrer'
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'space-between',
-                  padding:        '14px 18px',
-                  borderRadius:   10,
-                  border:         `1px solid ${RULE}`,
-                  background:     '#fff',
-                  cursor:         'pointer',
-                  transition:     'border-color 150ms',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>✦</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>Experiences Guide</div>
-                      <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{clientData.destinationName}</div>
-                    </div>
-                  </div>
-                  <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
-                    <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                    <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                  </svg>
-                </div>
-              </a>
-            )}
-          </div>
-        </BriefSection>
-      )}
-
-      {(clientData.brief?.links as any)?.length > 0 && (
+      {(clientData.links?.length ?? 0) > 0 && (
         <BriefSection title='Links'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {((clientData.brief?.links as any) as { label: string; url: string }[]).map((link, i) => (
+            {clientData.links.map(link => (
               <a
-                key={i}
+                key={link.id}
                 href={link.url}
                 target='_blank'
                 rel='noopener noreferrer'
@@ -1544,7 +1474,14 @@ function TripBriefTab({ clientData }: {
                   cursor:         'pointer',
                   transition:     'border-color 150ms',
                 }}>
-                  <div style={{ fontSize: 13, fontFamily: SERIF, color: INK }}>{link.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>
+                      {link.link_type === 'guide' ? '✦' : '🔗'}
+                    </span>
+                    <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
+                      {link.label}
+                    </div>
+                  </div>
                   <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
                     <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
                     <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
@@ -1740,7 +1677,8 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
           contacts:        confPayload.contacts ?? [],
           destinationName: confPayload.destinationName,
           auxBookings:     confPayload.auxBookings ?? [],
-          guides:          confPayload.guides ?? { hasDining: false, hasExperiences: false, destinationSlug: null },
+          guides:          { hasDining: false, hasExperiences: false, destinationSlug: null },
+          links:           confPayload.links ?? [],
           urlId,
         } as TripClientData
 

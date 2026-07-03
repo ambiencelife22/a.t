@@ -1,4 +1,4 @@
-// tripClientQueries.ts — Data layer for client-facing trip pages.
+// queriesImmerseTrip.ts — Data layer for client-facing trip pages (confirmed surface).
 //
 // What it owns:
 //   - fetchTripClientData: calls the get-trip-confirmation Edge Function,
@@ -10,43 +10,14 @@
 //   - All DB reads happen server-side via service role in the Edge Function
 //   - No sensitive financial or commission data is returned
 //
-// Naming note: this file should be renamed queriesImmerseTrip.ts to conform
-//   to the queries{Domain}.ts convention (S48 naming standards). Deferred —
-//   do not rename mid-session without updating all import paths.
+// Types live in typesImmerseClient.ts per convention. This file owns the fetch only.
 //
 // Last updated: S49 — added guides field to TripClientData (hasDining,
 //   hasExperiences, destinationSlug) populated by Edge Function.
 // Prior: S48 — added apikey + Authorization headers required by
 //   Supabase Edge Function gateway even for public endpoints.
 
-import type {
-  ImmerseDossierTrip, ImmerseTripHouse, ImmerseTripAuxBooking, ImmerseTripBrief,
-} from '../types/typesImmerse'
-
-export type TripGuides = {
-  hasDining:       boolean
-  hasExperiences:  boolean
-  destinationSlug: string | null
-}
-
-export type TripContact = {
-  id:    string
-  name:  string
-  role:  string | null
-  email: string | null
-  phone: string | null
-}
-
-export type TripClientData = {
-  trip:            ImmerseDossierTrip
-  brief:           ImmerseTripBrief | null
-  house:           ImmerseTripHouse | null
-  destinationName: string
-  auxBookings:     ImmerseTripAuxBooking[]
-  guides:          TripGuides
-  contacts:        TripContact[]
-  urlId:           string
-}
+import type { TripClientData } from '../types/typesImmerseClient'
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string

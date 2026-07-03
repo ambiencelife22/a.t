@@ -21,9 +21,11 @@
 
 import type {
   ImmerseEngagementData,
+  ImmerseDossierTrip,
+  ImmerseTripBrief,
+  ImmerseTripHouse,
+  ImmerseTripAuxBooking,
 } from './typesImmerse'
-
-import type { ImmerseDossierTrip, ImmerseTripBrief, ImmerseTripHouse, ImmerseTripAuxBooking } from './typesImmerse'
 
 export type TripGuides = {
   hasDining:       boolean
@@ -39,6 +41,14 @@ export type TripContact = {
   phone: string | null
 }
 
+export type EngagementLink = {
+  id:         string
+  link_type:  string
+  label:      string
+  url:        string
+  sort_order: number
+}
+
 export type TripClientData = {
   trip:            ImmerseDossierTrip
   brief:           ImmerseTripBrief | null
@@ -47,6 +57,7 @@ export type TripClientData = {
   auxBookings:     ImmerseTripAuxBooking[]
   guides:          TripGuides
   contacts:        TripContact[]
+  links:           EngagementLink[]
   urlId:           string
 }
 

@@ -18,7 +18,7 @@ import type { EngagementClientData } from '../types/typesImmerseClient'
 import { getProposalEngagement } from './queriesImmerseProposal'
 import { fetchTripClientData } from './queriesImmerseTrip'
 
-export type { TripGuides, TripContact, TripClientData } from '../types/typesImmerseClient'
+export type { TripGuides, TripContact, TripClientData, EngagementLink } from '../types/typesImmerseClient'
 
 // ── Result type ───────────────────────────────────────────────────────────────
 

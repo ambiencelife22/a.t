@@ -463,8 +463,73 @@ Deno.serve(async (req: Request) => {
       return json({ supplier: data })
     }
 
-    return json({ error: `Unknown mode: ${mode}` }, 400)
+    // ── Engagement links ──────────────────────────────────────────────────────
 
+    if (mode === 'create_link') {
+      const { engagement_id, link_type, label, url, sort_order } = body as {
+        engagement_id?: string; link_type?: string; label?: string
+        url?: string; sort_order?: number
+      }
+      if (!engagement_id || !link_type || !label || !url) {
+        return json({ error: 'engagement_id, link_type, label, url required' }, 400)
+      }
+      const { data, error } = await serviceClient
+        .from('travel_engagement_links')
+        .insert({ engagement_id, link_type, label: label.trim(), url: url.trim(), sort_order: sort_order ?? 0 })
+        .select('id, engagement_id, link_type, label, url, sort_order, is_active, created_at, updated_at')
+        .single()
+      if (error) return json({ error: 'Failed to create link' }, 500)
+      return json({ link: data })
+    }
+
+    if (mode === 'update_link') {
+      const { id, link_type, label, url, sort_order, is_active } = body as {
+        id?: string; link_type?: string; label?: string
+        url?: string; sort_order?: number; is_active?: boolean
+      }
+      if (!id) return json({ error: 'id required' }, 400)
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+      if (link_type  !== undefined) patch.link_type  = link_type
+      if (label      !== undefined) patch.label      = label.trim()
+      if (url        !== undefined) patch.url        = url.trim()
+      if (sort_order !== undefined) patch.sort_order = sort_order
+      if (is_active  !== undefined) patch.is_active  = is_active
+      const { data, error } = await serviceClient
+        .from('travel_engagement_links')
+        .update(patch)
+        .eq('id', id)
+        .select('id, engagement_id, link_type, label, url, sort_order, is_active, created_at, updated_at')
+        .single()
+      if (error) return json({ error: 'Failed to update link' }, 500)
+      return json({ link: data })
+    }
+
+    if (mode === 'delete_link') {
+      const { id } = body as { id?: string }
+      if (!id) return json({ error: 'id required' }, 400)
+      const { error } = await serviceClient
+        .from('travel_engagement_links')
+        .delete()
+        .eq('id', id)
+      if (error) return json({ error: 'Failed to delete link' }, 500)
+      return json({ ok: true })
+    }
+
+    if (mode === 'reorder_links') {
+      const { updates } = body as { updates?: { id: string; sort_order: number }[] }
+      if (!updates?.length) return json({ error: 'updates required' }, 400)
+      const results = await Promise.all(
+        updates.map(u => serviceClient
+          .from('travel_engagement_links')
+          .update({ sort_order: u.sort_order, updated_at: new Date().toISOString() })
+          .eq('id', u.id)
+        )
+      )
+      if (results.some(r => r.error)) return json({ error: 'Failed to reorder links' }, 500)
+      return json({ ok: true })
+    }
+
+    return json({ error: `Unknown mode: ${mode}` }, 400)
   } catch (err) {
     console.error('travel-write-engagement unexpected error:', err)
     return json({ error: 'Internal server error' }, 500)

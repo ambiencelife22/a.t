@@ -48,16 +48,11 @@ export function buildImmerseNavItems(
     const base = window.location.hostname === 'immerse.ambience.travel'
       ? `/${data.urlId}/proposal`
       : `/immerse/${data.urlId}/proposal`
-    const overviewItem = {
-      label:    'Overview',
-      href:     base,
-      isActive: activeDestSlug === null,
-    }
-    return [overviewItem, ...liveRows.map(r => ({
+    return liveRows.map(r => ({
       label:    r.title ?? r.destinationSlug ?? 'Destination',
       href:     `${base}/${r.destinationUrlSlug ?? r.destinationSlug}`,
       isActive: (r.destinationUrlSlug ?? r.destinationSlug) === activeDestSlug,
-    }))]
+    }))
   }
   return []
 }
@@ -95,7 +90,7 @@ function useEngagementRoute(urlId: string): RouteState {
       }
 
       if (isConfirmedData(data)) {
-        setState({ phase: 'confirmed', data: data.engagement as ImmerseEngagementData })
+        setState({ phase: 'confirmed', data: data.engagement })
       }
     })
   }, [urlId])

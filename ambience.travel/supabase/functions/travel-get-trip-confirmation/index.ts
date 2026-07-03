@@ -42,23 +42,11 @@ Deno.serve(async (req: Request) => {
     }
     const { tripId, houseId } = ids
 
-    // primary destination for guide checks
-    const destResult2 = await db
-      .from('travel_trip_destinations')
-      .select('destination_id')
-      .eq('trip_id', tripId)
-      .order('sort_order', { ascending: true })
-      .limit(1)
-      .single()
-    const primaryDestId = destResult2.data?.destination_id ?? null
-
-    // core trip data (single-source) + confirmation-specific bookings/aux/guides
+    // core trip data (single-source) + confirmation-specific bookings/aux
     const [
       core,
       bookingsResult,
       auxResult,
-      diningGuideResult,
-      experiencesGuideResult,
     ] = await Promise.all([
       fetchTripCore(db, tripId, houseId),
 
@@ -76,14 +64,6 @@ Deno.serve(async (req: Request) => {
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
-
-      primaryDestId
-        ? db.from('travel_dining_guides').select('id').eq('global_destination_id', primaryDestId).eq('is_active', true).limit(1).maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
-
-      primaryDestId
-        ? db.from('travel_experiences_guides').select('id').eq('global_destination_id', primaryDestId).eq('is_active', true).limit(1).maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
     ])
 
     if (!core.trip) {
@@ -97,6 +77,17 @@ Deno.serve(async (req: Request) => {
     const bookings     = bookingsResult.data ?? []
     const auxBookings  = auxResult.data ?? []
     if (auxResult.error) console.error('AUX ERROR:', JSON.stringify(auxResult.error))
+
+    // Fetch engagement links using confirmed_engagement_id from trip row.
+    const confirmedEngagementId = (trip?.confirmed_engagement_id as string | null) ?? null
+    const engagementLinksResult = confirmedEngagementId
+      ? await db
+          .from('travel_engagement_links')
+          .select('id, link_type, label, url, sort_order')
+          .eq('engagement_id', confirmedEngagementId)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+      : { data: [], error: null }
 
     // shared bookings enrich (rooms + resolved guest names + canon/hotel maps)
     const partyLabel = (brief?.prepared_for as string | null) ?? null
@@ -220,11 +211,9 @@ Deno.serve(async (req: Request) => {
         })
       })(),
       urlId: url_id,
-      guides: {
-        hasDining:         !!diningGuideResult.data,
-        hasExperiences:    !!experiencesGuideResult.data,
-        destinationSlug:   destinations[0]?.slug ?? null,
-      },
+      links: (engagementLinksResult.data ?? []) as {
+        id: string; link_type: string; label: string; url: string; sort_order: number
+      }[],
     }
 
     return json(payload, 200)
