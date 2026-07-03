@@ -14,12 +14,15 @@
 // only filters global tasks; Stage 4 activates the assigned_to clause):
 //   by_engagement  { engagement_id, viewer_team_id? } → TaskRow[]
 //   by_range       { range_start, range_end, viewer_team_id? } → TaskRow[]
+//   all_open       { viewer_team_id? } → open tasks, all engagements, overdue-first
+//   all_closed     { viewer_team_id? } → done/dismissed, all engagements, recent-first
 //
 // Write modes:
 //   create   { engagement_id, stay_id?, title, due_date?, note?, assigned_to? }
 //   update   { id, title?, due_date?, note?, stay_id?, assigned_to? }
 //   complete { id }
 //   reopen   { id }
+//   dismiss  { id }
 //   delete   { id }
 //
 // DERIVED in the read response, never stored:
@@ -37,11 +40,12 @@ type Mode =
   | 'by_engagement'
   | 'by_range'
   | 'all_open'
+  | 'all_closed'
   | 'create'
   | 'update'
   | 'complete'
   | 'reopen'
-  | 'na'
+  | 'dismiss'
   | 'delete'
 
 // Row as stored, plus the assignee name resolved via global_team.person_id → global_people.
@@ -182,6 +186,22 @@ Deno.serve(async (req: Request) => {
       return json({ tasks: ((data ?? []) as unknown as TaskEngagementRow[]).map(shapeWithEngagement) })
     }
 
+    // all_closed — the closed log: every done/dismissed task across all
+    // engagements, most-recently-closed first. Same engagement join + shape as
+    // all_open so the inbox renders open and closed as one object at two states.
+    if (mode === 'all_closed') {
+      const viewer = (body?.viewer_team_id as string | undefined) ?? null
+
+      let q = db.from('travel_tasks').select(TASK_SELECT_WITH_ENGAGEMENT)
+        .in('status', ['done', 'dismissed'])
+      if (viewer) q = q.or(`assigned_to.is.null,assigned_to.eq.${viewer}`)
+      q = q.order('completed_at', { ascending: false, nullsFirst: false })
+
+      const { data, error } = await q
+      if (error) { console.error('all_closed error:', error); return json({ error: 'Failed to fetch tasks' }, 500) }
+      return json({ tasks: ((data ?? []) as unknown as TaskEngagementRow[]).map(shapeWithEngagement) })
+    }
+
     // ── Writes ───────────────────────────────────────────────────────────────
     if (mode === 'create') {
       const engagement_id = body?.engagement_id as string | undefined
@@ -241,13 +261,13 @@ Deno.serve(async (req: Request) => {
       return json({ task: shape(data as unknown as TaskQueryRow) })
     }
 
-    if (mode === 'na') {
+    if (mode === 'dismiss') {
       const id = body?.id as string | undefined
       if (!id) return json({ error: 'id is required' }, 400)
       const { data, error } = await db.from('travel_tasks')
-        .update({ status: 'n/a', completed_at: new Date().toISOString() })
+        .update({ status: 'dismissed', completed_at: new Date().toISOString() })
         .eq('id', id).select(TASK_SELECT).single()
-      if (error) { console.error('na error:', error); return json({ error: 'Failed to mark N/A' }, 500) }
+      if (error) { console.error('dismiss error:', error); return json({ error: 'Failed to dismiss task' }, 500) }
       return json({ task: shape(data as unknown as TaskQueryRow) })
     }
 

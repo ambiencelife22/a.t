@@ -42,4 +42,17 @@ export const A = {
   danger:     IMMERSE.danger,
   positive:   IMMERSE.positive,
   font:       "'Plus Jakarta Sans', sans-serif",
+
+  // Task status axis — semantic, so status colour reads as status and stays
+  // distinct from A.gold (the brand accent, used for links/actions). Tints are
+  // the base colour at low alpha for subtle borders. Single source: both task
+  // surfaces (TasksSection, GlobalTasksTab) reference these, never raw hex.
+  statusOpen:        '#fbbf24',            // amber — "needs action" (no canonical amber to reuse)
+  statusDone:        IMMERSE.positive,     // '#4ade80'
+  statusDismissed:   ID.dim,               // muted / set aside (same as A.faint)
+  statusOverdue:     IMMERSE.danger,       // '#ef4444'
+  statusOpenTint:    '#fbbf2440',          // amber @ 25% — button borders
+  statusDoneTint:    '#4ade8040',
+  statusDismissedTint: '#938c8140',   // ID.dim @ 25%
+  statusOverdueTint: '#ef444433',          // danger @ 20% — overdue row border
 } as const

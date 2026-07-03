@@ -1,7 +1,7 @@
 // TasksSection.tsx — Engagement-scoped task list.
 // Reads from travel-tasks EF (by_engagement mode).
-// Status transitions: open → done (complete mode), open → n/a (na mode),
-//   done/n/a → open (reopen mode).
+// Status transitions: open → done (complete mode), open → dismissed (dismiss mode),
+//   done/dismissed → open (reopen mode).
 // Template instantiation is manual for now; automation is Phase 3+.
 //
 // S53H — initial ship.
@@ -13,7 +13,7 @@ import { useAdminToast } from './_adminPrimitives'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TaskStatus = 'open' | 'done' | 'n/a'
+type TaskStatus = 'open' | 'done' | 'dismissed'
 
 type Task = {
   id:            string
@@ -30,22 +30,29 @@ type Task = {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
-  open:  'Open',
-  done:  'Done',
-  'n/a': 'N/A',
+  open:      'Open',
+  done:      'Done',
+  dismissed: 'Dismissed',
 }
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  open:  '#fbbf24',
-  done:  '#4ade80',
-  'n/a': '#8A8880',
+  open:      A.statusOpen,
+  done:      A.statusDone,
+  dismissed: A.statusDismissed,
+}
+
+// Tint per status — for the subtle button borders (base colour at low alpha).
+const STATUS_TINT: Record<TaskStatus, string> = {
+  open:      A.statusOpenTint,
+  done:      A.statusDoneTint,
+  dismissed: A.statusDismissedTint,
 }
 
 // EF mode for each target status
 const STATUS_MODE: Record<TaskStatus, string> = {
-  open:  'reopen',
-  done:  'complete',
-  'n/a': 'na',
+  open:      'reopen',
+  done:      'complete',
+  dismissed: 'dismiss',
 }
 
 // ── EF helper ─────────────────────────────────────────────────────────────────
@@ -224,7 +231,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
               disabled={!newTitle.trim() || saving === 'new'}
               style={{
                 fontFamily: A.font, fontSize: 11, fontWeight: 600,
-                color: '#0F1110', background: A.gold, border: 'none',
+                color: A.bg, background: A.gold, border: 'none',
                 borderRadius: 6, padding: '4px 14px', cursor: 'pointer',
                 opacity: !newTitle.trim() || saving === 'new' ? 0.5 : 1,
               }}
@@ -246,14 +253,14 @@ export default function TasksSection({ urlId }: { urlId: string }) {
       {tasks.map(task => {
         const status = task.status as TaskStatus
         const isSaving = saving === task.id
-        const nextOptions = (['open', 'done', 'n/a'] as TaskStatus[]).filter(s => s !== status)
+        const nextOptions = (['open', 'done', 'dismissed'] as TaskStatus[]).filter(s => s !== status)
 
         return (
           <div
             key={task.id}
             style={{
               background:   A.bg,
-              border:       `1px solid ${task.is_overdue ? '#f8717130' : A.border}`,
+              border:       `1px solid ${task.is_overdue ? A.statusOverdueTint : A.border}`,
               borderLeft:   `3px solid ${STATUS_COLOR[status]}`,
               borderRadius: 8,
               padding:      '10px 12px',
@@ -267,7 +274,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 fontSize: 13, fontWeight: 600, fontFamily: A.font,
-                color:          status === 'n/a' ? A.faint : A.text,
+                color:          status === 'dismissed' ? A.faint : A.text,
                 textDecoration: status === 'done' ? 'line-through' : 'none',
                 marginBottom: 4,
               }}>
@@ -282,7 +289,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
                   {STATUS_LABEL[status]}
                 </span>
                 {task.due_date && (
-                  <span style={{ fontSize: 10, fontFamily: A.font, color: task.is_overdue ? '#f87171' : A.faint }}>
+                  <span style={{ fontSize: 10, fontFamily: A.font, color: task.is_overdue ? A.statusOverdue : A.faint }}>
                     {task.is_overdue ? '⚠ ' : ''}Due {task.due_date}
                   </span>
                 )}
@@ -316,7 +323,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
                     letterSpacing: '0.08em', textTransform: 'uppercase',
                     color:      STATUS_COLOR[next],
                     background: 'transparent',
-                    border:     `1px solid ${STATUS_COLOR[next]}40`,
+                    border:     `1px solid ${STATUS_TINT[next]}`,
                     borderRadius: 5, padding: '3px 8px',
                     cursor:  isSaving ? 'not-allowed' : 'pointer',
                     opacity: isSaving ? 0.5 : 1,
