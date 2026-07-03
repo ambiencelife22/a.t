@@ -33,7 +33,7 @@ export type FetchEngagementResult =
 export async function fetchEngagementClientData(
   urlId: string
 ): Promise<FetchEngagementResult> {
-  // Single EF call — travel-get-engagement-stage handles all engagements.
+  // Single EF call — travel-get-immerse-proposal handles all engagements.
   // Stage is computed from the lifecycle status slug and returned on the data.
   // confirmed (trip/completed) → caller redirects to /{urlId} (brief surface)
   // proposal (proposal/draft)  → caller renders at /{urlId}/proposal

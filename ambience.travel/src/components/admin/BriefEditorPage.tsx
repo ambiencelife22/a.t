@@ -14,8 +14,9 @@
  *   the corresponding field renders on the public Contacts tab via
  *   ImmerseTripPage.tsx ContactsTab.
  * Prior: S48 — public_view toggle in Cover section. Controls visibility
- *   of the engagement to public anon clients via the get-engagement-stage
- *   Edge Function. Default false; admin flips on per engagement.
+ *   of the engagement to public anon clients. Enforced server-side by the
+ *   travel-get-immerse-proposal Edge Function (S53H cutover; the old
+ *   get-engagement-stage EF is retired). Default false; admin flips on per engagement.
  * Prior: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
  *   auxBookings fetched in parallel with dossier. auxDrafts state added.
  *   mergedAux built in handleDownload and passed to handleDownloadBrief.

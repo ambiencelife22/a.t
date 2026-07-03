@@ -10,7 +10,7 @@
 //   const gate = await checkPublicView(db, url_id)
 //   if (gate) return gate  // 404 response
 //
-// Both travel-get-engagement-stage and travel-get-trip-confirmation call this.
+// travel-get-trip-confirmation and travel-get-trip-programme call this.
 // Any future client-facing EF must call this before returning data.
 
 import { json } from './http.ts'
