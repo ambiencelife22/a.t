@@ -17,8 +17,7 @@ import {
   type HouseOption, type EngagementOption, type TimeActivity,
 } from '../../queries/queriesTime'
 import { fetchTeamMembers, type TeamMember } from '../../queries/queriesTeam'
-
-const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+import { moneyDec as money } from '../../utils/utilsCurrency'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', background: A.bgInput, border: `1px solid ${A.border}`,
