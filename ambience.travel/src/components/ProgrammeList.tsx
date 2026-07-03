@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { C } from '../tokens/tokensProgramme'
 import { getGuestProgrammes, type GuestProgramme } from '../queries/queriesProgramme'
+import { formatDateShort } from '../utils/utilsDates'
 
 function programmeUrl(p: GuestProgramme): string {
   const hostname = window.location.hostname
@@ -17,12 +18,6 @@ function programmeUrl(p: GuestProgramme): string {
     ? 'https://programme.ambience.travel'
     : `${window.location.protocol}//${window.location.host}/programme`
   return `${base}/${p.subPath}/${p.urlId}`
-}
-
-function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
 }
 
 function statusPill(p: GuestProgramme): { label: string; color: string } {

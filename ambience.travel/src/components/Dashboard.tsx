@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react'
 import { C } from '../tokens/tokensProgramme'
 import { getGuestProgrammes, type GuestProgramme } from '../queries/queriesProgramme'
+import { formatDateShort } from '../utils/utilsDates'
 
 interface DashboardProps {
   displayName?: string
@@ -32,12 +33,6 @@ function greeting(name?: string): string {
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  })
-}
-
-function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 

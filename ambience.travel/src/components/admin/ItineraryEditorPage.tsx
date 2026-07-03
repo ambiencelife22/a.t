@@ -26,7 +26,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
-import { fmtTime } from '../../utils/utilsDates'
+import { fmtTime, formatDateWeekday } from '../../utils/utilsDates'
 import {
   fetchTripDossierForHouse,
   fetchTripDays,
@@ -98,11 +98,6 @@ async function resolveHouseIdForTrip(tripId: string): Promise<string | null> {
     .limit(1)
     .single()
   return data?.house_id ?? null
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function categoryIcon(cat: string | null): string {
@@ -297,7 +292,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
     setAdding(false)
   }
 
-  const dayLabel = day.day_label || fmtDate(day.entry_date)
+  const dayLabel = day.day_label || formatDateWeekday(day.entry_date)
 
   return (
     <div style={{
@@ -332,7 +327,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
                 style={inputStyle} value={day.day_label ?? ''}
                 onChange={e => onDayUpdate(day.entry_date, { day_label: e.target.value })}
                 onBlur={e => upsertTripDay(tripId, day.entry_date, { day_label: e.target.value || null })}
-                placeholder={fmtDate(day.entry_date)}
+                placeholder={formatDateWeekday(day.entry_date)}
               />
             </div>
             <div>
@@ -415,7 +410,7 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
       <div style={{ padding: '0 0 32px' }}>
         {visibleDays.map((day, idx) => {
           const entries = (entriesByDate[day.entry_date] ?? []).filter(e => e.brief_show)
-          const dayLabel = day.day_label || fmtDate(day.entry_date)
+          const dayLabel = day.day_label || formatDateWeekday(day.entry_date)
 
           return (
             <div key={day.entry_date}>
