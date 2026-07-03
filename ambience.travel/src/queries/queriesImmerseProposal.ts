@@ -49,12 +49,20 @@ type EFResponse =
   | { mode: 'subpage';  engagement: Record<string, unknown>; destination: Record<string, unknown> }
   | { error: string }
 
-async function callEF(urlId: string, destinationSlug?: string): Promise<EFResponse | null> {
+type EFCallResult = EFResponse | { __not_public: true } | null
+
+async function callEF(urlId: string, destinationSlug?: string): Promise<EFCallResult> {
   try {
     const { data, error } = await supabaseAnon.functions.invoke('travel-get-immerse-proposal', {
       body: { url_id: urlId, destination_slug: destinationSlug },
     })
-    if (error || !data) return null
+    if (error) {
+      const status = (error as { context?: { status?: number } }).context?.status
+      if (status === 403) return { __not_public: true }
+      return null
+    }
+    if (!data) return null
+    if (data.error === 'not_public') return { __not_public: true }
     if (data.error) return null
     return data as EFResponse
   } catch {
@@ -64,9 +72,15 @@ async function callEF(urlId: string, destinationSlug?: string): Promise<EFRespon
 
 // ── Public: engagement overview ───────────────────────────────────────────────
 
-export async function getProposalEngagement(urlId: string): Promise<ImmerseEngagementData | null> {
+export const NOT_PUBLIC_SENTINEL = Symbol('not_public')
+
+export async function getProposalEngagement(
+  urlId: string
+): Promise<ImmerseEngagementData | typeof NOT_PUBLIC_SENTINEL | null> {
   const result = await callEF(urlId)
-  if (!result || 'error' in result) return null
+  if (!result) return null
+  if ('__not_public' in result) return NOT_PUBLIC_SENTINEL
+  if ('error' in result) return null
   return hydrateEngagement(result.engagement)
 }
 
@@ -77,7 +91,7 @@ export async function getProposalDestination(
   destinationSlug: string,
 ): Promise<ImmerseDestinationData | null> {
   const result = await callEF(urlId, destinationSlug)
-  if (!result || 'error' in result || result.mode !== 'subpage') return null
+  if (!result || '__not_public' in result || 'error' in result || result.mode !== 'subpage') return null
   return hydrateDestination(result.destination)
 }
 

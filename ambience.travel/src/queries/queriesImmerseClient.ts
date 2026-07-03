@@ -15,7 +15,7 @@
 // Last updated: S53I — Collapse A. Removed illegal REST probe.
 
 import type { EngagementClientData } from '../types/typesImmerseClient'
-import { getProposalEngagement } from './queriesImmerseProposal'
+import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
 import { fetchTripClientData } from './queriesImmerseTrip'
 
 export type { TripGuides, TripContact, TripClientData, EngagementLink } from '../types/typesImmerseClient'
@@ -41,6 +41,9 @@ export async function fetchEngagementClientData(
   if (!proposalData) {
     console.warn('[fetchEngagementClientData] EF returned null for urlId:', urlId)
     return { type: 'not-found' }
+  }
+  if (proposalData === NOT_PUBLIC_SENTINEL) {
+    return { type: 'not-public' }
   }
 
   const stage = proposalData.stage

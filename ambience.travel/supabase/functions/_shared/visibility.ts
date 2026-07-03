@@ -16,7 +16,8 @@
 import { json } from './http.ts'
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const NOT_FOUND = () => json({ error: 'not_found' }, 404)
+const NOT_FOUND     = () => json({ error: 'not_found' }, 404)
+const NOT_PUBLIC    = () => json({ error: 'not_public' }, 403)
 
 /**
  * Check public_view on travel_immerse_engagements for the given url_id.
@@ -34,6 +35,6 @@ export async function checkPublicView(
     .single()
 
   if (error || !data)          return NOT_FOUND()
-  if (!data.public_view)       return NOT_FOUND()
+  if (!data.public_view)       return NOT_PUBLIC()
   return null
 }
