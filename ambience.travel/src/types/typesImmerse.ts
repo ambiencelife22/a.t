@@ -252,6 +252,122 @@ export function computeEngagementStage(input: EngagementStageInputs): Engagement
   }
 }
 
+// ─── Deliverable shape ───────────────────────────────────────────────────────
+// MISSION: shape is the SECOND render axis beside stage. Stage answers "where in
+// the lifecycle"; shape answers "what kind of deliverable". Together they drive
+// resolveSectionSet — which sections the unified surface renders. Single source:
+// the 8 top-level shapes below, and the map from the 20-row travel_engagement_types
+// registry onto them. (Collapse A · A1.)
+
+export type EngagementShape =
+  | 'journey'      // multi-destination arc (the flagship shape)
+  | 'stay'         // single-property stay
+  | 'dining'       // dining reservation as the deliverable
+  | 'reservation'  // generic reservation (non-dining)
+  | 'transport'    // flight / transfer / car / heli / jet as the deliverable
+  | 'experience'   // tour / activity / experience as the deliverable
+  | 'acquisition'  // single-product procurement (watch / handbag / artwork)
+  | 'arrangement'  // bespoke arrangement not covered by the above
+
+export const ENGAGEMENT_SHAPES: readonly EngagementShape[] = [
+  'journey', 'stay', 'dining', 'reservation',
+  'transport', 'experience', 'acquisition', 'arrangement',
+] as const
+
+// Every travel_engagement_types slug (20 rows) maps to one of the 8 shapes.
+// Top-level shapes map to themselves; element/booking sub-types roll up.
+// Null / unknown → 'journey' (the safe superset — renders the full surface).
+const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
+  journey:          'journey',
+  stay:             'stay',
+  dining:           'dining',
+  reservation:      'reservation',
+  experience:       'experience',
+  acquisition:      'acquisition',
+  arrangement:      'arrangement',
+  flight:           'transport',
+  private_jet:      'transport',
+  airport_transfer: 'transport',
+  transfer:         'transport',
+  car_service:      'transport',
+  car_rental:       'transport',
+  heli_transfer:    'transport',
+  public_transport: 'transport',
+  yacht_charter:    'transport',
+  cruise:           'transport',
+  tour:             'experience',
+  meet_greet:       'experience',
+  other:            'arrangement',
+}
+
+export function resolveEngagementShape(slug: string | null | undefined): EngagementShape {
+  if (!slug) return 'journey'
+  return SLUG_TO_SHAPE[slug] ?? 'journey'
+}
+
+// ─── Section registry ────────────────────────────────────────────────────────
+// The unified engagement surface renders a set of sections resolved from
+// (stage, shape). This registry is the single source for that mapping. It ships
+// dark in A1 — nothing renders it yet. A2 extracts each render block into a
+// Section component keyed on SectionType; A3 builds the surface that consumes
+// resolveSectionSet. Admin toggles (show_tab_*) subtract from the resolved set
+// at render time — the registry is the structural superset.
+
+export type SectionType =
+  | 'hero'
+  | 'welcome'
+  | 'route'
+  | 'destinations'
+  | 'pricing'
+  | 'confirmation'
+  | 'programme'
+  | 'brief'
+  | 'contacts'
+
+export type Section = {
+  id:        SectionType
+  stages:    readonly EngagementStage[]
+  shapes:    readonly EngagementShape[]
+  sortOrder: number
+}
+
+export const SECTION_REGISTRY: readonly Section[] = [
+  { id: 'hero',         stages: ['draft', 'proposal', 'trip', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                          sortOrder: 0 },
+  { id: 'welcome',      stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay', 'experience', 'arrangement'],                                            sortOrder: 1 },
+  { id: 'route',        stages: ['draft', 'proposal'],                      shapes: ['journey'],                                                                                 sortOrder: 2 },
+  { id: 'destinations', stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay'],                                                                         sortOrder: 3 },
+  { id: 'pricing',      stages: ['draft', 'proposal'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 4 },
+  { id: 'confirmation', stages: ['trip', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 5 },
+  { id: 'programme',    stages: ['trip', 'completed'],                      shapes: ['journey', 'stay', 'experience'],                                                           sortOrder: 6 },
+  { id: 'brief',        stages: ['trip', 'completed'],                      shapes: ['journey', 'stay'],                                                                         sortOrder: 7 },
+  { id: 'contacts',     stages: ['trip', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 8 },
+] as const
+
+// SHAPE_SECTIONS: for each shape, the SectionTypes it can ever include (across
+// all stages). DERIVED from SECTION_REGISTRY — never authored separately.
+export const SHAPE_SECTIONS: Record<EngagementShape, readonly SectionType[]> =
+  ENGAGEMENT_SHAPES.reduce((acc, shape) => {
+    acc[shape] = SECTION_REGISTRY
+      .filter(s => s.shapes.includes(shape))
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(s => s.id)
+    return acc
+  }, {} as Record<EngagementShape, SectionType[]>)
+
+// resolveSectionSet: the one function the unified surface calls. Given
+// (stage, shape), returns the ordered sections to render. Pure and total.
+// Cancelled renders no sections (route shows a cancelled fallback instead).
+export function resolveSectionSet(
+  stage: EngagementStage,
+  shape: EngagementShape,
+): readonly Section[] {
+  if (stage === 'cancelled') return []
+  return SECTION_REGISTRY
+    .filter(s => s.stages.includes(stage) && s.shapes.includes(shape))
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
 // ─── Engagement data ─────────────────────────────────────────────────────────
 
 export type ImmerseEngagementData = {
