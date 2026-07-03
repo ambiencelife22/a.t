@@ -250,6 +250,8 @@ Deno.serve(async (req: Request) => {
       const fee_pct                 = body?.fee_pct                 as number | undefined
       const fee_amt                 = body?.fee_amt                 as number | undefined
       const received_at             = (body?.received_at            as string | undefined) ?? new Date().toISOString()
+      const transaction_ref         = (body?.transaction_ref        as string | undefined) ?? null
+      const remitting_partner_id    = (body?.remitting_partner_id   as string | undefined) ?? null
 
       if (!booking_id)       return json({ error: 'booking_id is required' }, 400)
       if (received_amount == null) return json({ error: 'received_amount is required' }, 400)
@@ -262,11 +264,13 @@ Deno.serve(async (req: Request) => {
       const net_received = Math.round((received_amount - resolvedFeeAmt) * 100) / 100
 
       const patch: Record<string, unknown> = {
-        commission_received_amount:    received_amount,
-        commission_payment_fee_pct:    resolvedFeePct,
-        commission_payment_fee_amt:    resolvedFeeAmt,
-        commission_net_received:       net_received,
-        commission_paid_at:            received_at,
+        commission_received_amount:      received_amount,
+        commission_payment_fee_pct:      resolvedFeePct,
+        commission_payment_fee_amt:      resolvedFeeAmt,
+        commission_net_received:         net_received,
+        commission_paid_at:              received_at,
+        commission_transaction_ref:      transaction_ref,
+        commission_remitting_partner_id: remitting_partner_id,
       }
       if (platform_id) patch.commission_payment_platform_id = platform_id
 

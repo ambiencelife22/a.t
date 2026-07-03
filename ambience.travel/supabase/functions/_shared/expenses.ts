@@ -45,11 +45,14 @@ export const BOOKING_FINANCIAL_SELECT = `
   selling_price, selling_price_usd,
   rate_type_id,
   commission_payment_platform_id,
+  commission_transaction_ref,
+  commission_remitting_partner_id,
   transfer_minutes,
   early_checkin_approved_time,
   late_checkout_approved_time,
   travel_rate_types!rate_type_id(slug, label),
   travel_payment_platforms!commission_payment_platform_id(slug, label, default_fee_pct),
+  travel_partners!commission_remitting_partner_id(id, name, partner_type),
   travel_accom_hotels!accom_hotel_id(
     standard_checkin_time,
     standard_checkout_time

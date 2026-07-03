@@ -1,16 +1,21 @@
 // OutlookTab.tsx — Financial outlook for a trip engagement.
-// Replaces FinancialTab (engagement-scoped, read-only bookings) and
-// OperationsTab (cross-client, writes bookings). One surface, one read path
-// (travel-read-expenses by_engagement_full), one write path
-// (travel-write-expenses update_booking_financial).
 //
-// Mounted at #admin/trips/<url_id>/bookings (EngagementDetailTabId: 'bookings').
-// Receives urlId (11-char) and resolves engagement_id internally.
+// Redesigned S53H: state-first, action-oriented. The surface tells the story
+// of where money stands and what needs action — zero ambiguity.
 //
-// Sections: margin banner · bookings (rooms + write panel) · expenses.
-// Write panel: commission · deposit/balance · payment signal · invoice · amenities.
+// Architecture:
+//   - Margin banner: net margin dominant, commission state, no guest deposit noise
+//   - Booking cards: status-first header, write panel behind expand
+//   - Commission receipt: full transaction record (platform, ref, partner, fee, net)
+//   - Expenses: grouped by status, add inline
 //
-// Last updated: S53I — initial ship (Collapse B, B4).
+// What it owns:
+//   - All financial reads via travel-read-expenses by_engagement_full
+//   - All financial writes via travel-write-expenses
+//   - Supplier reference data via travel-read-suppliers
+//
+// Last updated: S53H — full redesign. Commission receipt captures platform,
+//   transaction ref, remitting partner, gross, fee, net, date.
 
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
@@ -26,12 +31,14 @@ import {
   writeOff,
   updateBookingFinancial,
   fetchPaymentPlatforms,
+  fetchPartners,
   markCommissionReceived,
   type EngagementFull,
   type Expense,
   type BillingStatus,
   type CreateExpensePayload,
   type PaymentPlatform,
+  type SupplierPartner,
 } from '../../queries/queriesAdminFinance'
 import { isHotelBooking } from '../../types/typesAuxBookings'
 
@@ -120,7 +127,7 @@ function RoomLine({ room }: { room: BookingFinancialRoom }) {
         {room.confirmation_number && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{room.confirmation_number}</div>}
       </div>
       <div style={{ textAlign: 'right' }}>
-        {room.rate != null && <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{usdDec(room.rate)}/night{room.nights ? ` × ${room.nights}` : ''}</div>}
+        {room.rate != null && <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{usdDec(room.rate)}/night{room.nights ? ` x ${room.nights}` : ''}</div>}
         {roomBase  != null && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Base: {usdDec(roomBase)}</div>}
       </div>
       <div style={{ textAlign: 'right' }}>
@@ -132,27 +139,36 @@ function RoomLine({ room }: { room: BookingFinancialRoom }) {
 }
 
 // ── Commission receipt ────────────────────────────────────────────────────────
-// Single source for receipt math. FX: when foreign bank opens, add fxRate here
-// and normalize to USD before send — see P2 debt (commission receipt FX support).
+
 function computeReceipt(gross: number, feePct: number, feeFlat: number): { feeAmt: number; net: number } {
   const feeAmt = (gross * feePct / 100) + (feeFlat ?? 0)
   return { feeAmt, net: gross - feeAmt }
 }
 
-function CommissionReceipt({ booking: b, platforms, onDone }: { booking: BookingFinancial; platforms: PaymentPlatform[]; onDone: () => void }) {
+function CommissionReceipt({
+  booking: b,
+  platforms,
+  partners,
+  onDone,
+}: {
+  booking:   BookingFinancial
+  platforms: PaymentPlatform[]
+  partners:  SupplierPartner[]
+  onDone:    () => void
+}) {
   const received = !!b.commission_paid_at
-  const [open,    setOpen]    = useState(false)
-  const [saving,  setSaving]  = useState(false)
+  const [open,   setOpen]   = useState(false)
+  const [saving, setSaving] = useState(false)
   const toast = useAdminToast()
 
   const defaultGross = b.commission_amount_usd ?? b.commission_amount ?? 0
-  const [platformId, setPlatformId] = useState<string>(b.commission_payment_platform_id ?? '')
-  const [gross,   setGross]   = useState(defaultGross ? defaultGross.toString() : '')
-  const [feePct,  setFeePct]  = useState(b.commission_payment_fee_pct?.toString() ?? '')
-  const [feeFlat, setFeeFlat] = useState('')
+  const [platformId,   setPlatformId]   = useState<string>(b.commission_payment_platform_id ?? '')
+  const [gross,        setGross]        = useState(defaultGross ? defaultGross.toString() : '')
+  const [feePct,       setFeePct]       = useState(b.commission_payment_fee_pct?.toString() ?? '')
+  const [feeFlat,      setFeeFlat]      = useState('')
+  const [txRef,        setTxRef]        = useState(b.commission_transaction_ref ?? '')
+  const [partnerId,    setPartnerId]    = useState<string>(b.commission_remitting_partner_id ?? '')
 
-  // Currency label — hard-coded to booking currency for now. FX: becomes a
-  // selector when foreign bank opens (see P2 debt).
   const currency = b.currency ?? 'USD'
 
   function selectPlatform(id: string) {
@@ -174,11 +190,13 @@ function CommissionReceipt({ booking: b, platforms, onDone }: { booking: Booking
     setSaving(true)
     try {
       await markCommissionReceived({
-        booking_id:      b.id,
-        platform_id:     platformId || undefined,
-        received_amount: Math.round(grossN * 100) / 100,
-        fee_pct:         pctN,
-        fee_amt:         Math.round(feeAmt * 100) / 100,
+        booking_id:            b.id,
+        platform_id:           platformId || undefined,
+        received_amount:       Math.round(grossN * 100) / 100,
+        fee_pct:               pctN,
+        fee_amt:               Math.round(feeAmt * 100) / 100,
+        transaction_ref:       txRef.trim() || undefined,
+        remitting_partner_id:  partnerId || undefined,
       })
       await onDone()
       toast.success('Commission receipt recorded')
@@ -193,7 +211,16 @@ function CommissionReceipt({ booking: b, platforms, onDone }: { booking: Booking
   async function clearReceipt() {
     setSaving(true)
     try {
-      await updateBookingFinancial(b.id, { commission_paid_at: null })
+      await updateBookingFinancial(b.id, {
+        commission_paid_at:              null,
+        commission_received_amount:      null,
+        commission_payment_fee_pct:      null,
+        commission_payment_fee_amt:      null,
+        commission_net_received:         null,
+        commission_payment_platform_id:  null,
+        commission_transaction_ref:      null,
+        commission_remitting_partner_id: null,
+      })
       await onDone()
       toast.success('Receipt cleared')
     } catch {
@@ -203,57 +230,132 @@ function CommissionReceipt({ booking: b, platforms, onDone }: { booking: Booking
     }
   }
 
+  // ── Received state — show full transaction record ──────────────────────────
   if (received && !open) {
-    const platformLabel = b.travel_payment_platforms?.label ?? null
+    const platform = b.travel_payment_platforms
+    const partner  = b.travel_partners
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4ade80', fontFamily: A.font, border: '1px solid #4ade8040', background: '#4ade8020', borderRadius: 100, padding: '4px 12px' }}>
-          Received {fmtDate(b.commission_paid_at)}
-        </span>
-        <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-          {platformLabel ? `${platformLabel} · ` : ''}
-          {b.commission_received_amount != null ? `${usdDec(b.commission_received_amount)} gross` : ''}
-          {b.commission_payment_fee_amt ? ` · fee ${usdDec(b.commission_payment_fee_amt)}` : ''}
-          {b.commission_net_received != null ? ` · net ${usdDec(b.commission_net_received)}` : ''}
-        </span>
-        <button onClick={clearReceipt} disabled={saving} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Clear</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Status badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4ade80', fontFamily: A.font, border: '1px solid #4ade8040', background: '#4ade8020', borderRadius: 100, padding: '4px 12px' }}>
+            Received {fmtDate(b.commission_paid_at)}
+          </span>
+          <button onClick={clearReceipt} disabled={saving} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Clear</button>
+          <button onClick={() => setOpen(true)} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Edit</button>
+        </div>
+        {/* Transaction detail */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '10px 14px', background: A.bg, borderRadius: 8, border: `1px solid ${A.border}` }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {platform && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Via</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{platform.label}</div>
+              </div>
+            )}
+            {partner && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Remitted by</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{partner.name}</div>
+              </div>
+            )}
+            {b.commission_transaction_ref && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Ref</div>
+                <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.text }}>{b.commission_transaction_ref}</div>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 24, marginTop: 6, flexWrap: 'wrap' }}>
+            {b.commission_received_amount != null && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Gross</div>
+                <div style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>{usdDec(b.commission_received_amount)}</div>
+              </div>
+            )}
+            {b.commission_payment_fee_amt != null && b.commission_payment_fee_amt > 0 && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Fee</div>
+                <div style={{ fontSize: 12, color: '#ef4444', fontFamily: A.font }}>
+                  -{usdDec(b.commission_payment_fee_amt)}
+                  {b.commission_payment_fee_pct ? ` (${b.commission_payment_fee_pct}%)` : ''}
+                </div>
+              </div>
+            )}
+            {b.commission_net_received != null && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Net to ambience</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.commission_net_received)}</div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
 
+  // ── Record form ────────────────────────────────────────────────────────────
   if (!open) {
-    return <button onClick={() => setOpen(true)} style={{ ...btnP, fontSize: 11, padding: '4px 12px' }}>Record Receipt</button>
+    return (
+      <button onClick={() => setOpen(true)} style={{ ...btnP, fontSize: 11, padding: '6px 14px' }}>
+        Record Receipt
+      </button>
+    )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, border: `1px solid ${A.border}`, borderRadius: 10, padding: 12, background: A.bg }}>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={labelS}>Platform</label>
-          <select value={platformId} onChange={e => selectPlatform(e.target.value)} style={{ ...inputS, width: 150, fontSize: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, border: `1px solid ${A.border}`, borderRadius: 12, padding: 16, background: A.bg }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>
+        Commission Receipt
+      </div>
+
+      {/* Row 1: Platform + Partner */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label='Platform'>
+          <select value={platformId} onChange={e => selectPlatform(e.target.value)} style={{ ...inputS, fontSize: 12 }}>
             <option value=''>— select —</option>
             {platforms.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
           </select>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={labelS}>Gross ({currency})</label>
-          <input value={gross} onChange={e => setGross(e.target.value)} placeholder='0.00' style={{ ...inputS, width: 110, fontSize: 12 }} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={labelS}>Fee %</label>
-          <input value={feePct} onChange={e => setFeePct(e.target.value)} placeholder='0' style={{ ...inputS, width: 64, fontSize: 12 }} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={labelS}>Flat ({currency})</label>
-          <input value={feeFlat} onChange={e => setFeeFlat(e.target.value)} placeholder='0' style={{ ...inputS, width: 80, fontSize: 12 }} />
-        </div>
+        </Field>
+        <Field label='Remitted by (partner)'>
+          <select value={partnerId} onChange={e => setPartnerId(e.target.value)} style={{ ...inputS, fontSize: 12 }}>
+            <option value=''>— direct —</option>
+            {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </Field>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>Fee {usdDec(feeAmt)}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>Net {usdDec(net)}</span>
-        <div style={{ flex: 1 }} />
-        <button onClick={confirm} disabled={!valid || saving} style={{ ...btnP, fontSize: 11, padding: '4px 14px', opacity: (!valid || saving) ? 0.5 : 1 }}>{saving ? 'Saving…' : 'Confirm'}</button>
-        <button onClick={() => setOpen(false)} style={{ ...btnG, fontSize: 11, padding: '4px 12px' }}>Cancel</button>
+
+      {/* Row 2: Gross + Fee % + Flat + Ref */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto 1fr', gap: 10, alignItems: 'end' }}>
+        <Field label={`Gross (${currency})`}>
+          <input value={gross} onChange={e => setGross(e.target.value)} placeholder='0.00' style={{ ...inputS, fontSize: 12 }} />
+        </Field>
+        <Field label='Fee %'>
+          <input value={feePct} onChange={e => setFeePct(e.target.value)} placeholder='0' style={{ ...inputS, width: 64, fontSize: 12 }} />
+        </Field>
+        <Field label={`Flat (${currency})`}>
+          <input value={feeFlat} onChange={e => setFeeFlat(e.target.value)} placeholder='0' style={{ ...inputS, width: 80, fontSize: 12 }} />
+        </Field>
+        <Field label='Transaction / Ref #'>
+          <input value={txRef} onChange={e => setTxRef(e.target.value)} placeholder='Wire ref, ONYX ID...' style={{ ...inputS, fontSize: 12 }} />
+        </Field>
+      </div>
+
+      {/* Math preview */}
+      {valid && (
+        <div style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '10px 14px', background: A.bgCard, borderRadius: 8, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>Gross <strong style={{ color: A.text }}>{usdDec(grossN)}</strong></div>
+          {feeAmt > 0 && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>Fee <strong style={{ color: '#ef4444' }}>-{usdDec(feeAmt)}</strong></div>}
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Net {usdDec(net)}</div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={confirm} disabled={!valid || saving} style={{ ...btnP, fontSize: 11, padding: '6px 16px', opacity: (!valid || saving) ? 0.5 : 1 }}>
+          {saving ? 'Saving...' : 'Confirm Receipt'}
+        </button>
+        <button onClick={() => setOpen(false)} style={{ ...btnG, fontSize: 11, padding: '6px 12px' }}>Cancel</button>
       </div>
     </div>
   )
@@ -261,43 +363,48 @@ function CommissionReceipt({ booking: b, platforms, onDone }: { booking: Booking
 
 // ── Booking row ───────────────────────────────────────────────────────────────
 
-function BookingRow({ booking: b, platforms, onUpdated }: { booking: BookingFinancial; platforms: PaymentPlatform[]; onUpdated: () => void }) {
-  const [expanded,  setExpanded]  = useState(false)
-  const [saving,    setSaving]    = useState<string | null>(null)
-  const [commPct,   setCommPct]   = useState(b.commission_pct?.toString() ?? '')
-  const [commAmt,   setCommAmt]   = useState(b.commission_amount?.toString() ?? '')
-  const [invoiceNo, setInvoiceNo] = useState(b.invoice_number ?? '')
-  const [amenities, setAmenities] = useState(b.cost?.toString() ?? '')
+function BookingRow({
+  booking: b,
+  platforms,
+  partners,
+  onUpdated,
+}: {
+  booking:   BookingFinancial
+  platforms: PaymentPlatform[]
+  partners:  SupplierPartner[]
+  onUpdated: () => void
+}) {
+  const [expanded,     setExpanded]     = useState(false)
+  const [editOpen,     setEditOpen]     = useState(false)
+  const [saving,       setSaving]       = useState<string | null>(null)
+  const [commPct,      setCommPct]      = useState(b.commission_pct?.toString() ?? '')
+  const [commAmt,      setCommAmt]      = useState(b.commission_amount?.toString() ?? '')
+  const [invoiceNo,    setInvoiceNo]    = useState(b.invoice_number ?? '')
+  const [amenities,    setAmenities]    = useState(b.cost?.toString() ?? '')
 
-  // Re-sync editable fields when the source booking value changes (external
-  // edit, SQL fix, or a reload after a receipt write). Without this, the input
-  // holds its mount-time value and blindly writes it back on blur, silently
-  // clobbering any change made to the row while this component stayed mounted.
-  // Keyed on the source value, not on keystrokes — local edits change state,
-  // not b, so typing is never interrupted.
-  useEffect(() => { setCommPct(b.commission_pct?.toString() ?? '') },     [b.commission_pct])
-  useEffect(() => { setCommAmt(b.commission_amount?.toString() ?? '') },  [b.commission_amount])
-  useEffect(() => { setInvoiceNo(b.invoice_number ?? '') },               [b.invoice_number])
-  useEffect(() => { setAmenities(b.cost?.toString() ?? '') },             [b.cost])
+  useEffect(() => { setCommPct(b.commission_pct?.toString() ?? '') },    [b.commission_pct])
+  useEffect(() => { setCommAmt(b.commission_amount?.toString() ?? '') }, [b.commission_amount])
+  useEffect(() => { setInvoiceNo(b.invoice_number ?? '') },              [b.invoice_number])
+  useEffect(() => { setAmenities(b.cost?.toString() ?? '') },            [b.cost])
+
   const toast = useAdminToast()
 
-  const currency = b.currency ?? 'USD'
-  const isHotel  = isHotelBooking(b.booking_type)
-  const commAmt_ = b.commission_amount_usd ?? b.commission_amount ?? 0
-  const totalRate = b.total_rate_usd ?? b.total_rate ?? 0
-  const commBase  = b.commissionable_rate_usd ?? b.commissionable_rate ?? 0
-  const taxes     = b.taxes_and_fees_usd ?? b.taxes_and_fees ?? 0
+  const currency     = b.currency ?? 'USD'
+  const isHotel      = isHotelBooking(b.booking_type)
+  const commAmt_     = b.commission_amount_usd ?? b.commission_amount ?? 0
+  const totalRate    = b.total_rate_usd ?? b.total_rate ?? 0
+  const commBase     = b.commissionable_rate_usd ?? b.commissionable_rate ?? 0
+  const taxes        = b.taxes_and_fees_usd ?? b.taxes_and_fees ?? 0
   const commReceived = !!b.commission_paid_at
-  const isFx      = b.currency && b.currency !== 'USD'
-  const hasRooms  = (b.rooms?.length ?? 0) > 0
-  const hasShares = !!(b.referral_share_amt || b.iata_share_amt || b.individual_share_amt)
-  const depositStatus = b.deposit_amount
-    ? b.deposit_paid_at ? 'paid' : b.deposit_due_date ? `due ${fmtDate(b.deposit_due_date)}` : 'pending'
-    : null
-  const balanceStatus = b.balance_amount
-    ? b.balance_paid_at ? 'paid' : b.balance_due_date ? `due ${fmtDate(b.balance_due_date)}` : 'pending'
-    : null
-  const displayName = b._hotel_name ?? b.name ?? 'Booking'
+  const isFx         = b.currency && b.currency !== 'USD'
+  const hasRooms     = (b.rooms?.length ?? 0) > 0
+  const hasShares    = !!(b.referral_share_amt || b.iata_share_amt || b.individual_share_amt)
+  const displayName  = b._hotel_name ?? b.name ?? 'Booking'
+
+  const depositPaid   = !!b.deposit_paid_at
+  const balancePaid   = !!b.balance_paid_at
+  const depositOverdue = !depositPaid && isOverdue(b.deposit_due_date ?? null)
+  const balanceOverdue = !balancePaid && isOverdue(b.balance_due_date ?? null)
 
   async function patch(label: string, fields: Record<string, unknown>) {
     setSaving(label)
@@ -305,18 +412,17 @@ function BookingRow({ booking: b, platforms, onUpdated }: { booking: BookingFina
       await updateBookingFinancial(b.id, fields)
       await onUpdated()
       toast.success(`${label} updated`)
-    } catch (e) {
+    } catch {
       toast.error(`Failed to update ${label}`)
     } finally {
       setSaving(null)
     }
   }
 
-  async function toggleDepositPaid() { await patch('Deposit',        { deposit_paid_at:      b.deposit_paid_at   ? null : new Date().toISOString() }) }
-  async function toggleBalancePaid() { await patch('Balance',        { balance_paid_at:      b.balance_paid_at   ? null : new Date().toISOString() }) }
-  async function togglePaymentSignal() {
-    await patch('Payment signal', { payment_exception_override: b.payment_exception_override ? null : true })
-  }
+  async function toggleDepositPaid()  { await patch('Deposit',        { deposit_paid_at: b.deposit_paid_at   ? null : new Date().toISOString() }) }
+  async function toggleBalancePaid()  { await patch('Balance',        { balance_paid_at: b.balance_paid_at   ? null : new Date().toISOString() }) }
+  async function togglePaymentSignal() { await patch('Payment signal', { payment_exception_override: b.payment_exception_override ? null : true }) }
+
   async function saveCommission() {
     const p = parseFloat(commPct), a = parseFloat(commAmt)
     if (isNaN(p) && isNaN(a)) return
@@ -332,128 +438,182 @@ function BookingRow({ booking: b, platforms, onUpdated }: { booking: BookingFina
   }
 
   return (
-    <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+    <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 14, overflow: 'hidden' }}>
+
+      {/* ── Header ── */}
+      <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: A.text, fontFamily: A.font }}>{displayName}</span>
+          {/* Name + commission status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font }}>{displayName}</span>
             {commReceived
               ? <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4ade80', fontFamily: A.font, border: '1px solid rgba(74,222,128,0.3)', borderRadius: 100, padding: '2px 8px' }}>Comm. Received</span>
               : commAmt_ > 0
-                ? <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#FBBF24', fontFamily: A.font, border: '1px solid rgba(251,191,36,0.3)', borderRadius: 100, padding: '2px 8px' }}>Comm. Outstanding</span>
+                ? <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#FBBF24', fontFamily: A.font, border: '1px solid rgba(251,191,36,0.3)', borderRadius: 100, padding: '2px 8px' }}>Comm. Pending</span>
                 : null}
           </div>
-          <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginBottom: 2 }}>
-            {fmtDate(b.start_date)}{b.end_date ? ` – ${fmtDate(b.end_date)}` : ''}{b.nights ? ` · ${b.nights} nights` : ''}{isFx ? ` · ${b.currency}` : ''}
+
+          {/* Dates + nights */}
+          <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginBottom: 8 }}>
+            {fmtDate(b.start_date)}{b.end_date ? ` - ${fmtDate(b.end_date)}` : ''}{b.nights ? ` · ${b.nights} nights` : ''}{isFx ? ` · ${b.currency}` : ''}
           </div>
-          {b.invoice_number && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>Inv. {b.invoice_number}</div>}
-          {(depositStatus || balanceStatus) && (
-            <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
-              {depositStatus && <span style={{ fontSize: 10, color: depositStatus === 'paid' ? '#4ade80' : isOverdue(b.deposit_due_date) ? '#f87171' : '#FBBF24', fontFamily: A.font }}>Deposit {b.deposit_amount ? usdDec(b.deposit_amount) : ''} · {depositStatus}</span>}
-              {balanceStatus && <span style={{ fontSize: 10, color: balanceStatus === 'paid' ? '#4ade80' : isOverdue(b.balance_due_date) ? '#f87171' : '#FBBF24', fontFamily: A.font }}>Balance {b.balance_amount ? usdDec(b.balance_amount) : ''} · {balanceStatus}</span>}
+
+          {/* Deposit / Balance status lines */}
+          {(b.deposit_amount || b.balance_amount) && (
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {b.deposit_amount != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Deposit {usdDec(b.deposit_amount)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: depositPaid ? '#4ade80' : depositOverdue ? '#ef4444' : '#FBBF24', fontFamily: A.font }}>
+                    {depositPaid ? `Paid ${fmtDate(b.deposit_paid_at)}` : depositOverdue ? `Overdue ${fmtDate(b.deposit_due_date)}` : `Due ${fmtDate(b.deposit_due_date)}`}
+                  </span>
+                </div>
+              )}
+              {b.balance_amount != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Balance {usdDec(b.balance_amount)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: balancePaid ? '#4ade80' : balanceOverdue ? '#ef4444' : '#FBBF24', fontFamily: A.font }}>
+                    {balancePaid ? `Paid ${fmtDate(b.balance_paid_at)}` : balanceOverdue ? `Overdue ${fmtDate(b.balance_due_date)}` : `Due ${fmtDate(b.balance_due_date)}`}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* Right: amounts */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(totalRate)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(totalRate)}</div>
           <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Base {usdDec(commBase)} + tax {usdDec(taxes)}</div>
-          {commAmt_ > 0 && <div style={{ fontSize: 13, fontWeight: 600, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>{usdDec(commAmt_)} comm{pct(b.commission_pct)}</div>}
+          {commAmt_ > 0 && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>
+              {usdDec(commAmt_)} comm{pct(b.commission_pct)}
+            </div>
+          )}
           {hasShares && (
-            <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
+            <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, textAlign: 'right' }}>
               Net {usdDec(b.net_revenue_usd ?? 0)}
-              {b.referral_share_amt ? ` · ref ${usdDec(b.referral_share_amt)}`   : ''}
-              {b.iata_share_amt     ? ` · IATA ${usdDec(b.iata_share_amt)}`     : ''}
-              {b.individual_share_amt ? ` · indiv ${usdDec(b.individual_share_amt)}` : ''}
+              {b.iata_share_amt      ? ` · IATA ${usdDec(b.iata_share_amt)}`          : ''}
+              {b.referral_share_amt  ? ` · ref ${usdDec(b.referral_share_amt)}`        : ''}
+              {b.individual_share_amt ? ` · indiv ${usdDec(b.individual_share_amt)}`   : ''}
             </div>
           )}
           {b.cost && b.cost > 0 && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{usdDec(b.cost)} amenity</div>}
-          {hasRooms && (
-            <button onClick={() => setExpanded(o => !o)} style={{ background: 'none', border: 'none', color: A.faint, fontSize: 10, fontFamily: A.font, cursor: 'pointer', padding: 0, marginTop: 4, letterSpacing: '0.04em' }}>
-              {expanded ? '▲ Hide rooms' : `▼ ${b.rooms.length} room${b.rooms.length !== 1 ? 's' : ''}`}
-            </button>
-          )}
+          {b.invoice_number && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>Inv. {b.invoice_number}</div>}
         </div>
       </div>
 
-      {/* Room rows */}
-      {expanded && hasRooms && (
+      {/* ── Rooms (collapsible) ── */}
+      {hasRooms && (
         <div style={{ borderTop: `1px solid ${A.border}` }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0 20px', padding: '8px 18px', background: A.bg }}>
-            {['Guest / Room', 'Rate', 'Total'].map(h => (
-              <div key={h} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, textAlign: h === 'Guest / Room' ? 'left' : 'right' }}>{h}</div>
-            ))}
-          </div>
-          {b.rooms.map(r => <RoomLine key={r.id} room={r} />)}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0 20px', padding: '10px 18px', borderTop: `1px solid ${A.border}`, background: A.bg }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{b.rooms.length} rooms · {b.nights} nights</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, textAlign: 'right' }}>Base {usdDec(commBase)}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, textAlign: 'right' }}>{usdDec(totalRate)}</div>
-          </div>
+          <button
+            onClick={() => setExpanded(o => !o)}
+            style={{ width: '100%', background: 'none', border: 'none', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: A.faint, fontSize: 11, fontFamily: A.font, textAlign: 'left' }}
+          >
+            <span style={{ fontSize: 10, letterSpacing: '0.06em' }}>{expanded ? '▲' : '▼'}</span>
+            {b.rooms.length} room{b.rooms.length !== 1 ? 's' : ''}
+          </button>
+          {expanded && (
+            <div style={{ borderTop: `1px solid ${A.border}` }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0 20px', padding: '8px 18px', background: A.bg }}>
+                {['Guest / Room', 'Rate', 'Total'].map(h => (
+                  <div key={h} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, textAlign: h === 'Guest / Room' ? 'left' : 'right' }}>{h}</div>
+                ))}
+              </div>
+              {b.rooms.map(r => <RoomLine key={r.id} room={r} />)}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Write panel */}
-      <div style={{ borderTop: `1px solid ${A.border}`, padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {/* Commission */}
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 6 }}>Commission</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-            <input value={commPct} onChange={e => setCommPct(e.target.value)} onBlur={saveCommission} placeholder='Pct %' style={{ ...inputS, width: 64, fontSize: 12 }} />
-            <input value={commAmt} onChange={e => setCommAmt(e.target.value)} onBlur={saveCommission} placeholder={`Amount ${currency}`} style={{ ...inputS, width: 100, fontSize: 12 }} />
-          </div>
-          <CommissionReceipt booking={b} platforms={platforms} onDone={onUpdated} />
-        </div>
+      {/* ── Commission receipt (always visible) ── */}
+      <div style={{ borderTop: `1px solid ${A.border}`, padding: '14px 20px' }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Commission</div>
+        <CommissionReceipt booking={b} platforms={platforms} partners={partners} onDone={onUpdated} />
+      </div>
 
-        {/* Deposit + Balance */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {b.deposit_amount != null && (
-            <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Deposit · {usdDec(b.deposit_amount)}</div>
-              <button onClick={toggleDepositPaid} disabled={saving === 'Deposit'} style={{ ...btnG, fontSize: 11, padding: '4px 12px', background: b.deposit_paid_at ? '#4ade8015' : undefined, color: b.deposit_paid_at ? '#4ade80' : undefined, border: b.deposit_paid_at ? '1px solid #4ade8030' : undefined }}>
-                {b.deposit_paid_at ? `Paid ${fmtDate(b.deposit_paid_at)}` : b.deposit_due_date ? `Due ${fmtDate(b.deposit_due_date)}` : 'Mark Paid'}
-              </button>
-            </div>
-          )}
-          {b.balance_amount != null && (
-            <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Balance · {usdDec(b.balance_amount)}</div>
-              <button onClick={toggleBalancePaid} disabled={saving === 'Balance'} style={{ ...btnG, fontSize: 11, padding: '4px 12px', background: b.balance_paid_at ? '#4ade8015' : undefined, color: b.balance_paid_at ? '#4ade80' : undefined, border: b.balance_paid_at ? '1px solid #4ade8030' : undefined }}>
-                {b.balance_paid_at ? `Paid ${fmtDate(b.balance_paid_at)}` : b.balance_due_date ? `Due ${fmtDate(b.balance_due_date)}` : 'Mark Paid'}
-              </button>
-            </div>
-          )}
-        </div>
+      {/* ── Edit panel (collapsible) ── */}
+      <div style={{ borderTop: `1px solid ${A.border}` }}>
+        <button
+          onClick={() => setEditOpen(o => !o)}
+          style={{ width: '100%', background: 'none', border: 'none', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: A.faint, fontSize: 11, fontFamily: A.font, textAlign: 'left' }}
+        >
+          <span style={{ fontSize: 10, letterSpacing: '0.06em' }}>{editOpen ? '▲' : '▼'}</span>
+          Edit financials
+        </button>
 
-        {/* Guest payment signal */}
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
-            Guest Payment Signal
-            {!b.payment_exception_override && b.balance_due_date && !b.balance_paid_at && isOverdue(b.balance_due_date) && (
-              <span style={{ color: '#f87171', fontWeight: 400, marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>· auto-showing (balance overdue)</span>
+        {editOpen && (
+          <div style={{ borderTop: `1px solid ${A.border}`, padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Commission pct + amount */}
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 6 }}>Commission rate</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input value={commPct} onChange={e => setCommPct(e.target.value)} onBlur={saveCommission} placeholder='Pct %' style={{ ...inputS, width: 80, fontSize: 12 }} />
+                <input value={commAmt} onChange={e => setCommAmt(e.target.value)} onBlur={saveCommission} placeholder={`Amount ${currency}`} style={{ ...inputS, width: 120, fontSize: 12 }} />
+              </div>
+            </div>
+
+            {/* Deposit + Balance toggles */}
+            {(b.deposit_amount != null || b.balance_amount != null) && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {b.deposit_amount != null && (
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Deposit · {usdDec(b.deposit_amount)}</div>
+                    <button
+                      onClick={toggleDepositPaid}
+                      disabled={saving === 'Deposit'}
+                      style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: depositPaid ? '#4ade8015' : undefined, color: depositPaid ? '#4ade80' : undefined, border: depositPaid ? '1px solid #4ade8030' : undefined }}
+                    >
+                      {depositPaid ? `Paid ${fmtDate(b.deposit_paid_at)}` : 'Mark Paid'}
+                    </button>
+                  </div>
+                )}
+                {b.balance_amount != null && (
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Balance · {usdDec(b.balance_amount)}</div>
+                    <button
+                      onClick={toggleBalancePaid}
+                      disabled={saving === 'Balance'}
+                      style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: balancePaid ? '#4ade8015' : undefined, color: balancePaid ? '#4ade80' : undefined, border: balancePaid ? '1px solid #4ade8030' : undefined }}
+                    >
+                      {balancePaid ? `Paid ${fmtDate(b.balance_paid_at)}` : 'Mark Paid'}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
-          </div>
-          <button onClick={togglePaymentSignal} disabled={saving === 'Payment signal'} style={{ ...btnG, fontSize: 11, padding: '4px 12px', background: b.payment_exception_override ? '#f8717115' : undefined, color: b.payment_exception_override ? '#f87171' : undefined, border: b.payment_exception_override ? '1px solid #f8717130' : undefined }}>
-            {b.payment_exception_override ? 'Forced ON · clear override' : 'Force "Payment Outstanding"'}
-          </button>
-          <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-            {b.payment_exception_override ? 'Guest sees the signal regardless of due dates.' : 'Off: guest sees it only when the balance is past due and unpaid.'}
-          </div>
-        </div>
 
-        {/* Invoice + Amenities */}
-        <div style={{ display: 'grid', gridTemplateColumns: isHotel ? '1fr 1fr' : '1fr', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Invoice #</div>
-            <input value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} onBlur={saveInvoice} placeholder='Invoice number' style={{ ...inputS, fontSize: 12 }} />
-          </div>
-          {isHotel && (
+            {/* Guest payment signal */}
             <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Amenities ({currency}) <span style={{ color: A.faint, fontWeight: 400 }}>absorbed</span></div>
-              <input value={amenities} onChange={e => setAmenities(e.target.value)} onBlur={saveAmenities} placeholder='0' style={{ ...inputS, fontSize: 12 }} />
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
+                Guest Payment Signal
+                {!b.payment_exception_override && b.balance_due_date && !b.balance_paid_at && isOverdue(b.balance_due_date) && (
+                  <span style={{ color: '#f87171', fontWeight: 400, marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>auto-showing</span>
+                )}
+              </div>
+              <button
+                onClick={togglePaymentSignal}
+                disabled={saving === 'Payment signal'}
+                style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: b.payment_exception_override ? '#f8717115' : undefined, color: b.payment_exception_override ? '#f87171' : undefined, border: b.payment_exception_override ? '1px solid #f8717130' : undefined }}
+              >
+                {b.payment_exception_override ? 'Forced ON · clear' : 'Force "Payment Outstanding"'}
+              </button>
             </div>
-          )}
-        </div>
+
+            {/* Invoice + Amenities */}
+            <div style={{ display: 'grid', gridTemplateColumns: isHotel ? '1fr 1fr' : '1fr', gap: 10 }}>
+              <Field label='Invoice #'>
+                <input value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} onBlur={saveInvoice} placeholder='Invoice number' style={{ ...inputS, fontSize: 12 }} />
+              </Field>
+              {isHotel && (
+                <Field label={`Amenities (${currency}) absorbed`}>
+                  <input value={amenities} onChange={e => setAmenities(e.target.value)} onBlur={saveAmenities} placeholder='0' style={{ ...inputS, fontSize: 12 }} />
+                </Field>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -488,7 +648,7 @@ function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: s
             <div style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>New Expense</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>Add Expense</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>x</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field label='Type'><select style={inputS} value={form.expense_type} onChange={e => setForm(f => ({ ...f, expense_type: e.target.value }))}>{EXPENSE_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
@@ -500,7 +660,7 @@ function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: s
         <Field label='Notes'><textarea style={{ ...inputS, minHeight: 72, resize: 'vertical', lineHeight: 1.6 } as React.CSSProperties} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder='Optional internal notes' /></Field>
         {err && <div style={{ fontSize: 12, color: '#ef4444', fontFamily: A.font }}>{err}</div>}
         <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: `1px solid ${A.border}` }}>
-          <button onClick={handleSave} disabled={saving} style={{ ...btnP, opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving…' : 'Add Expense'}</button>
+          <button onClick={handleSave} disabled={saving} style={{ ...btnP, opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving...' : 'Add Expense'}</button>
           <button onClick={onClose} style={btnG}>Cancel</button>
         </div>
       </div>
@@ -551,8 +711,8 @@ function ExpenseRow({ expense, onAction }: { expense: Expense; onAction: () => v
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(expense.total_amount)}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {expense.billing_status === 'billable' && <button disabled={acting} onClick={() => lifecycle(() => markBilled(expense.id), 'Marked as billed')} style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)' }}>Mark Billed</button>}
-            {expense.billing_status === 'billed'   && <button disabled={acting} onClick={() => lifecycle(() => markPaid(expense.id), 'Marked as paid')} style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>Mark Paid</button>}
+            {expense.billing_status === 'billable'  && <button disabled={acting} onClick={() => lifecycle(() => markBilled(expense.id), 'Marked as billed')} style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)' }}>Mark Billed</button>}
+            {expense.billing_status === 'billed'    && <button disabled={acting} onClick={() => lifecycle(() => markPaid(expense.id),   'Marked as paid')}   style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>Mark Paid</button>}
             {(expense.billing_status === 'billable' || expense.billing_status === 'billed') && <button disabled={acting} onClick={() => lifecycle(() => writeOff(expense.id), 'Written off')} style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}>Write Off</button>}
             {canDelete && <button disabled={acting} onClick={handleDelete} style={{ ...btnD, padding: '5px 10px' }}>Delete</button>}
           </div>
@@ -579,15 +739,19 @@ function ExpenseRow({ expense, onAction }: { expense: Expense; onAction: () => v
 
 export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { urlId: string; engagementId?: string }) {
   const [engagementId, setEngagementId] = useState<string | null>(engagementIdProp ?? null)
-  const [data,    setData]    = useState<EngagementFull | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
+  const [data,      setData]      = useState<EngagementFull | null>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [showAdd,   setShowAdd]   = useState(false)
   const [platforms, setPlatforms] = useState<PaymentPlatform[]>([])
+  const [partners,  setPartners]  = useState<SupplierPartner[]>([])
   const toast = useAdminToast()
 
-  useEffect(() => { fetchPaymentPlatforms().then(setPlatforms).catch(() => setPlatforms([])) }, [])
+  useEffect(() => {
+    Promise.all([fetchPaymentPlatforms(), fetchPartners()])
+      .then(([p, r]) => { setPlatforms(p); setPartners(r) })
+      .catch(() => {})
+  }, [])
 
-  // Resolve url_id -> engagement_id only when not passed from parent.
   useEffect(() => {
     if (engagementIdProp) { setEngagementId(engagementIdProp); return }
     supabase
@@ -617,6 +781,10 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
   const title    = data?.engagement?.title ?? 'Financial Outlook'
   const margin   = summary?.net_margin ?? 0
 
+  const commissionFullyReceived = summary
+    ? summary.commission_outstanding <= 0
+    : false
+
   const grouped: Record<BillingStatus, Expense[]> = { absorbed: [], billable: [], billed: [], paid: [], written_off: [] }
   for (const exp of expenses) { grouped[exp.billing_status]?.push(exp) }
   const ORDER: BillingStatus[] = ['billable', 'billed', 'absorbed', 'paid', 'written_off']
@@ -640,50 +808,78 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
         <button onClick={() => setShowAdd(true)} style={btnP}>+ Add Expense</button>
       </div>
 
-      {loading && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading…</div>}
+      {loading && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>Loading...</div>}
 
       {!loading && summary && (
         <>
-          {/* Margin banner */}
-          <div style={{ background: A.bgCard, borderRadius: 14, border: `1px solid ${margin >= 0 ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}`, padding: '20px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+          {/* ── Margin banner ── */}
+          <div style={{
+            background: A.bgCard,
+            borderRadius: 16,
+            border: `1px solid ${margin >= 0 ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            padding: '24px 28px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+              {/* Net margin — dominant */}
               <div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 6 }}>Net Margin</div>
-                <div style={{ fontSize: 36, fontWeight: 700, color: marginColor(margin), fontFamily: A.font, letterSpacing: '-0.03em' }}>{margin >= 0 ? '+' : ''}{usdDec(margin)}</div>
-                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>Commission − Absorbed expenses</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Net Margin</div>
+                <div style={{ fontSize: 40, fontWeight: 700, color: marginColor(margin), fontFamily: A.font, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                  {margin >= 0 ? '+' : ''}{usdDec(margin)}
+                </div>
+                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 6 }}>Commission received - Absorbed expenses</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10, flex: 1, minWidth: 280 }}>
-                <Metric label='Total Trip Value'  value={usdDec(summary.total_rate)} />
-                <Metric label='Commission'        value={usdDec(summary.total_commission)} sub={`${usdDec(summary.commission_received)} received`} />
-                {summary.commission_outstanding > 0 && <Metric label='Comm. Outstanding' value={usdDec(summary.commission_outstanding)} color='#FBBF24' />}
-                {summary.total_net_revenue !== summary.total_commission && <Metric label='Net Revenue' value={usdDec(summary.total_net_revenue)} sub='after partner shares' />}
+
+              {/* Metrics grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, flex: 1, minWidth: 300 }}>
+                <Metric label='Trip Value'    value={usdDec(summary.total_rate)} />
+                <Metric
+                  label='Commission'
+                  value={usdDec(summary.total_commission)}
+                  sub={`${usdDec(summary.net_commission_expected)} net expected`}
+                />
+                <Metric
+                  label='Received'
+                  value={usdDec(summary.commission_received)}
+                  color='#4ade80'
+                />
+                {summary.commission_outstanding > 0
+                  ? <Metric label='Outstanding' value={usdDec(summary.commission_outstanding)} color='#FBBF24' />
+                  : <Metric label='Outstanding' value='Clear' color='#4ade80' />
+                }
+                {summary.total_net_revenue !== summary.total_commission && (
+                  <Metric label='Net Revenue' value={usdDec(summary.total_net_revenue)} sub='after partner shares' />
+                )}
                 {summary.total_amenities > 0 && <Metric label='Amenities' value={usdDec(summary.total_amenities)} />}
                 <Metric label='Absorbed' value={usdDec(summary.total_absorbed)} color={summary.total_absorbed > 0 ? '#ef4444' : A.text} />
                 {summary.total_billable > 0 && <Metric label='Billable' value={usdDec(summary.total_billable)} color='#93C5FD' />}
-                {summary.deposit_outstanding > 0 && <Metric label='Deposits Due' value={usdDec(summary.deposit_outstanding)} color='#FBBF24' />}
-                {summary.balance_outstanding > 0 && <Metric label='Balances Due' value={usdDec(summary.balance_outstanding)} color='#FBBF24' />}
               </div>
             </div>
           </div>
 
-          {/* Bookings */}
+          {/* ── Bookings ── */}
           {bookings.length > 0 && (
             <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 10 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 12 }}>
                 Bookings · {bookings.length}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {bookings.map(b => <BookingRow key={b.id} booking={b} platforms={platforms} onUpdated={load} />)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {bookings.map(b => (
+                  <BookingRow key={b.id} booking={b} platforms={platforms} partners={partners} onUpdated={load} />
+                ))}
               </div>
             </div>
           )}
 
-          {/* Expenses */}
+          {/* ── Expenses ── */}
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 10 }}>
-              Expenses{expenses.length > 0 ? ` · ${expenses.length}` : ''}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>
+                Expenses{expenses.length > 0 ? ` · ${expenses.length}` : ''}
+              </div>
             </div>
-            {expenses.length === 0 && <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>No expenses recorded.</div>}
+            {expenses.length === 0 && (
+              <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>No expenses recorded.</div>
+            )}
             {ORDER.map(status => {
               const group = grouped[status]
               if (!group || group.length === 0) return null

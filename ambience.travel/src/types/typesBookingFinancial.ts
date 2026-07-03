@@ -78,10 +78,13 @@ export type BookingFinancial = {
   commission_received_amount?:     number | null
   commission_payment_fee_pct?:     number | null
   commission_payment_fee_amt?:     number | null
-  commission_net_received?:        number | null
-  commission_payment_platform_id?: string | null
-  // Resolved platform join (travel_payment_platforms!commission_payment_platform_id).
+  commission_net_received?:          number | null
+  commission_payment_platform_id?:   string | null
+  commission_transaction_ref?:       string | null
+  commission_remitting_partner_id?:  string | null
+  // Resolved joins
   travel_payment_platforms?: { slug: string; label: string; default_fee_pct: number } | null
+  travel_partners?:          { id: string; name: string; partner_type: string } | null
 
   // ── Net revenue (rate-type-aware; _shared/expenses.ts computeNetRevenue) ───
   net_revenue:            number | null

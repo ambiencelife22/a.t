@@ -48,9 +48,10 @@ export type Expense = {
 }
 
 export type EngagementSummaryFull = {
-  total_commission:        number
-  commission_received:     number
-  commission_outstanding:  number
+  total_commission:          number
+  net_commission_expected:   number
+  commission_received:       number
+  commission_outstanding:    number
   total_rate:              number
   total_amenities:         number
   total_net_revenue:       number
@@ -87,9 +88,10 @@ export type PipelineTrip = {
   start_date:              string | null
   end_date:                string | null
   primary_client_id:       string | null
-  total_commission:        number
-  commission_received:     number
-  commission_outstanding:  number
+  total_commission:          number
+  net_commission_expected:   number
+  commission_received:       number
+  commission_outstanding:    number
   total_rate:              number | null
   total_amenities:         number
   total_absorbed:          number
@@ -230,33 +232,35 @@ export type RateType = {
   is_active:  boolean
 }
 
+const SUPPLIERS_EF = 'travel-read-suppliers'
+
 export async function fetchPaymentPlatforms(): Promise<PaymentPlatform[]> {
-  const { data, error } = await supabase
-    .from('travel_payment_platforms')
-    .select('id, slug, label, default_fee_pct, default_fee_flat, sort_order, is_active')
-    .eq('is_active', true)
-    .order('sort_order')
-  if (error) throw new Error(error.message)
-  return data as PaymentPlatform[]
+  const { data, error } = await supabase.functions.invoke(SUPPLIERS_EF, {
+    body: { mode: 'payment_platforms' },
+  })
+  if (error) throw new Error(await extractError(error))
+  if (data?.error) throw new Error(data.error)
+  return data.platforms as PaymentPlatform[]
 }
 
 export async function fetchRateTypes(): Promise<RateType[]> {
-  const { data, error } = await supabase
-    .from('travel_rate_types')
-    .select('id, slug, label, sort_order, is_active')
-    .eq('is_active', true)
-    .order('sort_order')
-  if (error) throw new Error(error.message)
-  return data as RateType[]
+  const { data, error } = await supabase.functions.invoke(SUPPLIERS_EF, {
+    body: { mode: 'rate_types' },
+  })
+  if (error) throw new Error(await extractError(error))
+  if (data?.error) throw new Error(data.error)
+  return data.rate_types as RateType[]
 }
 
 export async function markCommissionReceived(payload: {
-  booking_id:      string
-  platform_id?:    string
-  received_amount: number
-  fee_pct?:        number
-  fee_amt?:        number
-  received_at?:    string
+  booking_id:             string
+  platform_id?:           string
+  received_amount:        number
+  fee_pct?:               number
+  fee_amt?:               number
+  received_at?:           string
+  transaction_ref?:       string
+  remitting_partner_id?:  string
 }): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
     body: { mode: 'mark_commission_received', ...payload },
@@ -279,4 +283,22 @@ export async function setHotelPlatform(hotelId: string, platformId: string | nul
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
+}
+
+export type SupplierPartner = {
+  id:                string
+  name:              string
+  partner_type:      string
+  default_share_pct: number | null
+  currency:          string | null
+  is_active:         boolean
+}
+
+export async function fetchPartners(): Promise<SupplierPartner[]> {
+  const { data, error } = await supabase.functions.invoke(SUPPLIERS_EF, {
+    body: { mode: 'partners' },
+  })
+  if (error) throw new Error(await extractError(error))
+  if (data?.error) throw new Error(data.error)
+  return data.partners as SupplierPartner[]
 }
