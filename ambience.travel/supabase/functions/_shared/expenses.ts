@@ -142,6 +142,11 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
 
   // Legacy fallback (no splits yet): flat share columns. Retained so bookings
   // not yet migrated to the tree don't regress. Dropped when flat cols retire.
+  // If commission_net_received is set, partner cut is already baked in —
+  // do NOT subtract flat share columns again (double-count).
+  if (b.commission_net_received != null) {
+    return Math.round((base) * 100) / 100
+  }
   const referral = (b.referral_share_amt   ?? 0) as number
   const iata     = (b.iata_share_amt       ?? 0) as number
   const indiv    = (b.individual_share_amt ?? 0) as number
