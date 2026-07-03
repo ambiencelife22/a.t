@@ -94,39 +94,6 @@ const SIDEBAR_W = 220
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-}
-
-function fmtDateShort(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short', day: 'numeric', month: 'short',
-  })
-}
-
-function fmtDateFull(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
-}
-
-function buildDateRange(start: string | null, end: string | null): string {
-  if (!start) return ''
-  if (!end) return fmtDate(start)
-  const s = new Date(start.slice(0, 10) + 'T00:00:00')
-  const e = new Date(end.slice(0, 10) + 'T00:00:00')
-  const sm = s.toLocaleDateString('en-US', { month: 'long' })
-  const em = e.toLocaleDateString('en-US', { month: 'long' })
-  if (sm === em && s.getFullYear() === e.getFullYear())
-    return `${s.getDate()}\u2013${e.getDate()} ${em} ${e.getFullYear()}`
-  return `${fmtDate(start)} \u2013 ${fmtDate(end)}`
-}
-
 function sortKey(time: string | null | undefined): number {
   if (!time) return 9999
   const [h, m] = time.split(':')
@@ -787,7 +754,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   const dep         = fmtTime(item.start_time)
                   const arr         = fmtTime(item.end_time)
                   const isFlight    = !!(item.flightOrigin || item.flightDestination || item.flightDepartTime || item.flightArriveTime)
-                  const timeStr     = isFlight ? null : (dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || null)
+                  const timeStr     = isFlight ? null : (dep && arr ? `${dep} - ${arr}` : dep || arr || null)
                   const isMobileW   = width < 600
                   const stackLayout = isMobileW && !!item.image_src
 
