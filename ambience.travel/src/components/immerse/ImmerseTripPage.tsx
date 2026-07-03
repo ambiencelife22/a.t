@@ -52,6 +52,7 @@ import type { ExportBranding }                from '../../pdf/pdfShared'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
+import { ID } from '../../tokens/tokensLanding'
 import {
   ConfirmationTab,
   ProgrammeTab,
@@ -91,7 +92,7 @@ type TripContact = {
 const CREAM   = '#F7F5F0'
 const CARD_BG = '#F0EDE6'
 const INK     = '#1A1D1A'
-const GOLD    = '#C9A84C'
+const GOLD    = ID.gold   // #d8b56a — canonical (was drifted #C9A84C)
 const MUTED   = '#787060'
 const FAINT   = '#B4AFA5'
 const RULE    = '#DCDBD5'

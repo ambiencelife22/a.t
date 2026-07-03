@@ -59,13 +59,14 @@ import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 import { WelcomeLettersEditor } from './WelcomeLettersEditor'
 import { roomGuestName } from '../../utils/utilsRoomDisplay'
+import { ID } from '../../tokens/tokensLanding'
 import { fmtTime } from '../../utils/utilsDates'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CREAM   = '#F7F5F0'
 const INK     = '#1A1D1A'
-const GOLD    = '#C9A84C'
+const GOLD    = ID.gold   // #d8b56a — canonical (was drifted #C9A84C)
 const MUTED   = '#787060'
 const FAINT   = '#B4AFA5'
 const RULE    = '#DCDBD5'

@@ -31,12 +31,13 @@ import { getEventStatusMeta }            from '../../types/typesEventStatus'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
+import { ID } from '../../tokens/tokensLanding'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const CREAM   = '#F7F5F0'
 const CARD_BG = '#F0EDE6'
 const INK     = '#1A1D1A'
-const GOLD    = '#C9A84C'
+const GOLD    = ID.gold   // #d8b56a — canonical (was drifted #C9A84C)
 const MUTED   = '#787060'
 const FAINT   = '#B4AFA5'
 const RULE    = '#DCDBD5'
@@ -1387,8 +1388,8 @@ export function TripBriefTab({ clientData }: {
                       transition:     'border-color 150ms',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontSize: 18, lineHeight: 1 }}>
-                          {link.link_type === 'guide' ? '\u2736' : '\U0001f517'}
+                        <span style={{ fontSize: 18, lineHeight: 1, color: INK }}>
+                          {link.link_type === 'guide' ? '\u2736' : '\u{1f517}'}
                         </span>
                         <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
                           {link.label}
