@@ -52,7 +52,7 @@ import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgra
 import { isImmerseHost }                      from '../../utils/utilsImmersePath'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
-import { fmtTime, localDateStr } from '../../utils/utilsDates'
+import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
@@ -183,7 +183,7 @@ function diningPillModel(opts: {
   if (opts.showCancellation === false) return null
   const cancelled = opts.diningStatus === 'cancelled'
   const penalty   = opts.penaltyApplied === true
-  if (cancelled && penalty) return { color: '#B4321F', label: opts.cancellationNote ?? 'Cancelled — penalty applies' }
+  if (cancelled && penalty) return { color: '#B4321F', label: opts.cancellationNote ?? 'Cancelled - penalty applies' }
   if (cancelled)            return { color: MUTED,     label: opts.cancellationNote ?? 'Cancelled' }
   if (opts.bookingTerms)    return { color: GOLD,      label: opts.bookingTerms }
   return null
@@ -300,7 +300,7 @@ const auxSections = groupAuxBySection(auxBookings)
             const bookedByText = bookedByLabel(booking.booked_by)
             const pillColor    = ownArr ? FAINT : GOLD
             const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
-            const dateRange    = buildDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
+            const dateRange    = formatDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
             const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
             const rooms        = booking._rooms ?? []
 
@@ -427,7 +427,7 @@ const auxSections = groupAuxBySection(auxBookings)
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {aux.name && <div style={{ fontSize: 16, fontFamily: SERIF, color: aux.dining_status === 'cancelled' ? FAINT : INK, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, wordBreak: 'break-word' }}>{route}</div>}
-                  {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{fmtDate(aux.start_date)}</div>}
+                  {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
                   {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 4 }}>{timeStr}</div>}
                   {[aux.cabin_class, aux.aircraft_type].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>
@@ -548,7 +548,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     const idx      = visibleDays.findIndex(d => d.entry_date === activeDate)
     const dayN     = idx >= 0 ? `Day ${idx + 1}` : null
     const label    = activeDay
-      ? (activeDay.day_label || fmtDateShort(activeDay.entry_date))
+      ? (activeDay.day_label || formatDateShortWeekday(activeDay.entry_date))
       : 'Select day'
     const combined = dayN ? `${dayN} · ${label}` : label
     onActiveDayChange(combined, () => setSidebarOpen(true))
@@ -743,7 +743,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                       Day {i + 1}
                     </div>
                     <div style={{ fontSize: 11, fontFamily: SANS, fontWeight: isActive ? 700 : 400, color: isActive ? INK : MUTED, lineHeight: 1.3 }}>
-                      {day.day_label || fmtDateShort(day.entry_date)}
+                      {day.day_label || formatDateShortWeekday(day.entry_date)}
                     </div>
                   </button>
                 )
@@ -768,7 +768,7 @@ function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                 {activeDay.day_label || ''}
               </div>
               <div style={{ fontSize: 'clamp(22px,3vw,32px)', fontFamily: SERIF, color: INK, lineHeight: 1.2, marginBottom: 14 }}>
-                {fmtDateFull(activeDay.entry_date)}
+                {formatDateWeekday(activeDay.entry_date)}
               </div>
               {activeDay.day_note && (
                 <div style={{ fontSize: 13, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginBottom: 12 }}>
@@ -1243,8 +1243,8 @@ function TripBriefTab({ clientData }: {
       <BriefSection title='Overview'>
         <BriefRow label='Guest'        value={house?.display_name ?? trip.destinations[0]?.name ?? ''} />
         <BriefRow label='Trip'         value={clientData.brief?.brief_title ?? trip.destinations[0]?.name ?? ''} />
-        {trip.start_date      && <BriefRow label='Departure'    value={fmtDate(trip.start_date)} />}
-        {trip.end_date        && <BriefRow label='Return'       value={fmtDate(trip.end_date)} />}
+        {trip.start_date      && <BriefRow label='Departure'    value={formatDate(trip.start_date)} />}
+        {trip.end_date        && <BriefRow label='Return'       value={formatDate(trip.end_date)} />}
         {trip.duration_nights && <BriefRow label='Duration'     value={`${trip.duration_nights} nights`} />}
         {trip.destinations.length > 0 && <BriefRow label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
       </BriefSection>
@@ -1264,7 +1264,7 @@ function TripBriefTab({ clientData }: {
             return (
               <div key={h.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
-                  {buildDateRange(h.check_in_date ?? h.start_date, h.end_date) || '\u2014'}
+                  {formatDateRange(h.check_in_date ?? h.start_date, h.end_date) || ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
@@ -1301,7 +1301,7 @@ function TripBriefTab({ clientData }: {
             return (
               <div key={f.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
-                  {f.start_date ? fmtDate(f.start_date) : '\u2014'}
+                  {f.start_date ? formatDate(f.start_date) : ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
@@ -1356,7 +1356,7 @@ function TripBriefTab({ clientData }: {
             return (
               <div key={t.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
-                  {t.start_date ? fmtDate(t.start_date) : '\u2014'}
+                  {t.start_date ? formatDate(t.start_date) : ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
@@ -1399,7 +1399,7 @@ function TripBriefTab({ clientData }: {
             {greeters.map(g => (
               <BriefRow
                 key={g.id}
-                label={g.start_date ? fmtDate(g.start_date) : '\u2014'}
+                label={g.start_date ? formatDate(g.start_date) : ''}
                 value={g.name ?? 'Airport Meet & Greet'}
                 sub={[
                   g.start_time ? fmtTime(g.start_time) : null,
@@ -1423,7 +1423,7 @@ function TripBriefTab({ clientData }: {
               return (
               <BriefRow
                 key={d.id}
-                label={d.start_date ? fmtDate(d.start_date) : '\u2014'}
+                label={d.start_date ? formatDate(d.start_date) : ''}
                 value={d.name ?? 'Dining'}
                 sub={[
                   d.start_time ? fmtTime(d.start_time) : null,
@@ -1761,7 +1761,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
   const guestName    = brief?.prepared_for ?? ''
-  const dateLabel    = buildDateRange(trip.start_date, trip.end_date) || undefined
+  const dateLabel    = formatDateRange(trip.start_date, trip.end_date) || undefined
 
   return (
     <ImmerseLayout>
