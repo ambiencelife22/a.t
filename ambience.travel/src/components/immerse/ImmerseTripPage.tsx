@@ -36,7 +36,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
 import ImmerseHero                            from './ImmerseHero'
-import { fetchTripClientData } from '../../queries/queriesImmerseTrip'
 import type { TripClientData } from '../../types/typesImmerseClient'
 import type {
   ImmerseTripBooking as TripBooking,
@@ -49,7 +48,7 @@ import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, 
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
 import { useImmerseConfirmationPdf }          from '../../hooks/useImmerseConfirmationPdf'
 import { useImmerseProgrammePdf }             from '../../hooks/useImmerseProgrammePdf'
-import { isImmerseHost }                      from '../../utils/utilsImmersePath'
+import type { ExportBranding }                from '../../pdf/pdfShared'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
@@ -93,12 +92,6 @@ const SERIF   = "'Cormorant Garamond', Georgia, serif"
 const SIDEBAR_W = 220
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function sortKey(time: string | null | undefined): number {
-  if (!time) return 9999
-  const [h, m] = time.split(':')
-  return parseInt(h, 10) * 60 + parseInt(m ?? '0', 10)
-}
 
 // categoryAccent: single source in utilsBooking.ts → categoryAccentHex
 
@@ -1927,10 +1920,10 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     } catch {}
                   }
                   if (activeTab === 'brief') {
-                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings })
+                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
                     return
                   }
-                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts })
+                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
