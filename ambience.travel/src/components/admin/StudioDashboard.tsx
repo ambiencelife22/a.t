@@ -13,20 +13,9 @@ import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { fetchPipeline, type PipelineTrip } from '../../queries/queriesAdminFinance'
 import { formatDateShortRange } from '../../utils/utilsDates'
+import { money, money as usd } from '../../utils/utilsCurrency'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function usd(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
-}
-
-function fmtNative(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount)
-  } catch {
-    return `${currency} ${amount.toFixed(0)}`
-  }
-}
 
 function daysUntil(iso: string): number {
   const target = new Date(iso.slice(0, 10) + 'T00:00:00')
@@ -199,7 +188,7 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
         {e.total_commission_native > 0
           ? isSameNative
             ? <span style={{ color: A.faint }}>—</span>
-            : fmtNative(e.total_commission_native, e.currency)
+            : money(e.total_commission_native, e.currency)
           : <span style={{ color: A.faint }}>—</span>
         }
       </div>

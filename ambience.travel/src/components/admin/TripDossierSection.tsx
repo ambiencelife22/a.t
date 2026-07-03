@@ -17,6 +17,7 @@ import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
+import { moneyDec as fmt } from '../../utils/utilsCurrency'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
@@ -36,11 +37,6 @@ import { AirlinePicker } from './AirlinePicker'
 import { HotelPicker } from './HotelPicker'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmt(amount: number | null, currency = 'USD'): string {
-  if (amount == null) return '--'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount)
-}
 
 function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): ClientDossierData {
   const hotelName = b._hotel_name ?? b.supplier_name_override ?? b.name ?? 'Supplier'
