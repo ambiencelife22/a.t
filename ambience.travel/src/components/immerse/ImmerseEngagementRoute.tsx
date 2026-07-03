@@ -45,10 +45,13 @@ export function buildImmerseNavItems(
 ) {
   if ('destinationRows' in data) {
     const liveRows = data.destinationRows.filter(r => r.subpageStatus === 'live')
+    const base = window.location.hostname === 'immerse.ambience.travel'
+      ? `/${data.urlId}/proposal`
+      : `/immerse/${data.urlId}/proposal`
     return liveRows.map(r => ({
       label:    r.title ?? r.destinationSlug ?? 'Destination',
-      href:     `/immerse/${data.urlId}/${r.destinationSlug}`,
-      isActive: r.destinationSlug === activeDestSlug,
+      href:     `${base}/${r.destinationUrlSlug ?? r.destinationSlug}`,
+      isActive: (r.destinationUrlSlug ?? r.destinationSlug) === activeDestSlug,
     }))
   }
   return []
@@ -62,7 +65,7 @@ type RouteState =
   | { phase: 'not-public' }
   | { phase: 'archived'   }
   | { phase: 'proposal';  data: ImmerseEngagementData }
-  | { phase: 'confirmed'; data: TripClientData        }
+  | { phase: 'confirmed'; data: ImmerseEngagementData }
   | { phase: 'error'                                  }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -87,7 +90,7 @@ function useEngagementRoute(urlId: string): RouteState {
       }
 
       if (isConfirmedData(data)) {
-        setState({ phase: 'confirmed', data: data.engagement })
+        setState({ phase: 'confirmed', data: data.engagement as ImmerseEngagementData })
       }
     })
   }, [urlId])
@@ -98,8 +101,9 @@ function useEngagementRoute(urlId: string): RouteState {
 // ── Route component ───────────────────────────────────────────────────────────
 
 interface ImmerseEngagementRouteProps {
-  activeDestSlug?: string | null
-  activeTab?:      string | null
+  activeDestSlug?:  string | null
+  activeTab?:       string | null
+  isProposalPath?:  boolean
 }
 
 function extractUrlId(): string {
@@ -110,8 +114,9 @@ function extractUrlId(): string {
 }
 
 export default function ImmerseEngagementRoute({
-  activeDestSlug = null,
-  activeTab      = null,
+  activeDestSlug  = null,
+  activeTab       = null,
+  isProposalPath  = false,
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
   const state = useEngagementRoute(urlId)
@@ -137,6 +142,15 @@ export default function ImmerseEngagementRoute({
   }
 
   if (state.phase === 'proposal') {
+    // Proposal engagements must be accessed at /{urlId}/proposal
+    // If someone hits the root /{urlId} for a proposal, redirect to /proposal
+    if (!isProposalPath) {
+      const proposalUrl = window.location.hostname === 'immerse.ambience.travel'
+        ? `/${urlId}/proposal`
+        : `/immerse/${urlId}/proposal`
+      window.location.replace(proposalUrl)
+      return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
+    }
     return (
       <ImmerseEngagementPage
         data={{ stage: 'proposal', urlId, engagement: state.data }}
@@ -147,6 +161,15 @@ export default function ImmerseEngagementRoute({
   }
 
   if (state.phase === 'confirmed') {
+    // Confirmed engagements render at root /{urlId} — the brief surface.
+    // If someone hits /{urlId}/proposal for a confirmed engagement, redirect to root.
+    if (isProposalPath) {
+      const rootUrl = window.location.hostname === 'immerse.ambience.travel'
+        ? `/${urlId}`
+        : `/immerse/${urlId}`
+      window.location.replace(rootUrl)
+      return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
+    }
     return (
       <ImmerseEngagementPage
         data={{ stage: 'confirmed', urlId, engagement: state.data }}
@@ -155,6 +178,5 @@ export default function ImmerseEngagementRoute({
       />
     )
   }
-
   return null
 }

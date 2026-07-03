@@ -22,6 +22,7 @@ import { ImmerseWelcomeLetter } from './ImmerseComponents'
 import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
 import ImmerseTripPage from './ImmerseTripPage'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
+import DestinationPage from './DestinationPage'
 import type { EngagementClientData } from '../../types/typesImmerseClient'
 
 interface Props {
@@ -40,16 +41,24 @@ export default function ImmerseEngagementPage({
   // ImmerseTripPage owns the full confirmed render (tabs, bookings, programme,
   // brief, contacts). Delegate entirely — no duplication.
   if (data.stage === 'confirmed') {
-    return (
-      <ImmerseTripPage
-        urlId={data.urlId}
-        initialTab={activeTab as any ?? undefined}
-      />
-    )
+    // Confirmed arm: ImmerseTripPage fetches its own confirmed data internally.
+    // urlId is the access token; ImmerseTripPage owns the confirmed render.
+    return <ImmerseTripPage urlId={data.urlId} />
   }
 
   // ── Proposal arm ───────────────────────────────────────────────────────────
   const eng      = data.engagement
+
+  // If a destination slug is active, render the destination subpage
+  if (activeDestSlug) {
+    return (
+      <DestinationPage
+        engagement={eng}
+        destinationSlug={activeDestSlug}
+      />
+    )
+  }
+
   const navItems = buildImmerseNavItems(eng, activeDestSlug)
   const logoHref = window.location.hostname === 'immerse.ambience.travel'
     ? `/${eng.urlId}`

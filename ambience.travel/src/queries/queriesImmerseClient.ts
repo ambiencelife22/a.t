@@ -15,7 +15,7 @@
 // Last updated: S53I — Collapse A. Removed illegal REST probe.
 
 import type { EngagementClientData } from '../types/typesImmerseClient'
-import { getImmerseEngagement } from './queriesImmerseEngagement'
+import { getProposalEngagement } from './queriesImmerseProposal'
 import { fetchTripClientData } from './queriesImmerseTrip'
 
 export type { TripGuides, TripContact, TripClientData } from '../types/typesImmerseClient'
@@ -33,24 +33,26 @@ export type FetchEngagementResult =
 export async function fetchEngagementClientData(
   urlId: string
 ): Promise<FetchEngagementResult> {
-  // Step 1: try confirmed EF (confirmation/brief — primary state)
-  const confirmedData = await fetchTripClientData(urlId)
-  if (confirmedData) {
+  // Single EF call — travel-get-engagement-stage handles all engagements.
+  // Stage is computed from the lifecycle status slug and returned on the data.
+  // confirmed (trip/completed) → caller redirects to /{urlId} (brief surface)
+  // proposal (proposal/draft)  → caller renders at /{urlId}/proposal
+  const proposalData = await getProposalEngagement(urlId)
+  if (!proposalData) {
+    console.warn('[fetchEngagementClientData] EF returned null for urlId:', urlId)
+    return { type: 'not-found' }
+  }
+
+  const stage = proposalData.stage
+  if (stage === 'trip' || stage === 'completed') {
     return {
       type: 'data',
-      data: { stage: 'confirmed', urlId, engagement: confirmedData },
+      data: { stage: 'confirmed', urlId, engagement: proposalData },
     }
   }
 
-  // Step 2: try proposal EF (fallback)
-  const proposalData = await getImmerseEngagement(urlId)
-  if (proposalData) {
-    return {
-      type: 'data',
-      data: { stage: 'proposal', urlId, engagement: proposalData },
-    }
+  return {
+    type: 'data',
+    data: { stage: 'proposal', urlId, engagement: proposalData },
   }
-
-  console.warn('[fetchEngagementClientData] both EFs returned null for urlId:', urlId)
-  return { type: 'not-found' }
 }

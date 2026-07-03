@@ -1,18 +1,15 @@
 // DestinationPage.tsx — Destination subpage for immerse engagement.
 // Routes:
-//   immerse.ambience.travel/<url_id>/<dest>     → subpage
-//   ambience.travel/immerse/<url_id>/<dest>     → subpage (legacy/transitional)
+//   immerse.ambience.travel/<url_id>/proposal/<dest>  → subpage
+//   ambience.travel/immerse/<url_id>/proposal/<dest>  → subpage
 //
-// Last updated: S53B Closing+1 — per-destination_row hero_eyebrow_override.
-//   Resolver chain: destination_row.heroEyebrowOverride
-//     → engagement.heroEyebrowOverride
-//     → composed guestName + titlePrefix (legacy).
-//   Matched via destination_slug + destination_url_slug pair so variants
-//   like grossarl2 resolve to their own override row.
+// Last updated: S53H — single EF call via getProposalDestination replaces
+//   4 parallel client-side fetches (queriesImmerseDestCore/Hotels/Cards/Pricing).
+//   Load model simplified: one call, one loading state, no progressive shimmer
+//   (hotels/cards/pricing arrive together). Render logic unchanged.
+// Prior: S53B Closing+1 — per-destination_row hero_eyebrow_override.
 // Prior: S53B Closing — engagement.heroEyebrowOverride support added.
-// Prior: S42 Add 3 — getImmerseDestinationHotels now receives
-//   coreResult.destinationUrlSlug so variant pages scope room overlays
-//   correctly via travel_immerse_rooms.destination_url_slug.
+// Prior: S42 Add 3 — destinationUrlSlug scoping for variant pages.
 
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
@@ -25,25 +22,17 @@ import {
   ImmerseContentGrid,
   ImmerseDestPricing,
 } from './ImmerseDestinationComponents'
-import { HotelsShimmer, ContentGridShimmer, PricingShimmer } from './ImmerseShimmer'
-import { getImmerseDestinationCore }    from '../../queries/queriesImmerseDestCore'
-import { getImmerseDestinationHotels }  from '../../queries/queriesImmerseDestHotels'
-import { getImmerseDestinationCards }   from '../../queries/queriesImmerseDestCards'
-import { getImmerseDestinationPricing } from '../../queries/queriesImmerseDestPricing'
 import { useToast } from '../../providers/ToastContext'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { TravelLoadingScreen, NotFound } from './ImmerseStateScreens'
 import { getOverviewUrl } from '../../utils/utilsImmersePath'
+import { getProposalDestination } from '../../queries/queriesImmerseProposal'
 import type {
   ImmerseDestinationData,
-  ImmerseDestinationHotelsShape,
   ImmerseEngagementData,
-  ImmersePricingRow,
 } from '../../types/typesImmerse'
-import type { ImmerseDestinationCore }  from '../../queries/queriesImmerseDestCore'
-import type { ImmerseDestinationCards } from '../../queries/queriesImmerseDestCards'
 
-// ── Hero derivation helpers ──────────────────────────────────────────────────
+// ── Hero derivation helpers ───────────────────────────────────────────────────
 
 function deriveDateLabel(statusLabel: string | undefined): string {
   if (!statusLabel) return ''
@@ -68,12 +57,10 @@ function deriveNightsLabel(engagement: ImmerseEngagementData, destinationSlug: s
 }
 
 // S53B Closing+1 — resolve per-subpage hero eyebrow.
-// Match the destination row by slug + url_slug pair so variant pages
-// (e.g. grossarl2) get their own scoped override.
 function resolveDestinationRowEyebrow(
-  engagement: ImmerseEngagementData,
+  engagement:     ImmerseEngagementData,
   destinationSlug: string,
-  urlSlugContext: string | null,
+  urlSlugContext:  string | null,
 ): string | undefined {
   const match = engagement.destinationRows.find(r =>
     r.destinationSlug === destinationSlug
@@ -82,62 +69,7 @@ function resolveDestinationRowEyebrow(
   return match?.heroEyebrowOverride
 }
 
-// ── Compose ImmerseDestinationData ───────────────────────────────────────────
-
-function composeData(
-  core:    ImmerseDestinationCore,
-  hotels:  ImmerseDestinationHotelsShape | null,
-  cards:   ImmerseDestinationCards | null,
-  pricing: ImmersePricingRow[] | null,
-): ImmerseDestinationData {
-  return {
-    destinationId:       core.destinationId,
-    destinationSlug:     core.destinationSlug,
-    journeyId:           core.journeyId,
-    shorthand:           core.shorthand,
-
-    eyebrow:             core.eyebrow,
-    title:               core.title,
-    subtitle:            core.subtitle,
-    heroImageSrc:        core.heroImageSrc,
-    heroImageAlt:        core.heroImageAlt,
-    heroImageSrc2:       core.heroImageSrc2,
-    heroImageAlt2:       core.heroImageAlt2,
-    heroTitle2:          core.heroTitle2,
-    heroSubtitle2:       core.heroSubtitle2,
-    heroPills:           core.heroPills,
-
-    introEyebrow:        core.introEyebrow,
-    introTitle:          core.introTitle,
-    introBody:           core.introBody,
-
-    hotelsEyebrow:       core.hotelsEyebrow,
-    hotelsTitle:         core.hotelsTitle,
-    hotelsBody:          core.hotelsBody,
-    hotels:              hotels ?? { kind: 'flat', hotels: [] },
-
-    diningEyebrow:       core.diningEyebrow,
-    diningTitle:         core.diningTitle,
-    diningBody:          core.diningBody,
-    dining:              cards?.dining ?? [],
-
-    experiencesEyebrow:  core.experiencesEyebrow,
-    experiencesTitle:    core.experiencesTitle,
-    experiencesBody:     core.experiencesBody,
-    experiences:         cards?.experiences ?? [],
-
-    pricingEyebrow:      core.pricingEyebrow,
-    pricingTitle:        core.pricingTitle,
-    pricingBody:         core.pricingBody,
-    pricingRows:         pricing ?? [],
-    pricingCloser:       core.pricingCloser,
-    pricingNotesHeading: core.pricingNotesHeading,
-    pricingNotesTitle:   core.pricingNotesTitle,
-    pricingNotes:        core.pricingNotes,
-  }
-}
-
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
   engagement:      ImmerseEngagementData
@@ -147,76 +79,52 @@ interface Props {
 export default function DestinationPage({ engagement, destinationSlug }: Props) {
   const { toast } = useToast()
 
-  const [core,    setCore]    = useState<ImmerseDestinationCore | null>(null)
-  const [hotels,  setHotels]  = useState<ImmerseDestinationHotelsShape | null>(null)
-  const [cards,   setCards]   = useState<ImmerseDestinationCards | null>(null)
-  const [pricing, setPricing] = useState<ImmersePricingRow[] | null>(null)
-
-  const [coreLoading, setCoreLoading] = useState(true)
-  const [errored,     setErrored]     = useState(false)
+  const [data,    setData]    = useState<ImmerseDestinationData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [errored, setErrored] = useState(false)
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      setCore(null)
-      setHotels(null)
-      setCards(null)
-      setPricing(null)
-      setCoreLoading(true)
+      setData(null)
+      setLoading(true)
       setErrored(false)
 
       try {
-        const coreResult = await getImmerseDestinationCore(engagement.engagementId, destinationSlug)
+        const result = await getProposalDestination(engagement.urlId, destinationSlug)
         if (cancelled) return
 
-        if (!coreResult) {
+        if (!result) {
           toast.warning(`We couldn't find that page. Returning to the overview.`)
           window.history.replaceState(null, '', getOverviewUrl(engagement.urlId))
           window.dispatchEvent(new PopStateEvent('popstate'))
           setErrored(true)
-          setCoreLoading(false)
+          setLoading(false)
           return
         }
 
-        setCore(coreResult)
-        setCoreLoading(false)
-
-        getImmerseDestinationHotels(
-          engagement.engagementId,
-          coreResult.destinationId,
-          coreResult.destinationUrlSlug,
-        )
-          .then(result => { if (!cancelled) setHotels(result) })
-          .catch(err => console.error('DestinationPage: hotels fetch failed', err))
-
-        getImmerseDestinationCards(engagement.engagementId, coreResult.globalDestinationId, coreResult.destinationUrlSlug)
-          .then(result => { if (!cancelled) setCards(result) })
-          .catch(err => console.error('DestinationPage: cards fetch failed', err))
-
-        getImmerseDestinationPricing(coreResult.tripDestinationRowId)
-          .then(result => { if (!cancelled) setPricing(result) })
-          .catch(err => console.error('DestinationPage: pricing fetch failed', err))
-
+        setData(result)
+        setLoading(false)
       } catch (err) {
-        console.error('DestinationPage: failed to load destination core', err)
+        console.error('DestinationPage: failed to load', err)
         if (cancelled) return
         toast.warning('Something went wrong loading that destination. Returning to the overview.')
         window.history.replaceState(null, '', getOverviewUrl(engagement.urlId))
         window.dispatchEvent(new PopStateEvent('popstate'))
         setErrored(true)
-        setCoreLoading(false)
+        setLoading(false)
       }
     }
 
     load()
     return () => { cancelled = true }
-  }, [engagement.engagementId, destinationSlug, engagement.urlId, toast])
+  }, [engagement.urlId, engagement.engagementId, destinationSlug, toast])
 
   const navItems = buildImmerseNavItems(engagement, destinationSlug)
   const logoHref = getOverviewUrl(engagement.urlId)
 
-  if (coreLoading) {
+  if (loading) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
         <TravelLoadingScreen />
@@ -224,7 +132,7 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
     )
   }
 
-  if (errored || !core) {
+  if (errored || !data) {
     return (
       <ImmerseLayout navItems={navItems} logoHref={logoHref}>
         <NotFound message='Returning to the overview…' />
@@ -232,7 +140,6 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
     )
   }
 
-  const data        = composeData(core, hotels, cards, pricing)
   const dateLabel   = deriveDateLabel(engagement.statusLabel)
   const nightsLabel = deriveNightsLabel(engagement, destinationSlug)
 
@@ -240,13 +147,10 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
   // 1. destination_row.heroEyebrowOverride (per-subpage)
   // 2. engagement.heroEyebrowOverride (proposal-wide)
   // 3. legacy composed guestName + titlePrefix
-  //
-  // When either override level is set, render as single elegant line and
-  // suppress the italic titlePrefix sub-line.
   const rowEyebrow = resolveDestinationRowEyebrow(
     engagement,
     destinationSlug,
-    core.destinationUrlSlug ?? null,
+    data.destinationSlug ?? null,
   )
   const resolvedEyebrow = rowEyebrow ?? engagement.heroEyebrowOverride ?? null
 
@@ -279,19 +183,15 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
 
       <ImmerseDestIntro data={data} />
 
-      {hotels ? <ImmerseHotelOptions data={data} /> : <HotelsShimmer />}
+      <ImmerseHotelOptions data={data} />
 
-      {cards ? (
-        <ImmerseContentGrid
-          id='dining'
-          eyebrow={data.diningEyebrow}
-          title={data.diningTitle}
-          body={data.diningBody}
-          items={data.dining}
-        />
-      ) : (
-        <ContentGridShimmer />
-      )}
+      <ImmerseContentGrid
+        id='dining'
+        eyebrow={data.diningEyebrow}
+        title={data.diningTitle}
+        body={data.diningBody}
+        items={data.dining}
+      />
 
       {data.heroImageSrc2 && (
         <ImmerseHeroBlock
@@ -302,19 +202,15 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
         />
       )}
 
-      {cards ? (
-        <ImmerseContentGrid
-          dark
-          eyebrow={data.experiencesEyebrow}
-          title={data.experiencesTitle}
-          body={data.experiencesBody}
-          items={data.experiences}
-        />
-      ) : (
-        <ContentGridShimmer dark />
-      )}
+      <ImmerseContentGrid
+        dark
+        eyebrow={data.experiencesEyebrow}
+        title={data.experiencesTitle}
+        body={data.experiencesBody}
+        items={data.experiences}
+      />
 
-      {pricing ? <ImmerseDestPricing data={data} /> : <PricingShimmer />}
+      <ImmerseDestPricing data={data} />
     </ImmerseLayout>
   )
 }

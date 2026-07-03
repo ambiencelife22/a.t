@@ -6,18 +6,16 @@
  *   ambience.travel/experiences/:slug                    → SignatureExperiencePage
  *   ambience.travel/login                                → Auth (admin login, S40D)
  *   ambience.travel/#admin                               → AmbienceAdmin (S33)
- *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute
- *   ambience.travel/immerse/:url_id/:destination         → ImmerseEngagementRoute
- *   ambience.travel/immerse/:url_id/confirmation         → ImmerseTripPage (confirmation tab)
- *   ambience.travel/immerse/:url_id/programme            → ImmerseTripPage (programme tab)
+ *   ambience.travel/immerse/:url_id                      → ImmerseEngagementRoute (confirmed → brief)
+ *   ambience.travel/immerse/:url_id/proposal             → ImmerseEngagementRoute (proposal overview)
+ *   ambience.travel/immerse/:url_id/proposal/:dest       → ImmerseEngagementRoute (proposal subpage)
  *   ambience.travel/guides/:destination/dining           → GuideRouteDining (S35)
  *   ambience.travel/guides/:destination/hotels           → GuideRouteHotels (S37)
  *   ambience.travel/guides/:destination/experiences      → GuideRouteExperiences
  *   ambience.travel/guides/:destination/shopping         → GuideRouteShopping
- *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute
- *   immerse.ambience.travel/:url_id/:destination         → ImmerseEngagementRoute
- *   immerse.ambience.travel/:url_id/confirmation         → ImmerseTripPage (confirmation tab)
- *   immerse.ambience.travel/:url_id/programme            → ImmerseTripPage (programme tab)
+ *   immerse.ambience.travel/:url_id                      → ImmerseEngagementRoute (confirmed → brief)
+ *   immerse.ambience.travel/:url_id/proposal             → ImmerseEngagementRoute (proposal overview)
+ *   immerse.ambience.travel/:url_id/proposal/:dest       → ImmerseEngagementRoute (proposal subpage)
  *   guides.ambience.travel/:destination/dining           → GuideRouteDining (S35)
  *   guides.ambience.travel/:destination/hotels           → GuideRouteHotels (S37)
  *   guides.ambience.travel/:destination/experiences      → GuideRouteExperiences
@@ -149,13 +147,13 @@ function isImmerseRoute(): boolean {
   return window.location.pathname.startsWith('/immerse/')
 }
 
-function resolveImmerseSegments(): { seg1: string; seg2: string | null } {
+function resolveImmerseSegments(): { seg1: string; seg2: string | null; seg3: string | null } {
   const pathname = window.location.pathname.replace(/\/$/, '')
   const stripped = isImmerseHost()
     ? pathname.replace(/^\/+/, '')
     : pathname.replace(/^\/immerse\/?/, '').replace(/^\/+/, '')
   const parts = stripped.split('/').filter(Boolean)
-  return { seg1: parts[0] ?? '', seg2: parts[1] ?? null }
+  return { seg1: parts[0] ?? '', seg2: parts[1] ?? null, seg3: parts[2] ?? null }
 }
 
 // S35 — guides subdomain detection.
@@ -288,12 +286,23 @@ export default function App() {
   }
 
   if (route === 'immerse') {
-    const { seg1 } = resolveImmerseSegments()
+    const { seg1, seg2, seg3 } = resolveImmerseSegments()
 
     if (isTripUrlId(seg1)) {
+      // /urlId/proposal            → proposal overview
+      // /urlId/proposal/stbarths   → proposal destination subpage
+      // /urlId                     → confirmed (brief surface)
+      const isProposalPath = seg2 === 'proposal'
+      const activeDestSlug = isProposalPath && seg3 ? seg3 : null
+      const activeTab      = null  // /confirmation + /programme deprecated
+
       return (
         <Suspense fallback={<RouteLoading />}>
-          <ImmerseEngagementRoute />
+          <ImmerseEngagementRoute
+            activeDestSlug={activeDestSlug}
+            activeTab={activeTab}
+            isProposalPath={isProposalPath}
+          />
         </Suspense>
       )
     }

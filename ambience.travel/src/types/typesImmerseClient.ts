@@ -63,7 +63,7 @@ export type EngagementClientData =
   | {
       stage:      'confirmed'
       urlId:      string
-      engagement: TripClientData
+      engagement: ImmerseEngagementData  // confirmed arm carries engagement data; ImmerseTripPage fetches confirmed trip data internally
     }
 
 // ── Stage resolution ──────────────────────────────────────────────────────────

@@ -367,7 +367,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
       }}
     >
       <img
-        src={room.roomImageSrc}
+        src={room.roomImageSrc || undefined}
         alt={room.roomImageAlt}
         style={{
           width: '100%',
