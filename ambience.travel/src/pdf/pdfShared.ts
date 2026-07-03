@@ -64,27 +64,10 @@ export const ASSETS = {
 } as const
 
 // ── Date / time helpers ───────────────────────────────────────────────────────
-
-export function fmtDate(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-}
-
+// Re-exported from canonical utilsDates under legacy names so PDF callers stay
+// stable. fmtDate -> formatDate (long grammar), buildDateRange -> formatDateRange.
 export { fmtTime } from '../utils/utilsDates'
-
-export function buildDateRange(s: string | null, e: string | null): string {
-  if (!s) return ''
-  if (!e) return fmtDate(s)
-  const sd = new Date(s.slice(0, 10) + 'T00:00:00')
-  const ed = new Date(e.slice(0, 10) + 'T00:00:00')
-  const sm = sd.toLocaleDateString('en-US', { month: 'long' })
-  const em = ed.toLocaleDateString('en-US', { month: 'long' })
-  if (sm === em && sd.getFullYear() === ed.getFullYear())
-    return `${sd.getDate()}\u2013${ed.getDate()} ${em} ${ed.getFullYear()}`
-  return `${fmtDate(s)}\u2013${fmtDate(e)}`
-}
+export { formatDate as fmtDate, formatDateRange as buildDateRange } from '../utils/utilsDates'
 
 // ── Page helpers ──────────────────────────────────────────────────────────────
 
@@ -411,7 +394,7 @@ export function diningPdfStatus(d: DiningStatusLike): { label: string; tone: RGB
   const cancelled = d.dining_status === 'cancelled'
   const penalty   = d.cancellation_penalty_applied === true
   const red: RGB  = [180, 50, 31]
-  if (cancelled && penalty) return { label: d.cancellation_note ?? 'Cancelled \u2014 penalty applies', tone: red }
+  if (cancelled && penalty) return { label: d.cancellation_note ?? 'Cancelled - penalty applies', tone: red }
   if (cancelled)            return { label: d.cancellation_note ?? 'Cancelled', tone: T.muted }
   if (d.venue?.booking_terms) return { label: d.venue.booking_terms, tone: T.gold }
   return null
