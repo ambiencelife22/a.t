@@ -23,6 +23,7 @@ import { useAdminToast } from './_adminPrimitives'
 import { supabase } from '../../lib/supabase'
 import type { BookingFinancial, BookingFinancialRoom } from '../../types/typesBookingFinancial'
 import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
+import { moneyDec as usdDec } from '../../utils/utilsCurrency'
 import {
   fetchEngagementFull,
   createExpense,
@@ -44,14 +45,6 @@ import {
 import { isHotelBooking } from '../../types/typesAuxBookings'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function usd(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
-}
-
-function usdDec(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
-}
 
 function isOverdue(iso: string | null): boolean {
   if (!iso) return false
