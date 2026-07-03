@@ -380,7 +380,7 @@ const auxSections = groupAuxBySection(auxBookings)
           {section.items.map(aux => {
             const ownArr    = isOwnArrangements(aux.booked_by)
             const pillColor = ownArr ? FAINT : GOLD
-            const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' – ')
+            const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' - ')
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
@@ -1620,7 +1620,7 @@ function TripNotFound() {
         This page is not publicly visible.
       </div>
       <div style={{ fontSize: 15, fontFamily: SANS, color: MUTED, maxWidth: 420, lineHeight: 1.7 }}>
-        Please reach out to your travel designer to pick things back up — they will be glad to share what&apos;s next.
+        Please reach out to your travel designer to pick things back up, and they will be glad to share what's next.
       </div>
     </div>
   )
