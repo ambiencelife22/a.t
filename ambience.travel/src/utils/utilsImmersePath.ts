@@ -36,5 +36,5 @@ export function isTripUrlId(seg: string): boolean {
 //   immerse.ambience.travel    → `/${urlId}`
 //   ambience.travel / dev      → `/immerse/${urlId}`
 export function getOverviewUrl(urlId: string): string {
-  return isImmerseHost() ? `/${urlId}` : `/immerse/${urlId}`
+  return isImmerseHost() ? `/${urlId}/proposal` : `/immerse/${urlId}/proposal`
 }
