@@ -31,6 +31,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
+import { formatDate, formatDateRange } from '../../utils/utilsDates'
 import {
   fetchTripDossierForHouse,
   fetchTripAuxBookings,
@@ -100,26 +101,6 @@ const fieldLabelStyle: React.CSSProperties = {
   fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
   textTransform: 'uppercase' as const, color: A.faint,
   fontFamily: A.font, display: 'block', marginBottom: 2,
-}
-
-// ── Date / time helpers ───────────────────────────────────────────────────────
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function buildDateRange(start: string | null, end: string | null): string {
-  if (!start) return ''
-  if (!end) return fmtDate(start)
-  const s = new Date(start.slice(0, 10) + 'T00:00:00')
-  const e = new Date(end.slice(0, 10) + 'T00:00:00')
-  const sm = s.toLocaleDateString('en-US', { month: 'long' })
-  const em = e.toLocaleDateString('en-US', { month: 'long' })
-  if (sm === em && s.getFullYear() === e.getFullYear())
-    return `${s.getDate()}\u2013${e.getDate()} ${em} ${e.getFullYear()}`
-  return `${fmtDate(start)}\u2013${fmtDate(end)}`
 }
 
 // resolveHouseIdForTrip → fetchHouseIdForTrip (EF-backed, imported above)
@@ -573,7 +554,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
   const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.trip_code
   const subtitle = (briefSubtitle || 'TRIP CONFIRMATION BRIEF').toUpperCase()
   const pfor     = preparedFor || house?.display_name || ''
-  const dates    = buildDateRange(trip.start_date, trip.end_date)
+  const dates    = formatDateRange(trip.start_date, trip.end_date)
 
   const accomBookings = trip.bookings
     .filter(bk => bk.brief_show !== false)
@@ -615,7 +596,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const bookedByText = bookedByLabel(booking.booked_by)
               const pillColor    = isAmbience ? GOLD : FAINT
               const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
-              const dateRange    = buildDateRange(booking.start_date, booking.end_date)
+              const dateRange    = formatDateRange(booking.start_date, booking.end_date)
               const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? null
               const rooms        = booking._rooms ?? []
 
@@ -715,7 +696,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {name && <div style={{ fontSize: 13, color: INK, marginBottom: 2 }}>{name}</div>}
                     {route && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{route}</div>}
-                    {startDate && <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: FAINT, marginTop: 1 }}>{fmtDate(startDate)}</div>}
+                    {startDate && <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: FAINT, marginTop: 1 }}>{formatDate(startDate)}</div>}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     {timeStr && <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</div>}

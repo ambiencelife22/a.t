@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
+import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
@@ -41,16 +42,10 @@ function fmt(amount: number | null, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount)
 }
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return '--'
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
 function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): ClientDossierData {
   const hotelName = b._hotel_name ?? b.supplier_name_override ?? b.name ?? 'Supplier'
-  const checkIn   = b.start_date ? fmtDate(b.start_date) : '--'
-  const checkOut  = b.end_date   ? fmtDate(b.end_date)   : '--'
+  const checkIn   = b.start_date ? formatDateShort(b.start_date) : '--'
+  const checkOut  = b.end_date   ? formatDateShort(b.end_date)   : '--'
   const duration  = b.nights     ? `${b.nights} night${b.nights !== 1 ? 's' : ''}` : '--'
   const dateRange = (() => {
     if (!b.start_date || !b.end_date) return checkIn
@@ -203,7 +198,7 @@ function PaymentBadge({ paid, amount, dueDate, currency }: {
   const color = paid ? '#4ade80' : '#fbbf24'
   return (
     <span style={{ fontSize: 10, fontWeight: 700, fontFamily: A.font, color, padding: '2px 7px', borderRadius: 12, background: color + '15', border: `1px solid ${color}30`, whiteSpace: 'nowrap', flexShrink: 0 }}>
-      {paid ? 'Paid' : `Due ${fmtDate(dueDate)}`}
+      {paid ? 'Paid' : `Due ${formatDateShort(dueDate)}`}
     </span>
   )
 }
@@ -599,7 +594,7 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
             {supplierName && b.name !== supplierName && <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{supplierName}</span>}
             {b.start_date && (
               <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                {fmtDate(b.start_date)}{b.end_date ? ` \u2013 ${fmtDate(b.end_date)}` : ''}{b.nights ? ` \u00b7 ${b.nights}N` : ''}
+                {formatDateShortRange(b.start_date, b.end_date)}{b.nights ? ` \u00b7 ${b.nights}N` : ''}
               </span>
             )}
             {b.confirmation_number && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{b.confirmation_number}</span>}
@@ -662,7 +657,7 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
                     <div>
                       <span style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>Deposit </span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.deposit_amount, currency)}</span>
-                      {depositPaid && b.deposit_paid_at && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}> \u00b7 paid {fmtDate(b.deposit_paid_at)}</span>}
+                      {depositPaid && b.deposit_paid_at && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}> \u00b7 paid {formatDateShort(b.deposit_paid_at)}</span>}
                     </div>
                     <PaymentBadge paid={depositPaid} amount={b.deposit_amount} dueDate={b.deposit_due_date} currency={currency} />
                   </div>
@@ -937,7 +932,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
           <span style={{ fontSize: 10, fontWeight: 700, color: tripColor, fontFamily: A.font, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tripStageText}</span>
           {trip.start_date && (
             <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-              {fmtDate(trip.start_date)}{trip.end_date ? ` \u2013 ${fmtDate(trip.end_date)}` : ''}{trip.duration_nights ? ` \u00b7 ${trip.duration_nights}N` : ''}
+              {formatDateShortRange(trip.start_date, trip.end_date)}{trip.duration_nights ? ` \u00b7 ${trip.duration_nights}N` : ''}
             </span>
           )}
         </div>

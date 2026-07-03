@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { fetchPipeline, type PipelineTrip } from '../../queries/queriesAdminFinance'
+import { formatDateShortRange } from '../../utils/utilsDates'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -25,12 +26,6 @@ function fmtNative(amount: number, currency: string): string {
   } catch {
     return `${currency} ${amount.toFixed(0)}`
   }
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function daysUntil(iso: string): number {
@@ -126,7 +121,7 @@ function UpcomingRow({ engagement, onClick }: { engagement: PipelineTrip; onClic
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{engagement.title ?? engagement.url_id}</div>
         <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 2 }}>
-          {fmtDate(engagement.start_date)}{engagement.end_date ? ` \u2013 ${fmtDate(engagement.end_date)}` : ''}
+          {formatDateShortRange(engagement.start_date, engagement.end_date)}
         </div>
       </div>
       {dayLabel && (
@@ -183,7 +178,7 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
           {e.trip_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{e.trip_code}</span>}
           {e.start_date && (
             <span style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>
-              {fmtDate(e.start_date)}{e.end_date ? ` \u2013 ${fmtDate(e.end_date)}` : ''}
+              {formatDateShortRange(e.start_date, e.end_date)}
             </span>
           )}
           {stageMeta && (

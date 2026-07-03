@@ -22,6 +22,7 @@ import { A } from '../../tokens/tokensAdmin'
 import { useAdminToast } from './_adminPrimitives'
 import { supabase } from '../../lib/supabase'
 import type { BookingFinancial, BookingFinancialRoom } from '../../types/typesBookingFinancial'
+import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
 import {
   fetchEngagementFull,
   createExpense,
@@ -47,25 +48,22 @@ import { isHotelBooking } from '../../types/typesAuxBookings'
 function usd(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
 }
+
 function usdDec(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 }
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (!m) return iso
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  return `${parseInt(m[3])} ${MONTHS[parseInt(m[2])-1]} ${m[1]}`
-}
+
 function isOverdue(iso: string | null): boolean {
   if (!iso) return false
   return iso.slice(0, 10) < new Date().toISOString().slice(0, 10)
 }
+
 function marginColor(n: number): string {
   if (n > 0) return '#4ade80'
   if (n < 0) return '#ef4444'
   return A.muted
 }
+
 function pct(n: number | null | undefined): string {
   if (n == null) return ''
   return ` (${n.toFixed(1)}%)`
@@ -239,7 +237,7 @@ function CommissionReceipt({
         {/* Status badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4ade80', fontFamily: A.font, border: '1px solid #4ade8040', background: '#4ade8020', borderRadius: 100, padding: '4px 12px' }}>
-            Received {fmtDate(b.commission_paid_at)}
+            Received {formatDateShort(b.commission_paid_at)}
           </span>
           <button onClick={clearReceipt} disabled={saving} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Clear</button>
           <button onClick={() => setOpen(true)} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Edit</button>
@@ -455,7 +453,7 @@ function BookingRow({
 
           {/* Dates + nights */}
           <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginBottom: 8 }}>
-            {fmtDate(b.start_date)}{b.end_date ? ` - ${fmtDate(b.end_date)}` : ''}{b.nights ? ` · ${b.nights} nights` : ''}{isFx ? ` · ${b.currency}` : ''}
+            {formatDateShortRange(b.start_date, b.end_date)}{b.nights ? ` · ${b.nights} nights` : ''}{isFx ? ` · ${b.currency}` : ''}
           </div>
 
           {/* Deposit / Balance status lines */}
@@ -465,7 +463,7 @@ function BookingRow({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Deposit {usdDec(b.deposit_amount)}</span>
                   <span style={{ fontSize: 10, fontWeight: 700, color: depositPaid ? '#4ade80' : depositOverdue ? '#ef4444' : '#FBBF24', fontFamily: A.font }}>
-                    {depositPaid ? `Paid ${fmtDate(b.deposit_paid_at)}` : depositOverdue ? `Overdue ${fmtDate(b.deposit_due_date)}` : `Due ${fmtDate(b.deposit_due_date)}`}
+                    {depositPaid ? `Paid ${formatDateShort(b.deposit_paid_at)}` : depositOverdue ? `Overdue ${formatDateShort(b.deposit_due_date)}` : `Due ${formatDateShort(b.deposit_due_date)}`}
                   </span>
                 </div>
               )}
@@ -473,7 +471,7 @@ function BookingRow({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Balance {usdDec(b.balance_amount)}</span>
                   <span style={{ fontSize: 10, fontWeight: 700, color: balancePaid ? '#4ade80' : balanceOverdue ? '#ef4444' : '#FBBF24', fontFamily: A.font }}>
-                    {balancePaid ? `Paid ${fmtDate(b.balance_paid_at)}` : balanceOverdue ? `Overdue ${fmtDate(b.balance_due_date)}` : `Due ${fmtDate(b.balance_due_date)}`}
+                    {balancePaid ? `Paid ${formatDateShort(b.balance_paid_at)}` : balanceOverdue ? `Overdue ${formatDateShort(b.balance_due_date)}` : `Due ${formatDateShort(b.balance_due_date)}`}
                   </span>
                 </div>
               )}
@@ -565,7 +563,7 @@ function BookingRow({
                       disabled={saving === 'Deposit'}
                       style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: depositPaid ? '#4ade8015' : undefined, color: depositPaid ? '#4ade80' : undefined, border: depositPaid ? '1px solid #4ade8030' : undefined }}
                     >
-                      {depositPaid ? `Paid ${fmtDate(b.deposit_paid_at)}` : 'Mark Paid'}
+                      {depositPaid ? `Paid ${formatDateShort(b.deposit_paid_at)}` : 'Mark Paid'}
                     </button>
                   </div>
                 )}
@@ -577,7 +575,7 @@ function BookingRow({
                       disabled={saving === 'Balance'}
                       style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: balancePaid ? '#4ade8015' : undefined, color: balancePaid ? '#4ade80' : undefined, border: balancePaid ? '1px solid #4ade8030' : undefined }}
                     >
-                      {balancePaid ? `Paid ${fmtDate(b.balance_paid_at)}` : 'Mark Paid'}
+                      {balancePaid ? `Paid ${formatDateShort(b.balance_paid_at)}` : 'Mark Paid'}
                     </button>
                   </div>
                 )}
