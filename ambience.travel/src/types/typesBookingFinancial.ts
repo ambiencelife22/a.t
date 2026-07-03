@@ -4,8 +4,8 @@
 // B1 of the Financial/Operations consolidation (see the S53I "One Source,
 // Consumed Everywhere" plan, Collapse B). Today two near-identical types describe
 // the same booking's financial truth from two surfaces:
-//   - BookingRow  (inline in FinancialTab.tsx) — adds *_usd derived fields + rooms
-//   - OpsBooking  (queriesAdminOperations.ts)  — adds partner splits + amenities +
+//   - BookingRow  (dissolved S53I — fields absorbed into this canonical type)
+//   - OpsBooking  (dissolved S53I — fields absorbed into this canonical type)
 //                                                 house/trip resolution + the
 //                                                 payment_exception_override flag
 // This is the parallel-ship disease at the type level. This file is the single
@@ -20,7 +20,7 @@
 // ── Nested: per-room financial source row ─────────────────────────────────────
 // travel_booking_rooms is the single source of truth for booking totals (the
 // tg_recompute_booking_totals trigger derives the header from these). Kept here
-// so the unified surface can show the room breakdown FinancialTab already does.
+// so the unified OutlookTab surface can show the full room breakdown.
 export type BookingFinancialRoom = {
   id:                  string
   booking_id:          string
@@ -58,7 +58,7 @@ export type BookingFinancial = {
   taxes_and_fees:         number | null
   rate_type:              string | null
   price:                  number | null
-  // USD-normalised derivations (FinancialTab computes these; OperationsTab does
+  // USD-normalised derivations (OutlookTab reads these; computed by travel-read-expenses)
   // not). Optional: absent means "not computed by this producer", never zero.
   commissionable_rate_usd?: number | null
   total_rate_usd?:          number | null
@@ -123,12 +123,12 @@ export type BookingFinancial = {
   sort_order:             number | null
   created_at:             string | null
 
-  // ── Rooms (per-room financial source; FinancialTab nests these) ───────────
+  // ── Rooms (per-room financial source; OutlookTab nests these) ────────────
   rooms:                  BookingFinancialRoom[]
 
   // ── Resolved / display (client-side joins; optional per producer) ─────────
   // Canonical name is _hotel_name (the resolved-field convention used across
-  // programme, confirmation, and OpsBooking). FinancialTab's BookingRow.hotel_name
+  // programme, confirmation, and OutlookTab). _hotel_name
   // is the odd one out and its adapter maps hotel_name -> _hotel_name. Reconciling
   // that naming divergence is part of this consolidation, not a bandaid around it.
   _hotel_name?:           string | null
