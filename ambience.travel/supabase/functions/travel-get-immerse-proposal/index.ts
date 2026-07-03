@@ -251,9 +251,12 @@ async function buildDestinationPayload(
     if (!destTemplate) return null
   }
 
-  // 3. Fetch engagement dest_row — match on trip_id + global_destination_id ONLY
-  //    No url_slug filter: dest_row.destination_url_slug is for routing, not lookup
-  const { data: destRow } = await db
+  // 3. Fetch engagement dest_row.
+  //    When the slug matched a variant (isVariant=true), pick the row with that
+  //    exact destination_url_slug. When canonical, pick the null-slug primary row.
+  //    This handles destinations with multiple rows (e.g. newyork + newyork2)
+  //    without .maybeSingle() failing on >1 result.
+  const destRowQuery = db
     .from('travel_immerse_trip_destination_rows')
     .select(`
       id,
@@ -274,7 +277,11 @@ async function buildDestinationPayload(
     `)
     .eq('trip_id', engagementId)
     .eq('global_destination_id', globalDestinationId)
-    .maybeSingle()
+
+  const { data: destRow } = await (isVariant
+    ? destRowQuery.eq('destination_url_slug', urlSlug).maybeSingle()
+    : destRowQuery.is('destination_url_slug', null).maybeSingle()
+  )
 
   if (!destRow) return null
 
