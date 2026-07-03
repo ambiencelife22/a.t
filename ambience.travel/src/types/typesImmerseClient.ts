@@ -41,12 +41,21 @@ export type TripContact = {
   phone: string | null
 }
 
+export type EngagementLinkContent = {
+  title:     string
+  body:      string
+  kicker:    string | null
+  image_src: string | null
+  image_alt: string | null
+}
+
 export type EngagementLink = {
   id:         string
   link_type:  string
   label:      string
   url:        string
   sort_order: number
+  travel_engagement_link_content: EngagementLinkContent | null
 }
 
 export type TripClientData = {

@@ -1455,40 +1455,70 @@ function TripBriefTab({ clientData }: {
       {(clientData.links?.length ?? 0) > 0 && (
         <BriefSection title='Links'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {clientData.links.map(link => (
-              <a
-                key={link.id}
-                href={link.url}
-                target='_blank'
-                rel='noopener noreferrer'
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'space-between',
-                  padding:        '14px 18px',
-                  borderRadius:   10,
-                  border:         `1px solid ${RULE}`,
-                  background:     '#fff',
-                  cursor:         'pointer',
-                  transition:     'border-color 150ms',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>
-                      {link.link_type === 'guide' ? '✦' : '🔗'}
-                    </span>
-                    <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
-                      {link.label}
+            {clientData.links.map(link => {
+              const content = link.travel_engagement_link_content ?? null
+              return (
+                <div key={link.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <a
+                    href={link.url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <div style={{
+                      display:        'flex',
+                      alignItems:     'center',
+                      justifyContent: 'space-between',
+                      padding:        '14px 18px',
+                      borderRadius:   content ? '10px 10px 0 0' : 10,
+                      border:         `1px solid ${RULE}`,
+                      borderBottom:   content ? 'none' : `1px solid ${RULE}`,
+                      background:     '#fff',
+                      cursor:         'pointer',
+                      transition:     'border-color 150ms',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>
+                          {link.link_type === 'guide' ? '\u2736' : '\U0001f517'}
+                        </span>
+                        <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
+                          {link.label}
+                        </div>
+                      </div>
+                      <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
+                        <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                        <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                      </svg>
                     </div>
-                  </div>
-                  <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
-                    <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                    <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                  </svg>
+                  </a>
+                  {content && (
+                    <div style={{
+                      padding:      '14px 18px',
+                      borderRadius: '0 0 10px 10px',
+                      border:       `1px solid ${RULE}`,
+                      borderTop:    'none',
+                      background:   CARD_BG,
+                    }}>
+                      {content.kicker && (
+                        <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: GOLD, marginBottom: 6 }}>
+                          {content.kicker}
+                        </div>
+                      )}
+                      {content.image_src && (
+                        <img
+                          src={content.image_src ?? undefined}
+                          alt={content.image_alt ?? ''}
+                          style={{ width: '100%', borderRadius: 6, marginBottom: 10, objectFit: 'cover', maxHeight: 180 }}
+                        />
+                      )}
+                      <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, lineHeight: 1.7 }}>
+                        {content.body}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </a>
-            ))}
+              )
+            })}
           </div>
         </BriefSection>
       )}
