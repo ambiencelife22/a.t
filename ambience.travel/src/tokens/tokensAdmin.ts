@@ -47,7 +47,7 @@ export const A = {
   // distinct from A.gold (the brand accent, used for links/actions). Tints are
   // the base colour at low alpha for subtle borders. Single source: both task
   // surfaces (TasksSection, GlobalTasksTab) reference these, never raw hex.
-  statusOpen:        '#fbbf24',            // amber — "needs action" (no canonical amber to reuse)
+  statusOpen:        IMMERSE.warning,      // canonical amber — "needs action"
   statusDone:        IMMERSE.positive,     // '#4ade80'
   statusDismissed:   ID.dim,               // muted / set aside (same as A.faint)
   statusOverdue:     IMMERSE.danger,       // '#ef4444'
