@@ -95,7 +95,7 @@ type CommissionSplit = {
   estimated_amount: number | null
 }
 
-// Amount to use for a split: overlay (resolved) wins, else canon (estimated).
+// Amount to use for a split: overlay (resolved) wins, otherwise canon (estimated).
 function splitAmount(s: CommissionSplit): number {
   return (s.resolved_amount ?? s.estimated_amount ?? 0)
 }

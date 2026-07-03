@@ -9,7 +9,7 @@
  *     render.
  *
  * All four guide pages, all four cards, and the happening card route
- * through here. No inline gating math anywhere else in src/.
+ * through here. No inline gating math anywhere otherwise in src/.
  *
  * ── The contract ───────────────────────────────────────────────────────────
  * Every gateable item declares public_preview_rank as a required nullable

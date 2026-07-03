@@ -1,8 +1,8 @@
 /* utilsGuidePdf.ts — PDF year + version resolution.
  *
  * Both fields resolve identically across all four guide variants:
- *   year    — overlay value if set, else current calendar year
- *   version — overlay value if set and non-empty, else '1.0'
+ *   year    — overlay value if set, otherwise current calendar year
+ *   version — overlay value if set and non-empty, otherwise '1.0'
  *
  * Extracted from the four page files that shipped an identical copy of
  * this logic in each. One implementation now.

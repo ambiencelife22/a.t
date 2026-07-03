@@ -26,7 +26,7 @@
  *   - PDF year/version resolution (utilsGuidePdf)
  *   - Style objects (stylesGuidePage)
  *
- * Last updated: S53 — No else / else if anywhere. Guard clauses only.
+ * Last updated: S53 — Guard clauses only.
  * Prior: S53 — Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
  * Prior: S53 — Universal eyebrow/headline pattern via GUIDE_COPY.experiences.

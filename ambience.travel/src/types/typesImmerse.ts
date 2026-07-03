@@ -216,7 +216,7 @@ export type ImmerseTripPricingRow = {
 // from content presence. The status slug is the single source of truth; the
 // operator edits it; the stage follows. (S55 — removed hasProposalContent /
 // hasTripContent inference, which violated single-source and misread completed
-// engagements whose content keyed elsewhere.)
+// engagements whose content keyed located in another place.)
 
 export type EngagementStage =
   | 'draft'
@@ -434,9 +434,9 @@ export type ImmerseDestinationData = {
   introEyebrow:    string
   introTitle:      string
   introBody:       string
-  hotelsEyebrow:   string
-  hotelsTitle:     string
-  hotelsBody:      string
+  eyebrowHotels:   string
+  titleHotels:     string
+  bodyHotels:      string
   hotels:          ImmerseDestinationHotelsShape
   diningEyebrow:   string
   diningTitle:     string

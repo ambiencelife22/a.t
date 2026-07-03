@@ -29,7 +29,7 @@
  * Filter shape simpler than dining — no cuisine taxonomy on hotels.
  * Active filters: stars threshold, forbes-rated-only, preferred-partners-only.
  *
- * Last updated: S53 — No else / else if anywhere. Guard clauses only.
+ * Last updated: S53 — Guard clauses only.
  * Prior: S53 — Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
  * Prior: S53 — Brought to feature parity with dining/experiences/shopping.

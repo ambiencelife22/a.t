@@ -694,7 +694,7 @@ function SelectorAndCarousel<T>({
       >
         <div style={{ marginBottom: 20, ...immerseFadeUp(visible, 0) }}>
           <ImmerseEyebrow style={visible ? { animation: 'immerseEyebrowSettle 0.7s cubic-bezier(0.16,1,0.3,1) both' } : { opacity: 0 }}>
-            {data.hotelsEyebrow}
+            {data.eyebrowHotels}
           </ImmerseEyebrow>
         </div>
 

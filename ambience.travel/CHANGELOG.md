@@ -16,7 +16,7 @@ track SQL migrations as files — schema changes are applied live in Supabase
 changelog entry is the only version-controlled record that they happened.
 
 **Do NOT log:** single-column adds, renames, copy tweaks, styling, bug fixes, or
-anything else already captured by a normal repo push and its diff. We're in active
+anything otherwise already captured by a normal repo push and its diff. We're in active
 dev (~70% to launch) — there will be a constant stream of minor changes, and
 duplicating them here just creates noise that rots. Restraint keeps this useful.
 
