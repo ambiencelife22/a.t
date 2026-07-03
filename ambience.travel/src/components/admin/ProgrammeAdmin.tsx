@@ -17,7 +17,7 @@ import { supabase } from '../../lib/supabase'
 import { getSession } from '../../utils/utilsAuth'
 
 import type { ListingCategory } from '../../types/typesProgramme'
-import { formatDateOnly } from '../../utils/utilsDates'
+import { formatDate } from '../../utils/utilsDates'
 import ClientProfilePage from './ClientProfilePage'
 import ProgrammeAccessDenied from '../programme/ProgrammeAccessDenied'
 import GuestLinker from './GuestLinker'
@@ -488,7 +488,7 @@ export function ProgrammesTab() {
             <div style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 6 }}>{prog.guest_names}</div>
             <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>{prog.properties?.name ?? '—'}</div>
             <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", marginBottom: 3, wordBreak: 'break-all' }}>/{prog.sub_path}/{prog.url_id}</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{prog.check_in ? formatDateOnly(prog.check_in) : 'TBA'} → {prog.check_out ? formatDateOnly(prog.check_out) : 'TBA'}</div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{prog.check_in ? formatDate(prog.check_in) : 'TBA'} → {prog.check_out ? formatDate(prog.check_out) : 'TBA'}</div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>

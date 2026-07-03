@@ -34,13 +34,16 @@ const MONTHS_SHORT = [
 const DAYS_OF_WEEK = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ]
+const DAYS_OF_WEEK_SHORT = [
+  'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',
+]
 
 // ── Canonical formatter ──────────────────────────────────────────────────────
 // Accepts YYYY-MM-DD (optionally followed by a time component — stripped).
 // Returns "25 April 2026".
 // Returns the input unchanged if it doesn't match the YYYY-MM-DD prefix.
 
-export function formatDateOnly(iso: string | null | undefined): string {
+export function formatDate(iso: string | null | undefined): string {
   if (!iso) return ''
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!m) return iso
@@ -50,10 +53,7 @@ export function formatDateOnly(iso: string | null | undefined): string {
   return `${day} ${MONTHS[month]} ${year}`
 }
 
-// ── With weekday ─────────────────────────────────────────────────────────────
-// Returns "Saturday, 25 April 2026" — used on day-level journey pages.
-
-export function formatDateWithWeekday(iso: string | null | undefined): string {
+export function formatDateWeekday(iso: string | null | undefined): string {
   if (!iso) return ''
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!m) return iso
@@ -62,6 +62,30 @@ export function formatDateWithWeekday(iso: string | null | undefined): string {
   const day   = parseInt(m[3], 10)
   const d = new Date(year, month, day)
   return `${DAYS_OF_WEEK[d.getDay()]}, ${day} ${MONTHS[month]} ${year}`
+}
+
+export function formatDateRange(start: string | null | undefined, end: string | null | undefined): string {
+  const a = start ? start.match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  if (!a) return end ? formatDate(end) : ''
+  const b = end ? end.match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  if (!b) return formatDate(start)
+  const ay = parseInt(a[1], 10), am = parseInt(a[2], 10) - 1, ad = parseInt(a[3], 10)
+  const by = parseInt(b[1], 10), bm = parseInt(b[2], 10) - 1, bd = parseInt(b[3], 10)
+  if (am === bm && ay === by) return `${ad}-${bd} ${MONTHS[am]} ${ay}`
+  return `${ad} ${MONTHS[am]} ${ay} - ${bd} ${MONTHS[bm]} ${by}`
+}
+
+export function formatDateRangeWeekday(start: string | null | undefined, end: string | null | undefined): string {
+  const a = start ? start.match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  if (!a) return end ? formatDateWeekday(end) : ''
+  const b = end ? end.match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  if (!b) return formatDateWeekday(start)
+  const ay = parseInt(a[1], 10), am = parseInt(a[2], 10) - 1, ad = parseInt(a[3], 10)
+  const by = parseInt(b[1], 10), bm = parseInt(b[2], 10) - 1, bd = parseInt(b[3], 10)
+  const wa = DAYS_OF_WEEK[new Date(ay, am, ad).getDay()]
+  const wb = DAYS_OF_WEEK[new Date(by, bm, bd).getDay()]
+  if (am === bm && ay === by) return `${wa} ${ad} - ${wb} ${bd} ${MONTHS[am]} ${ay}`
+  return `${wa} ${ad} ${MONTHS[am]} ${ay} - ${wb} ${bd} ${MONTHS[bm]} ${by}`
 }
 
 // ── Short form ───────────────────────────────────────────────────────────────
@@ -74,7 +98,29 @@ export function formatDateShort(iso: string | null | undefined): string {
   const year  = parseInt(m[1], 10)
   const month = parseInt(m[2], 10) - 1
   const day   = parseInt(m[3], 10)
-  return `${day} ${MONTHS_SHORT[month]} ${year}`
+  return `${day}${MONTHS_SHORT[month]}${String(year).slice(-2)}`
+}
+
+export function formatDateShortWeekday(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  const year  = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10) - 1
+  const day   = parseInt(m[3], 10)
+  const d = new Date(year, month, day)
+  return `${DAYS_OF_WEEK_SHORT[d.getDay()]}, ${day}${MONTHS_SHORT[month]}${String(year).slice(-2)}`
+}
+
+export function formatDateShortRange(start: string | null | undefined, end: string | null | undefined): string {
+  const a = start ? start.match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  if (!a) return end ? formatDateShort(end) : ''
+  const b = end ? end.match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  if (!b) return formatDateShort(start)
+  const ay = parseInt(a[1], 10), am = parseInt(a[2], 10) - 1, ad = parseInt(a[3], 10)
+  const by = parseInt(b[1], 10), bm = parseInt(b[2], 10) - 1, bd = parseInt(b[3], 10)
+  if (am === bm && ay === by) return `${ad}-${bd}${MONTHS_SHORT[am]}${String(ay).slice(-2)}`
+  return `${formatDateShort(start)} - ${formatDateShort(end)}`
 }
 
 // ── Month + year ─────────────────────────────────────────────────────────────
@@ -89,22 +135,6 @@ export function formatMonthYear(iso: string | null | undefined): string {
   const year  = parseInt(m[1], 10)
   const month = parseInt(m[2], 10) - 1
   return `${MONTHS[month]} ${year}`
-}
-
-// ── Long form with zero-padded day ───────────────────────────────────────────
-// Returns "01 July 2026" — DD Month YYYY, day always two digits.
-// Use for general app surfaces where the full date matters and
-// typographic consistency requires zero-padding (e.g. confirmation pages,
-// programme headers, export labels).
-
-export function formatDateLong(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (!m) return iso
-  const year  = parseInt(m[1], 10)
-  const month = parseInt(m[2], 10) - 1
-  const day   = parseInt(m[3], 10)
-  return `${String(day).padStart(2, '0')} ${MONTHS[month]} ${year}`
 }
 
 // ── Today — local browser date ────────────────────────────────────────────────

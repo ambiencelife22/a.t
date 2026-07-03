@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
 import { DARK } from '../../types/typesLanding'
 import { WIDGET } from '../../tokens/tokensLanding'
-import { formatDateOnly } from '../../utils/utilsDates'
+import { formatDate } from '../../utils/utilsDates'
 
 // ── Float positions — 8 anchors, alternating left/right ──────────────────────
 // Identical to IntroSection.tsx ALL_POSITIONS
@@ -303,7 +303,7 @@ export default function PropertyIntroSection({
             letterSpacing:'0.04em',
           }}>
             {checkIn
-              ? `→ ${formatDateOnly(checkIn)}`
+              ? `→ ${formatDate(checkIn)}`
               : '→ Check-in TBA'}
           </div>
           <div style={{
@@ -316,7 +316,7 @@ export default function PropertyIntroSection({
             letterSpacing:'0.04em',
           }}>
             {checkOut
-              ? `${formatDateOnly(checkOut)} →`
+              ? `${formatDate(checkOut)} →`
               : 'Check-out TBA →'}
           </div>
         </div>
