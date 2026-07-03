@@ -24,6 +24,7 @@ import {
   deriveSummary,
   groupBy,
   computeNetRevenue,
+  computeExpectedCommission,
 } from '../_shared/expenses.ts'
 import { fetchHotelsByIds, fetchSplitsByBooking } from '../_shared/bookings.ts'
 
@@ -108,9 +109,10 @@ Deno.serve(async (req: Request) => {
       }
 
       // Summary from original bookings before enrichment
-      const total_commission    = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-      const commission_received = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-      const total_net_revenue   = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
+      const total_commission          = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const net_commission_expected   = bookings.reduce((s, b) => s + computeExpectedCommission(b), 0)
+      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const total_net_revenue         = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_rate          = bookings.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
       const total_amenities     = bookings.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
       const total_referral      = bookings.reduce((s, b) => s + ((b.referral_share_amt ?? 0) as number), 0)
@@ -130,8 +132,9 @@ Deno.serve(async (req: Request) => {
       const expenseSummary = deriveSummary(expenses)
       const summary = {
         total_commission,
+        net_commission_expected,
         commission_received,
-        commission_outstanding: total_commission - commission_received,
+        commission_outstanding: net_commission_expected - commission_received,
         total_rate,
         total_amenities,
         total_net_revenue,
@@ -182,16 +185,17 @@ Deno.serve(async (req: Request) => {
       const summarySplits = await fetchSplitsByBooking(db, bs.map(b => b.id as string))
       for (const b of bs) { (b as Record<string, unknown>)._splits = summarySplits[b.id as string] ?? [] }
 
-      const total_commission    = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-      const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-      const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
+      const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
+      const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const total_net_revenue       = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + e.total_amount, 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + e.total_amount, 0)
       const total_outstanding   = es.filter(e => e.billing_status === 'billed').reduce((s, e) => s + e.total_amount, 0)
 
       return json({ summary: {
-        total_commission, commission_received,
-        commission_outstanding: total_commission - commission_received,
+        total_commission, net_commission_expected, commission_received,
+        commission_outstanding: net_commission_expected - commission_received,
         total_net_revenue, total_absorbed, total_billable, total_outstanding,
         net_margin: total_net_revenue - total_absorbed,
       }})
@@ -238,8 +242,9 @@ Deno.serve(async (req: Request) => {
         const bs   = (bByEng[e.id as string] ?? []) as Array<Record<string, unknown>>
         const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; billing_status: string }>
 
-        const total_commission    = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
-        const commission_received = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+        const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+        const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
+        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
@@ -258,8 +263,8 @@ Deno.serve(async (req: Request) => {
           engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
           trip_code: trip?.trip_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
-          total_commission, commission_received,
-          commission_outstanding: total_commission - commission_received,
+          total_commission, net_commission_expected, commission_received,
+          commission_outstanding: net_commission_expected - commission_received,
           total_rate, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
           total_commission_native, currency,

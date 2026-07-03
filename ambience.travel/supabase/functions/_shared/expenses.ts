@@ -153,6 +153,21 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   return Math.round((base - referral - iata - indiv) * 100) / 100
 }
 
+// Net commission expected by ambience — gross minus upstream partner shares.
+// When commission_net_received is set, that IS the expected net (partner already
+// took their cut before remitting). When not set, subtract flat share columns
+// from gross to derive what ambience expects to receive.
+export function computeExpectedCommission(b: Record<string, unknown>): number {
+  const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  if ((b.commission_net_received as number | null) != null) {
+    return commAmt - ((b.iata_share_amt ?? 0) as number) - ((b.referral_share_amt ?? 0) as number) - ((b.individual_share_amt ?? 0) as number)
+  }
+  const referral = (b.referral_share_amt   ?? 0) as number
+  const iata     = (b.iata_share_amt       ?? 0) as number
+  const indiv    = (b.individual_share_amt ?? 0) as number
+  return Math.round((commAmt - referral - iata - indiv) * 100) / 100
+}
+
 // ── Booking enrichment helper ─────────────────────────────────────────────────
 // Flattens the travel_accom_hotels join into _standard_checkin_time and
 // _standard_checkout_time on the booking row — the shape timeline.ts expects.
