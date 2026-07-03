@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (engErr || !engRow) return err(404, 'Not found')
-    if (!engRow.public_view) return err(404, 'Not found')
+    if (!engRow.public_view) return err(403, 'not_public')
 
     // ── Overview payload (always built — needed for nav on subpages too) ───────
     const engagementId = engRow.id as string
