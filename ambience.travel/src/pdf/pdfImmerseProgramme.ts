@@ -19,7 +19,7 @@ import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
-  fmtTime, buildDateRange, drawPdfHero, stampPageChrome, addCreamPage,
+  fmtTime, buildDateRange, formatDateWeekday, drawPdfHero, stampPageChrome, addCreamPage,
   roomLine, driverDetailLines, drawOwnArrangementsChip,
   diningPdfStatus, isDiningCancelled, greeterLines,
 } from './pdfShared'
@@ -85,12 +85,6 @@ const PROG = {
 const FOOTER_GUARD = PROG.footerY - 10
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtDateFull(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  })
-}
 
 // S53G: time only, no am/pm suffix
 function fmtTimeOnly(t: string | null): string {
@@ -393,7 +387,7 @@ function drawDayHeader(doc: any, day: TripDay, dayIdx: number, y: number): numbe
 
   serif(doc, 'normal', 15)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-  doc.text(day.day_label || fmtDateFull(day.entry_date), P.margin + PROG.timeColW, y + 6)
+  doc.text(day.day_label || formatDateWeekday(day.entry_date), P.margin + PROG.timeColW, y + 6)
 
   y += 10
   drawRule(doc, P.margin, y, CW, T.rule, 0.35)
@@ -406,7 +400,7 @@ function drawContinuedHeader(doc: any, day: TripDay, dayIdx: number, y: number):
   doc.text(`DAY ${dayIdx + 1} (CONTINUED)`, P.margin, y + 5, { charSpace: 0.6 })
   serif(doc, 'normal', 11)
   doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-  doc.text(day.day_label || fmtDateFull(day.entry_date), P.margin + PROG.timeColW + 22, y + 5)
+  doc.text(day.day_label || formatDateWeekday(day.entry_date), P.margin + PROG.timeColW + 22, y + 5)
   y += 8
   drawRule(doc, P.margin, y, CW, T.rule, 0.25)
   return y + 6
@@ -463,7 +457,7 @@ function drawEmptyDay(doc: any, day: TripDay, dayIdx: number, y: number): number
 
   serif(doc, 'normal', 11)
   doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-  doc.text(day.day_label || fmtDateFull(day.entry_date), P.margin + PROG.timeColW, y + 5)
+  doc.text(day.day_label || formatDateWeekday(day.entry_date), P.margin + PROG.timeColW, y + 5)
 
   sans(doc, 'italic', 8)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])

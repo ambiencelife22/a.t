@@ -67,7 +67,7 @@ export const ASSETS = {
 // Re-exported from canonical utilsDates under legacy names so PDF callers stay
 // stable. fmtDate -> formatDate (long grammar), buildDateRange -> formatDateRange.
 export { fmtTime } from '../utils/utilsDates'
-export { formatDate as fmtDate, formatDateRange as buildDateRange } from '../utils/utilsDates'
+export { formatDate as fmtDate, formatDateRange as buildDateRange, formatDateWeekday } from '../utils/utilsDates'
 
 // ── Page helpers ──────────────────────────────────────────────────────────────
 
