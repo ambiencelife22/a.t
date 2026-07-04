@@ -31,9 +31,9 @@ import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
   fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, greeterLines,
-  diningPdfStatus, isDiningCancelled, drawOwnArrangementsChip,
+  isDiningCancelled, drawOwnArrangementsChip,
   drawPdfHero, stampPageChrome, addCreamPage,
-  type ExportBranding,
+  type ExportBranding, type PdfEngagementLink,
 } from './pdfShared'
 import type {
   ImmerseTripBrief as TripBrief,
@@ -54,7 +54,7 @@ export interface TripBriefPdfData {
   destinationName: string
   heroImageData:   string | null
   auxBookings:     TripAuxBooking[]
-  links:           { id: string; label: string; url: string; link_type: string; is_highlighted: boolean }[]
+  links:           PdfEngagementLink[]
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────

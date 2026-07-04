@@ -88,6 +88,14 @@ export function addCreamPage(doc: any): number {
 // (security property — no per-surface picker, engagement-scoped control only).
 export type ExportBranding = 'ambience' | 'alfaone' | 'unbranded'
 
+export type PdfEngagementLink = {
+  id:             string
+  label:          string
+  url:            string
+  link_type:      string
+  is_highlighted: boolean
+}
+
 // Used inside drawPdfHero. Shared logic for all logo_variant values.
 
 export function drawFrostedLogoCard(

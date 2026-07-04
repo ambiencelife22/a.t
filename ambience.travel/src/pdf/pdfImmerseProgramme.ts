@@ -22,6 +22,7 @@ import {
   fmtTime, buildDateRange, formatDateWeekday, drawPdfHero, stampPageChrome, addCreamPage,
   roomLine, driverDetailLines, drawOwnArrangementsChip,
   diningPdfStatus, isDiningCancelled, greeterLines,
+  type PdfEngagementLink,
 } from './pdfShared'
 import type {
   ImmerseTripDay as TripDay,
@@ -41,7 +42,7 @@ export interface DailyProgrammeData {
   house:         HouseProfile | null
   days:          TripDay[]
   entriesByDate: Record<string, TimelineItem[]>
-  links:         { id: string; label: string; url: string; link_type: string; is_highlighted: boolean }[]
+  links:         PdfEngagementLink[]
 }
 
 // ── Internal render row ─────────────────────────────────────────────────────────
