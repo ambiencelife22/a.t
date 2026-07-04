@@ -39,6 +39,7 @@ export type TimelineRoom = {
   confirmation_number: string | null
   notes:               string | null
   check_in_time:       string | null
+  bedding_type:        string | null
 }
 
 export type TimelinePassenger = {
@@ -301,6 +302,7 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
           notes:               (r.notes as string | null) ?? null,
           // Room-level check_in_time takes precedence over booking-level derivation
           check_in_time:       (r.check_in_time as string | null) ?? resolvedCheckinTime,
+          bedding_type:        (r.bedding_type as string | null) ?? null,
         }))
 
       out.push({

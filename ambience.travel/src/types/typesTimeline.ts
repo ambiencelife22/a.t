@@ -13,7 +13,8 @@ export type TimelineRoom = {
   party_composition:   string | null
   confirmation_number: string | null
   notes:               string | null
-  check_in_time: string | null
+  check_in_time:  string | null
+  bedding_type:   string | null
 }
 
 export type TimelineDriverDetail = {

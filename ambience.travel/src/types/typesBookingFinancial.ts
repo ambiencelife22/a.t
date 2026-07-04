@@ -32,6 +32,7 @@ export type BookingFinancialRoom = {
   tax_pct:             number | null
   total:               number | null
   check_in_time:       string | null
+  bedding_type:        string | null
   sort_order:          number
 }
 

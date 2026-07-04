@@ -221,7 +221,7 @@ export async function fetchTripBookings(
   // additional_guests is confirmation-only but harmless to programme.
   const roomsResult = bookingIds.length > 0
     ? await db.from('travel_booking_rooms')
-        .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, check_in_time, sort_order, created_at, updated_at')
+        .select('id, booking_id, room_id, person_id, room_name, confirmation_number, guest_name, party_composition, notes, nights, brief_image_src, additional_guests, check_in_time, bedding_type, sort_order, created_at, updated_at')
         .in('booking_id', bookingIds)
         .order('sort_order', { ascending: true })
     : { data: [], error: null }

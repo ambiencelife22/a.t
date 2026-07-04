@@ -83,6 +83,7 @@ export type ImmerseRoomOption = {
   sqftMax?:                   number
   sqmMin?:                    number
   sqmMax?:                    number
+  beddingConfigurations?:     string[]  // canonical slugs — all available options
 }
 
 export type ImmerseHotelOption = {
@@ -775,6 +776,7 @@ export type ImmerseBookingRoom = {
   additional_guests:   string[] | null
   person_id:           string | null
   check_in_time:       string | null
+  bedding_type:        string | null   // confirmed configuration slug, null = TBD on arrival
   sort_order:          number
   created_at:          string
   updated_at:          string

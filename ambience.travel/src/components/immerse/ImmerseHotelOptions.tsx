@@ -26,6 +26,7 @@ import { C } from '../../types/typesLanding'
 import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './ImmerseCarouselNav'
 import { RoomCategory } from './ImmerseRoomCategory'
 import { GuideRecognitionMark } from '../guides/GuideRecognitionKey'
+import { beddingConfigurationsLabel } from '../../utils/utilsBooking'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption } from '../../types/typesImmerse'
 
 // ─── Room slide model (S53C) ──────────────────────────────────────────────────
@@ -183,6 +184,11 @@ function PairSuiteBlock({ room, isMobile }: { room: ImmerseRoomOption; isMobile:
           {sqLabel && (
             <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, fontSize: 11, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {sqLabel}
+            </div>
+          )}
+          {beddingConfigurationsLabel(room.beddingConfigurations) && (
+            <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, fontSize: 11, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {beddingConfigurationsLabel(room.beddingConfigurations)}
             </div>
           )}
           {rate && (

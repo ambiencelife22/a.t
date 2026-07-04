@@ -493,7 +493,7 @@ async function fetchRoomsForHotels(
       id, hotel_id, room_name, room_benefits,
       room_image_src, room_image_alt, room_gallery,
       floorplan_src, sqft_min, sqft_max, sqm_min, sqm_max,
-      rate_suffix, sort_order
+      rate_suffix, sort_order, bedding_configurations
     `)
     .in('hotel_id', hotelIds)
     .order('sort_order')
@@ -517,7 +517,7 @@ async function fetchRoomsForHotels(
       room_alert, room_alert_level,
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
-      sort_order
+      sort_order, bedding_type
     `)
     .eq('trip_id', engagementId)
     .eq('is_active', true)
@@ -582,6 +582,7 @@ async function fetchRoomsForHotels(
       sqftMax: o.sqft_max_override ?? canon.sqft_max ?? o.sqft_max ?? null,
       sqmMin:  o.sqm_min_override  ?? canon.sqm_min  ?? o.sqm_min  ?? null,
       sqmMax:  o.sqm_max_override  ?? canon.sqm_max  ?? o.sqm_max  ?? null,
+      beddingConfigurations: Array.isArray(canon.bedding_configurations) ? canon.bedding_configurations : null,
     })
   }
 

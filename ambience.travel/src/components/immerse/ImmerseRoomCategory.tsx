@@ -26,6 +26,7 @@
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
+import { beddingConfigurationsLabel } from '../../utils/utilsBooking'
 import type { ImmerseHotelOption, ImmerseRoomOption } from '../../types/typesImmerse'
 
 // S32: detect numeric rate strings ($1,200 / €420 / 1500)
@@ -119,6 +120,11 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
           {sqLabel && (
             <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, fontSize: 11, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
               {sqLabel}
+            </div>
+          )}
+          {beddingConfigurationsLabel(room.beddingConfigurations) && (
+            <div style={{ padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, fontSize: 11, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {beddingConfigurationsLabel(room.beddingConfigurations)}
             </div>
           )}
 

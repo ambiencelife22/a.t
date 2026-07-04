@@ -34,7 +34,31 @@ export function isOwnArrangements(bookedBy: string | null | undefined): boolean 
 // Single source for all tel: href construction. Strips whitespace and common
 // formatting characters so the OS can dial correctly regardless of how the
 // phone number was stored.
-export function toTelHref(phone: string | null | undefined): string | null {
+// ── Bedding type labels — single source ───────────────────────────────────────
+const BEDDING_LABELS: Record<string, string> = {
+  king:        'King',
+  cal_king:    'California King',
+  queen:       'Queen',
+  double:      'Double',
+  twin:        'Twin',
+  two_kings:   '2x King',
+  two_queens:  '2x Queen',
+  two_twins:   '2x Twin',
+  king_twin:   'King + Twin',
+  double_twin: 'Double + Twin',
+  three_twins: '3x Twin',
+  bunk:        'Bunk Beds',
+  sofa_bed:    'Sofa Bed',
+}
+export function beddingLabel(slug: string | null | undefined): string | null {
+  if (!slug) return null
+  return BEDDING_LABELS[slug] ?? slug
+}
+export function beddingConfigurationsLabel(slugs: string[] | null | undefined): string | null {
+  if (!slugs || slugs.length === 0) return null
+  return slugs.map(s => BEDDING_LABELS[s] ?? s).join(' or ')
+}
+  export function toTelHref(phone: string | null | undefined): string | null {
   if (!phone) return null
   const normalised = phone.replace(/[\s\-().]/g, '')
   return `tel:${normalised}`

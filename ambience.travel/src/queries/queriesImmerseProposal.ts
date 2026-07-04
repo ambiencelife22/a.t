@@ -385,6 +385,7 @@ function hydrateRoomOption(r: Record<string, unknown>): ImmerseRoomOption {
     sqftMax:                  (r.sqftMax ?? undefined) as number | undefined,
     sqmMin:                   (r.sqmMin  ?? undefined) as number | undefined,
     sqmMax:                   (r.sqmMax  ?? undefined) as number | undefined,
+    beddingConfigurations:    Array.isArray(r.beddingConfigurations) ? r.beddingConfigurations as string[] : undefined,
   }
 }
 

@@ -30,7 +30,7 @@ import type {
 import type { TimelineItem } from '../../types/typesTimeline'
 import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking, isMeetGreetBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }            from '../../types/typesEventStatus'
-import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref } from '../../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, beddingLabel } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
 import { ID } from '../../tokens/tokensLanding'
@@ -334,6 +334,7 @@ const auxSections = groupAuxBySection(auxBookings)
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {room.room_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{room.room_name}</div>}
                             {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{guests}</div>}
+                            {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
                             {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                           </div>
                           {room.confirmation_number && (
@@ -532,7 +533,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     seatNumbers:       string | null
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-    rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; check_in_time: string | null }[]
+    rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; check_in_time: string | null; bedding_type: string | null }[]
     driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
   }
 
@@ -602,6 +603,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               confirmation_number: r.confirmation_number,
               notes:               r.notes,
               check_in_time:       r.check_in_time,
+              bedding_type:        r.bedding_type ?? null,
             })),
             driverDetails:       (e.driver_details ?? []).map(d => ({
               id:           d.id,

@@ -235,6 +235,7 @@ export type BookingRoom = {
   additional_guests:   string[] | null
   person_id:           string | null
   check_in_time:       string | null
+  bedding_type:        string | null
   sort_order:          number
   created_at:          string
   updated_at:          string
