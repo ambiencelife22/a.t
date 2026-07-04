@@ -1,4 +1,13 @@
 // supabase/functions/sports-admin-backup/index.ts
+// Exports a full snapshot of all SPORTS + global tables.
+// Admin-only — caller must supply a valid session token in the request body.
+//
+// Auth: Pattern A — JWT verification OFF.
+//   Caller sends session token in body as { token }.
+//   Function verifies token via service client, checks is_admin on global_profiles.
+//
+// Input:  { token: string }
+// Output: { exportedAt, exportedBy, tables, errors? } | { error: string }
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const TABLES = [
@@ -88,8 +97,8 @@ Deno.serve(async (req: Request) => {
 
     for (const table of TABLES) {
       const { data, error } = await serviceClient.from(table).select('*')
-      if (error) { errors.push(`${table}: ${error.message}`); result[table] = [] }
-      else result[table] = data ?? []
+      if (error) { errors.push(`${table}: ${error.message}`); result[table] = []; continue }
+      result[table] = data ?? []
     }
 
     return new Response(

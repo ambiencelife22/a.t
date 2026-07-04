@@ -2,13 +2,19 @@
 // Exports all data for the calling user only.
 // Uses the user's own JWT — RLS scopes all queries automatically.
 // No service role key needed.
+//
+// Auth: Pattern B — user JWT in body as { token }.
+//   No admin check — each user may only export their own data.
+//   RLS on all queried tables enforces the scope.
+//
+// Input:  { token: string }
+// Output: { exportedAt, exportedBy, tables, errors? } | { error: string }
+//
+// S66B Add 3: sports_trader_balance_history omitted — shared canon per trader,
+//   not user-scoped. User's view is derived live from sports_user_trader +
+//   getTraderBalanceHistory(traderId, fromDate) at read time.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// S66B Add 3: sports_trader_balance_history removed — it's shared canon
-// per trader, not user-scoped data. A user backup should not export the
-// trader's full balance walk. The user's *view* of trader history is derived
-// live from sports_user_trader (which IS exported) + the trader's canonical
-// history at read time via getTraderBalanceHistory(traderId, fromDate).
 const USER_TABLES = [
   'sports_user_sportsbooks',
   'sports_backlog_summary',
@@ -65,8 +71,8 @@ Deno.serve(async (req: Request) => {
 
     for (const table of USER_TABLES) {
       const { data, error } = await userClient.from(table).select('*')
-      if (error) { errors.push(`${table}: ${error.message}`); result[table] = [] }
-      else result[table] = data ?? []
+      if (error) { errors.push(`${table}: ${error.message}`); result[table] = []; continue }
+      result[table] = data ?? []
     }
 
     return new Response(
