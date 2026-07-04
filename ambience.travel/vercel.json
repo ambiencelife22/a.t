@@ -6,10 +6,7 @@
       "destination": "https://immerse.ambience.travel/:url_id/:dest",
       "permanent": true,
       "has": [
-        {
-          "type": "host",
-          "value": "(www\\.)?ambience\\.travel"
-        }
+        { "type": "host", "value": "(www\\.)?ambience\\.travel" }
       ]
     },
     {
@@ -17,10 +14,7 @@
       "destination": "https://immerse.ambience.travel/:url_id",
       "permanent": true,
       "has": [
-        {
-          "type": "host",
-          "value": "(www\\.)?ambience\\.travel"
-        }
+        { "type": "host", "value": "(www\\.)?ambience\\.travel" }
       ]
     },
     {
@@ -28,10 +22,7 @@
       "destination": "https://immerse.ambience.travel/",
       "permanent": true,
       "has": [
-        {
-          "type": "host",
-          "value": "(www\\.)?ambience\\.travel"
-        }
+        { "type": "host", "value": "(www\\.)?ambience\\.travel" }
       ]
     }
   ],
@@ -39,6 +30,10 @@
     {
       "source": "/img/:path*",
       "destination": "https://rjobcbpnhymuczjhqzmh.supabase.co/storage/v1/object/public/ambience-assets/:path*"
+    },
+    {
+      "source": "/:urlId([A-Za-z0-9]{11})",
+      "destination": "/api/og/:urlId"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
