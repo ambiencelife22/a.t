@@ -229,7 +229,9 @@ async function buildDestinationPayload(
     globalDestinationId = variantRow.global_destination_id as string
     destTemplate        = variantRow as Record<string, unknown>
     isVariant           = true
-  } else {
+  }
+
+  if (!variantRow) {
     const { data: globalRow } = await db
       .from('global_destinations')
       .select('id')
@@ -238,6 +240,8 @@ async function buildDestinationPayload(
     if (!globalRow) return null
     globalDestinationId = globalRow.id as string
   }
+
+  if (!globalDestinationId) return null
 
   // 2. Fetch canonical template if not already fetched (variant case above)
   if (!isVariant) {
