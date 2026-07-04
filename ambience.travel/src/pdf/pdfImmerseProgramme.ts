@@ -213,7 +213,7 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
   // booked_by gap
   const bookedLabel = bookedByLabel(entry.booked_by)
   if (isOwnArrangements(entry.booked_by)) h += 7
-  else if (bookedLabel)                   h += 6
+  if (!isOwnArrangements(entry.booked_by) && bookedLabel) h += 6
 
   if (entry.subtitle)              h += PROG.lineH + 1
   h += entry.noteLines.length     * (PROG.lineH + 0.5)
@@ -529,26 +529,26 @@ export async function exportDailyProgrammePdf(
 
     if (hasContent) {
       // Active day — always on its own page (except the very first)
-      if (firstDone) {
-        y = addCreamPage(doc)
-      }
+      if (firstDone) y = addCreamPage(doc)
       emptyPageOpen = false
       firstDone     = true
       y = await renderActiveDay(doc, day, entries, idx, y)
-    } else {
-      // Empty day — collapse onto shared page
-      if (!firstDone) {
-        firstDone = true
-      } else {
-        if (!emptyPageOpen) {
-          y = addCreamPage(doc)
-          emptyPageOpen = true
-        } else if (y + EMPTY_DAY_H > FOOTER_GUARD) {
-          y = addCreamPage(doc)
-        }
-      }
-      y += drawEmptyDay(doc, day, idx, y)
+      continue
     }
+    // Empty day — collapse onto shared page
+    if (!firstDone) {
+      firstDone = true
+      y += drawEmptyDay(doc, day, idx, y)
+      continue
+    }
+    if (!emptyPageOpen) {
+      y = addCreamPage(doc)
+      emptyPageOpen = true
+      y += drawEmptyDay(doc, day, idx, y)
+      continue
+    }
+    if (y + EMPTY_DAY_H > FOOTER_GUARD) y = addCreamPage(doc)
+    y += drawEmptyDay(doc, day, idx, y)
   }
 
   if (data.brief?.programme_notes?.trim()) {
