@@ -112,7 +112,12 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
   const itinRow     = eng.travel_itinerary_statuses as Record<string, unknown> | null
   const statusSlug  = (statusRow?.slug ?? 'requested') as EngagementStatusSlug
   const stage       = computeEngagementStage({ statusSlug })
-  const clientName  = (display?.house_display_name ?? display?.nickname ?? display?.first_name ?? 'Our VIP Guest') as string
+  // HPGL Option 1 (fully tailored): the public guest name is the authored, projected
+  // label ONLY. No raw first_name/nickname echo, no placeholder — absent authorship =
+  // absent name (North Star). Person tiers removed in lockstep with the server-side
+  // projection (resolve_and_project_guest_label), so the client cannot re-leak raw
+  // identity the trigger stopped projecting.
+  const clientName  = (display?.house_display_name ?? null) as string | null
 
   const engagementStatus = statusRow ? mapEngagementStatus(statusRow as any) : EMPTY_STATUS
   const itineraryStatus  = itinRow   ? mapItineraryStatus(itinRow as any)    : EMPTY_ITIN

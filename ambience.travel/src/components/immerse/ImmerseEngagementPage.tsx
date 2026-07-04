@@ -64,7 +64,7 @@ export default function ImmerseEngagementPage({
     ? `/${eng.urlId}`
     : `/immerse/${eng.urlId}`
 
-  const guestNameRendered = eng.heroEyebrowOverride ?? eng.clientName
+  const guestNameRendered = eng.heroEyebrowOverride ?? eng.clientName ?? ''
 
   return (
     <ImmerseLayout navItems={navItems} logoHref={logoHref}>

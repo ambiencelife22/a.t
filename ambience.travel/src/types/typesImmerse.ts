@@ -377,7 +377,7 @@ export type ImmerseEngagementData = {
   urlId:           string
   slug:            string
   journeyTypes:    string[]
-  clientName:      string
+  clientName:      string | null
   statusLabel:     string
   stage:           EngagementStage
   proposalVisibility: 'active' | 'archived'

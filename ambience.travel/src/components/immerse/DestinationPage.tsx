@@ -155,7 +155,7 @@ export default function DestinationPage({ engagement, destinationSlug }: Props) 
   const resolvedEyebrow = rowEyebrow ?? engagement.heroEyebrowOverride ?? null
 
   const hasEyebrowOverride  = !!resolvedEyebrow
-  const guestNameRendered   = hasEyebrowOverride ? resolvedEyebrow! : engagement.clientName
+  const guestNameRendered   = hasEyebrowOverride ? resolvedEyebrow! : (engagement.clientName ?? '')
   const titlePrefixRendered = hasEyebrowOverride
     ? undefined
     : deriveTitlePrefix(engagement.journeyTypes)
