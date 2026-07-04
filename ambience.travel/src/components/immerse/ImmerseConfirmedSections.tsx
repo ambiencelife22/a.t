@@ -242,51 +242,7 @@ const auxSections = groupAuxBySection(auxBookings)
                       {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
                       {booking.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-In: ${fmtTime(booking.start_time)}`}</div>}
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
-                      {booking.cancellation_policy && (
-                        <div style={{ marginTop: 8, padding: '10px 14px', background: CARD_BG, borderRadius: 6 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Cancellation Policy</div>
-                          <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
-                        </div>
-                      )}
-                      {(booking._invoices ?? []).length > 0 && (
-                        <div style={{ marginTop: 8 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 6 }}>Invoices</div>
-                          {(booking._invoices as BookingInvoice[]).map(inv => (
-                            <div key={inv.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingTop: 5, paddingBottom: 5, borderTop: `0.5px solid ${RULE}` }}>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: INK }}>
-                                  {inv.description ?? `Invoice ${inv.invoice_number}`}
-                                </span>
-                                {inv.invoice_date && (
-                                  <span style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginLeft: 8 }}>
-                                    {formatDate(inv.invoice_date)}
-                                  </span>
-                                )}
-                                <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: FAINT, marginLeft: 8 }}>#{inv.invoice_number}</span>
-                              </div>
-                              <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, flexShrink: 0 }}>
-                                {moneyDec(inv.amount ?? 0, inv.currency)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0 && (
-                        <div style={{ marginTop: 8 }}>
-                          {(booking.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
-                            <div key={gi} style={{ marginTop: gi > 0 ? 8 : 0 }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 4 }}>{group.heading}</div>
-                              {group.bullets.map((b, bi) => (
-                                <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.6 }}>
-                                  <span style={{ color: GOLD, flexShrink: 0 }}>·</span>
-                                  <span>{b}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                      </div>
                     <div style={{ marginTop: 12 }}>
                       {booking.payment_exception && (
                         <div style={{
@@ -296,7 +252,6 @@ const auxSections = groupAuxBySection(auxBookings)
                           <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B4321F' }}>Payment Outstanding</span>
                         </div>
                       )}
-                      {/* Booking-level conf shows only when there are no rooms (each room carries its own) */}
                       {rooms.length === 0 && booking.confirmation_number && (
                         <div style={{
                           display: 'inline-flex', alignItems: 'center',
@@ -309,20 +264,61 @@ const auxSections = groupAuxBySection(auxBookings)
                           </span>
                         </div>
                       )}
-                      {ownArr ? (
+                      {ownArr && (
                         <span style={{
                           display: 'inline-block', fontFamily: SANS, fontSize: 9,
                           letterSpacing: '0.12em', color: MUTED,
                           border: `0.5px solid ${FAINT}`, borderRadius: 999,
                           padding: '3px 10px', whiteSpace: 'nowrap',
                         }}>Own Arrangements</span>
-                      ) : (
+                      )}
+                      {!ownArr && (
                         <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
                       )}
                     </div>
                   </div>
                 </div>
-
+                {/* Inclusions, cancellation policy, invoices — full width below header */}
+                {(booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) && (
+                  <div style={{ padding: '16px 20px', borderTop: `0.5px solid ${RULE}` }}>
+                    {(booking.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
+                      <div key={gi} style={{ marginTop: gi > 0 ? 12 : 0 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 6 }}>{group.heading}</div>
+                        {group.bullets.map((b, bi) => (
+                          <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7 }}>
+                            <span style={{ color: GOLD, flexShrink: 0 }}>·</span>
+                            <span>{b}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {booking.cancellation_policy && (
+                  <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${RULE}`, background: CARD_BG }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Cancellation Policy</div>
+                    <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
+                  </div>
+                )}
+                {(booking._invoices ?? []).length > 0 && (
+                  <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${RULE}` }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 6 }}>Invoices</div>
+                    {(booking._invoices as BookingInvoice[]).map(inv => (
+                      <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 6, paddingBottom: 6, borderTop: `0.5px solid ${RULE}` }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: INK }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
+                          <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 1 }}>
+                            {inv.invoice_date ? formatDate(inv.invoice_date) : ''}
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: FAINT, marginLeft: 8 }}>#{inv.invoice_number}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, flexShrink: 0 }}>
+                          {moneyDec(inv.amount ?? 0, inv.currency)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {/* Nested rooms */}
                 {rooms.length > 0 && (
                   <div style={{ borderTop: `0.5px solid ${RULE}` }}>
