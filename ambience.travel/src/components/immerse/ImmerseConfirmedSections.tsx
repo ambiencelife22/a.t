@@ -798,6 +798,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {rd.roomName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</div>}
                                   {rd.guestLine && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</div>}
+                                  {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
                                   {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                                   {room.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>

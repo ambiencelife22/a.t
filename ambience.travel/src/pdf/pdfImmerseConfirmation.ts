@@ -103,6 +103,7 @@ function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
       + (d.roomName ? 5 : 0)
       + (d.guestLine ? 4.5 : 0)
       + (d.board ? 4.5 : 0)
+      + (d.bedding ? 4.5 : 0)
       + (room.check_in_time ? 4.5 : 0)
       + HOTEL_PADV
     return { room, h }
@@ -222,6 +223,7 @@ function drawRoomRow(doc: any, rm: RoomMeasure, booking: TripBooking, y: number)
   let rty = y + HOTEL_PADV
   if (d.roomName) { sans(doc, 'bold', 8.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2]); doc.text((doc.splitTextToSize(d.roomName, CW - HOTEL_PADH * 2 - 40))[0] ?? d.roomName, rtx, rty); rty += 5 }
   if (d.guestLine) { sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text((doc.splitTextToSize(d.guestLine, CW - HOTEL_PADH * 2 - 40))[0] ?? d.guestLine, rtx, rty); rty += 4.5 }
+  if (d.bedding) { sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(d.bedding, rtx, rty); rty += 4.5 }
   if (d.board) { sans(doc, 'italic', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text((doc.splitTextToSize(d.board, CW - HOTEL_PADH * 2 - 40))[0] ?? d.board, rtx, rty); rty += 4.5 }
   if (rm.room.check_in_time) { sans(doc, 'normal', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text(`Check-in ${fmtTime(rm.room.check_in_time)}`, rtx, rty); rty += 4.5 }
 

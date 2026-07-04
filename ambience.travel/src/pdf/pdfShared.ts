@@ -336,6 +336,23 @@ export function passengerLines(aux: AuxLike): string[] {
   ].filter(Boolean).join('  \u00b7  '))
 }
 
+// ── Bedding vocabulary — canonical labels (mirrors utilsBooking.BEDDING_LABELS) ──
+const BEDDING_LABELS: Record<string, string> = {
+  king:        'King',
+  cal_king:    'California King',
+  queen:       'Queen',
+  double:      'Double',
+  twin:        'Twin',
+  two_kings:   '2× King',
+  two_queens:  '2× Queen',
+  two_twins:   '2× Twin',
+  king_twin:   'King + Twin',
+  double_twin: 'Double + Twin',
+  three_twins: '3× Twin',
+  bunk:        'Bunk Beds',
+  sofa_bed:    'Sofa Bed',
+}
+
 // ── Room display composition — shared across all trip PDFs ─────────────────────
 // One source for what a room's text content is. Layout stays per-surface
 // (confirmation = structured card rows, programme = flat joined string), but the
@@ -352,6 +369,7 @@ export interface RoomLike {
   room_name?:                  string | null
   notes?:                      string | null
   confirmation_number?:        string | null
+  bedding_type?:               string | null
 }
 
 export interface RoomDisplay {
@@ -359,6 +377,7 @@ export interface RoomDisplay {
   guestLine: string | null   // e.g. "AlSuwaidi Family · Ms. Sayegh"
   board:     string | null   // e.g. "Full board"  (from notes)
   conf:      string | null   // bare conf value, no prefix
+  bedding:   string | null   // e.g. "King" / "2× Twin"
 }
 
 export function roomDisplay(room: RoomLike): RoomDisplay {
@@ -372,6 +391,7 @@ export function roomDisplay(room: RoomLike): RoomDisplay {
     guestLine: guests.length ? guests.join('  \u00b7  ') : null,
     board:     room.notes ?? null,
     conf:      room.confirmation_number ?? null,
+    bedding:   room.bedding_type ? (BEDDING_LABELS[room.bedding_type] ?? room.bedding_type) : null,
   }
 }
 
