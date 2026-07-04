@@ -91,7 +91,7 @@ export async function fetchActiveHappeningsForDestination(
 ): Promise<Happening[]> {
   let query = supabase
     .from('travel_happenings')
-    .select('*')
+    .select('id, global_destination_id, name, category, tagline, body, bullets, start_date, end_date, venue_name, address, maps_url, website_url, image_src, image_alt, image_credit, image_credit_url, image_license, is_active, is_public, sort_order, public_preview_rank, surfaces, created_at, updated_at')
     .eq('global_destination_id', globalDestinationId)
 
   if (opts.surface) {
@@ -127,7 +127,7 @@ export async function fetchActiveHappeningsForDestination(
 export async function fetchHappeningById(id: string): Promise<Happening | null> {
   const { data, error } = await supabase
     .from('travel_happenings')
-    .select('*')
+    .select('id, global_destination_id, name, category, tagline, body, bullets, start_date, end_date, venue_name, address, maps_url, website_url, image_src, image_alt, image_credit, image_credit_url, image_license, is_active, is_public, sort_order, public_preview_rank, surfaces, created_at, updated_at')
     .eq('id', id)
     .maybeSingle()
 

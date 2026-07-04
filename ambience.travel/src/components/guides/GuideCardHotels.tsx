@@ -85,9 +85,10 @@ function NameFallbackPanel({ name, isTeaser }: { name: string; isTeaser: boolean
 
 function PrestigeRow({ hotel }: { hotel: HotelVenue }) {
   const hasStars   = hotel.stars !== null && hotel.stars > 0
+  const hasKeys    = hotel.michelin_keys !== null && hotel.michelin_keys > 0
   const hasForbes  = hotel.forbes_rating !== null
   const hasPartner = hotel.is_preferred_partner
-  if (!hasStars && !hasForbes && !hasPartner) {
+  if (!hasStars && !hasKeys && !hasForbes && !hasPartner) {
     return <div style={prestigeRowEmptyStyle} />
   }
   return (
@@ -95,6 +96,11 @@ function PrestigeRow({ hotel }: { hotel: HotelVenue }) {
       {hasStars && (
         <span style={starsStyle} aria-label={`${hotel.stars} star`}>
           {'\u2605'.repeat(hotel.stars!)}
+        </span>
+      )}
+      {hasKeys && (
+        <span style={pillKeysStyle}>
+          {hotel.michelin_keys} {hotel.michelin_keys === 1 ? 'KEY' : 'KEYS'}
         </span>
       )}
       {hasForbes && (
@@ -234,6 +240,18 @@ const starsStyle: React.CSSProperties = {
 }
 
 const pillForbesStyle: React.CSSProperties = {
+  borderRadius:  999,
+  padding:       '7px 10px',
+  fontSize:      10,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase',
+  border:        `1px solid ${IMMERSE.goldBorder}`,
+  color:         ID.gold,
+  background:    IMMERSE.goldTint,
+  fontWeight:    600,
+}
+
+const pillKeysStyle: React.CSSProperties = {
   borderRadius:  999,
   padding:       '7px 10px',
   fontSize:      10,

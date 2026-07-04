@@ -72,7 +72,7 @@ export async function fetchShoppingForDestination(
 ): Promise<Shop[]> {
   const { data, error } = await supabase
     .from('travel_shopping')
-    .select('*')
+    .select('id, global_destination_id, name, brand, shop_type, tagline, body, bullets, address, maps_url, by_appointment, image_src, image_alt, image_credit, image_credit_url, image_license, is_active, is_public, sort_order, public_preview_rank, created_at, updated_at')
     .eq('global_destination_id', globalDestinationId)
     .order('sort_order', { ascending: true })
     .order('name',       { ascending: true })

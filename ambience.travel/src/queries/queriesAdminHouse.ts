@@ -59,6 +59,9 @@ export interface House {
   avoid_notes:          string | null
   service_notes:        string | null
   missing_info_notes:   string | null
+  salutation_rule:      string | null
+  brief_language:       string | null
+  public_name:          string | null
   created_at:           string
   updated_at:           string
 }
@@ -172,21 +175,21 @@ export type HousePatch = Partial<Omit<House, 'id' | 'a_house_id' | 'created_at' 
 
 export async function fetchHouses(): Promise<House[]> {
   const { data, error } = await supabase
-    .from('a_houses').select('*').order('display_name', { ascending: true })
+    .from('a_houses').select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at').order('display_name', { ascending: true })
   if (error) throw new Error(`Failed to fetch houses: ${error.message}`)
   return (data ?? []) as House[]
 }
 
 export async function fetchHouseById(id: string): Promise<House | null> {
   const { data, error } = await supabase
-    .from('a_houses').select('*').eq('id', id).maybeSingle()
+    .from('a_houses').select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at').eq('id', id).maybeSingle()
   if (error) throw new Error(`Failed to fetch house: ${error.message}`)
   return data as House | null
 }
 
 export async function fetchHouseByHouseId(aHouseId: string): Promise<House | null> {
   const { data, error } = await supabase
-    .from('a_houses').select('*').eq('a_house_id', aHouseId).maybeSingle()
+    .from('a_houses').select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at').eq('a_house_id', aHouseId).maybeSingle()
   if (error) throw new Error(`Failed to fetch house: ${error.message}`)
   return data as House | null
 }
@@ -223,7 +226,7 @@ export async function fetchHouseRoles(): Promise<HouseRole_Registry[]> {
 
 export async function fetchPeopleForHouse(houseId: string): Promise<HousePerson[]> {
   const { data, error } = await supabase
-    .from('a_house_people').select('*').eq('house_id', houseId)
+    .from('a_house_people').select('id, house_id, person_id, member_ref, role, notes, sort_order, created_at, updated_at').eq('house_id', houseId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) throw new Error(`Failed to fetch people: ${error.message}`)
@@ -289,7 +292,7 @@ export async function fetchProfileForPerson(personId: string): Promise<HousePers
 
 export async function fetchPreferencesForHouse(houseId: string): Promise<HousePreference[]> {
   const { data, error } = await supabase
-    .from('a_house_preferences').select('*').eq('house_id', houseId)
+    .from('a_house_preferences').select('id, house_id, person_id, category, pref_key, pref_value, notes, source, confidence, created_at, updated_at').eq('house_id', houseId)
     .order('category', { ascending: true }).order('pref_key', { ascending: true })
   if (error) throw new Error(`Failed to fetch preferences: ${error.message}`)
   return (data ?? []) as HousePreference[]
@@ -330,7 +333,7 @@ export async function deletePreference(id: string): Promise<void> {
 
 export async function fetchDiningHistoryForHouse(houseId: string): Promise<HouseDiningEntry[]> {
   const { data, error } = await supabase
-    .from('a_house_dininghistory').select('*').eq('house_id', houseId)
+    .from('a_house_dininghistory').select('id, house_id, restaurant_name, city, country, status, visit_date, trip_ref, venue_id, notes, created_at, updated_at').eq('house_id', houseId)
     .order('status', { ascending: true }).order('restaurant_name', { ascending: true })
   if (error) throw new Error(`Failed to fetch dining history: ${error.message}`)
   return (data ?? []) as HouseDiningEntry[]
@@ -369,7 +372,7 @@ export async function deleteDiningEntry(id: string): Promise<void> {
 
 export async function fetchDestinationsForHouse(houseId: string): Promise<HouseDestination[]> {
   const { data, error } = await supabase
-    .from('a_house_destinations').select('*').eq('house_id', houseId)
+    .from('a_house_destinations').select('id, house_id, destination_name, country, city, trip_type, status, visit_date, trip_ref, notes, created_at, updated_at').eq('house_id', houseId)
     .order('status', { ascending: true })
     .order('destination_name', { ascending: true })
   if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
@@ -410,7 +413,7 @@ export async function deleteDestination(id: string): Promise<void> {
 
 export async function fetchContactsForHouse(houseId: string): Promise<HouseContact[]> {
   const { data, error } = await supabase
-    .from('a_house_contacts').select('*').eq('house_id', houseId)
+    .from('a_house_contacts').select('id, house_id, person_id, contact_type, name, role, company, is_primary, notes, created_at, updated_at').eq('house_id', houseId)
     .order('is_primary', { ascending: false })
     .order('contact_type', { ascending: true })
     .order('name', { ascending: true })
