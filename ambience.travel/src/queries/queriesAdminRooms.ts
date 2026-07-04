@@ -29,7 +29,7 @@ export interface CanonicalRoom {
   room_name:   string | null
   slug:        string | null
   category_slug: string | null
-  bed_config:  string | null
+  bed_config:  string | null  // @deprecated — superseded by bedding_configurations (jsonb) on travel_accom_rooms
   sqft_min:    number | null
   sqft_max:    number | null
   sqm_min:     number | null
@@ -62,7 +62,7 @@ export interface OverlayRoom {
   sqft_max_override:       number | null
   sqm_min_override:        number | null
   sqm_max_override:        number | null
-  bed_config_override:     string | null
+  bed_config_override:     string | null  // @deprecated — superseded by bedding_type (text) on travel_immerse_rooms
   hero_image_src_override: string | null
   hero_image_alt_override: string | null
   floorplan_src_override:  string | null

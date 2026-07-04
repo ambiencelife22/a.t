@@ -40,7 +40,7 @@ function isNumericRate(rate: string): boolean {
 function formatSqRange(min: number | undefined, max: number | undefined, unit: string): string {
   if (!min) return ''
   if (!max || max === min) return `${min.toLocaleString()} ${unit}`
-  return `${min.toLocaleString()}–${max.toLocaleString()} ${unit}`
+  return `${min.toLocaleString()}-${max.toLocaleString()} ${unit}`
 }
 
 // S53C — alert badge palette by level.
