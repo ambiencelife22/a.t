@@ -50,11 +50,12 @@ export type EngagementLinkContent = {
 }
 
 export type EngagementLink = {
-  id:         string
-  link_type:  string
-  label:      string
-  url:        string
-  sort_order: number
+  id:            string
+  link_type:     string
+  label:         string
+  url:           string
+  sort_order:    number
+  is_highlighted: boolean
   travel_engagement_link_content: EngagementLinkContent | null
 }
 

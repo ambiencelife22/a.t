@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
     const engagementLinksResult = confirmedEngagementId
       ? await db
           .from('travel_engagement_links')
-          .select('id, link_type, label, url, sort_order, travel_engagement_link_content(title, body, kicker, image_src, image_alt)')
+          .select('id, link_type, label, url, sort_order, is_highlighted, travel_engagement_link_content(title, body, kicker, image_src, image_alt)')
           .eq('engagement_id', confirmedEngagementId)
           .eq('is_active', true)
           .order('sort_order', { ascending: true })
@@ -213,10 +213,11 @@ Deno.serve(async (req: Request) => {
       urlId: url_id,
       links: (engagementLinksResult.data ?? [] as unknown[]).map((l: any) => ({
         id:         l.id,
-        link_type:  l.link_type,
-        label:      l.label,
-        url:        l.url,
-        sort_order: l.sort_order,
+        link_type:      l.link_type,
+        label:          l.label,
+        url:            l.url,
+        sort_order:     l.sort_order,
+        is_highlighted: l.is_highlighted ?? false,
         travel_engagement_link_content: Array.isArray(l.travel_engagement_link_content) && l.travel_engagement_link_content.length > 0
           ? l.travel_engagement_link_content[0]
           : null,

@@ -1381,16 +1381,28 @@ export function TripBriefTab({ clientData }: {
                       justifyContent: 'space-between',
                       padding:        '14px 18px',
                       borderRadius:   content ? '10px 10px 0 0' : 10,
-                      border:         `1px solid ${RULE}`,
-                      borderBottom:   content ? 'none' : `1px solid ${RULE}`,
-                      background:     '#fff',
+                      border:         link.is_highlighted ? `1.5px solid ${GOLD}` : `1px solid ${RULE}`,
+                      borderBottom:   content ? 'none' : link.is_highlighted ? `1.5px solid ${GOLD}` : `1px solid ${RULE}`,
+                      background:     link.is_highlighted ? `${GOLD}08` : '#fff',
                       cursor:         'pointer',
                       transition:     'border-color 150ms',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontSize: 18, lineHeight: 1, color: INK }}>
-                          {link.link_type === 'guide' ? '\u2736' : '\u{1f517}'}
-                        </span>
+                        {link.link_type === 'guide' ? (
+                          <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0 }}>
+                            <rect x='3' y='1' width='9' height='12' rx='1' stroke={GOLD} strokeWidth='1.2'/>
+                            <line x1='3' y1='13' x2='12' y2='13' stroke={GOLD} strokeWidth='1.2'/>
+                            <line x1='5' y1='4' x2='10' y2='4' stroke={GOLD} strokeWidth='1' strokeLinecap='round'/>
+                            <line x1='5' y1='6.5' x2='10' y2='6.5' stroke={GOLD} strokeWidth='1' strokeLinecap='round'/>
+                            <line x1='5' y1='9' x2='8' y2='9' stroke={GOLD} strokeWidth='1' strokeLinecap='round'/>
+                            <rect x='1' y='2' width='2' height='11' rx='0.5' fill={GOLD} opacity='0.3'/>
+                          </svg>
+                        ) : (
+                          <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.45 }}>
+                            <path d='M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                            <path d='M9 1h6m0 0v6m0-6L8 8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                          </svg>
+)}
                         <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
                           {link.label}
                         </div>
