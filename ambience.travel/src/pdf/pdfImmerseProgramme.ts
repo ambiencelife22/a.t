@@ -304,7 +304,8 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   // Booked by
   if (isOwnArrangements(entry.booked_by)) {
     drawOwnArrangementsChip(doc, contentX, ty + 0.5); ty += 6.5
-  } else if (bookedLabel) {
+  }
+  if (!isOwnArrangements(entry.booked_by) && bookedLabel) {
     sans(doc, 'italic', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(bookedLabel, contentX, ty + 4); ty += 5.5
@@ -537,15 +538,14 @@ export async function exportDailyProgrammePdf(
     } else {
       // Empty day — collapse onto shared page
       if (!firstDone) {
-        // Still on hero page — just flow it
         firstDone = true
-      } else if (!emptyPageOpen) {
-        // Start a new empty-days page
-        y = addCreamPage(doc)
-        emptyPageOpen = true
-      } else if (y + EMPTY_DAY_H > FOOTER_GUARD) {
-        // Current empty page full — start another
-        y = addCreamPage(doc)
+      } else {
+        if (!emptyPageOpen) {
+          y = addCreamPage(doc)
+          emptyPageOpen = true
+        } else if (y + EMPTY_DAY_H > FOOTER_GUARD) {
+          y = addCreamPage(doc)
+        }
       }
       y += drawEmptyDay(doc, day, idx, y)
     }
