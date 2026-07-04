@@ -30,7 +30,7 @@ import type {
 import type { TimelineItem } from '../../types/typesTimeline'
 import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking, isMeetGreetBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }            from '../../types/typesEventStatus'
-import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
 import { ID } from '../../tokens/tokensLanding'
@@ -436,7 +436,7 @@ const auxSections = groupAuxBySection(auxBookings)
                     <div style={{ marginTop: 8 }}>
                       {aux.contact_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK }}>{aux.contact_name}</div>}
                       {aux.contact_phone && (
-                        <a href={`tel:${aux.contact_phone.replace(/\s+/g, '')}`} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{aux.contact_phone}</a>
+                        <a href={toTelHref(aux.contact_phone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{aux.contact_phone}</a>
                       )}
                       {aux.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
                     </div>
@@ -832,7 +832,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 6 }}>{item.title}</div>
                         {item.contactName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK }}>{item.contactName}</div>}
                         {item.contactPhone && (
-                          <a href={`tel:${item.contactPhone.replace(/\s+/g, '')}`} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{item.contactPhone}</a>
+                          <a href={toTelHref(item.contactPhone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{item.contactPhone}</a>
                         )}
                         {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginTop: 4 }}>{item.notes}</div>}
                       </div>
@@ -1543,7 +1543,7 @@ export function ContactsTab({ clientData }: { clientData: TripClientData }) {
       <div style={{ padding: '20px 24px', borderRadius: 12, border: `0.5px solid ${RULE}`, background: '#fff', boxSizing: 'border-box' }}>
         <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 8, fontFamily: SANS }}>{role}</div>
         <div style={{ fontSize: 18, fontFamily: SERIF, color: INK, marginBottom: 8 }}>{name}</div>
-        {phone && <a href={`tel:${phone}`} style={{ display: 'block', fontSize: 13, color: GOLD, textDecoration: 'none', fontFamily: SANS, marginBottom: 3 }}>{phone}</a>}
+        {phone && <a href={toTelHref(phone) ?? '#'} style={{ display: 'block', fontSize: 13, color: GOLD, textDecoration: 'none', fontFamily: SANS, marginBottom: 3 }}>{phone}</a>}
         {email && <a href={`mailto:${email}`} style={{ display: 'block', fontSize: 12, color: MUTED, textDecoration: 'none', fontFamily: SANS, wordBreak: 'break-all' }}>{email}</a>}
       </div>
     )

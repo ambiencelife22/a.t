@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { toTelHref } from '../../utils/utilsBooking'
 import { C, DANGER } from '../../tokens/tokensProgramme'
 import type { Booking, Property, ManualSection, Listing, ListingCategory } from '../../types/typesProgramme'
 import PropertyIntroSection from './PropertyIntroSection'
@@ -482,7 +483,7 @@ function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPh
               </div>
               <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4 }}>{contact.name}</div>
               {showPhone
-                ? <a href={`tel:${contact.phone}`} style={{ fontSize: 13, color: C.gold, textDecoration: 'none' }}>{contact.phone}</a>
+                ? <a href={toTelHref(contact.phone) ?? '#'} style={{ fontSize: 13, color: C.gold, textDecoration: 'none' }}>{contact.phone}</a>
                 : <GatedValue />
               }
             </div>
@@ -497,7 +498,7 @@ function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPh
             {property.emergencies.map((e: Property['emergencies'][0]) => (
               <div key={e.label}>
                 <div style={{ fontSize: 11, color: C.faint, marginBottom: 2 }}>{e.label}</div>
-                <a href={`tel:${e.phone}`} style={{ fontSize: 14, fontWeight: 600, color: C.muted, textDecoration: 'none' }}>
+                <a href={toTelHref(e.phone) ?? '#'} style={{ fontSize: 14, fontWeight: 600, color: C.muted, textDecoration: 'none' }}>
                   {e.phone}
                 </a>
               </div>

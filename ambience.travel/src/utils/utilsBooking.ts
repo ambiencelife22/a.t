@@ -30,6 +30,15 @@ export function bookedByLabel(bookedBy: string | null | undefined): string {
 export function isOwnArrangements(bookedBy: string | null | undefined): boolean {
   return bookedBy === 'self'
 }
+// ── Phone normaliser ──────────────────────────────────────────────────────────
+// Single source for all tel: href construction. Strips whitespace and common
+// formatting characters so the OS can dial correctly regardless of how the
+// phone number was stored.
+export function toTelHref(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  const normalised = phone.replace(/[\s\-().]/g, '')
+  return `tel:${normalised}`
+}
 
 // ── Category accent colours — single source ───────────────────────────────────
 // The mapping of timeline/programme category → accent colour lives here once.
