@@ -60,15 +60,16 @@ export type EngagementLink = {
 }
 
 export type TripClientData = {
-  trip:            ImmerseDossierTrip
-  brief:           ImmerseTripBrief | null
-  house:           ImmerseTripHouse | null
-  destinationName: string
-  auxBookings:     ImmerseTripAuxBooking[]
-  guides:          TripGuides
-  contacts:        TripContact[]
-  links:           EngagementLink[]
-  urlId:           string
+  trip:             ImmerseDossierTrip
+  brief:            ImmerseTripBrief | null
+  house:            ImmerseTripHouse | null
+  destinationName:  string
+  auxBookings:      ImmerseTripAuxBooking[]
+  guides:           TripGuides
+  contacts:         TripContact[]
+  links:            EngagementLink[]
+  urlId:            string
+  guestDisplayName: string | null
 }
 
 // ── Discriminated union ───────────────────────────────────────────────────────

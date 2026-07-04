@@ -136,6 +136,7 @@ function TripActionPanel({ trip, house }: {
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
       auxBookings,
+      guestDisplayName: null,
     })
   }
 

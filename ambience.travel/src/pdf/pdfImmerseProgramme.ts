@@ -37,12 +37,13 @@ import { isMeetGreetBooking, isDiningBooking } from '../types/typesAuxBookings'
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface DailyProgrammeData {
-  trip:          DossierTrip
-  brief:         TripBrief | null
-  house:         HouseProfile | null
-  days:          TripDay[]
-  entriesByDate: Record<string, TimelineItem[]>
-  links:         PdfEngagementLink[]
+  trip:             DossierTrip
+  brief:            TripBrief | null
+  house:            HouseProfile | null
+  days:             TripDay[]
+  entriesByDate:    Record<string, TimelineItem[]>
+  links:            PdfEngagementLink[]
+  guestDisplayName: string | null
 }
 
 // ── Internal render row ─────────────────────────────────────────────────────────
@@ -500,7 +501,7 @@ export async function exportDailyProgrammePdf(
     } catch { /* silent */ }
   }
 
-  const preparedFor = data.brief?.prepared_for ?? null
+  const preparedFor = data.guestDisplayName ?? data.brief?.prepared_for ?? null
   const title       = data.brief?.brief_title ?? data.trip.destinations[0]?.name ?? ''
 
   let y = await drawPdfHero(doc, {

@@ -73,6 +73,9 @@ Deno.serve(async (req: Request) => {
     const trip         = core.trip
     const brief        = core.brief
     const house        = core.house
+    // HPGL: canonical public guest label (projected, single-source via _shared/trip.ts).
+    // resolved_guest_label wins; prepared_for is the legacy fallback. Never ||.
+    const guestDisplayName = core.resolved_guest_label ?? ((brief?.prepared_for as string | null) ?? null)
     const destinations = core.destinations
     const bookings     = bookingsResult.data ?? []
     const auxBookings  = auxResult.data ?? []
@@ -197,6 +200,7 @@ Deno.serve(async (req: Request) => {
       brief,
       house,
       contacts,
+      guestDisplayName,
       destinationName: destinations[0]?.name ?? '',
       auxBookings: await (async () => {
         const withPax = await attachDriverDetails(db, await attachPassengers(db, auxBookings as unknown as Record<string, unknown>[], (brief?.prepared_for as string | null) ?? null))

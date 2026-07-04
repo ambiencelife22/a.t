@@ -48,13 +48,14 @@ import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface TripBriefPdfData {
-  trip:            DossierTrip
-  brief:           TripBrief | null
-  house:           HouseProfile | null
-  destinationName: string
-  heroImageData:   string | null
-  auxBookings:     TripAuxBooking[]
-  links:           PdfEngagementLink[]
+  trip:             DossierTrip
+  brief:            TripBrief | null
+  house:            HouseProfile | null
+  destinationName:  string
+  heroImageData:    string | null
+  auxBookings:      TripAuxBooking[]
+  links:            PdfEngagementLink[]
+  guestDisplayName: string | null
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
-  const preparedFor = brief?.prepared_for ?? null
+  const preparedFor = d.guestDisplayName ?? brief?.prepared_for ?? null
 
   let y = await drawPdfHero(doc, {
     title,
@@ -456,7 +457,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
 function buildFilename(d: TripBriefPdfData): string {
   const safe        = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const clientName  = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.destinations[0]?.name ?? ''
+  const clientName  = d.guestDisplayName ?? d.brief?.prepared_for ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
   const dateRange   = buildDateRange(d.trip.start_date, d.trip.end_date)
   return ['Trip Brief', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'

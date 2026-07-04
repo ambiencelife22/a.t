@@ -112,7 +112,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
   const itinRow     = eng.travel_itinerary_statuses as Record<string, unknown> | null
   const statusSlug  = (statusRow?.slug ?? 'requested') as EngagementStatusSlug
   const stage       = computeEngagementStage({ statusSlug })
-  const clientName  = (display?.nickname ?? display?.first_name ?? 'Our VIP Guest') as string
+  const clientName  = (display?.house_display_name ?? display?.nickname ?? display?.first_name ?? 'Our VIP Guest') as string
 
   const engagementStatus = statusRow ? mapEngagementStatus(statusRow as any) : EMPTY_STATUS
   const itineraryStatus  = itinRow   ? mapItineraryStatus(itinRow as any)    : EMPTY_ITIN

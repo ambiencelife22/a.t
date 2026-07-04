@@ -50,13 +50,14 @@ export interface ConfirmationContact {
 }
 
 export interface ConfirmationBriefData {
-  trip:            DossierTrip
-  brief:           TripBrief | null
-  house:           HouseProfile | null
-  destinationName: string
-  heroImageData:   string | null
-  auxBookings:     TripAuxBooking[]
-  contacts?:       ConfirmationContact[]
+  trip:             DossierTrip
+  brief:            TripBrief | null
+  house:            HouseProfile | null
+  destinationName:  string
+  heroImageData:    string | null
+  auxBookings:      TripAuxBooking[]
+  guestDisplayName: string | null
+  contacts?:        ConfirmationContact[]
 }
 
 // ── Hotel card — measure / draw split for row-level pagination ─────────────────
@@ -525,7 +526,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
-  const preparedFor = brief?.prepared_for ?? null
+  const preparedFor = d.guestDisplayName ?? brief?.prepared_for ?? null
   const dateRange   = brief?.snapshot_dates ?? buildDateRange(trip.start_date, trip.end_date)
 
   let y = await drawPdfHero(doc, {
@@ -630,7 +631,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 
 function buildFilename(d: ConfirmationBriefData): string {
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const clientName = d.brief?.prepared_for ?? d.house?.display_name ?? d.trip.destinations[0]?.name ?? ''
+  const clientName = d.guestDisplayName ?? d.brief?.prepared_for ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
   const dateRange = (() => {
     const s = d.trip.start_date; const e = d.trip.end_date

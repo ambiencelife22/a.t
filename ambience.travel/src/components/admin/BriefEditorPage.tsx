@@ -967,6 +967,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
       auxBookings:     mergedAux,
+      guestDisplayName: null,
     })
   }
 

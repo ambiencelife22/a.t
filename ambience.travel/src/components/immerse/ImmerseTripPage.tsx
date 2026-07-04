@@ -178,6 +178,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
           brief:           confPayload.brief,
           house:           confPayload.house,
           contacts:        confPayload.contacts ?? [],
+          guestDisplayName: confPayload.guestDisplayName ?? null,
           destinationName: confPayload.destinationName,
           auxBookings:     confPayload.auxBookings ?? [],
           guides:          { hasDining: false, hasExperiences: false, destinationSlug: null },
@@ -233,7 +234,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
   const heroTitle = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
-  const guestName    = brief?.prepared_for ?? ''
+  const guestName    = clientData.guestDisplayName ?? brief?.prepared_for ?? ''
   const dateLabel    = formatDateRange(trip.start_date, trip.end_date) || undefined
 
   return (
@@ -433,10 +434,10 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     } catch {}
                   }
                   if (activeTab === 'brief') {
-                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, links: clientData.links ?? [] }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
+                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
                     return
                   }
-                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
+                  handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
@@ -459,7 +460,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
                     entriesByDate[e.entry_date].push(e)
                   }
-                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate, links: clientData.links ?? [] })
+                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName })
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',

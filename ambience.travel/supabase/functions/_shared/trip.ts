@@ -57,10 +57,11 @@ export async function resolveTripIds(
 // Returns trip=null when the trip row is missing (caller returns 404).
 
 export interface TripCore {
-  trip:         Record<string, unknown> | null
-  brief:        Record<string, unknown> | null
-  house:        Record<string, unknown> | null
-  destinations: Array<Record<string, unknown>>
+  trip:                 Record<string, unknown> | null
+  brief:                Record<string, unknown> | null
+  house:                Record<string, unknown> | null
+  destinations:         Array<Record<string, unknown>>
+  resolved_guest_label: string | null
 }
 
 export async function fetchTripCore(
@@ -119,17 +120,29 @@ export async function fetchTripCore(
   // Engagement hero is canon. brief.hero_image_src is an overlay (only set when
   // operator deliberately wants a different hero on the confirmation surface).
   // Resolve: brief overlay → engagement canon → null.
+  // Engagement-level guest label (HPGL). travel_immerse_trip_display.house_display_name
+  // is the projected, admin-authored public label (single source — set by the
+  // projection trigger, never resolved here). Keyed by the engagement id, which
+  // is trip_id in the display table. Best-effort: null when no confirmed engagement
+  // or no projected row — callers fall through to prepared_for with ?? (never ||).
   const confirmedEngId = (tripResult.data?.confirmed_engagement_id as string | null) ?? null
   let engHeroSrc: string | null = null
   let engTitle: string | null = null
+  let resolvedGuestLabel: string | null = null
   if (confirmedEngId) {
-    const { data: eng } = await db
-      .from('travel_immerse_engagements')
-      .select('hero_image_src, title')
-      .eq('id', confirmedEngId)
-      .maybeSingle()
-    engHeroSrc = (eng?.hero_image_src as string | null) ?? null
-    engTitle   = (eng?.title          as string | null) ?? null
+    const [engRes, displayRes] = await Promise.all([
+      db.from('travel_immerse_engagements')
+        .select('hero_image_src, title')
+        .eq('id', confirmedEngId)
+        .maybeSingle(),
+      db.from('travel_immerse_trip_display')
+        .select('house_display_name')
+        .eq('trip_id', confirmedEngId)
+        .maybeSingle(),
+    ])
+    engHeroSrc         = (engRes.data?.hero_image_src as string | null) ?? null
+    engTitle           = (engRes.data?.title          as string | null) ?? null
+    resolvedGuestLabel = (displayRes.data?.house_display_name as string | null) ?? null
   }
 
   const brief = briefResult.data as Record<string, unknown> | null
@@ -142,10 +155,11 @@ export async function fetchTripCore(
     : null
 
   return {
-    trip:  tripResult.data ?? null,
-    brief: resolvedBrief,
-    house: houseResult.data ?? null,
+    trip:                 tripResult.data ?? null,
+    brief:                resolvedBrief,
+    house:                houseResult.data ?? null,
     destinations,
+    resolved_guest_label: resolvedGuestLabel,
   }
 }
 
