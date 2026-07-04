@@ -810,8 +810,8 @@ export function ListingsTab() {
     setSaving(true)
     const payload = { name: form.name.trim(), category: form.category, genre: form.genre.trim() || null, address: form.address.trim(), website: form.website.trim() || null, hours: form.hours.trim() || null, note: form.note.trim() || null, favourite: form.favourite, property_id: selectedProp }
     try {
-      if (editing) { await updateListing(editing.id, payload); showToast('Listing updated.', 'success') }
-      else         { await createListing(payload);             showToast('Listing created.', 'success') }
+      if (editing) { await updateListing(editing.id, payload); showToast('Listing updated.', 'success'); cancelForm(); loadListings(); setSaving(false); return }
+      await createListing(payload); showToast('Listing created.', 'success')
       cancelForm(); loadListings()
     } catch (e) { showToast(`Failed to save: ${errMsg(e)}`, 'error') }
     setSaving(false)

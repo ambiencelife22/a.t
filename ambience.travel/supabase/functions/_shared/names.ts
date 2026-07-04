@@ -56,7 +56,7 @@ export function resolvePartyName(
 //   ?? selected public label           house × context ("AlSuwaidi Family" /
 //                                       "Alsuwaidi Travel Party")
 //   then BRANCH on whether a person is assigned to the engagement:
-//     person assigned  -> person nickname (else first name)
+//     person assigned  -> person nickname (otherwise first name)
 //     no person        -> house public_name
 //   ?? null
 //
@@ -67,7 +67,7 @@ export function resolvePartyName(
 // house presents as "AlSuwaidi Family" (family trip, person assigned or family
 // label selected) vs "Alsuwaidi Travel Party" (staff delegation, no person).
 //
-// Person tier reads nickname, else first_name — never last name, keeping public
+// Person tier reads nickname, otherwise first_name — never last name, keeping public
 // previews to a personal-but-not-legal-identity name (Reference Guide: privacy
 // first). null means "nothing resolved"; callers fall back with ?? (never ||)
 // per Reference Guide v5 p7. '' means hide (trim to empty -> next tier).
