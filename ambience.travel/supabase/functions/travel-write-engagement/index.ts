@@ -68,6 +68,14 @@ type WriteMode =
   | 'delete_engagement'
   | 'create_supplier'
   | 'reassign_trip'
+  | 'create_link'
+  | 'update_link'
+  | 'delete_link'
+  | 'reorder_links'
+  | 'link_house'
+  | 'unlink_house'
+  | 'set_primary_house'
+  | 'set_label'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -461,6 +469,111 @@ Deno.serve(async (req: Request) => {
         .single()
       if (error) return json({ error: 'Failed to create supplier' }, 500)
       return json({ supplier: data })
+    }
+
+    // ── Guest-label authoring: house linkage + label selection ────────────────
+
+    if (mode === 'link_house') {
+      const { engagement_id, house_id, is_primary } = body as {
+        engagement_id?: string; house_id?: string; is_primary?: boolean
+      }
+      if (!engagement_id || !house_id) {
+        return json({ error: 'engagement_id and house_id are required' }, 400)
+      }
+      const { count } = await serviceClient
+        .from('engagement_houses')
+        .select('id', { count: 'exact', head: true })
+        .eq('engagement_id', engagement_id)
+      const makePrimary = is_primary === true || (count ?? 0) === 0
+      if (makePrimary) {
+        const { error: clearErr } = await serviceClient
+          .from('engagement_houses')
+          .update({ is_primary: false })
+          .eq('engagement_id', engagement_id)
+          .eq('is_primary', true)
+        if (clearErr) {
+          console.error('link_house clear-primary error:', clearErr)
+          return json({ error: 'Failed to clear existing primary house' }, 500)
+        }
+      }
+      const { data, error } = await serviceClient
+        .from('engagement_houses')
+        .insert({ engagement_id, house_id, is_primary: makePrimary, sort_order: count ?? 0 })
+        .select('id, engagement_id, house_id, is_primary, sort_order, created_at, updated_at')
+        .single()
+      if (error) {
+        console.error('link_house error:', error)
+        return json({ error: 'Failed to link house' }, 500)
+      }
+      return json({ engagement_house: data })
+    }
+
+    if (mode === 'unlink_house') {
+      const { id } = body as { id?: string }
+      if (!id) return json({ error: 'id is required' }, 400)
+      const { error } = await serviceClient
+        .from('engagement_houses').delete().eq('id', id)
+      if (error) {
+        console.error('unlink_house error:', error)
+        return json({ error: 'Failed to unlink house' }, 500)
+      }
+      return json({ deleted: true, id })
+    }
+
+    if (mode === 'set_primary_house') {
+      const { id } = body as { id?: string }
+      if (!id) return json({ error: 'id is required' }, 400)
+      const { data: target, error: findErr } = await serviceClient
+        .from('engagement_houses').select('id, engagement_id').eq('id', id).maybeSingle()
+      if (findErr) {
+        console.error('set_primary_house lookup error:', findErr)
+        return json({ error: 'Failed to resolve engagement house' }, 500)
+      }
+      if (!target) return json({ error: 'Engagement house not found' }, 404)
+      const { error: clearErr } = await serviceClient
+        .from('engagement_houses')
+        .update({ is_primary: false })
+        .eq('engagement_id', target.engagement_id)
+        .eq('is_primary', true)
+        .neq('id', id)
+      if (clearErr) {
+        console.error('set_primary_house clear error:', clearErr)
+        return json({ error: 'Failed to clear existing primary' }, 500)
+      }
+      const { error: setErr } = await serviceClient
+        .from('engagement_houses').update({ is_primary: true }).eq('id', id)
+      if (setErr) {
+        console.error('set_primary_house set error:', setErr)
+        return json({ error: 'Failed to set primary house' }, 500)
+      }
+      return json({ id, is_primary: true })
+    }
+
+    if (mode === 'set_label') {
+      const { id, public_label_id, guest_display_name_override } = body as {
+        id?: string
+        public_label_id?: string | null
+        guest_display_name_override?: string | null
+      }
+      if (!id) return json({ error: 'id is required' }, 400)
+      const patch: Record<string, unknown> = {}
+      if (public_label_id !== undefined) patch.public_label_id = public_label_id
+      if (guest_display_name_override !== undefined) {
+        const trimmed = (guest_display_name_override ?? '').trim()
+        patch.guest_display_name_override = trimmed === '' ? null : trimmed
+      }
+      if (Object.keys(patch).length === 0) {
+        return json({ error: 'no label fields provided' }, 400)
+      }
+      const { error } = await serviceClient
+        .from('travel_immerse_engagements').update(patch).eq('id', id)
+      if (error) {
+        console.error('set_label error:', error)
+        const msg = error.message ?? 'Failed to set label'
+        const isGuard = msg.includes('cross-house label leak')
+        return json({ error: msg }, isGuard ? 400 : 500)
+      }
+      return json({ row: await rowById(id) })
     }
 
     // ── Engagement links ──────────────────────────────────────────────────────
