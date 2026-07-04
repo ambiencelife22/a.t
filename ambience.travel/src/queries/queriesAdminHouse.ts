@@ -92,6 +92,19 @@ export interface HousePreference {
   updated_at:  string
 }
 
+export type HouseLabelKey = 'family' | 'principal' | 'delegation' | 'couple' | 'staff'
+
+export interface HouseLabel {
+  id:           string
+  house_id:     string
+  key:          HouseLabelKey
+  display_name: string
+  is_default:   boolean
+  sort_order:   number
+  created_at:   string
+  updated_at:   string
+}
+
 export interface HouseDiningEntry {
   id:              string
   house_id:        string
@@ -278,6 +291,57 @@ export async function deletePerson(id: string): Promise<void> {
     body: { mode: 'delete', id },
   })
   if (error) throw new Error(`Failed to delete person: ${error.message}`)
+}
+
+// ── House public labels (a_house_public_labels) ──────────────────────────────
+// The authored public-identity source for a house. Read direct (mirrors
+// fetchPeopleForHouse); write via the a-write-house-labels EF (sibling of
+// a-write-house-people). is_default flows ONLY through setDefaultLabel — the
+// one-default-per-house partial unique index is enforced EF-side (clear-then-set).
+
+export async function fetchLabelsForHouse(houseId: string): Promise<HouseLabel[]> {
+  const { data, error } = await supabase
+    .from('a_house_public_labels')
+    .select('id, house_id, key, display_name, is_default, sort_order, created_at, updated_at')
+    .eq('house_id', houseId)
+    .order('sort_order', { ascending: true })
+  if (error) throw new Error(`Failed to fetch labels: ${error.message}`)
+  return (data ?? []) as HouseLabel[]
+}
+
+export async function createLabel(houseId: string, key: HouseLabelKey, displayName: string, sortOrder = 0): Promise<void> {
+  const { error } = await supabase.functions.invoke('a-write-house-labels', {
+    body: { mode: 'create', house_id: houseId, key, display_name: displayName, sort_order: sortOrder },
+  })
+  if (error) throw new Error(`Failed to create label: ${error.message}`)
+}
+
+export async function updateLabel(id: string, patch: Partial<Pick<HouseLabel, 'key' | 'display_name' | 'sort_order'>>): Promise<void> {
+  const { error } = await supabase.functions.invoke('a-write-house-labels', {
+    body: { mode: 'update', id, ...patch },
+  })
+  if (error) throw new Error(`Failed to update label: ${error.message}`)
+}
+
+export async function setDefaultLabel(id: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('a-write-house-labels', {
+    body: { mode: 'set_default', id },
+  })
+  if (error) throw new Error(`Failed to set default label: ${error.message}`)
+}
+
+export async function reorderLabels(orderedIds: string[]): Promise<void> {
+  const { error } = await supabase.functions.invoke('a-write-house-labels', {
+    body: { mode: 'reorder', ordered_ids: orderedIds },
+  })
+  if (error) throw new Error(`Failed to reorder labels: ${error.message}`)
+}
+
+export async function deleteLabel(id: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('a-write-house-labels', {
+    body: { mode: 'delete', id },
+  })
+  if (error) throw new Error(`Failed to delete label: ${error.message}`)
 }
 
 export async function fetchProfileForPerson(personId: string): Promise<HousePersonProfile | null> {

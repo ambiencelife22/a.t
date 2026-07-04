@@ -37,6 +37,7 @@ import {
   createDiningEntry, updateDiningEntry, deleteDiningEntry,
   createDestination, updateDestination, deleteDestination,
   createContact, updateContact, deleteContact,
+  fetchLabelsForHouse, createLabel, updateLabel, setDefaultLabel, deleteLabel,
   createPPDPeopleEntry, deletePPDPeopleEntry,
   fetchHouseRoles,
   type House, type HousePerson, type HousePreference,
@@ -45,6 +46,7 @@ import {
   type HouseRole_Registry,
   type PrefCategory, type PrefConfidence, type DiningStatus,
   type DestinationStatus, type DestinationTripType, type ContactType,
+  type HouseLabel, type HouseLabelKey,
 } from '../../queries/queriesAdminHouse'
 import { fetchTripDossierForHouse, type TripDossierData } from '../../queries/queriesAdminTrip'
 import {
@@ -129,6 +131,7 @@ const PREF_KEYS: Record<string, string[]> = {
 const DEST_STATUSES: DestinationStatus[]     = ['visited', 'planned', 'avoided']
 const DEST_TRIP_TYPES: DestinationTripType[] = ['family', 'couple', 'solo', 'business', 'other']
 const CONTACT_TYPES: ContactType[]          = ['pa', 'driver', 'fixer', 'medical', 'security', 'concierge', 'other']
+const LABEL_KEYS: HouseLabelKey[]           = ['family', 'principal', 'delegation', 'couple', 'staff']
 
 // ── AllData ───────────────────────────────────────────────────────────────────
 
@@ -138,6 +141,7 @@ interface AllData {
   dining:       HouseDiningEntry[]
   destinations: HouseDestination[]
   contacts:     HouseContact[]
+  labels:       HouseLabel[]
   ppd:          PPDPeopleEntry[]
   dossier:      TripDossierData
   requests:     TravelRequest[]
@@ -146,13 +150,13 @@ interface AllData {
 
 const EMPTY_DATA: AllData = {
   people: [], preferences: [], dining: [], destinations: [],
-  contacts: [], ppd: [], dossier: { trips: [], partners: {}, house: null }, requests: [],
+  contacts: [], labels: [], ppd: [], dossier: { trips: [], partners: {}, house: null }, requests: [],
   roles: [],
 }
 
 // ── Section type ──────────────────────────────────────────────────────────────
 
-type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'sensitive' | 'notes' | 'trips' | 'requests'
+type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contacts' | 'labels' | 'sensitive' | 'notes' | 'trips' | 'requests'
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
@@ -759,18 +763,19 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   async function loadAll() {
     setLoading(true)
     try {
-      const [people, preferences, dining, destinations, contacts, ppdResponse, dossier, requests, roles] = await Promise.all([
+      const [people, preferences, dining, destinations, contacts, labels, ppdResponse, dossier, requests, roles] = await Promise.all([
         fetchPeopleForHouse(house.id),
         fetchPreferencesForHouse(house.id),
         fetchDiningHistoryForHouse(house.id),
         fetchDestinationsForHouse(house.id),
         fetchContactsForHouse(house.id),
+        fetchLabelsForHouse(house.id),
         fetchPPDForHouse(house.id),
         fetchTripDossierForHouse(house.id),
         fetchRequestsForHouse(house.id),
         fetchHouseRoles(),
       ])
-      setData({ people, preferences, dining, destinations, contacts, ppd: ppdResponse.people, dossier, requests, roles })
+      setData({ people, preferences, dining, destinations, contacts, labels, ppd: ppdResponse.people, dossier, requests, roles })
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to load') }
     setLoading(false)
   }
@@ -832,6 +837,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     { id: 'dining',       label: 'Dining',        count: data.dining.length },
     { id: 'destinations', label: 'Destinations',  count: data.destinations.length },
     { id: 'contacts',     label: 'Contacts',      count: data.contacts.length },
+    { id: 'labels',       label: 'Public Labels', count: data.labels.length },
     { id: 'requests',     label: 'Requests',      count: data.requests.length },
     { id: 'sensitive',    label: 'Personal Data',     count: data.ppd.length },
     { id: 'notes',        label: 'Notes' },
@@ -1682,6 +1688,97 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
           </div>
         ))
       }
+    </div>
+  )
+}
+
+// ── LabelsSection ─────────────────────────────────────────────────────────────
+// Public guest labels for a house (a_house_public_labels). The authored
+// public-identity source projected across the privacy wall. key is the enum
+// (family/principal/delegation/couple/staff) — bounded, no free text. is_default
+// flows only through setDefaultLabel (one-default-per-house index, EF-enforced).
+
+function LabelsSection({ data, houseId, onReload, mobile }: {
+  data: AllData; houseId: string; onReload: () => void; mobile: boolean
+}) {
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [draft, setDraft]   = useState({ key: 'family' as HouseLabelKey, display_name: '' })
+  const { success, error }  = useAdminToast()
+
+  async function handleAdd() {
+    if (!draft.display_name.trim()) return
+    setSaving(true)
+    try {
+      await createLabel(houseId, draft.key, draft.display_name.trim(), data.labels.length)
+      success('Added.')
+      setAdding(false)
+      setDraft({ key: 'family', display_name: '' })
+      await onReload()
+    } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
+    setSaving(false)
+  }
+
+  async function makeDefault(id: string) {
+    try { await setDefaultLabel(id); success('Default set.'); await onReload() }
+    catch (e) { error(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  async function remove(id: string) {
+    if (!window.confirm('Remove this label?')) return
+    try { await deleteLabel(id); success('Removed.'); await onReload() }
+    catch (e) { error(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  function LabelCard({ label }: { label: HouseLabel }) {
+    return (
+      <EntryCard accentColor={label.is_default ? A.gold : undefined}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{label.display_name}</div>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, padding: '1px 6px', border: `1px solid ${A.gold}30`, borderRadius: 4 }}>{label.key}</span>
+              {label.is_default && <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Default</span>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {!label.is_default && (
+              <button onClick={() => makeDefault(label.id)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>
+                Set default
+              </button>
+            )}
+            <button onClick={() => remove(label.id)} style={btnD}>x</button>
+          </div>
+        </div>
+      </EntryCard>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add Label</button>}
+      </div>
+      {adding && (
+        <AddFormShell>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '2fr 1fr', gap: 10 }}>
+            <Field label='Display Name'><input style={inputStyle} placeholder='e.g. AlSuwaidi Family...' value={draft.display_name} onChange={e => setDraft(d => ({ ...d, display_name: e.target.value }))} autoFocus /></Field>
+            <Field label='Context'>
+              <select style={inputStyle} value={draft.key} onChange={e => setDraft(d => ({ ...d, key: e.target.value as HouseLabelKey }))}>
+                {LABEL_KEYS.map(k => <option key={k} value={k}>{capitalize(k)}</option>)}
+              </select>
+            </Field>
+          </div>
+          <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
+        </AddFormShell>
+      )}
+      {data.labels.length === 0
+        ? <AdminEmptyState message='No public labels authored yet. The first added, or the one set default, becomes the fallback name projected to guests.' />
+        : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {data.labels.map(l => <LabelCard key={l.id} label={l} />)}
+          </div>
+        )}
     </div>
   )
 }
