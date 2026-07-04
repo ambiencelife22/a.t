@@ -32,7 +32,9 @@
 
 import { useEffect, useState } from 'react'
 import {
-  fetchEngagementDetail,
+  fetchEngagementDetail, searchHouses,
+  linkHouse, unlinkHouse, setPrimaryHouse, setLabel,
+  type EngagementHouseLink, type CandidateLabel, type HouseOption,
   fetchChildCounts,
   fetchEngagementStatuses,
   fetchItineraryStatuses,
@@ -257,6 +259,52 @@ function PersonTypeahead({
             >
               {displayName(p)}
               {p.last_name && <span style={{ color: A.faint, marginLeft: 6 }}>{p.last_name}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function HouseTypeahead({ onPick }: { onPick: (houseId: string) => void }) {
+  const [query, setQuery]     = useState('')
+  const [options, setOptions] = useState<HouseOption[]>([])
+  const [open, setOpen]       = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const t = setTimeout(() => {
+      searchHouses(query).then(setOptions).catch(() => setOptions([]))
+    }, 150)
+    return () => clearTimeout(t)
+  }, [query, open])
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        style={inputStyle}
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        onFocus={() => setOpen(true)}
+        placeholder='Search houses to link…'
+      />
+      {open && options.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          background: A.bgCard, border: `1px solid ${A.borderGold}`, borderRadius: 10,
+          marginTop: 4, maxHeight: 280, overflowY: 'auto',
+        }}>
+          {options.map(h => (
+            <div
+              key={h.id}
+              onClick={() => { onPick(h.id); setOpen(false); setQuery('') }}
+              style={{
+                padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                color: A.text, fontFamily: A.font,
+                borderBottom: `1px solid ${A.border}`,
+              }}
+            >
+              {h.display_name}
+              {h.public_name && <span style={{ color: A.faint, marginLeft: 6 }}>{h.public_name}</span>}
             </div>
           ))}
         </div>
@@ -553,6 +601,8 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
   const [showLegacy, setShowLegacy]                = useState(false)
   const [deleteOpen, setDeleteOpen]                = useState(false)
   const [archiving, setArchiving]                  = useState(false)
+  const [houses, setHouses]                        = useState<EngagementHouseLink[]>([])
+  const [candidateLabels, setCandidateLabels]      = useState<CandidateLabel[]>([])
   const { toast, showToast }                       = useToast()
 
   async function load() {
@@ -570,14 +620,16 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         setLoading(false)
         return
       }
-      setRow(detail)
-      setDraft(detail)
+      setRow(detail.row)
+      setDraft(detail.row)
+      setHouses(detail.houses)
+      setCandidateLabels(detail.candidate_labels)
       setEngagementStatuses(eng)
       setItineraryStatuses(it)
       setWelcomeCanon(canon)
       setEngagementTypes(types)
 
-      const c = await fetchChildCounts(detail.id)
+      const c = await fetchChildCounts(detail.row.id)
       setCounts(c)
     } catch (e: any) {
       showToast(`Failed to load: ${e.message ?? 'unknown error'}`, 'error')
@@ -829,7 +881,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           </div>
         )}
       </Section>
-
+      
       {/* Linkage */}
       <Section title='Linkage'>
         <Field label='Person'>
@@ -837,6 +889,94 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </Field>
         <Field label='Trip (canonical)'>
           <TripTypeahead value={draft.trip_id} onChange={v => patch('trip_id', v)} />
+        </Field>
+      </Section>
+
+      {/* Guest Label — Step 11 Part B. The public guest name is resolved from
+          this engagement's linked houses + selected label + override, projected
+          across the privacy wall by resolve_and_project_guest_label. House must
+          be linked BEFORE a label can be selected (the cross-house guard); the
+          label select is scoped to linked houses' labels and disabled until a
+          house is linked, so an invalid choice is structurally impossible. */}
+      <Section title='Guest Label'>
+        <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
+          The public guest name. Link a house, then select one of its labels — or set an override. Absent authorship shows no name (blank-until-authored), never a raw identity.
+        </div>
+
+        <Field label='Linked Houses'>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {houses.length === 0 && (
+              <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
+                No houses linked yet. Link one to enable label selection.
+              </div>
+            )}
+            {houses.map(h => (
+              <div key={h.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                padding: '8px 12px', borderRadius: 10,
+                background: A.bgInput, border: `1px solid ${h.is_primary ? A.borderGold : A.border}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, color: A.text, fontFamily: A.font }}>
+                    {h.a_houses?.display_name ?? h.house_id}
+                  </span>
+                  {h.is_primary && <span style={{ fontSize: 9, fontWeight: 700, color: A.gold, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Primary</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {!h.is_primary && (
+                    <button
+                      onClick={async () => { await setPrimaryHouse(h.id); await load() }}
+                      style={{ ...btnGhost, fontSize: 10, padding: '3px 8px' }}
+                    >
+                      Set primary
+                    </button>
+                  )}
+                  <button
+                    onClick={async () => { await unlinkHouse(h.id); await load() }}
+                    style={{ ...btnDanger, fontSize: 10, padding: '3px 8px' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+            <HouseTypeahead onPick={async houseId => { await linkHouse(row.id, houseId); await load() }} />
+          </div>
+        </Field>
+
+        <Field label='Selected Label'>
+          <select
+            style={{ ...inputStyle, opacity: houses.length === 0 ? 0.5 : 1 }}
+            value={draft.public_label_id ?? ''}
+            disabled={houses.length === 0}
+            onChange={async e => {
+              const val = e.target.value || null
+              patch('public_label_id', val)
+              try { await setLabel(row.id, val, draft.guest_display_name_override); await load() }
+              catch (err: any) { showToast(err.message ?? 'Failed to set label', 'error'); await load() }
+            }}
+          >
+            <option value=''>— none (fall through to house default / override) —</option>
+            {candidateLabels.map(l => (
+              <option key={l.id} value={l.id}>
+                {l.display_name} · {l.key}{l.is_default ? ' (house default)' : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label='Name Override'>
+          <input
+            style={inputStyle}
+            value={draft.guest_display_name_override ?? ''}
+            placeholder='e.g. AMF & KMF Families — overrides the label above when set'
+            onChange={e => patch('guest_display_name_override', e.target.value || null)}
+            onBlur={async e => {
+              const val = e.target.value.trim() || null
+              try { await setLabel(row.id, draft.public_label_id, val); await load() }
+              catch (err: any) { showToast(err.message ?? 'Failed to set override', 'error'); await load() }
+            }}
+          />
         </Field>
       </Section>
 

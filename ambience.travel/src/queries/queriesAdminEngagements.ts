@@ -107,6 +107,9 @@ export type EngagementDetailRow = {
   person_id:           string | null
   trip_id:             string | null
   engagement_type_id:  string | null
+  // Guest label (Step 11)
+  public_label_id:              string | null
+  guest_display_name_override:  string | null
 
   // Status
   engagement_status_id: string
@@ -293,8 +296,58 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
 
 // ── Detail ────────────────────────────────────────────────────────────────────
 
-export async function fetchEngagementDetail(urlId: string): Promise<EngagementDetailRow | null> {
-  const { row } = await invokeRead<{ row: EngagementDetailRow | null }>('detail', { url_id: urlId })
+export type HouseOption = { id: string; display_name: string; public_name: string | null }
+
+export type EngagementHouseLink = {
+  id: string; house_id: string; is_primary: boolean; sort_order: number
+  a_houses: { display_name: string; public_name: string | null } | null
+}
+
+export type CandidateLabel = {
+  id: string; house_id: string; key: string; display_name: string; is_default: boolean
+}
+
+export type EngagementDetail = {
+  row: EngagementDetailRow
+  houses: EngagementHouseLink[]
+  candidate_labels: CandidateLabel[]
+}
+
+export async function fetchEngagementDetail(urlId: string): Promise<EngagementDetail | null> {
+  const { row, houses, candidate_labels } = await invokeRead<{
+    row: EngagementDetailRow | null
+    houses: EngagementHouseLink[]
+    candidate_labels: CandidateLabel[]
+  }>('detail', { url_id: urlId })
+  if (!row) return null
+  return { row, houses: houses ?? [], candidate_labels: candidate_labels ?? [] }
+}
+
+export async function searchHouses(query: string): Promise<HouseOption[]> {
+  const { rows } = await invokeRead<{ rows: HouseOption[] }>('houses', { query })
+  return rows ?? []
+}
+
+export async function linkHouse(engagementId: string, houseId: string): Promise<void> {
+  await invokeWrite('link_house', { engagement_id: engagementId, house_id: houseId })
+}
+
+export async function unlinkHouse(id: string): Promise<void> {
+  await invokeWrite('unlink_house', { id })
+}
+
+export async function setPrimaryHouse(id: string): Promise<void> {
+  await invokeWrite('set_primary_house', { id })
+}
+
+export async function setLabel(
+  id: string,
+  publicLabelId: string | null,
+  override: string | null,
+): Promise<EngagementDetailRow> {
+  const { row } = await invokeWrite<{ row: EngagementDetailRow }>('set_label', {
+    id, public_label_id: publicLabelId, guest_display_name_override: override,
+  })
   return row
 }
 

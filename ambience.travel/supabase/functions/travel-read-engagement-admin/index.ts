@@ -45,6 +45,7 @@ type ReadMode =
   | 'engagement_types'
   | 'suppliers'
   | 'people'
+  | 'houses'
   | 'trips'
   | 'person_by_id'
   | 'trip_by_id'
@@ -166,19 +167,44 @@ Deno.serve(async (req: Request) => {
     if (mode === 'detail') {
       const url_id = body?.url_id as string | undefined
       if (!url_id) return json({ error: 'url_id is required' }, 400)
-
       const { data, error } = await serviceClient
         .from('travel_immerse_engagements')
         .select('*')
         .eq('url_id', url_id)
         .maybeSingle()
-
       if (error) {
         console.error('detail error:', error)
         return json({ error: 'Failed to fetch engagement detail' }, 500)
       }
+      if (!data) return json({ row: null, houses: [], candidate_labels: [] })
 
-      return json({ row: data ?? null })
+      // Guest-label authoring inputs (Step 11 Part B):
+      //  - houses: the engagement's linked houses (linker + primary flag).
+      //  - candidate_labels: labels belonging ONLY to those linked houses —
+      //    the sole valid set_label choices. Scoping the selector to these
+      //    makes the cross-house guard's constraint visible in the UI: a
+      //    designer physically cannot pick a label the guard would reject.
+      const { data: houses } = await serviceClient
+        .from('engagement_houses')
+        .select('id, house_id, is_primary, sort_order, a_houses(display_name, public_name)')
+        .eq('engagement_id', data.id)
+        .order('is_primary', { ascending: false })
+        .order('sort_order', { ascending: true })
+
+      const houseIds = (houses ?? []).map((h: { house_id: string }) => h.house_id)
+      const candidateLabelsRes = houseIds.length > 0
+        ? await serviceClient
+            .from('a_house_public_labels')
+            .select('id, house_id, key, display_name, is_default')
+            .in('house_id', houseIds)
+            .order('sort_order', { ascending: true })
+        : { data: [] as unknown[] }
+
+      return json({
+        row:              data,
+        houses:           houses ?? [],
+        candidate_labels: candidateLabelsRes.data ?? [],
+      })
     }
 
     if (mode === 'child_counts') {
@@ -254,6 +280,27 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to fetch people' }, 500)
       }
 
+      return json({ rows: data ?? [] })
+    }
+    
+    if (mode === 'houses') {
+      const query = (body?.query as string | undefined) ?? ''
+      let q = serviceClient
+        .from('a_houses')
+        .select('id, display_name, public_name')
+        .order('display_name', { ascending: true })
+        .limit(20)
+      const trimmed = query.trim()
+      if (trimmed) {
+        q = q.or(
+          `display_name.ilike.%${trimmed}%,public_name.ilike.%${trimmed}%`,
+        )
+      }
+      const { data, error } = await q
+      if (error) {
+        console.error('houses error:', error)
+        return json({ error: 'Failed to fetch houses' }, 500)
+      }
       return json({ rows: data ?? [] })
     }
 
