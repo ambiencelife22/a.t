@@ -140,7 +140,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
 
   const [displayRes, stopsRes, destRowsRes, pricingRes, welcomeRes] = await Promise.all([
     db.from('travel_immerse_trip_display')
-      .select('first_name, nickname')
+      .select('first_name, nickname, house_display_name')
       .eq('trip_id', engagementId)
       .maybeSingle(),
     db.from('travel_immerse_route_stops')
@@ -191,9 +191,14 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
     }
   }
 
+  const displayData = displayRes.data ?? null
+  const guestDisplayName =
+    (displayData?.house_display_name as string | null | undefined) ?? null
+
   return {
     engagementRow:  engRow,
-    display:        displayRes.data ?? null,
+    display:        displayData,
+    guestDisplayName,
     routeStops:     stopsRes.data ?? [],
     destinationRows: destRows,
     templateHeroMap,
