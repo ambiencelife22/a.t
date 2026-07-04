@@ -359,7 +359,8 @@ export function ProgrammesTab() {
       if (editing) {
         await updateProgramme(editing.id, payload)
         showToast('Programme updated.', 'success')
-      } else {
+      }
+      if (!editing) {
         await createProgramme(payload)
         showToast('Programme created.', 'success')
       }

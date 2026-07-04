@@ -280,7 +280,9 @@ Deno.serve(async (req: Request) => {
           console.error('upsert_programme_section update error:', error)
           return json({ error: error.message }, 500)
         }
-      } else {
+      }
+
+      if (!existing_id) {
         const { error } = await db
           .from('travel_programme_sections')
           .insert({ programme_id, section_id, content })
