@@ -27,7 +27,7 @@
 // Prior: S44 — initial ship.
 
 import { supabase } from '../lib/supabase'
-import { computeEngagementStage, type EngagementStage } from '../types/typesImmerse'
+import { computeEngagementStage, type EngagementStage, type BookingInvoice } from '../types/typesImmerse'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -312,6 +312,7 @@ export type TripBooking = {
   _hotel_name:      string | null
   _hotel_image_src: string | null
   _rooms:           BookingRoom[]
+  _invoices:        BookingInvoice[]
 }
 
 export type DossierTrip = {
@@ -339,7 +340,7 @@ export type TripDossierData = {
 // ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
 type TripRow     = { id: string; trip_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
-type BookingRow  = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>
+type BookingRow  = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
 type HotelEntry  = { name: string; hero_image_src: string | null }
 type BriefRow    = TripBrief
 type RoomRow     = BookingRoom
@@ -419,6 +420,7 @@ export async function fetchTripDossierForHouse(houseId: string): Promise<TripDos
       _hotel_name:      hotel?.name ?? null,
       _hotel_image_src: hotel?.hero_image_src ?? null,
       _rooms:           roomsByBooking.get(b.id) ?? [],
+      _invoices:        [],
     })
   }
 

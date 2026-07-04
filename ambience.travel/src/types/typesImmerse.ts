@@ -747,6 +747,17 @@ export type ImmerseTripAuxBooking = {
 
 // Room: client's-bill fields KEPT (rate/tax_pct/total/extra_person_fee). No margin
 // exists at room level, so nothing stripped here beyond what admin already lacks.
+export type BookingInvoice = {
+  id:             string
+  booking_id:     string
+  invoice_number: string
+  invoice_date:   string | null
+  amount:         number | null
+  currency:       string
+  description:    string | null
+  sort_order:     number
+}
+
 export type ImmerseBookingRoom = {
   id:                  string
   booking_id:          string
@@ -826,6 +837,7 @@ export type ImmerseTripBooking = {
   _hotel_name:      string | null
   _hotel_image_src: string | null
   _rooms:           ImmerseBookingRoom[]
+  _invoices:        BookingInvoice[]
 }
 
 export type ImmerseDossierTrip = {

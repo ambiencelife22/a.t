@@ -88,6 +88,20 @@ Deno.serve(async (req: Request) => {
           .eq('is_active', true)
           .order('sort_order', { ascending: true })
       : { data: [], error: null }
+    const bookingIds = bookings.map((b: any) => b.id)
+    const invoicesResult = bookingIds.length > 0
+      ? await db
+          .from('travel_booking_invoices')
+          .select('id, booking_id, invoice_number, invoice_date, amount, currency, description, sort_order')
+          .in('booking_id', bookingIds)
+          .order('sort_order', { ascending: true })
+      : { data: [], error: null }
+    const invoicesByBooking: Record<string, any[]> = {}
+    for (const inv of invoicesResult.data ?? []) {
+      const bid = inv.booking_id as string
+      if (!invoicesByBooking[bid]) invoicesByBooking[bid] = []
+      invoicesByBooking[bid].push(inv)
+    }
 
     // shared bookings enrich (rooms + resolved guest names + canon/hotel maps)
     const partyLabel = (brief?.prepared_for as string | null) ?? null
@@ -153,6 +167,7 @@ Deno.serve(async (req: Request) => {
         _hotel_name:      hotel?.name ?? null,
         _hotel_image_src: hotel?.hero_image_src ?? null,
         _rooms:           enrichedRooms,
+        _invoices:        invoicesByBooking[b.id] ?? [],
         engagement_id:    null, total_rate: null, currency: null, rate_type: null,
         price:            null, deposit_amount: null, deposit_due_date: null,
         // S43 Add 2: deposit_paid_at + balance_paid_at passed through from DB (not nulled)

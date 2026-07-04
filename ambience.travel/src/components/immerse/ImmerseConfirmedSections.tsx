@@ -21,6 +21,8 @@
 
 import { useEffect, useState } from 'react'
 import type { TripClientData, TripContact } from '../../types/typesImmerseClient'
+import type { BookingInvoice } from '../../types/typesImmerse'
+import { moneyDec } from '../../utils/utilsCurrency'
 import type {
   ImmerseTripAuxBooking as TripAuxBooking,
   ImmerseTripDay as TripDay,
@@ -244,6 +246,29 @@ const auxSections = groupAuxBySection(auxBookings)
                         <div style={{ marginTop: 8, padding: '10px 14px', background: CARD_BG, borderRadius: 6 }}>
                           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Cancellation Policy</div>
                           <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
+                        </div>
+                      )}
+                      {(booking._invoices ?? []).length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 6 }}>Invoices</div>
+                          {(booking._invoices as BookingInvoice[]).map(inv => (
+                            <div key={inv.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, paddingTop: 5, paddingBottom: 5, borderTop: `0.5px solid ${RULE}` }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: INK }}>
+                                  {inv.description ?? `Invoice ${inv.invoice_number}`}
+                                </span>
+                                {inv.invoice_date && (
+                                  <span style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginLeft: 8 }}>
+                                    {formatDate(inv.invoice_date)}
+                                  </span>
+                                )}
+                                <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: FAINT, marginLeft: 8 }}>#{inv.invoice_number}</span>
+                              </div>
+                              <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, flexShrink: 0 }}>
+                                {moneyDec(inv.amount ?? 0, inv.currency)}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                       {booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0 && (
