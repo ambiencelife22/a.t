@@ -41,6 +41,7 @@ export interface DailyProgrammeData {
   house:         HouseProfile | null
   days:          TripDay[]
   entriesByDate: Record<string, TimelineItem[]>
+  links:         { id: string; label: string; url: string; link_type: string; is_highlighted: boolean }[]
 }
 
 // ── Internal render row ─────────────────────────────────────────────────────────
@@ -564,6 +565,26 @@ export async function exportDailyProgrammePdf(
     for (const line of lines) {
       if (notesY + 5 > FOOTER_GUARD) notesY = addCreamPage(doc)
       doc.text(line, P.margin, notesY); notesY += 5
+    }
+  }
+
+  if (data.links && data.links.length > 0) {
+    let linksY = addCreamPage(doc)
+    drawRule(doc, P.margin, linksY, CW, T.rule, 0.3); linksY += 7
+    sans(doc, 'bold', 7)
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.text('LINKS', P.margin, linksY, { charSpace: 0.8 }); linksY += 9
+    for (const link of data.links) {
+      if (linksY + 13 > FOOTER_GUARD) linksY = addCreamPage(doc)
+      doc.setFillColor(link.is_highlighted ? T.cardBg[0] : T.white[0], link.is_highlighted ? T.cardBg[1] : T.white[1], link.is_highlighted ? T.cardBg[2] : T.white[2])
+      doc.setDrawColor(link.is_highlighted ? T.gold[0] : T.rule[0], link.is_highlighted ? T.gold[1] : T.rule[1], link.is_highlighted ? T.gold[2] : T.rule[2])
+      doc.setLineWidth(link.is_highlighted ? 0.5 : 0.3)
+      doc.roundedRect(P.margin, linksY, CW, 13, 2, 2, 'FD')
+      serif(doc, 'normal', 10)
+      doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+      doc.text(link.label, P.margin + 8, linksY + 8.5)
+      try { doc.link(P.margin, linksY, CW, 13, { url: link.url }) } catch {}
+      linksY += 16
     }
   }
 

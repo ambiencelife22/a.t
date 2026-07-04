@@ -54,6 +54,7 @@ export interface TripBriefPdfData {
   destinationName: string
   heroImageData:   string | null
   auxBookings:     TripAuxBooking[]
+  links:           { id: string; label: string; url: string; link_type: string; is_highlighted: boolean }[]
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -433,7 +434,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Links ─────────────────────────────────────────────────────────────────
 
-  const links = (d.brief?.links as { label: string; url: string }[] | null) ?? []
+  const links = d.links ?? []
   if (links.length > 0) {
     y = drawSectionHeader(doc, 'Links', y)
     for (const link of links) {

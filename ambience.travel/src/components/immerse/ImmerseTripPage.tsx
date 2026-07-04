@@ -433,7 +433,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     } catch {}
                   }
                   if (activeTab === 'brief') {
-                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
+                    handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, links: clientData.links ?? [] }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
                     return
                   }
                   handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
@@ -459,7 +459,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
                     entriesByDate[e.entry_date].push(e)
                   }
-                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate })
+                  handleDownloadProgramme({ trip, brief, house, days, entriesByDate, links: clientData.links ?? [] })
                 }}
                 style={{
                   fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',

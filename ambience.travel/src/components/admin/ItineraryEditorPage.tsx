@@ -639,7 +639,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           <option value='unbranded'>Unbranded</option>
         </select>
         <button
-          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days: timelineDays ?? days, entriesByDate }, exportBranding)}
+          onClick={() => handleDownloadProgramme({ trip, brief: trip.brief ?? null, house, days: timelineDays ?? days, entriesByDate, links: [] }, exportBranding)}
           disabled={!pdfReady || pdfDownloading || days.length === 0}
           style={{
             ...btnBase,
