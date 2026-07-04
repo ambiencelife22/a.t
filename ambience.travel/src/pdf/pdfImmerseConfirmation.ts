@@ -90,6 +90,7 @@ function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
     + (booking.party_composition ? 5 : 0)
     + (hasException ? 6 : 0)
     + (booking.cancellation_policy ? (doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
+    + ((booking._invoices ?? []).length > 0 ? (booking._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]).length * 12 + 8 : 0)
     + (booking.inclusions_override ? (booking.inclusions_override as {heading:string;bullets:string[]}[]).reduce((acc, g) => acc + 6 + g.bullets.length * 4.5, 0) : 0)
     + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
     + HOTEL_PADV
@@ -175,6 +176,20 @@ async function drawHotelHeader(doc: any, booking: TripBooking, y: number, m: Hot
     const cpLines = doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2)
     for (const line of cpLines) { doc.text(line, tx, ty); ty += 4 }
     ty += 2
+  }
+  if ((booking._invoices ?? []).length > 0) {
+    ty += 2
+    sans(doc, 'bold', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text('INVOICES', tx, ty, { charSpace: 0.3 }); ty += 5
+    for (const inv of booking._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]) {
+      sans(doc, 'normal', 7.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+      const label = inv.description ?? `Invoice ${inv.invoice_number}`
+      doc.text(label, tx, ty)
+      const amtStr = inv.amount != null ? `${inv.currency} ${Math.abs(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
+      if (amtStr) { sans(doc, 'normal', 7.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2]); doc.text(amtStr, tx + contentW - HOTEL_PADH * 2, ty, { align: 'right' }) }
+      if (inv.invoice_date) { sans(doc, 'normal', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(inv.invoice_date, tx, ty + 4) }
+      ty += 10
+    }
   }
 
   ty += 4

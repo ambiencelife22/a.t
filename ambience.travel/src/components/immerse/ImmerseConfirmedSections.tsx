@@ -1230,6 +1230,25 @@ export function TripBriefTab({ clientData }: {
                       <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{h.cancellation_policy}</div>
                     </div>
                   )}
+                  {(h._invoices ?? []).length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Invoices</div>
+                      {(h._invoices as BookingInvoice[]).map(inv => (
+                        <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 5, paddingBottom: 5, borderTop: `0.5px solid ${RULE}` }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: INK }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
+                            <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 1 }}>
+                              {inv.invoice_date ? formatDate(inv.invoice_date) : ''}
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: FAINT, marginLeft: 8 }}>#{inv.invoice_number}</span>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, flexShrink: 0 }}>
+                            {moneyDec(inv.amount ?? 0, inv.currency)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {h.inclusions_override && (h.inclusions_override as {heading:string;bullets:string[]}[]).length > 0 && (
                     <div style={{ marginTop: 6 }}>
                       {(h.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (

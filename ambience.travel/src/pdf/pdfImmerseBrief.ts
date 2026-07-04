@@ -273,6 +273,22 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
         for (const line of cpLines) { doc.text(line, P.margin + LABEL_W, y); y += 4 }
         y += 4
       }
+      if ((h._invoices ?? []).length > 0) {
+        y = checkOverflow(doc, y, 12)
+        sans(doc, 'bold', 6.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+        doc.text('INVOICES', P.margin + LABEL_W, y, { charSpace: 0.3 }); y += 5
+        for (const inv of h._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]) {
+          y = checkOverflow(doc, y, 10)
+          sans(doc, 'normal', 7.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+          const label = inv.description ?? `Invoice ${inv.invoice_number}`
+          doc.text(label, P.margin + LABEL_W, y)
+          const amtStr = inv.amount != null ? `${inv.currency} ${Math.abs(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
+          if (amtStr) doc.text(amtStr, P.margin + CW, y, { align: 'right' })
+          if (inv.invoice_date) { sans(doc, 'normal', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(inv.invoice_date, P.margin + LABEL_W, y + 4) }
+          y += 10
+        }
+        y += 2
+      }
     }
     y += 10
   }
