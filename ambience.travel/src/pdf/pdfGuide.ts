@@ -584,9 +584,9 @@ function groupDiningVenuesForPdf(venues: DiningVenue[]): DiningGroups {
     }
     if (v.is_supplementary) {
       supplementary.push(v)
-    } else {
-      primary.push(v)
+      continue
     }
+    primary.push(v)
   }
 
   const byName = (a: DiningVenue, b: DiningVenue) => a.name.localeCompare(b.name)
@@ -693,7 +693,8 @@ async function renderCardsSection(ctx: RenderCtx, venues: any[]) {
 
   if (variant === 'dining') {
     y = await renderDiningGroupedCards(ctx, venues as DiningVenue[], y)
-  } else {
+  }
+  if (variant !== 'dining') {
     y = await renderNonDiningCards(ctx, venues, y)
   }
 
