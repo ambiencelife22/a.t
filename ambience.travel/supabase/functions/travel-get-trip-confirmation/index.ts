@@ -89,6 +89,7 @@ Deno.serve(async (req: Request) => {
           .select('id, link_type, label, url, sort_order, is_highlighted, travel_engagement_link_content(title, body, kicker, image_src, image_alt)')
           .eq('engagement_id', confirmedEngagementId)
           .eq('is_active', true)
+          .eq('show_on_confirmation', true)
           .order('sort_order', { ascending: true })
       : { data: [], error: null }
     const bookingIds = bookings.map((b: any) => b.id)

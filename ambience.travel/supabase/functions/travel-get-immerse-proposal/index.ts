@@ -138,7 +138,7 @@ const ENGAGEMENT_COLS = `
 async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string, unknown>) {
   const engagementId = engRow.id as string
 
-  const [displayRes, stopsRes, destRowsRes, pricingRes, welcomeRes] = await Promise.all([
+  const [displayRes, stopsRes, destRowsRes, pricingRes, welcomeRes, linksRes] = await Promise.all([
     db.from('travel_immerse_trip_display')
       .select('house_display_name')
       .eq('trip_id', engagementId)
@@ -168,6 +168,12 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .select('eyebrow, title, body, signoff_body, signoff_name')
       .limit(1)
       .maybeSingle(),
+    db.from('travel_engagement_links')
+      .select('id, link_type, label, url, sort_order, is_highlighted')
+      .eq('engagement_id', engagementId)
+      .eq('is_active', true)
+      .eq('show_on_proposal', true)
+      .order('sort_order', { ascending: true }),
   ])
 
   // Hero image fallbacks for destination rows — fetch template rows
@@ -204,6 +210,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
     templateHeroMap,
     tripPricingRows: pricingRes.data ?? [],
     welcomeLetter:  welcomeRes.data ?? null,
+    links:          linksRes.data ?? [],
   }
 }
 
