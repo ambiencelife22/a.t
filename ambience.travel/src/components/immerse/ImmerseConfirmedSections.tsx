@@ -238,8 +238,29 @@ const auxSections = groupAuxBySection(auxBookings)
                       {dateRange && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>{dateRange}</div>}
                       {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
                       {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
-                      {booking.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-in ${fmtTime(booking.start_time)}`}</div>}
+                      {booking.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-In: ${fmtTime(booking.start_time)}`}</div>}
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
+                      {booking.cancellation_policy && (
+                        <div style={{ marginTop: 8, padding: '10px 14px', background: CARD_BG, borderRadius: 6 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Cancellation Policy</div>
+                          <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
+                        </div>
+                      )}
+                      {booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          {(booking.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
+                            <div key={gi} style={{ marginTop: gi > 0 ? 8 : 0 }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 4 }}>{group.heading}</div>
+                              {group.bullets.map((b, bi) => (
+                                <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.6 }}>
+                                  <span style={{ color: GOLD, flexShrink: 0 }}>·</span>
+                                  <span>{b}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div style={{ marginTop: 12 }}>
                       {booking.payment_exception && (
@@ -292,7 +313,7 @@ const auxSections = groupAuxBySection(auxBookings)
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {room.room_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{room.room_name}</div>}
                             {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{guests}</div>}
-                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-in ${fmtTime(room.check_in_time)}`}</div>}
+                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                           </div>
                           {room.confirmation_number && (
                             <div style={{
@@ -734,7 +755,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>{item.title}</div>
                               {item.checkInNote && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
-                              {item.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-in ${fmtTime(item.start_time)}`}</div>}
+                              {item.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-In: ${fmtTime(item.start_time)}`}</div>}
                             </div>
                             {bookedByLabel(item.booked_by) && (
                               <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
@@ -754,7 +775,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {rd.roomName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</div>}
                                   {rd.guestLine && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</div>}
-                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-in ${fmtTime(room.check_in_time)}`}</div>}
+                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                                   {room.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>
                                 {room.confirmation_number && (
@@ -1182,6 +1203,27 @@ export function TripBriefTab({ clientData }: {
                   </div>
                   {h.nights && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2 }}>{`${h.nights} nights`}</div>}
                   {h.check_in_note && <div style={{ fontSize: 11, color: GOLD, fontFamily: SANS, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
+                  {h.cancellation_policy && (
+                    <div style={{ marginTop: 6, padding: '8px 12px', background: CARD_BG, borderRadius: 6 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 3 }}>Cancellation Policy</div>
+                      <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{h.cancellation_policy}</div>
+                    </div>
+                  )}
+                  {h.inclusions_override && (h.inclusions_override as {heading:string;bullets:string[]}[]).length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      {(h.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
+                        <div key={gi} style={{ marginTop: gi > 0 ? 6 : 0 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 3 }}>{group.heading}</div>
+                          {group.bullets.map((b, bi) => (
+                            <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.6 }}>
+                              <span style={{ color: GOLD, flexShrink: 0 }}>·</span>
+                              <span>{b}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {categories.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {categories.map((c, i) => (

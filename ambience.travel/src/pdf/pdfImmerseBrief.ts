@@ -156,11 +156,13 @@ function drawDataRow(doc: any, o: DataRowOpts, y: number): number {
       doc.text(o.sub, nameX, ty + 2)
       const sw = doc.getTextWidth(o.sub)
       try { doc.link(nameX, ty - 1, sw, 5, { url: o.subIsLink }) } catch {}
-    } else {
+      ty += 6
+    }
+    if (!o.subIsLink) {
       doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
       doc.text(o.sub, nameX, ty + 2)
+      ty += 6
     }
-    ty += 6
   }
   if (o.cancelled && o.cancelNote) {
     sans(doc, 'normal', 7)
@@ -169,7 +171,9 @@ function drawDataRow(doc: any, o: DataRowOpts, y: number): number {
   }
   if (isOwnArrangements(o.bookedByRaw)) {
     drawOwnArrangementsChip(doc, nameX, ty - 1.4); ty += 6.4
-  } else if (o.bookedBy) {
+    return ty - y + 10
+  }
+  if (o.bookedBy) {
     sans(doc, 'italic', 7)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(o.bookedBy, nameX, ty + 2); ty += 5.5
@@ -245,6 +249,30 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
         bookedBy:    bookedByLabel(h.booked_by),
         bookedByRaw: h.booked_by,
       }, y)
+      if (h.inclusions_override && (h.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) {
+        for (const group of h.inclusions_override as {heading:string;bullets:string[]}[]) {
+          y = checkOverflow(doc, y, 10)
+          sans(doc, 'bold', 6.5); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+          doc.text(group.heading.toUpperCase(), P.margin + LABEL_W, y, { charSpace: 0.3 }); y += 4.5
+          for (const bullet of group.bullets) {
+            y = checkOverflow(doc, y, 6)
+            sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+            doc.text('\u00b7', P.margin + LABEL_W, y)
+            const bLines = doc.splitTextToSize(bullet, CW - LABEL_W - 5)
+            for (const bl of bLines) { doc.text(bl, P.margin + LABEL_W + 4, y); y += 4 }
+          }
+          y += 2
+        }
+      }
+      if (h.cancellation_policy) {
+        y = checkOverflow(doc, y, 12)
+        sans(doc, 'bold', 6.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+        doc.text('CANCELLATION POLICY', P.margin + LABEL_W, y, { charSpace: 0.3 }); y += 4
+        sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+        const cpLines = doc.splitTextToSize(h.cancellation_policy, CW - LABEL_W)
+        for (const line of cpLines) { doc.text(line, P.margin + LABEL_W, y); y += 4 }
+        y += 4
+      }
     }
     y += 10
   }

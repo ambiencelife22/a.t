@@ -89,6 +89,8 @@ function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
     + (booking.start_time ? 5 : 0)
     + (booking.party_composition ? 5 : 0)
     + (hasException ? 6 : 0)
+    + (booking.cancellation_policy ? (doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
+    + (booking.inclusions_override ? (booking.inclusions_override as {heading:string;bullets:string[]}[]).reduce((acc, g) => acc + 6 + g.bullets.length * 4.5, 0) : 0)
     + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
     + HOTEL_PADV
   const headerH = Math.max(36, headerContentH, HOTEL_IMG_H + HOTEL_PADV * 2)
@@ -149,6 +151,31 @@ async function drawHotelHeader(doc: any, booking: TripBooking, y: number, m: Hot
   if (booking.check_out_note) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.check_out_note, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
   if (booking.start_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Check-in ${fmtTime(booking.start_time)}`, tx, ty); ty += 5 }
   if (booking.party_composition) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text((doc.splitTextToSize(booking.party_composition, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 5 }
+
+  if (booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) {
+    ty += 2
+    for (const group of booking.inclusions_override as {heading:string;bullets:string[]}[]) {
+      sans(doc, 'bold', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+      doc.text(group.heading.toUpperCase(), tx, ty, { charSpace: 0.3 }); ty += 4.5
+      for (const bullet of group.bullets) {
+        sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+        doc.text('\u00b7', tx, ty)
+        const bLines = doc.splitTextToSize(bullet, contentW - HOTEL_PADH * 2 - 5)
+        for (const bl of bLines) { doc.text(bl, tx + 4, ty); ty += 4 }
+      }
+      ty += 2
+    }
+  }
+
+  if (booking.cancellation_policy) {
+    ty += 2
+    sans(doc, 'bold', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    doc.text('CANCELLATION POLICY', tx, ty, { charSpace: 0.3 }); ty += 4
+    sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    const cpLines = doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2)
+    for (const line of cpLines) { doc.text(line, tx, ty); ty += 4 }
+    ty += 2
+  }
 
   ty += 4
   if (booking.payment_exception === true) {
@@ -310,10 +337,11 @@ function drawDiningCard(doc: any, aux: TripAuxBooking, y: number): number {
       doc.text(valStr, tx + 20, ty)
       const vw = doc.getTextWidth(valStr)
       try { doc.link(tx + 20, ty - 3, vw, 5, { url: v.maps_url }) } catch {}
-    } else {
-      doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-      doc.text(valStr, tx + 20, ty)
+      ty += 5
+      continue
     }
+    doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+    doc.text(valStr, tx + 20, ty)
     ty += 5
   }
   if (pill) {
@@ -401,11 +429,11 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const footerY = py + 1
   if (ownArr) {
     drawOwnArrangementsChip(doc, centreX, footerY - 3.6)
-  } else {
-    sans(doc, 'italic', 7.5)
-    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(bookedByText, centreX, footerY)
+    return cardH
   }
+  sans(doc, 'italic', 7.5)
+  doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+  doc.text(bookedByText, centreX, footerY)
 
   return cardH
 }
