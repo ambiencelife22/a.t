@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
       // confirmation needs financial-adjacent columns (deposit/balance paid, taxes)
       db.from('travel_bookings')
-        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override, created_at, updated_at')
+        .select('id, trip_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, inclusions_override, cancellation_policy, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override, created_at, updated_at')
         .eq('house_id', houseId)
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
@@ -171,7 +171,8 @@ Deno.serve(async (req: Request) => {
         supplier_id:      null, supplier_name_override: null,
         primary_contact_name: null, primary_contact_role: null,
         supplier_contact_name: null, supplier_contact_whatsapp: null,
-        cancellation_policy: null, booking_policy: null, notes: null,
+        cancellation_policy: (b.cancellation_policy ?? null) as string | null,
+        booking_policy: null, notes: null,
         brief_category:   null,
       }
     })

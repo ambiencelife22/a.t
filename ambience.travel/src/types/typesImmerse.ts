@@ -797,7 +797,9 @@ export type ImmerseTripBooking = {
   taxes_and_fees:      number | null
   currency:            string | null
   rate_type:           string | null
-  inclusions:          string | null
+  inclusions:            string | null
+  inclusions_override:   unknown[] | null
+  cancellation_policy:   string | null
   price:               number | null
   deposit_amount:      number | null
   deposit_due_date:    string | null

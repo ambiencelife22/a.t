@@ -268,6 +268,7 @@ export type TripBooking = {
   currency:                  string | null
   rate_type:                 string | null
   inclusions:                string | null
+  inclusions_override:       unknown[] | null
   price:                     number | null
   deposit_amount:            number | null
   deposit_due_date:          string | null
