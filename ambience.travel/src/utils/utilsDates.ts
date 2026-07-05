@@ -166,6 +166,16 @@ export function formatMonthUpper(iso: string | null | undefined): string {
   if (!m) return iso
   return MONTHS_SHORT[parseInt(m[2], 10) - 1].toUpperCase()
 }
+// ── DateTime — "5 Jan 2027 · 15:45" ──────────────────────────────────────────
+// ISO timestamp → canonical date + time. Uses 24h fmtTime for consistency.
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const datePart = iso.slice(0, 10)
+  const timePart = iso.slice(11, 16)
+  const date = formatDateShort(datePart)
+  if (!timePart || timePart === '00:00') return date
+  return `${date} · ${fmtTime(timePart)}`
+}
 // ── Month+day short — "Jan 5" ─────────────────────────────────────────────────
 // Short month + day, no year. Used for message timestamps.
 export function formatMonthDay(iso: string | null | undefined): string {
