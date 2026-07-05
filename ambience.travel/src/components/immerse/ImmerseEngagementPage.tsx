@@ -43,7 +43,7 @@ export default function ImmerseEngagementPage({
   if (data.stage === 'delivery') {
     // Delivery arm: the delivery surface fetches its own brief/confirmation/programme data internally.
     // urlId is the access token; ImmerseDeliveryPage owns the delivery render.
-    return <ImmerseDeliveryPage urlId={data.urlId} />
+    return <ImmerseDeliveryPage bundle={data.bundle} />
   }
 
   // ── Proposal arm ───────────────────────────────────────────────────────────

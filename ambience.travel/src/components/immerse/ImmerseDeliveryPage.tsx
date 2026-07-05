@@ -1,4 +1,4 @@
-// ImmerseDeliveryPage.tsx — Unified client-facing trip surface for ambience.TRAVEL.
+// ImmerseDeliveryPage.tsx — Unified client-facing delivery surface for ambience.TRAVEL.
 //
 // The world's finest travel design platform — one intelligent surface where the
 // designer's craft and the guest's experience converge. Every trip lives as one
@@ -33,16 +33,10 @@
 //   S49 — mobile pass: unified nav bar, horizontal-scroll + right-padding fixes,
 //     full image overlay chain in ConfirmationTab, Guides section in TripBriefTab.
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
 import ImmerseHero                            from './ImmerseHero'
-import type { DeliveryData } from '../../types/typesImmerseClient'
-import type {
-  ImmerseTripBooking as TripBooking,
-  ImmerseTripAuxBooking as TripAuxBooking,
-  ImmerseTripDay as TripDay,
-  ImmerseTripDayEntry as TripDayEntry,
-} from '../../types/typesImmerse'
+import type { DeliveryBundle, DeliveryTabId } from '../../types/typesImmerseClient'
 import type { TimelineItem } from '../../types/typesTimeline'
 import { groupAuxBySection, isFlightBooking, isTransferBooking, isHotelBooking, isGroundTransportBooking, isDiningBooking, isMeetGreetBooking } from '../../types/typesAuxBookings'
 import { getEventStatusMeta }                 from '../../types/typesEventStatus'
@@ -62,31 +56,6 @@ import {
 import { useWindowWidth } from '../../hooks/useWindowWidth'
 import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 
-// ── Edge Function endpoints ───────────────────────────────────────────────────
-
-const CONFIRMATION_FN   = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-confirmation`
-const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-programme`
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-// ── Data types ────────────────────────────────────────────────────────────────
-
-type TripData = {
-  clientData: DeliveryData
-  days:       TripDay[]
-  entries:    TimelineItem[]
-}
-
-type TabId = 'welcome' | 'confirmation' | 'programme' | 'brief' | 'contacts'
-
-// S54 — resolved house contact (from travel-get-trip-confirmation `contacts`)
-type TripContact = {
-  id:    string
-  name:  string
-  role:  string | null
-  email: string | null
-  phone: string | null
-}
-
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
 const c = AMBIENCE.light
@@ -96,40 +65,9 @@ const SIDEBAR_W = 220
 
 // categoryAccent: single source in utilsBooking.ts → categoryAccentHex
 
-
-// ── Loading / not found ───────────────────────────────────────────────────────
-
-function TripLoading() {
-  return (
-    <div style={{ minHeight: '100vh', background: c.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-      <img src='/emblem.png' alt='' style={{ width: 48, height: 48, opacity: 0.5 }} />
-      <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-        Preparing Your Journey
-      </div>
-    </div>
-  )
-}
-
-function TripNotFound() {
-  return (
-    <div style={{ minHeight: '100vh', background: c.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, padding: '0 24px', textAlign: 'center' }}>
-      <img src='/emblem.png' alt='' style={{ width: 40, height: 40, opacity: 0.35 }} />
-      <div style={{ fontSize: 22, fontFamily: TYPE.serif, color: c.ink, maxWidth: 480, lineHeight: 1.5 }}>
-        This page is not publicly visible.
-      </div>
-      <div style={{ fontSize: 15, fontFamily: TYPE.sans, color: c.muted, maxWidth: 420, lineHeight: 1.7 }}>
-        Please reach out to your travel designer to pick things back up, and they will be glad to share what's next.
-      </div>
-    </div>
-  )
-}
-
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function ImmerseDeliveryPage({ urlId, initialTab }: { urlId: string; initialTab?: TabId }) {
-  const [tripData,    setTripData]    = useState<TripData | null>(null)
-  const [notFound,    setNotFound]    = useState(false)
-  const [activeTab,   setActiveTab]   = useState<TabId | null>(null)
+export default function ImmerseDeliveryPage({ initialTab, bundle }: { initialTab?: DeliveryTabId; bundle: DeliveryBundle }) {
   const [tabMenuOpen, setTabMenuOpen] = useState(false)
   const [activeDayLabel, setActiveDayLabel] = useState<string>('')
   const [openDayNav,     setOpenDayNav]     = useState<(() => void) | null>(null)
@@ -143,80 +81,29 @@ export default function ImmerseDeliveryPage({ urlId, initialTab }: { urlId: stri
   const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief, handleDownloadTripBrief } = useImmerseConfirmationPdf()
   const { pdfReady: progPdfReady, pdfDownloading: progPdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [confRes, progRes] = await Promise.all([
-          fetch(CONFIRMATION_FN, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-            body:    JSON.stringify({ url_id: urlId }),
-          }),
-          fetch(PROGRAMME_FN, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-            body:    JSON.stringify({ url_id: urlId }),
-          }),
-        ])
-
-        if (!confRes.ok) { setNotFound(true); return }
-        const confPayload = await confRes.json()
-        if (confPayload.error || !confPayload.trip) { setNotFound(true); return }
-
-        const progPayload = progRes.ok ? await progRes.json() : null
-
-        const clientData: DeliveryData = {
-          trip:            confPayload.trip,
-          brief:           confPayload.brief,
-          house:           confPayload.house,
-          contacts:        confPayload.contacts ?? [],
-          guestDisplayName: confPayload.guestDisplayName ?? null,
-          destinationName: confPayload.destinationName,
-          auxBookings:     confPayload.auxBookings ?? [],
-          guides:          { hasDining: false, hasExperiences: false, destinationSlug: null },
-          links:           confPayload.links ?? [],
-          urlId,
-        } as DeliveryData
-
-        const data: TripData = {
-          clientData,
-          days:    progPayload?.days    ?? [],
-          entries: progPayload?.entries ?? [],
-        }
-
-        setTripData(data)
-
-        const brief = confPayload.brief
-        const hasProgramme = brief?.show_tab_programme !== false && (progPayload?.days?.length ?? 0) > 0
-
-        // Explicit initial tab (e.g. /programme route) wins when that tab is enabled.
-        if (initialTab === 'programme' && hasProgramme)                                  { setActiveTab('programme');    return }
-        if (initialTab === 'confirmation' && brief?.show_tab_confirmation !== false)     { setActiveTab('confirmation'); return }
-        if (initialTab === 'contacts' && brief?.show_tab_contacts !== false)             { setActiveTab('contacts');     return }
-        if (initialTab === 'brief' && brief?.show_tab_brief !== false)                   { setActiveTab('brief');        return }
-
-        if ((brief as any)?.show_tab_welcome === true && (brief as any)?.welcome_letter) { setActiveTab('welcome'); return }
-        if (brief?.show_tab_brief !== false)    { setActiveTab('brief');        return }
-        if (hasProgramme)                        { setActiveTab('programme');    return }
-        if (brief?.show_tab_confirmation !== false) { setActiveTab('confirmation'); return }
-        setActiveTab('contacts')
-      } catch {
-        setNotFound(true)
-      }
-    }
-    load()
-  }, [urlId])
-
-  if (notFound)  return <TripNotFound />
-  if (!tripData) return <TripLoading />
-
-  const { clientData, days, entries } = tripData
+  const { clientData, days, entries } = bundle
   const { trip, brief, house } = clientData
+
+  const hasProgramme = brief?.show_tab_programme !== false && days.length > 0
+
+  const initialActiveTab: DeliveryTabId = (() => {
+    if (initialTab === 'programme' && hasProgramme)                              return 'programme'
+    if (initialTab === 'confirmation' && brief?.show_tab_confirmation !== false) return 'confirmation'
+    if (initialTab === 'contacts' && brief?.show_tab_contacts !== false)         return 'contacts'
+    if (initialTab === 'brief' && brief?.show_tab_brief !== false)               return 'brief'
+    if ((brief as any)?.show_tab_welcome === true && (brief as any)?.welcome_letter) return 'welcome'
+    if (brief?.show_tab_brief !== false)        return 'brief'
+    if (hasProgramme)                           return 'programme'
+    if (brief?.show_tab_confirmation !== false) return 'confirmation'
+    return 'contacts'
+  })()
+
+  const [activeTab, setActiveTab] = useState<DeliveryTabId>(initialActiveTab)
 
   const welcomeLetter = (brief as any)?.welcome_letter ?? null
   const welcomeAsTab  = (brief as any)?.show_tab_welcome === true && !!welcomeLetter
 
-  const tabs: { id: TabId; label: string }[] = []
+  const tabs: { id: DeliveryTabId; label: string }[] = []
   if (welcomeAsTab) tabs.push({ id: 'welcome', label: 'Welcome' })
   if (brief?.show_tab_brief        !== false) tabs.push({ id: 'brief',        label: 'Trip Brief' })
   if (brief?.show_tab_programme    !== false) tabs.push({ id: 'programme',    label: 'Programme' })

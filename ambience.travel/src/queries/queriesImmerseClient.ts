@@ -16,6 +16,7 @@
 
 import type { EngagementClientData } from '../types/typesImmerseClient'
 import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
+import { fetchDeliveryBundle } from './queriesImmerseDelivery'
 
 export type { TripGuides, TripContact, DeliveryData, EngagementLink } from '../types/typesImmerseClient'
 
@@ -47,9 +48,11 @@ export async function fetchEngagementClientData(
 
   const stage = proposalData.stage
   if (stage === 'trip' || stage === 'completed') {
+    const bundle = await fetchDeliveryBundle(urlId)
+    if (!bundle) return { type: 'not-public' }
     return {
       type: 'data',
-      data: { stage: 'delivery', urlId, engagement: proposalData },
+      data: { stage: 'delivery', urlId, engagement: proposalData, bundle },
     }
   }
 

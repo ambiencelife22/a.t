@@ -35,7 +35,7 @@ import {
 } from '../../queries/queriesImmerseClient'
 import { isProposalData, isDeliveryData } from '../../types/typesImmerseClient'
 import type { ImmerseEngagementData } from '../../types/typesImmerse'
-import type { DeliveryData } from '../../types/typesImmerseClient'
+import type { DeliveryData, DeliveryBundle } from '../../types/typesImmerseClient'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 
@@ -65,7 +65,7 @@ type RouteState =
   | { phase: 'not-public' }
   | { phase: 'archived'   }
   | { phase: 'proposal';  data: ImmerseEngagementData }
-  | { phase: 'delivery'; data: ImmerseEngagementData }
+  | { phase: 'delivery'; data: ImmerseEngagementData; bundle: DeliveryBundle }
   | { phase: 'error'                                  }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ function useEngagementRoute(urlId: string): RouteState {
       }
 
       if (isDeliveryData(data)) {
-        setState({ phase: 'delivery', data: data.engagement })
+        setState({ phase: 'delivery', data: data.engagement, bundle: data.bundle })
       }
     })
   }, [urlId])
@@ -172,7 +172,7 @@ export default function ImmerseEngagementRoute({
     }
     return (
       <ImmerseEngagementPage
-        data={{ stage: 'delivery', urlId, engagement: state.data }}
+        data={{ stage: 'delivery', urlId, engagement: state.data, bundle: state.bundle }}
         activeTab={activeTab}
         activeDestSlug={activeDestSlug}
       />

@@ -97,7 +97,8 @@ export type EngagementClientData =
   | {
       stage:      'delivery'
       urlId:      string
-      engagement: ImmerseEngagementData  // delivery arm carries engagement data; the delivery surface fetches its own brief/confirmation/programme internally
+      engagement: ImmerseEngagementData
+      bundle:     DeliveryBundle  // delivery render payload, fetched once at the route resolver
     }
 // ── Stage resolution ──────────────────────────────────────────────────────────
 // Maps lifecycle status slugs to the two render arms.
