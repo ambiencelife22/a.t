@@ -219,8 +219,8 @@ const auxSections = groupAuxBySection(auxBookings)
                     <div>
                       <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
                       {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted }}>{dateRange}</div>}
-                      {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
-                      {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
+                      {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
+                      {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
                       {booking.start_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-In: ${fmtTime(booking.start_time)}`}</div>}
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.party_composition}</div>}
                       </div>
@@ -316,7 +316,7 @@ const auxSections = groupAuxBySection(auxBookings)
                             {room.room_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{room.room_name}</div>}
                             {guests && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{guests}</div>}
                             {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
-                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
+                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.ink, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                           </div>
                           {room.confirmation_number && (
                             <div style={{
@@ -757,8 +757,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 {item.status && <StatusPill status={item.status} />}
                               </div>
                               <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3 }}>{item.title}</div>
-                              {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
-                              {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
+                              {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
+                              {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
                               {item.start_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-In: ${fmtTime(item.start_time)}`}</div>}
                             </div>
                             {bookedByLabel(item.booked_by) && (
@@ -780,7 +780,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   {rd.roomName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{rd.roomName}</div>}
                                   {rd.guestLine && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{rd.guestLine}</div>}
                                   {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
-                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
+                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.ink, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                                   {room.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>
                                 {room.confirmation_number && (
@@ -788,7 +788,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                     display: 'inline-flex', alignItems: 'center', flexShrink: 0,
                                     border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', background: '#FAF7F0',
                                   }}>
-                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.gold }}>Conf #: {room.confirmation_number}</span>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.ink }}>Conf #: {room.confirmation_number}</span>
                                   </div>
                                 )}
                               </div>
@@ -970,7 +970,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                         display: 'inline-flex', alignItems: 'center', flexShrink: 0,
                                         border: `1px solid ${c.gold}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
                                       }}>
-                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.gold }}>Conf #: {room.confirmation_number}</span>
+                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>Conf #: {room.confirmation_number}</span>
                                       </span>
                                     )}
                                   </div>
@@ -1100,7 +1100,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.passengers.length === 0 && item.confirmation_number && (
                           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.lineStrong}` }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${c.gold}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>
-                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.gold }}>Conf #: {item.confirmation_number}</span>
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>Conf #: {item.confirmation_number}</span>
                             </div>
                           </div>
                         )}
@@ -1207,7 +1207,7 @@ export function TripBriefTab({ clientData }: {
                     {h._hotel_name ?? h.name ?? 'Hotel'}
                   </div>
                   {h.nights && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2 }}>{`${h.nights} nights`}</div>}
-                  {h.check_in_note && <div style={{ fontSize: 11, color: c.gold, fontFamily: TYPE.sans, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
+                  {h.check_in_note && <div style={{ fontSize: 11, color: c.ink, fontFamily: TYPE.sans, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
                   {h.cancellation_policy && (
                     <div style={{ marginTop: 6, padding: '8px 12px', background: c.surfaceSunken, borderRadius: 6 }}>
                       <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 3 }}>Cancellation Policy</div>
