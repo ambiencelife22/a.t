@@ -1,7 +1,7 @@
 // ImmerseConfirmedSections.tsx — Section components for the confirmed engagement surface.
 //
 // Owns the four section components rendered when an engagement is in the
-// 'trip' or 'completed' stage (Collapse A · A2). Each component is self-contained
+// 'delivery' or 'completed' stage (Collapse A · A2). Each component is self-contained
 // and accepts only the data it needs — no page-level state leaks in.
 //
 // Sections:

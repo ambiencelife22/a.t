@@ -222,7 +222,7 @@ export type ImmerseTripPricingRow = {
 export type EngagementStage =
   | 'draft'
   | 'proposal'
-  | 'trip'
+  | 'delivery'
   | 'completed'
   | 'cancelled'
 
@@ -242,7 +242,7 @@ export function computeEngagementStage(input: EngagementStageInputs): Engagement
     case 'confirmed':
     case 'paid':
     case 'in_service':
-      return 'trip'
+      return 'delivery'
 
     case 'quoted':
     case 'pending':
@@ -316,6 +316,7 @@ export function resolveEngagementShape(slug: string | null | undefined): Engagem
 
 export type SectionType =
   | 'hero'
+  | 'interstitial'
   | 'welcome'
   | 'route'
   | 'destinations'
@@ -333,15 +334,19 @@ export type Section = {
 }
 
 export const SECTION_REGISTRY: readonly Section[] = [
-  { id: 'hero',         stages: ['draft', 'proposal', 'trip', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                          sortOrder: 0 },
+  { id: 'hero',         stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                      sortOrder: 0 },
   { id: 'welcome',      stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay', 'experience', 'arrangement'],                                            sortOrder: 1 },
   { id: 'route',        stages: ['draft', 'proposal'],                      shapes: ['journey'],                                                                                 sortOrder: 2 },
-  { id: 'destinations', stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay'],                                                                         sortOrder: 3 },
-  { id: 'pricing',      stages: ['draft', 'proposal'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 4 },
-  { id: 'confirmation', stages: ['trip', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 5 },
-  { id: 'programme',    stages: ['trip', 'completed'],                      shapes: ['journey', 'stay', 'experience'],                                                           sortOrder: 6 },
-  { id: 'brief',        stages: ['trip', 'completed'],                      shapes: ['journey', 'stay'],                                                                         sortOrder: 7 },
-  { id: 'contacts',     stages: ['trip', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 8 },
+  // interstitial: mid-scroll cinematic band (hero-2 fields). Conceptually
+  // stage-agnostic; currently proposal-only because hero-2 data lives only on
+  // proposal-side types. Widen stages here when a delivery hero-2 case appears.
+  { id: 'interstitial', stages: ['draft', 'proposal'],                      shapes: ['journey'],                                                                                 sortOrder: 3 },
+  { id: 'destinations', stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay'],                                                                         sortOrder: 4 },
+  { id: 'pricing',      stages: ['draft', 'proposal'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 5 },
+  { id: 'confirmation', stages: ['delivery', 'completed'],                  shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 6 },
+  { id: 'programme',    stages: ['delivery', 'completed'],                  shapes: ['journey', 'stay', 'experience'],                                                           sortOrder: 7 },
+  { id: 'brief',        stages: ['delivery', 'completed'],                  shapes: ['journey', 'stay'],                                                                         sortOrder: 8 },
+  { id: 'contacts',     stages: ['delivery', 'completed'],                  shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 9 },
 ] as const
 
 // SHAPE_SECTIONS: for each shape, the SectionTypes it can ever include (across

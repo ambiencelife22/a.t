@@ -47,7 +47,7 @@ export async function fetchEngagementClientData(
   }
 
   const stage = proposalData.stage
-  if (stage === 'trip' || stage === 'completed') {
+  if (stage === 'delivery' || stage === 'completed') {
     const bundle = await fetchDeliveryBundle(urlId)
     if (!bundle) return { type: 'not-public' }
     return {
