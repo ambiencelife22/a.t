@@ -27,6 +27,7 @@
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseEngagementPage from './ImmerseEngagementPage'
+import ImmerseEngagementSurface from './ImmerseEngagementSurface'
 import NotFoundPage from '../NotFoundPage'
 import ImmerseProposalArchivedFallback from './ImmerseProposalArchivedFallback'
 import ImmerseNotPublicFallback from './ImmerseNotPublicFallback'
@@ -123,6 +124,7 @@ export default function ImmerseEngagementRoute({
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
   const state = useEngagementRoute(urlId)
+  const useShadowSurface = new URLSearchParams(window.location.search).get('surface') === 'next'
 
   if (state.phase === 'loading') {
     return (
@@ -155,14 +157,11 @@ export default function ImmerseEngagementRoute({
       window.location.replace(proposalUrl)
       return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
     }
-    return (
-      <ImmerseEngagementPage
-        data={{ stage: 'proposal', urlId, engagement: state.data }}
-        activeDestSlug={activeDestSlug}
-      />
-    )
+    const proposalData = { stage: 'proposal' as const, urlId, engagement: state.data }
+    return useShadowSurface
+      ? <ImmerseEngagementSurface data={proposalData} activeDestSlug={activeDestSlug} />
+      : <ImmerseEngagementPage data={proposalData} activeDestSlug={activeDestSlug} />
   }
-
   if (state.phase === 'delivery') {
     // Delivery engagements render at root /{urlId} — the brief/confirmation/programme surface.
     // A hit on /{urlId}/proposal for a delivery engagement redirects to root.
@@ -173,12 +172,10 @@ export default function ImmerseEngagementRoute({
       window.location.replace(rootUrl)
       return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
     }
-    return (
-      <ImmerseEngagementPage
-        data={{ stage: 'delivery', urlId, engagement: state.data, bundle: state.bundle }}
-        activeDestSlug={activeDestSlug}
-      />
-    )
+    const deliveryData = { stage: 'delivery' as const, urlId, engagement: state.data, bundle: state.bundle }
+    return useShadowSurface
+      ? <ImmerseEngagementSurface data={deliveryData} activeDestSlug={activeDestSlug} />
+      : <ImmerseEngagementPage data={deliveryData} activeDestSlug={activeDestSlug} />
   }
   return null
 }
