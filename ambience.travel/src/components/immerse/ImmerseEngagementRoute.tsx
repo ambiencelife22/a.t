@@ -1,8 +1,7 @@
 // ImmerseEngagementRoute.tsx — Unified client-facing engagement route.
 //
 // Collapse A: one route, one fetch, stage discriminant determines render.
-// proposal  → ImmerseEngagementPage (destination rows, pricing, welcome)
-// delivery → ImmerseDeliveryPage (confirmation, programme, brief, contacts)
+// Both arms → ImmerseEngagementSurface (registry-driven; resolveSectionSet).
 //
 // Phase dispatch:
 //   loading    → ImmerseLayout shell (blank, no flash)
@@ -10,8 +9,7 @@
 //   not-public → ImmerseNotPublicFallback (cream, full page — visibility gate)
 //   error      → NotFoundPage (dark, full page — unexpected failure)
 //   archived   → ImmerseProposalArchivedFallback (cream — proposal was archived)
-//   proposal   → ImmerseEngagementPage (stage=proposal)
-//   delivery   → ImmerseEngagementPage (stage=delivery)
+//   both arms → ImmerseEngagementSurface (stage resolved via computeEngagementStage)
 //
 // not-public is deliberately distinct from not-found:
 //   not-found  = engagement does not exist (genuine 404)

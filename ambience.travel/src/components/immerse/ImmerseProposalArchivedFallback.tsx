@@ -16,7 +16,7 @@
 
 import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 
-// ── Theme (mirrors ImmerseDeliveryPage client palette) ────────────────────────────
+// ── Theme (mirrors ImmerseConfirmedSections client palette) ────────────────────────────
 
 const c = AMBIENCE.light
 

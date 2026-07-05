@@ -10,7 +10,7 @@
 // what it knows, nothing more.
 //
 // The route resolver (ImmerseEngagementRoute) returns EngagementClientData.
-// The page component (ImmerseEngagementPage) switches on stage.
+// The surface component (ImmerseEngagementSurface) switches on stage.
 // Each section renders from the appropriate sub-shape.
 //
 // Lifecycle stages that map to each arm:

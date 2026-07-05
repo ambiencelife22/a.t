@@ -6,13 +6,13 @@
  *   (confirmation, programme, brief, contacts) now wired into the admin UI
  *   with inline-save toggles, mirroring the public_view + advisor visibility
  *   pattern. Each toggle gates whether the corresponding tab renders on the
- *   public ImmerseDeliveryPage. persistContactsToggle generalised to persistToggle
+ *   public ImmerseConfirmedSections. persistContactsToggle generalised to persistToggle
  *   to handle both advisor and tab visibility fields.
  * Prior: S50 — Contacts section added. Editable advisor_name,
  *   advisor_email, advisor_phone with inline show_advisor_email +
  *   show_advisor_phone visibility toggles. Each toggle gates whether
  *   the corresponding field renders on the public Contacts tab via
- *   ImmerseDeliveryPage.tsx ContactsTab.
+ *   ImmerseConfirmedSections.tsx ContactsTab.
  * Prior: S48 — public_view toggle in Cover section. Controls visibility
  *   of the engagement to public anon clients. Enforced server-side by the
  *   travel-get-immerse-proposal Edge Function (S53H cutover; the old
@@ -1138,7 +1138,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
           </section>
 
           {/* S54 — Tabs section. Per-trip control of which tabs render on the
-              public ImmerseDeliveryPage. All default to true (visible). */}
+              public ImmerseConfirmedSections. All default to true (visible). */}
           <section>
             <div style={sectionHeadStyle}>Tabs</div>
             <p style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>

@@ -6,7 +6,7 @@
 //   delivery/completed stages→ sections as tabs (ImmerseDeliveryTabShell)
 // Section CONTENT always comes from SECTION_RENDERERS (single source). This
 // replaces the hardcoded section order in ImmerseEngagementPage and the tab
-// switch in ImmerseDeliveryPage — both dissolve once this proves out (Stage 4).
+/// switch in ImmerseDeliveryPage — both now dissolved (Stage 4 complete).
 //
 // Ships behind a shadow mount (Stage 2) — the live route still uses the old
 // pages until parity is verified and the route is cut (Stage 3).
