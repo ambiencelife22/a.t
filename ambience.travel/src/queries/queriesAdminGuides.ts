@@ -643,7 +643,7 @@ export interface AdminHotel {
   latitude:              number | null
   longitude:             number | null
   google_maps_url:       string | null
-  website_url:           string | null
+  website:               string | null
   phone:                 string | null
   reservations_phone:    string | null
   main_email:            string | null
@@ -698,7 +698,7 @@ export async function fetchAllHotels(
       stars, michelin_keys, forbes_rating,
       description, internal_notes,
       address, city, zip_code, latitude, longitude,
-      google_maps_url, website_url, phone, reservations_phone,
+      google_maps_url, website, phone, reservations_phone,
       main_email, reservations_email, sales_email,
       concierge_email, guest_relations_email, front_office_email,
       image_credit, image_credit_url, image_license

@@ -164,8 +164,8 @@ function FullBody({ happening }: { happening: Happening }) {
           ))}
         </ul>
       )}
-      {happening.website_url && (
-        <a href={happening.website_url} target="_blank" rel="noopener noreferrer" style={websiteLinkStyle}>
+      {happening.website && (
+        <a href={happening.website} target="_blank" rel="noopener noreferrer" style={websiteLinkStyle}>
           Visit official site <span style={websiteArrowStyle}>{'\u2197'}</span>
         </a>
       )}

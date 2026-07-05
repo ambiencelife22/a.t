@@ -94,7 +94,7 @@ function EditHotelModal({
         'sort_order', 'stars', 'michelin_keys', 'forbes_rating',
         'description', 'internal_notes',
         'address', 'city', 'zip_code', 'latitude', 'longitude',
-        'google_maps_url', 'website_url', 'phone', 'reservations_phone',
+        'google_maps_url', 'website', 'phone', 'reservations_phone',
         'main_email', 'reservations_email', 'sales_email',
         'concierge_email', 'guest_relations_email', 'front_office_email',
       ]
@@ -234,7 +234,7 @@ function EditHotelModal({
         {/* Contact */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Website URL'>
-            <input style={inputStyle} value={draft.website_url ?? ''} onChange={e => patch('website_url', e.target.value || null)} />
+            <input style={inputStyle} value={draft.website ?? ''} onChange={e => patch('website', e.target.value || null)} />
           </Field>
           <Field label='Phone'>
             <input style={inputStyle} value={draft.phone ?? ''} onChange={e => patch('phone', e.target.value || null)} />

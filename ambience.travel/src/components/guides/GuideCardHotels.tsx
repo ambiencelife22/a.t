@@ -134,9 +134,9 @@ function FullBody({ hotel }: { hotel: HotelVenue }) {
             ) : fullAddress}
           </div>
         )}
-        {hotel.website_url && (
+        {hotel.website && (
           <div style={metaRowStyle}>
-            <a href={hotel.website_url} target="_blank" rel="noopener noreferrer" style={metaLinkStyle}>
+            <a href={hotel.website} target="_blank" rel="noopener noreferrer" style={metaLinkStyle}>
               Website <span style={arrowStyle}>{'\u2197'}</span>
             </a>
           </div>

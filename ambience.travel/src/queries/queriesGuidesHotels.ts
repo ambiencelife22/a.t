@@ -41,7 +41,7 @@ export interface HotelVenue {
   latitude:             number | null
   longitude:            number | null
   google_maps_url:      string | null
-  website_url:          string | null
+  website:              string | null
   hero_image_src:       string | null
   hero_image_alt:       string | null
   image_credit:         string | null
@@ -88,7 +88,7 @@ export async function getHotelsByDestination(
       id, slug, short_slug, name,
       description,
       address, city, zip_code, latitude, longitude,
-      google_maps_url, website_url,
+      google_maps_url, website,
       hero_image_src, hero_image_alt,
       image_credit, image_credit_url, image_license,
       bullets,
