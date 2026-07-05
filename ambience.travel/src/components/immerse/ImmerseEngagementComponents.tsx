@@ -715,7 +715,7 @@ export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData
 // same destination name.
 
 export function PricingTable({ children, hideItem = false }: { children: React.ReactNode; hideItem?: boolean }) {
-  const isMobile = window.innerWidth < 768
+  const isMobile = useImmerseMobile()
 
   // S53B+: mobile shows Basis instead of Item. Item column (destination
   // name) can be ambiguous when multiple rows share a destination; Basis
@@ -760,7 +760,7 @@ export function PricingTable({ children, hideItem = false }: { children: React.R
 }
 
 export function Td({ children, col }: { children: React.ReactNode; col?: number }) {
-  const isMobile = window.innerWidth < 768
+  const isMobile = useImmerseMobile()
 
   // S53B+: on mobile, visible columns are Basis (col 2) and Range (col 4).
   // Item (col 1) and Stay (col 3) are hidden — Stay because there's no
@@ -785,7 +785,7 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
 }
 
 export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode; col?: number; colSpan?: number }) {
-  const isMobile = window.innerWidth < 768
+  const isMobile = useImmerseMobile()
 
   // S53B+: same mobile visibility mapping as Td — hide cols 1 (Item) and
   // 3 (Stay). Total label in multi-destination engagements lives at col 1
