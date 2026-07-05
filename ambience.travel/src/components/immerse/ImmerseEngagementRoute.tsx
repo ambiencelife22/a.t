@@ -9,7 +9,7 @@
 //   not-found  → NotFoundPage (dark, full page — engagement does not exist)
 //   not-public → ImmerseNotPublicFallback (cream, full page — visibility gate)
 //   error      → NotFoundPage (dark, full page — unexpected failure)
-//   archived   → ProposalArchivedFallback (cream — proposal was archived)
+//   archived   → ImmerseProposalArchivedFallback (cream — proposal was archived)
 //   proposal   → ImmerseEngagementPage (stage=proposal)
 //   delivery   → ImmerseEngagementPage (stage=delivery)
 //
@@ -28,7 +28,7 @@ import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseEngagementPage from './ImmerseEngagementPage'
 import NotFoundPage from '../NotFoundPage'
-import ProposalArchivedFallback from './ProposalArchivedFallback'
+import ImmerseProposalArchivedFallback from './ImmerseProposalArchivedFallback'
 import ImmerseNotPublicFallback from './ImmerseNotPublicFallback'
 import {
   fetchEngagementClientData,
@@ -138,7 +138,7 @@ export default function ImmerseEngagementRoute({
   }
 
   if (state.phase === 'archived') {
-    return <ProposalArchivedFallback />
+    return <ImmerseProposalArchivedFallback />
   }
 
   if (state.phase === 'proposal') {

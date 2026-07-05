@@ -1,4 +1,4 @@
-// ProposalArchivedFallback.tsx — AXIS-2 client-facing archive surface.
+// ImmerseProposalArchivedFallback.tsx — AXIS-2 client-facing archive surface.
 //
 // Shown when an engagement's proposal_visibility === 'archived'. The client
 // holds a url_id to a proposal that WAS live and has since been archived by the
@@ -20,8 +20,7 @@ import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 
 const c = AMBIENCE.light
 
-export default function ProposalArchivedFallback() {
-  return (
+export default function ImmerseProposalArchivedFallback() {  return (
     <div
       style={{
         minHeight:      '100vh',

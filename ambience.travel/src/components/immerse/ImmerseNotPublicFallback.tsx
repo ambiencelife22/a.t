@@ -5,13 +5,13 @@
 // deliberate visibility decision by the operator. Degrade toward human
 // contact; never surface an error.
 //
-// Theme: cream surface, mirrors ProposalArchivedFallback so both soft-gate
+// Theme: cream surface, mirrors ImmerseProposalArchivedFallback so both soft-gate
 // screens read as native to the client surface. Brand chrome is /emblem.png
 // only — no invented taglines or copy.
 //
 // Distinct from:
 //   NotFoundPage          — dark surface, engagement genuinely does not exist
-//   ProposalArchivedFallback — cream surface, engagement existed and was archived
+//   ImmerseProposalArchivedFallback — cream surface, engagement existed and was archived
 //
 // Created: S53 — P0 gate screen. Replaces NotFoundPage render for not-public
 //   engagements in ImmerseEngagementRoute.
