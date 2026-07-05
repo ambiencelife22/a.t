@@ -213,7 +213,7 @@ Deno.serve(async (req: Request) => {
 
       const results = await Promise.all(
         childCountTables.map(t =>
-          serviceClient.from(t).select('id', { count: 'exact', head: true }).eq('trip_id', engagement_id),
+          serviceClient.from(t).select('id', { count: 'exact', head: true }).eq('engagement_id', engagement_id),
         ),
       )
 

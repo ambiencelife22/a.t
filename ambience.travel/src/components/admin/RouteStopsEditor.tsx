@@ -392,7 +392,7 @@ export default function RouteStopsEditor({
     try {
       const sortOrder = await fetchMaxRouteStopSortOrder(engagementId)
       const newId = await insertRouteStop({
-        trip_id:    engagementId,
+        engagement_id:    engagementId,
         sort_order: sortOrder,
       })
       showToast('Stop added.', 'success')

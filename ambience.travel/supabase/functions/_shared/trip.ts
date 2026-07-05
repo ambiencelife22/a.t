@@ -137,7 +137,7 @@ export async function fetchTripCore(
         .maybeSingle(),
       db.from('travel_immerse_trip_display')
         .select('house_display_name')
-        .eq('trip_id', confirmedEngId)
+        .eq('engagement_id', confirmedEngId)
         .maybeSingle(),
     ])
     engHeroSrc         = (engRes.data?.hero_image_src as string | null) ?? null

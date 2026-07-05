@@ -331,7 +331,7 @@ function AddRoomModal({ engagementId, canonicalRooms, nextSortOrder, onClose, on
     setSaving(true)
     try {
       await createOverlayRoom({
-        trip_id:     engagementId,
+        engagement_id:     engagementId,
         room_id:     roomId || null,
         level_label: levelLabel.trim() || null,
         sort_order:  nextSortOrder,
