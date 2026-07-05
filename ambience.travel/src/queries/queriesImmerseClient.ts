@@ -18,7 +18,8 @@ import type { EngagementClientData } from '../types/typesImmerseClient'
 import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
 import { fetchDeliveryBundle } from './queriesImmerseDelivery'
 
-export type { TripGuides, TripContact, DeliveryData, EngagementLink } from '../types/typesImmerseClient'
+export type { TripGuides, TripContact, DeliveryData, EngagementLink, EngagementClientData, DeliveryBundle } from '../types/typesImmerseClient'
+export { isProposalData, isDeliveryData } from '../types/typesImmerseClient'
 
 // ── Result type ───────────────────────────────────────────────────────────────
 
