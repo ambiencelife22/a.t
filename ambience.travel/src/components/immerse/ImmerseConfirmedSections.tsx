@@ -169,7 +169,7 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
 // ── Confirmation tab ──────────────────────────────────────────────────────────
 
 export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
-  const { trip, brief, house, auxBookings } = clientData
+ const { trip, auxBookings } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
   const destHero = trip.destinations[0]?.hero_image_src ?? null

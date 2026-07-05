@@ -35,34 +35,31 @@ import {
 } from '../../queries/queriesImmerseClient'
 import { isProposalData, isDeliveryData } from '../../types/typesImmerseClient'
 import type { ImmerseEngagementData } from '../../types/typesImmerse'
-import type { DeliveryData, DeliveryBundle } from '../../types/typesImmerseClient'
+import type { DeliveryBundle } from '../../types/typesImmerseClient'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 
 export function buildImmerseNavItems(
-  data: ImmerseEngagementData | DeliveryData,
+  data: ImmerseEngagementData,
   activeDestSlug: string | null
 ) {
-  if ('destinationRows' in data) {
-    const liveRows = data.destinationRows.filter(r => r.subpageStatus === 'live')
-    const base = window.location.hostname === 'immerse.ambience.travel'
-      ? `/${data.urlId}/proposal`
-      : `/immerse/${data.urlId}/proposal`
-    const overviewItem = {
-      label:    'Overview',
-      href:     base,
-      isActive: !activeDestSlug,
-    }
-    return [
-      overviewItem,
-      ...liveRows.map(r => ({
-        label:    r.title ?? r.destinationSlug ?? 'Destination',
-        href:     `${base}/${r.destinationUrlSlug ?? r.destinationSlug}`,
-        isActive: (r.destinationUrlSlug ?? r.destinationSlug) === activeDestSlug,
-      })),
-    ]
+  const liveRows = data.destinationRows.filter(r => r.subpageStatus === 'live')
+  const base = window.location.hostname === 'immerse.ambience.travel'
+    ? `/${data.urlId}/proposal`
+    : `/immerse/${data.urlId}/proposal`
+  const overviewItem = {
+    label:    'Overview',
+    href:     base,
+    isActive: !activeDestSlug,
   }
-  return []
+  return [
+    overviewItem,
+    ...liveRows.map(r => ({
+      label:    r.title ?? r.destinationSlug ?? 'Destination',
+      href:     `${base}/${r.destinationUrlSlug ?? r.destinationSlug}`,
+      isActive: (r.destinationUrlSlug ?? r.destinationSlug) === activeDestSlug,
+    })),
+  ]
 }
 
 // ── Route state ───────────────────────────────────────────────────────────────
