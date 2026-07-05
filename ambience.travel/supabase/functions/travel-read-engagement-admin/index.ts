@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
       //    makes the cross-house guard's constraint visible in the UI: a
       //    designer physically cannot pick a label the guard would reject.
       const { data: houses } = await serviceClient
-        .from('engagement_houses')
+        .from('travel_engagement_houses')
         .select('id, house_id, is_primary, sort_order, a_houses(display_name, public_name)')
         .eq('engagement_id', data.id)
         .order('is_primary', { ascending: false })

@@ -481,13 +481,13 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'engagement_id and house_id are required' }, 400)
       }
       const { count } = await serviceClient
-        .from('engagement_houses')
+        .from('travel_engagement_houses')
         .select('id', { count: 'exact', head: true })
         .eq('engagement_id', engagement_id)
       const makePrimary = is_primary === true || (count ?? 0) === 0
       if (makePrimary) {
         const { error: clearErr } = await serviceClient
-          .from('engagement_houses')
+          .from('travel_engagement_houses')
           .update({ is_primary: false })
           .eq('engagement_id', engagement_id)
           .eq('is_primary', true)
@@ -497,7 +497,7 @@ Deno.serve(async (req: Request) => {
         }
       }
       const { data, error } = await serviceClient
-        .from('engagement_houses')
+        .from('travel_engagement_houses')
         .insert({ engagement_id, house_id, is_primary: makePrimary, sort_order: count ?? 0 })
         .select('id, engagement_id, house_id, is_primary, sort_order, created_at, updated_at')
         .single()
@@ -512,7 +512,7 @@ Deno.serve(async (req: Request) => {
       const { id } = body as { id?: string }
       if (!id) return json({ error: 'id is required' }, 400)
       const { error } = await serviceClient
-        .from('engagement_houses').delete().eq('id', id)
+        .from('travel_engagement_houses').delete().eq('id', id)
       if (error) {
         console.error('unlink_house error:', error)
         return json({ error: 'Failed to unlink house' }, 500)
@@ -524,14 +524,14 @@ Deno.serve(async (req: Request) => {
       const { id } = body as { id?: string }
       if (!id) return json({ error: 'id is required' }, 400)
       const { data: target, error: findErr } = await serviceClient
-        .from('engagement_houses').select('id, engagement_id').eq('id', id).maybeSingle()
+        .from('travel_engagement_houses').select('id, engagement_id').eq('id', id).maybeSingle()
       if (findErr) {
         console.error('set_primary_house lookup error:', findErr)
         return json({ error: 'Failed to resolve engagement house' }, 500)
       }
       if (!target) return json({ error: 'Engagement house not found' }, 404)
       const { error: clearErr } = await serviceClient
-        .from('engagement_houses')
+        .from('travel_engagement_houses')
         .update({ is_primary: false })
         .eq('engagement_id', target.engagement_id)
         .eq('is_primary', true)
@@ -541,7 +541,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to clear existing primary' }, 500)
       }
       const { error: setErr } = await serviceClient
-        .from('engagement_houses').update({ is_primary: true }).eq('id', id)
+        .from('travel_engagement_houses').update({ is_primary: true }).eq('id', id)
       if (setErr) {
         console.error('set_primary_house set error:', setErr)
         return json({ error: 'Failed to set primary house' }, 500)
