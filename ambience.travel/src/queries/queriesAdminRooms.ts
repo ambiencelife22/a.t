@@ -29,7 +29,8 @@ export interface CanonicalRoom {
   room_name:   string | null
   slug:        string | null
   category_slug: string | null
-  bed_config:  string | null  // @deprecated — superseded by bedding_configurations (jsonb) on travel_accom_rooms
+  bed_config:              string | null   // @deprecated — superseded by bedding_configurations (jsonb) on travel_accom_rooms
+  bedding_configurations:  string[] | null
   sqft_min:    number | null
   sqft_max:    number | null
   sqm_min:     number | null
@@ -63,6 +64,7 @@ export interface OverlayRoom {
   sqm_min_override:        number | null
   sqm_max_override:        number | null
   bed_config_override:     string | null  // @deprecated — superseded by bedding_type (text) on travel_immerse_rooms
+  bedding_type:            string | null
   hero_image_src_override: string | null
   hero_image_alt_override: string | null
   floorplan_src_override:  string | null
@@ -121,7 +123,7 @@ export async function fetchCanonicalRoomsForEngagement(
     .from('travel_accom_rooms')
     .select(`
       id, hotel_id, room_name, slug, category_slug,
-      bed_config, sqft_min, sqft_max, sqm_min, sqm_max,
+      bed_config, bedding_configurations, sqft_min, sqft_max, sqm_min, sqm_max,
       room_image_src,
       hotel:travel_accom_hotels!hotel_id(name)
     `)
@@ -137,7 +139,8 @@ export async function fetchCanonicalRoomsForEngagement(
     room_name:      r.room_name,
     slug:           r.slug,
     category_slug:  r.category_slug,
-    bed_config:     r.bed_config,
+    bed_config:             r.bed_config,
+    bedding_configurations: Array.isArray(r.bedding_configurations) ? r.bedding_configurations : null,
     sqft_min:       r.sqft_min,
     sqft_max:       r.sqft_max,
     sqm_min:        r.sqm_min,
@@ -160,7 +163,7 @@ export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRo
       room_inclusions, room_name_override,
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
-      bed_config_override,
+      bed_config_override, bedding_type,
       hero_image_src_override, hero_image_alt_override, floorplan_src_override,
       is_active, sort_order,
       canonical:travel_accom_rooms!room_id(
@@ -197,6 +200,7 @@ export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRo
     sqm_min_override:        r.sqm_min_override,
     sqm_max_override:        r.sqm_max_override,
     bed_config_override:     r.bed_config_override,
+    bedding_type:            r.bedding_type ?? null,
     hero_image_src_override: r.hero_image_src_override,
     hero_image_alt_override: r.hero_image_alt_override,
     floorplan_src_override:  r.floorplan_src_override,

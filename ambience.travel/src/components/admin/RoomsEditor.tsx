@@ -24,6 +24,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { A } from '../../tokens/tokensAdmin'
+import { beddingLabel } from '../../utils/utilsBooking'
 import {
   inputStyle, textareaStyle,
   btnPrimary, btnGhost, btnDanger,
@@ -99,7 +100,7 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         'room_id', 'level_label', 'room_basis', 'room_name_override',
         'ambience_nightly_rate', 'non_negotiated_nightly_rate', 'public_nightly_rate',
         'rate_cadence_id', 'rate_suffix_override', 'tax_inclusive',
-        'room_inclusions', 'bed_config_override',
+        'room_inclusions', 'bed_config_override', 'bedding_type',
         'sqft_min', 'sqft_max', 'sqm_min', 'sqm_max',
         'sqft_min_override', 'sqft_max_override', 'sqm_min_override', 'sqm_max_override',
         'hero_image_src_override', 'hero_image_alt_override', 'floorplan_src_override',
@@ -171,7 +172,7 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11, color: A.faint, fontFamily: A.font }}>
                 <div><span style={{ color: A.muted }}>Category</span><br />{selectedCanon.category_slug ?? '—'}</div>
                 <div><span style={{ color: A.muted }}>Size</span><br />{selectedCanon.sqm_min ?? '—'} sqm / {selectedCanon.sqft_min ?? '—'} sqft</div>
-                <div><span style={{ color: A.muted }}>Bed config</span><br />{selectedCanon.bed_config ?? '—'}</div>
+                <div><span style={{ color: A.muted }}>Bedding</span><br />{selectedCanon.bedding_configurations?.map(s => beddingLabel(s) ?? s).join(' or ') ?? selectedCanon.bed_config ?? '—'}</div>
               </div>
             )}
           </div>
@@ -240,8 +241,23 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         {/* Room detail */}
         <AdminSection title='Room Detail'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Field label='Bed Configuration Override'>
-              <input style={inputStyle} value={draft.bed_config_override ?? ''} onChange={e => patch('bed_config_override', e.target.value || null)} />
+            <Field label='Bedding Type'>
+              <select style={inputStyle} value={draft.bedding_type ?? ''} onChange={e => patch('bedding_type', e.target.value || null)}>
+                <option value=''>TBD on arrival</option>
+                <option value='king'>King</option>
+                <option value='cal_king'>California King</option>
+                <option value='queen'>Queen</option>
+                <option value='double'>Double</option>
+                <option value='twin'>Twin</option>
+                <option value='two_kings'>2× King</option>
+                <option value='two_queens'>2× Queen</option>
+                <option value='two_twins'>2× Twin</option>
+                <option value='king_twin'>King + Twin</option>
+                <option value='double_twin'>Double + Twin</option>
+                <option value='three_twins'>3× Twin</option>
+                <option value='bunk'>Bunk Beds</option>
+                <option value='sofa_bed'>Sofa Bed</option>
+              </select>
             </Field>
             <Field label='Room Inclusions'>
               <textarea style={{ ...textareaStyle, minHeight: 72 }} value={draft.room_inclusions ?? ''} onChange={e => patch('room_inclusions', e.target.value || null)} placeholder='Two-Level Residence. Three full marble bathrooms...' />
