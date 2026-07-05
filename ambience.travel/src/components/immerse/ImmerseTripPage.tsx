@@ -52,7 +52,6 @@ import type { ExportBranding }                from '../../pdf/pdfShared'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName }      from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
-import { ID } from '../../tokens/tokensLanding'
 import {
   ConfirmationTab,
   ProgrammeTab,
@@ -61,6 +60,7 @@ import {
   TabSection,
 } from './ImmerseConfirmedSections'
 import { useWindowWidth } from '../../hooks/useWindowWidth'
+import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 
@@ -89,15 +89,7 @@ type TripContact = {
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
-const CREAM   = '#F7F5F0'
-const CARD_BG = '#F0EDE6'
-const INK     = '#1A1D1A'
-const GOLD    = ID.gold   // #d8b56a — canonical (was drifted #C9A84C)
-const MUTED   = '#787060'
-const FAINT   = '#B4AFA5'
-const RULE    = '#DCDBD5'
-const SANS    = "'Plus Jakarta Sans', sans-serif"
-const SERIF   = "'Cormorant Garamond', Georgia, serif"
+const c = AMBIENCE.light
 const SIDEBAR_W = 220
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -109,9 +101,9 @@ const SIDEBAR_W = 220
 
 function TripLoading() {
   return (
-    <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+    <div style={{ minHeight: '100vh', background: c.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
       <img src='/emblem.png' alt='' style={{ width: 48, height: 48, opacity: 0.5 }} />
-      <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
         Preparing Your Journey
       </div>
     </div>
@@ -120,12 +112,12 @@ function TripLoading() {
 
 function TripNotFound() {
   return (
-    <div style={{ minHeight: '100vh', background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, padding: '0 24px', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', background: c.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24, padding: '0 24px', textAlign: 'center' }}>
       <img src='/emblem.png' alt='' style={{ width: 40, height: 40, opacity: 0.35 }} />
-      <div style={{ fontSize: 22, fontFamily: SERIF, color: INK, maxWidth: 480, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 22, fontFamily: TYPE.serif, color: c.ink, maxWidth: 480, lineHeight: 1.5 }}>
         This page is not publicly visible.
       </div>
-      <div style={{ fontSize: 15, fontFamily: SANS, color: MUTED, maxWidth: 420, lineHeight: 1.7 }}>
+      <div style={{ fontSize: 15, fontFamily: TYPE.sans, color: c.muted, maxWidth: 420, lineHeight: 1.7 }}>
         Please reach out to your travel designer to pick things back up, and they will be glad to share what's next.
       </div>
     </div>
@@ -253,15 +245,15 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
       />
 
       {welcomeLetter && !welcomeAsTab && (
-        <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: CREAM }}>
+        <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: c.surface }}>
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
-            <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: FAINT, marginBottom: 28, fontFamily: SANS }}>Welcome</p>
+            <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: c.faint, marginBottom: 28, fontFamily: TYPE.sans }}>Welcome</p>
             {(welcomeLetter as string).split('\n\n').filter(Boolean).map((p: string, i: number, arr: string[]) => (
               <p key={i} style={{
                 fontSize:      i === 0 ? 'clamp(18px,2vw,26px)' : 15,
-                fontFamily:    i === 0 ? SERIF : SANS,
+                fontFamily:    i === 0 ? TYPE.serif : TYPE.sans,
                 lineHeight:    1.85,
-                color:         i === 0 ? INK : MUTED,
+                color:         i === 0 ? c.ink : c.muted,
                 marginBottom:  i === arr.length - 1 ? 0 : 20,
                 letterSpacing: i === 0 ? '-0.01em' : 'normal',
               }}>
@@ -272,14 +264,14 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
         </section>
       )}
 
-      <div style={{ background: CREAM }} id='tabs'>
+      <div style={{ background: c.surface }} id='tabs'>
         <div style={{
           position:       'sticky',
           top:            60,
           zIndex:         49,
           background:     'rgba(247,245,240,0.96)',
           backdropFilter: 'blur(12px)',
-          borderBottom:   width < 640 ? 'none' : `1px solid ${RULE}`,
+          borderBottom:   width < 640 ? 'none' : `1px solid ${c.lineStrong}`,
           padding:        '0 clamp(20px,5vw,48px)',
           display:        'flex',
           alignItems:     'center',
@@ -300,12 +292,12 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     border:        'none',
                     background:    'transparent',
                     cursor:        'pointer',
-                    fontFamily:    SANS,
+                    fontFamily:    TYPE.sans,
                     fontSize:      10,
                     fontWeight:    700,
                     letterSpacing: '0.1em',
                     textTransform: 'uppercase',
-                    color:         GOLD,
+                    color:         c.gold,
                   }}
                 >
                   <span style={{ fontSize: 13, lineHeight: 1 }}>☰</span>
@@ -325,7 +317,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                       minWidth:      200,
                       zIndex:        70,
                       background:    '#fff',
-                      border:        `1px solid ${RULE}`,
+                      border:        `1px solid ${c.lineStrong}`,
                       borderRadius:  8,
                       boxShadow:     '0 8px 24px rgba(0,0,0,0.12)',
                       padding:       '6px',
@@ -342,13 +334,13 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                             padding:       '12px 14px',
                             border:        'none',
                             borderRadius:  6,
-                            background:    activeTab === t.id ? `${GOLD}14` : 'transparent',
-                            color:         activeTab === t.id ? GOLD : INK,
+                            background:    activeTab === t.id ? `${c.gold}14` : 'transparent',
+                            color:         activeTab === t.id ? c.gold : c.ink,
                             fontSize:      12,
                             fontWeight:    activeTab === t.id ? 700 : 500,
                             letterSpacing: '0.04em',
                             textTransform: 'uppercase',
-                            fontFamily:    SANS,
+                            fontFamily:    TYPE.sans,
                             cursor:        'pointer',
                             transition:    'background 120ms',
                           }}
@@ -369,24 +361,24 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                     alignItems:    'center',
                     gap:           6,
                     padding:       '6px 10px',
-                    border:        `1px solid ${GOLD}55`,
+                    border:        `1px solid ${c.gold}55`,
                     borderRadius:  20,
-                    background:    `${GOLD}0D`,
+                    background:    `${c.gold}0D`,
                     cursor:        'pointer',
-                    fontFamily:    SANS,
+                    fontFamily:    TYPE.sans,
                     fontSize:      10,
                     fontWeight:    600,
                     letterSpacing: '0.04em',
-                    color:         MUTED,
+                    color:         c.muted,
                     maxWidth:      200,
                     flexShrink:    0,
                     whiteSpace:    'nowrap',
                     transition:    'border-color 150ms, background 150ms',
                   }}
                 >
-                  <span style={{ fontSize: 11, color: GOLD, flexShrink: 0, lineHeight: 1 }}>☰</span>
+                  <span style={{ fontSize: 11, color: c.gold, flexShrink: 0, lineHeight: 1 }}>☰</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeDayLabel}</span>
-                  <span style={{ fontSize: 12, color: GOLD, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>{'\u203a'}</span>
+                  <span style={{ fontSize: 12, color: c.gold, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>{'\u203a'}</span>
                 </button>
               )}
             </div>
@@ -400,14 +392,14 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                   style={{
                     padding:       '16px 20px',
                     border:        'none',
-                    borderBottom:  `2px solid ${activeTab === t.id ? GOLD : 'transparent'}`,
+                    borderBottom:  `2px solid ${activeTab === t.id ? c.gold : 'transparent'}`,
                     background:    'transparent',
-                    color:         activeTab === t.id ? GOLD : FAINT,
+                    color:         activeTab === t.id ? c.gold : c.faint,
                     fontSize:      11,
                     fontWeight:    activeTab === t.id ? 700 : 500,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
-                    fontFamily:    SANS,
+                    fontFamily:    TYPE.sans,
                     cursor:        'pointer',
                     transition:    'all 150ms ease',
                     whiteSpace:    'nowrap',
@@ -440,10 +432,10 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                   handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName }, (brief?.logo_variant ?? 'ambience') as ExportBranding)
                 }}
                 style={{
-                  fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+                  fontFamily:    TYPE.sans, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
                   textTransform: 'uppercase', border: 'none', borderRadius: 6,
                   padding:       '5px 12px', cursor: briefPdfReady ? 'pointer' : 'not-allowed',
-                  background:    GOLD, color: INK,
+                  background:    c.gold, color: c.ink,
                   opacity:       briefPdfReady && !briefPdfDownloading ? 1 : 0.45,
                   transition:    'opacity 150ms',
                 }}
@@ -463,10 +455,10 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
                   handleDownloadProgramme({ trip, brief, house, days, entriesByDate, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName })
                 }}
                 style={{
-                  fontFamily:    SANS, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+                  fontFamily:    TYPE.sans, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
                   textTransform: 'uppercase', border: 'none', borderRadius: 6,
                   padding:       '5px 12px', cursor: progPdfReady ? 'pointer' : 'not-allowed',
-                  background:    GOLD, color: INK,
+                  background:    c.gold, color: c.ink,
                   opacity:       progPdfReady && !progPdfDownloading ? 1 : 0.45,
                   transition:    'opacity 150ms',
                 }}
@@ -477,17 +469,17 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
           </div>
         </div>
 
-        <div style={{ background: CREAM, minHeight: '60vh' }}>
+        <div style={{ background: c.surface, minHeight: '60vh' }}>
           {activeTab === 'welcome' && (
             <div style={{ padding: 'clamp(40px,6vw,80px) clamp(20px,5vw,48px)' }}>
               <div style={{ maxWidth: 720, margin: '0 auto' }}>
-                <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: FAINT, marginBottom: 28, fontFamily: SANS }}>Welcome</p>
+                <p style={{ fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: c.faint, marginBottom: 28, fontFamily: TYPE.sans }}>Welcome</p>
                 {(welcomeLetter as string).split('\n\n').filter(Boolean).map((p: string, i: number, arr: string[]) => (
                   <p key={i} style={{
                     fontSize:      i === 0 ? 'clamp(18px,2vw,26px)' : 15,
-                    fontFamily:    i === 0 ? SERIF : SANS,
+                    fontFamily:    i === 0 ? TYPE.serif : TYPE.sans,
                     lineHeight:    1.85,
-                    color:         i === 0 ? INK : MUTED,
+                    color:         i === 0 ? c.ink : c.muted,
                     marginBottom:  i === arr.length - 1 ? 0 : 20,
                     letterSpacing: i === 0 ? '-0.01em' : 'normal',
                   }}>{p}</p>
@@ -501,10 +493,10 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
           {activeTab === 'contacts'     && <ContactsTab clientData={clientData} />}
         </div>
 
-        <div style={{ padding: '40px clamp(20px,6vw,80px)', textAlign: 'center', borderTop: `1px solid ${RULE}` }}>
-          <div style={{ fontSize: 10, fontFamily: SANS, color: FAINT, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        <div style={{ padding: '40px clamp(20px,6vw,80px)', textAlign: 'center', borderTop: `1px solid ${c.lineStrong}` }}>
+          <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.faint, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Tailored Travel Design &nbsp;&middot;&nbsp; Concierge Support &nbsp;&middot;&nbsp;
-            <a href='https://ambience.travel' style={{ color: FAINT, textDecoration: 'none' }}> ambience.travel</a>
+            <a href='https://ambience.travel' style={{ color: c.faint, textDecoration: 'none' }}> ambience.travel</a>
           </div>
         </div>
       </div>

@@ -14,22 +14,18 @@
 //
 // Created: S53G (AXIS-2).
 
+import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
+
 // ── Theme (mirrors ImmerseTripPage client palette) ────────────────────────────
 
-const CREAM = '#F7F5F0'
-const INK   = '#1A1D1A'
-const GOLD  = '#C9A84C'
-const MUTED = '#787060'
-const FAINT = '#B4AFA5'
-const SANS  = "'Plus Jakarta Sans', sans-serif"
-const SERIF = "'Cormorant Garamond', Georgia, serif"
+const c = AMBIENCE.light
 
 export default function ProposalArchivedFallback() {
   return (
     <div
       style={{
         minHeight:      '100vh',
-        background:      CREAM,
+        background:      c.surface,
         display:        'flex',
         flexDirection:  'column',
         alignItems:     'center',
@@ -47,11 +43,11 @@ export default function ProposalArchivedFallback() {
       <div
         style={{
           fontSize:      10,
-          fontFamily:    SANS,
+          fontFamily:    TYPE.sans,
           fontWeight:    700,
           letterSpacing: '0.22em',
           textTransform: 'uppercase',
-          color:         FAINT,
+          color:         c.faint,
         }}
       >
         ambience &middot; travel
@@ -61,8 +57,8 @@ export default function ProposalArchivedFallback() {
       <div
         style={{
           fontSize:      'clamp(22px, 3vw, 30px)',
-          fontFamily:    SERIF,
-          color:         INK,
+          fontFamily:    TYPE.serif,
+          color:         c.ink,
           lineHeight:    1.25,
           maxWidth:      520,
         }}
@@ -74,8 +70,8 @@ export default function ProposalArchivedFallback() {
       <div
         style={{
           fontSize:   14,
-          fontFamily: SANS,
-          color:      MUTED,
+          fontFamily: TYPE.sans,
+          color:      c.muted,
           lineHeight: 1.7,
           maxWidth:   440,
         }}
@@ -85,13 +81,13 @@ export default function ProposalArchivedFallback() {
       </div>
 
       {/* Hairline + return link (to the public site, consistent with TripNotFound) */}
-      <div style={{ width: 40, height: 1, background: FAINT, opacity: 0.5, margin: '8px 0 4px' }} />
+      <div style={{ width: 40, height: 1, background: c.faint, opacity: 0.5, margin: '8px 0 4px' }} />
       <a
         href='https://ambience.travel'
         style={{
           fontSize:       13,
-          fontFamily:     SANS,
-          color:          GOLD,
+          fontFamily:     TYPE.sans,
+          color:          c.gold,
           textDecoration: 'none',
           letterSpacing:  '0.02em',
         }}

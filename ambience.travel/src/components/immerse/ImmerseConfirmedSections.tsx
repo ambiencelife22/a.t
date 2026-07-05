@@ -14,7 +14,7 @@
 //   StatusPill, diningPillModel, DiningPillBox, DiningPill, Lightbox, TabSection
 // Viewport width comes from the canonical useWindowWidth hook (src/hooks), A5.
 //
-// Theme tokens (CREAM, INK, GOLD etc) are re-declared here — they will move to
+// Theme tokens (c.surface, c.ink, c.gold etc) are re-declared here — they will move to
 // a shared token file in A3 when the unified surface is built.
 //
 // Last updated: S53H · A2 — extracted from ImmerseTripPage.tsx.
@@ -33,19 +33,11 @@ import { getEventStatusMeta }            from '../../types/typesEventStatus'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, beddingLabel } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
-import { ID } from '../../tokens/tokensLanding'
 import { useWindowWidth } from '../../hooks/useWindowWidth'
+import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
-const CREAM   = '#F7F5F0'
-const CARD_BG = '#F0EDE6'
-const INK     = '#1A1D1A'
-const GOLD    = ID.gold   // #d8b56a — canonical (was drifted #C9A84C)
-const MUTED   = '#787060'
-const FAINT   = '#B4AFA5'
-const RULE    = '#DCDBD5'
-const SANS    = "'Plus Jakarta Sans', sans-serif"
-const SERIF   = "'Cormorant Garamond', Georgia, serif"
+const c = AMBIENCE.light
 const SIDEBAR_W = 220
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -63,7 +55,7 @@ function StatusPill({ status }: { status: string | null }) {
       border:        `1px solid ${meta.color}50`,
       color:         meta.color,
       background:    `${meta.color}14`,
-      fontFamily:    SANS,
+      fontFamily:    TYPE.sans,
       flexShrink:    0,
       whiteSpace:    'nowrap',
     }}>
@@ -85,8 +77,8 @@ function diningPillModel(opts: {
   const cancelled = opts.diningStatus === 'cancelled'
   const penalty   = opts.penaltyApplied === true
   if (cancelled && penalty) return { color: '#B4321F', label: opts.cancellationNote ?? 'Cancelled - penalty applies' }
-  if (cancelled)            return { color: MUTED,     label: opts.cancellationNote ?? 'Cancelled' }
-  if (opts.bookingTerms)    return { color: GOLD,      label: opts.bookingTerms }
+  if (cancelled)            return { color: c.muted,     label: opts.cancellationNote ?? 'Cancelled' }
+  if (opts.bookingTerms)    return { color: c.gold,      label: opts.bookingTerms }
   return null
 }
 
@@ -98,7 +90,7 @@ function DiningPillBox({ model }: { model: { color: string; label: string } | nu
       border: `1px solid ${model.color}`, borderRadius: 8,
       background: `${model.color}0F`,
     }}>
-      <span style={{ fontSize: 11, fontFamily: SANS, color: model.color, lineHeight: 1.5 }}>{model.label}</span>
+      <span style={{ fontSize: 11, fontFamily: TYPE.sans, color: model.color, lineHeight: 1.5 }}>{model.label}</span>
     </div>
   )
 }
@@ -199,7 +191,7 @@ const auxSections = groupAuxBySection(auxBookings)
           {accomBookings.map(booking => {
             const ownArr       = isOwnArrangements(booking.booked_by)
             const bookedByText = bookedByLabel(booking.booked_by)
-            const pillColor    = ownArr ? FAINT : GOLD
+            const pillColor    = ownArr ? c.faint : c.gold
             const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
             const dateRange    = formatDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
             const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
@@ -207,7 +199,7 @@ const auxSections = groupAuxBySection(auxBookings)
 
             return (
               <div key={booking.id} style={{
-                background: '#fff', border: `0.5px solid ${RULE}`,
+                background: '#fff', border: `0.5px solid ${c.lineStrong}`,
                 borderRadius: 12, overflow: 'hidden',
                 boxSizing: 'border-box',
               }}>
@@ -216,7 +208,7 @@ const auxSections = groupAuxBySection(auxBookings)
                   <div
                     style={{
                       width: 'clamp(100px,30%,200px)', flexShrink: 0,
-                      background: CARD_BG, position: 'relative', overflow: 'hidden',
+                      background: c.surfaceSunken, position: 'relative', overflow: 'hidden',
                       cursor: headerImg ? 'zoom-in' : 'default',
                     }}
                     onClick={() => headerImg && setLightbox({ src: headerImg, alt: hotelName })}
@@ -225,12 +217,12 @@ const auxSections = groupAuxBySection(auxBookings)
                   </div>
                   <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
-                      {dateRange && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED }}>{dateRange}</div>}
-                      {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
-                      {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
-                      {booking.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-In: ${fmtTime(booking.start_time)}`}</div>}
-                      {booking.party_composition && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{booking.party_composition}</div>}
+                      <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
+                      {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted }}>{dateRange}</div>}
+                      {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
+                      {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
+                      {booking.start_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-In: ${fmtTime(booking.start_time)}`}</div>}
+                      {booking.party_composition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.party_composition}</div>}
                       </div>
                     <div style={{ marginTop: 12 }}>
                       {booking.payment_exception && (
@@ -238,7 +230,7 @@ const auxSections = groupAuxBySection(auxBookings)
                           display: 'inline-block', marginBottom: 6, padding: '3px 10px',
                           border: '1px solid #B4321F', borderRadius: 5, background: '#B4321F0F',
                         }}>
-                          <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B4321F' }}>Payment Outstanding</span>
+                          <span style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B4321F' }}>Payment Outstanding</span>
                         </div>
                       )}
                       {rooms.length === 0 && booking.confirmation_number && (
@@ -255,27 +247,27 @@ const auxSections = groupAuxBySection(auxBookings)
                       )}
                       {ownArr && (
                         <span style={{
-                          display: 'inline-block', fontFamily: SANS, fontSize: 9,
-                          letterSpacing: '0.12em', color: MUTED,
-                          border: `0.5px solid ${FAINT}`, borderRadius: 999,
+                          display: 'inline-block', fontFamily: TYPE.sans, fontSize: 9,
+                          letterSpacing: '0.12em', color: c.muted,
+                          border: `0.5px solid ${c.faint}`, borderRadius: 999,
                           padding: '3px 10px', whiteSpace: 'nowrap',
                         }}>Own Arrangements</span>
                       )}
                       {!ownArr && (
-                        <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
+                        <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontStyle: 'italic', color: c.faint }}>{bookedByText}</div>
                       )}
                     </div>
                   </div>
                 </div>
                 {/* Inclusions, cancellation policy, invoices — full width below header */}
                 {(booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) && (
-                  <div style={{ padding: '16px 20px', borderTop: `0.5px solid ${RULE}` }}>
+                  <div style={{ padding: '16px 20px', borderTop: `0.5px solid ${c.lineStrong}` }}>
                     {(booking.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
                       <div key={gi} style={{ marginTop: gi > 0 ? 12 : 0 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 6 }}>{group.heading}</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans, marginBottom: 6 }}>{group.heading}</div>
                         {group.bullets.map((b, bi) => (
-                          <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7 }}>
-                            <span style={{ color: GOLD, flexShrink: 0 }}>·</span>
+                          <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7 }}>
+                            <span style={{ color: c.gold, flexShrink: 0 }}>·</span>
                             <span>{b}</span>
                           </div>
                         ))}
@@ -284,24 +276,24 @@ const auxSections = groupAuxBySection(auxBookings)
                   </div>
                 )}
                 {booking.cancellation_policy && (
-                  <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${RULE}`, background: CARD_BG }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Cancellation Policy</div>
-                    <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
+                  <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${c.lineStrong}`, background: c.surfaceSunken }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 4 }}>Cancellation Policy</div>
+                    <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
                   </div>
                 )}
                 {(booking._invoices ?? []).length > 0 && (
-                  <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${RULE}` }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 6 }}>Invoices</div>
+                  <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${c.lineStrong}` }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 6 }}>Invoices</div>
                     {(booking._invoices as BookingInvoice[]).map(inv => (
-                      <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 6, paddingBottom: 6, borderTop: `0.5px solid ${RULE}` }}>
+                      <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 6, paddingBottom: 6, borderTop: `0.5px solid ${c.lineStrong}` }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: INK }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
-                          <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 1 }}>
+                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
+                          <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>
                             {inv.invoice_date ? formatDate(inv.invoice_date) : ''}
-                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: FAINT, marginLeft: 8 }}>#{inv.invoice_number}</span>
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.faint, marginLeft: 8 }}>#{inv.invoice_number}</span>
                           </div>
                         </div>
-                        <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, flexShrink: 0 }}>
+                        <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, flexShrink: 0 }}>
                           {moneyDec(inv.amount ?? 0, inv.currency)}
                         </div>
                       </div>
@@ -310,21 +302,21 @@ const auxSections = groupAuxBySection(auxBookings)
                 )}
                 {/* Nested rooms */}
                 {rooms.length > 0 && (
-                  <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                  <div style={{ borderTop: `0.5px solid ${c.lineStrong}` }}>
                     {rooms.map((room, ri) => {
                       const guests = webRoomDisplay(room).guestLine
                       return (
                         <div key={room.id ?? ri} style={{
                           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
                           gap: 16, padding: '12px 20px',
-                          borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none',
+                          borderTop: ri > 0 ? `0.5px solid ${c.lineStrong}` : 'none',
                           flexWrap: 'wrap',
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {room.room_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{room.room_name}</div>}
-                            {guests && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{guests}</div>}
-                            {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
-                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
+                            {room.room_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{room.room_name}</div>}
+                            {guests && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{guests}</div>}
+                            {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
+                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                           </div>
                           {room.confirmation_number && (
                             <div style={{
@@ -354,33 +346,33 @@ const auxSections = groupAuxBySection(auxBookings)
         <TabSection key={section.type} label={section.label}>
           {section.items.map(aux => {
             const ownArr    = isOwnArrangements(aux.booked_by)
-            const pillColor = ownArr ? FAINT : GOLD
+            const pillColor = ownArr ? c.faint : c.gold
             const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' - ')
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
               <div key={aux.id} style={{
-                background: '#fff', border: `0.5px solid ${RULE}`,
+                background: '#fff', border: `0.5px solid ${c.lineStrong}`,
                 borderRadius: 12, padding: '16px 20px',
                 display: 'flex', alignItems: 'flex-start', gap: 16,
                 boxSizing: 'border-box',
               }}>
-                <div style={{ fontSize: 22, color: GOLD, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
+                <div style={{ fontSize: 22, color: c.gold, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {aux.name && <div style={{ fontSize: 16, fontFamily: SERIF, color: aux.dining_status === 'cancelled' ? FAINT : INK, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
-                  {route && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, wordBreak: 'break-word' }}>{route}</div>}
-                  {aux.start_date && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
-                  {timeStr && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 700, color: INK, marginTop: 4 }}>{timeStr}</div>}
+                  {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.dining_status === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
+                  {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
+                  {aux.start_date && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
+                  {timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>}
                   {[aux.cabin_class, aux.aircraft_type].filter(Boolean).length > 0 && (
-                    <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 4 }}>
+                    <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>
                       {[aux.cabin_class, aux.aircraft_type].filter(Boolean).join(' \u00b7 ')}
                     </div>
                   )}
                   {ownArr && (
                     <span style={{
-                      display: 'inline-block', marginTop: 6, fontFamily: SANS, fontSize: 9,
-                      letterSpacing: '0.12em', color: MUTED,
-                      border: `0.5px solid ${FAINT}`, borderRadius: 999,
+                      display: 'inline-block', marginTop: 6, fontFamily: TYPE.sans, fontSize: 9,
+                      letterSpacing: '0.12em', color: c.muted,
+                      border: `0.5px solid ${c.faint}`, borderRadius: 999,
                       padding: '3px 10px', whiteSpace: 'nowrap',
                     }}>Own Arrangements</span>
                   )}
@@ -396,8 +388,8 @@ const auxSections = groupAuxBySection(auxBookings)
                           ].filter(Boolean).join('  \u00b7  ')
                           return (
                             <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{passengerName(p)}</span>
-                              {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{detail}</span>}
+                              <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{passengerName(p)}</span>
+                              {detail && <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: c.muted }}>{detail}</span>}
                             </div>
                           )
                         })}
@@ -412,9 +404,9 @@ const auxSections = groupAuxBySection(auxBookings)
                       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {veh.map(v => (
                           <div key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{v.driver_name || 'Driver'}</span>
-                            {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS }}>{v.vehicle_role}</span>}
-                            <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{v.driver_name || 'Driver'}</span>
+                            {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans }}>{v.vehicle_role}</span>}
+                            <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: c.muted }}>
                               {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}
                             </span>
                           </div>
@@ -424,11 +416,11 @@ const auxSections = groupAuxBySection(auxBookings)
                   })()}
                   {isMeetGreetBooking(aux.booking_type) && (aux.contact_name || aux.contact_phone) && (
                     <div style={{ marginTop: 8 }}>
-                      {aux.contact_name && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK }}>{aux.contact_name}</div>}
+                      {aux.contact_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{aux.contact_name}</div>}
                       {aux.contact_phone && (
-                        <a href={toTelHref(aux.contact_phone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{aux.contact_phone}</a>
+                        <a href={toTelHref(aux.contact_phone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 2 }}>{aux.contact_phone}</a>
                       )}
-                      {aux.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
+                      {aux.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
                     </div>
                   )}
                   {isDiningBooking(aux.booking_type) && (() => {
@@ -442,13 +434,13 @@ const auxSections = groupAuxBySection(auxBookings)
                     if (v?.table_hold_note) rows.push({ label: 'Table',    value: v.table_hold_note })
                     return (
                       <div style={{ marginTop: 8 }}>
-                        {guestLine && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: rows.length ? 8 : 0 }}>{guestLine}</div>}
+                        {guestLine && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginBottom: rows.length ? 8 : 0 }}>{guestLine}</div>}
                         {rows.map((r, i) => (
                           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginTop: i ? 4 : 0, flexWrap: 'wrap' }}>
-                            <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>{r.label}</div>
-                            <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                            <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>{r.label}</div>
+                            <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5, wordBreak: 'break-word' }}>
                               {r.label === 'Address' && v?.maps_url
-                                ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: GOLD, textDecoration: 'none' }}>{r.value}</a>
+                                ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: c.gold, textDecoration: 'none' }}>{r.value}</a>
                                 : r.value}
                             </div>
                           </div>
@@ -615,8 +607,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
         <div style={{
           width:         sidebarOpen ? SIDEBAR_W : 48,
           flexShrink:    0,
-          borderRight:   `1px solid ${RULE}`,
-          background:    CREAM,
+          borderRight:   `1px solid ${c.lineStrong}`,
+          background:    c.surface,
           position:      isMobile ? 'fixed' : 'sticky',
           top:           isMobile ? 0 : 0,
           left:          isMobile ? 0 : 'auto',
@@ -632,11 +624,11 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             alignItems:     'center',
             justifyContent: sidebarOpen ? 'space-between' : 'center',
             padding:        sidebarOpen ? '14px 16px 10px' : '14px 0 10px',
-            borderBottom:   `1px solid ${RULE}`,
+            borderBottom:   `1px solid ${c.lineStrong}`,
             flexShrink:     0,
           }}>
             {sidebarOpen && (
-              <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT }}>
+              <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: c.faint }}>
                 Days
               </span>
             )}
@@ -649,7 +641,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                 background:     'transparent',
                 border:         'none',
                 cursor:         'pointer',
-                color:          GOLD,
+                color:          c.gold,
                 fontSize:       16,
                 fontWeight:     700,
                 padding:        '4px 8px',
@@ -676,16 +668,16 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                       textAlign:  'left',
                       padding:    '10px 16px',
                       border:     'none',
-                      borderLeft: `3px solid ${isActive ? GOLD : 'transparent'}`,
-                      background: isActive ? `${GOLD}0A` : 'transparent',
+                      borderLeft: `3px solid ${isActive ? c.gold : 'transparent'}`,
+                      background: isActive ? `${c.gold}0A` : 'transparent',
                       cursor:     'pointer',
                       transition: 'all 120ms',
                     }}
                   >
-                    <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isActive ? GOLD : FAINT, marginBottom: 2 }}>
+                    <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isActive ? c.gold : c.faint, marginBottom: 2 }}>
                       Day {i + 1}
                     </div>
-                    <div style={{ fontSize: 11, fontFamily: SANS, fontWeight: isActive ? 700 : 400, color: isActive ? INK : MUTED, lineHeight: 1.3 }}>
+                    <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontWeight: isActive ? 700 : 400, color: isActive ? c.ink : c.muted, lineHeight: 1.3 }}>
                       {day.day_label || formatDateShortWeekday(day.entry_date)}
                     </div>
                   </button>
@@ -707,22 +699,22 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
         {activeDay ? (
           <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)' }}>
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: c.gold, marginBottom: 6 }}>
                 {activeDay.day_label || ''}
               </div>
-              <div style={{ fontSize: 'clamp(22px,3vw,32px)', fontFamily: SERIF, color: INK, lineHeight: 1.2, marginBottom: 14 }}>
+              <div style={{ fontSize: 'clamp(22px,3vw,32px)', fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.2, marginBottom: 14 }}>
                 {formatDateWeekday(activeDay.entry_date)}
               </div>
               {activeDay.day_note && (
-                <div style={{ fontSize: 13, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginBottom: 12 }}>
                   {activeDay.day_note}
                 </div>
               )}
-              <div style={{ height: 1, background: RULE }} />
+              <div style={{ height: 1, background: c.lineStrong }} />
             </div>
 
             {cards.length === 0 ? (
-              <div style={{ fontSize: 13, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>Nothing planned today.</div>
+              <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic' }}>Nothing planned today.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {cards.map(item => {
@@ -740,7 +732,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   if (isHotelStay) {
                     return (
                       <div key={item.id} style={{
-                        background: '#fff', border: `0.5px solid ${RULE}`,
+                        background: '#fff', border: `0.5px solid ${c.lineStrong}`,
                         borderRadius: 12, overflow: 'hidden', boxSizing: 'border-box',
                       }}>
                         <div style={{ display: 'flex', minHeight: 100 }}>
@@ -748,7 +740,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             <div
                               style={{
                                 width: 'clamp(100px,30%,200px)', flexShrink: 0,
-                                background: CARD_BG, position: 'relative', overflow: 'hidden',
+                                background: c.surfaceSunken, position: 'relative', overflow: 'hidden',
                                 cursor: 'zoom-in',
                               }}
                               onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
@@ -759,44 +751,44 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                                <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>
+                                <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.muted }}>
                                   {item.categoryLabel ?? 'Hotel'}
                                 </span>
                                 {item.status && <StatusPill status={item.status} />}
                               </div>
-                              <div style={{ fontSize: 16, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>{item.title}</div>
-                              {item.checkInNote && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
-                              {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: SANS, color: GOLD, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
-                              {item.start_time && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{`Check-In: ${fmtTime(item.start_time)}`}</div>}
+                              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3 }}>{item.title}</div>
+                              {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
+                              {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.gold, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
+                              {item.start_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-In: ${fmtTime(item.start_time)}`}</div>}
                             </div>
                             {bookedByLabel(item.booked_by) && (
-                              <div style={{ fontSize: 11, fontFamily: SANS, fontStyle: 'italic', color: FAINT, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
+                              <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontStyle: 'italic', color: c.faint, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
                             )}
                           </div>
                         </div>
-                        <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                        <div style={{ borderTop: `0.5px solid ${c.lineStrong}` }}>
                           {item.rooms.map((room, ri) => {
                             const rd = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name })
                             return (
                               <div key={room.id} style={{
                                 display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
                                 gap: 16, padding: '12px 20px',
-                                borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none',
+                                borderTop: ri > 0 ? `0.5px solid ${c.lineStrong}` : 'none',
                                 flexWrap: 'wrap',
                               }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  {rd.roomName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</div>}
-                                  {rd.guestLine && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</div>}
-                                  {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
-                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: SANS, color: GOLD, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
-                                  {room.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
+                                  {rd.roomName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{rd.roomName}</div>}
+                                  {rd.guestLine && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{rd.guestLine}</div>}
+                                  {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
+                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
+                                  {room.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>
                                 {room.confirmation_number && (
                                   <div style={{
                                     display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-                                    border: `1px solid ${GOLD}`, borderRadius: 5, padding: '3px 10px', background: '#FAF7F0',
+                                    border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', background: '#FAF7F0',
                                   }}>
-                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: GOLD }}>Conf #: {room.confirmation_number}</span>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.gold }}>Conf #: {room.confirmation_number}</span>
                                   </div>
                                 )}
                               </div>
@@ -811,22 +803,22 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   if (isMeetGreetBooking(item.bookingType) && (item.contactName || item.contactPhone)) {
                     return (
                       <div key={item.id} style={{
-                        background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 12,
+                        background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
                         overflow: 'hidden', borderLeft: `3px solid ${accent}`,
                         padding: '16px 20px', boxSizing: 'border-box',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>
+                          <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.muted }}>
                             {item.categoryLabel ?? 'Airport Meet & Greet'}
                           </span>
-                          {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</span>}
+                          {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink }}>{timeStr}</span>}
                         </div>
-                        <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 6 }}>{item.title}</div>
-                        {item.contactName && <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK }}>{item.contactName}</div>}
+                        <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3, marginBottom: 6 }}>{item.title}</div>
+                        {item.contactName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{item.contactName}</div>}
                         {item.contactPhone && (
-                          <a href={toTelHref(item.contactPhone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: SANS, color: GOLD, textDecoration: 'none', marginTop: 2 }}>{item.contactPhone}</a>
+                          <a href={toTelHref(item.contactPhone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 2 }}>{item.contactPhone}</a>
                         )}
-                        {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, fontStyle: 'italic', marginTop: 4 }}>{item.notes}</div>}
+                        {item.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginTop: 4 }}>{item.notes}</div>}
                       </div>
                     )
                   }
@@ -846,7 +838,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                     const hasDetails = !!(v?.address || v?.phone || v?.dress_code || v?.children_policy || v?.table_hold_note)
                     return (
                       <div key={item.id} style={{
-                        background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 12,
+                        background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
                         overflow: 'hidden', display: 'flex',
                         flexDirection: stackLayout ? 'column' : 'row',
                         minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
@@ -854,7 +846,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                       }}>
                         {item.image_src && (
                           <div
-                            style={{ width: stackLayout ? '100%' : 'clamp(120px,28%,200px)', height: stackLayout ? 200 : 'auto', flexShrink: 0, background: CARD_BG, position: 'relative', overflow: 'hidden', cursor: 'zoom-in' }}
+                            style={{ width: stackLayout ? '100%' : 'clamp(120px,28%,200px)', height: stackLayout ? 200 : 'auto', flexShrink: 0, background: c.surfaceSunken, position: 'relative', overflow: 'hidden', cursor: 'zoom-in' }}
                             onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
                           >
                             <img src={item.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -865,53 +857,53 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
-                              <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{item.categoryLabel ?? 'Dining'}</span>
+                              <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.muted }}>{item.categoryLabel ?? 'Dining'}</span>
                             </div>
-                            {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</span>}
+                            {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink }}>{timeStr}</span>}
                           </div>
-                          <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: cancelled ? FAINT : INK, lineHeight: 1.3, marginBottom: 4, textDecoration: cancelled ? 'line-through' : 'none' }}>{item.title}</div>
-                          {essentials && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED }}>{essentials}</div>}
+                          <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: TYPE.serif, color: cancelled ? c.faint : c.ink, lineHeight: 1.3, marginBottom: 4, textDecoration: cancelled ? 'line-through' : 'none' }}>{item.title}</div>
+                          {essentials && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted }}>{essentials}</div>}
                           <DiningPillBox model={pill} />
                           {hasDetails && (
                             <details style={{ marginTop: 10 }}>
-                              <summary style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, cursor: 'pointer', listStyle: 'none' }}>Reservation details</summary>
+                              <summary style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, cursor: 'pointer', listStyle: 'none' }}>Reservation details</summary>
                               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {v?.address && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Address</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                                      {v.maps_url ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: GOLD, textDecoration: 'none' }}>{v.address}</a> : v.address}
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Address</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                                      {v.maps_url ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: c.gold, textDecoration: 'none' }}>{v.address}</a> : v.address}
                                     </div>
                                   </div>
                                 )}
                                 {v?.phone && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Phone</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK }}>{v.phone}</div>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Phone</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{v.phone}</div>
                                   </div>
                                 )}
                                 {v?.dress_code && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Dress</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5 }}>{v.dress_code}</div>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Dress</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.dress_code}</div>
                                   </div>
                                 )}
                                 {v?.children_policy && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Children</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5 }}>{v.children_policy}</div>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Children</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.children_policy}</div>
                                   </div>
                                 )}
                                 {v?.table_hold_note && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT }}>Table</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: SANS, color: INK, lineHeight: 1.5 }}>{v.table_hold_note}</div>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Table</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.table_hold_note}</div>
                                   </div>
                                 )}
                               </div>
                             </details>
                           )}
-                          {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', lineHeight: 1.5, marginTop: 6 }}>{item.notes}</div>}
+                          {item.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', lineHeight: 1.5, marginTop: 6 }}>{item.notes}</div>}
                         </div>
                       </div>
                     )
@@ -919,7 +911,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 
                   return (
                     <div key={item.id} style={{
-                      background: '#fff', border: `0.5px solid ${RULE}`, borderRadius: 12,
+                      background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
                       overflow: 'hidden', display: 'flex',
                       flexDirection: stackLayout ? 'column' : 'row',
                       minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
@@ -930,7 +922,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           style={{
                             width: stackLayout ? '100%' : 'clamp(120px,28%,200px)',
                             height: stackLayout ? 200 : 'auto',
-                            flexShrink: 0, background: CARD_BG,
+                            flexShrink: 0, background: c.surfaceSunken,
                             position: 'relative', overflow: 'hidden', cursor: 'zoom-in',
                           }}
                           onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
@@ -948,17 +940,17 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
-                            <span style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>
+                            <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.muted }}>
                               {item.categoryLabel ?? item.category ?? 'Other'}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             {item.status && <StatusPill status={item.status} />}
-                            {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{timeStr}</span>}
+                            {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink }}>{timeStr}</span>}
                           </div>
                         </div>
 
-                        <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: SERIF, color: INK, lineHeight: 1.3, marginBottom: 4 }}>
+                        <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3, marginBottom: 4 }}>
                           {item.title}
                         </div>
 
@@ -970,19 +962,19 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <div key={room.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                      {rd.roomName && <span style={{ display: 'block', fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, lineHeight: 1.3 }}>{rd.roomName}</span>}
-                                      {rd.guestLine && <span style={{ display: 'block', fontSize: 12, fontFamily: SANS, color: MUTED, marginTop: 2 }}>{rd.guestLine}</span>}
+                                      {rd.roomName && <span style={{ display: 'block', fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{rd.roomName}</span>}
+                                      {rd.guestLine && <span style={{ display: 'block', fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{rd.guestLine}</span>}
                                     </div>
                                     {room.confirmation_number && (
                                       <span style={{
                                         display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-                                        border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
+                                        border: `1px solid ${c.gold}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
                                       }}>
-                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>Conf #: {room.confirmation_number}</span>
+                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.gold }}>Conf #: {room.confirmation_number}</span>
                                       </span>
                                     )}
                                   </div>
-                                  {room.notes && <span style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>{room.notes}</span>}
+                                  {room.notes && <span style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic' }}>{room.notes}</span>}
                                 </div>
                               )
                             })}
@@ -993,7 +985,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           <div style={{
                             marginTop: 10, marginBottom: 8,
                             padding: '10px 12px',
-                            background: CARD_BG,
+                            background: c.surfaceSunken,
                             borderRadius: 6,
                             display: 'flex', flexDirection: 'column', gap: 6,
                           }}>
@@ -1001,17 +993,17 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
-                                  fontSize: 9, fontFamily: SANS, fontWeight: 700,
+                                  fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700,
                                   letterSpacing: '0.12em', textTransform: 'uppercase',
-                                  color: FAINT,
+                                  color: c.faint,
                                 }}>
                                   Departure
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                   {item.flightOrigin}
                                 </div>
                                 {item.flightDepartTime && (
-                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK, flexShrink: 0 }}>
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink, flexShrink: 0 }}>
                                     {fmtTime(item.flightDepartTime)}
                                   </div>
                                 )}
@@ -1021,17 +1013,17 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
-                                  fontSize: 9, fontFamily: SANS, fontWeight: 700,
+                                  fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700,
                                   letterSpacing: '0.12em', textTransform: 'uppercase',
-                                  color: FAINT,
+                                  color: c.faint,
                                 }}>
                                   Arrival
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                   {item.flightDestination}
                                 </div>
                                 {item.flightArriveTime && (
-                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK, flexShrink: 0 }}>
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink, flexShrink: 0 }}>
                                     {fmtTime(item.flightArriveTime)}
                                   </div>
                                 )}
@@ -1041,13 +1033,13 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
-                                  fontSize: 9, fontFamily: SANS, fontWeight: 700,
+                                  fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700,
                                   letterSpacing: '0.12em', textTransform: 'uppercase',
-                                  color: FAINT,
+                                  color: c.faint,
                                 }}>
                                   Cabin
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                   {item.cabinClass}
                                 </div>
                               </div>
@@ -1060,12 +1052,12 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 ].filter(Boolean).join('  \u00b7  ')
                                 return (
                                   <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.faint }}>
                                       Guest
                                     </div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                       <span style={{ fontWeight: 600 }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
-                                      {detail && <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED }}>{`  ${detail}`}</span>}
+                                      {detail && <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.muted }}>{`  ${detail}`}</span>}
                                     </div>
                                   </div>
                                 )
@@ -1073,10 +1065,10 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             ) : (
                               item.seatNumbers && (
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                  <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
+                                  <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.faint }}>
                                     Seats
                                   </div>
-                                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                     {item.seatNumbers}
                                   </div>
                                 </div>
@@ -1085,20 +1077,20 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           </div>
                         )}
 
-                        {item.subtitle && <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, marginBottom: 4 }}>{item.subtitle}</div>}
-                        {item.notes && <div style={{ fontSize: 11, fontFamily: SANS, color: FAINT, fontStyle: 'italic', lineHeight: 1.5 }}>{item.notes}</div>}
+                        {item.subtitle && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginBottom: 4 }}>{item.subtitle}</div>}
+                        {item.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', lineHeight: 1.5 }}>{item.notes}</div>}
 
                         {item.driverDetails.length > 0 && (
-                          <div style={{ marginTop: 10, marginBottom: 8, padding: '10px 12px', background: CARD_BG, borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ marginTop: 10, marginBottom: 8, padding: '10px 12px', background: c.surfaceSunken, borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {item.driverDetails.map(v => (
                               <div key={v.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: FAINT }}>
+                                <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.faint }}>
                                   {v.vehicle_role || 'Driver'}
                                 </div>
-                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: SANS, color: INK, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
                                   <span style={{ fontWeight: 600 }}>{v.driver_name || 'Driver'}</span>
                                   {[v.driver_phone, v.car_model, v.plate].filter(Boolean).length > 0 && (
-                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: MUTED }}>{`  ${[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}`}</span>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.muted }}>{`  ${[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}`}</span>
                                   )}
                                 </div>
                               </div>
@@ -1106,9 +1098,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           </div>
                         )}
                         {item.passengers.length === 0 && item.confirmation_number && (
-                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${RULE}` }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${GOLD}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>
-                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: GOLD }}>Conf #: {item.confirmation_number}</span>
+                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.lineStrong}` }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${c.gold}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.gold }}>Conf #: {item.confirmation_number}</span>
                             </div>
                           </div>
                         )}
@@ -1120,7 +1112,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             )}
           </div>
         ) : (
-          <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)', fontSize: 13, fontFamily: SANS, color: FAINT, fontStyle: 'italic' }}>
+          <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)', fontSize: 13, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic' }}>
             No programme days available yet.
           </div>
         )}
@@ -1128,12 +1120,12 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
         {brief?.programme_notes?.trim() && (
           <div style={{
             padding:   'clamp(20px,4vw,36px) clamp(20px,5vw,56px)',
-            borderTop: `1px solid ${RULE}`,
+            borderTop: `1px solid ${c.lineStrong}`,
           }}>
-            <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, marginBottom: 12 }}>
+            <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: c.gold, marginBottom: 12 }}>
               Notes
             </div>
-            <div style={{ fontSize: 13, fontFamily: SANS, color: MUTED, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+            <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
               {brief.programme_notes}
             </div>
           </div>
@@ -1157,7 +1149,7 @@ export function TripBriefTab({ clientData }: {
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
       <div style={{ marginBottom: 36 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 14 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans, marginBottom: 14 }}>
           {title}
         </div>
         {children}
@@ -1168,15 +1160,15 @@ export function TripBriefTab({ clientData }: {
   function BriefRow({ label, value, sub, bookedBy, cancelled, cancellationNote }: { label: string; value: string; sub?: string; bookedBy?: string; cancelled?: boolean; cancellationNote?: string | null }) {
     return (
       <div style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
-        <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>{label}</div>
+        <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>{label}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: cancelled ? FAINT : INK, fontFamily: SANS, wordBreak: 'break-word', textDecoration: cancelled ? 'line-through' : 'none' }}>{value}</span>
-            {cancelled && <span style={{ fontSize: 8, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B4321F', border: '1px solid #B4321F', borderRadius: 4, padding: '1px 6px' }}>Cancelled</span>}
+            <span style={{ fontSize: 13, fontWeight: 600, color: cancelled ? c.faint : c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word', textDecoration: cancelled ? 'line-through' : 'none' }}>{value}</span>
+            {cancelled && <span style={{ fontSize: 8, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#B4321F', border: '1px solid #B4321F', borderRadius: 4, padding: '1px 6px' }}>Cancelled</span>}
           </div>
-          {sub      && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{sub}</div>}
-          {cancelled && cancellationNote && <div style={{ fontSize: 11, color: '#B4321F', fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{cancellationNote}</div>}
-          {bookedBy && <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 2, fontStyle: 'italic' }}>{bookedBy}</div>}
+          {sub      && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>{sub}</div>}
+          {cancelled && cancellationNote && <div style={{ fontSize: 11, color: '#B4321F', fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>{cancellationNote}</div>}
+          {bookedBy && <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 2, fontStyle: 'italic' }}>{bookedBy}</div>}
         </div>
       </div>
     )
@@ -1207,34 +1199,34 @@ export function TripBriefTab({ clientData }: {
               .map(([name, n]) => (n > 1 ? `${name} \u00d7${n}` : name))
             return (
               <div key={h.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
-                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
+                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
                   {formatDateRange(h.check_in_date ?? h.start_date, h.end_date) || ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>
                     {h._hotel_name ?? h.name ?? 'Hotel'}
                   </div>
-                  {h.nights && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2 }}>{`${h.nights} nights`}</div>}
-                  {h.check_in_note && <div style={{ fontSize: 11, color: GOLD, fontFamily: SANS, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
+                  {h.nights && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2 }}>{`${h.nights} nights`}</div>}
+                  {h.check_in_note && <div style={{ fontSize: 11, color: c.gold, fontFamily: TYPE.sans, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
                   {h.cancellation_policy && (
-                    <div style={{ marginTop: 6, padding: '8px 12px', background: CARD_BG, borderRadius: 6 }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 3 }}>Cancellation Policy</div>
-                      <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{h.cancellation_policy}</div>
+                    <div style={{ marginTop: 6, padding: '8px 12px', background: c.surfaceSunken, borderRadius: 6 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 3 }}>Cancellation Policy</div>
+                      <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{h.cancellation_policy}</div>
                     </div>
                   )}
                   {(h._invoices ?? []).length > 0 && (
                     <div style={{ marginTop: 6 }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: FAINT, fontFamily: SANS, marginBottom: 4 }}>Invoices</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 4 }}>Invoices</div>
                       {(h._invoices as BookingInvoice[]).map(inv => (
-                        <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 5, paddingBottom: 5, borderTop: `0.5px solid ${RULE}` }}>
+                        <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 5, paddingBottom: 5, borderTop: `0.5px solid ${c.lineStrong}` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: INK }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
-                            <div style={{ fontSize: 11, fontFamily: SANS, color: MUTED, marginTop: 1 }}>
+                            <div style={{ fontSize: 12, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
+                            <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>
                               {inv.invoice_date ? formatDate(inv.invoice_date) : ''}
-                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: FAINT, marginLeft: 8 }}>#{inv.invoice_number}</span>
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.faint, marginLeft: 8 }}>#{inv.invoice_number}</span>
                             </div>
                           </div>
-                          <div style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: INK, flexShrink: 0 }}>
+                          <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, flexShrink: 0 }}>
                             {moneyDec(inv.amount ?? 0, inv.currency)}
                           </div>
                         </div>
@@ -1245,10 +1237,10 @@ export function TripBriefTab({ clientData }: {
                     <div style={{ marginTop: 6 }}>
                       {(h.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
                         <div key={gi} style={{ marginTop: gi > 0 ? 6 : 0 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS, marginBottom: 3 }}>{group.heading}</div>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans, marginBottom: 3 }}>{group.heading}</div>
                           {group.bullets.map((b, bi) => (
-                            <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: SANS, color: MUTED, lineHeight: 1.6 }}>
-                              <span style={{ color: GOLD, flexShrink: 0 }}>·</span>
+                            <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.6 }}>
+                              <span style={{ color: c.gold, flexShrink: 0 }}>·</span>
                               <span>{b}</span>
                             </div>
                           ))}
@@ -1258,13 +1250,13 @@ export function TripBriefTab({ clientData }: {
                   )}
                   {categories.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {categories.map((c, i) => (
-                        <div key={i} style={{ fontSize: 11, color: MUTED, fontFamily: SANS, wordBreak: 'break-word' }}>{c}</div>
+                      {categories.map((cat, i) => (
+                        <div key={i} style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>{cat}</div>
                       ))}
                     </div>
                   )}
                   {bookedByLabel(h.booked_by) && (
-                    <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 2, fontStyle: 'italic' }}>{bookedByLabel(h.booked_by)}</div>
+                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 2, fontStyle: 'italic' }}>{bookedByLabel(h.booked_by)}</div>
                   )}
                 </div>
               </div>
@@ -1284,15 +1276,15 @@ export function TripBriefTab({ clientData }: {
 
             return (
               <div key={f.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
-                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
+                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
                   {f.start_date ? formatDate(f.start_date) : ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>
                     {f.name ?? 'Flight'}
                   </div>
                   {flightMeta && (
-                    <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>
+                    <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>
                       {flightMeta}
                     </div>
                   )}
@@ -1306,11 +1298,11 @@ export function TripBriefTab({ clientData }: {
                         ].filter(Boolean).join('  \u00b7  ')
                         return (
                           <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>
                               {passengerName(p)}
                             </div>
                             {detail && (
-                              <div style={{ fontSize: 11, color: MUTED, fontFamily: 'DM Mono, monospace' }}>
+                              <div style={{ fontSize: 11, color: c.muted, fontFamily: 'DM Mono, monospace' }}>
                                 {detail}
                               </div>
                             )}
@@ -1321,7 +1313,7 @@ export function TripBriefTab({ clientData }: {
                   )}
 
                   {bookedByLabel(f.booked_by) && (
-                    <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 4, fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>
                       {bookedByLabel(f.booked_by)}
                     </div>
                   )}
@@ -1339,23 +1331,23 @@ export function TripBriefTab({ clientData }: {
             const veh = (t.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
             return (
               <div key={t.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
-                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: FAINT, fontFamily: SANS }}>
+                <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
                   {t.start_date ? formatDate(t.start_date) : ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: INK, fontFamily: SANS, wordBreak: 'break-word' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>
                     {t.name ?? 'Transfer'}
                   </div>
-                  {route && <div style={{ fontSize: 11, color: MUTED, fontFamily: SANS, marginTop: 2, wordBreak: 'break-word' }}>{route}</div>}
+                  {route && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>{route}</div>}
 
                   {veh.length > 0 && (
                     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {veh.map(v => (
                         <div key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: INK, fontFamily: SANS }}>{v.driver_name || 'Driver'}</span>
-                          {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: GOLD, fontFamily: SANS }}>{v.vehicle_role}</span>}
+                          <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{v.driver_name || 'Driver'}</span>
+                          {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans }}>{v.vehicle_role}</span>}
                           {[v.driver_phone, v.car_model, v.plate].filter(Boolean).length > 0 && (
-                            <span style={{ fontSize: 11, color: MUTED, fontFamily: 'DM Mono, monospace' }}>
+                            <span style={{ fontSize: 11, color: c.muted, fontFamily: 'DM Mono, monospace' }}>
                               {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}
                             </span>
                           )}
@@ -1365,7 +1357,7 @@ export function TripBriefTab({ clientData }: {
                   )}
 
                   {bookedByLabel(t.booked_by) && (
-                    <div style={{ fontSize: 11, color: FAINT, fontFamily: SANS, marginTop: 4, fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>
                       {bookedByLabel(t.booked_by)}
                     </div>
                   )}
@@ -1428,7 +1420,7 @@ export function TripBriefTab({ clientData }: {
       {clientData.brief?.important_notes && (clientData.brief.important_notes as string[]).length > 0 && (
         <BriefSection title='Important Notes'>
           {(clientData.brief.important_notes as string[]).map((note, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13, fontFamily: SANS, color: MUTED, lineHeight: 1.6, paddingTop: 6, paddingBottom: 6 }}>
+            <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.6, paddingTop: 6, paddingBottom: 6 }}>
               <img src='/emblem.png' alt='' style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, marginTop: 3, opacity: 0.35 }} />
               <span>{note}</span>
             </div>
@@ -1455,35 +1447,35 @@ export function TripBriefTab({ clientData }: {
                       justifyContent: 'space-between',
                       padding:        '14px 18px',
                       borderRadius:   content ? '10px 10px 0 0' : 10,
-                      border:         link.is_highlighted ? `1.5px solid ${GOLD}` : `1px solid ${RULE}`,
-                      borderBottom:   content ? 'none' : link.is_highlighted ? `1.5px solid ${GOLD}` : `1px solid ${RULE}`,
-                      background:     link.is_highlighted ? `${GOLD}08` : '#fff',
+                      border:         link.is_highlighted ? `1.5px solid ${c.gold}` : `1px solid ${c.lineStrong}`,
+                      borderBottom:   content ? 'none' : link.is_highlighted ? `1.5px solid ${c.gold}` : `1px solid ${c.lineStrong}`,
+                      background:     link.is_highlighted ? `${c.gold}08` : '#fff',
                       cursor:         'pointer',
                       transition:     'border-color 150ms',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {link.link_type === 'guide' ? (
                           <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0 }}>
-                            <rect x='3' y='1' width='9' height='12' rx='1' stroke={GOLD} strokeWidth='1.2'/>
-                            <line x1='3' y1='13' x2='12' y2='13' stroke={GOLD} strokeWidth='1.2'/>
-                            <line x1='5' y1='4' x2='10' y2='4' stroke={GOLD} strokeWidth='1' strokeLinecap='round'/>
-                            <line x1='5' y1='6.5' x2='10' y2='6.5' stroke={GOLD} strokeWidth='1' strokeLinecap='round'/>
-                            <line x1='5' y1='9' x2='8' y2='9' stroke={GOLD} strokeWidth='1' strokeLinecap='round'/>
-                            <rect x='1' y='2' width='2' height='11' rx='0.5' fill={GOLD} opacity='0.3'/>
+                            <rect x='3' y='1' width='9' height='12' rx='1' stroke={c.gold} strokeWidth='1.2'/>
+                            <line x1='3' y1='13' x2='12' y2='13' stroke={c.gold} strokeWidth='1.2'/>
+                            <line x1='5' y1='4' x2='10' y2='4' stroke={c.gold} strokeWidth='1' strokeLinecap='round'/>
+                            <line x1='5' y1='6.5' x2='10' y2='6.5' stroke={c.gold} strokeWidth='1' strokeLinecap='round'/>
+                            <line x1='5' y1='9' x2='8' y2='9' stroke={c.gold} strokeWidth='1' strokeLinecap='round'/>
+                            <rect x='1' y='2' width='2' height='11' rx='0.5' fill={c.gold} opacity='0.3'/>
                           </svg>
                         ) : (
                           <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.45 }}>
-                            <path d='M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                            <path d='M9 1h6m0 0v6m0-6L8 8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                            <path d='M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9' stroke={c.ink} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                            <path d='M9 1h6m0 0v6m0-6L8 8' stroke={c.ink} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
                           </svg>
 )}
-                        <div style={{ fontSize: 13, fontFamily: SERIF, color: INK, lineHeight: 1.3 }}>
+                        <div style={{ fontSize: 13, fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3 }}>
                           {link.label}
                         </div>
                       </div>
                       <svg width='14' height='14' viewBox='0 0 14 14' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0, opacity: 0.4 }}>
-                        <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
-                        <path d='M9 1h4m0 0v4m0-4L7 7' stroke={INK} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                        <path d='M6 2H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8' stroke={c.ink} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
+                        <path d='M9 1h4m0 0v4m0-4L7 7' stroke={c.ink} strokeWidth='1.2' strokeLinecap='round' strokeLinejoin='round'/>
                       </svg>
                     </div>
                   </a>
@@ -1491,12 +1483,12 @@ export function TripBriefTab({ clientData }: {
                     <div style={{
                       padding:      '14px 18px',
                       borderRadius: '0 0 10px 10px',
-                      border:       `1px solid ${RULE}`,
+                      border:       `1px solid ${c.lineStrong}`,
                       borderTop:    'none',
-                      background:   CARD_BG,
+                      background:   c.surfaceSunken,
                     }}>
                       {content.kicker && (
-                        <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: GOLD, marginBottom: 6 }}>
+                        <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: c.gold, marginBottom: 6 }}>
                           {content.kicker}
                         </div>
                       )}
@@ -1507,7 +1499,7 @@ export function TripBriefTab({ clientData }: {
                           style={{ width: '100%', borderRadius: 6, marginBottom: 10, objectFit: 'cover', maxHeight: 180 }}
                         />
                       )}
-                      <div style={{ fontSize: 12, fontFamily: SANS, color: MUTED, lineHeight: 1.7 }}>
+                      <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7 }}>
                         {content.body}
                       </div>
                     </div>
@@ -1532,11 +1524,11 @@ export function ContactsTab({ clientData }: { clientData: TripClientData }) {
 
   function ContactCard({ name, role, email, phone }: { name: string; role: string; email?: string | null; phone?: string | null }) {
     return (
-      <div style={{ padding: '20px 24px', borderRadius: 12, border: `0.5px solid ${RULE}`, background: '#fff', boxSizing: 'border-box' }}>
-        <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 8, fontFamily: SANS }}>{role}</div>
-        <div style={{ fontSize: 18, fontFamily: SERIF, color: INK, marginBottom: 8 }}>{name}</div>
-        {phone && <a href={toTelHref(phone) ?? '#'} style={{ display: 'block', fontSize: 13, color: GOLD, textDecoration: 'none', fontFamily: SANS, marginBottom: 3 }}>{phone}</a>}
-        {email && <a href={`mailto:${email}`} style={{ display: 'block', fontSize: 12, color: MUTED, textDecoration: 'none', fontFamily: SANS, wordBreak: 'break-all' }}>{email}</a>}
+      <div style={{ padding: '20px 24px', borderRadius: 12, border: `0.5px solid ${c.lineStrong}`, background: '#fff', boxSizing: 'border-box' }}>
+        <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 8, fontFamily: TYPE.sans }}>{role}</div>
+        <div style={{ fontSize: 18, fontFamily: TYPE.serif, color: c.ink, marginBottom: 8 }}>{name}</div>
+        {phone && <a href={toTelHref(phone) ?? '#'} style={{ display: 'block', fontSize: 13, color: c.gold, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>{phone}</a>}
+        {email && <a href={`mailto:${email}`} style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, wordBreak: 'break-all' }}>{email}</a>}
       </div>
     )
   }
@@ -1552,7 +1544,7 @@ export function ContactsTab({ clientData }: { clientData: TripClientData }) {
     if (people.length === 0) return null
     return (
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 12 }}>
+        <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
           {label}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
@@ -1569,7 +1561,7 @@ export function ContactsTab({ clientData }: { clientData: TripClientData }) {
       {/* Advisor */}
       {brief?.advisor_name && (
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 12 }}>
+          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
             Travel Advisor
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
@@ -1592,7 +1584,7 @@ export function ContactsTab({ clientData }: { clientData: TripClientData }) {
       {/* Fallback: no people selected -> house display name */}
       {!hasAny && house?.display_name && (
         <div>
-          <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, marginBottom: 12 }}>
+          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
             Guest
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
@@ -1602,9 +1594,9 @@ export function ContactsTab({ clientData }: { clientData: TripClientData }) {
       )}
 
       {brief?.hotel_contact_note && (
-        <div style={{ marginTop: 28, padding: '16px 20px', borderRadius: 10, background: `${GOLD}08`, border: `1px solid ${GOLD}25` }}>
-          <div style={{ fontSize: 9, fontFamily: SANS, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: GOLD, marginBottom: 8 }}>Hotel Contact Note</div>
-          <div style={{ fontSize: 13, fontFamily: SANS, color: MUTED, lineHeight: 1.7 }}>{brief.hotel_contact_note}</div>
+        <div style={{ marginTop: 28, padding: '16px 20px', borderRadius: 10, background: `${c.gold}08`, border: `1px solid ${c.gold}25` }}>
+          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: c.gold, marginBottom: 8 }}>Hotel Contact Note</div>
+          <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7 }}>{brief.hotel_contact_note}</div>
         </div>
       )}
     </div>
@@ -1621,8 +1613,8 @@ export function TabSection({ label, children }: { label: string; children: React
       width:     '100%',
       overflow:  'hidden',
     }}>
-      <div style={{ height: 1, background: RULE, marginBottom: 18 }} />
-      <div style={{ fontSize: 10, fontFamily: SANS, fontWeight: 700, color: GOLD, letterSpacing: '0.14em', marginBottom: 14 }}>{label}</div>
+      <div style={{ height: 1, background: c.lineStrong, marginBottom: 18 }} />
+      <div style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, color: c.gold, letterSpacing: '0.14em', marginBottom: 14 }}>{label}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
     </div>
   )
