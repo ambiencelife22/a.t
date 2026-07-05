@@ -74,7 +74,7 @@ export type TripClientData = {
 
 // ── Discriminated union ───────────────────────────────────────────────────────
 
-export type EngagementClientStage = 'proposal' | 'confirmed'
+export type EngagementClientStage = 'proposal' | 'delivery'
 
 export type EngagementClientData =
   | {
@@ -83,11 +83,10 @@ export type EngagementClientData =
       engagement: ImmerseEngagementData
     }
   | {
-      stage:      'confirmed'
+      stage:      'delivery'
       urlId:      string
-      engagement: ImmerseEngagementData  // confirmed arm carries engagement data; ImmerseTripPage fetches confirmed trip data internally
+      engagement: ImmerseEngagementData  // delivery arm carries engagement data; the delivery surface fetches its own brief/confirmation/programme internally
     }
-
 // ── Stage resolution ──────────────────────────────────────────────────────────
 // Maps lifecycle status slugs to the two render arms.
 // Any status not in CONFIRMED_SLUGS falls back to proposal.
@@ -101,7 +100,7 @@ const CONFIRMED_SLUGS = new Set([
 
 export function resolveStage(statusSlug: string | null | undefined): EngagementClientStage {
   if (!statusSlug) return 'proposal'
-  return CONFIRMED_SLUGS.has(statusSlug) ? 'confirmed' : 'proposal'
+  return CONFIRMED_SLUGS.has(statusSlug) ? 'delivery' : 'proposal'
 }
 
 // ── Type guards ───────────────────────────────────────────────────────────────
@@ -112,8 +111,8 @@ export function isProposalData(
   return data.stage === 'proposal'
 }
 
-export function isConfirmedData(
+export function isDeliveryData(
   data: EngagementClientData
-): data is Extract<EngagementClientData, { stage: 'confirmed' }> {
-  return data.stage === 'confirmed'
+): data is Extract<EngagementClientData, { stage: 'delivery' }> {
+  return data.stage === 'delivery'
 }

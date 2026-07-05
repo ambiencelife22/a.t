@@ -11,7 +11,7 @@
 //   error      → NotFoundPage (dark, full page — unexpected failure)
 //   archived   → ProposalArchivedFallback (cream — proposal was archived)
 //   proposal   → ImmerseEngagementPage (stage=proposal)
-//   confirmed  → ImmerseEngagementPage (stage=confirmed)
+//   delivery   → ImmerseEngagementPage (stage=delivery)
 //
 // not-public is deliberately distinct from not-found:
 //   not-found  = engagement does not exist (genuine 404)
@@ -33,7 +33,7 @@ import ImmerseNotPublicFallback from './ImmerseNotPublicFallback'
 import {
   fetchEngagementClientData,
 } from '../../queries/queriesImmerseClient'
-import { isProposalData, isConfirmedData } from '../../types/typesImmerseClient'
+import { isProposalData, isDeliveryData } from '../../types/typesImmerseClient'
 import type { ImmerseEngagementData } from '../../types/typesImmerse'
 import type { TripClientData } from '../../types/typesImmerseClient'
 
@@ -65,7 +65,7 @@ type RouteState =
   | { phase: 'not-public' }
   | { phase: 'archived'   }
   | { phase: 'proposal';  data: ImmerseEngagementData }
-  | { phase: 'confirmed'; data: ImmerseEngagementData }
+  | { phase: 'delivery'; data: ImmerseEngagementData }
   | { phase: 'error'                                  }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -89,8 +89,8 @@ function useEngagementRoute(urlId: string): RouteState {
         return
       }
 
-      if (isConfirmedData(data)) {
-        setState({ phase: 'confirmed', data: data.engagement })
+      if (isDeliveryData(data)) {
+        setState({ phase: 'delivery', data: data.engagement })
       }
     })
   }, [urlId])
@@ -160,9 +160,9 @@ export default function ImmerseEngagementRoute({
     )
   }
 
-  if (state.phase === 'confirmed') {
-    // Confirmed engagements render at root /{urlId} — the brief surface.
-    // If someone hits /{urlId}/proposal for a confirmed engagement, redirect to root.
+  if (state.phase === 'delivery') {
+    // Delivery engagements render at root /{urlId} — the brief/confirmation/programme surface.
+    // A hit on /{urlId}/proposal for a delivery engagement redirects to root.
     if (isProposalPath) {
       const rootUrl = window.location.hostname === 'immerse.ambience.travel'
         ? `/${urlId}`
@@ -172,7 +172,7 @@ export default function ImmerseEngagementRoute({
     }
     return (
       <ImmerseEngagementPage
-        data={{ stage: 'confirmed', urlId, engagement: state.data }}
+        data={{ stage: 'delivery', urlId, engagement: state.data }}
         activeTab={activeTab}
         activeDestSlug={activeDestSlug}
       />

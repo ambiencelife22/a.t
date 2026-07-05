@@ -2,8 +2,8 @@
 //
 // Collapse A: one component, two render arms, one stage discriminant.
 //
-//   proposal  → Hero + Welcome Letter + Route Strip + Destinations + Pricing
-//   confirmed → ImmerseTripPage (tabs: Confirmation, Programme, Brief, Contacts)
+//   proposal → Hero + Welcome Letter + Route Strip + Destinations + Pricing
+//   delivery → ImmerseTripPage (tabs: Confirmation, Programme, Brief, Contacts)
 //
 // Receives EngagementClientData from ImmerseEngagementRoute — data already
 // fetched, no internal fetch here. ImmerseTripPage re-fetches for the confirmed
@@ -40,9 +40,9 @@ export default function ImmerseEngagementPage({
   // ── Confirmed arm ───────────────────────────────────────────────────────────
   // ImmerseTripPage owns the full confirmed render (tabs, bookings, programme,
   // brief, contacts). Delegate entirely — no duplication.
-  if (data.stage === 'confirmed') {
-    // Confirmed arm: ImmerseTripPage fetches its own confirmed data internally.
-    // urlId is the access token; ImmerseTripPage owns the confirmed render.
+  if (data.stage === 'delivery') {
+    // Delivery arm: the delivery surface fetches its own brief/confirmation/programme data internally.
+    // urlId is the access token; ImmerseTripPage owns the delivery render (renamed to DeliveryPage in a later phase).
     return <ImmerseTripPage urlId={data.urlId} />
   }
 

@@ -50,7 +50,7 @@ export async function fetchEngagementClientData(
   if (stage === 'trip' || stage === 'completed') {
     return {
       type: 'data',
-      data: { stage: 'confirmed', urlId, engagement: proposalData },
+      data: { stage: 'delivery', urlId, engagement: proposalData },
     }
   }
 
