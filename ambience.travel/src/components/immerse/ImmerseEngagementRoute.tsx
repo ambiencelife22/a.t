@@ -110,7 +110,6 @@ function useEngagementRoute(urlId: string): RouteState {
 
 interface ImmerseEngagementRouteProps {
   activeDestSlug?:  string | null
-  activeTab?:       string | null
   isProposalPath?:  boolean
 }
 
@@ -123,7 +122,6 @@ function extractUrlId(): string {
 
 export default function ImmerseEngagementRoute({
   activeDestSlug  = null,
-  activeTab       = null,
   isProposalPath  = false,
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
@@ -163,7 +161,6 @@ export default function ImmerseEngagementRoute({
     return (
       <ImmerseEngagementPage
         data={{ stage: 'proposal', urlId, engagement: state.data }}
-        activeTab={activeTab}
         activeDestSlug={activeDestSlug}
       />
     )
@@ -182,7 +179,6 @@ export default function ImmerseEngagementRoute({
     return (
       <ImmerseEngagementPage
         data={{ stage: 'delivery', urlId, engagement: state.data, bundle: state.bundle }}
-        activeTab={activeTab}
         activeDestSlug={activeDestSlug}
       />
     )

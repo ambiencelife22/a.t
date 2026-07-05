@@ -27,13 +27,11 @@ import type { EngagementClientData } from '../../types/typesImmerseClient'
 
 interface Props {
   data:            EngagementClientData
-  activeTab?:      string | null
   activeDestSlug?: string | null
 }
 
 export default function ImmerseEngagementPage({
   data,
-  activeTab      = null,
   activeDestSlug = null,
 }: Props) {
 

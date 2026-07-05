@@ -35,8 +35,6 @@
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
- *   localhost:5173/immerse/:url_id/confirmation          → ImmerseDeliveryPage (confirmation tab)
- *   localhost:5173/immerse/:url_id/programme             → ImmerseDeliveryPage (programme tab)
  *   localhost:5173/guides/:destination/dining            → GuideRouteDining (S35)
  *   localhost:5173/guides/:destination/hotels            → GuideRouteHotels (S37)
  *   localhost:5173/guides/:destination/experiences       → GuideRouteExperiences
@@ -297,13 +295,11 @@ export default function App() {
       // Bare destination:  /{urlId}/{dest} (no /proposal/) → seg2; the route
       // component redirects proposals to the /proposal/{dest} form.
       const activeDestSlug = isProposalPath ? (seg3 ?? null) : (seg2 ?? null)
-      const activeTab      = null  // /confirmation + /programme deprecated
 
       return (
         <Suspense fallback={<RouteLoading />}>
           <ImmerseEngagementRoute
             activeDestSlug={activeDestSlug}
-            activeTab={activeTab}
             isProposalPath={isProposalPath}
           />
         </Suspense>
