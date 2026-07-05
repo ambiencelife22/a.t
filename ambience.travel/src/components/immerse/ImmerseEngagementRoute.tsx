@@ -30,10 +30,11 @@ import ImmerseProposalArchivedFallback from './ImmerseProposalArchivedFallback'
 import ImmerseNotPublicFallback from './ImmerseNotPublicFallback'
 import {
   fetchEngagementClientData,
+  isProposalData,
+  isDeliveryData,
 } from '../../queries/queriesImmerseClient'
-import { isProposalData, isDeliveryData } from '../../types/typesImmerseClient'
 import type { ImmerseEngagementData } from '../../types/typesImmerse'
-import type { DeliveryBundle } from '../../types/typesImmerseClient'
+import type { DeliveryBundle } from '../../queries/queriesImmerseClient'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 

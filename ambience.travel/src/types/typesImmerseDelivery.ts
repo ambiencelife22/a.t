@@ -1,8 +1,16 @@
-// typesImmerseClient.ts — Unified client-facing engagement type.
+// typesImmerseDelivery.ts — Unified engagement RENDER-PAYLOAD types.
 //
-// Collapse A: replaces the two parallel client render paths:
-//   - ImmerseEngagementData (proposal surface)
-//   - DeliveryData (delivery surface)
+// Named for what it holds: the client-FACING render payload for the immerse
+// engagement surface — NOT client identity. Client identity (the person/party)
+// lives in global_people and its relationship tables, never here. Everything in
+// this file is engagement/delivery composition: the stage-discriminated render
+// union, the delivery bundle, engagement contacts (client AND hotel AND ambience
+// people on the engagement), links, and guide flags.
+//
+// Renamed from typesImmerseClient.ts (S53O eight-shape B0): the old name claimed
+// "client" but the contents are delivery/engagement render data. Per the
+// Client-=-identity-only law, the misnamed file was dissolved and its whole
+// contents relocated here.
 //
 // Architecture: discriminated union by stage, not a flattened superset.
 // A flattened superset with 40+ optional fields forces every consumer to
@@ -17,7 +25,7 @@
 //   proposal  → requested, quoted, pending
 //   confirmed → confirmed, paid, in_service, closed_won
 //
-// Last updated: S53I — Collapse A types layer.
+// Last updated: S53O — eight-shape B0. Honest rename from typesImmerseClient.
 
 import type {
   ImmerseEngagementData,

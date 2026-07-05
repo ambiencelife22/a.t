@@ -11,7 +11,7 @@
 //   - All DB reads happen server-side via service role in the Edge Functions
 //   - No sensitive financial or commission data is returned
 //
-// Types live in typesImmerseClient.ts per convention. This file owns the fetch only.
+// Types live in typesImmerseDelivery.ts. This file owns the fetch only.
 //
 // Last updated: S53M — fetchDeliveryData → fetchDeliveryBundle: absorbs the
 //   programme EF and the payload-assembly the delivery surface previously did
@@ -19,7 +19,7 @@
 // Prior: S48 — added apikey + Authorization headers required by the Supabase
 //   Edge Function gateway even for public endpoints.
 
-import type { DeliveryData, DeliveryBundle } from '../types/typesImmerseClient'
+import type { DeliveryData, DeliveryBundle } from '../types/typesImmerseDelivery'
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string

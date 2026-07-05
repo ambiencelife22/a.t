@@ -14,12 +14,12 @@
 //
 // Last updated: S53I — Collapse A. Removed illegal REST probe.
 
-import type { EngagementClientData } from '../types/typesImmerseClient'
+import type { EngagementClientData } from '../types/typesImmerseDelivery'
 import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
 import { fetchDeliveryBundle } from './queriesImmerseDelivery'
 
-export type { TripGuides, TripContact, DeliveryData, EngagementLink, EngagementClientData, DeliveryBundle } from '../types/typesImmerseClient'
-export { isProposalData, isDeliveryData } from '../types/typesImmerseClient'
+export type { TripGuides, TripContact, DeliveryData, EngagementLink, EngagementClientData, DeliveryBundle } from '../types/typesImmerseDelivery'
+export { isProposalData, isDeliveryData } from '../types/typesImmerseDelivery'
 
 // ── Result type ───────────────────────────────────────────────────────────────
 
