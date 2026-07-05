@@ -293,7 +293,10 @@ export default function App() {
       // /urlId/proposal/stbarths   → proposal destination subpage
       // /urlId                     → confirmed (brief surface)
       const isProposalPath = seg2 === 'proposal'
-      const activeDestSlug = isProposalPath && seg3 ? seg3 : null
+      // Proposal subpage: /{urlId}/proposal/{dest} → seg3.
+      // Bare destination:  /{urlId}/{dest} (no /proposal/) → seg2; the route
+      // component redirects proposals to the /proposal/{dest} form.
+      const activeDestSlug = isProposalPath ? (seg3 ?? null) : (seg2 ?? null)
       const activeTab      = null  // /confirmation + /programme deprecated
 
       return (

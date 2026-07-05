@@ -153,9 +153,10 @@ export default function ImmerseEngagementRoute({
     // Proposal engagements must be accessed at /{urlId}/proposal
     // If someone hits the root /{urlId} for a proposal, redirect to /proposal
     if (!isProposalPath) {
-      const proposalUrl = window.location.hostname === 'immerse.ambience.travel'
+      const proposalBase = window.location.hostname === 'immerse.ambience.travel'
         ? `/${urlId}/proposal`
         : `/immerse/${urlId}/proposal`
+      const proposalUrl = activeDestSlug ? `${proposalBase}/${activeDestSlug}` : proposalBase
       window.location.replace(proposalUrl)
       return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
     }
