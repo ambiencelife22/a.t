@@ -124,7 +124,7 @@ export default function ImmerseEngagementRoute({
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
   const state = useEngagementRoute(urlId)
-  const useShadowSurface = new URLSearchParams(window.location.search).get('surface') === 'next'
+  const useOldPages = new URLSearchParams(window.location.search).get('surface') === 'old'
 
   if (state.phase === 'loading') {
     return (
@@ -158,9 +158,9 @@ export default function ImmerseEngagementRoute({
       return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
     }
     const proposalData = { stage: 'proposal' as const, urlId, engagement: state.data }
-    return useShadowSurface
-      ? <ImmerseEngagementSurface data={proposalData} activeDestSlug={activeDestSlug} />
-      : <ImmerseEngagementPage data={proposalData} activeDestSlug={activeDestSlug} />
+    return useOldPages
+      ? <ImmerseEngagementPage data={proposalData} activeDestSlug={activeDestSlug} />
+      : <ImmerseEngagementSurface data={proposalData} activeDestSlug={activeDestSlug} />
   }
   if (state.phase === 'delivery') {
     // Delivery engagements render at root /{urlId} — the brief/confirmation/programme surface.
@@ -173,9 +173,9 @@ export default function ImmerseEngagementRoute({
       return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
     }
     const deliveryData = { stage: 'delivery' as const, urlId, engagement: state.data, bundle: state.bundle }
-    return useShadowSurface
-      ? <ImmerseEngagementSurface data={deliveryData} activeDestSlug={activeDestSlug} />
-      : <ImmerseEngagementPage data={deliveryData} activeDestSlug={activeDestSlug} />
+    return useOldPages
+      ? <ImmerseEngagementPage data={deliveryData} activeDestSlug={activeDestSlug} />
+      : <ImmerseEngagementSurface data={deliveryData} activeDestSlug={activeDestSlug} />
   }
   return null
 }
