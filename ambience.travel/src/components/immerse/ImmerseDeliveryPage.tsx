@@ -19,7 +19,7 @@
 //
 // What it does not own:
 //   - Route resolution (ImmerseEngagementRoute.tsx)
-//   - Data fetching primitives (queriesImmerseTrip.ts)
+//   - Data fetching primitives (queriesImmerseDelivery.ts)
 //   - PDF generation (pdfImmerseConfirmation.ts, pdfImmerseProgramme.ts)
 //   - Edge Functions (get-trip-confirmation, get-trip-programme)
 //

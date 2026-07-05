@@ -25,7 +25,9 @@ import type {
   ImmerseTripBrief,
   ImmerseTripHouse,
   ImmerseTripAuxBooking,
+  ImmerseTripDay,
 } from './typesImmerse'
+import type { TimelineItem } from './typesTimeline'
 
 export type TripGuides = {
   hasDining:       boolean
@@ -73,6 +75,16 @@ export type DeliveryData = {
 }
 
 // ── Discriminated union ───────────────────────────────────────────────────────
+
+// ── Delivery bundle ───────────────────────────────────────────────────────────
+// Full render payload for the delivery surface: DeliveryData (confirmation half)
+// + programme days/entries. Assembled by fetchDeliveryBundle from both delivery
+// Edge Functions.
+export type DeliveryBundle = {
+  clientData: DeliveryData
+  days:       ImmerseTripDay[]
+  entries:    TimelineItem[]
+}
 
 export type EngagementClientStage = 'proposal' | 'delivery'
 

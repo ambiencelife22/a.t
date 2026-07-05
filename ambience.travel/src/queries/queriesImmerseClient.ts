@@ -5,7 +5,7 @@
 //
 // Stage resolution:
 //   1. Try getImmerseEngagement (proposal EF). Returns data → proposal arm.
-//   2. Returns null → try fetchDeliveryData (delivery EF).
+//   2. Delivery bundle is fetched separately by the delivery surface (fetchDeliveryBundle).
 //   3. Returns data → confirmed arm.
 //   4. Both null → not-found (or not-public — EF returns null for both).
 //
@@ -16,7 +16,6 @@
 
 import type { EngagementClientData } from '../types/typesImmerseClient'
 import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
-import { fetchDeliveryData } from './queriesImmerseTrip'
 
 export type { TripGuides, TripContact, DeliveryData, EngagementLink } from '../types/typesImmerseClient'
 
