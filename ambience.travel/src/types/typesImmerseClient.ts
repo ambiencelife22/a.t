@@ -86,6 +86,9 @@ export type DeliveryBundle = {
   entries:    TimelineItem[]
 }
 
+// Tab identifiers for the delivery surface's tabbed navigation.
+export type DeliveryTabId = 'welcome' | 'confirmation' | 'programme' | 'brief' | 'contacts'
+
 export type EngagementClientStage = 'proposal' | 'delivery'
 
 export type EngagementClientData =
