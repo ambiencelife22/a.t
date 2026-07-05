@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { formatMonthYearShort } from '../../utils/utilsDates'
 import { A } from '../../tokens/tokensAdmin'
 import {
   inputStyle, textareaStyle,
@@ -1536,7 +1537,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
                       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{e.restaurant_name}</div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                         {(e.city || e.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[e.city, e.country].filter(Boolean).join(', ')}</span>}
-                        {e.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{new Date(e.visit_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>}
+                        {e.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(e.visit_date)}</span>}
                         {e.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{e.trip_ref}</span>}
                       </div>
                       {e.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
@@ -1659,7 +1660,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
                       <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                         {(dest.city || dest.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[dest.city, dest.country].filter(Boolean).join(', ')}</span>}
                         {dest.trip_type && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{dest.trip_type}</span>}
-                        {dest.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{new Date(dest.visit_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>}
+                        {dest.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(dest.visit_date)}</span>}
                         {dest.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{dest.trip_ref}</span>}
                       </div>
                       {dest.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{dest.notes}</div>}

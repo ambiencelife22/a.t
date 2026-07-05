@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
-import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
+import { formatDateShort, formatDateShortRange, formatDateRange } from '../../utils/utilsDates'
 import { moneyDec as fmt } from '../../utils/utilsCurrency'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
@@ -45,9 +45,7 @@ function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): Client
   const duration  = b.nights     ? `${b.nights} night${b.nights !== 1 ? 's' : ''}` : '--'
   const dateRange = (() => {
     if (!b.start_date || !b.end_date) return checkIn
-    const s = new Date(b.start_date.slice(0, 10) + 'T00:00:00')
-    const e = new Date(b.end_date.slice(0, 10) + 'T00:00:00')
-    return `${s.getDate()}-${e.getDate()} ${e.toLocaleDateString('en-US', { month: 'long' })} ${e.getFullYear()}`
+    return formatDateRange(b.start_date, b.end_date)
   })()
   const salutation = house?.salutation_rule ?? null
   return {

@@ -99,7 +99,7 @@ function fmtTimeOnly(t: string | null): string {
 function buildFilename(trip: DossierTrip): string {
   const today = new Date()
   const dd    = String(today.getDate()).padStart(2, '0')
-  const mon   = today.toLocaleDateString('en-US', { month: 'long' })
+  const mon   = ['January','February','March','April','May','June','July','August','September','October','November','December'][today.getMonth()]
   const yyyy  = today.getFullYear()
   return `ambience \u00b7 ${trip.destinations[0]?.name ?? 'Programme'} \u00b7 Daily Programme \u00b7 ${dd} ${mon} ${yyyy}.pdf`
 }

@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react'
 import { C } from '../tokens/tokensProgramme'
 import { getGuestProgrammes, type GuestProgramme } from '../queries/queriesProgramme'
-import { formatDateShort } from '../utils/utilsDates'
+import { formatDateShort, formatDateWeekday } from '../utils/utilsDates'
 
 interface DashboardProps {
   displayName?: string
@@ -28,12 +28,6 @@ function greeting(name?: string): string {
   const hour = new Date().getHours()
   const salutation = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   return name ? `${salutation}, ${name.split(' ')[0]}.` : `${salutation}.`
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  })
 }
 
 function daysUntil(iso: string): number {
@@ -336,13 +330,13 @@ function NextCard({ p }: { p: GuestProgramme }) {
         {p.checkIn && (
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.faint, fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 3 }}>Check-in</div>
-            <div style={{ fontSize: 13, color: C.text, fontWeight: 500, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{formatDate(p.checkIn)}</div>
+            <div style={{ fontSize: 13, color: C.text, fontWeight: 500, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{formatDateWeekday(p.checkIn)}</div>
           </div>
         )}
         {p.checkOut && (
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.faint, fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 3 }}>Check-out</div>
-            <div style={{ fontSize: 13, color: C.text, fontWeight: 500, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{formatDate(p.checkOut)}</div>
+            <div style={{ fontSize: 13, color: C.text, fontWeight: 500, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{formatDateWeekday(p.checkOut)}</div>
           </div>
         )}
       </div>

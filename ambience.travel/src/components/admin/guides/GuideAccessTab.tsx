@@ -25,6 +25,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { formatDateShort } from '../../../utils/utilsDates'
 import { A } from '../../../tokens/tokensAdmin'
 import { useToast } from '../../../providers/ToastContext'
 import {
@@ -193,7 +194,7 @@ export default function GuideAccessTab({
                     </div>
                   )}
                   <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2 }}>
-                    Granted {new Date(g.granted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Granted {formatDateShort(g.granted_at.slice(0, 10))}
                   </div>
                 </div>
                 <button

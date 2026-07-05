@@ -12,6 +12,7 @@
  */
 
 import { useState, useMemo } from 'react'
+import { formatDateShort, fmtTime } from '../../utils/utilsDates'
 import { A } from '../../tokens/tokensAdmin'
 import {
   inputStyle, textareaStyle,
@@ -47,9 +48,9 @@ const CHANNEL_ICON: Record<RequestChannel, string> = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtReceived(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const datePart = iso.slice(0, 10)
+  const timePart = iso.slice(11, 16)
+  return `${formatDateShort(datePart)} · ${fmtTime(timePart)}`
 }
 
 function toDatetimeLocal(iso: string): string {

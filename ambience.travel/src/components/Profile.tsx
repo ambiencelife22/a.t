@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { C } from '../tokens/tokensProgramme'
+import { formatDateShort, formatMonthDay } from '../utils/utilsDates'
 import { supabase } from '../lib/supabase'
 import {
   getProfile,
@@ -263,7 +264,7 @@ function SupportTab({ userId, displayName }: { userId: string; displayName: stri
                         <span style={{ fontSize: 10, fontWeight: 700, color: sColor, background: `${sColor}18`, border: `1px solid ${sColor}40`, borderRadius: 4, padding: '1px 6px', fontFamily: font, letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>{STATUS_LABELS[ticket.status as TicketStatus]}</span>
                         <span style={{ fontSize: 10, color: C.faint, background: `${C.faint}18`, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 6px', fontFamily: font, flexShrink: 0 }}>{CATEGORY_LABELS[ticket.category as TicketCategory] ?? ticket.category}</span>
                       </div>
-                      <div style={{ fontSize: 11, color: C.faint, fontFamily: mono }}>{new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      <div style={{ fontSize: 11, color: C.faint, fontFamily: mono }}>{formatDateShort(ticket.createdAt.slice(0, 10))}</div>
                     </div>
                     <div style={{ fontSize: 13, color: C.faint, flexShrink: 0, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
                   </button>
@@ -283,7 +284,7 @@ function SupportTab({ userId, displayName }: { userId: string; displayName: stri
                           <div key={msg.id} style={{ background: isUser ? `${C.gold}10` : `rgba(127,222,255,0.08)`, border: `1px solid ${isUser ? `${C.gold}25` : `rgba(127,222,255,0.20)`}`, borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                               <span style={{ fontSize: 10, fontWeight: 700, color: isUser ? C.gold : '#7FDEFF', fontFamily: font, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{isUser ? displayName : 'ambience'}</span>
-                              <span style={{ fontSize: 10, color: C.faint, fontFamily: mono }}>{new Date(msg.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span style={{ fontSize: 10, color: C.faint, fontFamily: mono }}>{formatMonthDay(msg.createdAt.slice(0, 10))}</span>
                             </div>
                             <div style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{msg.body}</div>
                           </div>

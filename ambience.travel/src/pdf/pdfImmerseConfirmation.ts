@@ -640,7 +640,8 @@ function buildFilename(d: ConfirmationBriefData): string {
     if (!s) return ''
     const sd = new Date(s.slice(0, 10) + 'T00:00:00')
     const ed = e ? new Date(e.slice(0, 10) + 'T00:00:00') : null
-    const month = sd.toLocaleDateString('en-US', { month: 'long' })
+    const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December']
+    const month = MONTHS_LONG[sd.getMonth()]
     const year  = sd.getFullYear()
     if (ed && ed.getMonth() === sd.getMonth() && ed.getFullYear() === sd.getFullYear())
       return `${sd.getDate()}-${ed.getDate()} ${month} ${year}`

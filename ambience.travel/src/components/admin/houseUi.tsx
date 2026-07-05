@@ -20,6 +20,7 @@
 import { A } from '../../tokens/tokensAdmin'
 import { inputStyle, btnPrimary as btnP, btnGhost as btnG } from '../../styles/stylesAdmin'
 import { AdminSection } from './_adminPrimitives'
+import { formatDateShortUpper } from '../../utils/utilsDates'
 
 // ── Misc helpers ──────────────────────────────────────────────────────────────
 
@@ -27,9 +28,7 @@ export function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.sli
 
 export function formatDOB(iso: string): string {
   if (!iso) return ''
-  const d = new Date(iso + 'T00:00:00')
-  if (isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+  return formatDateShortUpper(iso)
 }
 
 // ── DesigBadge ────────────────────────────────────────────────────────────────

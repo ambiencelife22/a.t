@@ -137,6 +137,43 @@ export function formatMonthYear(iso: string | null | undefined): string {
   return `${MONTHS[month]} ${year}`
 }
 
+// ── Month+year short — "Jan 2027" ────────────────────────────────────────────
+export function formatMonthYearShort(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  const year  = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10) - 1
+  return `${MONTHS_SHORT[month]} ${year}`
+}
+// ── Date short upper — "03 JAN 2027" ─────────────────────────────────────────
+// Zero-padded day, uppercase short month, 4-digit year.
+// Used for accuracy_date display and houseUi date badges.
+export function formatDateShortUpper(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  const day   = parseInt(m[3], 10).toString().padStart(2, '0')
+  const month = MONTHS_SHORT[parseInt(m[2], 10) - 1].toUpperCase()
+  const year  = m[1]
+  return `${day} ${month} ${year}`
+}
+// ── Month upper — "JAN" ───────────────────────────────────────────────────────
+// Uppercase 3-letter month only. Used in PDF welcome letter date badge.
+export function formatMonthUpper(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  return MONTHS_SHORT[parseInt(m[2], 10) - 1].toUpperCase()
+}
+// ── Month+day short — "Jan 5" ─────────────────────────────────────────────────
+// Short month + day, no year. Used for message timestamps.
+export function formatMonthDay(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso
+  return `${MONTHS_SHORT[parseInt(m[2], 10) - 1]} ${parseInt(m[3], 10)}`
+}
 // ── Today — local browser date ────────────────────────────────────────────────
 // Returns YYYY-MM-DD in the user's local timezone. Safe for comparing against
 // Postgres date columns (which are also date-only, no tz component).
