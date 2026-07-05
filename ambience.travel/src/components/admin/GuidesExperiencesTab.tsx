@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
+import { formatDateShortUpper } from '../../utils/utilsDates'
 import { useToast } from '../../providers/ToastContext'
 import { btnPrimary } from '../../styles/stylesAdmin'
 import {
@@ -155,7 +156,7 @@ export default function GuidesExperiencesTab() {
                       <div style={{
                         fontSize: 11, color: g.accuracy_date ? A.gold : A.faint, fontFamily: A.font,
                       }}>
-                        {g.accuracy_date ?? 'No date set'}
+                        {g.accuracy_date ? formatDateShortUpper(g.accuracy_date) : 'No date set'}
                       </div>
                       <div style={{
                         fontSize: 11, color: g.is_active ? A.positive : A.faint,
