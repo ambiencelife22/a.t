@@ -829,7 +829,6 @@ export interface AdminShop {
   image_credit_url:      string | null
   image_license:         string | null
   is_active:             boolean
-  is_public:             boolean
   sort_order:            number
 }
 
