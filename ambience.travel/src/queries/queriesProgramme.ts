@@ -312,7 +312,7 @@ export async function createTicket(fields: {
 export async function getUserTickets(): Promise<SupportTicket[]> {
   const { data, error } = await supabase
     .from('global_support_tickets')
-    .select('*')
+    .select('id, user_id, category, subject, body, status, priority, created_at, updated_at')
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -322,7 +322,7 @@ export async function getUserTickets(): Promise<SupportTicket[]> {
 export async function getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
   const { data, error } = await supabase
     .from('global_ticket_messages')
-    .select('*')
+    .select('id, ticket_id, author_id, body, is_internal, is_admin_reply, created_at')
     .eq('ticket_id', ticketId)
     .order('created_at', { ascending: true })
 

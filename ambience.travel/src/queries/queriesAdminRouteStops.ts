@@ -16,16 +16,18 @@ import { supabase } from '../lib/supabase'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type RouteStop = {
-  id:         string
-  trip_id:    string
-  sort_order: number
-  title:      string | null
-  stay_label: string | null
-  note:       string | null
-  image_src:  string | null
-  image_alt:  string | null
-  created_at: string
-  updated_at: string
+  id:                 string
+  trip_id:            string
+  sort_order:         number
+  title:              string | null
+  stay_label:         string | null
+  note:               string | null
+  image_src:          string | null
+  image_alt:          string | null
+  destination_row_id: string | null
+  nights:             number | null
+  created_at:         string
+  updated_at:         string
 }
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ export type RouteStop = {
 export async function fetchRouteStops(engagementId: string): Promise<RouteStop[]> {
   const { data, error } = await supabase
     .from('travel_immerse_route_stops')
-    .select('*')
+    .select('id, trip_id, title, stay_label, note, image_src, image_alt, sort_order, destination_row_id, nights, created_at, updated_at')
     .eq('trip_id', engagementId)
     .order('sort_order', { ascending: true })
   if (error) throw error
