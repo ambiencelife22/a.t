@@ -6,11 +6,12 @@
 
 import { supabase } from '../lib/supabase'
 import type { SupplierType } from '../types/typesSuppliers'
+export type { SupplierType }
 
 export type Supplier = {
   id:            string
   name:          string
-  supplier_type: string
+  supplier_type: SupplierType
   is_active:     boolean
   created_at:    string
   updated_at:    string

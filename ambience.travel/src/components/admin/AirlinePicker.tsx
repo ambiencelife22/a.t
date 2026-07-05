@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
-import { fetchSuppliers, createSupplier, type Supplier } from '../../queries/queriesAdminSuppliers'
+import { fetchSuppliers, createSupplier, type Supplier, type SupplierType } from '../../queries/queriesAdminSuppliers'
 
 // Field-style picker (underline, transparent) — matches the brief editor's
 // fieldStyle. Callers that want a boxed style can override via styleVariant.
@@ -65,7 +65,7 @@ export function AirlinePicker({
   const style = variant === 'boxed' ? boxedStyle : fieldStyle
 
   useEffect(() => {
-    fetchSuppliers(['Commercial Airline', 'Private Jet / Charter'])
+    fetchSuppliers(['airline', 'aviation'])
       .then(rows => setAirlines(rows))
       .catch(() => setAirlines([]))
       .finally(() => setAirlinesLoading(false))
@@ -83,9 +83,9 @@ export function AirlinePicker({
     const name = newName.trim()
     if (!name) { setCreating(false); return }
     try {
-      const supplierType = bookingType === 'Private Jet / Charter'
-        ? 'Private Jet / Charter'
-        : 'Commercial Airline'
+      const supplierType: SupplierType = bookingType === 'private_jet'
+        ? 'aviation'
+        : 'airline'
       const created = await createSupplier(name, supplierType)
       setAirlines(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
       onChange(created.id)
