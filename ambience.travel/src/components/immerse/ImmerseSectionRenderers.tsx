@@ -156,4 +156,25 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
     if (ctx.stage !== 'delivery') return null
     return <ContactsTab clientData={ctx.bundle.clientData} />
   },
+
+  // ── Stay-detail sections (eight-shape Stage A — ship dark) ─────────────────
+  // These resolve only for shape 'stay'. The stay payload (ImmerseDestinationData)
+  // is not yet reachable from EngagementClientData — that arm lands in Stage B.
+  // Until then each returns null, keeping SECTION_RENDERERS total over SectionType
+  // (tsc exhaustiveness) without fabricating a context field that does not exist.
+  // Stage B wiring, verified component + prop:
+  //   intro            → <ImmerseDestIntro    data={ctx.detail} />
+  //   hotel_options    → <ImmerseHotelOptions data={ctx.detail} />
+  //   dining_grid      → <ImmerseContentGrid eyebrow={ctx.detail.diningEyebrow}
+  //                        title={ctx.detail.diningTitle} body={ctx.detail.diningBody}
+  //                        items={ctx.detail.dining} />
+  //   experiences_grid → <ImmerseContentGrid eyebrow={ctx.detail.experiencesEyebrow}
+  //                        title={ctx.detail.experiencesTitle} body={ctx.detail.experiencesBody}
+  //                        items={ctx.detail.experiences} dark />
+  //   detail_pricing   → <ImmerseDestPricing  data={ctx.detail} />
+  intro:            () => null,
+  hotel_options:    () => null,
+  dining_grid:      () => null,
+  experiences_grid: () => null,
+  detail_pricing:   () => null,
 }

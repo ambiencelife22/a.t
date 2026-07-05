@@ -325,6 +325,16 @@ export type SectionType =
   | 'programme'
   | 'brief'
   | 'contacts'
+  // Stay-detail sections (Collapse A · eight-shape Stage A). Content lives in
+  // ImmerseDestinationData; renderers wrap the existing ImmerseDest* components.
+  // A standalone stay resolves these in place of route/destinations; a
+  // destination-within-a-journey (Stage B route) renders the same set scoped to
+  // one destination's payload. Ships dark until the stay context arm exists.
+  | 'intro'
+  | 'hotel_options'
+  | 'dining_grid'
+  | 'experiences_grid'
+  | 'detail_pricing'
 
 export type Section = {
   id:        SectionType
@@ -333,20 +343,30 @@ export type Section = {
   sortOrder: number
 }
 
+// sortOrder: gapped integers (0,10,20…). Gaps let journey and stay sections
+// interleave on round numbers without fractions. Within a resolved (stage,shape)
+// set the order is sortOrder-ascending. pricing and detail_pricing share 60 but
+// never co-resolve (mutually exclusive shapes). Keep gaps when inserting; do NOT
+// renumber to consecutive integers — the gaps ARE the interleave contract.
 export const SECTION_REGISTRY: readonly Section[] = [
-  { id: 'hero',         stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                      sortOrder: 0 },
-  { id: 'welcome',      stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay', 'experience', 'arrangement'],                                            sortOrder: 1 },
-  { id: 'route',        stages: ['draft', 'proposal'],                      shapes: ['journey'],                                                                                 sortOrder: 2 },
-  // interstitial: mid-scroll cinematic band (hero-2 fields). Conceptually
-  // stage-agnostic; currently proposal-only because hero-2 data lives only on
-  // proposal-side types. Widen stages here when a delivery hero-2 case appears.
-  { id: 'interstitial', stages: ['draft', 'proposal'],                      shapes: ['journey'],                                                                                 sortOrder: 3 },
-  { id: 'destinations', stages: ['draft', 'proposal'],                      shapes: ['journey', 'stay'],                                                                         sortOrder: 4 },
-  { id: 'pricing',      stages: ['draft', 'proposal'],                      shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 5 },
-  { id: 'confirmation', stages: ['delivery', 'completed'],                  shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 6 },
-  { id: 'programme',    stages: ['delivery', 'completed'],                  shapes: ['journey', 'stay', 'experience'],                                                           sortOrder: 7 },
-  { id: 'brief',        stages: ['delivery', 'completed'],                  shapes: ['journey', 'stay'],                                                                         sortOrder: 8 },
-  { id: 'contacts',     stages: ['delivery', 'completed'],                  shapes: ENGAGEMENT_SHAPES,                                                                           sortOrder: 9 },
+  { id: 'hero',             stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 0 },
+  { id: 'intro',            stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 10 },
+  { id: 'welcome',          stages: ['draft', 'proposal'],                          shapes: ['journey', 'experience', 'arrangement'],                                                 sortOrder: 15 },
+  { id: 'hotel_options',    stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 20 },
+  { id: 'route',            stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 25 },
+  { id: 'dining_grid',      stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 30 },
+  // interstitial: mid-scroll cinematic band (hero-2 fields). journey reads it
+  // from ImmerseEngagementData.heroImageSrc2; stay reads it from
+  // ImmerseDestinationData.heroImageSrc2 — same band, both payloads carry it.
+  { id: 'interstitial',     stages: ['draft', 'proposal'],                          shapes: ['journey', 'stay'],                                                                      sortOrder: 40 },
+  { id: 'experiences_grid', stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 50 },
+  { id: 'destinations',     stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 55 },
+  { id: 'pricing',          stages: ['draft', 'proposal'],                          shapes: ['journey', 'dining', 'reservation', 'transport', 'experience', 'acquisition', 'arrangement'], sortOrder: 60 },
+  { id: 'detail_pricing',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 60 },
+  { id: 'confirmation',     stages: ['delivery', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 70 },
+  { id: 'programme',        stages: ['delivery', 'completed'],                      shapes: ['journey', 'stay', 'experience'],                                                        sortOrder: 80 },
+  { id: 'brief',            stages: ['delivery', 'completed'],                      shapes: ['journey', 'stay'],                                                                      sortOrder: 90 },
+  { id: 'contacts',         stages: ['delivery', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 100 },
 ] as const
 
 // SHAPE_SECTIONS: for each shape, the SectionTypes it can ever include (across
