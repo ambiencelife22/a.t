@@ -16,7 +16,7 @@
 // without cycles. ?? not || throughout — empty string is a deliberate suppress.
 //
 // Last updated: S55 — extracted (#1b). roomGuestName + passengerName single-sourced
-//   across pdfShared, ImmerseTripPage, BookingRoomsEditor, WelcomeLettersEditor, BriefEditorPage.
+//   across pdfShared, ImmerseDeliveryPage, BookingRoomsEditor, WelcomeLettersEditor, BriefEditorPage.
 
 export interface RoomNameLike {
   resolved_guest_name?: string | null

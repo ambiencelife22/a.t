@@ -1,4 +1,4 @@
-// ImmerseTripPage.tsx — Unified client-facing trip surface for ambience.TRAVEL.
+// ImmerseDeliveryPage.tsx — Unified client-facing trip surface for ambience.TRAVEL.
 //
 // The world's finest travel design platform — one intelligent surface where the
 // designer's craft and the guest's experience converge. Every trip lives as one
@@ -36,7 +36,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import ImmerseLayout                          from '../layouts/ImmerseLayout'
 import ImmerseHero                            from './ImmerseHero'
-import type { TripClientData } from '../../types/typesImmerseClient'
+import type { DeliveryData } from '../../types/typesImmerseClient'
 import type {
   ImmerseTripBooking as TripBooking,
   ImmerseTripAuxBooking as TripAuxBooking,
@@ -71,7 +71,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 // ── Data types ────────────────────────────────────────────────────────────────
 
 type TripData = {
-  clientData: TripClientData
+  clientData: DeliveryData
   days:       TripDay[]
   entries:    TimelineItem[]
 }
@@ -126,7 +126,7 @@ function TripNotFound() {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; initialTab?: TabId }) {
+export default function ImmerseDeliveryPage({ urlId, initialTab }: { urlId: string; initialTab?: TabId }) {
   const [tripData,    setTripData]    = useState<TripData | null>(null)
   const [notFound,    setNotFound]    = useState(false)
   const [activeTab,   setActiveTab]   = useState<TabId | null>(null)
@@ -165,7 +165,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
 
         const progPayload = progRes.ok ? await progRes.json() : null
 
-        const clientData: TripClientData = {
+        const clientData: DeliveryData = {
           trip:            confPayload.trip,
           brief:           confPayload.brief,
           house:           confPayload.house,
@@ -176,7 +176,7 @@ export default function ImmerseTripPage({ urlId, initialTab }: { urlId: string; 
           guides:          { hasDining: false, hasExperiences: false, destinationSlug: null },
           links:           confPayload.links ?? [],
           urlId,
-        } as TripClientData
+        } as DeliveryData
 
         const data: TripData = {
           clientData,

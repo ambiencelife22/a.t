@@ -408,7 +408,7 @@ export function roomLine(room: RoomLike): string {
 }
 
 // ── Dining status — shared cancellation/terms model for PDFs ──────────────────
-// Mirrors diningPillModel in ImmerseTripPage. Returns the label + an RGB tone.
+// Mirrors diningPillModel in ImmerseDeliveryPage. Returns the label + an RGB tone.
 export interface DiningStatusLike {
   show_cancellation?:            boolean | null
   dining_status?:                string | null

@@ -7,7 +7,7 @@
 //   gets gold-tinted bg + gold text + gold border. 'Preview' subpage status
 //   renders as a non-clickable, dimmed row with a 'Coming soon' marker —
 //   visible in the menu so guests see the full journey shape, but not
-//   interactive. Controllers (ImmerseTripPage, DestinationPage) compute
+//   interactive. Controllers (ImmerseDeliveryPage, DestinationPage) compute
 //   navItems + isActive from trip data they hold.
 // Prior: S10 — minimal layout with fixed top nav, logo left, no menu.
 

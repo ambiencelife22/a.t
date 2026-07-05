@@ -2,7 +2,7 @@
 //
 // Collapse A: replaces the two parallel client render paths:
 //   - ImmerseEngagementData (proposal surface)
-//   - TripClientData (confirmed surface)
+//   - DeliveryData (delivery surface)
 //
 // Architecture: discriminated union by stage, not a flattened superset.
 // A flattened superset with 40+ optional fields forces every consumer to
@@ -59,7 +59,7 @@ export type EngagementLink = {
   travel_engagement_link_content: EngagementLinkContent | null
 }
 
-export type TripClientData = {
+export type DeliveryData = {
   trip:             ImmerseDossierTrip
   brief:            ImmerseTripBrief | null
   house:            ImmerseTripHouse | null

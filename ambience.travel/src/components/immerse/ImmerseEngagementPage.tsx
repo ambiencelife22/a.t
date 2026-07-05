@@ -3,24 +3,24 @@
 // Collapse A: one component, two render arms, one stage discriminant.
 //
 //   proposal → Hero + Welcome Letter + Route Strip + Destinations + Pricing
-//   delivery → ImmerseTripPage (tabs: Confirmation, Programme, Brief, Contacts)
+//   delivery → ImmerseDeliveryPage (tabs: Confirmation, Programme, Brief, Contacts)
 //
 // Receives EngagementClientData from ImmerseEngagementRoute — data already
-// fetched, no internal fetch here. ImmerseTripPage re-fetches for the confirmed
+// fetched, no internal fetch here. ImmerseDeliveryPage re-fetches for the confirmed
 // arm (its internal hook) — acceptable until Collapse A phase 2 passes data down.
 //
-// ImmerseTripPage is NOT modified. It remains the confirmed render authority.
+// ImmerseDeliveryPage is NOT modified. It remains the confirmed render authority.
 // This file is the composition layer only.
 //
 // Last updated: S53I — Collapse A page layer. Replaces the 72-line proposal-only
-// wrapper. ImmerseTripPage dissolution is Collapse A phase 2.
+// wrapper. ImmerseDeliveryPage dissolution is Collapse A phase 2.
 
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
 import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
-import ImmerseTripPage from './ImmerseTripPage'
+import ImmerseDeliveryPage from './ImmerseDeliveryPage'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import DestinationPage from './DestinationPage'
 import type { EngagementClientData } from '../../types/typesImmerseClient'
@@ -38,12 +38,12 @@ export default function ImmerseEngagementPage({
 }: Props) {
 
   // ── Confirmed arm ───────────────────────────────────────────────────────────
-  // ImmerseTripPage owns the full confirmed render (tabs, bookings, programme,
+  // ImmerseDeliveryPage owns the full confirmed render (tabs, bookings, programme,
   // brief, contacts). Delegate entirely — no duplication.
   if (data.stage === 'delivery') {
     // Delivery arm: the delivery surface fetches its own brief/confirmation/programme data internally.
-    // urlId is the access token; ImmerseTripPage owns the delivery render (renamed to DeliveryPage in a later phase).
-    return <ImmerseTripPage urlId={data.urlId} />
+    // urlId is the access token; ImmerseDeliveryPage owns the delivery render.
+    return <ImmerseDeliveryPage urlId={data.urlId} />
   }
 
   // ── Proposal arm ───────────────────────────────────────────────────────────

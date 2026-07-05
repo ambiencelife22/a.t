@@ -20,7 +20,7 @@
 // Last updated: S53H · A2 — extracted from ImmerseTripPage.tsx.
 
 import { useEffect, useState } from 'react'
-import type { TripClientData, TripContact } from '../../types/typesImmerseClient'
+import type { DeliveryData, TripContact } from '../../types/typesImmerseClient'
 import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {
@@ -168,7 +168,7 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
 
 // ── Confirmation tab ──────────────────────────────────────────────────────────
 
-export function ConfirmationTab({ clientData }: { clientData: TripClientData }) {
+export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
   const { trip, brief, house, auxBookings } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
@@ -1138,7 +1138,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 // ── Trip Brief tab ────────────────────────────────────────────────────────────
 
 export function TripBriefTab({ clientData }: {
-  clientData: TripClientData
+  clientData: DeliveryData
 }) {
   const { trip, house, auxBookings } = clientData
 
@@ -1519,7 +1519,7 @@ export function TripBriefTab({ clientData }: {
 // server-side from brief.contact_person_ids + contact_name_format. Falls back to
 // house.display_name when no people are selected.
 
-export function ContactsTab({ clientData }: { clientData: TripClientData }) {
+export function ContactsTab({ clientData }: { clientData: DeliveryData }){
   const { brief, house, contacts } = clientData
 
   function ContactCard({ name, role, email, phone }: { name: string; role: string; email?: string | null; phone?: string | null }) {

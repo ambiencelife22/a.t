@@ -2,7 +2,7 @@
 //
 // Collapse A: one route, one fetch, stage discriminant determines render.
 // proposal  → ImmerseEngagementPage (destination rows, pricing, welcome)
-// confirmed → ImmerseTripPage (confirmation, programme, brief, contacts)
+// delivery → ImmerseDeliveryPage (confirmation, programme, brief, contacts)
 //
 // Phase dispatch:
 //   loading    → ImmerseLayout shell (blank, no flash)
@@ -35,12 +35,12 @@ import {
 } from '../../queries/queriesImmerseClient'
 import { isProposalData, isDeliveryData } from '../../types/typesImmerseClient'
 import type { ImmerseEngagementData } from '../../types/typesImmerse'
-import type { TripClientData } from '../../types/typesImmerseClient'
+import type { DeliveryData } from '../../types/typesImmerseClient'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 
 export function buildImmerseNavItems(
-  data: ImmerseEngagementData | TripClientData,
+  data: ImmerseEngagementData | DeliveryData,
   activeDestSlug: string | null
 ) {
   if ('destinationRows' in data) {

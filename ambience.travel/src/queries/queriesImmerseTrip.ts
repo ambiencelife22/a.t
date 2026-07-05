@@ -1,8 +1,8 @@
 // queriesImmerseTrip.ts — Data layer for client-facing trip pages (confirmed surface).
 //
 // What it owns:
-//   - fetchTripClientData: calls the get-trip-confirmation Edge Function,
-//     which resolves url_id → full TripClientData server-side via service role.
+//   - fetchDeliveryData: calls the get-trip-confirmation Edge Function,
+//     which resolves url_id → full DeliveryData server-side via service role.
 //     No direct Supabase table reads — RLS is bypassed server-side only.
 //
 // Security model:
@@ -12,19 +12,19 @@
 //
 // Types live in typesImmerseClient.ts per convention. This file owns the fetch only.
 //
-// Last updated: S49 — added guides field to TripClientData (hasDining,
+// Last updated: S53M — added guides field to DeliveryData (hasDining,
 //   hasExperiences, destinationSlug) populated by Edge Function.
 // Prior: S48 — added apikey + Authorization headers required by
 //   Supabase Edge Function gateway even for public endpoints.
 
-import type { TripClientData } from '../types/typesImmerseClient'
+import type { DeliveryData } from '../types/typesImmerseClient'
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/travel-get-trip-confirmation`
 
-export async function fetchTripClientData(urlId: string): Promise<TripClientData | null> {
+export async function fetchDeliveryData(urlId: string): Promise<DeliveryData | null> {
   try {
     const res = await fetch(FUNCTION_URL, {
       method:  'POST',
@@ -44,9 +44,9 @@ export async function fetchTripClientData(urlId: string): Promise<TripClientData
     const payload = await res.json()
     if (payload.error || !payload.trip) return null
 
-    return payload as TripClientData
+    return payload as DeliveryData
   } catch (err) {
-    console.error('fetchTripClientData error:', err)
+    console.error('fetchDeliveryData error:', err)
     return null
   }
 }

@@ -35,8 +35,8 @@
  *   localhost:5173/programme/ or /programme              → Auth → Layout
  *   localhost:5173/immerse/:url_id                       → ImmerseEngagementRoute
  *   localhost:5173/immerse/:url_id/:destination          → ImmerseEngagementRoute
- *   localhost:5173/immerse/:url_id/confirmation          → ImmerseTripPage (confirmation tab)
- *   localhost:5173/immerse/:url_id/programme             → ImmerseTripPage (programme tab)
+ *   localhost:5173/immerse/:url_id/confirmation          → ImmerseDeliveryPage (confirmation tab)
+ *   localhost:5173/immerse/:url_id/programme             → ImmerseDeliveryPage (programme tab)
  *   localhost:5173/guides/:destination/dining            → GuideRouteDining (S35)
  *   localhost:5173/guides/:destination/hotels            → GuideRouteHotels (S37)
  *   localhost:5173/guides/:destination/experiences       → GuideRouteExperiences
@@ -62,10 +62,10 @@
  *   ExperiencesGuideRoute → GuideRouteExperiences,
  *   ShoppingGuideRoute → GuideRouteShopping.
  * Prior: S53 — Journey programme surface retired. Superseded by
- *   ImmerseTripPage + Programme tab. /journeys/:id routes and
+ *   ImmerseDeliveryPage + Programme tab. /journeys/:id routes and
  *   'preview-journey' route removed. ProgrammeRoute now serves only
  *   stay-type programmes.
- * Prior: /confirmation + /programme routes now resolve to ImmerseTripPage
+ * Prior: /confirmation + /programme routes now resolve to ImmerseDeliveryPage
  *   with an initialTab (confirmation/programme) — legacy
  *   TripConfirmationPage + TripProgrammePage retired, consolidating to one
  *   trip surface. Still handled inside ImmerseEngagementRoute via

@@ -7,8 +7,8 @@
 //   - anything otherwise             → 'Booked by {value}'
 //
 // Used by:
-//   - ImmerseTripPage.tsx (TripBriefTab web surface)
-//   - ImmerseTripPage.tsx (confirmation + brief tabs)
+//   - ImmerseDeliveryPage.tsx (TripBriefTab web surface)
+//   - ImmerseDeliveryPage.tsx (confirmation + brief tabs)
 //   - pdfImmerseBrief.ts (Trip Brief PDF)
 //   - pdfImmerseProgramme.ts (Daily Programme PDF)
 
