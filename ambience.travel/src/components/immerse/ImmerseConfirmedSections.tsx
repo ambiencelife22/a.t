@@ -11,8 +11,8 @@
 //   ContactsTab      — advisor + selected house people
 //
 // Shared helpers (used only by these sections):
-//   useWindowWidth, StatusPill, diningPillModel, DiningPillBox, DiningPill,
-//   Lightbox, TabSection
+//   StatusPill, diningPillModel, DiningPillBox, DiningPill, Lightbox, TabSection
+// Viewport width comes from the canonical useWindowWidth hook (src/hooks), A5.
 //
 // Theme tokens (CREAM, INK, GOLD etc) are re-declared here — they will move to
 // a shared token file in A3 when the unified surface is built.
@@ -34,6 +34,7 @@ import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, bedding
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
 import { ID } from '../../tokens/tokensLanding'
+import { useWindowWidth } from '../../hooks/useWindowWidth'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const CREAM   = '#F7F5F0'
@@ -46,18 +47,6 @@ const RULE    = '#DCDBD5'
 const SANS    = "'Plus Jakarta Sans', sans-serif"
 const SERIF   = "'Cormorant Garamond', Georgia, serif"
 const SIDEBAR_W = 220
-
-// ── useWindowWidth ────────────────────────────────────────────────────────────
-
-export function useWindowWidth(): number {
-  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
-  useEffect(() => {
-    const fn = () => setW(window.innerWidth)
-    window.addEventListener('resize', fn)
-    return () => window.removeEventListener('resize', fn)
-  }, [])
-  return w
-}
 
 // ── Status pill ───────────────────────────────────────────────────────────────
 

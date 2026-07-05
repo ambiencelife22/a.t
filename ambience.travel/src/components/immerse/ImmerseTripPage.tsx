@@ -59,8 +59,8 @@ import {
   TripBriefTab,
   ContactsTab,
   TabSection,
-  useWindowWidth,
 } from './ImmerseConfirmedSections'
+import { useWindowWidth } from '../../hooks/useWindowWidth'
 
 // ── Edge Function endpoints ───────────────────────────────────────────────────
 

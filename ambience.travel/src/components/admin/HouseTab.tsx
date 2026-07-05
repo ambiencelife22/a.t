@@ -66,24 +66,11 @@ import {
 import { fetchRequestsForHouse, type TravelRequest } from '../../queries/queriesAdminRequests'
 import { PPD_PEOPLE_KEYS as PPD_KEYS } from '../../types/typesPpd'
 import { matchesQuery } from '../../utils/utilsSearch'
+import { useWindowWidth } from '../../hooks/useWindowWidth'
 
 // Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
 // They remain here because they are tightly coupled to AllData and house context.
 // TripDossierSection is standalone and lives in its own file.
-
-// ── Responsive hook ───────────────────────────────────────────────────────────
-
-function useWindowWidth() {
-  const [width, setWidth] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth : 1024
-  )
-  useEffect(() => {
-    function handle() { setWidth(window.innerWidth) }
-    window.addEventListener('resize', handle)
-    return () => window.removeEventListener('resize', handle)
-  }, [])
-  return width
-}
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
