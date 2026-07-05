@@ -120,7 +120,7 @@ export async function fetchTripCore(
   // Engagement hero is canon. brief.hero_image_src is an overlay (only set when
   // operator deliberately wants a different hero on the confirmation surface).
   // Resolve: brief overlay → engagement canon → null.
-  // Engagement-level guest label (HPGL). travel_immerse_trip_display.house_display_name
+  // Engagement-level guest label (HPGL). travel_immerse_engagement_display.house_display_name
   // is the projected, admin-authored public label (single source — set by the
   // projection trigger, never resolved here). Keyed by the engagement id, which
   // is trip_id in the display table. Best-effort: null when no confirmed engagement
@@ -135,7 +135,7 @@ export async function fetchTripCore(
         .select('hero_image_src, title')
         .eq('id', confirmedEngId)
         .maybeSingle(),
-      db.from('travel_immerse_trip_display')
+      db.from('travel_immerse_engagement_display')
         .select('house_display_name')
         .eq('engagement_id', confirmedEngId)
         .maybeSingle(),

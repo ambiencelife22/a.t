@@ -139,7 +139,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
   const engagementId = engRow.id as string
 
   const [displayRes, stopsRes, destRowsRes, pricingRes, welcomeRes, linksRes] = await Promise.all([
-    db.from('travel_immerse_trip_display')
+    db.from('travel_immerse_engagement_display')
       .select('house_display_name')
       .eq('engagement_id', engagementId)
       .maybeSingle(),
@@ -147,7 +147,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id, nights')
       .eq('engagement_id', engagementId)
       .order('sort_order'),
-    db.from('travel_immerse_trip_destination_rows')
+    db.from('travel_immerse_engagement_destination_rows')
       .select(`
         id, sort_order, number_label, title, mood, summary, stay_label, nights,
         image_src, image_alt, subpage_status, destination_url_slug,
@@ -157,7 +157,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .eq('engagement_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
-    db.from('travel_immerse_trip_pricing_rows')
+    db.from('travel_immerse_engagement_pricing_rows')
       .select(`
         id, sort_order, recommended_basis, stay_label, indicative_range,
         global_destinations ( slug, name )
@@ -273,7 +273,7 @@ async function buildDestinationPayload(
   //    This handles destinations with multiple rows (e.g. newyork + newyork2)
   //    without .maybeSingle() failing on >1 result.
   const destRowQuery = db
-    .from('travel_immerse_trip_destination_rows')
+    .from('travel_immerse_engagement_destination_rows')
     .select(`
       id,
       global_destination_id,
@@ -363,7 +363,7 @@ async function fetchFlatHotels(
   urlSlug:       string | null,
 ) {
   const { data } = await db
-    .from('travel_immerse_trip_destination_hotels')
+    .from('travel_immerse_engagement_destination_hotels')
     .select(`
       id, hotel_id, rank, rank_label, bullets,
       stay_label, sort_order, resort_map_src,
@@ -401,12 +401,12 @@ async function fetchRegionGroups(
   const regionIds = regions.map(r => r.id as string)
 
   const [tripRegionsRes, regionHotelsRes] = await Promise.all([
-    db.from('travel_immerse_trip_regions')
+    db.from('travel_immerse_engagement_regions')
       .select('region_id, rank, rank_label, bullets, stay_label, sort_order')
       .eq('engagement_id', engagementId)
       .eq('is_active', true)
       .in('region_id', regionIds),
-    db.from('travel_immerse_trip_region_hotels')
+    db.from('travel_immerse_engagement_region_hotels')
       .select(`
         id, region_id, hotel_id, rank, rank_label, bullets,
         stay_label, sort_order,
@@ -608,7 +608,7 @@ async function fetchHotelGallery(
       .select('accom_hotel_id, sort_order, image_src')
       .in('accom_hotel_id', hotelIds)
       .order('sort_order'),
-    db.from('travel_immerse_trip_hotel_gallery_overrides')
+    db.from('travel_immerse_engagement_hotel_gallery_overrides')
       .select('accom_hotel_id, sort_order, image_src')
       .eq('engagement_id', engId)
       .in('accom_hotel_id', hotelIds),
@@ -682,7 +682,7 @@ async function fetchCards(
 
   const [diningRes, expRes] = await Promise.all([
     slugFilter(
-      db.from('travel_immerse_trip_content_card_selections')
+      db.from('travel_immerse_engagement_content_card_selections')
         .select(`
           sort_order, dining_venue_id,
           travel_dining_venues!inner (
@@ -698,7 +698,7 @@ async function fetchCards(
         .order('sort_order')
     ),
     slugFilter(
-      db.from('travel_immerse_trip_content_card_selections')
+      db.from('travel_immerse_engagement_content_card_selections')
         .select(`
           sort_order, experience_id,
           travel_experiences!inner (
@@ -736,7 +736,7 @@ async function fetchCards(
 
   const overrideQueries: Promise<{ data: Record<string, unknown>[] | null }>[] = []
   if (diningIds.length) overrideQueries.push(
-    db.from('travel_immerse_trip_content_card_overrides')
+    db.from('travel_immerse_engagement_content_card_overrides')
       .select(`dining_venue_id, experience_id, kicker_override, name_override, tagline_override,
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,
@@ -744,7 +744,7 @@ async function fetchCards(
       .eq('engagement_id', engagementId).eq('is_active', true).in('dining_venue_id', diningIds) as any
   )
   if (expIds.length) overrideQueries.push(
-    db.from('travel_immerse_trip_content_card_overrides')
+    db.from('travel_immerse_engagement_content_card_overrides')
       .select(`dining_venue_id, experience_id, kicker_override, name_override, tagline_override,
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,

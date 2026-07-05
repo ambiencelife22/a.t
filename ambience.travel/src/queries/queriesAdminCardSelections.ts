@@ -1,5 +1,5 @@
 /* adminCardSelectionQueries.ts
- * Query layer for travel_immerse_trip_content_card_selections.
+ * Query layer for travel_immerse_engagement_content_card_selections.
  *
  * Last updated: S38 — Removed slug from CardCanonicalOption, CanonicalRow,
  *   CardSelection (canonical_slug dropped), and all SELECTs against
@@ -150,7 +150,7 @@ const CANONICAL_FIELDS = `
 export async function fetchCardSelections(engagementId: string): Promise<CardSelection[]> {
   const [selectionRes, overrideRes] = await Promise.all([
     supabase
-      .from('travel_immerse_trip_content_card_selections')
+      .from('travel_immerse_engagement_content_card_selections')
       .select(`
         id, engagement_id, sort_order, is_active, dining_venue_id, experience_id,
         dining:travel_dining_venues!dining_venue_id ( ${CANONICAL_FIELDS} ),
@@ -159,7 +159,7 @@ export async function fetchCardSelections(engagementId: string): Promise<CardSel
       .eq('engagement_id', engagementId)
       .order('sort_order', { ascending: true }),
     supabase
-      .from('travel_immerse_trip_content_card_overrides')
+      .from('travel_immerse_engagement_content_card_overrides')
       .select(`
         id, dining_venue_id, experience_id,
         kicker_override, name_override, tagline_override, body_override,
@@ -200,7 +200,7 @@ export async function updateSelection(
   payload: { sort_order?: number; is_active?: boolean },
 ): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_trip_content_card_selections')
+    .from('travel_immerse_engagement_content_card_selections')
     .update(payload)
     .eq('id', id)
   if (error) throw error
@@ -221,7 +221,7 @@ export async function insertSelection(args: {
   if (args.kind === 'experience') row.experience_id   = args.card_id
 
   const { data, error } = await supabase
-    .from('travel_immerse_trip_content_card_selections')
+    .from('travel_immerse_engagement_content_card_selections')
     .insert(row)
     .select('id')
     .single()
@@ -232,7 +232,7 @@ export async function insertSelection(args: {
 
 export async function deleteSelection(id: string): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_trip_content_card_selections')
+    .from('travel_immerse_engagement_content_card_selections')
     .delete()
     .eq('id', id)
   if (error) throw error
@@ -241,7 +241,7 @@ export async function deleteSelection(id: string): Promise<void> {
 export async function reorderSelections(orderedIds: string[]): Promise<void> {
   for (let i = 0; i < orderedIds.length; i += 1) {
     const { error } = await supabase
-      .from('travel_immerse_trip_content_card_selections')
+      .from('travel_immerse_engagement_content_card_selections')
       .update({ sort_order: i + 1 })
       .eq('id', orderedIds[i])
     if (error) throw error
@@ -271,7 +271,7 @@ export async function upsertOverride(args: {
 }): Promise<string> {
   if (args.override_id) {
     const { error } = await supabase
-      .from('travel_immerse_trip_content_card_overrides')
+      .from('travel_immerse_engagement_content_card_overrides')
       .update(args.fields)
       .eq('id', args.override_id)
     if (error) throw error
@@ -287,7 +287,7 @@ export async function upsertOverride(args: {
   if (args.kind === 'experience') insertRow.experience_id   = args.card_id
 
   const { data, error } = await supabase
-    .from('travel_immerse_trip_content_card_overrides')
+    .from('travel_immerse_engagement_content_card_overrides')
     .insert(insertRow)
     .select('id')
     .single()
@@ -298,7 +298,7 @@ export async function upsertOverride(args: {
 
 export async function deleteOverride(overrideId: string): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_trip_content_card_overrides')
+    .from('travel_immerse_engagement_content_card_overrides')
     .delete()
     .eq('id', overrideId)
   if (error) throw error
