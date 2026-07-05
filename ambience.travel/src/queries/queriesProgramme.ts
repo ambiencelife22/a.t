@@ -21,7 +21,7 @@
  *   (cross-product table, not migrated).
  */
 
-import { supabase } from '../lib/supabase'
+import { supabase, supabaseAnon } from '../lib/supabase'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -55,6 +55,74 @@ export interface GuestProgramme {
     managerPhone: string | null
   }
 }
+
+// Resolved stay for the guest portal (via travel-get-stay `resolve` mode).
+// Secrets are already redacted server-side on the gated path; withheld values
+// arrive null/empty and the UI renders "Ask your host" placeholders.
+export interface StaySection {
+  id:      string
+  title:   string
+  icon:    string
+  content: unknown[]   // ManualSection['content'] shape; typed at the view layer
+}
+ 
+export interface StayListing {
+  id:        string
+  name:      string
+  category:  string
+  genre:     string | null
+  address:   string
+  website:   string | null
+  hours:     string | null
+  note:      string | null
+  favourite: boolean
+}
+ 
+export interface StayResolved {
+  stay: {
+    id:                string
+    urlId:             string
+    guestNames:        string
+    checkIn:           string | null
+    checkOut:          string | null
+    welcomeLetter:     string
+    activeListingIds:  string[] | null
+    alarmCodeProvided: boolean
+  }
+  property: {
+    id:                string
+    name:              string
+    tagline:           string
+    city:              string | null
+    country:           string | null
+    heroImage:         string | null
+    photos:            { src: string; caption: string; subCaption: string }[]
+    mapsUrl:           string | null
+    mapsEmbedUrl:      string | null
+    ownerName:         string
+    ownerPhone:        string | null
+    managerName:       string
+    managerPhone:      string | null
+    emergencyContacts: { label: string; phone: string }[]
+  }
+  sections: StaySection[]
+  listings: StayListing[]
+  gated:    boolean
+  flags: {
+    publicWifi:         boolean
+    publicAlarm:        boolean
+    publicOwnerPhone:   boolean
+    publicManagerPhone: boolean
+    noAlarm:            boolean
+    publicArrival:      boolean
+  }
+}
+
+// Discriminated result: the EF's error codes surfaced as a typed outcome so the
+// component renders states without knowing the transport.
+export type StayResult =
+  | { ok: true;  data: StayResolved }
+  | { ok: false; reason: 'not-found' | 'access-denied' | 'load-failed' }
 
 export interface SupportTicket {
   id:        string
@@ -129,59 +197,64 @@ export async function updatePassword(newPassword: string): Promise<void> {
   if (error) throw error
 }
 
-// ── Programmes ─────────────────────────────────────────────────────────────
+// S53N: resolve a single stay for the guest portal. Owns the EF invocation and
+// response passthrough so ProgrammeRoute never touches the transport. The EF
+// has already redacted secrets on the gated path.
+export async function getStayByUrlId(urlId: string): Promise<StayResult> {
+  const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
+    body: { mode: 'resolve', url_id: urlId },
+  })
+ 
+  if (error) return { ok: false, reason: 'load-failed' }
+ 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resp = data as any
+  if (resp?.error) {
+    const reason = resp.error === 'not-found'     ? 'not-found'
+                 : resp.error === 'access-denied' ? 'access-denied'
+                 : 'load-failed'
+    return { ok: false, reason }
+  }
+ 
+  return { ok: true, data: resp as StayResolved }
+}
+ 
+// S53N: the guest's own linked stays, for the "your other stays" fallback in
+// the portal. Thin wrapper over the my_stays EF mode returning the raw list
+// (url_id, sub_path, guest_names) the fallback needs.
+export async function getMyStaysRaw(): Promise<{ url_id: string; sub_path: string; guest_names: string }[]> {
+  const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
+    body: { mode: 'my_stays' },
+  })
+  if (error) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data as any)?.stays ?? []) as { url_id: string; sub_path: string; guest_names: string }[]
+}
 
+// ── Programmes ─────────────────────────────────────────────────────────────
+ 
+// S53N: routed through the travel-get-stay EF (my_stays mode). The direct
+// supabase.from('travel_programme_guests') read is removed — all DB access
+// goes through the EF wall. The EF returns the caller's linked, active stays.
 export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
-
-  // S23: Renamed programme_guests → travel_programme_guests,
-  // programmes → travel_programme_master, properties → travel_programme_properties.
-  // Nested PostgREST relations aliased back to old keys (programmes, properties)
-  // so the downstream mapping code stays unchanged.
-  // RLS on travel_programme_guests filters to profile_id = auth.uid() automatically.
-  const { data, error } = await supabase
-    .from('travel_programme_guests')
-    .select(`
-      programme_id,
-      programmes:travel_programme_master!inner (
-        id,
-        url_id,
-        programme_type,
-        sub_path,
-        status,
-        guest_names,
-        check_in,
-        check_out,
-        title,
-        active,
-        properties:travel_programme_properties (
-          id,
-          name,
-          city,
-          country,
-          hero_image,
-          owner_name,
-          owner_phone,
-          manager_name,
-          manager_phone
-        )
-      )
-    `)
-    .eq('profile_id', user.id)
-    .order('created_at', { ascending: false })
-
+ 
+  const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
+    body: { mode: 'my_stays' },
+  })
   if (error) throw error
-  if (!data) return []
-
+ 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[])
-    .map(row => {
-      const p  = row.programmes
+  const stays = (data as any)?.stays ?? []
+ 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (stays as any[])
+    .map(p => {
       if (!p)        return null
       if (!p.active) return null
-      const pr = p.properties
-
+      const pr = p.property
+ 
       return {
         id:            p.id,
         urlId:         p.url_id,
