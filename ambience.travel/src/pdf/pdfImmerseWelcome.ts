@@ -109,10 +109,12 @@ function renderLetter(doc: any, recipient: WelcomeRecipient, emblem: Img | null,
 // DDMMMYY, e.g. 24MAY26 — uppercase month, no separators.
 function fmtCheckIn(iso: string | null): string {
   if (!iso) return ''
-  const d = new Date(iso.slice(0, 10) + 'T00:00:00')
-  const dd  = String(d.getDate()).padStart(2, '0')
-  const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-  const yy  = String(d.getFullYear()).slice(-2)
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return ''
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  const dd  = m[3].padStart(2, '0')
+  const mon = MONTHS_SHORT[parseInt(m[2], 10) - 1].toUpperCase()
+  const yy  = m[1].slice(-2)
   return `${dd}${mon}${yy}`
 }
 
