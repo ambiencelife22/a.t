@@ -800,7 +800,7 @@ async function fetchPricingRows(
 ) {
   const { data } = await db
     .from('travel_immerse_destination_pricing_rows')
-    .select('id, item, basis, stay, indicative_range, is_total, sort_order')
+    .select('id, item, basis, stay, indicative_range, sort_order')
     .eq('trip_destination_row_id', tripDestinationRowId)
     .order('sort_order')
   return (data ?? []).map(r => ({
@@ -809,6 +809,6 @@ async function fetchPricingRows(
     basis:           r.basis            ?? '',
     stay:            r.stay             ?? '',
     indicativeRange: r.indicative_range ?? '',
-    isTotal:         r.is_total         ?? false,
+    isTotal:         false,
   }))
 }
