@@ -359,13 +359,13 @@ Deno.serve(async (req: Request) => {
 
       // Singleton: update the single existing row. Fetch its id first.
       const { data: existing, error: fetchErr } = await serviceClient
-        .from('travel_immerse_welcome_letter').select('id').limit(1).maybeSingle()
+        .from('travel_welcome_letter').select('id').limit(1).maybeSingle()
       if (fetchErr || !existing) {
         console.error('update_welcome_letter fetch error:', fetchErr)
         return json({ error: 'Welcome letter row not found' }, 500)
       }
       const { data, error } = await serviceClient
-        .from('travel_immerse_welcome_letter')
+        .from('travel_welcome_letter')
         .update(patch).eq('id', existing.id)
         .select('eyebrow, title, body, signoff_body, signoff_name').single()
       if (error) {

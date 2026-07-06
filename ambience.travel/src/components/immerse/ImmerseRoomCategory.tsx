@@ -13,7 +13,7 @@
 //   "Public" label) since strikethrough without a comparison reads as a
 //   bug, not as savings context.
 // Prior: S32K — Replaced hardcoded "/ night" rate suffix with data-driven
-//   room.rateCadence. Cadence comes from travel_immerse_rate_cadences
+//   room.rateCadence. Cadence comes from travel_rate_cadences
 //   reference table (Per Night, Per Stay, Per Week, Per Month — extensible).
 // Prior: S32K — Room name rendering fixed. Eyebrow now shows tierLabel
 //   (engagement-specific tier: "Highlighted", "Alternative 1"), title shows

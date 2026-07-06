@@ -1,5 +1,5 @@
 /* ShowcasesListTab.tsx
- * Skeleton tab. Currently 0 rows in travel_immerse_showcases.
+ * Skeleton tab. Currently 0 rows in travel_showcases.
  * Per Seed Reference v8 §19 — content seeding pending.
  *
  * Last updated: S33

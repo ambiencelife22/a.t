@@ -379,7 +379,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'welcome_letter') {
       const { data, error } = await serviceClient
-        .from('travel_immerse_welcome_letter')
+        .from('travel_welcome_letter')
         .select('eyebrow, title, body, signoff_body, signoff_name')
         .limit(1)
         .maybeSingle()

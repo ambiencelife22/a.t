@@ -164,7 +164,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       `)
       .eq('engagement_id', engagementId)
       .order('sort_order'),
-    db.from('travel_immerse_welcome_letter')
+    db.from('travel_welcome_letter')
       .select('eyebrow, title, body, signoff_body, signoff_name')
       .limit(1)
       .maybeSingle(),
@@ -519,8 +519,8 @@ async function fetchRoomsForHotels(
       room_inclusions, hero_image_src_override, floorplan_src_override,
       public_nightly_rate, non_negotiated_nightly_rate, ambience_nightly_rate,
       tax_inclusive, rate_suffix_override,
-      rate_cadence_id, travel_immerse_rate_cadences ( label ),
-      tax_treatment_id, travel_immerse_tax_treatments ( label ),
+      rate_cadence_id, travel_rate_cadences ( label ),
+      tax_treatment_id, travel_tax_treatments (label ),
       room_alert, room_alert_level,
       sqft_min, sqft_max, sqm_min, sqm_max,
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
@@ -557,8 +557,8 @@ async function fetchRoomsForHotels(
     const galleryJsonb  = Array.isArray(canon.room_gallery) ? canon.room_gallery as string[] : []
     const roomGallery   = galleryCanon.length > 0 ? galleryCanon : galleryJsonb
 
-    const cadenceJoin  = (o as Record<string, unknown>).travel_immerse_rate_cadences as { label: string | null } | null
-    const taxJoin      = (o as Record<string, unknown>).travel_immerse_tax_treatments as { label: string | null } | null
+    const cadenceJoin  = (o as Record<string, unknown>).travel_rate_cadences as { label: string | null } | null
+    const taxJoin      = (o as Record<string, unknown>).travel_tax_treatments as { label: string | null } | null
     const connection   = connectionByRoom[canon.id as string]
 
     if (!grouped[hotelId]) grouped[hotelId] = []

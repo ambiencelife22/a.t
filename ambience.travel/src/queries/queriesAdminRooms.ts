@@ -3,12 +3,12 @@
 // Owns:
 //   - Fetching overlay rooms for an engagement (travel_immerse_rooms)
 //   - Fetching canonical rooms for a hotel (travel_accom_rooms)
-//   - Fetching rate cadences (travel_immerse_rate_cadences)
+//   - Fetching rate cadences (travel_rate_cadences)
 //   - CRUD on travel_immerse_rooms
 //
 // travel_immerse_rooms.engagement_id FKs to travel_immerse_engagements.id.
 // room_id FKs to travel_accom_rooms.id.
-// rate_cadence_id FKs to travel_immerse_rate_cadences.id.
+// rate_cadence_id FKs to travel_rate_cadences.id.
 //
 // Column shape verified S42 (16 May 2026).
 
@@ -91,7 +91,7 @@ export type OverlayRoomCreate = {
 
 export async function fetchRateCadences(): Promise<RateCadence[]> {
   const { data, error } = await supabase
-    .from('travel_immerse_rate_cadences')
+    .from('travel_rate_cadences')
     .select('id, slug, label, sort_order')
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
