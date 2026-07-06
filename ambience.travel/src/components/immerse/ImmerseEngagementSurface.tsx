@@ -5,14 +5,14 @@
 //   proposal/draft stages   → sections in sequence (scroll)
 //   delivery/completed stages→ sections as tabs (ImmerseDeliveryTabShell)
 // Section CONTENT always comes from SECTION_RENDERERS (single source). This
-// replaces the hardcoded section order in ImmerseEngagementPage and the tab
-/// switch in ImmerseDeliveryPage — both now dissolved (Stage 4 complete).
+// replaced the hardcoded section order in ImmerseEngagementPage and the tab
+// switch in ImmerseDeliveryPage — both dissolved (A3).
 //
-// Ships behind a shadow mount (Stage 2) — the live route still uses the old
-// pages until parity is verified and the route is cut (Stage 3).
+// The default surface for both arms (A3 cutover, S53O). The overview renders
+// here; the /<dest> detail view delegates to ImmerseDetailPage.
 
 import ImmerseLayout from '../layouts/ImmerseLayout'
-import { NotFound } from './ImmerseStateScreens'
+import ImmerseDetailPage from './ImmerseDetailPage'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { ImmerseDeliveryTabShell } from './ImmerseDeliveryTabShell'
 import { SECTION_RENDERERS, type ShellHandshake } from './ImmerseSectionRenderers'
@@ -44,35 +44,11 @@ export default function ImmerseEngagementSurface({
   const eng   = data.engagement
   const stage = computeEngagementStage({ statusSlug: eng.engagementStatus.slug as EngagementStatusSlug })
 
-  // Destination subpage. The resolver supplies stay detail for any destination
-  // proposal; render it as shape 'stay' through the registry — the unified surface
-// path that replaced the bespoke destination detail page (cut over + deleted S53O
-  // eight-shape Stage C/D). A destination-within-a-journey IS a stay render, so
-  // shape is forced to 'stay' regardless of the engagement's journey type. A null
-  // detail means the destination did not resolve (bad/unpublished slug, or a
-  // transient EF failure) — that is a not-found, not a reason to run a second
-  // render path, so it resolves to the branded not-found screen.
+  // Detail view: one element of the engagement (today a destination-within-a-
+  // journey, rendered as shape 'stay'). Delegated to ImmerseDetailPage. Only the
+  // proposal arm carries detail; the Extract type on the delegate enforces it.
   if (activeDestSlug && data.stage === 'proposal') {
-    if (data.detail) {
-      const staySections = resolveSectionSet(stage, 'stay')
-      const navItems = buildImmerseNavItems(eng, activeDestSlug)
-      const logoHref = window.location.hostname === 'immerse.ambience.travel'
-        ? `/${eng.urlId}`
-        : `/immerse/${eng.urlId}`
-      const shell: ShellHandshake = {}
-      return (
-        <ImmerseLayout navItems={navItems} logoHref={logoHref}>
-          {staySections.map(s => (
-            <div key={s.id}>{SECTION_RENDERERS[s.id](data, shell)}</div>
-          ))}
-        </ImmerseLayout>
-      )
-    }
-    return (
-      <ImmerseLayout>
-        <NotFound message="We couldn't find that destination." />
-      </ImmerseLayout>
-    )
+    return <ImmerseDetailPage data={data} activeDestSlug={activeDestSlug} />
   }
 
   const shape = resolveEngagementShape(eng.journeyTypes[0] ?? null)
