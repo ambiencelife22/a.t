@@ -363,9 +363,9 @@ export const SECTION_REGISTRY: readonly Section[] = [
   { id: 'destinations',     stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 55 },
   { id: 'pricing',          stages: ['draft', 'proposal'],                          shapes: ['journey', 'dining', 'reservation', 'transport', 'experience', 'acquisition', 'arrangement'], sortOrder: 60 },
   { id: 'detail_pricing',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 60 },
-  { id: 'confirmation',     stages: ['delivery', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 70 },
+  { id: 'brief',            stages: ['delivery', 'completed'],                      shapes: ['journey', 'stay'],                                                                      sortOrder: 70 },
   { id: 'programme',        stages: ['delivery', 'completed'],                      shapes: ['journey', 'stay', 'experience'],                                                        sortOrder: 80 },
-  { id: 'brief',            stages: ['delivery', 'completed'],                      shapes: ['journey', 'stay'],                                                                      sortOrder: 90 },
+  { id: 'confirmation',     stages: ['delivery', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 90 },
   { id: 'contacts',         stages: ['delivery', 'completed'],                      shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 100 },
 ] as const
 

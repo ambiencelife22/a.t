@@ -2,10 +2,10 @@
 //
 // Canonical bookedByLabel — single source for all surfaces.
 // Rules:
-//   - null/undefined/'ambience' → 'Booked by ambience'
+//   - null/undefined/'ambience' → '' (renders nothing; booked_by is
+//     designer-authored — absent authorship = absent label)
 //   - 'self'                    → 'Own Arrangements'
-//   - anything otherwise             → 'Booked by {value}'
-//
+//   - anything otherwise             → 'Booked by {value}'//
 // Used by:
 //   - ImmerseConfirmedSections.tsx (TripBriefTab web surface)
 //   - ImmerseConfirmedSections.tsx (confirmation + brief tabs)
@@ -13,7 +13,7 @@
 //   - pdfImmerseProgramme.ts (Daily Programme PDF)
 
 export function bookedByLabel(bookedBy: string | null | undefined): string {
-  if (!bookedBy || bookedBy === 'ambience') return 'Booked by ambience'
+  if (!bookedBy || bookedBy === 'ambience') return ''
   if (bookedBy === 'self')      return 'Own Arrangements'
   if (bookedBy === 'Requested') return 'Requested'
   if (bookedBy === 'Pending')   return 'Pending'
