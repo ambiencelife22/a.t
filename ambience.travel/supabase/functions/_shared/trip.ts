@@ -225,6 +225,7 @@ export async function fetchTripBookings(
         .in('booking_id', bookingIds)
         .order('sort_order', { ascending: true })
     : { data: [], error: null }
+  if (roomsResult.error) console.error('[fetchTripBookings] rooms fetch error:', JSON.stringify(roomsResult.error))
   const rooms = (roomsResult.data ?? []) as Array<Record<string, unknown>>
 
   // Canon rooms (image_src + alt) via room_id.

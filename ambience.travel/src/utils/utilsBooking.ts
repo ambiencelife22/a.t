@@ -49,6 +49,7 @@ const BEDDING_LABELS: Record<string, string> = {
   three_twins: '3x Twin',
   bunk:        'Bunk Beds',
   sofa_bed:    'Sofa Bed',
+  zip_link:    'Zip & Link',
 }
 export function beddingLabel(slug: string | null | undefined): string | null {
   if (!slug) return null

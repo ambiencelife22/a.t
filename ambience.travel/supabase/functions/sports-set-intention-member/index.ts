@@ -19,7 +19,7 @@
 // Output: { ok: true, targetUserId: string, is_intention_member: boolean } | { error: string }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, json, preflight } from '../_shared/http.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 const serviceClient = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',

@@ -29,6 +29,7 @@ import { serif, sans, drawRule, loadImg, loadSvg, makeCoverCropAsync } from './p
 import type { RGB, Img } from './pdfUtils'
 import type { TripBrief } from '../queries/queriesAdminTrip'
 import { roomGuestName, passengerName } from '../utils/utilsRoomDisplay'
+import { beddingLabel } from '../utils/utilsBooking'
 
 // ── Theme — single palette for all PDFs ──────────────────────────────────────
 
@@ -336,23 +337,6 @@ export function passengerLines(aux: AuxLike): string[] {
   ].filter(Boolean).join('  \u00b7  '))
 }
 
-// ── Bedding vocabulary — canonical labels (mirrors utilsBooking.BEDDING_LABELS) ──
-const BEDDING_LABELS: Record<string, string> = {
-  king:        'King',
-  cal_king:    'California King',
-  queen:       'Queen',
-  double:      'Double',
-  twin:        'Twin',
-  two_kings:   '2× King',
-  two_queens:  '2× Queen',
-  two_twins:   '2× Twin',
-  king_twin:   'King + Twin',
-  double_twin: 'Double + Twin',
-  three_twins: '3× Twin',
-  bunk:        'Bunk Beds',
-  sofa_bed:    'Sofa Bed',
-}
-
 // ── Room display composition — shared across all trip PDFs ─────────────────────
 // One source for what a room's text content is. Layout stays per-surface
 // (confirmation = structured card rows, programme = flat joined string), but the
@@ -391,7 +375,7 @@ export function roomDisplay(room: RoomLike): RoomDisplay {
     guestLine: guests.length ? guests.join('  \u00b7  ') : null,
     board:     room.notes ?? null,
     conf:      room.confirmation_number ?? null,
-    bedding:   room.bedding_type ? (BEDDING_LABELS[room.bedding_type] ?? room.bedding_type) : null,
+    bedding:   beddingLabel(room.bedding_type),
   }
 }
 

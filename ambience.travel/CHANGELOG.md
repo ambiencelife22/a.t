@@ -262,3 +262,36 @@ Naming: ?stay=next is this campaign's own flag — NOT A3's retired ?surface. Al
 this session (renames, captured in diffs, logged here only for the search trail):
 typesImmerseClient -> typesImmerseDelivery, queriesImmerseClient ->
 queriesImmerseEngagement (Client=identity-only; neither held client identity).
+
+FIND:  * Last updated: S54 — Tabs section added. Four show_tab_* booleans
+REPLACE:
+ * Last updated: S53O — brief accommodation reduced to index shape (hotel,
+ *   dates, nights, party composition, room categories + per-room conf,
+ *   booked-by). Guest names, cancellation, invoices, inclusions removed —
+ *   those live on Confirmation + Programme. Matches TripBriefTab + PDF.
+ * Prior: S54 — Tabs section added. Four show_tab_* booleans
+
+ ## 2026-07-06
+
+### [DB] bedding_type column + CHECK constraint on booking/overlay room tables
+
+Live Supabase schema change (not in repo diffs). Added `bedding_type text` to
+`travel_booking_rooms` with a CHECK constraint limiting it to a 14-slug closed
+vocabulary (king, cal_king, queen, double, twin, two_kings, two_queens,
+two_twins, king_twin, double_twin, three_twins, bunk, sofa_bed, zip_link).
+Retrofitted the identical CHECK onto `travel_immerse_rooms.bedding_type`, which
+had the column but was unconstrained.
+
+Logged because it doubled as a root-cause fix invisible to git: the room SELECT
+in _shared/trip.ts had long requested `bedding_type` from travel_booking_rooms
+where the column did not exist. The query errored (Postgres 42703), returned
+null, and EVERY guest surface (confirmation, brief, PDF, programme — all share
+fetchTripBookings) rendered `_rooms: []` for all hotels. Room-level confirmation
+numbers never appeared; only booking-level did. Silent because the room fetch
+had no error logging. Adding the column (correctly, constrained) restored rooms
+platform-wide.
+
+DEBT: the 14-slug vocabulary now lives in three places (two CHECK constraints +
+utilsBooking.BEDDING_LABELS). Mission-grade single source is a travel_bedding_types
+registry table (slug PK, label, sort_order, description) FK'd from both room
+tables, TS map synced to it. Next dedicated migration.
