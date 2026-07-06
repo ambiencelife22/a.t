@@ -12,8 +12,16 @@
 // same registry, same NotFound fallback.
 //
 // Shape is currently forced to 'stay' — a destination-within-a-journey IS a stay
-// render. When standalone non-journey elements render here, this must resolve the
-// element's real type (the logged resolveEngagementShape-source debt).
+// render, and it is the ONLY element type that routes here today. Verified S53O:
+// engagement_type_id exists but flows only to admin surfaces; no client route or
+// payload carries a non-destination element to this detail view. So forcing 'stay'
+// is correct, not debt — there is no other element type to resolve yet.
+//
+// TO UN-FORCE (gated, do NOT build ahead of it): when a real procurement /
+// reservation / concierge element gets (a) a client route to this detail view and
+// (b) an element-type on its payload, resolve shape from that type instead of
+// hardcoding 'stay'. Until both exist, a resolver here would be a grayed future
+// box built early.
 
 import ImmerseLayout from '../layouts/ImmerseLayout'
 import { NotFound } from './ImmerseStateScreens'
@@ -41,11 +49,10 @@ export default function ImmerseDetailPage({
   if (!data.detail) {
     return (
       <ImmerseLayout>
-        <NotFound message="We couldn't find that destination." />
+        <NotFound message="We couldn't find that page." />
       </ImmerseLayout>
     )
   }
-
   // Shape forced to 'stay': a destination-within-a-journey IS a stay render,
   // regardless of the engagement's own journey type.
   const sections = resolveSectionSet(stage, 'stay')
