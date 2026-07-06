@@ -94,10 +94,11 @@ function useEngagementRoute(
       if (isProposalData(data)) {
         const eng = data.engagement
         if (eng.proposalVisibility === 'archived') { setState({ phase: 'archived' }); return }
-        // Shadow stay path (?surface=next): fetch the destination detail so the
+        // Shadow stay path (?stay=next): fetch the destination detail so the
         // surface can render it as shape 'stay' through the registry, replacing
         // the bespoke DestinationPage. Absent the flag, detail stays undefined and
-        // the surface short-circuits to DestinationPage as today.
+        // the surface short-circuits to DestinationPage as today. Own flag, not
+        // A3's retired ?surface — this shadows the eight-shape stay path only.
         if (shadowStay && activeDestSlug) {
           const detail = await getProposalDestination(urlId, activeDestSlug)
           if (detail) { setState({ phase: 'proposal', data: eng, detail }); return }
@@ -136,7 +137,7 @@ export default function ImmerseEngagementRoute({
   isProposalPath  = false,
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
-  const shadowStay = new URLSearchParams(window.location.search).get('surface') === 'next'
+  const shadowStay = new URLSearchParams(window.location.search).get('stay') === 'next'
   const state = useEngagementRoute(urlId, activeDestSlug, shadowStay)
 
   if (state.phase === 'loading') {
