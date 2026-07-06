@@ -20,7 +20,7 @@
 // Last updated: S53H · A2 — extracted from ImmerseTripPage.tsx.
 
 import { useEffect, useState } from 'react'
-import type { DeliveryData, TripContact } from '../../queries/queriesImmerseClient'
+import type { DeliveryData, TripContact } from '../../queries/queriesImmerseEngagement'
 import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {

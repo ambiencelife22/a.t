@@ -10,12 +10,12 @@
 // Shell: surface-owned presentation callbacks (the programme active-day handshake),
 //   kept separate from data so no renderer takes a god-prop.
 //
-// Boundary: types imported through the query layer (queriesImmerseClient), never
+// Boundary: types imported through the query layer (queriesImmerseEngagement), never
 //   from types/ directly in this .tsx.
 
 import type { ReactNode } from 'react'
 import type { SectionType } from '../../types/typesImmerse'
-import type { EngagementClientData } from '../../queries/queriesImmerseClient'
+import type { EngagementClientData } from '../../queries/queriesImmerseEngagement'
 
 import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'

@@ -11,7 +11,7 @@
 // comes from the renderer map.
 
 import { useState, useCallback } from 'react'
-import type { EngagementClientData } from '../../queries/queriesImmerseClient'
+import type { EngagementClientData } from '../../queries/queriesImmerseEngagement'
 import type { SectionType } from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'
 import type { ExportBranding } from '../../pdf/pdfShared'

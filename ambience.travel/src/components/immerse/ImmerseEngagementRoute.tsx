@@ -32,9 +32,9 @@ import {
   fetchEngagementClientData,
   isProposalData,
   isDeliveryData,
-} from '../../queries/queriesImmerseClient'
+  type DeliveryBundle,
+} from '../../queries/queriesImmerseEngagement'
 import type { ImmerseEngagementData } from '../../types/typesImmerse'
-import type { DeliveryBundle } from '../../queries/queriesImmerseClient'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 

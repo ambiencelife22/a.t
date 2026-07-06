@@ -16,7 +16,7 @@ import DestinationPage from './DestinationPage'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { ImmerseDeliveryTabShell } from './ImmerseDeliveryTabShell'
 import { SECTION_RENDERERS, type ShellHandshake } from './ImmerseSectionRenderers'
-import type { EngagementClientData } from '../../queries/queriesImmerseClient'
+import type { EngagementClientData } from '../../queries/queriesImmerseEngagement'
 import {
   computeEngagementStage,
   resolveEngagementShape,

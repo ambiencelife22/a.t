@@ -1,4 +1,12 @@
-// queriesImmerseClient.ts — Unified client-facing engagement data fetch.
+// queriesImmerseEngagement.ts — Unified engagement data fetch (the orchestrator).
+//
+// The one entry point that resolves any engagement to its render payload
+// regardless of stage: tries the proposal EF, branches to the delivery bundle
+// when the lifecycle status is confirmed. Returns EngagementClientData.
+// Named for what it fetches (the engagement), NOT "client" — it fetches no
+// client identity. Renamed from queriesImmerseClient.ts (S53O eight-shape B0.1).
+// Siblings: queriesImmerseProposal (proposal payload), queriesImmerseDelivery
+// (delivery bundle). This file orchestrates both.
 //
 // Collapse A: one fetch function, two EF paths, no direct DB calls.
 // All reads go through Edge Functions (service role). Never direct REST.
