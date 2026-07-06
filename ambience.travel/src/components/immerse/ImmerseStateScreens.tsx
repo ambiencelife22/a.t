@@ -1,5 +1,6 @@
 // ImmerseStateScreens.tsx — Shared loading + error screens for immerse routes.
-// Consumed by ImmerseEngagementRoute (overview) and DestinationPage (subpage).
+// Consumed by ImmerseEngagementRoute + ImmerseEngagementSurface (overview and
+// the unified detail render).
 // Both screens render *inside* an ImmerseLayout — the layout is the caller's
 // responsibility, so the screens themselves are chrome-free panels designed
 // to fill the layout's content area.

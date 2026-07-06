@@ -93,11 +93,11 @@ function useEngagementRoute(
       if (isProposalData(data)) {
         const eng = data.engagement
         if (eng.proposalVisibility === 'archived') { setState({ phase: 'archived' }); return }
-        // Destination proposal: fetch the stay detail so the surface renders it as
-        // shape 'stay' through the registry (the unified path — replaces the
-        // bespoke DestinationPage, cut over S53O eight-shape Stage C). If the
-        // detail fetch fails, fall through to the plain proposal state; the surface
-        // still short-circuits to DestinationPage as the one-release fallback.
+         // Destination proposal: fetch the stay detail so the surface renders it as
+        // shape 'stay' through the registry (the unified path — replaced the bespoke
+        // detail page, deleted S53O eight-shape Stage D). If the detail fetch fails,
+        // fall through to the plain proposal state; the surface resolves the missing
+        // destination to its branded not-found screen.
         if (activeDestSlug) {
           const detail = await getProposalDestination(urlId, activeDestSlug)
           if (detail) { setState({ phase: 'proposal', data: eng, detail }); return }

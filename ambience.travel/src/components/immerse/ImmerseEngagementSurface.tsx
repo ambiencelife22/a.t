@@ -12,7 +12,7 @@
 // pages until parity is verified and the route is cut (Stage 3).
 
 import ImmerseLayout from '../layouts/ImmerseLayout'
-import DestinationPage from './DestinationPage'
+import { NotFound } from './ImmerseStateScreens'
 import { buildImmerseNavItems } from './ImmerseEngagementRoute'
 import { ImmerseDeliveryTabShell } from './ImmerseDeliveryTabShell'
 import { SECTION_RENDERERS, type ShellHandshake } from './ImmerseSectionRenderers'
@@ -46,10 +46,12 @@ export default function ImmerseEngagementSurface({
 
   // Destination subpage. The resolver supplies stay detail for any destination
   // proposal; render it as shape 'stay' through the registry — the unified surface
-  // path that replaced DestinationPage (cut over S53O). A destination-within-a-
-  // journey IS a stay render, so shape is forced to 'stay' regardless of the
-  // engagement's journey type. DestinationPage remains only as a fallback when the
-  // detail fetch fails (one release, then deleted in Stage D).
+// path that replaced the bespoke destination detail page (cut over + deleted S53O
+  // eight-shape Stage C/D). A destination-within-a-journey IS a stay render, so
+  // shape is forced to 'stay' regardless of the engagement's journey type. A null
+  // detail means the destination did not resolve (bad/unpublished slug, or a
+  // transient EF failure) — that is a not-found, not a reason to run a second
+  // render path, so it resolves to the branded not-found screen.
   if (activeDestSlug && data.stage === 'proposal') {
     if (data.detail) {
       const staySections = resolveSectionSet(stage, 'stay')
@@ -66,7 +68,11 @@ export default function ImmerseEngagementSurface({
         </ImmerseLayout>
       )
     }
-    return <DestinationPage engagement={eng} destinationSlug={activeDestSlug} />
+    return (
+      <ImmerseLayout>
+        <NotFound message="We couldn't find that destination." />
+      </ImmerseLayout>
+    )
   }
 
   const shape = resolveEngagementShape(eng.journeyTypes[0] ?? null)
