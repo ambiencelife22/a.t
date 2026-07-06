@@ -2,7 +2,11 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{tripId}/brief
  *
- * Last updated: S54 — Tabs section added. Four show_tab_* booleans
+ * Last updated: S53O — brief accommodation reduced to index shape (hotel,
+ *   dates, nights, party composition, room categories + per-room conf,
+ *   booked-by). Guest names, cancellation, invoices, inclusions removed —
+ *   those live on Confirmation + Programme. Matches TripBriefTab + PDF.
+ * Prior: S54 — Tabs section added. Four show_tab_* booleans
  *   (confirmation, programme, brief, contacts) now wired into the admin UI
  *   with inline-save toggles, mirroring the public_view + advisor visibility
  *   pattern. Each toggle gates whether the corresponding tab renders on the
@@ -58,7 +62,6 @@ import { fetchEngagementTypes, fetchHouseIdForTrip, type EngagementTypeOption } 
 import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 import { WelcomeLettersEditor } from './WelcomeLettersEditor'
-import { roomGuestName } from '../../utils/utilsRoomDisplay'
 import { ID } from '../../tokens/tokensLanding'
 import { fmtTime } from '../../utils/utilsDates'
 
@@ -623,41 +626,42 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       </div>
                     </div>
                   </div>
-                  {rooms.length > 0 && (
-                    <div style={{ borderTop: `0.5px solid ${RULE}` }}>
-                      {rooms.map((room, ri) => {
-                        const d                = roomDrafts[room.id]
-                        const roomName         = d?.room_name         ?? room.room_name         ?? null
-                        // guest_name is an OVERRIDE field: empty draft string = "no override, use resolved"
-                        // hence || (fall through on empty), not ?? — matches BookingRoomsEditor's override model.
-                        const guestName        = d?.guest_name || roomGuestName(room) || null
-                        const partyComposition = d?.party_composition ?? room.party_composition ?? null
-                        // additional_guests are person uuids; names resolve at the
-                        // dossier source (resolved_additional_guests). Render names,
-                        // never uuids. Draft edits to additional guests show after save
-                        // re-resolves; the persisted room carries resolved names.
-                        const resolvedAdditional = room.resolved_additional_guests ?? []
-                        const guestParts: string[] = []
-                        if (guestName) guestParts.push(guestName)
-                        if (resolvedAdditional.length) guestParts.push(...resolvedAdditional)
-                        if (partyComposition) guestParts.push(partyComposition)
-                        const guestLine = guestParts.join(' · ')
-                        return (
-                          <div key={room.id ?? ri} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderTop: ri > 0 ? `0.5px solid ${RULE}` : 'none', flexWrap: 'wrap' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              {roomName && <div style={{ fontSize: 12, color: INK, lineHeight: 1.3 }}>{roomName}</div>}
-                              {guestLine && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED, marginTop: 2 }}>{guestLine}</div>}
-                            </div>
-                            {room.confirmation_number && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, border: `1px solid ${pillColor}`, borderRadius: 4, padding: '2px 8px', background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
-                                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {room.confirmation_number}</span>
+                  {rooms.length > 0 && (() => {
+                    // Category + count + per-room conf. Names omitted — the brief is
+                    // an index; guest names live on the Confirmation surface. Draft
+                    // room_name honoured (|| falls through empty override). Same
+                    // grouping shape as TripBriefTab + pdfImmerseBrief (no drift).
+                    const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, room) => {
+                      const d    = roomDrafts[room.id]
+                      const name = (d?.room_name || room.room_name) ?? 'Room'
+                      if (!acc[name]) acc[name] = { count: 0, confs: [] }
+                      acc[name].count += 1
+                      if (room.confirmation_number) acc[name].confs.push(room.confirmation_number)
+                      return acc
+                    }, {})
+                    const categories = Object.entries(catGroups).map(([name, g]) => ({
+                      label: g.count > 1 ? `${name} \u00d7${g.count}` : name,
+                      confs: g.confs,
+                    }))
+                    return (
+                      <div style={{ borderTop: `0.5px solid ${RULE}` }}>
+                        {categories.map((cat, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderTop: i > 0 ? `0.5px solid ${RULE}` : 'none', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: INK, lineHeight: 1.3 }}>{cat.label}</div>
+                            {cat.confs.length > 0 && (
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
+                                {cat.confs.map((cn, ci) => (
+                                  <div key={ci} style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 4, padding: '2px 8px', background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {cn}</span>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

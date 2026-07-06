@@ -3,7 +3,8 @@
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Overview table: Guest, Trip, Departure, Return, Duration, Destinations
-//   - Accommodation, Flights, Transfers, Airport Meet & Greet, Dining sections
+//   - Accommodation (hotel, dates, nights, party, room categories + conf),
+//     Flights, Transfers, Airport Meet & Greet, Dining sections
 //   - Important Notes + Links sections
 //   - Filename: "Trip Brief - {ClientName} - {Destination} - {DateRange}.pdf"
 //
@@ -16,7 +17,11 @@
 //   keep their header with at least one row (no orphan). Estimates removed in
 //   favour of per-row guard checks — simpler and drift-free for a text doc.
 //
-// Last updated: S53G — spacing + elegance pass. Tighter date column (LABEL_W 38),
+// Last updated: S53O — brief scope reduction. Accommodation stripped to
+//   index shape (hotel, dates, nights, party composition, room categories +
+//   per-room conf, booked-by). Cancellation policy, invoices, inclusions,
+//   check-in note removed — those live on Programme + Confirmation only.
+// Prior: S53G — spacing + elegance pass. Tighter date column (LABEL_W 38),
 //   more air above section headers, wider eyebrow tracking, larger inter-section
 //   gaps (10pt), improved inter-row gaps (10pt), passenger lines rendered in
 //   card-bg pill rows for hierarchy. Hero metadata looser steps.
@@ -235,14 +240,21 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
     for (const h of hotels) {
       y = checkOverflow(doc, y, 18)
       const rooms    = h._rooms ?? []
-      const catCounts = rooms.reduce((acc: Record<string, number>, r: any) => {
-        const nm = r.room_name ?? 'Room'; acc[nm] = (acc[nm] ?? 0) + 1; return acc
+      // Category + count + per-room conf. Names omitted (Confirmation owns names).
+      const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, r: any) => {
+        const nm = r.room_name ?? 'Room'
+        if (!acc[nm]) acc[nm] = { count: 0, confs: [] }
+        acc[nm].count += 1
+        if (r.confirmation_number) acc[nm].confs.push(r.confirmation_number)
+        return acc
       }, {})
-      const cats = Object.entries(catCounts).map(([nm, n]) => (n > 1 ? `${nm} \u00d7${n}` : nm))
+      const catLines = Object.entries(catGroups).map(([nm, g]) => {
+        const label = g.count > 1 ? `${nm} \u00d7${g.count}` : nm
+        return g.confs.length ? `${label}  \u00b7  ${g.confs.map(cn => `Conf #: ${cn}`).join('  ')}` : label
+      })
       const subParts = [
         h.nights ? `${h.nights} nights` : null,
-        cats.length ? cats.join('  \u00b7  ') : null,
-        h.check_in_note ?? null,
+        h.party_composition ?? null,
       ].filter(Boolean)
       y += drawDataRow(doc, {
         date:        buildDateRange(h.check_in_date ?? h.start_date, h.end_date) || '\u2014',
@@ -251,46 +263,13 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
         bookedBy:    bookedByLabel(h.booked_by),
         bookedByRaw: h.booked_by,
       }, y)
-      if (h.inclusions_override && (h.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) {
-        for (const group of h.inclusions_override as {heading:string;bullets:string[]}[]) {
-          y = checkOverflow(doc, y, 10)
-          sans(doc, 'bold', 6.5); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-          doc.text(group.heading.toUpperCase(), P.margin + LABEL_W, y, { charSpace: 0.3 }); y += 4.5
-          for (const bullet of group.bullets) {
-            y = checkOverflow(doc, y, 6)
-            sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-            doc.text('\u00b7', P.margin + LABEL_W, y)
-            const bLines = doc.splitTextToSize(bullet, CW - LABEL_W - 5)
-            for (const bl of bLines) { doc.text(bl, P.margin + LABEL_W + 4, y); y += 4 }
-          }
-          y += 2
-        }
-      }
-      if (h.cancellation_policy) {
-        y = checkOverflow(doc, y, 12)
-        sans(doc, 'bold', 6.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-        doc.text('CANCELLATION POLICY', P.margin + LABEL_W, y, { charSpace: 0.3 }); y += 4
+      for (const line of catLines) {
+        y = checkOverflow(doc, y, 6)
         sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-        const cpLines = doc.splitTextToSize(h.cancellation_policy, CW - LABEL_W)
-        for (const line of cpLines) { doc.text(line, P.margin + LABEL_W, y); y += 4 }
-        y += 4
+        const wrapped = doc.splitTextToSize(line, CW - LABEL_W)
+        for (const wl of wrapped) { doc.text(wl, P.margin + LABEL_W, y); y += 4 }
       }
-      if ((h._invoices ?? []).length > 0) {
-        y = checkOverflow(doc, y, 12)
-        sans(doc, 'bold', 6.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-        doc.text('INVOICES', P.margin + LABEL_W, y, { charSpace: 0.3 }); y += 5
-        for (const inv of h._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]) {
-          y = checkOverflow(doc, y, 10)
-          sans(doc, 'normal', 7.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-          const label = inv.description ?? `Invoice ${inv.invoice_number}`
-          doc.text(label, P.margin + LABEL_W, y)
-          const amtStr = inv.amount != null ? `${inv.currency} ${Math.abs(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
-          if (amtStr) doc.text(amtStr, P.margin + CW, y, { align: 'right' })
-          if (inv.invoice_date) { sans(doc, 'normal', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(inv.invoice_date, P.margin + LABEL_W, y + 4) }
-          y += 10
-        }
-        y += 2
-      }
+      if (catLines.length > 0) y += 4
     }
     y += 10
   }

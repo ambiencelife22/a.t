@@ -1189,14 +1189,22 @@ export function TripBriefTab({ clientData }: {
         <BriefSection title='Accommodation'>
           {hotels.map(h => {
             const rooms = h._rooms ?? []
-            // Group room categories with counts (e.g. "Deluxe King Terrace ×4")
-            const catCounts = rooms.reduce((acc: Record<string, number>, r: any) => {
+            // Room categories with counts + per-room confirmation numbers.
+            // Names are deliberately omitted here — guest names live on the
+            // Confirmation tab. The brief is an at-a-glance index: category,
+            // count, conf. Party composition (counts, not names) shows once
+            // at booking level.
+            const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, r: any) => {
               const name = r.room_name ?? 'Room'
-              acc[name] = (acc[name] ?? 0) + 1
+              if (!acc[name]) acc[name] = { count: 0, confs: [] }
+              acc[name].count += 1
+              if (r.confirmation_number) acc[name].confs.push(r.confirmation_number)
               return acc
             }, {})
-            const categories = Object.entries(catCounts)
-              .map(([name, n]) => (n > 1 ? `${name} \u00d7${n}` : name))
+            const categories = Object.entries(catGroups).map(([name, g]) => ({
+              label: g.count > 1 ? `${name} \u00d7${g.count}` : name,
+              confs: g.confs,
+            }))
             return (
               <div key={h.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
@@ -1207,56 +1215,23 @@ export function TripBriefTab({ clientData }: {
                     {h._hotel_name ?? h.name ?? 'Hotel'}
                   </div>
                   {h.nights && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2 }}>{`${h.nights} nights`}</div>}
-                  {h.check_in_note && <div style={{ fontSize: 11, color: c.ink, fontFamily: TYPE.sans, fontStyle: 'italic', marginTop: 2, wordBreak: 'break-word' }}>{h.check_in_note}</div>}
-                  {h.cancellation_policy && (
-                    <div style={{ marginTop: 6, padding: '8px 12px', background: c.surfaceSunken, borderRadius: 6 }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 3 }}>Cancellation Policy</div>
-                      <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{h.cancellation_policy}</div>
-                    </div>
-                  )}
-                  {(h._invoices ?? []).length > 0 && (
-                    <div style={{ marginTop: 6 }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 4 }}>Invoices</div>
-                      {(h._invoices as BookingInvoice[]).map(inv => (
-                        <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 5, paddingBottom: 5, borderTop: `0.5px solid ${c.lineStrong}` }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
-                            <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>
-                              {inv.invoice_date ? formatDate(inv.invoice_date) : ''}
-                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.faint, marginLeft: 8 }}>#{inv.invoice_number}</span>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, flexShrink: 0 }}>
-                            {moneyDec(inv.amount ?? 0, inv.currency)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {h.inclusions_override && (h.inclusions_override as {heading:string;bullets:string[]}[]).length > 0 && (
-                    <div style={{ marginTop: 6 }}>
-                      {(h.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
-                        <div key={gi} style={{ marginTop: gi > 0 ? 6 : 0 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans, marginBottom: 3 }}>{group.heading}</div>
-                          {group.bullets.map((b, bi) => (
-                            <div key={bi} style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.6 }}>
-                              <span style={{ color: c.gold, flexShrink: 0 }}>·</span>
-                              <span>{b}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {h.party_composition && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>{h.party_composition}</div>}
                   {categories.length > 0 && (
-                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {categories.map((cat, i) => (
-                        <div key={i} style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>{cat}</div>
+                        <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>{cat.label}</span>
+                          {cat.confs.length > 0 && (
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>
+                              {cat.confs.map(cn => `Conf #: ${cn}`).join('   ')}
+                            </span>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
                   {bookedByLabel(h.booked_by) && (
-                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 2, fontStyle: 'italic' }}>{bookedByLabel(h.booked_by)}</div>
+                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>{bookedByLabel(h.booked_by)}</div>
                   )}
                 </div>
               </div>
