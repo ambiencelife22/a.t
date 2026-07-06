@@ -137,7 +137,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
           {room.publicNightlyRate && hasComparisonRate && (
             <div style={{ position: 'relative', padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, opacity: 0.55, fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', gap: 5, alignItems: 'center', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', left: '-10%', top: '50%', width: '120%', height: 1, background: `linear-gradient(90deg, transparent, ${ID.dim}77, transparent)`, transform: 'rotate(-18deg)', pointerEvents: 'none' }} />
-              <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Public</span>
+              <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Public Rate</span>
               <span style={{ opacity: 0.8 }}>{room.publicNightlyRate}</span>
             </div>
           )}
@@ -193,7 +193,6 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
               minWidth: 0,
             }}>
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: nonNegIsNumeric ? 'nowrap' : 'wrap' }}>
-                <span style={{ fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: ID.dim }}>Non-Negotiated</span>
                 <span>{room.nonNegotiatedNightlyRate}</span>
                 {nonNegIsNumeric && room.rateCadence && (
                   <span style={{ fontSize: 9, color: ID.dim, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{room.rateCadence}</span>
