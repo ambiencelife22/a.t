@@ -185,7 +185,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
   const templateHeroMap: Record<string, { hero_image_src: string | null; hero_image_alt: string | null }> = {}
   if (globalIds.length > 0) {
     const { data: templateRows } = await db
-      .from('travel_immerse_destinations')
+      .from('travel_destinations')
       .select('global_destination_id, hero_image_src, hero_image_alt')
       .in('global_destination_id', globalIds)
       .is('url_slug', null)
@@ -232,7 +232,7 @@ async function buildDestinationPayload(
   let isVariant = false
 
   const { data: variantRow } = await db
-    .from('travel_immerse_destinations')
+    .from('travel_destinations')
     .select('*')
     .eq('url_slug', urlSlug)
     .maybeSingle()
@@ -258,7 +258,7 @@ async function buildDestinationPayload(
   // 2. Fetch canonical template if not already fetched (variant case above)
   if (!isVariant) {
     const { data: tmpl } = await db
-      .from('travel_immerse_destinations')
+      .from('travel_destinations')
       .select('*')
       .eq('global_destination_id', globalDestinationId)
       .is('url_slug', null)
@@ -344,7 +344,7 @@ async function fetchHotels(
 ) {
   // Check for regions
   const { data: regions } = await db
-    .from('travel_immerse_destination_regions')
+    .from('travel_destination_regions')
     .select('id, slug, title, shorthand, hero_image_src, hero_image_alt, region_gallery')
     .eq('destination_id', destinationId)
     .eq('is_active', true)
