@@ -43,13 +43,33 @@ export default function ImmerseEngagementSurface({
 }) {
   const eng   = data.engagement
   const stage = computeEngagementStage({ statusSlug: eng.engagementStatus.slug as EngagementStatusSlug })
-  const shape = resolveEngagementShape(eng.journeyTypes[0] ?? null)
-  const sections = resolveSectionSet(stage, shape)
 
-  // Destination subpage short-circuits (proposal only).
+  // Destination subpage. When the resolver supplied stay detail (?surface=next),
+  // render it as shape 'stay' through the registry — the unified surface path that
+  // replaces DestinationPage. A destination-within-a-journey IS a stay render, so
+  // shape is forced to 'stay' here regardless of the engagement's journey type.
+  // Without detail (default path), short-circuit to the bespoke DestinationPage.
   if (activeDestSlug && data.stage === 'proposal') {
+    if (data.detail) {
+      const staySections = resolveSectionSet(stage, 'stay')
+      const navItems = buildImmerseNavItems(eng, activeDestSlug)
+      const logoHref = window.location.hostname === 'immerse.ambience.travel'
+        ? `/${eng.urlId}`
+        : `/immerse/${eng.urlId}`
+      const shell: ShellHandshake = {}
+      return (
+        <ImmerseLayout navItems={navItems} logoHref={logoHref}>
+          {staySections.map(s => (
+            <div key={s.id}>{SECTION_RENDERERS[s.id](data, shell)}</div>
+          ))}
+        </ImmerseLayout>
+      )
+    }
     return <DestinationPage engagement={eng} destinationSlug={activeDestSlug} />
   }
+
+  const shape = resolveEngagementShape(eng.journeyTypes[0] ?? null)
+  const sections = resolveSectionSet(stage, shape)
 
   const navItems = buildImmerseNavItems(eng, activeDestSlug)
   const logoHref = window.location.hostname === 'immerse.ambience.travel'

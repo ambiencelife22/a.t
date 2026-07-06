@@ -34,7 +34,8 @@ import {
   isDeliveryData,
   type DeliveryBundle,
 } from '../../queries/queriesImmerseEngagement'
-import type { ImmerseEngagementData } from '../../types/typesImmerse'
+import { getProposalDestination } from '../../queries/queriesImmerseProposal'
+import type { ImmerseEngagementData, ImmerseDestinationData } from '../../types/typesImmerse'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 
@@ -68,18 +69,22 @@ type RouteState =
   | { phase: 'not-found'  }
   | { phase: 'not-public' }
   | { phase: 'archived'   }
-  | { phase: 'proposal';  data: ImmerseEngagementData }
+  | { phase: 'proposal';  data: ImmerseEngagementData; detail?: ImmerseDestinationData }
   | { phase: 'delivery'; data: ImmerseEngagementData; bundle: DeliveryBundle }
   | { phase: 'error'                                  }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-function useEngagementRoute(urlId: string): RouteState {
+function useEngagementRoute(
+  urlId:          string,
+  activeDestSlug: string | null,
+  shadowStay:     boolean,
+): RouteState {
   const [state, setState] = useState<RouteState>({ phase: 'loading' })
 
   useEffect(() => {
     setState({ phase: 'loading' })
-    fetchEngagementClientData(urlId).then(result => {
+    fetchEngagementClientData(urlId).then(async result => {
       if (result.type === 'not-found')  { setState({ phase: 'not-found'  }); return }
       if (result.type === 'not-public') { setState({ phase: 'not-public' }); return }
       if (result.type === 'error')      { setState({ phase: 'error'      }); return }
@@ -89,6 +94,16 @@ function useEngagementRoute(urlId: string): RouteState {
       if (isProposalData(data)) {
         const eng = data.engagement
         if (eng.proposalVisibility === 'archived') { setState({ phase: 'archived' }); return }
+        // Shadow stay path (?surface=next): fetch the destination detail so the
+        // surface can render it as shape 'stay' through the registry, replacing
+        // the bespoke DestinationPage. Absent the flag, detail stays undefined and
+        // the surface short-circuits to DestinationPage as today.
+        if (shadowStay && activeDestSlug) {
+          const detail = await getProposalDestination(urlId, activeDestSlug)
+          if (detail) { setState({ phase: 'proposal', data: eng, detail }); return }
+          // Detail fetch failed — fall through to the normal proposal state; the
+          // surface's DestinationPage short-circuit still renders the old path.
+        }
         setState({ phase: 'proposal', data: eng })
         return
       }
@@ -97,7 +112,7 @@ function useEngagementRoute(urlId: string): RouteState {
         setState({ phase: 'delivery', data: data.engagement, bundle: data.bundle })
       }
     })
-  }, [urlId])
+  }, [urlId, activeDestSlug, shadowStay])
 
   return state
 }
@@ -121,7 +136,8 @@ export default function ImmerseEngagementRoute({
   isProposalPath  = false,
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
-  const state = useEngagementRoute(urlId)
+  const shadowStay = new URLSearchParams(window.location.search).get('surface') === 'next'
+  const state = useEngagementRoute(urlId, activeDestSlug, shadowStay)
 
   if (state.phase === 'loading') {
     return (
@@ -154,7 +170,7 @@ export default function ImmerseEngagementRoute({
       window.location.replace(proposalUrl)
       return <ImmerseLayout><div style={{ minHeight: '60vh' }} /></ImmerseLayout>
     }
-    const proposalData = { stage: 'proposal' as const, urlId, engagement: state.data }
+    const proposalData = { stage: 'proposal' as const, urlId, engagement: state.data, detail: state.detail }
     return <ImmerseEngagementSurface data={proposalData} activeDestSlug={activeDestSlug} />
   }
   if (state.phase === 'delivery') {
