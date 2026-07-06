@@ -22,6 +22,8 @@ import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
 import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
 import { ConfirmationTab, ProgrammeTab, TripBriefTab, ContactsTab } from './ImmerseConfirmedSections'
+import { ImmerseDestIntro, ImmerseContentGrid, ImmerseDestPricing } from './ImmerseDestComponents'
+import { ImmerseHotelOptions } from './ImmerseHotelOptions'
 import { formatDateRange } from '../../utils/utilsDates'
 
 // Surface-owned presentation state passed alongside the data context. The
@@ -172,9 +174,45 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
   //                        title={ctx.detail.experiencesTitle} body={ctx.detail.experiencesBody}
   //                        items={ctx.detail.experiences} dark />
   //   detail_pricing   → <ImmerseDestPricing  data={ctx.detail} />
-  intro:            () => null,
-  hotel_options:    () => null,
-  dining_grid:      () => null,
-  experiences_grid: () => null,
-  detail_pricing:   () => null,
+  intro: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    return <ImmerseDestIntro data={ctx.detail} />
+  },
+
+  hotel_options: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    return <ImmerseHotelOptions data={ctx.detail} />
+  },
+
+  dining_grid: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    const d = ctx.detail
+    return (
+      <ImmerseContentGrid
+        eyebrow={d.diningEyebrow}
+        title={d.diningTitle}
+        body={d.diningBody}
+        items={d.dining}
+      />
+    )
+  },
+
+  experiences_grid: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    const d = ctx.detail
+    return (
+      <ImmerseContentGrid
+        eyebrow={d.experiencesEyebrow}
+        title={d.experiencesTitle}
+        body={d.experiencesBody}
+        items={d.experiences}
+        dark
+      />
+    )
+  },
+
+  detail_pricing: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    return <ImmerseDestPricing data={ctx.detail} />
+  },
 }

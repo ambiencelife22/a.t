@@ -29,6 +29,7 @@
 
 import type {
   ImmerseEngagementData,
+  ImmerseDestinationData,
   ImmerseDossierTrip,
   ImmerseTripBrief,
   ImmerseTripHouse,
@@ -104,6 +105,14 @@ export type EngagementClientData =
       stage:      'proposal'
       urlId:      string
       engagement: ImmerseEngagementData
+      // Stay-shape detail (eight-shape B1). Present when the proposal is scoped
+      // to a single destination — a standalone stay, or a destination-within-a-
+      // journey opened directly. Undefined for a whole-journey proposal. The
+      // stay-detail renderers (intro/hotel_options/dining_grid/experiences_grid/
+      // detail_pricing) read from here and resolve only for shape 'stay', so
+      // `detail` is only ever read when present. Fetched by the route resolver
+      // (getProposalDestination) — B2 wires that fetch behind ?surface=next.
+      detail?:    ImmerseDestinationData
     }
   | {
       stage:      'delivery'
