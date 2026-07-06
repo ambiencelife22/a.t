@@ -78,7 +78,6 @@ type RouteState =
 function useEngagementRoute(
   urlId:          string,
   activeDestSlug: string | null,
-  shadowStay:     boolean,
 ): RouteState {
   const [state, setState] = useState<RouteState>({ phase: 'loading' })
 
@@ -94,16 +93,14 @@ function useEngagementRoute(
       if (isProposalData(data)) {
         const eng = data.engagement
         if (eng.proposalVisibility === 'archived') { setState({ phase: 'archived' }); return }
-        // Shadow stay path (?stay=next): fetch the destination detail so the
-        // surface can render it as shape 'stay' through the registry, replacing
-        // the bespoke DestinationPage. Absent the flag, detail stays undefined and
-        // the surface short-circuits to DestinationPage as today. Own flag, not
-        // A3's retired ?surface — this shadows the eight-shape stay path only.
-        if (shadowStay && activeDestSlug) {
+        // Destination proposal: fetch the stay detail so the surface renders it as
+        // shape 'stay' through the registry (the unified path — replaces the
+        // bespoke DestinationPage, cut over S53O eight-shape Stage C). If the
+        // detail fetch fails, fall through to the plain proposal state; the surface
+        // still short-circuits to DestinationPage as the one-release fallback.
+        if (activeDestSlug) {
           const detail = await getProposalDestination(urlId, activeDestSlug)
           if (detail) { setState({ phase: 'proposal', data: eng, detail }); return }
-          // Detail fetch failed — fall through to the normal proposal state; the
-          // surface's DestinationPage short-circuit still renders the old path.
         }
         setState({ phase: 'proposal', data: eng })
         return
@@ -113,7 +110,7 @@ function useEngagementRoute(
         setState({ phase: 'delivery', data: data.engagement, bundle: data.bundle })
       }
     })
-  }, [urlId, activeDestSlug, shadowStay])
+  }, [urlId, activeDestSlug])
 
   return state
 }
@@ -137,8 +134,7 @@ export default function ImmerseEngagementRoute({
   isProposalPath  = false,
 }: ImmerseEngagementRouteProps) {
   const urlId = extractUrlId()
-  const shadowStay = new URLSearchParams(window.location.search).get('stay') === 'next'
-  const state = useEngagementRoute(urlId, activeDestSlug, shadowStay)
+  const state = useEngagementRoute(urlId, activeDestSlug)
 
   if (state.phase === 'loading') {
     return (

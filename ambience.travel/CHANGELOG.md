@@ -229,3 +229,36 @@ advisor was flagging both views as SECURITY DEFINER due to the
 auth.uid() subselect pattern. security_invoker ensures RLS and
 permissions are evaluated as the querying user, not the view creator.
 Correct posture for user-scoped grants views.
+
+## 2026-07-05
+
+### [ARC] Eight-shape surface — stay shape unified onto the one surface (Stages A–B; C/D pending)
+
+The destination subpage is being dissolved into the unified engagement surface as
+shape 'stay' — no bespoke page, one surface resolving (stage × shape) via
+resolveSectionSet. Spans registry + types + route across five commits; the
+campaign shape is not visible in any single diff.
+
+Model: a destination-within-a-journey IS a stay render. The route resolver fetches
+getProposalDestination and attaches it as `detail` on the proposal arm of
+EngagementClientData; the surface renders that detail as shape 'stay' (shape forced
+in the destination branch — journeyTypes[0] resolves to 'journey', not 'stay').
+Fetch lives in the resolver, surface stays a pure render of resolved data (Option B).
+
+Stage A — stay SectionTypes (intro/hotel_options/dining_grid/experiences_grid/
+detail_pricing) added to SECTION_REGISTRY. Registry renumbered to gapped integers
+(0,10,…100) so journey/stay interleave without fractions — the gaps ARE the
+interleave contract, do not renumber to consecutive. interstitial widened to
+['journey','stay']; welcome/destinations/pricing narrowed off 'stay'.
+Stage B — `detail?: ImmerseDestinationData` on the proposal union arm; renderers
+wired; resolver fetches it behind the ?stay=next shadow flag.
+
+SHADOW STATE (the thing git log won't tell you): the new stay path is live ONLY
+behind ?stay=next. Default is still the bespoke DestinationPage. NOT yet cut over.
+Next: Stage C parity eyeball (old vs ?stay=next on a real destination), then
+cutover (flip default), then Stage D delete DestinationPage.tsx once grep-zero.
+
+Naming: ?stay=next is this campaign's own flag — NOT A3's retired ?surface. Also
+this session (renames, captured in diffs, logged here only for the search trail):
+typesImmerseClient -> typesImmerseDelivery, queriesImmerseClient ->
+queriesImmerseEngagement (Client=identity-only; neither held client identity).

@@ -44,11 +44,12 @@ export default function ImmerseEngagementSurface({
   const eng   = data.engagement
   const stage = computeEngagementStage({ statusSlug: eng.engagementStatus.slug as EngagementStatusSlug })
 
-  // Destination subpage. When the resolver supplied stay detail (?stay=next),
-  // render it as shape 'stay' through the registry — the unified surface path that
-  // replaces DestinationPage. A destination-within-a-journey IS a stay render, so
-  // shape is forced to 'stay' here regardless of the engagement's journey type.
-  // Without detail (default path), short-circuit to the bespoke DestinationPage.
+  // Destination subpage. The resolver supplies stay detail for any destination
+  // proposal; render it as shape 'stay' through the registry — the unified surface
+  // path that replaced DestinationPage (cut over S53O). A destination-within-a-
+  // journey IS a stay render, so shape is forced to 'stay' regardless of the
+  // engagement's journey type. DestinationPage remains only as a fallback when the
+  // detail fetch fails (one release, then deleted in Stage D).
   if (activeDestSlug && data.stage === 'proposal') {
     if (data.detail) {
       const staySections = resolveSectionSet(stage, 'stay')
