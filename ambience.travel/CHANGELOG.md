@@ -335,119 +335,49 @@ _shared/trip.ts, so their rename redeploys all three client EFs). The lone remai
 column-lie deferred to Phase B/C: travel_overlay_engagements.trip_id (real FK to
 travel_trips, stays until spine rename); pricing-rows' trip_destination_row_id column.
 
-## 2026-07-07
-
-### [ARC][DB] Overlay rename Phase A COMPLETE — travel_immerse_* → travel_overlay_* (13 of 13)
-
-The "kill trips/immerse" campaign's overlay tier is done. All 13 per-engagement
-proposal/overlay tables renamed travel_immerse_* → travel_overlay_*, one migration
-each, DB-fully-then-code, every one verified live. Live Supabase schema — invisible
-to git diffs; this is the record.
-
-Grammar (locked): place=global_*, canon=travel_*, engagement spine=travel_engagement_*
-(Phase B, pending), overlay=travel_overlay_*. Overlay prefix is travel_overlay_* NOT
-travel_engagement_overlay_* (63-byte constraint-name limit).
-
-Tables renamed (migrations 1–13):
-- destination_pricing_rows, engagement_content_card_overrides,
-  engagement_content_card_selections, engagement_hotel_gallery_overrides,
-  route_stops, engagement_pricing_rows, engagement_regions,
-  engagement_region_hotels, engagement_destination_hotels,
-  engagement_destination_rows, rooms, engagement_display, and the root
-  travel_immerse_engagements → travel_overlay_engagements.
-
-Each: table + constraints + standalone indexes renamed (PK/unique indexes rename
-WITH their constraints, never ALTER INDEX'd). Stale name-lies corrected throughout:
-*_trip_id_fkey → *_engagement_id_fkey where the FK column was already engagement_id
-(a prior pass renamed the columns; only the constraint names still lied). Names
-crossing 63 bytes shortened to honest stems (overlay_card_selections_*,
-overlay_hotel_gallery_ov_*, overlay_dest_hotels_*, overlay_dest_rows_*,
-overlay_engagement_pricing_*, idx_overlay_region_hotels_*).
-
-Migration 13 (the root, travel_immerse_engagements) — ZERO-DOWNTIME cutover.
-This table is the FK target of 21 inbound FKs (all 12 overlay children + self-ref
-+ travel_bookings/engagement_expenses/engagement_houses/engagement_links/requests/
-tasks/time_entries/trips.confirmed_engagement_id) and is read by 15 files across
-10 EFs + 2 shared modules. Direct rename would have broken the whole platform for
-the duration of a 10-EF redeploy. Instead: rename table → create SELECT * view
-under the old name (security_invoker=true, RLS-respecting) → repoint 3 DB functions
-+ 15 files → deploy 10 EFs → drop view. Platform never in a broken state.
-trip_id FK to travel_trips PRESERVED (real spine link, Phase B boundary — trip_id
-here is truth, not a lie; only the constraint name was de-stale'd to
-travel_overlay_engagements_trip_id_fkey). All 21 inbound FKs verified re-pointing
-post-rename. Triggers tg_immerse_derive_children + tg_immerse_engagement_public_view
-renamed to tg_overlay_*; all trigger FUNCTIONS preserved.
-
-### [DB] Two latent DB-function bugs found + fixed (function-body sweep)
-
-The filesystem grep (supabase/functions/ src/) does NOT see table references inside
-DB function/trigger bodies. A post-rename pg_proc sweep caught two live breaks the
-grep missed:
-- resolve_and_project_guest_label — INSERT INTO the display table; broken since
-  migration 12 (guest-label projection failing on every engagement write). Fixed.
-- clone_engagement — referenced all 12 old overlay names + engagements; broken
-  since migration 1. It is a fully-built transactional clone (id-maps + FK remap),
-  not the incomplete stub the debt board implied. Fixed. KNOWN GAP: room clone
-  copies bed_config_override (deprecated) but not bedding_type — cloned rooms lose
-  bedding; fix in the clone review.
-- derive_tasks_for_engagement — surfaced during migration 13's engagements-name
-  sweep (writes child engagements); repointed to travel_overlay_engagements.
-All three functions now carry COMMENT ON FUNCTION documenting their overlay writes.
-
-### [PROCESS] Standing rule earned — sweep DB function bodies after any table rename
-
-After renaming any table: run BOTH the filesystem grep AND a pg_proc function-body
-sweep (pg_get_functiondef LIKE '%old_table_name%'). DB function/trigger bodies are
-invisible to git and to the repo grep; unswept, a rename silently breaks server-side
-logic. Cost this campaign: 2 live bugs. Also: tsc green ≠ grep clean (a table name
-in .from('...') is a string literal TS does not validate — the clean-grep is the
-completeness gate, never tsc).
-
-### [ARC][DB] Phase B Stage 1 — 6 spine-leaf tables trip→engagement
+### [ARC][DB] Phase B Stage 1 COMPLETE — 7 spine-leaf tables trip→engagement
 
 Phase B (spine rename) begun. Grammar locked with D: travel_trips → travel_engagements,
-travel_overlay_engagements → travel_engagement_iterations, engagement_id → iteration_id
-on overlays, trip_id → engagement_id on spine children. Full recon + campaign plan on
-disk (phase_b_campaign_plan.md): 3-level column map, 6-stage sequencing, the
-travel_bookings/travel_requests dual-column collision documented.
+travel_overlay_engagements → travel_engagement_iterations, engagement_id → iteration_id on
+overlays, trip_id → engagement_id on spine children. Full recon + 6-stage campaign plan on
+disk (phase_b_campaign_plan.md), including the travel_bookings/travel_requests dual-column
+collision (rename engagement_id→iteration_id FIRST, then trip_id→engagement_id).
 
-Stage 1 renamed 6 spine-leaf tables + their trip_id → engagement_id column (+ constraints,
-indexes). Live schema — invisible to git diffs; this is the record.
-- travel_trip_welcome_letters → travel_engagement_welcome_letters (done earlier, direct cutover)
-- travel_trip_briefs → travel_engagement_briefs (UNIQUE(trip_id)→engagement_id; onConflict fixed)
-- travel_trip_days → travel_engagement_days (composite UNIQUE(trip_id,entry_date); onConflict fixed)
-- travel_trip_day_entries → travel_engagement_day_entries
-- travel_trip_aux_bookings → travel_engagement_aux_bookings (4 inbound FKs verified re-pointing)
-- travel_trip_destinations → travel_engagement_destinations (UNIQUE(trip_id,destination_id))
+Stage 1 renamed all 7 spine-leaf tables + trip_id→engagement_id column (constraints, indexes,
+triggers). Live schema — invisible to git diffs; this is the record:
+travel_trip_welcome_letters, _briefs, _days, _day_entries, _aux_bookings, _destinations,
+_aux_passengers → travel_engagement_*. (_aux_passengers had no trip_id — keyed via
+aux_booking_id — table rename only.) Unique constraints on briefs (trip_id) and days/
+destinations (composite) renamed with their columns; onConflict strings updated in callers.
 
-Remaining Stage 1 leaf: travel_trip_aux_passengers (aux_booking_id only, no trip_id — next session).
-
-### [FIX] Recovered a live half-migrated spine state
-
-On entering Stage 1, deployed code was already filtering .eq('engagement_id') against tables
-that still had trip_id columns (travel_trip_briefs/days/day_entries/aux_bookings) — broken admin
-reads AND broken guest programme/confirmation, live. Root cause: column-reference edits had been
-made ahead of the DB rename. Resolved by completing the renames + correcting every caller. ~20
-code references across 4 EFs (travel-write-trip, travel-read-trip-admin, travel-get-trip-programme,
-travel-get-trip-confirmation) + _shared/trip.ts, applying strict X/Y/Z discipline:
+Caller repoint applied strict X/Y/Z discipline across the trip EFs + _shared/trip.ts +
+_shared/names.ts:
 - X (DB column on a renamed table) → engagement_id
-- Y (trip_id on travel_bookings / travel_overlay_engagements — NOT renamed) → PRESERVED as trip_id
-- Z (API payload keys, TS type fields, in-memory shapes) → left as trip_id, logged for the honesty pass
-Conflating X and Y would have broken bookings/overlay reads; the discipline is what kept it correct.
+- Y (trip_id on travel_bookings / travel_overlay_engagements — NOT renamed) → PRESERVED
+- Z (API payload keys, TS type fields, in-memory shapes) → left, logged below
 
-### [FIX] derive_tasks_for_engagement aux reference (pg_proc sweep catch)
+Two breaks caught AFTER the initial "done" — the reason this entry matters:
+1. Entered Stage 1 on an already-live half-migrated state: deployed code filtered
+   .eq('engagement_id') against tables still holding trip_id (column edits made ahead of
+   the DB rename). Broken admin reads AND guest programme/confirmation, live.
+2. The guest-EF column seds silently failed (shell paste errors) — travel-get-trip-programme
+   kept .eq('trip_id') on aux/days/day_entries against renamed columns. Those reads errored
+   (42703) → [] → flights, day overrides, standalone entries absent from the guest programme
+   + confirmation. Found only by a rendered-page eyeball on live trip 1d680dcc, NOT by
+   tsc/grep (both green while the surface was broken). Fixed + verified: 6 flights render.
 
-Post-rename pg_proc sweep caught derive_tasks_for_engagement still reading travel_trip_aux_bookings
-+ a.trip_id in its aux loop — invisible to the filesystem grep, broken since the aux rename (fires
-on tg_derive_child_activities when an engagement hits confirmed/paid/in_service). Repointed to
-travel_engagement_aux_bookings + a.engagement_id; the travel_bookings.trip_id and
-travel_overlay_engagements.trip_id references in the same function correctly preserved (Category Y).
-Reconfirms the Phase A standing rule: sweep pg_proc after every table rename.
+pg_proc sweep also caught derive_tasks_for_engagement reading the old aux table name in its
+body (invisible to filesystem grep) — repointed. Reconfirms the Phase A rule.
 
-### [DEBT] Deferred honesty pass (Category Z — one deliberate sweep, both sides together)
+LESSONS (standing): (a) guest-facing renames require a rendered-page eyeball as the
+verification — structural checks gate the deploy, the page proves it. (b) Never trust that a
+batch sed applied; verify with a re-grep before deploying.
 
-Working but name-lying, to rename in a single pass when convenient (not piecemeal):
-- tripId / trip_id local variables across the codebase
-- the { trip_id } API payload contract between queriesAdminTrip.ts and the trip EFs (both sides atomically)
-- TripDayItem.trip_id field in _shared/days.ts (in-memory derived shape)
-- Trip* TS type field names (TripDay.trip_id, TripBrief.trip_id, etc.)
+Stages 3-6 remain (12 overlay engagement_id→iteration_id columns; bookings/requests
+dual-column collision; travel_overlay_engagements→travel_engagement_iterations; travel_trips
+→travel_engagements last). All reuse the compatibility-view technique from Phase A mig 13.
+
+### [DEBT] Deferred honesty pass (Category Z — one sweep, both sides together)
+Working but name-lying, rename in a single pass (not piecemeal): tripId/trip_id locals; the
+{ trip_id } API payload contract between queriesAdminTrip.ts and the trip EFs (both sides
+atomically); TripDayItem.trip_id in _shared/days.ts; Trip* TS type field names.
