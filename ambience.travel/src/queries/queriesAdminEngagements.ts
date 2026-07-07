@@ -12,7 +12,7 @@
 //   (max_sort_order later removed — sort_order computed server-side on create).
 // Prior: S33B — Added trip + person inline-edit + drag-and-drop re-parenting
 //   writes. New: updateTrip, createTrip, updatePerson, reassignEngagementTrip.
-// Prior: S33 — Added iteration_label. List query joins travel_trips +
+// Prior: S33 — Added iteration_label. List query joins travel_journey +
 //   global_people for trip-group rendering.
 
 import { supabase } from '../lib/supabase'
@@ -578,7 +578,7 @@ export async function reassignEngagementTrip(
 }
 
 // ── Trip primary client update ────────────────────────────────────────────────
-// Appended S42. Allows setting primary_client_id on travel_trips from the
+// Appended S42. Allows setting primary_client_id on travel_journey from the
 // engagement list group header when no client is currently linked.
 
 export async function updateTripPrimaryClient(

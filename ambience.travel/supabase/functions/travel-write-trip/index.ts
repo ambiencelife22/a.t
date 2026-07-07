@@ -65,11 +65,11 @@ type Mode =
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
 // returned row carries resolved_guest_name. Walk: room.person_id → global_people;
-// room.booking_id → travel_bookings.trip_id → travel_engagement_briefs.prepared_for.
+// room.booking_id → travel_bookings.trip_id → travel_journey_briefs.prepared_for.
 // FK path verified via information_schema S53G:
 //   travel_booking_rooms.booking_id (uuid NOT NULL)
 //     → travel_bookings.trip_id (uuid NOT NULL)
-//     → travel_engagement_briefs.trip_id → prepared_for (text nullable)
+//     → travel_journey_briefs.trip_id → prepared_for (text nullable)
 async function resolveRoomRow(
   db: SupabaseClient,
   room: Record<string, unknown>,
@@ -94,7 +94,7 @@ async function resolveRoomRow(
     .maybeSingle()
   if (booking?.trip_id) {
     const { data: brief } = await db
-      .from('travel_engagement_briefs')
+      .from('travel_journey_briefs')
       .select('prepared_for')
       .eq('engagement_id', booking.trip_id as string)
       .maybeSingle()
@@ -119,15 +119,15 @@ async function handleUpsertBrief(
 ): Promise<Response> {
   if (!patch.brief_title) {
     const { data: existing } = await db
-      .from('travel_engagement_briefs')
+      .from('travel_journey_briefs')
       .select('id')
       .eq('engagement_id', tripId)
       .maybeSingle()
 
     if (!existing) {
       const { data: dest } = await db
-        .from('travel_engagement_destinations')
-        .select('global_destinations!travel_engagement_destinations_dest_fkey(name)')
+        .from('travel_journey_destinations')
+        .select('global_destinations!travel_journey_destinations_dest_fkey(name)')
         .eq('engagement_id', tripId)
         .order('sort_order', { ascending: true })
         .limit(1)
@@ -141,7 +141,7 @@ async function handleUpsertBrief(
   }
 
   const { data, error } = await db
-    .from('travel_engagement_briefs')
+    .from('travel_journey_briefs')
     .upsert({ engagement_id: tripId, house_id: houseId, ...patch }, { onConflict: 'engagement_id' })
     .select()
     .single()
@@ -337,7 +337,7 @@ async function handleUpsertDay(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_days')
+    .from('travel_journey_days')
     .upsert({ engagement_id: tripId, entry_date: entryDate, ...patch }, { onConflict: 'engagement_id,entry_date' })
     .select()
     .single()
@@ -351,7 +351,7 @@ async function handleCreateDayEntry(
   entry: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_day_entries')
+    .from('travel_journey_day_entries')
     .insert({ ...entry, engagement_id: tripId })
     .select()
     .single()
@@ -365,7 +365,7 @@ async function handleUpdateDayEntry(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_day_entries')
+    .from('travel_journey_day_entries')
     .update(patch)
     .eq('id', id)
     .select()
@@ -376,7 +376,7 @@ async function handleUpdateDayEntry(
 
 async function handleDeleteDayEntry(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_engagement_day_entries')
+    .from('travel_journey_day_entries')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete day entry' }, 500)
@@ -390,7 +390,7 @@ async function handleUpsertWelcomeLetter(
 ): Promise<Response> {
   const row = { ...letter, engagement_id: tripId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
   const { data, error } = await db
-    .from('travel_engagement_welcome_letters')
+    .from('travel_journey_welcome_letters')
     .upsert(row, { onConflict: 'id' })
     .select()
     .single()
@@ -400,7 +400,7 @@ async function handleUpsertWelcomeLetter(
 
 async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_engagement_welcome_letters')
+    .from('travel_journey_welcome_letters')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete welcome letter' }, 500)
@@ -429,7 +429,7 @@ async function handleCreateTrip(db: SupabaseClient, body: Record<string, unknown
   if (!trip_code) return json({ error: 'trip_code is required' }, 400)
 
   const insert: Record<string, unknown> = {
-    trip_code,
+    journey_code: trip_code,
     public_title:       (body.public_title as string | undefined)?.trim() ?? null,
     start_date:         (body.start_date as string | undefined) ?? null,
     end_date:           (body.end_date as string | undefined) ?? null,
@@ -437,7 +437,7 @@ async function handleCreateTrip(db: SupabaseClient, body: Record<string, unknown
     primary_client_id:  (body.primary_client_id as string | undefined) ?? null,
   }
 
-  const { data, error } = await db.from('travel_trips').insert(insert).select('id').single()
+  const { data, error } = await db.from('travel_journey').insert(insert).select('id').single()
   if (error) { console.error('create_trip error:', error); return json({ error: 'Failed to create trip' }, 500) }
   return json({ trip: data })
 }
@@ -450,7 +450,7 @@ async function handleUpdateTrip(db: SupabaseClient, body: Record<string, unknown
   if (body.trip_code !== undefined) {
     const trimmed = (body.trip_code as string).trim()
     if (!trimmed) return json({ error: 'trip_code cannot be empty' }, 400)
-    patch.trip_code = trimmed
+    patch.journey_code = trimmed
   }
   if (body.public_title !== undefined) {
     const trimmed = (body.public_title as string | null)?.trim() ?? ''
@@ -458,7 +458,7 @@ async function handleUpdateTrip(db: SupabaseClient, body: Record<string, unknown
   }
   if (Object.keys(patch).length === 0) return json({ error: 'nothing to update' }, 400)
 
-  const { error } = await db.from('travel_trips').update(patch).eq('id', id)
+  const { error } = await db.from('travel_journey').update(patch).eq('id', id)
   if (error) { console.error('update_trip error:', error); return json({ error: 'Failed to update trip' }, 500) }
   return json({ ok: true })
 }
@@ -468,7 +468,7 @@ async function handleUpdateTripPrimaryClient(db: SupabaseClient, body: Record<st
   const person_id = (body.primary_client_id as string | null) ?? null
   if (!id) return json({ error: 'id is required' }, 400)
 
-  const { error } = await db.from('travel_trips').update({ primary_client_id: person_id }).eq('id', id)
+  const { error } = await db.from('travel_journey').update({ primary_client_id: person_id }).eq('id', id)
   if (error) { console.error('update_trip_primary_client error:', error); return json({ error: 'Failed to update primary client' }, 500) }
   return json({ ok: true })
 }

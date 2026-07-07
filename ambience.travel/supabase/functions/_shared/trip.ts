@@ -78,12 +78,12 @@ export async function fetchTripCore(
   houseId: string,
 ): Promise<TripCore> {
   const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
-    db.from('travel_trips')
-      .select('id, trip_code, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
+    db.from('travel_journey')
+      .select('id, journey_code, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
       .eq('id', tripId)
       .single(),
 
-    db.from('travel_engagement_briefs')
+    db.from('travel_journey_briefs')
       .select(`
         id, engagement_id, house_id, brief_title, brief_subtitle, prepared_for,
         hero_image_src, hero_image_alt, logo_variant,
@@ -105,8 +105,8 @@ export async function fetchTripCore(
       .eq('id', houseId)
       .single(),
 
-    db.from('travel_engagement_destinations')
-      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_engagement_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+    db.from('travel_journey_destinations')
+      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
       .eq('engagement_id', tripId)
       .order('sort_order', { ascending: true }),
   ])

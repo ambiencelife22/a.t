@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
       const [engRes, bookingsRes, expensesRes] = await Promise.all([
         db.from('travel_engagements')
-          .select('id, title, url_id, travel_trips!trip_id(trip_code, start_date, end_date)')
+          .select('id, title, url_id, travel_journey!trip_id(journey_code, start_date, end_date)')
           .eq('id', engagement_id)
           .single(),
         db.from('travel_bookings')
@@ -205,7 +205,7 @@ Deno.serve(async (req: Request) => {
     if (mode === 'pipeline') {
       const { data: engRows, error: engErr } = await db
         .from('travel_engagements')
-        .select('id, trip_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_trips!trip_id(trip_code, start_date, end_date, primary_client_id)')
+        .select('id, trip_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_journey!trip_id(journey_code, start_date, end_date, primary_client_id)')
         .is('parent_engagement_id', null)
         .not('trip_id', 'is', null)
         .order('created_at', { ascending: false })
@@ -238,7 +238,7 @@ Deno.serve(async (req: Request) => {
       const eByEng = groupBy((expensesAll ?? []) as Array<Record<string, unknown>>, 'engagement_id')
 
       const trips = confirmed.map(e => {
-        const trip = e.travel_trips as Record<string, unknown> | null
+        const trip = e.travel_journey as Record<string, unknown> | null
         const bs   = (bByEng[e.id as string] ?? []) as Array<Record<string, unknown>>
         const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; billing_status: string }>
 
@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
 
         return {
           engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
-          trip_code: trip?.trip_code ?? null, start_date: trip?.start_date ?? null,
+          trip_code: trip?.journey_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,
           commission_outstanding: net_commission_expected - commission_received,

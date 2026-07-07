@@ -115,13 +115,13 @@ Deno.serve(async (req: Request) => {
 
       // Overlay only — buildDays derives the day list from trip span and applies
       // these per-day overrides. No show filter; buildDays honors show.
-      db.from('travel_engagement_days')
+      db.from('travel_journey_days')
         .select('id, engagement_id, entry_date, show, day_label, day_note')
         .eq('engagement_id', tripId),
 
       // Standalone stored entries (dining/experience/notes). Booking-sourced entries
       // are excluded downstream by timeline.ts (they are derived from bookings now).
-      db.from('travel_engagement_day_entries')
+      db.from('travel_journey_day_entries')
         .select('id, engagement_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_aux_id, source_dining_id, source_experience_id')
         .eq('engagement_id', tripId)
         .eq('brief_show', true)

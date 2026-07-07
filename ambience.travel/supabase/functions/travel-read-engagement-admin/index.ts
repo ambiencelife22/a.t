@@ -121,9 +121,9 @@ Deno.serve(async (req: Request) => {
           iteration_label, trip_id,
           engagement_status:travel_lifecycle_statuses(slug, label),
           itinerary_status:travel_itinerary_statuses(slug, label),
-          trip:travel_trips!travel_engagements_trip_id_fkey(
-            trip_code, public_title, start_date, primary_client_id,
-            primary_client:global_people!travel_trips_primary_client_id_fkey(
+          trip:travel_journey!travel_engagements_trip_id_fkey(
+            journey_code, public_title, start_date, primary_client_id,
+            primary_client:global_people!travel_journey_primary_client_id_fkey(
               id, first_name, last_name, nickname
             )
           )
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
         itinerary_status_slug:   r.itinerary_status?.slug   ?? null,
         itinerary_status_label:  r.itinerary_status?.label  ?? null,
         trip_id:                 r.trip_id,
-        trip_code:               r.trip?.trip_code         ?? null,
+        trip_code:               r.trip?.journey_code      ?? null,
         trip_public_title:       r.trip?.public_title      ?? null,
         trip_start_date:         r.trip?.start_date        ?? null,
         client_first_name:       r.trip?.primary_client?.first_name ?? null,
@@ -307,14 +307,14 @@ Deno.serve(async (req: Request) => {
     if (mode === 'trips') {
       const query = (body?.query as string | undefined) ?? ''
       let q = serviceClient
-        .from('travel_trips')
-        .select('id, trip_code, start_date')
+        .from('travel_journey')
+        .select('id, journey_code, start_date')
         .order('start_date', { ascending: false, nullsFirst: false })
         .limit(20)
 
       const trimmed = query.trim()
       if (trimmed) {
-        q = q.ilike('trip_code', `%${trimmed}%`)
+        q = q.ilike('journey_code', `%${trimmed}%`)
       }
 
       const { data, error } = await q
@@ -349,8 +349,8 @@ Deno.serve(async (req: Request) => {
       if (!id) return json({ error: 'id is required' }, 400)
 
       const { data, error } = await serviceClient
-        .from('travel_trips')
-        .select('id, trip_code, start_date')
+        .from('travel_journey')
+        .select('id, journey_code, start_date')
         .eq('id', id)
         .maybeSingle()
 

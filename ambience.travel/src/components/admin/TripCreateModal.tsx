@@ -1,5 +1,5 @@
 /* TripCreateModal.tsx
- * Modal form for creating a new travel_trips row, opened when an engagement
+ * Modal form for creating a new travel_journey row, opened when an engagement
  * is dragged onto the "+ Drop here to create new trip" zone.
  *
  * Self-contained — uses A.* tokens, fetches no data on its own. Parent

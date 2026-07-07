@@ -94,8 +94,8 @@ async function handleDossier(db: SupabaseClient, houseId: string): Promise<Respo
 
   // 2. Trips
   const { data: tripData, error: tripErr } = await db
-    .from('travel_trips')
-    .select('id, trip_code, confirmed_engagement_id, start_date, end_date, duration_nights, trip_type, guest_count_adults, guest_count_children')
+    .from('travel_journey')
+    .select('id, journey_code, confirmed_engagement_id, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children')
     .in('id', tripIds)
     .order('start_date', { ascending: false })
 
@@ -158,7 +158,7 @@ for (const t of tripRows) {
       .select('id, display_name, salutation_rule, travel_style_notes, avoid_notes, service_notes')
       .eq('id', houseId)
       .single(),
-    db.from('travel_engagement_briefs')
+    db.from('travel_journey_briefs')
       .select('*')
       .in('engagement_id', tripIds),
     bookingIds.length > 0
@@ -167,8 +167,8 @@ for (const t of tripRows) {
           .in('booking_id', bookingIds)
           .order('sort_order', { ascending: true })
       : Promise.resolve({ data: [], error: null }),
-    db.from('travel_engagement_destinations')
-      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_engagement_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+    db.from('travel_journey_destinations')
+      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
       .in('engagement_id', tripIds)
       .order('sort_order', { ascending: true }),
     db.from('travel_engagements')
@@ -231,7 +231,7 @@ for (const t of tripRows) {
 
 async function handleBrief(db: SupabaseClient, tripId: string): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_briefs')
+    .from('travel_journey_briefs')
     .select('*')
     .eq('engagement_id', tripId)
     .maybeSingle()
@@ -367,10 +367,10 @@ async function handleProgrammeGuestSearch(db: SupabaseClient, query: string): Pr
 }
 
 async function handleDays(db: SupabaseClient, tripId: string): Promise<Response> {
-  // Days are DERIVED from trip span; travel_engagement_days is overlay-only.
+  // Days are DERIVED from trip span; travel_journey_days is overlay-only.
   const [{ data: trip, error: tripErr }, { data: overlay, error: ovErr }] = await Promise.all([
-    db.from('travel_trips').select('start_date, end_date').eq('id', tripId).maybeSingle(),
-    db.from('travel_engagement_days').select('id, engagement_id, entry_date, show, day_label, day_note').eq('engagement_id', tripId),
+    db.from('travel_journey').select('start_date, end_date').eq('id', tripId).maybeSingle(),
+    db.from('travel_journey_days').select('id, engagement_id, entry_date, show, day_label, day_note').eq('engagement_id', tripId),
   ])
   if (tripErr || ovErr) return err('Failed to fetch days', 500)
   const days = buildDays(
@@ -384,7 +384,7 @@ async function handleDays(db: SupabaseClient, tripId: string): Promise<Response>
 
 async function handleWelcomeLetters(db: SupabaseClient, tripId: string): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_welcome_letters')
+    .from('travel_journey_welcome_letters')
     .select('*')
     .eq('engagement_id', tripId)
     .order('sort_order', { ascending: true })
@@ -394,7 +394,7 @@ async function handleWelcomeLetters(db: SupabaseClient, tripId: string): Promise
 
 async function handleDayEntries(db: SupabaseClient, tripId: string): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_day_entries')
+    .from('travel_journey_day_entries')
     .select('*')
     .eq('engagement_id', tripId)
     .order('entry_date', { ascending: true })
@@ -513,8 +513,8 @@ async function handleCalendar(
   // AND start <= range_end. With no range (default load), return everything confirmed
   // so recently-completed trips like a yesterday check-out never silently vanish.
   let tripQ = db
-    .from('travel_trips')
-    .select('id, trip_code, public_title, start_date, end_date, confirmed_engagement_id, primary_client_id')
+    .from('travel_journey')
+    .select('id, journey_code, public_title, start_date, end_date, confirmed_engagement_id, primary_client_id')
     .not('confirmed_engagement_id', 'is', null)
   if (rangeStart) tripQ = tripQ.gte('end_date', rangeStart)
   if (rangeEnd)   tripQ = tripQ.lte('start_date', rangeEnd)
@@ -523,7 +523,7 @@ async function handleCalendar(
   if (tripErr) return err('Failed to fetch calendar trips', 500)
 
   const trips = (tripData ?? []) as Array<{
-    id: string; trip_code: string; public_title: string | null
+    id: string; journey_code: string; public_title: string | null
     start_date: string | null; end_date: string | null
     confirmed_engagement_id: string | null; primary_client_id: string | null
   }>
@@ -684,7 +684,7 @@ async function handleCalendar(
 
   const out = confirmedTrips.map(t => ({
     id:            t.id,
-    trip_code:     t.trip_code,
+    trip_code:     t.journey_code,
     // Engagement title is the source; public_title overrides only when explicitly set.
     title:         t.public_title ?? (t.confirmed_engagement_id ? (titleByEng.get(t.confirmed_engagement_id) ?? null) : null),
     start_date:    t.start_date,
@@ -735,7 +735,7 @@ async function handleCalendar(
 async function partyLabelForTrip(db: SupabaseClient, tripId: string | null): Promise<string | null> {
   if (!tripId) return null
   const { data } = await db
-    .from('travel_engagement_briefs')
+    .from('travel_journey_briefs')
     .select('prepared_for')
     .eq('engagement_id', tripId)
     .maybeSingle()

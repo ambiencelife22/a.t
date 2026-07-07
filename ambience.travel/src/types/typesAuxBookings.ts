@@ -24,7 +24,7 @@
 //   - travel_engagement_aux_bookings.cabin_class CHECK constraint
 //   - travel_engagement_aux_bookings.seat_type CHECK constraint
 //   - travel_engagement_aux_bookings.aircraft_type display values
-//   - travel_engagement_day_entries.category accent tokens
+//   - travel_journey_day_entries.category accent tokens
 //
 // S53H: realigned to the 18-type slug registry (travel_engagement_types).
 //   booking_type is a SLUG everywhere (S53G). META re-keyed Title-Case -> slug;

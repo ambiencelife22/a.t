@@ -12,7 +12,7 @@
  *   - Right panel (58%): live HTML preview, debounced 300ms
  *
  * Days: derived from the trip span (start_date..end_date) by the read EF.
- *   travel_engagement_days is overlay-only (show / day_label / day_note). Editing a
+ *   travel_journey_days is overlay-only (show / day_label / day_note). Editing a
  *   day creates its overlay row on first change (upsert keyed by entry_date).
  *
  * Empty days: always shown with "No plans today" unless day_note overrides.

@@ -2,7 +2,7 @@
  * Engagement list view for AmbienceAdmin.
  *
  * Trip-grouped collapsible structure (S33):
- *   - Top-level rows are trips (canonical travel_trips)
+ *   - Top-level rows are trips (canonical travel_journey)
  *   - Each trip expands to show its engagement iterations (v1/v2/...)
  *   - Engagements with trip_id=NULL collected into an "Unlinked" group
  *     pinned to the bottom
