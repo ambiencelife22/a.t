@@ -334,3 +334,71 @@ and engagements itself (LAST — high fan-out: it + engagement_display also read
 _shared/trip.ts, so their rename redeploys all three client EFs). The lone remaining
 column-lie deferred to Phase B/C: travel_overlay_engagements.trip_id (real FK to
 travel_trips, stays until spine rename); pricing-rows' trip_destination_row_id column.
+
+## 2026-07-07
+
+### [ARC][DB] Overlay rename Phase A COMPLETE — travel_immerse_* → travel_overlay_* (13 of 13)
+
+The "kill trips/immerse" campaign's overlay tier is done. All 13 per-engagement
+proposal/overlay tables renamed travel_immerse_* → travel_overlay_*, one migration
+each, DB-fully-then-code, every one verified live. Live Supabase schema — invisible
+to git diffs; this is the record.
+
+Grammar (locked): place=global_*, canon=travel_*, engagement spine=travel_engagement_*
+(Phase B, pending), overlay=travel_overlay_*. Overlay prefix is travel_overlay_* NOT
+travel_engagement_overlay_* (63-byte constraint-name limit).
+
+Tables renamed (migrations 1–13):
+- destination_pricing_rows, engagement_content_card_overrides,
+  engagement_content_card_selections, engagement_hotel_gallery_overrides,
+  route_stops, engagement_pricing_rows, engagement_regions,
+  engagement_region_hotels, engagement_destination_hotels,
+  engagement_destination_rows, rooms, engagement_display, and the root
+  travel_immerse_engagements → travel_overlay_engagements.
+
+Each: table + constraints + standalone indexes renamed (PK/unique indexes rename
+WITH their constraints, never ALTER INDEX'd). Stale name-lies corrected throughout:
+*_trip_id_fkey → *_engagement_id_fkey where the FK column was already engagement_id
+(a prior pass renamed the columns; only the constraint names still lied). Names
+crossing 63 bytes shortened to honest stems (overlay_card_selections_*,
+overlay_hotel_gallery_ov_*, overlay_dest_hotels_*, overlay_dest_rows_*,
+overlay_engagement_pricing_*, idx_overlay_region_hotels_*).
+
+Migration 13 (the root, travel_immerse_engagements) — ZERO-DOWNTIME cutover.
+This table is the FK target of 21 inbound FKs (all 12 overlay children + self-ref
++ travel_bookings/engagement_expenses/engagement_houses/engagement_links/requests/
+tasks/time_entries/trips.confirmed_engagement_id) and is read by 15 files across
+10 EFs + 2 shared modules. Direct rename would have broken the whole platform for
+the duration of a 10-EF redeploy. Instead: rename table → create SELECT * view
+under the old name (security_invoker=true, RLS-respecting) → repoint 3 DB functions
++ 15 files → deploy 10 EFs → drop view. Platform never in a broken state.
+trip_id FK to travel_trips PRESERVED (real spine link, Phase B boundary — trip_id
+here is truth, not a lie; only the constraint name was de-stale'd to
+travel_overlay_engagements_trip_id_fkey). All 21 inbound FKs verified re-pointing
+post-rename. Triggers tg_immerse_derive_children + tg_immerse_engagement_public_view
+renamed to tg_overlay_*; all trigger FUNCTIONS preserved.
+
+### [DB] Two latent DB-function bugs found + fixed (function-body sweep)
+
+The filesystem grep (supabase/functions/ src/) does NOT see table references inside
+DB function/trigger bodies. A post-rename pg_proc sweep caught two live breaks the
+grep missed:
+- resolve_and_project_guest_label — INSERT INTO the display table; broken since
+  migration 12 (guest-label projection failing on every engagement write). Fixed.
+- clone_engagement — referenced all 12 old overlay names + engagements; broken
+  since migration 1. It is a fully-built transactional clone (id-maps + FK remap),
+  not the incomplete stub the debt board implied. Fixed. KNOWN GAP: room clone
+  copies bed_config_override (deprecated) but not bedding_type — cloned rooms lose
+  bedding; fix in the clone review.
+- derive_tasks_for_engagement — surfaced during migration 13's engagements-name
+  sweep (writes child engagements); repointed to travel_overlay_engagements.
+All three functions now carry COMMENT ON FUNCTION documenting their overlay writes.
+
+### [PROCESS] Standing rule earned — sweep DB function bodies after any table rename
+
+After renaming any table: run BOTH the filesystem grep AND a pg_proc function-body
+sweep (pg_get_functiondef LIKE '%old_table_name%'). DB function/trigger bodies are
+invisible to git and to the repo grep; unswept, a rename silently breaks server-side
+logic. Cost this campaign: 2 live bugs. Also: tsc green ≠ grep clean (a table name
+in .from('...') is a string literal TS does not validate — the clean-grep is the
+completeness gate, never tsc).
