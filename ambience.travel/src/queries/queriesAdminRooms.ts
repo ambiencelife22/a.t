@@ -1,12 +1,12 @@
-// adminRoomsQueries.ts — Read + write paths for travel_immerse_rooms overlay editor.
+// adminRoomsQueries.ts — Read + write paths for travel_overlay_rooms overlay editor.
 //
 // Owns:
-//   - Fetching overlay rooms for an engagement (travel_immerse_rooms)
+//   - Fetching overlay rooms for an engagement (travel_overlay_rooms)
 //   - Fetching canonical rooms for a hotel (travel_accom_rooms)
 //   - Fetching rate cadences (travel_rate_cadences)
-//   - CRUD on travel_immerse_rooms
+//   - CRUD on travel_overlay_rooms
 //
-// travel_immerse_rooms.engagement_id FKs to travel_immerse_engagements.id.
+// travel_overlay_rooms.engagement_id FKs to travel_immerse_engagements.id.
 // room_id FKs to travel_accom_rooms.id.
 // rate_cadence_id FKs to travel_rate_cadences.id.
 //
@@ -63,7 +63,7 @@ export interface OverlayRoom {
   sqft_max_override:       number | null
   sqm_min_override:        number | null
   sqm_max_override:        number | null
-  bed_config_override:     string | null  // @deprecated — superseded by bedding_type (text) on travel_immerse_rooms
+  bed_config_override:     string | null  // @deprecated — superseded by bedding_type (text) on travel_overlay_rooms
   bedding_type:            string | null
   hero_image_src_override: string | null
   hero_image_alt_override: string | null
@@ -154,7 +154,7 @@ export async function fetchCanonicalRoomsForEngagement(
 
 export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRoom[]> {
   const { data, error } = await supabase
-    .from('travel_immerse_rooms')
+    .from('travel_overlay_rooms')
     .select(`
       id, engagement_id, room_id,
       level_label, room_basis, room_benefits,
@@ -215,7 +215,7 @@ export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRo
 
 export async function createOverlayRoom(payload: OverlayRoomCreate): Promise<string> {
   const { data, error } = await supabase
-    .from('travel_immerse_rooms')
+    .from('travel_overlay_rooms')
     .insert(payload)
     .select('id')
     .single()
@@ -225,7 +225,7 @@ export async function createOverlayRoom(payload: OverlayRoomCreate): Promise<str
 
 export async function updateOverlayRoom(id: string, patch: OverlayRoomPatch): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_rooms')
+    .from('travel_overlay_rooms')
     .update(patch)
     .eq('id', id)
   if (error) throw new Error(`Failed to update overlay room: ${error.message}`)
@@ -233,7 +233,7 @@ export async function updateOverlayRoom(id: string, patch: OverlayRoomPatch): Pr
 
 export async function deleteOverlayRoom(id: string): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_rooms')
+    .from('travel_overlay_rooms')
     .delete()
     .eq('id', id)
   if (error) throw new Error(`Failed to delete overlay room: ${error.message}`)
@@ -241,7 +241,7 @@ export async function deleteOverlayRoom(id: string): Promise<void> {
 
 export async function fetchMaxRoomSortOrder(engagementId: string): Promise<number> {
   const { data, error } = await supabase
-    .from('travel_immerse_rooms')
+    .from('travel_overlay_rooms')
     .select('sort_order')
     .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: false })

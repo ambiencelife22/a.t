@@ -492,7 +492,7 @@ async function fetchRoomsForHotels(
   for (const c of canonRooms) canonById.set(c.id as string, c as Record<string, unknown>)
 
   let overlayQ = db
-    .from('travel_immerse_rooms')
+    .from('travel_overlay_rooms')
     .select(`
       id, connected_overlay_id, room_id,
       level_label, room_name_override, room_basis, room_benefits,

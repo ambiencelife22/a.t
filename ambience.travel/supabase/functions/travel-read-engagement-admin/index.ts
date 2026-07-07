@@ -59,7 +59,7 @@ const childCountTables = [
   'travel_overlay_route_stops',
   'travel_overlay_engagement_content_card_selections',
   'travel_overlay_engagement_content_card_overrides',
-  'travel_immerse_rooms',
+  'travel_overlay_rooms',
 ] as const
 
 // Shape of a row from the `list` query (engagement + nested status/trip joins).

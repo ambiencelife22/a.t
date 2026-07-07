@@ -2,7 +2,7 @@
  * Engagement-scoped room overlay editor.
  * Mounts inside EngagementDetailTab between CardsEditor and Pricing Section.
  *
- * Surface: travel_immerse_rooms (overlay) joined to travel_accom_rooms (canon).
+ * Surface: travel_overlay_rooms (overlay) joined to travel_accom_rooms (canon).
  * Pattern: list rows + edit modal — mirrors CardsEditor / DestinationRowsEditor.
  *
  * Modal fields:
