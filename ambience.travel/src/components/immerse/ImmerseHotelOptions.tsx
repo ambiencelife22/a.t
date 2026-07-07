@@ -85,7 +85,7 @@ function buildRoomSlides(rooms: ImmerseRoomOption[]): RoomSlide[] {
 // S53C — numeric rate detection (mirrors RoomCategory) for combined total.
 function rateIsNumeric(rate: string | undefined): boolean {
   if (!rate) return false
-  return /^([$€£¥]|EURO|USD|GBP|JPY|CHF|AED|SAR)?\s*[$€£¥]?\s*\d/i.test(rate.trim())
+  return /^([$€£¥]|EURO?|USD|GBP|JPY|CHF|AED|SAR)?\s*[$€£¥]?\s*\d/i.test(rate.trim())
 }
 
 // S53C — the displayed rate of a room (ambience preferred, otherwise public).
