@@ -1,5 +1,5 @@
 /* CardOverridesEditor.tsx
- * Editor for travel_immerse_engagement_content_card_overrides.
+ * Editor for travel_overlay_engagement_content_card_overrides.
  *
  * Last updated: S38 — Removed canonical_slug display from edit modal header
  *   and add-override picker rows. UUID-only throughout.

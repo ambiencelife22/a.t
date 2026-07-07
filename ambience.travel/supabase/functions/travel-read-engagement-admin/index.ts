@@ -57,8 +57,8 @@ const childCountTables = [
   'travel_immerse_engagement_destination_hotels',
   'travel_immerse_engagement_region_hotels',
   'travel_immerse_route_stops',
-  'travel_immerse_engagement_content_card_selections',
-  'travel_immerse_engagement_content_card_overrides',
+  'travel_overlay_engagement_content_card_selections',
+  'travel_overlay_engagement_content_card_overrides',
   'travel_immerse_rooms',
 ] as const
 

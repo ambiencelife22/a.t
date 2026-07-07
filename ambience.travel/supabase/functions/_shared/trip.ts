@@ -17,6 +17,13 @@
 //   programme    : standalone entries + dining/exp images, buildTimeline, buildDays
 //
 // Created: S55 — _shared/trip.ts extraction (single-source quest #1).
+// S53O — error guards added to the engagement + engagement_display fetches in
+//   fetchTripCore (was silent; the class of bug that hid the bedding_type and
+//   is_total phantom-column failures). Overlay rename (travel_immerse_* ->
+//   travel_overlay_*) is IN PROGRESS: this file still reads the un-renamed
+//   travel_immerse_engagements (line ~34, ~135) and travel_immerse_engagement_display
+//   (line ~139) — those two tables rename LAST in Phase A, at which point BOTH
+//   client EFs (confirmation, programme) redeploy alongside travel-get-immerse-proposal.
 
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { resolvePartyName, formatPersonName } from './names.ts'
@@ -122,8 +129,8 @@ export async function fetchTripCore(
   // Resolve: brief overlay → engagement canon → null.
   // Engagement-level guest label (HPGL). travel_immerse_engagement_display.house_display_name
   // is the projected, admin-authored public label (single source — set by the
-  // projection trigger, never resolved here). Keyed by the engagement id, which
-  // is trip_id in the display table. Best-effort: null when no confirmed engagement
+  // projection trigger, never resolved here). Keyed by engagement_id in the
+  // display table. Best-effort: null when no confirmed engagement
   // or no projected row — callers fall through to prepared_for with ?? (never ||).
   const confirmedEngId = (tripResult.data?.confirmed_engagement_id as string | null) ?? null
   let engHeroSrc: string | null = null
@@ -140,6 +147,8 @@ export async function fetchTripCore(
         .eq('engagement_id', confirmedEngId)
         .maybeSingle(),
     ])
+    if (engRes.error) console.error('[fetchTripCore] engagement fetch error:', JSON.stringify(engRes.error))
+    if (displayRes.error) console.error('[fetchTripCore] engagement_display fetch error:', JSON.stringify(displayRes.error))
     engHeroSrc         = (engRes.data?.hero_image_src as string | null) ?? null
     engTitle           = (engRes.data?.title          as string | null) ?? null
     resolvedGuestLabel = (displayRes.data?.house_display_name as string | null) ?? null

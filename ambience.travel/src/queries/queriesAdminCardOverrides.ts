@@ -1,5 +1,5 @@
 /* adminCardOverrideQueries.ts
- * Query layer for travel_immerse_engagement_content_card_overrides.
+ * Query layer for travel_overlay_engagement_content_card_overrides.
  *
  * Last updated: S38 — Removed slug from CardCanonicalOption, CardOverride
  *   (canonical_slug dropped), and all SELECTs against travel_dining_venues
@@ -98,7 +98,7 @@ function shapeRow(r: CardOverrideRow): CardOverride {
 
 export async function fetchCardOverrides(engagementId: string): Promise<CardOverride[]> {
   const { data, error } = await supabase
-    .from('travel_immerse_engagement_content_card_overrides')
+    .from('travel_overlay_engagement_content_card_overrides')
     .select(`
       id, engagement_id, dining_venue_id, experience_id,
       kicker_override, name_override, tagline_override, body_override,
@@ -150,7 +150,7 @@ export async function updateCardOverride(
   if (Object.keys(dbPayload).length === 0) return
 
   const { error } = await supabase
-    .from('travel_immerse_engagement_content_card_overrides')
+    .from('travel_overlay_engagement_content_card_overrides')
     .update(dbPayload)
     .eq('id', id)
 
@@ -172,7 +172,7 @@ export async function insertCardOverride(args: {
   if (args.kind === 'experience') row.experience_id   = args.card_id
 
   const { data, error } = await supabase
-    .from('travel_immerse_engagement_content_card_overrides')
+    .from('travel_overlay_engagement_content_card_overrides')
     .insert(row)
     .select('id')
     .single()
@@ -185,7 +185,7 @@ export async function insertCardOverride(args: {
 
 export async function deleteCardOverride(id: string): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_engagement_content_card_overrides')
+    .from('travel_overlay_engagement_content_card_overrides')
     .delete()
     .eq('id', id)
 
