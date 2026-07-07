@@ -623,3 +623,53 @@ OutlookTab Sharm (89aee7e3) commission 951.60, net 666.12.
   doc comments found in 5b grep). One both-sides sweep.
 - clone_engagement bedding_type gap; orphan fn update_travel_immerse_bottom_notes_updated_at
   (references a non-existent table — verify + drop).
+
+  ### [FIX] Subpage hero bleed — stay-subpage sections read destination detail, never engagement
+
+Pre-existing render bug in the eight-shape surface (NOT a migration artifact), found while
+prepping Yazeed's live multi-destination proposal. Two sibling sections — the primary hero
+and the interstitial (hero-2 cinematic band) — read ctx.engagement unconditionally. On a
+destination subpage (shape 'stay', rendered via ImmerseDetailPage → resolveSectionSet), that
+meant every subpage showed the ENGAGEMENT's lead hero instead of the destination's own:
+Miami and St Barths both showed NYC's "A More Intimate Manhattan" hero-2, and Miami's hero-1
+was the engagement's NYC-winter image.
+
+Root: of the sections that resolve for shape 'stay', hero and interstitial were the only two
+reading ctx.engagement; every other stay section already read ctx.detail. Fixed both to
+branch on ctx.detail.
+
+THE RULE (locked with D) — subpage hero resolution, both hero-1 and hero-2:
+  NEVER fall back to the engagement on a subpage. Either the OVERLAY-SEEDED value (the
+  destination row's *_override) or the DESTINATION CANON fallback (travel_destinations →
+  global_destinations) — nothing borrowed from the engagement.
+  - hero-2 (interstitial): override or NOTHING. No canon fallback (a second hero is optional);
+    null override → section renders null. detail ?? engagement only selects the source object;
+    when detail is present its own null hero-2 correctly yields no interstitial.
+  - hero-1 (primary): override → destination template → global canon (detail.heroImageSrc is
+    already this chain, engagement-free). A subpage always needs a primary hero, so it resolves
+    to the destination's own, never "nothing", never the engagement.
+  Journey top-level (no detail): the engagement's own hero — that is where the engagement hero
+  belongs, and the only place it renders.
+
+Companion fix earlier the same session: queriesImmerseProposal.hydrateDestination hero-2 was
+override-or-null (dropped a ?? dest.* canon fallback on the SECOND hero specifically — the
+second hero is override-or-nothing by the rule above; the PRIMARY hero keeps its canon chain).
+
+Type-safety: detail exists only on the proposal arm of EngagementClientData
+(typesImmerseDelivery.ts). Both renderers narrow via ctx.stage === 'proposal' before reading
+ctx.detail; the sections resolve only for proposal/draft stages anyway.
+
+ARCHITECTURAL NOTE (Stage 6): subpage hero resolution keys on ctx.detail = the destination
+override, a JOURNEY object. When travel_trips → travel_journey and the destination tables
+become travel_journey_*, this resolution is journey-capability-owned; other engagement_types
+(dining/stay/acquisition) will own their own subpage-hero paths. The override-or-canon rule
+is correct now and survives that transition.
+
+LESSON (verification discipline): this took several wrong edits before landing — the query
+hydrator, then the section registry, then the surface — because each was edited/investigated
+before opening the file the LIVE route actually renders. When a component's grep for a field
+comes back EMPTY, that means it DELEGATES — open it and follow the prop — NOT "irrelevant,
+move on". The live path was route → ImmerseEngagementSurface (activeDestSlug branch) →
+ImmerseDetailPage → SECTION_RENDERERS; the fix belonged in the renderer the whole time. Also:
+a stale code COMMENT ("stay sections return null until Stage B") was false — the cutover had
+happened. Trust the running page, not the comment.
