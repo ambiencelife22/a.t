@@ -109,14 +109,21 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
   },
 
   interstitial: (ctx) => {
-    const eng = ctx.engagement
-    if (!eng.heroImageSrc2) return null
+    // Stay-detail subpage (detail present): the interstitial is the DESTINATION's
+    // own seeded hero-2 - its override, or nothing. Never the engagement's (that
+    // would bleed the journey's lead hero onto every subpage). Journey top-level
+    // (no detail): the engagement's hero-2. "The overlay hero seeded for that
+    // page, or nothing." Every other stay section reads ctx.detail; this aligns
+    // interstitial with them. (Section only resolves for proposal/draft stages.)
+    const detail = ctx.stage === 'proposal' ? ctx.detail : undefined
+    const hero = detail ?? ctx.engagement
+    if (!hero.heroImageSrc2) return null
     return (
       <ImmerseHeroBlock
-        imageSrc={eng.heroImageSrc2}
-        imageAlt={eng.heroImageAlt2}
-        title={eng.heroTitle2}
-        subtitle={eng.heroSubtitle2}
+        imageSrc={hero.heroImageSrc2}
+        imageAlt={hero.heroImageAlt2}
+        title={hero.heroTitle2}
+        subtitle={hero.heroSubtitle2}
       />
     )
   },
