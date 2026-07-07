@@ -43,8 +43,8 @@ export const fetchHousePeople = (house_id: string) =>
 export const fetchEngagementsForHouse = (house_id: string) =>
   invokeRead<{ engagements: EngagementOption[] }>({ mode: 'engagements_for_house', house_id }).then(r => r.engagements);
 
-export const fetchHouseForEngagement = (engagement_id: string) =>
-  invokeRead<{ house: HouseOption | null }>({ mode: 'house_for_engagement', engagement_id }).then(r => r.house);
+export const fetchHouseForEngagement = (iteration_id: string) =>
+  invokeRead<{ house: HouseOption | null }>({ mode: 'house_for_engagement', iteration_id }).then(r => r.house);
 
 // ---- Analytics ----
 export const fetchTimeAnalytics = (filters: TimeAnalyticsFilters = {}, group_by: AnalyticsGroupBy = 'house') =>
@@ -77,12 +77,12 @@ export interface TimeRate {
   currency: string; is_active: boolean;
 }
 export interface TimeEntryFilters {
-  house_id?: string; engagement_id?: string;
+  house_id?: string; iteration_id?: string;
   work_date_from?: string; work_date_to?: string;
 }
 export interface TimeEntryInput {
   house_id: string;
-  engagement_id?: string | null;
+  iteration_id?: string | null;
   house_person_id?: string | null;
   work_date: string;            // ISO YYYY-MM-DD
   hours: number;                // >0, <=5, 0.25 steps
@@ -127,7 +127,7 @@ export type AnalyticsGroupBy = 'house' | 'engagement' | 'team' | 'activity';
 
 export interface TimeAnalyticsFilters {
   house_id?: string;
-  engagement_id?: string;
+  iteration_id?: string;
   team_member_id?: string;      // performer person_id
   activity_id?: string;
   entry_type?: 'billable' | 'proactive';

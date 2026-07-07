@@ -89,7 +89,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
   const [newDueDate,   setNewDueDate]   = useState('')
   const { success, error } = useAdminToast()
 
-  // Resolve engagement_id from url_id, then load tasks
+  // Resolve iteration_id from url_id, then load tasks
   useEffect(() => {
     async function load() {
       setLoading(true)
@@ -104,7 +104,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
 
         const { tasks: rows } = await invokeTasks<{ tasks: Task[] }>({
           mode:          'by_engagement',
-          engagement_id: eng.id,
+          iteration_id: eng.id,
         })
         setTasks(rows)
       } catch (e) {
@@ -138,7 +138,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
     try {
       const { task: created } = await invokeTasks<{ task: Task }>({
         mode:          'create',
-        engagement_id: engagementId,
+        iteration_id: engagementId,
         title:         newTitle.trim(),
         due_date:      newDueDate || null,
       })

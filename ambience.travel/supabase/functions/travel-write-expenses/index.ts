@@ -85,11 +85,11 @@ Deno.serve(async (req: Request) => {
       if (!description)         return json({ error: 'description is required' }, 400)
       if (total_amount == null) return json({ error: 'total_amount is required' }, 400)
 
-      const engagement_id  = (body?.engagement_id  as string | undefined) ?? null
+      const iteration_id  = (body?.iteration_id  as string | undefined) ?? null
       const booking_id     = (body?.booking_id     as string | undefined) ?? null
       const destination_id = (body?.destination_id as string | undefined) ?? null
-      if (!engagement_id && !booking_id && !destination_id) {
-        return json({ error: 'At least one of engagement_id, booking_id, or destination_id is required' }, 400)
+      if (!iteration_id && !booking_id && !destination_id) {
+        return json({ error: 'At least one of iteration_id, booking_id, or destination_id is required' }, 400)
       }
 
       const created_by = await resolveTeamMemberId(db, user.id)
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data, error } = await db.from('travel_engagement_expenses').insert({
-        engagement_id, booking_id, destination_id,
+        iteration_id, booking_id, destination_id,
         team_member_id: (body?.team_member_id as string | undefined) ?? null,
         expense_type, description, total_amount,
         currency:       (body?.currency       as string | undefined) ?? 'USD',
@@ -193,11 +193,11 @@ Deno.serve(async (req: Request) => {
     // ── link_engagement ──────────────────────────────────────────────────────
     if (mode === 'link_engagement') {
       const expense_id    = body?.expense_id    as string | undefined
-      const engagement_id = body?.engagement_id as string | undefined
-      if (!expense_id || !engagement_id) return json({ error: 'expense_id and engagement_id are required' }, 400)
+      const iteration_id = body?.iteration_id as string | undefined
+      if (!expense_id || !iteration_id) return json({ error: 'expense_id and iteration_id are required' }, 400)
       const { data, error } = await db
         .from('travel_engagement_expenses')
-        .update({ engagement_id, linked_at: new Date().toISOString() })
+        .update({ iteration_id, linked_at: new Date().toISOString() })
         .eq('id', expense_id).select('*').single()
       if (error) { console.error('link_engagement error:', error); return json({ error: 'Failed to link engagement' }, 500) }
       return json({ expense: data })
@@ -286,7 +286,7 @@ Deno.serve(async (req: Request) => {
 
     // ── update_booking_financial ─────────────────────────────────────────────
     // Patches financial fields on a booking. Allowed fields only — never id,
-    // trip_id, engagement_id, created_at. Operator edits commission_pct,
+    // trip_id, iteration_id, created_at. Operator edits commission_pct,
     // invoice_number, rate_type_id, selling_price, etc.
     if (mode === 'update_booking_financial') {
       const booking_id = body?.booking_id as string | undefined
@@ -295,7 +295,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'booking_id and patch are required' }, 400)
       }
       // Guard: strip identity + relational fields that must never be patched here
-      const BLOCKED = new Set(['id', 'trip_id', 'engagement_id', 'created_at', 'updated_at', 'house_id'])
+      const BLOCKED = new Set(['id', 'trip_id', 'iteration_id', 'created_at', 'updated_at', 'house_id'])
       for (const k of BLOCKED) delete patch[k]
       if (Object.keys(patch).length === 0) return json({ error: 'No patchable fields provided' }, 400)
 

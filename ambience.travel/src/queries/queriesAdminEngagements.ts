@@ -329,7 +329,7 @@ export async function searchHouses(query: string): Promise<HouseOption[]> {
 }
 
 export async function linkHouse(engagementId: string, houseId: string): Promise<void> {
-  await invokeWrite('link_house', { engagement_id: engagementId, house_id: houseId })
+  await invokeWrite('link_house', { iteration_id: engagementId, house_id: houseId })
 }
 
 export async function unlinkHouse(id: string): Promise<void> {
@@ -354,7 +354,7 @@ export async function setLabel(
 // ── Child counts (read-only summary for detail page) ──────────────────────────
 
 export async function fetchChildCounts(engagementId: string): Promise<ChildCounts> {
-  const { counts } = await invokeRead<{ counts: ChildCounts }>('child_counts', { engagement_id: engagementId })
+  const { counts } = await invokeRead<{ counts: ChildCounts }>('child_counts', { iteration_id: engagementId })
   return counts
 }
 

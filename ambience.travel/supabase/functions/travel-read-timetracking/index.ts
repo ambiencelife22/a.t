@@ -17,14 +17,14 @@
 // Modes:
 //   activities             → { activities }   active activity lookup
 //   rates                  → { rates }        active rate card
-//   entries                → { entries }      filter: house_id?, engagement_id?, work_date_from?, work_date_to?
+//   entries                → { entries }      filter: house_id?, iteration_id?, work_date_from?, work_date_to?
 //   entry                  → { entry }        single by id
 //   summary_by_house       → { summary }      { [house_id]: { hours, amount } }
-//   summary_by_engagement  → { summary }      { [engagement_id|__unassigned__]: { hours, amount } }
+//   summary_by_engagement  → { summary }      { [iteration_id|__unassigned__]: { hours, amount } }
 //   houses                 → { houses }       house picker (typeahead), optional { query }
 //   house_people           → { people }       members of a house, requires { house_id }
 //   engagements_for_house  → { engagements }  via person spine, requires { house_id }
-//   house_for_engagement   → { house }        via person spine, requires { engagement_id }
+//   house_for_engagement   → { house }        via person spine, requires { iteration_id }
 //
 // House <-> engagement link resolves through the person spine
 // (engagement.person_id -> a_house_people.person_id -> house). Every client
@@ -41,7 +41,7 @@ import { json, preflight } from '../_shared/http.ts'
 const r2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100
 
 const ENTRY_SELECT = `
-  id, house_id, engagement_id, house_person_id, work_date, hours,
+  id, house_id, iteration_id, house_person_id, work_date, hours,
   activity_id, notes, entry_type, performed_by, performed_by_person_id,
   started_at, ended_at, rate_id, rate_applied, billable_amount,
   invoice_status, invoiced_at, paid_at, created_at, updated_at,
@@ -95,8 +95,8 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'entries': {
-        const { house_id, engagement_id, work_date_from, work_date_to } = body as {
-          house_id?: string; engagement_id?: string
+        const { house_id, iteration_id, work_date_from, work_date_to } = body as {
+          house_id?: string; iteration_id?: string
           work_date_from?: string; work_date_to?: string
         }
         let q = serviceClient
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
           .select(ENTRY_SELECT)
           .order('work_date', { ascending: false })
         if (house_id)       q = q.eq('house_id', house_id)
-        if (engagement_id)  q = q.eq('engagement_id', engagement_id)
+        if (iteration_id)  q = q.eq('iteration_id', iteration_id)
         if (work_date_from) q = q.gte('work_date', work_date_from)
         if (work_date_to)   q = q.lte('work_date', work_date_to)
 
@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
 
       case 'summary_by_house':
       case 'summary_by_engagement': {
-        const groupCol = mode === 'summary_by_house' ? 'house_id' : 'engagement_id'
+        const groupCol = mode === 'summary_by_house' ? 'house_id' : 'iteration_id'
         const { data, error } = await serviceClient
           .from('travel_time_entries')
           .select(`${groupCol}, hours, billable_amount`)
@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
 
       // ── Engagements for a house (via person spine) ──────────────────────────
       // Requires { house_id }. Phase 2: house -> a_house_people.person_id set ->
-      // engagements where person_id in that set. Replaces the bookings.engagement_id
+      // engagements where person_id in that set. Replaces the bookings.iteration_id
       // walk (only 1 of 8 bookings carried it). Engagements whose person has no
       // house membership simply won't appear here.
       case 'engagements_for_house': {
@@ -243,19 +243,19 @@ Deno.serve(async (req: Request) => {
       }
 
       // ── House for an engagement (via person spine) ──────────────────────────
-      // Requires { engagement_id }. Phase 2: engagement.person_id ->
+      // Requires { iteration_id }. Phase 2: engagement.person_id ->
       // a_house_people.person_id -> house. Replaces the bookings hub walk.
       // After the orphan-client backfill + auto-house trigger, every client has a
       // house, so an engagement owned by a client always resolves one.
       case 'house_for_engagement': {
-        const { engagement_id } = body as { engagement_id?: string }
-        if (!engagement_id) {
-          return json({ error: 'engagement_id is required' }, 400)
+        const { iteration_id } = body as { iteration_id?: string }
+        if (!iteration_id) {
+          return json({ error: 'iteration_id is required' }, 400)
         }
         const { data: eng, error: eErr } = await serviceClient
           .from('travel_overlay_engagements')
           .select('person_id')
-          .eq('id', engagement_id)
+          .eq('id', iteration_id)
           .maybeSingle()
         if (eErr) {
           console.error('house_for_engagement eng error:', eErr)
@@ -281,13 +281,13 @@ Deno.serve(async (req: Request) => {
       }
 
       // ── Analytics: filtered summary + breakdown + date-desc entry list ──────
-      // Filters: house_id, engagement_id, team_member_id (performer person),
+      // Filters: house_id, iteration_id, team_member_id (performer person),
       //   activity_id, entry_type, is_invoiceable, work_date_from/to.
       // group_by: 'house' | 'engagement' | 'team' | 'activity' (default 'house').
       // All aggregation server-side. Returns { summary, breakdown, entries }.
       case 'analytics': {
         const f = body as {
-          house_id?: string; engagement_id?: string; team_member_id?: string
+          house_id?: string; iteration_id?: string; team_member_id?: string
           activity_id?: string; entry_type?: string; is_invoiceable?: boolean
           work_date_from?: string; work_date_to?: string; group_by?: string
         }
@@ -298,7 +298,7 @@ Deno.serve(async (req: Request) => {
         const ANALYTICS_SELECT = `
           id, work_date, hours, entry_type, is_invoiceable,
           rate_applied, effort_value, billable_amount, notes,
-          house_id, engagement_id, activity_id, performed_by_person_id, performed_by,
+          house_id, iteration_id, activity_id, performed_by_person_id, performed_by,
           a_houses(display_name),
           travel_overlay_engagements(title),
           travel_time_activities(label),
@@ -309,7 +309,7 @@ Deno.serve(async (req: Request) => {
           .select(ANALYTICS_SELECT)
           .order('work_date', { ascending: false })
         if (f.house_id)        q = q.eq('house_id', f.house_id)
-        if (f.engagement_id)   q = q.eq('engagement_id', f.engagement_id)
+        if (f.iteration_id)   q = q.eq('iteration_id', f.iteration_id)
         if (f.team_member_id)  q = q.eq('performed_by_person_id', f.team_member_id)
         if (f.activity_id)     q = q.eq('activity_id', f.activity_id)
         if (f.entry_type)      q = q.eq('entry_type', f.entry_type)
@@ -347,7 +347,7 @@ Deno.serve(async (req: Request) => {
             billable_amount: num(r.billable_amount),
             notes: r.notes,
             // group keys + labels
-            _house_id: r.house_id, _engagement_id: r.engagement_id,
+            _house_id: r.house_id, _iteration_id: r.iteration_id,
             _activity_id: r.activity_id, _person_id: r.performed_by_person_id,
             _performer: performer,
           }
@@ -368,7 +368,7 @@ Deno.serve(async (req: Request) => {
         // Breakdown grouped by the chosen dimension.
         const keyFns: Record<string, (e: any) => { key: string; label: string }> = {
           house:      e => ({ key: e._house_id ?? 'none',      label: e.house ?? '(no house)' }),
-          engagement: e => ({ key: e._engagement_id ?? 'none', label: e.engagement ?? '(no engagement)' }),
+          engagement: e => ({ key: e._iteration_id ?? 'none', label: e.engagement ?? '(no engagement)' }),
           team:       e => ({ key: e._person_id ?? 'none',     label: e._performer ?? '(unassigned)' }),
           activity:   e => ({ key: e._activity_id ?? 'none',   label: e.activity ?? '(no activity)' }),
         }
@@ -388,7 +388,7 @@ Deno.serve(async (req: Request) => {
         })).sort((a, b) => b.effort_value - a.effort_value)
 
         // Strip internal keys from the returned entry list.
-        const cleanEntries = entries.map(({ _house_id, _engagement_id, _activity_id, _person_id, _performer, ...rest }) => rest)
+        const cleanEntries = entries.map(({ _house_id, _iteration_id, _activity_id, _person_id, _performer, ...rest }) => rest)
 
         return json({ summary, breakdown, group_by: groupBy, entries: cleanEntries }, 200)
       }

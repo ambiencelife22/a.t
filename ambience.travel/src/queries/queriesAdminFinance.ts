@@ -27,7 +27,7 @@ export type ExpenseItem = {
 
 export type Expense = {
   id:             string
-  engagement_id:  string | null
+  iteration_id:  string | null
   booking_id:     string | null
   destination_id: string | null
   team_member_id: string | null
@@ -80,7 +80,7 @@ export type EngagementFull = {
 }
 
 export type PipelineTrip = {
-  engagement_id:           string
+  iteration_id:           string
   url_id:                  string
   title:                   string | null
   status_slug:             string | null
@@ -106,7 +106,7 @@ export type CreateExpensePayload = {
   expense_type:    string
   description:     string
   total_amount:    number
-  engagement_id?:  string | null
+  iteration_id?:  string | null
   booking_id?:     string | null
   destination_id?: string | null
   team_member_id?: string | null
@@ -141,7 +141,7 @@ export async function fetchPipeline(): Promise<PipelineTrip[]> {
 
 export async function fetchEngagementFull(engagementId: string): Promise<EngagementFull> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'by_engagement_full', engagement_id: engagementId },
+    body: { mode: 'by_engagement_full', iteration_id: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -205,7 +205,7 @@ export async function writeOff(expenseId: string): Promise<Expense> {
 
 export async function linkEngagement(expenseId: string, engagementId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'link_engagement', expense_id: expenseId, engagement_id: engagementId },
+    body: { mode: 'link_engagement', expense_id: expenseId, iteration_id: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)

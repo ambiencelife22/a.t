@@ -625,7 +625,7 @@ function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: s
     if (isNaN(amt) || amt < 0) { setErr('Valid amount is required.'); return }
     setSaving(true); setErr(null)
     try {
-      await createExpense({ engagement_id: engagementId, expense_type: form.expense_type, description: form.description.trim(), total_amount: amt, currency: form.currency.trim().toUpperCase() || 'USD', billing_status: form.billing_status, notes: form.notes.trim() || null } as CreateExpensePayload)
+      await createExpense({ iteration_id: engagementId, expense_type: form.expense_type, description: form.description.trim(), total_amount: amt, currency: form.currency.trim().toUpperCase() || 'USD', billing_status: form.billing_status, notes: form.notes.trim() || null } as CreateExpensePayload)
       onCreated()
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)

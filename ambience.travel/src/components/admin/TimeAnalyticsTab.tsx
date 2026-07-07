@@ -193,7 +193,7 @@ export default function TimeAnalyticsTab() {
       if (v === undefined || v === '' as any) delete next[k]
       if (v !== undefined && v !== ('' as any)) next[k] = v
       // changing house clears engagement
-      if (k === 'house_id') delete next.engagement_id
+      if (k === 'house_id') delete next.iteration_id
       return next
     })
   }
@@ -220,7 +220,7 @@ export default function TimeAnalyticsTab() {
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             Engagement
-            <select style={inputStyle} value={filters.engagement_id ?? ''} onChange={e => set('engagement_id', e.target.value || undefined)} disabled={!filters.house_id}>
+            <select style={inputStyle} value={filters.iteration_id ?? ''} onChange={e => set('iteration_id', e.target.value || undefined)} disabled={!filters.house_id}>
               <option value=''>{filters.house_id ? 'All engagements' : 'Pick a house first'}</option>
               {engagements.map(en => <option key={en.id} value={en.id}>{en.title}</option>)}
             </select>
