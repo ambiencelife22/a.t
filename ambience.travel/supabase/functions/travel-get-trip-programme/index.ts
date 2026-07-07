@@ -109,21 +109,21 @@ Deno.serve(async (req: Request) => {
 
       db.from('travel_engagement_aux_bookings')
         .select(AUX_BOOKING_SELECT)
-        .eq('trip_id', tripId)
+        .eq('engagement_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
 
       // Overlay only — buildDays derives the day list from trip span and applies
       // these per-day overrides. No show filter; buildDays honors show.
       db.from('travel_engagement_days')
-        .select('id, trip_id, entry_date, show, day_label, day_note')
-        .eq('trip_id', tripId),
+        .select('id, engagement_id, entry_date, show, day_label, day_note')
+        .eq('engagement_id', tripId),
 
       // Standalone stored entries (dining/experience/notes). Booking-sourced entries
       // are excluded downstream by timeline.ts (they are derived from bookings now).
       db.from('travel_engagement_day_entries')
-        .select('id, trip_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_aux_id, source_dining_id, source_experience_id')
-        .eq('trip_id', tripId)
+        .select('id, engagement_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_aux_id, source_dining_id, source_experience_id')
+        .eq('engagement_id', tripId)
         .eq('brief_show', true)
         .order('entry_date', { ascending: true })
         .order('sort_order', { ascending: true }),
