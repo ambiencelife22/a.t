@@ -319,7 +319,7 @@ export default function StudioDashboard() {
               if (e.total_outstanding > 0)      reasons.push({ reason: 'Balance outstanding',    amount: usd(e.total_outstanding),      color: '#f87171' })
               if (e.total_billable > 0)         reasons.push({ reason: 'Billable expenses',      amount: usd(e.total_billable),         color: '#93C5FD' })
               return reasons.map((r, i) => (
-                <AttentionItem key={`${e.iteration_id}-${i}`} engagement={e} {...r} onClick={() => goTo(e)} />
+                <AttentionItem key={`${e.engagement_id}-${i}`} engagement={e} {...r} onClick={() => goTo(e)} />
               ))
             })}
           </div>
@@ -330,7 +330,7 @@ export default function StudioDashboard() {
       {inService.length > 0 && (
         <Section title='Currently Traveling' count={inService.length}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {inService.map(e => <UpcomingRow key={e.iteration_id} engagement={e} onClick={() => goTo(e)} />)}
+            {inService.map(e => <UpcomingRow key={e.engagement_id} engagement={e} onClick={() => goTo(e)} />)}
           </div>
         </Section>
       )}
@@ -339,7 +339,7 @@ export default function StudioDashboard() {
       {upcoming.length > 0 && (
         <Section title='Upcoming · 30 days' count={upcoming.length}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {upcoming.map(e => <UpcomingRow key={e.iteration_id} engagement={e} onClick={() => goTo(e)} />)}
+            {upcoming.map(e => <UpcomingRow key={e.engagement_id} engagement={e} onClick={() => goTo(e)} />)}
           </div>
         </Section>
       )}
@@ -359,7 +359,7 @@ export default function StudioDashboard() {
           <TableHeader />
           {active.map((e, i) => (
             <PipelineRow
-              key={e.iteration_id}
+              key={e.engagement_id}
               e={e} i={i}
               stageMeta={STAGE_META[e.status_slug ?? ''] ?? { label: e.status_slug ?? '', color: A.faint }}
               onClick={() => goTo(e)}
@@ -387,7 +387,7 @@ export default function StudioDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, borderRadius: 10, overflow: 'hidden', border: `1px solid ${A.border}` }}>
             <TableHeader />
             {closedSorted.map((e, i) => (
-              <PipelineRow key={e.iteration_id} e={e} i={i} onClick={() => goTo(e)} />
+              <PipelineRow key={e.engagement_id} e={e} i={i} onClick={() => goTo(e)} />
             ))}
           </div>
         </Section>

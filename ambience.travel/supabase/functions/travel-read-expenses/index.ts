@@ -4,11 +4,11 @@
 // Class A — admin-only. All read paths for the Financial Module v1.
 //
 // Modes:
-//   by_engagement      { iteration_id }  → { expenses[], summary }
-//   by_engagement_full { iteration_id }  → { engagement, bookings[], expenses[], summary }
+//   by_engagement      { engagement_id }  → { expenses[], summary }
+//   by_engagement_full { engagement_id }  → { engagement, bookings[], expenses[], summary }
 //     bookings[] each contain nested rooms[] from travel_booking_rooms
 //   by_destination     { destination_id } → { expenses[] }
-//   summary            { iteration_id }  → financial summary
+//   summary            { engagement_id }  → financial summary
 //   pipeline           {}                 → all confirmed trips with financials
 //
 // Last updated: S53G v3 — shared helpers extracted to _shared/expenses.ts.
@@ -43,12 +43,12 @@ Deno.serve(async (req: Request) => {
 
     // ── by_engagement ────────────────────────────────────────────────────────
     if (mode === 'by_engagement') {
-      const iteration_id = body?.iteration_id as string | undefined
-      if (!iteration_id) return json({ error: 'iteration_id is required' }, 400)
+      const engagement_id = body?.engagement_id as string | undefined
+      if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
       const { data, error } = await db
         .from('travel_engagement_expenses')
         .select(EXPENSE_SELECT)
-        .eq('iteration_id', iteration_id)
+        .eq('engagement_id', engagement_id)
         .order('created_at', { ascending: false })
       if (error) { console.error(error); return json({ error: 'Failed to fetch expenses' }, 500) }
       const expenses = (data ?? []) as Array<Record<string, unknown>>
@@ -57,21 +57,21 @@ Deno.serve(async (req: Request) => {
 
     // ── by_engagement_full ───────────────────────────────────────────────────
     if (mode === 'by_engagement_full') {
-      const iteration_id = body?.iteration_id as string | undefined
-      if (!iteration_id) return json({ error: 'iteration_id is required' }, 400)
+      const engagement_id = body?.engagement_id as string | undefined
+      if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
 
       const [engRes, bookingsRes, expensesRes] = await Promise.all([
         db.from('travel_overlay_engagements')
           .select('id, title, url_id, travel_trips!trip_id(trip_code, start_date, end_date)')
-          .eq('id', iteration_id)
+          .eq('id', engagement_id)
           .single(),
         db.from('travel_bookings')
           .select(BOOKING_FINANCIAL_SELECT)
-          .eq('iteration_id', iteration_id)
+          .eq('engagement_id', engagement_id)
           .order('sort_order', { ascending: true }),
         db.from('travel_engagement_expenses')
           .select(EXPENSE_SELECT)
-          .eq('iteration_id', iteration_id)
+          .eq('engagement_id', engagement_id)
           .order('created_at', { ascending: false }),
       ])
 
@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
         .from('travel_engagement_expenses')
         .select(EXPENSE_SELECT)
         .eq('destination_id', destination_id)
-        .is('iteration_id', null)
+        .is('engagement_id', null)
         .order('created_at', { ascending: false })
       if (error) { console.error(error); return json({ error: 'Failed to fetch expenses' }, 500) }
       return json({ expenses: data ?? [] })
@@ -166,16 +166,16 @@ Deno.serve(async (req: Request) => {
 
     // ── summary ──────────────────────────────────────────────────────────────
     if (mode === 'summary') {
-      const iteration_id = body?.iteration_id as string | undefined
-      if (!iteration_id) return json({ error: 'iteration_id is required' }, 400)
+      const engagement_id = body?.engagement_id as string | undefined
+      if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
         db.from('travel_bookings')
           .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
-          .eq('iteration_id', iteration_id),
+          .eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses')
           .select('total_amount, billing_status')
-          .eq('iteration_id', iteration_id),
+          .eq('engagement_id', engagement_id),
       ])
       const bs = (bookings ?? []) as Array<Record<string, unknown>>
       const es = (expenses ?? []) as Array<{ total_amount: number; billing_status: string }>
@@ -222,11 +222,11 @@ Deno.serve(async (req: Request) => {
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, iteration_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
-          .in('iteration_id', engIds),
+          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
+          .in('engagement_id', engIds),
         db.from('travel_engagement_expenses')
-          .select('iteration_id, total_amount, billing_status')
-          .in('iteration_id', engIds),
+          .select('engagement_id, total_amount, billing_status')
+          .in('engagement_id', engIds),
       ])
 
       // Attach splits so computeNetRevenue is partner-aware per booking. One source.
@@ -234,8 +234,8 @@ Deno.serve(async (req: Request) => {
       const pipelineSplits = await fetchSplitsByBooking(db, pipelineBookings.map(b => b.id as string))
       for (const b of pipelineBookings) { (b as Record<string, unknown>)._splits = pipelineSplits[b.id as string] ?? [] }
 
-      const bByEng = groupBy(pipelineBookings, 'iteration_id')
-      const eByEng = groupBy((expensesAll ?? []) as Array<Record<string, unknown>>, 'iteration_id')
+      const bByEng = groupBy(pipelineBookings, 'engagement_id')
+      const eByEng = groupBy((expensesAll ?? []) as Array<Record<string, unknown>>, 'engagement_id')
 
       const trips = confirmed.map(e => {
         const trip = e.travel_trips as Record<string, unknown> | null
@@ -260,7 +260,7 @@ Deno.serve(async (req: Request) => {
         const currency = currencies.length === 1 ? currencies[0] : currencies.length > 1 ? 'MIXED' : 'USD'
 
         return {
-          iteration_id: e.id, url_id: e.url_id, title: e.title, status_slug,
+          engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
           trip_code: trip?.trip_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,

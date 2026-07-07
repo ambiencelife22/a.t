@@ -364,7 +364,7 @@ function AddOverrideModal({
     if (adding) return
     setAdding(true)
     try {
-      await insertCardOverride({ iteration_id: engagementId, kind: option.kind, card_id: option.id })
+      await insertCardOverride({ engagement_id: engagementId, kind: option.kind, card_id: option.id })
       showToast(`Added ${option.name}.`, 'success')
       onAdded()
     } catch (e: unknown) {

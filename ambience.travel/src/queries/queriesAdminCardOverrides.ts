@@ -15,7 +15,7 @@ export type CardKind = 'dining' | 'experience'
 
 export interface CardOverride {
   id:                          string
-  iteration_id:                     string
+  engagement_id:                     string
   dining_venue_id:             string | null
   experience_id:               string | null
   kind:                        CardKind
@@ -48,7 +48,7 @@ export interface CardCanonicalOption {
 
 interface CardOverrideRow {
   id:                          string
-  iteration_id:                     string
+  engagement_id:                     string
   dining_venue_id:             string | null
   experience_id:               string | null
   kicker_override:             string | null
@@ -72,7 +72,7 @@ function shapeRow(r: CardOverrideRow): CardOverride {
   const canon = isDining ? r.dining : r.experience
   return {
     id:                          r.id,
-    iteration_id:                     r.iteration_id,
+    engagement_id:                     r.engagement_id,
     dining_venue_id:             r.dining_venue_id,
     experience_id:               r.experience_id,
     kind:                        isDining ? 'dining' : 'experience',
@@ -100,7 +100,7 @@ export async function fetchCardOverrides(engagementId: string): Promise<CardOver
   const { data, error } = await supabase
     .from('travel_overlay_engagement_content_card_overrides')
     .select(`
-      id, iteration_id, dining_venue_id, experience_id,
+      id, engagement_id, dining_venue_id, experience_id,
       kicker_override, name_override, tagline_override, body_override,
       bullets_heading_override, bullets_override,
       image_src_override, image_alt_override,
@@ -115,7 +115,7 @@ export async function fetchCardOverrides(engagementId: string): Promise<CardOver
         global_destinations:global_destination_id ( slug )
       )
     `)
-    .eq('iteration_id', engagementId)
+    .eq('engagement_id', engagementId)
     .order('is_active', { ascending: false })
 
   if (error) throw error
@@ -160,12 +160,12 @@ export async function updateCardOverride(
 // ── Insert ───────────────────────────────────────────────────────────────────
 
 export async function insertCardOverride(args: {
-  iteration_id: string
+  engagement_id: string
   kind:    CardKind
   card_id: string
 }): Promise<string> {
   const row: Record<string, unknown> = {
-    iteration_id:   args.iteration_id,
+    engagement_id:   args.engagement_id,
     is_active: true,
   }
   if (args.kind === 'dining')     row.dining_venue_id = args.card_id

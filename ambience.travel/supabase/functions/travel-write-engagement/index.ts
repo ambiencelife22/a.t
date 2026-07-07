@@ -411,9 +411,9 @@ Deno.serve(async (req: Request) => {
       // engagements must be ARCHIVED (reversible) until global_retained_records
       // is built to snapshot-then-delete them. Absolute rule, no exceptions.
       const [bookings, timeEntries, requests] = await Promise.all([
-        serviceClient.from('travel_bookings').select('id', { count: 'exact', head: true }).eq('iteration_id', id),
-        serviceClient.from('travel_time_entries').select('id', { count: 'exact', head: true }).eq('iteration_id', id),
-        serviceClient.from('travel_requests').select('id', { count: 'exact', head: true }).eq('iteration_id', id),
+        serviceClient.from('travel_bookings').select('id', { count: 'exact', head: true }).eq('engagement_id', id),
+        serviceClient.from('travel_time_entries').select('id', { count: 'exact', head: true }).eq('engagement_id', id),
+        serviceClient.from('travel_requests').select('id', { count: 'exact', head: true }).eq('engagement_id', id),
       ])
       const nB = bookings.count ?? 0
       const nT = timeEntries.count ?? 0
@@ -474,22 +474,22 @@ Deno.serve(async (req: Request) => {
     // ── Guest-label authoring: house linkage + label selection ────────────────
 
     if (mode === 'link_house') {
-      const { iteration_id, house_id, is_primary } = body as {
-        iteration_id?: string; house_id?: string; is_primary?: boolean
+      const { engagement_id, house_id, is_primary } = body as {
+        engagement_id?: string; house_id?: string; is_primary?: boolean
       }
-      if (!iteration_id || !house_id) {
-        return json({ error: 'iteration_id and house_id are required' }, 400)
+      if (!engagement_id || !house_id) {
+        return json({ error: 'engagement_id and house_id are required' }, 400)
       }
       const { count } = await serviceClient
         .from('travel_engagement_houses')
         .select('id', { count: 'exact', head: true })
-        .eq('iteration_id', iteration_id)
+        .eq('engagement_id', engagement_id)
       const makePrimary = is_primary === true || (count ?? 0) === 0
       if (makePrimary) {
         const { error: clearErr } = await serviceClient
           .from('travel_engagement_houses')
           .update({ is_primary: false })
-          .eq('iteration_id', iteration_id)
+          .eq('engagement_id', engagement_id)
           .eq('is_primary', true)
         if (clearErr) {
           console.error('link_house clear-primary error:', clearErr)
@@ -498,8 +498,8 @@ Deno.serve(async (req: Request) => {
       }
       const { data, error } = await serviceClient
         .from('travel_engagement_houses')
-        .insert({ iteration_id, house_id, is_primary: makePrimary, sort_order: count ?? 0 })
-        .select('id, iteration_id, house_id, is_primary, sort_order, created_at, updated_at')
+        .insert({ engagement_id, house_id, is_primary: makePrimary, sort_order: count ?? 0 })
+        .select('id, engagement_id, house_id, is_primary, sort_order, created_at, updated_at')
         .single()
       if (error) {
         console.error('link_house error:', error)
@@ -524,7 +524,7 @@ Deno.serve(async (req: Request) => {
       const { id } = body as { id?: string }
       if (!id) return json({ error: 'id is required' }, 400)
       const { data: target, error: findErr } = await serviceClient
-        .from('travel_engagement_houses').select('id, iteration_id').eq('id', id).maybeSingle()
+        .from('travel_engagement_houses').select('id, engagement_id').eq('id', id).maybeSingle()
       if (findErr) {
         console.error('set_primary_house lookup error:', findErr)
         return json({ error: 'Failed to resolve engagement house' }, 500)
@@ -533,7 +533,7 @@ Deno.serve(async (req: Request) => {
       const { error: clearErr } = await serviceClient
         .from('travel_engagement_houses')
         .update({ is_primary: false })
-        .eq('iteration_id', target.iteration_id)
+        .eq('engagement_id', target.engagement_id)
         .eq('is_primary', true)
         .neq('id', id)
       if (clearErr) {
@@ -579,17 +579,17 @@ Deno.serve(async (req: Request) => {
     // ── Engagement links ──────────────────────────────────────────────────────
 
     if (mode === 'create_link') {
-      const { iteration_id, link_type, label, url, sort_order } = body as {
-        iteration_id?: string; link_type?: string; label?: string
+      const { engagement_id, link_type, label, url, sort_order } = body as {
+        engagement_id?: string; link_type?: string; label?: string
         url?: string; sort_order?: number
       }
-      if (!iteration_id || !link_type || !label || !url) {
-        return json({ error: 'iteration_id, link_type, label, url required' }, 400)
+      if (!engagement_id || !link_type || !label || !url) {
+        return json({ error: 'engagement_id, link_type, label, url required' }, 400)
       }
       const { data, error } = await serviceClient
         .from('travel_engagement_links')
-        .insert({ iteration_id, link_type, label: label.trim(), url: url.trim(), sort_order: sort_order ?? 0 })
-        .select('id, iteration_id, link_type, label, url, sort_order, is_active, created_at, updated_at')
+        .insert({ engagement_id, link_type, label: label.trim(), url: url.trim(), sort_order: sort_order ?? 0 })
+        .select('id, engagement_id, link_type, label, url, sort_order, is_active, created_at, updated_at')
         .single()
       if (error) return json({ error: 'Failed to create link' }, 500)
       return json({ link: data })
@@ -611,7 +611,7 @@ Deno.serve(async (req: Request) => {
         .from('travel_engagement_links')
         .update(patch)
         .eq('id', id)
-        .select('id, iteration_id, link_type, label, url, sort_order, is_active, created_at, updated_at')
+        .select('id, engagement_id, link_type, label, url, sort_order, is_active, created_at, updated_at')
         .single()
       if (error) return json({ error: 'Failed to update link' }, 500)
       return json({ link: data })

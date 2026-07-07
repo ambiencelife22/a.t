@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
 
         const row = {
           house_id:               String(b.house_id),
-          iteration_id:          b.iteration_id ? String(b.iteration_id) : null,
+          engagement_id:          b.engagement_id ? String(b.engagement_id) : null,
           house_person_id:        b.house_person_id ? String(b.house_person_id) : null,
           work_date:              String(b.work_date),
           hours,
@@ -225,7 +225,7 @@ Deno.serve(async (req: Request) => {
         }
 
         const patch: Record<string, unknown> = {}
-        const passthrough = ['iteration_id','house_person_id','work_date','activity_id',
+        const passthrough = ['engagement_id','house_person_id','work_date','activity_id',
           'notes','entry_type','performed_by','performed_by_person_id','started_at','ended_at',
           'invoice_status','invoiced_at','paid_at']
         for (const f of passthrough) {

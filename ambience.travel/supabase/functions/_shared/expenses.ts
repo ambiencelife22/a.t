@@ -12,7 +12,7 @@
 // ── Select strings ────────────────────────────────────────────────────────────
 
 export const EXPENSE_SELECT = `
-  id, iteration_id, booking_id, destination_id, team_member_id,
+  id, engagement_id, booking_id, destination_id, team_member_id,
   expense_type, description, total_amount, currency, billing_status,
   paid_at, billed_at, reimbursed_at, linked_at, notes,
   created_by, created_at, updated_at,
@@ -23,7 +23,7 @@ export const EXPENSE_SELECT = `
 `
 
 export const BOOKING_FINANCIAL_SELECT = `
-  id, trip_id, iteration_id, name, booking_type, status, confirmation_number,
+  id, trip_id, engagement_id, name, booking_type, status, confirmation_number,
   accom_hotel_id, supplier_id, supplier_name_override,
   start_date, end_date, nights, currency, price,
   cost,

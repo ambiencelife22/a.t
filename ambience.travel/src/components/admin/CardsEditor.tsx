@@ -626,7 +626,7 @@ function EditModal({
 
       const cardId = (card.kind === 'dining' ? card.dining_venue_id : card.experience_id) ?? ''
       await upsertOverride({
-        iteration_id: card.iteration_id,
+        engagement_id: card.engagement_id,
         kind:        card.kind,
         card_id:     cardId,
         override_id: card.override_id,
@@ -857,7 +857,7 @@ function AddCardModal({
     try {
       const sortOrder = nextSortOrder(selections, option.kind)
       await insertSelection({
-        iteration_id: engagementId,
+        engagement_id: engagementId,
         kind:       option.kind,
         card_id:    option.id,
         sort_order: sortOrder,

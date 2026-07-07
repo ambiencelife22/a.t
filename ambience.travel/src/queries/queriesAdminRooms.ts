@@ -6,7 +6,7 @@
 //   - Fetching rate cadences (travel_rate_cadences)
 //   - CRUD on travel_overlay_rooms
 //
-// travel_overlay_rooms.iteration_id FKs to travel_overlay_engagements.id.
+// travel_overlay_rooms.engagement_id FKs to travel_overlay_engagements.id.
 // room_id FKs to travel_accom_rooms.id.
 // rate_cadence_id FKs to travel_rate_cadences.id.
 //
@@ -42,7 +42,7 @@ export interface CanonicalRoom {
 
 export interface OverlayRoom {
   id:                      string
-  iteration_id:                 string
+  engagement_id:                 string
   room_id:                 string | null
   level_label:             string | null
   room_basis:              string | null
@@ -76,11 +76,11 @@ export interface OverlayRoom {
 }
 
 export type OverlayRoomPatch = Partial<Omit<OverlayRoom,
-  'id' | 'iteration_id' | 'canonical_room_name' | 'canonical_hotel_name'
+  'id' | 'engagement_id' | 'canonical_room_name' | 'canonical_hotel_name'
 >>
 
 export type OverlayRoomCreate = {
-  iteration_id:      string
+  engagement_id:      string
   room_id:      string | null
   level_label:  string | null
   sort_order:   number
@@ -108,7 +108,7 @@ export async function fetchCanonicalRoomsForEngagement(
   const { data: hotelSlots, error: hotelErr } = await supabase
     .from('travel_overlay_engagement_destination_hotels')
     .select('hotel_id')
-    .eq('iteration_id', engagementId)
+    .eq('engagement_id', engagementId)
 
   if (hotelErr) throw new Error(`Failed to fetch hotel slots: ${hotelErr.message}`)
 
@@ -156,7 +156,7 @@ export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRo
   const { data, error } = await supabase
     .from('travel_overlay_rooms')
     .select(`
-      id, iteration_id, room_id,
+      id, engagement_id, room_id,
       level_label, room_basis, room_benefits,
       non_negotiated_nightly_rate, ambience_nightly_rate, public_nightly_rate,
       rate_cadence_id, rate_suffix_override, tax_inclusive,
@@ -171,14 +171,14 @@ export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRo
         hotel:travel_accom_hotels!hotel_id(name)
       )
     `)
-    .eq('iteration_id', engagementId)
+    .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: true })
 
   if (error) throw new Error(`Failed to fetch overlay rooms: ${error.message}`)
 
   return (data ?? []).map((r: any) => ({
     id:                      r.id,
-    iteration_id:                 r.iteration_id,
+    engagement_id:                 r.engagement_id,
     room_id:                 r.room_id,
     level_label:             r.level_label,
     room_basis:              r.room_basis,
@@ -243,7 +243,7 @@ export async function fetchMaxRoomSortOrder(engagementId: string): Promise<numbe
   const { data, error } = await supabase
     .from('travel_overlay_rooms')
     .select('sort_order')
-    .eq('iteration_id', engagementId)
+    .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: false })
     .limit(1)
     .maybeSingle()

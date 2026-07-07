@@ -12,13 +12,13 @@
 //
 // Read modes (take an optional viewer_team_id for the visibility seam — today it
 // only filters global tasks; Stage 4 activates the assigned_to clause):
-//   by_engagement  { iteration_id, viewer_team_id? } → TaskRow[]
+//   by_engagement  { engagement_id, viewer_team_id? } → TaskRow[]
 //   by_range       { range_start, range_end, viewer_team_id? } → TaskRow[]
 //   all_open       { viewer_team_id? } → open tasks, all engagements, overdue-first
 //   all_closed     { viewer_team_id? } → done/dismissed, all engagements, recent-first
 //
 // Write modes:
-//   create   { iteration_id, stay_id?, title, due_date?, note?, assigned_to? }
+//   create   { engagement_id, stay_id?, title, due_date?, note?, assigned_to? }
 //   update   { id, title?, due_date?, note?, stay_id?, assigned_to? }
 //   complete { id }
 //   reopen   { id }
@@ -51,7 +51,7 @@ type Mode =
 // Row as stored, plus the assignee name resolved via global_team.person_id → global_people.
 type TaskQueryRow = {
   id:            string
-  iteration_id: string
+  engagement_id: string
   stay_id:       string | null
   template_id:   string | null
   title:         string
@@ -67,7 +67,7 @@ type TaskQueryRow = {
 }
 
 const TASK_SELECT = `
-  id, iteration_id, stay_id, template_id, title, due_date, status,
+  id, engagement_id, stay_id, template_id, title, due_date, status,
   assigned_to, note, created_at, completed_at,
   assignee:global_team!travel_tasks_assigned_to_fkey(
     person:global_people!global_team_person_id_fkey(first_name, last_name, nickname)
@@ -77,12 +77,12 @@ const TASK_SELECT = `
 // all_open adds the engagement title + url_id so the fleet-wide inbox can label
 // and link each row. Kept separate so by_engagement/by_range + shape() are untouched.
 const TASK_SELECT_WITH_ENGAGEMENT = `
-  id, iteration_id, stay_id, template_id, title, due_date, status,
+  id, engagement_id, stay_id, template_id, title, due_date, status,
   assigned_to, note, created_at, completed_at,
   assignee:global_team!travel_tasks_assigned_to_fkey(
     person:global_people!global_team_person_id_fkey(first_name, last_name, nickname)
   ),
-  engagement:travel_overlay_engagements!travel_tasks_iteration_id_fkey(title, url_id)
+  engagement:travel_overlay_engagements!travel_tasks_engagement_id_fkey(title, url_id)
 `
 
 function todayISO(): string { return new Date().toISOString().slice(0, 10) }
@@ -101,7 +101,7 @@ function shape(r: TaskQueryRow) {
   const p = r.assignee?.person ?? null
   const assignee_name = p ? (p.nickname || [p.first_name, p.last_name].filter(Boolean).join(' ') || null) : null
   return {
-    id: r.id, iteration_id: r.iteration_id, stay_id: r.stay_id, template_id: r.template_id,
+    id: r.id, engagement_id: r.engagement_id, stay_id: r.stay_id, template_id: r.template_id,
     title: r.title, due_date: r.due_date, status: r.status,
     assigned_to: r.assigned_to, assignee_name,
     note: r.note, created_at: r.created_at, completed_at: r.completed_at,
@@ -137,11 +137,11 @@ Deno.serve(async (req: Request) => {
 
     // ── Reads ────────────────────────────────────────────────────────────────
     if (mode === 'by_engagement') {
-      const iteration_id = body?.iteration_id as string | undefined
-      if (!iteration_id) return json({ error: 'iteration_id is required' }, 400)
+      const engagement_id = body?.engagement_id as string | undefined
+      if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
       const viewer = (body?.viewer_team_id as string | undefined) ?? null
 
-      let q = db.from('travel_tasks').select(TASK_SELECT).eq('iteration_id', iteration_id)
+      let q = db.from('travel_tasks').select(TASK_SELECT).eq('engagement_id', engagement_id)
       // Visibility seam: global tasks only today. Stage 4: include viewer's own.
       q = viewer ? q.or(`assigned_to.is.null,assigned_to.eq.${viewer}`) : q.is('assigned_to', null)
       q = q.order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true })
@@ -204,13 +204,13 @@ Deno.serve(async (req: Request) => {
 
     // ── Writes ───────────────────────────────────────────────────────────────
     if (mode === 'create') {
-      const iteration_id = body?.iteration_id as string | undefined
+      const engagement_id = body?.engagement_id as string | undefined
       const title = (body?.title as string | undefined)?.trim()
-      if (!iteration_id) return json({ error: 'iteration_id is required' }, 400)
+      if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
       if (!title)         return json({ error: 'title is required' }, 400)
 
       const insert = {
-        iteration_id,
+        engagement_id,
         stay_id:     (body?.stay_id as string | undefined) ?? null,
         template_id: null,  // custom task — generation sets this for stock tasks
         title,
