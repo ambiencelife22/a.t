@@ -119,7 +119,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
   const engagementId = engRow.id as string
 
   const [displayRes, stopsRes, destRowsRes, pricingRes, welcomeRes, linksRes] = await Promise.all([
-    db.from('travel_immerse_engagement_display')
+    db.from('travel_overlay_engagement_display')
       .select('house_display_name')
       .eq('engagement_id', engagementId)
       .maybeSingle(),

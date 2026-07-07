@@ -20,10 +20,11 @@
 // S53O — error guards added to the engagement + engagement_display fetches in
 //   fetchTripCore (was silent; the class of bug that hid the bedding_type and
 //   is_total phantom-column failures). Overlay rename (travel_immerse_* ->
-//   travel_overlay_*) is IN PROGRESS: this file still reads the un-renamed
-//   travel_immerse_engagements (line ~34, ~135) and travel_immerse_engagement_display
-//   (line ~139) — those two tables rename LAST in Phase A, at which point BOTH
-//   client EFs (confirmation, programme) redeploy alongside travel-get-immerse-proposal.
+//   travel_overlay_*) is IN PROGRESS: engagement_display is now renamed
+//   (travel_overlay_engagement_display, line ~139). This file still reads the
+//   un-renamed travel_immerse_engagements (line ~34, ~135) — the LAST table in
+//   Phase A. When it renames, all three client EFs redeploy together (this module
+//   is imported by confirmation + programme; the proposal EF reads engagements directly).
 
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { resolvePartyName, formatPersonName } from './names.ts'
@@ -127,7 +128,7 @@ export async function fetchTripCore(
   // Engagement hero is canon. brief.hero_image_src is an overlay (only set when
   // operator deliberately wants a different hero on the confirmation surface).
   // Resolve: brief overlay → engagement canon → null.
-  // Engagement-level guest label (HPGL). travel_immerse_engagement_display.house_display_name
+  // Engagement-level guest label (HPGL). travel_overlay_engagement_display.house_display_name
   // is the projected, admin-authored public label (single source — set by the
   // projection trigger, never resolved here). Keyed by engagement_id in the
   // display table. Best-effort: null when no confirmed engagement
@@ -142,7 +143,7 @@ export async function fetchTripCore(
         .select('hero_image_src, title')
         .eq('id', confirmedEngId)
         .maybeSingle(),
-      db.from('travel_immerse_engagement_display')
+      db.from('travel_overlay_engagement_display')
         .select('house_display_name')
         .eq('engagement_id', confirmedEngId)
         .maybeSingle(),
