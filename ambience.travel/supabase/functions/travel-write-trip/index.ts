@@ -260,7 +260,7 @@ async function handleCreateAuxPassenger(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_aux_passengers')
+    .from('travel_engagement_aux_passengers')
     .insert({ aux_booking_id: auxBookingId, ...patch })
     .select()
     .single()
@@ -274,7 +274,7 @@ async function handleUpdateAuxPassenger(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_aux_passengers')
+    .from('travel_engagement_aux_passengers')
     .update(patch)
     .eq('id', id)
     .select()
@@ -285,7 +285,7 @@ async function handleUpdateAuxPassenger(
 
 async function handleDeleteAuxPassenger(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_trip_aux_passengers')
+    .from('travel_engagement_aux_passengers')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete aux passenger' }, 500)

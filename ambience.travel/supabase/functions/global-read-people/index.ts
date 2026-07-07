@@ -4,7 +4,7 @@
 // Reads the canonical person registry (global_people).
 //
 // global_people is a CROSS-PRODUCT entity — the canonical person spine that
-// passengers (travel_trip_aux_passengers.person_id), house-people
+// passengers (travel_engagement_aux_passengers.person_id), house-people
 // (a_house_people.person_id), grants, and team all FK to. This EF is its
 // canonical client access layer. First consumers: the house-person link
 // picker (PersonModal) and the passenger link picker (AuxPassengersEditor).

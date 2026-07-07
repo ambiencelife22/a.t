@@ -105,7 +105,7 @@ export async function attachPassengers(
   if (aux.length === 0) return aux
   const ids = aux.map(a => a.id as string)
   const { data: pax } = await db
-    .from('travel_trip_aux_passengers')
+    .from('travel_engagement_aux_passengers')
     .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
     .in('aux_booking_id', ids)
     .order('sort_order', { ascending: true })

@@ -417,7 +417,7 @@ async function handleAuxBookings(db: SupabaseClient, tripId: string): Promise<Re
 
   const ids = aux.map(a => a.id as string)
   const { data: pax } = await db
-    .from('travel_trip_aux_passengers')
+    .from('travel_engagement_aux_passengers')
     .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
     .in('aux_booking_id', ids)
     .order('sort_order', { ascending: true })
@@ -843,7 +843,7 @@ async function handleActivityDetail(
       .from('travel_engagement_aux_bookings').select('engagement_id').eq('id', auxBookingId).maybeSingle()
     const partyLabel = await partyLabelForTrip(db, (aux?.engagement_id as string | null) ?? null)
     const { data: paxData, error: paxErr } = await db
-      .from('travel_trip_aux_passengers')
+      .from('travel_engagement_aux_passengers')
       .select('id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
       .eq('aux_booking_id', auxBookingId)
       .order('sort_order', { ascending: true })
