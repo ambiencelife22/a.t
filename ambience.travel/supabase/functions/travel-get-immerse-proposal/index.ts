@@ -381,12 +381,12 @@ async function fetchRegionGroups(
   const regionIds = regions.map(r => r.id as string)
 
   const [tripRegionsRes, regionHotelsRes] = await Promise.all([
-    db.from('travel_immerse_engagement_regions')
+    db.from('travel_overlay_engagement_regions')
       .select('region_id, rank, rank_label, bullets, stay_label, sort_order')
       .eq('engagement_id', engagementId)
       .eq('is_active', true)
       .in('region_id', regionIds),
-    db.from('travel_immerse_engagement_region_hotels')
+    db.from('travel_overlay_engagement_region_hotels')
       .select(`
         id, region_id, hotel_id, rank, rank_label, bullets,
         stay_label, sort_order,
