@@ -5,7 +5,7 @@
  *   - Recipients DERIVE from the trip's bookings -> rooms (guest already lives on
  *     the room as resolved_guest_name ?? guest_name). Never re-typed here.
  *   - The authored body is the only new content; stored in
- *     travel_trip_welcome_letters keyed by (booking_id, room_id).
+ *     travel_engagement_welcome_letters keyed by (booking_id, room_id).
  *   - Letters that have no stored row yet show an empty body; first edit creates
  *     the row (upsert). A room with no letter simply has no row.
  *

@@ -218,7 +218,7 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── AuxBookingsEditor ─────────────────────────────────────────────────────────
 // Trip-level flights / transfers / car services. Sibling to RoomsEditor.
-// Writes every editable column on travel_trip_aux_bookings (airline_supplier_id
+// Writes every editable column on travel_engagement_aux_bookings (airline_supplier_id
 // deferred — needs a supplier picker, airline_name covers display).
 
 type AuxDraft = {

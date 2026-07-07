@@ -65,11 +65,11 @@ type Mode =
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
 // returned row carries resolved_guest_name. Walk: room.person_id → global_people;
-// room.booking_id → travel_bookings.trip_id → travel_trip_briefs.prepared_for.
+// room.booking_id → travel_bookings.trip_id → travel_engagement_briefs.prepared_for.
 // FK path verified via information_schema S53G:
 //   travel_booking_rooms.booking_id (uuid NOT NULL)
 //     → travel_bookings.trip_id (uuid NOT NULL)
-//     → travel_trip_briefs.trip_id → prepared_for (text nullable)
+//     → travel_engagement_briefs.trip_id → prepared_for (text nullable)
 async function resolveRoomRow(
   db: SupabaseClient,
   room: Record<string, unknown>,
@@ -94,9 +94,9 @@ async function resolveRoomRow(
     .maybeSingle()
   if (booking?.trip_id) {
     const { data: brief } = await db
-      .from('travel_trip_briefs')
+      .from('travel_engagement_briefs')
       .select('prepared_for')
-      .eq('trip_id', booking.trip_id as string)
+      .eq('engagement_id', booking.trip_id as string)
       .maybeSingle()
     partyLabel = (brief?.prepared_for as string | null) ?? null
   }
@@ -119,16 +119,16 @@ async function handleUpsertBrief(
 ): Promise<Response> {
   if (!patch.brief_title) {
     const { data: existing } = await db
-      .from('travel_trip_briefs')
+      .from('travel_engagement_briefs')
       .select('id')
-      .eq('trip_id', tripId)
+      .eq('engagement_id', tripId)
       .maybeSingle()
 
     if (!existing) {
       const { data: dest } = await db
-        .from('travel_trip_destinations')
-        .select('global_destinations!travel_trip_destinations_dest_fkey(name)')
-        .eq('trip_id', tripId)
+        .from('travel_engagement_destinations')
+        .select('global_destinations!travel_engagement_destinations_dest_fkey(name)')
+        .eq('engagement_id', tripId)
         .order('sort_order', { ascending: true })
         .limit(1)
         .maybeSingle()
@@ -141,8 +141,8 @@ async function handleUpsertBrief(
   }
 
   const { data, error } = await db
-    .from('travel_trip_briefs')
-    .upsert({ trip_id: tripId, house_id: houseId, ...patch }, { onConflict: 'trip_id' })
+    .from('travel_engagement_briefs')
+    .upsert({ engagement_id: tripId, house_id: houseId, ...patch }, { onConflict: 'engagement_id' })
     .select()
     .single()
   if (error) return json({ error: 'Failed to upsert brief' }, 500)
@@ -222,8 +222,8 @@ async function handleCreateAuxBooking(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_aux_bookings')
-    .insert({ trip_id: tripId, ...patch })
+    .from('travel_engagement_aux_bookings')
+    .insert({ engagement_id: tripId, ...patch })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create aux booking' }, 500)
@@ -236,7 +236,7 @@ async function handleUpdateAuxBooking(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_aux_bookings')
+    .from('travel_engagement_aux_bookings')
     .update(patch)
     .eq('id', id)
     .select()
@@ -247,7 +247,7 @@ async function handleUpdateAuxBooking(
 
 async function handleDeleteAuxBooking(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_trip_aux_bookings')
+    .from('travel_engagement_aux_bookings')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete aux booking' }, 500)
@@ -337,8 +337,8 @@ async function handleUpsertDay(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_days')
-    .upsert({ trip_id: tripId, entry_date: entryDate, ...patch }, { onConflict: 'trip_id,entry_date' })
+    .from('travel_engagement_days')
+    .upsert({ engagement_id: tripId, entry_date: entryDate, ...patch }, { onConflict: 'engagement_id,entry_date' })
     .select()
     .single()
   if (error) return json({ error: 'Failed to upsert day' }, 500)
@@ -351,8 +351,8 @@ async function handleCreateDayEntry(
   entry: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_day_entries')
-    .insert({ ...entry, trip_id: tripId })
+    .from('travel_engagement_day_entries')
+    .insert({ ...entry, engagement_id: tripId })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create day entry' }, 500)
@@ -365,7 +365,7 @@ async function handleUpdateDayEntry(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_trip_day_entries')
+    .from('travel_engagement_day_entries')
     .update(patch)
     .eq('id', id)
     .select()
@@ -376,7 +376,7 @@ async function handleUpdateDayEntry(
 
 async function handleDeleteDayEntry(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_trip_day_entries')
+    .from('travel_engagement_day_entries')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete day entry' }, 500)
@@ -388,9 +388,9 @@ async function handleUpsertWelcomeLetter(
   tripId: string,
   letter: Record<string, unknown>,
 ): Promise<Response> {
-  const row = { ...letter, trip_id: tripId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
+  const row = { ...letter, engagement_id: tripId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
   const { data, error } = await db
-    .from('travel_trip_welcome_letters')
+    .from('travel_engagement_welcome_letters')
     .upsert(row, { onConflict: 'id' })
     .select()
     .single()
@@ -400,7 +400,7 @@ async function handleUpsertWelcomeLetter(
 
 async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_trip_welcome_letters')
+    .from('travel_engagement_welcome_letters')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete welcome letter' }, 500)
@@ -415,7 +415,7 @@ async function handleSetPublicView(
   const { error } = await db
     .from('travel_overlay_engagements')
     .update({ public_view: publicView })
-    .eq('trip_id', tripId)
+    .eq('engagement_id', tripId)
   if (error) return json({ error: 'Failed to set public_view' }, 500)
   return json({ success: true })
 }

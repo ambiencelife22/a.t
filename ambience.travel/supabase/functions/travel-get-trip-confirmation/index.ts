@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
         .order('end_date',   { ascending: true, nullsFirst: false })
         .order('id',         { ascending: true }),
 
-      db.from('travel_trip_aux_bookings')
+      db.from('travel_engagement_aux_bookings')
         .select(AUX_BOOKING_SELECT)
         .eq('trip_id', tripId)
         .order('start_date', { ascending: true, nullsFirst: false })

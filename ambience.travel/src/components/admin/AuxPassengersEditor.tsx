@@ -6,7 +6,7 @@
  *
  * Each passenger: label + conf + seats, on travel_trip_aux_passengers.
  * Seats and confirmation numbers are per-passenger here — the parent
- * travel_trip_aux_bookings row no longer carries them (S54b cleanup).
+ * travel_engagement_aux_bookings row no longer carries them (S54b cleanup).
  * person_id wiring deferred to a picker; passenger_label is the
  * operator-facing field for now.
  *

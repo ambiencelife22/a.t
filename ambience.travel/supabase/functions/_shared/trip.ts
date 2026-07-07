@@ -83,9 +83,9 @@ export async function fetchTripCore(
       .eq('id', tripId)
       .single(),
 
-    db.from('travel_trip_briefs')
+    db.from('travel_engagement_briefs')
       .select(`
-        id, trip_id, house_id, brief_title, brief_subtitle, prepared_for,
+        id, engagement_id, house_id, brief_title, brief_subtitle, prepared_for,
         hero_image_src, hero_image_alt, logo_variant,
         snapshot_destination, snapshot_dates, snapshot_guests, snapshot_status,
         journey_steps, advisor_name, advisor_email, advisor_phone,
@@ -97,7 +97,7 @@ export async function fetchTripCore(
         contact_person_ids, contact_name_format,
         created_at, updated_at
       `)
-      .eq('trip_id', tripId)
+      .eq('engagement_id', tripId)
       .maybeSingle(),
 
     db.from('a_houses')
@@ -105,9 +105,9 @@ export async function fetchTripCore(
       .eq('id', houseId)
       .single(),
 
-    db.from('travel_trip_destinations')
-      .select('id, trip_id, destination_id, sort_order, global_destinations!travel_trip_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
-      .eq('trip_id', tripId)
+    db.from('travel_engagement_destinations')
+      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_engagement_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+      .eq('engagement_id', tripId)
       .order('sort_order', { ascending: true }),
   ])
 
@@ -190,13 +190,13 @@ export interface TripBookingsData {
 }
 
 // ── Aux booking select — single source ────────────────────────────────────────
-// Every EF that reads travel_trip_aux_bookings uses this exact string.
+// Every EF that reads travel_engagement_aux_bookings uses this exact string.
 // engagement_type_id embeds the registry slug + label via FK join.
 // booking_type (text) was dropped in S53G — slug is now the canonical type field.
 
 export const AUX_BOOKING_SELECT = [
-  'id', 'trip_id', 'engagement_type_id',
-  'travel_engagement_types!travel_trip_aux_bookings_engagement_type_id_fkey(slug, label)',
+  'id', 'engagement_id', 'engagement_type_id',
+  'travel_engagement_types!travel_engagement_aux_bookings_engagement_type_id_fkey(slug, label)',
   'name', 'start_date', 'start_time', 'end_date', 'end_time',
   'origin', 'destination', 'notes', 'confirmation_number', 'booked_by',
   'guest_name', 'guest_count',

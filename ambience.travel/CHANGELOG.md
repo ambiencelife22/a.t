@@ -60,7 +60,7 @@ are pending.
 
 Phase 1 — status_id column + true backfill.
 - Added status_id uuid FK to travel_lifecycle_statuses on travel_bookings,
-  travel_booking_rooms, travel_trip_aux_bookings. Text status column kept
+  travel_booking_rooms, travel_engagement_aux_bookings. Text status column kept
   (readers migrate first; not dropped this phase).
 - Backfilled to TRUE statuses, not a uniform stamp: 15 bookings + 45 rooms to
   confirmed; aux split 7 confirmed / 15 guest_managed / 1 cancelled. The one
@@ -150,7 +150,7 @@ truth for "how does this trip print," the exact drift extraction exists to kill.
 
 Architecture when built:
   - Branding/export identity lives once, on the engagement (or a single engagement-
-    scoped export-settings surface), NOT on travel_trip_briefs.logo_variant read by
+    scoped export-settings surface), NOT on travel_engagement_briefs.logo_variant read by
     the guest EFs (that path leaks the variant to the guest download).
   - The three PDF exporters (pdfImmerseBrief/Confirmation/Programme) take an explicit
     branding param (default 'ambience'); they stop reading brief.logo_variant for the

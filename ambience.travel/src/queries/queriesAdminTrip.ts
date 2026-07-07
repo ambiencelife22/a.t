@@ -1,7 +1,7 @@
 // queriesAdminTrip.ts
 // Trip Dossier query layer — reads travel_bookings, travel_trips,
 // travel_partners, travel_accom_hotels for the HouseTab Trip Dossier surface.
-// Also owns travel_trip_briefs + travel_booking_rooms + travel_trip_days CRUD.
+// Also owns travel_engagement_briefs + travel_booking_rooms + travel_engagement_days CRUD.
 //
 // All column names verified against information_schema S44/S45/S46 pre-flight.
 //
