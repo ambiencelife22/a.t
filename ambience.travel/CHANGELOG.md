@@ -402,3 +402,52 @@ invisible to git and to the repo grep; unswept, a rename silently breaks server-
 logic. Cost this campaign: 2 live bugs. Also: tsc green ≠ grep clean (a table name
 in .from('...') is a string literal TS does not validate — the clean-grep is the
 completeness gate, never tsc).
+
+### [ARC][DB] Phase B Stage 1 — 6 spine-leaf tables trip→engagement
+
+Phase B (spine rename) begun. Grammar locked with D: travel_trips → travel_engagements,
+travel_overlay_engagements → travel_engagement_iterations, engagement_id → iteration_id
+on overlays, trip_id → engagement_id on spine children. Full recon + campaign plan on
+disk (phase_b_campaign_plan.md): 3-level column map, 6-stage sequencing, the
+travel_bookings/travel_requests dual-column collision documented.
+
+Stage 1 renamed 6 spine-leaf tables + their trip_id → engagement_id column (+ constraints,
+indexes). Live schema — invisible to git diffs; this is the record.
+- travel_trip_welcome_letters → travel_engagement_welcome_letters (done earlier, direct cutover)
+- travel_trip_briefs → travel_engagement_briefs (UNIQUE(trip_id)→engagement_id; onConflict fixed)
+- travel_trip_days → travel_engagement_days (composite UNIQUE(trip_id,entry_date); onConflict fixed)
+- travel_trip_day_entries → travel_engagement_day_entries
+- travel_trip_aux_bookings → travel_engagement_aux_bookings (4 inbound FKs verified re-pointing)
+- travel_trip_destinations → travel_engagement_destinations (UNIQUE(trip_id,destination_id))
+
+Remaining Stage 1 leaf: travel_trip_aux_passengers (aux_booking_id only, no trip_id — next session).
+
+### [FIX] Recovered a live half-migrated spine state
+
+On entering Stage 1, deployed code was already filtering .eq('engagement_id') against tables
+that still had trip_id columns (travel_trip_briefs/days/day_entries/aux_bookings) — broken admin
+reads AND broken guest programme/confirmation, live. Root cause: column-reference edits had been
+made ahead of the DB rename. Resolved by completing the renames + correcting every caller. ~20
+code references across 4 EFs (travel-write-trip, travel-read-trip-admin, travel-get-trip-programme,
+travel-get-trip-confirmation) + _shared/trip.ts, applying strict X/Y/Z discipline:
+- X (DB column on a renamed table) → engagement_id
+- Y (trip_id on travel_bookings / travel_overlay_engagements — NOT renamed) → PRESERVED as trip_id
+- Z (API payload keys, TS type fields, in-memory shapes) → left as trip_id, logged for the honesty pass
+Conflating X and Y would have broken bookings/overlay reads; the discipline is what kept it correct.
+
+### [FIX] derive_tasks_for_engagement aux reference (pg_proc sweep catch)
+
+Post-rename pg_proc sweep caught derive_tasks_for_engagement still reading travel_trip_aux_bookings
++ a.trip_id in its aux loop — invisible to the filesystem grep, broken since the aux rename (fires
+on tg_derive_child_activities when an engagement hits confirmed/paid/in_service). Repointed to
+travel_engagement_aux_bookings + a.engagement_id; the travel_bookings.trip_id and
+travel_overlay_engagements.trip_id references in the same function correctly preserved (Category Y).
+Reconfirms the Phase A standing rule: sweep pg_proc after every table rename.
+
+### [DEBT] Deferred honesty pass (Category Z — one deliberate sweep, both sides together)
+
+Working but name-lying, to rename in a single pass when convenient (not piecemeal):
+- tripId / trip_id local variables across the codebase
+- the { trip_id } API payload contract between queriesAdminTrip.ts and the trip EFs (both sides atomically)
+- TripDayItem.trip_id field in _shared/days.ts (in-memory derived shape)
+- Trip* TS type field names (TripDay.trip_id, TripBrief.trip_id, etc.)
