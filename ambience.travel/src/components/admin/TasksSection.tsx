@@ -95,7 +95,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
       setLoading(true)
       try {
         const { data: eng, error: engErr } = await supabase
-          .from('travel_overlay_engagements')
+          .from('travel_engagements')
           .select('id')
           .eq('url_id', urlId)
           .single()

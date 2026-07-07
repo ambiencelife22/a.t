@@ -746,7 +746,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
   useEffect(() => {
     if (engagementIdProp) { setEngagementId(engagementIdProp); return }
     supabase
-      .from('travel_overlay_engagements')
+      .from('travel_engagements')
       .select('id')
       .eq('url_id', urlId)
       .single()

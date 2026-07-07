@@ -6,7 +6,7 @@
 //   - Fetching rate cadences (travel_rate_cadences)
 //   - CRUD on travel_overlay_rooms
 //
-// travel_overlay_rooms.engagement_id FKs to travel_overlay_engagements.id.
+// travel_overlay_rooms.engagement_id FKs to travel_engagements.id.
 // room_id FKs to travel_accom_rooms.id.
 // rate_cadence_id FKs to travel_rate_cadences.id.
 //

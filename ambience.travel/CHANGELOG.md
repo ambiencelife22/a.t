@@ -485,3 +485,72 @@ history — now correct).
   contract (queriesAdminTrip.ts ↔ trip EFs), tripId locals, TripDayItem.trip_id,
   Trip* TS type field names. One deliberate both-sides sweep.
 - clone_engagement bedding_type gap (room clone drops bedding_type) — still open.
+
+### [ARC][DB] Phase B model CORRECTED to mission + Stage 5a — iteration_id → engagement_id (19 children)
+
+**Model correction (supersedes the Stage-1/3 "deal → iterations" framing above).**
+The campaign plan's endgame (travel_trips → travel_engagements as the spine; overlay →
+travel_engagement_iterations) was found MISSION-WRONG this session and rewritten. The
+mission requires a SERVICE-AGNOSTIC spine ("zero compromise across products; the future
+self is ambience.LIFE / MONEY on the same spine"). travel_trips is travel-shaped
+(trip_code, trip_type, destinations[]) and CANNOT be that spine. Resolved, following the
+engagement-OS model (mission-truthful):
+- SPINE = travel_overlay_engagements (carries engagement_type, 21 inbound FKs) →
+  becomes travel_engagements. Children key by engagement_id.
+- travel_trips → travel_journey: the JOURNEY CAPABILITY module (destinations, route,
+  days, brief), NOT the spine, NOT dissolved. "Trip disappears into its true role."
+- aux_bookings → elements: cross-cutting, resolved by engagement_type.
+- NO iteration tier. The overlay IS the engagement; version/lineage (Yazeed v2/v3) is a
+  COLUMN on the spine, not a second table level. => Stage 3's engagement_id → iteration_id
+  was a NAME-DETOUR encoding the rejected model. Stage 5a CORRECTS it back to
+  engagement_id (now pointing at the spine). The old NEXT block below is superseded by the
+  post-3b plan on disk (phase_b_plan_v2_post3b.md, db_map_v10_GROUNDTRUTH.md).
+
+**Ground-truth recon (07 Jul) corrected the map:** travel_trips + travel_trip_guests were
+NOT renamed in Stage 1 (still travel_trip_*); the 6 spine leaves (briefs/days/day_entries/
+destinations/welcome_letters/aux_bookings) already say engagement_id but point at
+travel_trips (the Stage-1 drift, journey objects under the mission model — Stage 6 corrects
+to journey_id); Layer 4 fully de-immersed (no travel_immerse_* survive); supplier schism
+already resolved (travel_suppliers + travel_supplier_contacts exist, bare suppliers absent);
+Residences renamed travel_programme_* → travel_hosted_*. Orphan fn
+update_travel_immerse_bottom_notes_updated_at references a non-existent table (verify+drop).
+
+**Stage 5a — iteration_id → engagement_id on all 19 children of travel_overlay_engagements.**
+Live Supabase (column + FK constraint + index; invisible to git — this is the record):
+travel_bookings, travel_requests, travel_engagement_expenses, _houses, _links,
+travel_tasks, travel_time_entries + the 12 travel_overlay_* content tables. The FK still
+targets travel_overlay_engagements(id) — honest column, target table renamed in 5b.
+parent_engagement_id (self-ref) and trip_id (→ travel_trips, Stage 6) preserved.
+
+6 functions repointed: check_closed_won_commission, resolve_and_project_guest_label,
+tg_project_guest_label_on_houses, enforce_engagement_label_house_match, clone_engagement
+(all overlay-child iteration_id → engagement_id), and derive_tasks_for_engagement
+(PER-LINE: travel_tasks.iteration_id → engagement_id, while b.trip_id (Y) and the aux
+a.engagement_id (Stage-1 leaf col → travel_trips) both preserved — that function now
+legitimately holds engagement_id meaning two things until Stage 6 corrects the leaf).
+
+26 code files swapped; frontend grep confirmed zero iteration_id remaining (the real
+check — tsc green but blind to loose invoke payloads, the 3b lesson). 7 EFs deployed.
+
+TRANSITIONAL STATE (by design, resolved Stage 6): engagement_id now means two things —
+the 19 children → the spine (correct), and the 6 spine leaves → travel_trips (Stage-1
+drift). Not a bug; sequenced. Stage 6 corrects the leaves to journey_id.
+
+Verified live (5a = numbers + guest render): proposal oQC68jVKgcm/newyork renders (overlay
+content intact); OutlookTab Sharm (89aee7e3) commission 951.60, net 666.12 after IATA share.
+
+### NEXT (Phase B remaining — MISSION MODEL, supersedes the older NEXT block above)
+- STAGE 5b: travel_overlay_engagements → travel_engagements (THE SPINE). Table rename +
+  compatibility view (21 inbound FKs, mig-13 technique). Its own trip_id → journey_id folds
+  in with Stage 6. parent_engagement_id stays.
+- STAGE 6: travel_trips → travel_journey (journey capability). trip_id → journey_id on
+  bookings, requests, overlay(spine), trip_guests; the 6 leaves' engagement_id → journey_id
+  (corrects the Stage-1 drift); reconsider leaf homes (briefs/days/destinations/route =
+  travel_journey_*; guests = ?). confirmed_engagement_id reconsider. The OLD standalone
+  Stage 4 (trip_id → engagement_id) is DISSOLVED — no collision remains; the trip_id rename
+  is trip_id → journey_id and folds into Stage 6.
+- STAGE 7: travel_engagement_aux_bookings → elements. FK RETARGET to the spine (an element
+  is engagement-scoped, not journey-scoped), not just a rename.
+- DEFERRED HONESTY PASS (Category Z): the { trip_id } API payload contract, tripId locals,
+  TripDayItem.trip_id, Trip* type fields. One both-sides sweep.
+- clone_engagement bedding_type gap; orphan fn update_travel_immerse_bottom_notes_updated_at.

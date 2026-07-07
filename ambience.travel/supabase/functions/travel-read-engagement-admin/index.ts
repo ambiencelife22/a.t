@@ -114,14 +114,14 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'list') {
       const { data, error } = await serviceClient
-        .from('travel_overlay_engagements')
+        .from('travel_engagements')
         .select(`
           id, url_id, title, audience, is_public_template,
           engagement_status_id, itinerary_status_id, sort_order, created_at,
           iteration_label, trip_id,
           engagement_status:travel_lifecycle_statuses(slug, label),
           itinerary_status:travel_itinerary_statuses(slug, label),
-          trip:travel_trips!travel_immerse_trips_trip_id_fkey(
+          trip:travel_trips!travel_engagements_trip_id_fkey(
             trip_code, public_title, start_date, primary_client_id,
             primary_client:global_people!travel_trips_primary_client_id_fkey(
               id, first_name, last_name, nickname
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
       const url_id = body?.url_id as string | undefined
       if (!url_id) return json({ error: 'url_id is required' }, 400)
       const { data, error } = await serviceClient
-        .from('travel_overlay_engagements')
+        .from('travel_engagements')
         .select('*')
         .eq('url_id', url_id)
         .maybeSingle()

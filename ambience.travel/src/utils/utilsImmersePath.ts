@@ -27,7 +27,7 @@ export function isImmerseHost(): boolean {
 }
 
 // Canonical engagement url_id shape: 11 alphanumeric chars.
-// Same regex enforced by the DB CHECK constraint on travel_overlay_engagements.url_id.
+// Same regex enforced by the DB CHECK constraint on travel_engagements.url_id.
 // Public templates use a 'pub' visual prefix that matches this regex too.
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 

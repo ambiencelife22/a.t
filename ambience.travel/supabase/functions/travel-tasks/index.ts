@@ -82,7 +82,7 @@ const TASK_SELECT_WITH_ENGAGEMENT = `
   assignee:global_team!travel_tasks_assigned_to_fkey(
     person:global_people!global_team_person_id_fkey(first_name, last_name, nickname)
   ),
-  engagement:travel_overlay_engagements!travel_tasks_engagement_id_fkey(title, url_id)
+  engagement:travel_engagements!travel_tasks_engagement_id_fkey(title, url_id)
 `
 
 function todayISO(): string { return new Date().toISOString().slice(0, 10) }

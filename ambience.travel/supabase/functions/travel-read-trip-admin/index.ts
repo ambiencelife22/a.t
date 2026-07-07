@@ -114,7 +114,7 @@ const winnerEngIds = [...new Set(
 const engStatusSlugByEngId = new Map<string, string>()
 if (winnerEngIds.length > 0) {
   const { data: engStatusRows } = await db
-    .from('travel_overlay_engagements')
+    .from('travel_engagements')
     .select('id, travel_lifecycle_statuses(slug)')
     .in('id', winnerEngIds)
   for (const e of (engStatusRows ?? []) as Array<{ id: string; travel_lifecycle_statuses: { slug: string } | { slug: string }[] | null }>) {
@@ -171,7 +171,7 @@ for (const t of tripRows) {
       .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_engagement_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
       .in('engagement_id', tripIds)
       .order('sort_order', { ascending: true }),
-    db.from('travel_overlay_engagements')
+    db.from('travel_engagements')
       .select('trip_id, url_id, hero_image_src, title')
       .in('trip_id', tripIds)
       .not('trip_id', 'is', null),
@@ -434,7 +434,7 @@ async function handleAuxBookings(db: SupabaseClient, tripId: string): Promise<Re
 
 async function handlePublicView(db: SupabaseClient, tripId: string): Promise<Response> {
   const { data, error } = await db
-    .from('travel_overlay_engagements')
+    .from('travel_engagements')
     .select('public_view')
     .eq('engagement_id', tripId)
     .single()
@@ -538,7 +538,7 @@ async function handleCalendar(
   const titleByEng = new Map<string, string>()
   if (engIds.length > 0) {
     const { data: engRows, error: engErr } = await db
-      .from('travel_overlay_engagements')
+      .from('travel_engagements')
       .select('id, title, travel_lifecycle_statuses(slug)')
       .in('id', engIds)
     if (engErr) return err('Failed to resolve engagement statuses', 500)
@@ -621,8 +621,8 @@ async function handleCalendar(
   const activitiesByJourney = new Map<string, Array<Record<string, unknown>>>()
   if (journeyIds.length > 0) {
     const { data: actData, error: actErr } = await db
-      .from('travel_overlay_engagements')
-      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, source_booking_id, source_aux_booking_id, travel_engagement_types!travel_overlay_engagements_engagement_type_id_fkey(slug, label)')
+      .from('travel_engagements')
+      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, source_booking_id, source_aux_booking_id, travel_engagement_types!travel_engagements_engagement_type_id_fkey(slug, label)')
       .in('parent_engagement_id', journeyIds)
       .not('activity_date', 'is', null)
       .order('activity_date', { ascending: true })

@@ -1,6 +1,6 @@
 /* EngagementDetailTab.tsx
  * Engagement detail/edit view for AmbienceAdmin.
- * Sectioned form mapping to all columns of travel_overlay_engagements.
+ * Sectioned form mapping to all columns of travel_engagements.
 * Person/Trip linkage via typeahead. Welcome letter overrides surface
  * canonical placeholder. Two removal paths: Archive (reversible, calm) and
  * Delete (irreversible, Danger Zone, financial-guarded via EF).

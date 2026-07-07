@@ -413,7 +413,7 @@ async function handleSetPublicView(
   publicView: boolean,
 ): Promise<Response> {
   const { error } = await db
-    .from('travel_overlay_engagements')
+    .from('travel_engagements')
     .update({ public_view: publicView })
     .eq('engagement_id', tripId)
   if (error) return json({ error: 'Failed to set public_view' }, 500)
