@@ -44,6 +44,28 @@ export type SectionRenderer = (
 
 // ── Proposal hero props (built from engagement) ──────────────────────────────
 function proposalHero(ctx: Extract<EngagementClientData, { stage: 'proposal' }>): ReactNode {
+  // Stay subpage (detail present): the DESTINATION's hero, read only from detail
+  // (whose image chain is override -> destination canon -> global, never the
+  // engagement). No engagement fallback on a subpage - overlay-seeded or
+  // destination canon, nothing borrowed. Journey top-level: the engagement hero.
+  const detail = ctx.detail
+  if (detail) {
+    return (
+      <ImmerseHero
+        guestName={detail.eyebrow}
+        titlePrefix=''
+        title={detail.title}
+        subtitle={detail.subtitle}
+        pills={detail.heroPills}
+        heroImageSrc={detail.heroImageSrc}
+        heroImageAlt={detail.heroImageAlt}
+        primaryHref='#hotels'
+        primaryLabel='View stays'
+        secondaryHref='#pricing'
+        secondaryLabel='Pricing overview'
+      />
+    )
+  }
   const eng = ctx.engagement
   const guestNameRendered = eng.heroEyebrowOverride ?? eng.clientName ?? ''
   return (
