@@ -554,3 +554,72 @@ content intact); OutlookTab Sharm (89aee7e3) commission 951.60, net 666.12 after
 - DEFERRED HONESTY PASS (Category Z): the { trip_id } API payload contract, tripId locals,
   TripDayItem.trip_id, Trip* type fields. One both-sides sweep.
 - clone_engagement bedding_type gap; orphan fn update_travel_immerse_bottom_notes_updated_at.
+
+### [ARC][DB] Phase B Stage 5b — travel_overlay_engagements → travel_engagements (THE SPINE)
+
+The spine gets its true, mission name. travel_overlay_engagements → travel_engagements —
+the service-agnostic engagement entity that carries engagement_type and that every
+capability module + cross-cutting concern hangs off. Live Supabase (table + ~18 name-lie
+constraints/indexes + 2 name-lie triggers renamed); 21 inbound FKs auto-followed the table
+rename. trip_id STAYS (→ travel_trips, Stage 6). parent_engagement_id (self-ref) stays.
+
+ZERO-DOWNTIME via the mig-13 compatibility-view technique — the mission bar "admin/client
+never in a broken state" made literal:
+  1. rename table
+  2. CREATE VIEW travel_overlay_engagements AS SELECT * FROM travel_engagements
+     (security_invoker=true) — deployed EFs keep reading the old name through the view
+  3. repoint 3 functions + 15 files → deploy 10 EFs
+  4. verify ALL surfaces green THROUGH the view (nothing can break — view is transparent)
+  5. DROP VIEW
+  6. re-verify WITHOUT the view (the drop is the moment a missed ref surfaces)
+Both verification stages green. The view earned its place — see the bug below, caught
+behind it rather than in front of guests.
+
+3 functions repointed: clone_engagement, derive_tasks_for_engagement,
+resolve_and_project_guest_label. Only BARE spine refs (travel_overlay_engagements) →
+travel_engagements; the child tables travel_overlay_engagement_* keep their names (they are
+overlay content, still correctly prefixed). 15 code files swapped; the substring-safety grep
+confirmed only child-table refs remained — the trailing 's' before end-of-token distinguishes
+the spine (travel_overlay_engagements) from its children (travel_overlay_engagement_*), so
+the sed matched the spine and left children untouched. No greedy-match damage.
+
+BUG SURFACED + FIXED — pre-existing latent, from the travel_immerse era (~2 rename campaigns
+ago), invisible until now:
+  travel-read-engagement-admin (list mode) embedded travel_trips in its .select() via a
+  PostgREST relationship HINT pinned to the constraint name travel_immerse_trips_trip_id_fkey
+  — a name that stopped existing when the immerse→overlay rename happened, and again at 5b.
+  The hint lived INSIDE a .select() template string, so tsc and every table-name grep were
+  blind to it (it is neither a table name nor a typed symbol). It only fired now because the
+  table rename changed how PostgREST resolves the embedding.
+  Root cause of the ambiguity: travel_engagements ↔ travel_trips has TWO FKs
+  (travel_engagements.trip_id → travel_trips, AND travel_trips.confirmed_engagement_id →
+  travel_engagements). With two relationships, PostgREST REQUIRES an explicit hint to
+  disambiguate — so the fix is not to drop the hint (first attempt — wrong, produced PGRST201
+  ambiguity) but to CORRECT it to the current constraint name:
+  travel_trips!travel_engagements_trip_id_fkey. (Stage 6 note: this hint updates AGAIN when
+  travel_trips → travel_journey renames that constraint.)
+  LESSON: PostgREST embed hints are constraint-name string literals inside .select() — a
+  THIRD invisible-to-tooling reference class alongside (1) loose invoke payload keys and
+  (2) pg_proc function bodies. After any table/constraint rename, grep .select() strings for
+  '!' hints AND old constraint/table stems (travel_immerse, travel_overlay_engagements_).
+  And: read the actual PGRST error (200 vs 201) rather than speculating — 200 = relationship
+  not found (stale hint), 201 = ambiguous (needs a hint). They point to opposite fixes.
+
+Verified live post-view-drop: #admin/trips renders; Yazeed v3 proposal renders; guest brief
++ programme on trip 1d680dcc render with 6 flights (the _shared/trip.ts guest path);
+OutlookTab Sharm (89aee7e3) commission 951.60, net 666.12.
+
+### NEXT (Phase B remaining)
+- STAGE 6: travel_trips → travel_journey (the journey capability module). trip_id → journey_id
+  on bookings, requests, travel_engagements(spine), trip_guests; the 6 leaves' engagement_id →
+  journey_id (corrects the Stage-1 drift); reconsider leaf homes (briefs/days/destinations/
+  route/welcome = travel_journey_*; guests = ?). confirmed_engagement_id reconsider. UPDATE the
+  travel-read-engagement-admin embed hints (both the trip: and primary_client: hints reference
+  travel_trips constraints that rename here). The OLD standalone Stage 4 is DISSOLVED — the
+  trip_id rename is trip_id → journey_id, folded into Stage 6.
+- STAGE 7: travel_engagement_aux_bookings → elements (FK retarget to the spine).
+- DEFERRED HONESTY PASS (Category Z): { trip_id } payload contract, tripId locals,
+  TripDayItem.trip_id, Trip* type fields. Plus the travel_immerse comment strings (5 harmless
+  doc comments found in 5b grep). One both-sides sweep.
+- clone_engagement bedding_type gap; orphan fn update_travel_immerse_bottom_notes_updated_at
+  (references a non-existent table — verify + drop).
