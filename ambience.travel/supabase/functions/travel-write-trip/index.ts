@@ -96,7 +96,7 @@ async function resolveRoomRow(
     const { data: brief } = await db
       .from('travel_journey_briefs')
       .select('prepared_for')
-      .eq('engagement_id', booking.trip_id as string)
+      .eq('journey_id', booking.trip_id as string)
       .maybeSingle()
     partyLabel = (brief?.prepared_for as string | null) ?? null
   }
@@ -121,14 +121,14 @@ async function handleUpsertBrief(
     const { data: existing } = await db
       .from('travel_journey_briefs')
       .select('id')
-      .eq('engagement_id', tripId)
+      .eq('journey_id', tripId)
       .maybeSingle()
 
     if (!existing) {
       const { data: dest } = await db
         .from('travel_journey_destinations')
         .select('global_destinations!travel_journey_destinations_dest_fkey(name)')
-        .eq('engagement_id', tripId)
+        .eq('journey_id', tripId)
         .order('sort_order', { ascending: true })
         .limit(1)
         .maybeSingle()
@@ -142,7 +142,7 @@ async function handleUpsertBrief(
 
   const { data, error } = await db
     .from('travel_journey_briefs')
-    .upsert({ engagement_id: tripId, house_id: houseId, ...patch }, { onConflict: 'engagement_id' })
+    .upsert({ journey_id: tripId, house_id: houseId, ...patch }, { onConflict: 'journey_id' })
     .select()
     .single()
   if (error) return json({ error: 'Failed to upsert brief' }, 500)
@@ -338,7 +338,7 @@ async function handleUpsertDay(
 ): Promise<Response> {
   const { data, error } = await db
     .from('travel_journey_days')
-    .upsert({ engagement_id: tripId, entry_date: entryDate, ...patch }, { onConflict: 'engagement_id,entry_date' })
+    .upsert({ journey_id: tripId, entry_date: entryDate, ...patch }, { onConflict: 'journey_id,entry_date' })
     .select()
     .single()
   if (error) return json({ error: 'Failed to upsert day' }, 500)
@@ -352,7 +352,7 @@ async function handleCreateDayEntry(
 ): Promise<Response> {
   const { data, error } = await db
     .from('travel_journey_day_entries')
-    .insert({ ...entry, engagement_id: tripId })
+    .insert({ ...entry, journey_id: tripId })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create day entry' }, 500)
@@ -388,7 +388,7 @@ async function handleUpsertWelcomeLetter(
   tripId: string,
   letter: Record<string, unknown>,
 ): Promise<Response> {
-  const row = { ...letter, engagement_id: tripId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
+  const row = { ...letter, journey_id: tripId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
   const { data, error } = await db
     .from('travel_journey_welcome_letters')
     .upsert(row, { onConflict: 'id' })
@@ -415,7 +415,7 @@ async function handleSetPublicView(
   const { error } = await db
     .from('travel_engagements')
     .update({ public_view: publicView })
-    .eq('engagement_id', tripId)
+    .eq('id', tripId)
   if (error) return json({ error: 'Failed to set public_view' }, 500)
   return json({ success: true })
 }

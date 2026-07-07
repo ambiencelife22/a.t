@@ -85,7 +85,7 @@ export async function fetchTripCore(
 
     db.from('travel_journey_briefs')
       .select(`
-        id, engagement_id, house_id, brief_title, brief_subtitle, prepared_for,
+        id, engagement_id:journey_id, house_id, brief_title, brief_subtitle, prepared_for,
         hero_image_src, hero_image_alt, logo_variant,
         snapshot_destination, snapshot_dates, snapshot_guests, snapshot_status,
         journey_steps, advisor_name, advisor_email, advisor_phone,
@@ -97,7 +97,7 @@ export async function fetchTripCore(
         contact_person_ids, contact_name_format,
         created_at, updated_at
       `)
-      .eq('engagement_id', tripId)
+      .eq('journey_id', tripId)
       .maybeSingle(),
 
     db.from('a_houses')
@@ -106,8 +106,8 @@ export async function fetchTripCore(
       .single(),
 
     db.from('travel_journey_destinations')
-      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
-      .eq('engagement_id', tripId)
+      .select('id, engagement_id:journey_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+      .eq('journey_id', tripId)
       .order('sort_order', { ascending: true }),
   ])
 

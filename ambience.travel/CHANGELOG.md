@@ -673,3 +673,80 @@ move on". The live path was route → ImmerseEngagementSurface (activeDestSlug b
 ImmerseDetailPage → SECTION_RENDERERS; the fix belonged in the renderer the whole time. Also:
 a stale code COMMENT ("stay sections return null until Stage B") was false — the cutover had
 happened. Trust the running page, not the comment.
+
+### [ARC][DB] Phase B Stage 6 · PHASE 1 — travel_trips → travel_journey (view-protected renames)
+
+The journey capability gets its true name. Stage 6 = FULL MISSION (D: "mission mission mission"),
+split into two sequenced phases within the one stage because column renames can't be compat-view
+protected the way table renames can. PHASE 1 = everything a view CAN cover.
+
+RENAMED (Phase 1, all live, compat-view protected):
+- travel_trips → travel_journey (the journey module: destinations/route/days/brief — NOT the
+  spine, NOT dissolved). + name-lie constraints/indexes → travel_journey_* (pkey, code_key,
+  primary_client, confirmed_engagement, payment_status_check, 4 idx).
+- Own columns: trip_code→journey_code, trip_type→journey_type, trip_format→journey_format.
+- 5 journey-leaf tables → travel_journey_* AND their engagement_id → journey_id (correcting the
+  Stage-1 drift where leaves said engagement_id but pointed at travel_trips):
+  travel_engagement_{briefs,days,day_entries,destinations,welcome_letters} → travel_journey_*.
+- travel_trip_guests → travel_journey_guests, trip_id→journey_id (1-row table, 0 code refs;
+  renamed for consistency; guests-model spine-vs-journey ownership = deferred deliberate call).
+
+DEFERRED TO PHASE 2 (un-viewable column renames): trip_id → journey_id on travel_bookings,
+travel_requests, travel_engagements (spine). These base-table columns can't be aliased back by a
+view (the old name is simply gone), so they land AFTER caller redeploy — no live-break window.
+Plus the { trip_id } → { journey_id } payload contract sweep and the embed constraint-name hints.
+
+STAYS (honest nouns — full mission means NOT renaming these): destinations[] (a list of
+destinations), payment_status, confirmed_engagement_id, public_title/subtitle. And
+travel_engagement_aux_bookings UNTOUCHED — it becomes a spine ELEMENT in Stage 7 (retargets the
+engagement, not the journey); renaming here = a lie torn out next stage. a_house_destinations
+(house-history table, different meaning) NOT touched — grep false-positive.
+
+COMPAT VIEW TECHNIQUE, extended for columns: the main-table view aliases renamed columns back
+(journey_code AS trip_code); the leaf views alias journey_id AS engagement_id. For CALLERS
+repointed to the base tables, PostgREST select-aliasing carries the old field name on reads
+(select 'engagement_id:journey_id, ...') so consumers reading .engagement_id keep working, while
+.eq/.in/.insert/.upsert/onConflict use the real journey_id. This split (alias on projection, real
+column on predicate/write) is the Phase-1 minimal-correct fix; full field-name honesty is the
+Phase-2 payload sweep.
+
+TWO LESSONS (both cost cycles, both worth banking):
+
+1. COLUMN-RENAME RIPPLE IS WIDER THAN THE TABLE NAME. The first caller sweep carried table names
+   and trip_code but MISSED engagement_id → journey_id on the 5 leaf tables — every leaf .select/
+   .eq/.insert still said engagement_id, a dead column on the renamed base tables. Surfaced as the
+   Austria (kF4nP8wRm2x) delivery hero vanishing (destinations query returned empty → no
+   destinations[0] → no hero). A column rename ripples to: every .select naming it, every .eq/.in
+   filter, every insert/upsert payload key, every onConflict, AND the result-type + consumer reads.
+   COMPLETENESS CHECK after any column rename:
+     grep "\.eq('OLDCOL'\|\.in('OLDCOL'\|OLDCOL:\|onConflict: 'OLDCOL"  across the caller set,
+   then CLASSIFY each hit by the table it sits on — the same column name is CORRECT on unrenamed
+   tables (aux_bookings.engagement_id, bookings.engagement_id, the spine's confirmed_engagement_id).
+   Blanket sed is unsafe; change only the renamed-table accesses.
+
+2. A RENAME SURFACES PRE-EXISTING BUGS. handleSetPublicView + handlePublicView queried
+   travel_engagements (the spine) with .eq('engagement_id', tripId) — but the spine's key is `id`,
+   it has no engagement_id column. This was ALREADY WRONG before Stage 6 (silent — public_view
+   toggle likely no-opped) and only got noticed during the engagement_id audit. Fixed to
+   .eq('id', tripId). Renames are a free audit of every column reference — read them, don't just
+   mechanically swap.
+
+VERIFICATION DISCIPLINE reaffirmed: exact-string replacement across multi-line query chains is
+FRAGILE (indentation / intervening .select() lines caused several NOT-FOUND misses). The
+grep-after-every-edit (not tsc — these are runtime column strings tsc can't see) is THE check.
+tsc green ≠ applied. Prove the fix pattern on ONE file (here _shared/trip.ts, the guest hero path)
++ deploy + eyeball the live surface BEFORE scaling to the rest.
+
+Verified through views: #admin/trips; guest brief+programme on 1d680dcc (6 flights); Sharm
+89aee7e3 951.60/666.12; Austria kF4nP8wRm2x destinations resolve; admin leaf writes; Yazeed
+proposal. (Austria hero, if still absent with destinations populating, is a genuine unseeded
+case per the override-or-canon-nothing rule — content, not code.)
+
+### NEXT — Stage 6 PHASE 2
+trip_id → journey_id on travel_bookings / travel_requests / travel_engagements (+ constraints,
+indexes). The { trip_id } → { journey_id } payload contract across the admin write/read surface
+(~25 mode payloads in queriesAdminTrip + EF handlers reading body.trip_id — tsc-BLIND, per-surface
+verify, deploy frontend+EF lockstep). Update embed hints: travel-read-expenses (travel_journey!
+journey_id) + travel-read-engagement-admin (travel_journey!travel_engagements_journey_id_fkey).
+Then DROP all compat views + re-verify. Sequenced after caller redeploy so the un-viewable column
+renames have no live-break window.

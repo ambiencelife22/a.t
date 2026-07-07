@@ -160,7 +160,7 @@ for (const t of tripRows) {
       .single(),
     db.from('travel_journey_briefs')
       .select('*')
-      .in('engagement_id', tripIds),
+      .in('journey_id', tripIds),
     bookingIds.length > 0
       ? db.from('travel_booking_rooms')
           .select('*')
@@ -168,8 +168,8 @@ for (const t of tripRows) {
           .order('sort_order', { ascending: true })
       : Promise.resolve({ data: [], error: null }),
     db.from('travel_journey_destinations')
-      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
-      .in('engagement_id', tripIds)
+      .select('id, engagement_id:journey_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+      .in('journey_id', tripIds)
       .order('sort_order', { ascending: true }),
     db.from('travel_engagements')
       .select('trip_id, url_id, hero_image_src, title')
@@ -233,7 +233,7 @@ async function handleBrief(db: SupabaseClient, tripId: string): Promise<Response
   const { data, error } = await db
     .from('travel_journey_briefs')
     .select('*')
-    .eq('engagement_id', tripId)
+    .eq('journey_id', tripId)
     .maybeSingle()
   if (error) return err('Failed to fetch brief', 500)
   return ok({ brief: data ?? null })
@@ -370,7 +370,7 @@ async function handleDays(db: SupabaseClient, tripId: string): Promise<Response>
   // Days are DERIVED from trip span; travel_journey_days is overlay-only.
   const [{ data: trip, error: tripErr }, { data: overlay, error: ovErr }] = await Promise.all([
     db.from('travel_journey').select('start_date, end_date').eq('id', tripId).maybeSingle(),
-    db.from('travel_journey_days').select('id, engagement_id, entry_date, show, day_label, day_note').eq('engagement_id', tripId),
+    db.from('travel_journey_days').select('id, engagement_id:journey_id, entry_date, show, day_label, day_note').eq('journey_id', tripId),
   ])
   if (tripErr || ovErr) return err('Failed to fetch days', 500)
   const days = buildDays(
@@ -386,7 +386,7 @@ async function handleWelcomeLetters(db: SupabaseClient, tripId: string): Promise
   const { data, error } = await db
     .from('travel_journey_welcome_letters')
     .select('*')
-    .eq('engagement_id', tripId)
+    .eq('journey_id', tripId)
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch welcome letters', 500)
   return ok({ letters: data ?? [] })
@@ -396,7 +396,7 @@ async function handleDayEntries(db: SupabaseClient, tripId: string): Promise<Res
   const { data, error } = await db
     .from('travel_journey_day_entries')
     .select('*')
-    .eq('engagement_id', tripId)
+    .eq('journey_id', tripId)
     .order('entry_date', { ascending: true })
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch day entries', 500)
@@ -436,7 +436,7 @@ async function handlePublicView(db: SupabaseClient, tripId: string): Promise<Res
   const { data, error } = await db
     .from('travel_engagements')
     .select('public_view')
-    .eq('engagement_id', tripId)
+    .eq('id', tripId)
     .single()
   if (error || !data) return ok({ publicView: false })
   return ok({ publicView: !!(data as { public_view: boolean }).public_view })
@@ -737,7 +737,7 @@ async function partyLabelForTrip(db: SupabaseClient, tripId: string | null): Pro
   const { data } = await db
     .from('travel_journey_briefs')
     .select('prepared_for')
-    .eq('engagement_id', tripId)
+    .eq('journey_id', tripId)
     .maybeSingle()
   return (data?.prepared_for as string | null) ?? null
 }
