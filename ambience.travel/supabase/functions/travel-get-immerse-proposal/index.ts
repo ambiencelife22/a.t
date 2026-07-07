@@ -26,27 +26,23 @@
 //   { error: 'Not found' }
 //
 // Key fix vs old client-side code: fetchEngagementDestRow matches on
-//   trip_id + global_destination_id ONLY — no destination_url_slug filter.
+//   engagement_id + global_destination_id ONLY — no destination_url_slug filter.
 //   The old code's `IS NULL` filter on url_slug caused subpages to fail
 //   when dest_rows had a non-null url_slug set for routing purposes.
 //
 // Deployed at: /functions/v1/travel-get-immerse-proposal
 // Created: S53H — consolidation of 20+ client-side anon queries into one EF.
+// S53O — brought onto the shared service-client factory + shared json/preflight
+//   (was still on inline makeDb() + hand-rolled ok()/err() — missed by the
+//   S53H Batch 2 sweep). Bespoke public url_id auth preserved (no admin gate).
+//   Overlay rename in progress: travel_immerse_* -> travel_overlay_* (Phase A);
+//   this EF is the sole reader of most overlay tables and repoints per migration.
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, preflight } from '../_shared/http.ts'
+import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createServiceClient } from '../_shared/client.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 const URL_ID_RE = /^[A-Za-z0-9]{11}$/
-
-// ── DB init ───────────────────────────────────────────────────────────────────
-
-function makeDb() {
-  return createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SERVICE_ROLE_KEY') ?? '',
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  )
-}
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
@@ -61,10 +57,10 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!url_id || !URL_ID_RE.test(url_id)) {
-      return err(400, 'Invalid url_id')
+      return json({ error: 'Invalid url_id' }, 400)
     }
 
-    const db = makeDb()
+    const db = createServiceClient()
 
     // ── Gate: fetch + visibility ───────────────────────────────────────────────
     const { data: engRow, error: engErr } = await db
@@ -73,44 +69,28 @@ Deno.serve(async (req: Request) => {
       .eq('url_id', url_id)
       .single()
 
-    if (engErr || !engRow) return err(404, 'Not found')
-    if (!engRow.public_view) return err(403, 'not_public')
+    if (engErr || !engRow) return json({ error: 'Not found' }, 404)
+    if (!engRow.public_view) return json({ error: 'not_public' }, 403)
 
     // ── Overview payload (always built — needed for nav on subpages too) ───────
     const engagementId = engRow.id as string
     const engagement   = await buildEngagementPayload(db, engRow)
 
     if (!destination_slug) {
-      return ok({ mode: 'overview', engagement })
+      return json({ mode: 'overview', engagement })
     }
 
     // ── Subpage payload ────────────────────────────────────────────────────────
     const destination = await buildDestinationPayload(db, engagementId, destination_slug)
-    if (!destination) return err(404, 'Destination not found')
+    if (!destination) return json({ error: 'Destination not found' }, 404)
 
-    return ok({ mode: 'subpage', engagement, destination })
+    return json({ mode: 'subpage', engagement, destination })
 
   } catch (e) {
     console.error('travel-get-immerse-proposal error:', e)
-    return err(500, 'Internal server error')
+    return json({ error: 'Internal server error' }, 500)
   }
 })
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function ok(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-function err(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
 
 // ── Engagement column list ────────────────────────────────────────────────────
 
@@ -682,7 +662,7 @@ async function fetchCards(
 
   const [diningRes, expRes] = await Promise.all([
     slugFilter(
-      db.from('travel_immerse_engagement_content_card_selections')
+      db.from('travel_overlay_engagement_content_card_selections')
         .select(`
           sort_order, dining_venue_id,
           travel_dining_venues!inner (
@@ -698,7 +678,7 @@ async function fetchCards(
         .order('sort_order')
     ),
     slugFilter(
-      db.from('travel_immerse_engagement_content_card_selections')
+      db.from('travel_overlay_engagement_content_card_selections')
         .select(`
           sort_order, experience_id,
           travel_experiences!inner (
@@ -736,7 +716,7 @@ async function fetchCards(
 
   const overrideQueries: Promise<{ data: Record<string, unknown>[] | null }>[] = []
   if (diningIds.length) overrideQueries.push(
-    db.from('travel_immerse_engagement_content_card_overrides')
+    db.from('travel_overlay_engagement_content_card_overrides')
       .select(`dining_venue_id, experience_id, kicker_override, name_override, tagline_override,
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,
@@ -744,7 +724,7 @@ async function fetchCards(
       .eq('engagement_id', engagementId).eq('is_active', true).in('dining_venue_id', diningIds) as any
   )
   if (expIds.length) overrideQueries.push(
-    db.from('travel_immerse_engagement_content_card_overrides')
+    db.from('travel_overlay_engagement_content_card_overrides')
       .select(`dining_venue_id, experience_id, kicker_override, name_override, tagline_override,
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,
@@ -799,7 +779,7 @@ async function fetchPricingRows(
   tripDestinationRowId: string,
 ) {
   const { data } = await db
-    .from('travel_immerse_destination_pricing_rows')
+    .from('travel_overlay_destination_pricing_rows')
     .select('id, item, basis, stay, indicative_range, sort_order')
     .eq('trip_destination_row_id', tripDestinationRowId)
     .order('sort_order')
