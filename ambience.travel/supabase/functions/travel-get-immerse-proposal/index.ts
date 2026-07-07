@@ -123,7 +123,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .select('house_display_name')
       .eq('engagement_id', engagementId)
       .maybeSingle(),
-    db.from('travel_immerse_route_stops')
+    db.from('travel_overlay_route_stops')
       .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id, nights')
       .eq('engagement_id', engagementId)
       .order('sort_order'),
@@ -137,7 +137,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .eq('engagement_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
-    db.from('travel_immerse_engagement_pricing_rows')
+    db.from('travel_overlay_engagement_pricing_rows')
       .select(`
         id, sort_order, recommended_basis, stay_label, indicative_range,
         global_destinations ( slug, name )

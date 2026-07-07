@@ -1,5 +1,5 @@
 /* RouteStopsEditor.tsx
- * Editor for travel_immerse_route_stops. Mounts inside EngagementDetailTab,
+ * Editor for travel_overlay_route_stops. Mounts inside EngagementDetailTab,
  * paired with the engagement-level Route Section copy block.
  *
  * Shape:

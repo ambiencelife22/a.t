@@ -1,7 +1,7 @@
 // adminRouteStopQueries.ts — Supabase reads/writes for the route stops
 // editor on engagement detail.
 // Owns: list / update / insert / delete / reorder rows on
-//       travel_immerse_route_stops.
+//       travel_overlay_route_stops.
 // Not owned: uploads (adminAssetQueries.ts), engagement-level queries
 //            (adminEngagementQueries.ts).
 //
@@ -34,7 +34,7 @@ export type RouteStop = {
 
 export async function fetchRouteStops(engagementId: string): Promise<RouteStop[]> {
   const { data, error } = await supabase
-    .from('travel_immerse_route_stops')
+    .from('travel_overlay_route_stops')
     .select('id, engagement_id, title, stay_label, note, image_src, image_alt, sort_order, destination_row_id, nights, created_at, updated_at')
     .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: true })
@@ -55,7 +55,7 @@ export async function updateRouteStop(
   delete clean.updated_at
 
   const { error } = await supabase
-    .from('travel_immerse_route_stops')
+    .from('travel_overlay_route_stops')
     .update(clean)
     .eq('id', id)
   if (error) throw error
@@ -75,7 +75,7 @@ export type RouteStopCreatePayload = {
 
 export async function insertRouteStop(payload: RouteStopCreatePayload): Promise<string> {
   const { data, error } = await supabase
-    .from('travel_immerse_route_stops')
+    .from('travel_overlay_route_stops')
     .insert({
       engagement_id:    payload.engagement_id,
       sort_order: payload.sort_order,
@@ -95,7 +95,7 @@ export async function insertRouteStop(payload: RouteStopCreatePayload): Promise<
 
 export async function deleteRouteStop(id: string): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_route_stops')
+    .from('travel_overlay_route_stops')
     .delete()
     .eq('id', id)
   if (error) throw error
@@ -110,7 +110,7 @@ export async function deleteRouteStop(id: string): Promise<void> {
 export async function reorderRouteStops(orderedIds: string[]): Promise<void> {
   for (let i = 0; i < orderedIds.length; i++) {
     const { error } = await supabase
-      .from('travel_immerse_route_stops')
+      .from('travel_overlay_route_stops')
       .update({ sort_order: i })
       .eq('id', orderedIds[i])
     if (error) throw error
@@ -121,7 +121,7 @@ export async function reorderRouteStops(orderedIds: string[]): Promise<void> {
 
 export async function fetchMaxRouteStopSortOrder(engagementId: string): Promise<number> {
   const { data, error } = await supabase
-    .from('travel_immerse_route_stops')
+    .from('travel_overlay_route_stops')
     .select('sort_order')
     .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: false })
