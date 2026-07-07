@@ -1,7 +1,7 @@
 // adminDestinationRowQueries.ts — Supabase reads/writes for the destination
 // rows editor on engagement detail.
 // Owns: list / update / insert / delete / reorder rows on
-//       travel_immerse_engagement_destination_rows. Search canonical destinations
+//       travel_overlay_engagement_destination_rows. Search canonical destinations
 //       for the add-destination picker.
 // Not owned: storage path composition (storagePath.ts), uploads
 //            (adminAssetQueries.ts), engagement-level queries
@@ -80,7 +80,7 @@ export async function fetchDestinationRows(
   engagementId: string,
 ): Promise<DestinationRow[]> {
   const { data, error } = await supabase
-    .from('travel_immerse_engagement_destination_rows')
+    .from('travel_overlay_engagement_destination_rows')
     .select(`
       *,
       global_destination:global_destinations!global_destination_id (
@@ -115,7 +115,7 @@ export async function updateDestinationRow(
   delete clean.destination_name
 
   const { error } = await supabase
-    .from('travel_immerse_engagement_destination_rows')
+    .from('travel_overlay_engagement_destination_rows')
     .update(clean)
     .eq('id', id)
   if (error) throw error
@@ -135,7 +135,7 @@ export async function insertDestinationRow(
   payload: AddDestinationPayload,
 ): Promise<string> {
   const { data, error } = await supabase
-    .from('travel_immerse_engagement_destination_rows')
+    .from('travel_overlay_engagement_destination_rows')
     .insert({
       engagement_id:               payload.engagement_id,
       global_destination_id: payload.global_destination_id,
@@ -153,7 +153,7 @@ export async function insertDestinationRow(
 
 export async function deleteDestinationRow(id: string): Promise<void> {
   const { error } = await supabase
-    .from('travel_immerse_engagement_destination_rows')
+    .from('travel_overlay_engagement_destination_rows')
     .delete()
     .eq('id', id)
   if (error) throw error
@@ -173,7 +173,7 @@ export async function reorderDestinationRows(
   // Run sequentially to keep error messages clean; volume is small (typically 5–8)
   for (let i = 0; i < orderedIds.length; i++) {
     const { error } = await supabase
-      .from('travel_immerse_engagement_destination_rows')
+      .from('travel_overlay_engagement_destination_rows')
       .update({ sort_order: i + 1 })
       .eq('id', orderedIds[i])
     if (error) throw error
@@ -213,7 +213,7 @@ export async function fetchMaxDestinationSortOrder(
   engagementId: string,
 ): Promise<number> {
   const { data, error } = await supabase
-    .from('travel_immerse_engagement_destination_rows')
+    .from('travel_overlay_engagement_destination_rows')
     .select('sort_order')
     .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: false })

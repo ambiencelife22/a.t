@@ -1,5 +1,5 @@
 /* DestinationRowsEditor.tsx
- * Editor for travel_immerse_engagement_destination_rows. Mounts inside
+ * Editor for travel_overlay_engagement_destination_rows. Mounts inside
  * EngagementDetailTab below the engagement-level fields.
  *
  * Shape:

@@ -106,7 +106,7 @@ export async function fetchCanonicalRoomsForEngagement(
 ): Promise<CanonicalRoom[]> {
   // Derive which hotels are featured in this engagement via trip_destination_hotels
   const { data: hotelSlots, error: hotelErr } = await supabase
-    .from('travel_immerse_engagement_destination_hotels')
+    .from('travel_overlay_engagement_destination_hotels')
     .select('hotel_id')
     .eq('engagement_id', engagementId)
 

@@ -127,7 +127,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id, nights')
       .eq('engagement_id', engagementId)
       .order('sort_order'),
-    db.from('travel_immerse_engagement_destination_rows')
+    db.from('travel_overlay_engagement_destination_rows')
       .select(`
         id, sort_order, number_label, title, mood, summary, stay_label, nights,
         image_src, image_alt, subpage_status, destination_url_slug,
@@ -253,7 +253,7 @@ async function buildDestinationPayload(
   //    This handles destinations with multiple rows (e.g. newyork + newyork2)
   //    without .maybeSingle() failing on >1 result.
   const destRowQuery = db
-    .from('travel_immerse_engagement_destination_rows')
+    .from('travel_overlay_engagement_destination_rows')
     .select(`
       id,
       global_destination_id,
@@ -343,7 +343,7 @@ async function fetchFlatHotels(
   urlSlug:       string | null,
 ) {
   const { data } = await db
-    .from('travel_immerse_engagement_destination_hotels')
+    .from('travel_overlay_engagement_destination_hotels')
     .select(`
       id, hotel_id, rank, rank_label, bullets,
       stay_label, sort_order, resort_map_src,
