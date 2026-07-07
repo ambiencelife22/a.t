@@ -381,3 +381,48 @@ dual-column collision; travel_overlay_engagements→travel_engagement_iterations
 Working but name-lying, rename in a single pass (not piecemeal): tripId/trip_id locals; the
 { trip_id } API payload contract between queriesAdminTrip.ts and the trip EFs (both sides
 atomically); TripDayItem.trip_id in _shared/days.ts; Trip* TS type field names.
+
+### [ARC][DB] Phase B Stage 3a — 12 overlay tables engagement_id → iteration_id
+
+Stage 3 splits (decided this session): 3a = the 12 travel_overlay_* proposal-surface
+tables; 3b = the 7 non-overlay children (bookings, expenses, houses, links, requests,
+tasks, time_entries). Scope clarification worth recording: "Stage 3" is every
+engagement_id column pointing at travel_overlay_engagements — 19 tables, not 12. The
+split is by verification surface (3a → guest proposal page; 3b → financial/tasks +
+pre-satisfies the Stage 4 bookings/requests collision), NOT a half-state: neither
+sub-stage ships as "done" until both land.
+
+3a renamed engagement_id → iteration_id on all 12 overlay tables (column + FK
+constraints + indexes; live Supabase, invisible to git). Table names stay
+travel_overlay_* — they hang off an iteration, and the column now says so. The FK
+target (travel_overlay_engagements) keeps its name until Stage 5; iteration_id →
+legacy-named-target is a transient honest-column state, resolved then. 63-byte care:
+content_card_overrides FK → shortened stem overlay_card_overrides_iteration_id_fkey.
+Per-index nuance: on tables whose NAME contains "engagement" (engagement_pricing,
+engagement_regions), only the column-half of index names → iteration.
+
+Grammar decision — Option B, not the minimal X-only rename: DB column + DB-facing refs
+AND the TS type fields + payload keys all → iteration_id. Rationale (mission, "fix the
+callers, don't loosen the truth"): for these overlay tables the type fields ARE Stage
+3's subject — renaming only the DB column and leaving the types saying engagement_id
+would mint a fresh name-lie in the exact work meant to end it. The deferred Stage-1
+trip_id honesty debt stays separate (different names). tsc enforced completeness: after
+the 5 query files renamed their payload types, tsc caught 7 unaligned callers across 5
+admin editor components — the type contract doing the finding, which is the point.
+
+DB functions repointed: clone_engagement (all 12 overlay INSERT column lists + WHERE
+filters → iteration_id; trip_id + parent_engagement_id preserved for their later
+stages), resolve_and_project_guest_label (display INSERT + ON CONFLICT → iteration_id;
+its travel_engagement_houses.engagement_id ref correctly LEFT — that's 3b).
+derive_tasks_for_engagement verified clean — it touches travel_overlay_engagements only
+by id/parent_engagement_id and writes travel_tasks.engagement_id (3b), no 12-overlay
+column refs. travel-get-immerse-proposal + travel-read-engagement-admin redeployed
+(the 5 query files write overlays directly — no write-EF pairing needed).
+
+Verified on live proposal oQC68jVKgcm: destination subpage renders full (hotel options,
+rooms, dining/experience cards, subpage pricing, galleries — the dense overlay surface),
+clean inspector.
+
+Stage 3b next (the 7 children); then Stage 4 = leftover trip_id → engagement_id on
+bookings/requests only (3b pre-frees the engagement_id name on those two per the
+collision rule).
