@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase'
 
 export type RouteStop = {
   id:                 string
-  engagement_id:            string
+  iteration_id:            string
   sort_order:         number
   title:              string | null
   stay_label:         string | null
@@ -35,8 +35,8 @@ export type RouteStop = {
 export async function fetchRouteStops(engagementId: string): Promise<RouteStop[]> {
   const { data, error } = await supabase
     .from('travel_overlay_route_stops')
-    .select('id, engagement_id, title, stay_label, note, image_src, image_alt, sort_order, destination_row_id, nights, created_at, updated_at')
-    .eq('engagement_id', engagementId)
+    .select('id, iteration_id, title, stay_label, note, image_src, image_alt, sort_order, destination_row_id, nights, created_at, updated_at')
+    .eq('iteration_id', engagementId)
     .order('sort_order', { ascending: true })
   if (error) throw error
   return (data ?? []) as RouteStop[]
@@ -50,7 +50,7 @@ export async function updateRouteStop(
 ): Promise<void> {
   const clean: Record<string, unknown> = { ...payload }
   delete clean.id
-  delete clean.engagement_id
+  delete clean.iteration_id
   delete clean.created_at
   delete clean.updated_at
 
@@ -64,7 +64,7 @@ export async function updateRouteStop(
 // ── Insert ────────────────────────────────────────────────────────────────────
 
 export type RouteStopCreatePayload = {
-  engagement_id:     string
+  iteration_id:     string
   sort_order:  number
   title?:      string | null
   stay_label?: string | null
@@ -77,7 +77,7 @@ export async function insertRouteStop(payload: RouteStopCreatePayload): Promise<
   const { data, error } = await supabase
     .from('travel_overlay_route_stops')
     .insert({
-      engagement_id:    payload.engagement_id,
+      iteration_id:    payload.iteration_id,
       sort_order: payload.sort_order,
       title:      payload.title      ?? null,
       stay_label: payload.stay_label ?? null,
@@ -123,7 +123,7 @@ export async function fetchMaxRouteStopSortOrder(engagementId: string): Promise<
   const { data, error } = await supabase
     .from('travel_overlay_route_stops')
     .select('sort_order')
-    .eq('engagement_id', engagementId)
+    .eq('iteration_id', engagementId)
     .order('sort_order', { ascending: false })
     .limit(1)
     .maybeSingle()

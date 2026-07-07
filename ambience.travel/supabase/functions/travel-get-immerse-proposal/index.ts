@@ -26,7 +26,7 @@
 //   { error: 'Not found' }
 //
 // Key fix vs old client-side code: fetchEngagementDestRow matches on
-//   engagement_id + global_destination_id ONLY — no destination_url_slug filter.
+//   iteration_id + global_destination_id ONLY — no destination_url_slug filter.
 //   The old code's `IS NULL` filter on url_slug caused subpages to fail
 //   when dest_rows had a non-null url_slug set for routing purposes.
 //
@@ -121,11 +121,11 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
   const [displayRes, stopsRes, destRowsRes, pricingRes, welcomeRes, linksRes] = await Promise.all([
     db.from('travel_overlay_engagement_display')
       .select('house_display_name')
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .maybeSingle(),
     db.from('travel_overlay_route_stops')
       .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id, nights')
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .order('sort_order'),
     db.from('travel_overlay_engagement_destination_rows')
       .select(`
@@ -134,7 +134,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
         hero_eyebrow_override,
         global_destinations ( slug, name, hero_image_src, hero_image_alt )
       `)
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .neq('subpage_status', 'hidden')
       .order('sort_order'),
     db.from('travel_overlay_engagement_pricing_rows')
@@ -142,7 +142,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
         id, sort_order, recommended_basis, stay_label, indicative_range,
         global_destinations ( slug, name )
       `)
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .order('sort_order'),
     db.from('travel_welcome_letter')
       .select('eyebrow, title, body, signoff_body, signoff_name')
@@ -150,7 +150,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .maybeSingle(),
     db.from('travel_engagement_links')
       .select('id, link_type, label, url, sort_order, is_highlighted')
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .eq('is_active', true)
       .eq('show_on_proposal', true)
       .order('sort_order', { ascending: true }),
@@ -271,7 +271,7 @@ async function buildDestinationPayload(
       pricing_closer_stay_override, pricing_closer_indicative_range_override,
       destination_url_slug
     `)
-    .eq('engagement_id', engagementId)
+    .eq('iteration_id', engagementId)
     .eq('global_destination_id', globalDestinationId)
 
   const { data: destRow } = await (isVariant
@@ -353,7 +353,7 @@ async function fetchFlatHotels(
         bullets, michelin_keys
       )
     `)
-    .eq('engagement_id', engagementId)
+    .eq('iteration_id', engagementId)
     .eq('destination_id', destinationId)
     .eq('is_active', true)
     .order('sort_order')
@@ -383,7 +383,7 @@ async function fetchRegionGroups(
   const [tripRegionsRes, regionHotelsRes] = await Promise.all([
     db.from('travel_overlay_engagement_regions')
       .select('region_id, rank, rank_label, bullets, stay_label, sort_order')
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .eq('is_active', true)
       .in('region_id', regionIds),
     db.from('travel_overlay_engagement_region_hotels')
@@ -396,7 +396,7 @@ async function fetchRegionGroups(
           bullets, michelin_keys
         )
       `)
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .eq('is_active', true)
       .in('region_id', regionIds)
       .order('sort_order'),
@@ -506,7 +506,7 @@ async function fetchRoomsForHotels(
       sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override,
       sort_order, bedding_type
     `)
-    .eq('engagement_id', engagementId)
+    .eq('iteration_id', engagementId)
     .eq('is_active', true)
     .in('room_id', canonIds)
     .order('sort_order')
@@ -590,7 +590,7 @@ async function fetchHotelGallery(
       .order('sort_order'),
     db.from('travel_overlay_engagement_hotel_gallery_overrides')
       .select('accom_hotel_id, sort_order, image_src')
-      .eq('engagement_id', engId)
+      .eq('iteration_id', engId)
       .in('accom_hotel_id', hotelIds),
   ])
 
@@ -671,7 +671,7 @@ async function fetchCards(
             image_credit, image_credit_url, image_license
           )
         `)
-        .eq('engagement_id', engagementId)
+        .eq('iteration_id', engagementId)
         .eq('is_active', true)
         .not('dining_venue_id', 'is', null)
         .eq('travel_dining_venues.global_destination_id', globalDestinationId)
@@ -687,7 +687,7 @@ async function fetchCards(
             image_credit, image_credit_url, image_license
           )
         `)
-        .eq('engagement_id', engagementId)
+        .eq('iteration_id', engagementId)
         .eq('is_active', true)
         .not('experience_id', 'is', null)
         .eq('travel_experiences.global_destination_id', globalDestinationId)
@@ -721,7 +721,7 @@ async function fetchCards(
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,
                image_credit_url_override, image_license_override`)
-      .eq('engagement_id', engagementId).eq('is_active', true).in('dining_venue_id', diningIds) as any
+      .eq('iteration_id', engagementId).eq('is_active', true).in('dining_venue_id', diningIds) as any
   )
   if (expIds.length) overrideQueries.push(
     db.from('travel_overlay_engagement_content_card_overrides')
@@ -729,7 +729,7 @@ async function fetchCards(
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,
                image_credit_url_override, image_license_override`)
-      .eq('engagement_id', engagementId).eq('is_active', true).in('experience_id', expIds) as any
+      .eq('iteration_id', engagementId).eq('is_active', true).in('experience_id', expIds) as any
   )
 
   const overrideResults = await Promise.all(overrideQueries)

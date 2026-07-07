@@ -15,7 +15,7 @@ export type CardKind = 'dining' | 'experience'
 
 export interface CardSelection {
   id:                          string
-  engagement_id:                     string
+  iteration_id:                     string
   sort_order:                  number
   is_active:                   boolean
   dining_venue_id:             string | null
@@ -89,7 +89,7 @@ interface OverrideRow {
 
 interface SelectionWithCanonRow {
   id:               string
-  engagement_id:          string
+  iteration_id:          string
   sort_order:       number
   is_active:        boolean
   dining_venue_id:  string | null
@@ -106,7 +106,7 @@ function shapeRow(
   const canon = isDining ? s.dining : s.experience
   return {
     id:         s.id,
-    engagement_id:    s.engagement_id,
+    iteration_id:    s.iteration_id,
     sort_order: s.sort_order,
     is_active:  s.is_active,
     dining_venue_id: s.dining_venue_id,
@@ -152,11 +152,11 @@ export async function fetchCardSelections(engagementId: string): Promise<CardSel
     supabase
       .from('travel_overlay_engagement_content_card_selections')
       .select(`
-        id, engagement_id, sort_order, is_active, dining_venue_id, experience_id,
+        id, iteration_id, sort_order, is_active, dining_venue_id, experience_id,
         dining:travel_dining_venues!dining_venue_id ( ${CANONICAL_FIELDS} ),
         experience:travel_experiences!experience_id ( ${CANONICAL_FIELDS} )
       `)
-      .eq('engagement_id', engagementId)
+      .eq('iteration_id', engagementId)
       .order('sort_order', { ascending: true }),
     supabase
       .from('travel_overlay_engagement_content_card_overrides')
@@ -167,7 +167,7 @@ export async function fetchCardSelections(engagementId: string): Promise<CardSel
         image_src_override, image_alt_override,
         image_credit_override, image_credit_url_override, image_license_override
       `)
-      .eq('engagement_id', engagementId),
+      .eq('iteration_id', engagementId),
   ])
 
   if (selectionRes.error) throw selectionRes.error
@@ -207,13 +207,13 @@ export async function updateSelection(
 }
 
 export async function insertSelection(args: {
-  engagement_id:    string
+  iteration_id:    string
   kind:       CardKind
   card_id:    string
   sort_order: number
 }): Promise<string> {
   const row: Record<string, unknown> = {
-    engagement_id:    args.engagement_id,
+    iteration_id:    args.iteration_id,
     sort_order: args.sort_order,
     is_active:  true,
   }
@@ -251,7 +251,7 @@ export async function reorderSelections(orderedIds: string[]): Promise<void> {
 // ── Override mutations ───────────────────────────────────────────────────────
 
 export async function upsertOverride(args: {
-  engagement_id:        string
+  iteration_id:        string
   kind:           CardKind
   card_id:        string
   override_id:    string | null
@@ -279,7 +279,7 @@ export async function upsertOverride(args: {
   }
 
   const insertRow: Record<string, unknown> = {
-    engagement_id:   args.engagement_id,
+    iteration_id:   args.iteration_id,
     is_active: true,
     ...args.fields,
   }

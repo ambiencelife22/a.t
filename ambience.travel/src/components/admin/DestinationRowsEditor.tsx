@@ -476,7 +476,7 @@ function AddDestinationModal({
     try {
       const sortOrder = await fetchMaxDestinationSortOrder(engagementId)
       await insertDestinationRow({
-        engagement_id:               engagementId,
+        iteration_id:               engagementId,
         global_destination_id: option.id,
         title:                 option.name,
         sort_order:            sortOrder,

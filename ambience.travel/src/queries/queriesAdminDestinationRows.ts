@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase'
 
 export type DestinationRow = {
   id:                   string
-  engagement_id:              string
+  iteration_id:              string
   destination_id:       string | null
   global_destination_id: string
 
@@ -87,7 +87,7 @@ export async function fetchDestinationRows(
         slug, name
       )
     `)
-    .eq('engagement_id', engagementId)
+    .eq('iteration_id', engagementId)
     .order('sort_order', { ascending: true })
 
   if (error) throw error
@@ -108,7 +108,7 @@ export async function updateDestinationRow(
   // Strip joined display fields and immutable identity fields before sending
   const clean: Record<string, unknown> = { ...payload }
   delete clean.id
-  delete clean.engagement_id
+  delete clean.iteration_id
   delete clean.created_at
   delete clean.updated_at
   delete clean.destination_slug
@@ -124,7 +124,7 @@ export async function updateDestinationRow(
 // ── Insert (add destination flow) ─────────────────────────────────────────────
 
 export type AddDestinationPayload = {
-  engagement_id:               string
+  iteration_id:               string
   global_destination_id: string
   title:                 string                  // pre-filled with destination name
   sort_order:            number                  // caller computes max + 1
@@ -137,7 +137,7 @@ export async function insertDestinationRow(
   const { data, error } = await supabase
     .from('travel_overlay_engagement_destination_rows')
     .insert({
-      engagement_id:               payload.engagement_id,
+      iteration_id:               payload.iteration_id,
       global_destination_id: payload.global_destination_id,
       title:                 payload.title,
       sort_order:            payload.sort_order,
@@ -215,7 +215,7 @@ export async function fetchMaxDestinationSortOrder(
   const { data, error } = await supabase
     .from('travel_overlay_engagement_destination_rows')
     .select('sort_order')
-    .eq('engagement_id', engagementId)
+    .eq('iteration_id', engagementId)
     .order('sort_order', { ascending: false })
     .limit(1)
     .maybeSingle()
