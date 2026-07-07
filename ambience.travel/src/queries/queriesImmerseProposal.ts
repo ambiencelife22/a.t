@@ -258,7 +258,7 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
   )
   const heroAlt = (ov.hero_image_alt_override ?? dest.hero_image_alt ?? globalHero?.hero_image_alt ?? '') as string
   const hero2Src = rewriteImageUrl(
-    (ov.hero_image_src_2_override ?? dest.hero_image_src_2) as string | null
+    (ov.hero_image_src_2_override ?? null) as string | null
   )
 
   return {
@@ -273,9 +273,9 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     heroImageSrc: heroSrc,
     heroImageAlt: heroAlt,
     heroImageSrc2: hero2Src ?? undefined,
-    heroImageAlt2: (ov.hero_image_alt_2_override ?? dest.hero_image_alt_2 ?? undefined) as string | undefined,
-    heroTitle2:    (ov.hero_title_2_override    ?? dest.hero_title_2    ?? undefined) as string | undefined,
-    heroSubtitle2: (ov.hero_subtitle_2_override ?? dest.hero_subtitle_2 ?? undefined) as string | undefined,
+    heroImageAlt2: (ov.hero_image_alt_2_override ?? undefined) as string | undefined,
+    heroTitle2:    (ov.hero_title_2_override ?? undefined) as string | undefined,
+    heroSubtitle2: (ov.hero_subtitle_2_override ?? undefined) as string | undefined,
     heroPills:     (dest.hero_pills ?? []) as string[],
 
     introEyebrow: (dest.intro_eyebrow ?? '') as string,
