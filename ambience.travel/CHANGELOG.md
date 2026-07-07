@@ -426,3 +426,62 @@ clean inspector.
 Stage 3b next (the 7 children); then Stage 4 = leftover trip_id → engagement_id on
 bookings/requests only (3b pre-frees the engagement_id name on those two per the
 collision rule).
+
+### [ARC][DB] Phase B Stage 3b — 7 non-overlay children engagement_id → iteration_id
+
+Completes Stage 3 (Stage 3a = 12 overlays; 3b = these 7). All engagement_id columns
+pointing at travel_overlay_engagements now say iteration_id. Live Supabase renames
+(column + constraints + indexes), invisible to git — this is the record:
+travel_bookings, travel_requests, travel_engagement_expenses, travel_engagement_houses,
+travel_engagement_links, travel_tasks, travel_time_entries.
+
+Done as ONE atomic code pass, not the safe-order split originally planned — because a
+split leaves files that touch both a 3b-renamed table and a not-yet-renamed one holding
+two names, which is the conflated-file state the mission forbids. Atomic keeps every file
+speaking one name.
+
+Collision handling: travel_bookings + travel_requests carry BOTH trip_id and
+(was) engagement_id. 3b renamed their engagement_id → iteration_id, which FREES the
+engagement_id name and pre-satisfies the Stage 4 collision-ordering rule. Their trip_id
+STAYS (Category Y) until Stage 4.
+
+Functions: check_closed_won_commission (commission close-won guard — bookings ref →
+iteration_id), enforce_engagement_label_house_match, tg_project_guest_label_on_houses,
+resolve_and_project_guest_label (its houses ref, deliberately left in 3a), and
+derive_tasks_for_engagement (travel_tasks writes → iteration_id). derive_tasks' aux
+reference a.engagement_id (travel_engagement_aux_bookings) correctly LEFT — that column
+was renamed in Stage 1, points at the parent engagement, is NOT one of these 7. Confirmed
+via regexp that a.engagement_id is its only .engagement_id ref (pg_proc false-positive:
+flagged because the function also contains travel_bookings).
+
+LESSON reinforced: tsc went green while every frontend invoke payload still sent
+engagement_id to EFs now demanding iteration_id — the invoke bodies are loosely typed
+(Record<string,unknown>), so the mismatch compiles and breaks only at runtime (400
+"iteration_id is required"). Caught by DIRECT grep of all 8 frontend callers, not tsc.
+For payload-contract renames, grep the callers — the compiler does not see through loose
+invoke typing. (Same class as the S53O guest-flight break: green structure, broken
+surface.)
+
+Verified on live money surfaces (the 3b verification = correct NUMBERS, not just render):
+StudioDashboard money strip + OutlookTab on Sharm (booking 89aee7e3, iteration aa99b19f):
+commission 951.60, net revenue 666.12 = 951.60 − 285.48 IATA share, the correct single
+partner-share subtraction (the computeNetRevenue path with documented prior double-count
+history — now correct).
+
+### NEXT (Phase B remaining, after 3b)
+- STAGE 4: trip_id → engagement_id on travel_bookings + travel_requests ONLY. The name
+  is now freed by 3b. This is the second half of the collision (engagement_id→iteration_id
+  done; now trip_id→engagement_id). travel_bookings.trip_id is NOT NULL + financial —
+  compatibility-view technique, eyeball Outlook/Studio numbers after. Watch: many EFs
+  still filter bookings/requests by trip_id legitimately (resolveTripIds path,
+  travel-read-trip-admin, guest EFs) — those are Category X for Stage 4 and rename to
+  engagement_id; classify each.
+- STAGE 5: travel_overlay_engagements → travel_engagement_iterations (its trip_id →
+  engagement_id; ~21 inbound FKs; compatibility view). Also parent_engagement_id →
+  parent_iteration_id (honesty — it's a self-ref to an iteration).
+- STAGE 6: travel_trips → travel_engagements LAST (confirmed_engagement_id →
+  confirmed_iteration_id; 10 inbound FKs; compatibility view).
+- DEFERRED HONESTY PASS (Category Z, unchanged): the Stage-1 { trip_id } API payload
+  contract (queriesAdminTrip.ts ↔ trip EFs), tripId locals, TripDayItem.trip_id,
+  Trip* TS type field names. One deliberate both-sides sweep.
+- clone_engagement bedding_type gap (room clone drops bedding_type) — still open.
