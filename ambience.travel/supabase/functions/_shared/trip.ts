@@ -22,7 +22,7 @@
 //   is_total phantom-column failures). Overlay rename (travel_immerse_* ->
 //   travel_overlay_*) is IN PROGRESS: engagement_display is now renamed
 //   (travel_overlay_engagement_display, line ~139). This file still reads the
-//   un-renamed travel_immerse_engagements (line ~34, ~135) — the LAST table in
+//   un-renamed travel_overlay_engagements (line ~34, ~135) — the LAST table in
 //   Phase A. When it renames, all three client EFs redeploy together (this module
 //   is imported by confirmation + programme; the proposal EF reads engagements directly).
 
@@ -38,7 +38,7 @@ export async function resolveTripIds(
   urlId: string,
 ): Promise<{ tripId: string; houseId: string } | null> {
   const { data: eng, error: engErr } = await db
-    .from('travel_immerse_engagements')
+    .from('travel_overlay_engagements')
     .select('trip_id')
     .eq('url_id', urlId)
     .not('trip_id', 'is', null)
@@ -139,7 +139,7 @@ export async function fetchTripCore(
   let resolvedGuestLabel: string | null = null
   if (confirmedEngId) {
     const [engRes, displayRes] = await Promise.all([
-      db.from('travel_immerse_engagements')
+      db.from('travel_overlay_engagements')
         .select('hero_image_src, title')
         .eq('id', confirmedEngId)
         .maybeSingle(),

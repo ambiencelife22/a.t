@@ -231,7 +231,7 @@ Deno.serve(async (req: Request) => {
           return json({ engagements: [] }, 200)
         }
         const { data, error } = await serviceClient
-          .from('travel_immerse_engagements')
+          .from('travel_overlay_engagements')
           .select('id, url_id, title, iteration_label')
           .in('person_id', personIds)
           .order('created_at', { ascending: true })
@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
           return json({ error: 'engagement_id is required' }, 400)
         }
         const { data: eng, error: eErr } = await serviceClient
-          .from('travel_immerse_engagements')
+          .from('travel_overlay_engagements')
           .select('person_id')
           .eq('id', engagement_id)
           .maybeSingle()
@@ -300,7 +300,7 @@ Deno.serve(async (req: Request) => {
           rate_applied, effort_value, billable_amount, notes,
           house_id, engagement_id, activity_id, performed_by_person_id, performed_by,
           a_houses(display_name),
-          travel_immerse_engagements(title),
+          travel_overlay_engagements(title),
           travel_time_activities(label),
           performer:global_people!travel_time_entries_performed_by_person_id_fkey(first_name, last_name, nickname)
         `
@@ -336,7 +336,7 @@ Deno.serve(async (req: Request) => {
             id: r.id,
             work_date: r.work_date,
             house: one(r.a_houses)?.display_name ?? null,
-            engagement: one(r.travel_immerse_engagements)?.title ?? null,
+            engagement: one(r.travel_overlay_engagements)?.title ?? null,
             activity: one(r.travel_time_activities)?.label ?? null,
             performer,
             hours: num(r.hours),

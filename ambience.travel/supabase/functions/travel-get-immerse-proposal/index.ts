@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
 
     // ── Gate: fetch + visibility ───────────────────────────────────────────────
     const { data: engRow, error: engErr } = await db
-      .from('travel_immerse_engagements')
+      .from('travel_overlay_engagements')
       .select(ENGAGEMENT_COLS)
       .eq('url_id', url_id)
       .single()

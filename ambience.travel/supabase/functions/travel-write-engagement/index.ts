@@ -189,7 +189,7 @@ Deno.serve(async (req: Request) => {
     // Return the full engagement row by id (post-write echo).
     const rowById = async (id: string) => {
       const { data } = await serviceClient
-        .from('travel_immerse_engagements').select('*').eq('id', id).maybeSingle()
+        .from('travel_overlay_engagements').select('*').eq('id', id).maybeSingle()
       return data ?? null
     }
 
@@ -210,7 +210,7 @@ Deno.serve(async (req: Request) => {
 
       // next sort_order
       const { data: maxRow } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .select('sort_order').order('sort_order', { ascending: false }).limit(1).maybeSingle()
       const nextSort = (maxRow?.sort_order ?? -1) + 1
 
@@ -221,7 +221,7 @@ Deno.serve(async (req: Request) => {
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = generateUrlId()
         const { data, error } = await serviceClient
-          .from('travel_immerse_engagements')
+          .from('travel_overlay_engagements')
           .insert({
             ...base,
             url_id:               candidate,
@@ -250,7 +250,7 @@ Deno.serve(async (req: Request) => {
       if (Object.keys(patch).length === 0) return json({ row: await rowById(id) })
 
       const { error } = await serviceClient
-        .from('travel_immerse_engagements').update(patch).eq('id', id)
+        .from('travel_overlay_engagements').update(patch).eq('id', id)
       if (error) {
         console.error('update_engagement error:', error)
         return json({ error: 'Failed to update engagement' }, 500)
@@ -266,7 +266,7 @@ Deno.serve(async (req: Request) => {
       if (!statusId) return json({ error: `Unknown engagement status: ${slug}` }, 400)
 
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .update({ engagement_status_id: statusId }).eq('id', id)
       if (error) {
         console.error('set_engagement_status error:', error)
@@ -283,7 +283,7 @@ Deno.serve(async (req: Request) => {
       if (!statusId) return json({ error: `Unknown itinerary status: ${slug}` }, 400)
 
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .update({ itinerary_status_id: statusId }).eq('id', id)
       if (error) {
         console.error('set_itinerary_status error:', error)
@@ -302,7 +302,7 @@ Deno.serve(async (req: Request) => {
       for (const it of items) {
         if (!it?.id || typeof it.sort_order !== 'number') continue
         const { error } = await serviceClient
-          .from('travel_immerse_engagements')
+          .from('travel_overlay_engagements')
           .update({ sort_order: it.sort_order }).eq('id', it.id)
         if (error) {
           console.error('reorder error on', it.id, error)
@@ -320,7 +320,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'id and public_view (boolean) are required' }, 400)
       }
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .update({ public_view: publicView }).eq('id', id)
       if (error) {
         console.error('set_visibility error:', error)
@@ -340,7 +340,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: "id and proposal_visibility ('active'|'archived') are required" }, 400)
       }
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .update({ proposal_visibility: visibility }).eq('id', id)
       if (error) {
         console.error('set_proposal_visibility error:', error)
@@ -391,7 +391,7 @@ Deno.serve(async (req: Request) => {
       if (!itinId) return json({ error: `Unknown itinerary status: archived` }, 400)
 
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .update({ engagement_status_id: engId, itinerary_status_id: itinId })
         .eq('id', id)
       if (error) {
@@ -432,7 +432,7 @@ Deno.serve(async (req: Request) => {
       // No financial records — safe to hard delete. The 12 travel_immerse_*
       // content tables cascade automatically (verified ON DELETE CASCADE).
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .delete()
         .eq('id', id)
 
@@ -449,7 +449,7 @@ Deno.serve(async (req: Request) => {
       if (!id) return json({ error: 'id is required' }, 400)
 
       const { error } = await serviceClient
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .update({ trip_id: new_trip_id })
         .eq('id', id)
       if (error) {
@@ -566,7 +566,7 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'no label fields provided' }, 400)
       }
       const { error } = await serviceClient
-        .from('travel_immerse_engagements').update(patch).eq('id', id)
+        .from('travel_overlay_engagements').update(patch).eq('id', id)
       if (error) {
         console.error('set_label error:', error)
         const msg = error.message ?? 'Failed to set label'

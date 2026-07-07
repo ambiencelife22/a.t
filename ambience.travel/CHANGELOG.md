@@ -332,5 +332,5 @@ engagement_regions, engagement_region_hotels, engagement_destination_rows,
 engagement_destination_hotels, engagement_hotel_gallery_overrides, engagement_display,
 and engagements itself (LAST — high fan-out: it + engagement_display also read in
 _shared/trip.ts, so their rename redeploys all three client EFs). The lone remaining
-column-lie deferred to Phase B/C: travel_immerse_engagements.trip_id (real FK to
+column-lie deferred to Phase B/C: travel_overlay_engagements.trip_id (real FK to
 travel_trips, stays until spine rename); pricing-rows' trip_destination_row_id column.

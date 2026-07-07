@@ -20,7 +20,7 @@ const NOT_FOUND     = () => json({ error: 'not_found' }, 404)
 const NOT_PUBLIC    = () => json({ error: 'not_public' }, 403)
 
 /**
- * Check public_view on travel_immerse_engagements for the given url_id.
+ * Check public_view on travel_overlay_engagements for the given url_id.
  * Returns a 404 Response if the engagement is hidden or doesn't exist.
  * Returns null if the engagement is publicly visible — caller may proceed.
  */
@@ -29,7 +29,7 @@ export async function checkPublicView(
   urlId:  string
 ): Promise<Response | null> {
   const { data, error } = await db
-    .from('travel_immerse_engagements')
+    .from('travel_overlay_engagements')
     .select('public_view')
     .eq('url_id', urlId)
     .single()

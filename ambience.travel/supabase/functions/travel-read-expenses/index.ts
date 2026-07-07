@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
       if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
 
       const [engRes, bookingsRes, expensesRes] = await Promise.all([
-        db.from('travel_immerse_engagements')
+        db.from('travel_overlay_engagements')
           .select('id, title, url_id, travel_trips!trip_id(trip_code, start_date, end_date)')
           .eq('id', engagement_id)
           .single(),
@@ -204,7 +204,7 @@ Deno.serve(async (req: Request) => {
     // ── pipeline ─────────────────────────────────────────────────────────────
     if (mode === 'pipeline') {
       const { data: engRows, error: engErr } = await db
-        .from('travel_immerse_engagements')
+        .from('travel_overlay_engagements')
         .select('id, trip_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_trips!trip_id(trip_code, start_date, end_date, primary_client_id)')
         .is('parent_engagement_id', null)
         .not('trip_id', 'is', null)
