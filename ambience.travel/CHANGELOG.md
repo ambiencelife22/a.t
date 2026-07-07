@@ -295,3 +295,42 @@ DEBT: the 14-slug vocabulary now lives in three places (two CHECK constraints +
 utilsBooking.BEDDING_LABELS). Mission-grade single source is a travel_bedding_types
 registry table (slug PK, label, sort_order, description) FK'd from both room
 tables, TS map synced to it. Next dedicated migration.
+
+## 2026-07-06
+
+### [ARC][DB] Overlay rename Phase A begins — travel_immerse_* → travel_overlay_* (migrations 1-3)
+
+The "kill trips/immerse" campaign's overlay tier. `travel_immerse_*` (per-engagement
+proposal render tables) are being renamed to `travel_overlay_*`, one table per
+migration, DB-fully-then-code, each live-verified before the next. Live Supabase
+schema changes — invisible to git diffs; this is their only version-controlled record.
+
+Grammar (locked): place=`global_*`, canon=`travel_*`, engagement spine=`travel_engagement_*`
+(pending Phase B), overlay=`travel_overlay_*`. Overlay prefix is `travel_overlay_*`
+NOT `travel_engagement_overlay_*` (63-byte constraint-name limit).
+
+Renamed this pass (3 of 13 overlay tables):
+- `travel_immerse_destination_pricing_rows` → `travel_overlay_destination_pricing_rows`
+- `travel_immerse_engagement_content_card_overrides` → `travel_overlay_engagement_content_card_overrides`
+- `travel_immerse_engagement_content_card_selections` → `travel_overlay_engagement_content_card_selections`
+
+Each: table + constraints + standalone indexes renamed (PK index renames WITH its
+constraint — never ALTER INDEX it). Stale constraint-name lies corrected in passing:
+`*_trip_id_fkey` → `*_engagement_id_fkey` (the FK column was already `engagement_id`
+from Campaign 1). On card_selections the overlay-prefixed FK names exceeded 63 bytes,
+so FK constraints use a shortened honest stem `overlay_card_selections_*`; a doubled-
+stale index `idx_trip_card_selections_trip_active` (named `trip` twice, filtered on
+`engagement_id`) → `idx_overlay_card_selections_engagement_active`.
+
+Callers repointed + redeployed: travel-get-immerse-proposal (also brought onto the
+shared createServiceClient() factory this pass — it had been missed by the S53H
+Batch 2 sweep and was still on inline makeDb() + hand-rolled ok/err), travel-read-
+engagement-admin, queriesAdminCardOverrides, queriesAdminCardSelections. Commit 5efb813.
+
+Still pending (10 overlay tables): route_stops, rooms, engagement_pricing_rows,
+engagement_regions, engagement_region_hotels, engagement_destination_rows,
+engagement_destination_hotels, engagement_hotel_gallery_overrides, engagement_display,
+and engagements itself (LAST — high fan-out: it + engagement_display also read in
+_shared/trip.ts, so their rename redeploys all three client EFs). The lone remaining
+column-lie deferred to Phase B/C: travel_immerse_engagements.trip_id (real FK to
+travel_trips, stays until spine rename); pricing-rows' trip_destination_row_id column.

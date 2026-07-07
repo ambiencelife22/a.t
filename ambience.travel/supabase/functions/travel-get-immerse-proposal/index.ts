@@ -588,7 +588,7 @@ async function fetchHotelGallery(
       .select('accom_hotel_id, sort_order, image_src')
       .in('accom_hotel_id', hotelIds)
       .order('sort_order'),
-    db.from('travel_immerse_engagement_hotel_gallery_overrides')
+    db.from('travel_overlay_engagement_hotel_gallery_overrides')
       .select('accom_hotel_id, sort_order, image_src')
       .eq('engagement_id', engId)
       .in('accom_hotel_id', hotelIds),
