@@ -750,3 +750,89 @@ verify, deploy frontend+EF lockstep). Update embed hints: travel-read-expenses (
 journey_id) + travel-read-engagement-admin (travel_journey!travel_engagements_journey_id_fkey).
 Then DROP all compat views + re-verify. Sequenced after caller redeploy so the un-viewable column
 renames have no live-break window.
+
+## 2026-07-08
+
+### [DB] element_status_events built from spec — a documented-but-never-created table, restored
+
+Arc B Phase 3 (2026-06-27 changelog) documented `element_status_events` as a shipped
+append-only status-history table. It was not. Only the WRITER shipped — the trigger
+`fn_autopromote_on_confirmation` carried `INSERT INTO element_status_events` — but the
+table itself was never created live. Every status-PROMOTION write (a confirmation_number
+set on a not-yet-confirmed element, on `travel_booking_rooms` / `travel_bookings` /
+`travel_engagement_aux_bookings`) hit the phantom table and failed silently, platform-wide.
+Invisible until a real promotion fired (a room defaulting to `requested` getting a conf
+number) — an already-confirmed header skipped the promote branch, so it never surfaced.
+
+Built from the documented spec (not guessed): (id, element_type, element_id, from_status_id,
+to_status_id, changed_by, source, changed_at); polymorphic element_id (no native FK — one
+uniform log across the element tree); native FKs on from/to status; index (element_type,
+element_id, changed_at DESC); RLS enabled, NO policies (deny-by-default, service-role-only,
+matches a_ppd_*). The original trigger works unchanged once the table exists — no function
+edit needed. Verified live: a real booking (Nicolas, room bc109ddc) inserted clean with
+status auto-promoted to confirmed. Phase 3 audit logging now actually functions for the
+first time.
+
+LESSON: a changelog entry describing a feature as "shipped" is NOT proof the live schema
+matches. The trigger (writer) and table (target) shipped separately; the gap was invisible
+to code grep (no migrations tracked — schema is live) and to tsc, and only manifested on the
+promotion path. Cross-checking changelog-documented DB objects against information_schema is
+now proven-necessary "foundation perfect" work.
+
+### [DB] Orphan function dropped — update_travel_immerse_bottom_notes_updated_at
+
+Dropped `update_travel_immerse_bottom_notes_updated_at` — it referenced
+`travel_immerse_bottom_notes`, a table gone since the immerse→overlay rename (~2 campaigns
+ago). No trigger used it (verified via pg_trigger). Flagged in db_map v10 §4; closed.
+
+The INVERSE of the element_status_events case, and the pair is the point: there, a live
+trigger referenced a table that was never built (→ built it); here, a live function
+referenced a table long dead (→ dropped it). Two schema-truth lies pointing opposite
+directions, both surfaced by the rename-as-audit, both "foundation perfect" corrections
+that only became visible because every reference got exercised.
+
+### [DB] 5 set_updated_at triggers renamed off travel_trip_* — last travel_trip_* object-name lie closed
+
+Trigger NAMES still carried `travel_trip_*` tokens while sitting on renamed tables (they
+fire set_updated_at correctly — the name is a label, not a reference, so no bug). Renamed
+to match their tables: trg_set_updated_at_travel_trip_{aux_bookings,briefs,day_entries,days,
+destinations} → _travel_engagement_aux_bookings (aux stays engagement-scoped, → element in
+Stage 7) / _travel_journey_{briefs,day_entries,days,destinations}. Surfaced by the S53O
+trigger audit. This was the last travel_trip_* token on any DB object — tables (Phase 1),
+functions (audit-clean), triggers (now) all consistent.
+
+DEBT logged, NOT fixed (separate session): the set_updated_at trigger naming convention is
+inconsistent platform-wide (trg_set_updated_at / set_updated_at / <table>_set_updated_at /
+_<table> / _engagement_aux_pax abbrev). A normalization pass unrelated to the rename arc —
+these are cosmetic-cosmetic (no stale-table lie), so logged for their own cleanup.
+
+### [DB] Phase-2 view-drop pre-flight — pg_proc stale-reference sweep PASSED
+
+Ahead of Stage 6 Phase 2 (which drops the Phase-1 compat views travel_trips + 5 leaf views +
+guests view after the trip_id → journey_id column cutover): swept every function body for
+references to the compat-view names. `pg_get_functiondef LIKE` travel_trips /
+travel_overlay_engagements / travel_immerse* / travel_trip_* → ZERO rows. No DB function
+resolves through a compat view, so dropping the views in Phase 2 breaks no function. The
+chief cutover risk (a function body silently depending on a view about to be dropped) is
+cleared from the function side. Guest-EF and frontend caller repoints remain the Phase-2
+cutover work; the DB-function half is pre-verified safe.
+
+### [DEBT] Guest-read reliability — silent ?? [] must fail loud (P1, own session)
+
+Counterpart surfaced during the Nicolas programme fix: guest-read EFs use `result ?? []` on
+Promise.all sub-fetches, so a transiently FAILED fetch (cold-start timeout, connection blip)
+becomes an empty array — the guest sees "Nothing planned today" on a real travel day instead
+of an error. Same failure CLASS as the leaf-column [], guest-flight [], and Austria-hero
+bugs: a query fails, returns empty, no error, guest sees blank. LOCK: guest-facing reads must
+fail loud (500), never silent-empty; [] must mean "genuinely nothing", never "fetch failed".
+Strengthens the one-EF-three-modes read-path consolidation (one honest error path vs N EFs
+each swallowing failures). Own session.
+
+### [DEBT] buildHotelItems re-check-in heuristic scopes same-hotel, should scope same-party (P3)
+
+Nicolas (1 night, own party) shares Beverly Hilton with the entourage's 21-night booking →
+labelled "Re-Check-in · Beverly Hilton", which it is not. buildHotelItems groups split-stays
+by hotel identity; should scope to same-person / same-room-party. Cosmetic guest blemish.
+Connects to the calendar "Stays" metric debt (S53I) — both are the hotel-vs-party conflation:
+a booking belongs to a party, not just a hotel. Enterprise-relevant (multi-party UHNW
+engagements across shared properties). Own session with the party/room-party model question.
