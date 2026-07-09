@@ -68,6 +68,7 @@ const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEdito
 const OutlookTab           = lazyWithReload(() => import('./admin/OutlookTab'))
 const EngagementDetail     = lazyWithReload(() => import('./admin/EngagementDetail'))
 const StudioDashboard      = lazyWithReload(() => import('./admin/StudioDashboard'))
+const SettingsTab          = lazyWithReload(() => import('./admin/SettingsTab'))
 const GlobalTasksTab       = lazyWithReload(() => import('./admin/GlobalTasksTab'))
 
 // Residences (was Programme)
@@ -212,6 +213,10 @@ function TabContent({ tab }: { tab: AdminTab }) {
     if (tab.tab === 'access-denied')  return <AccessDeniedPageTab />
     if (tab.tab === 'client-profile') return <ClientProfilePage />
     return <ProgrammesTab />
+  }
+
+  if (tab.product === 'studio' && tab.tab === 'settings') {
+    return <SettingsTab />
   }
 
   if (tab.product === 'studio') {

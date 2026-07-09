@@ -107,6 +107,7 @@ export type StudioTabId =
   | 'finance'
   | 'time'
   | 'time-analytics'
+  | 'settings'
 
 // Legacy alias — kept until Phase 7 dissolution
 export type ProgrammeTabId =
@@ -244,6 +245,7 @@ export function parseAdminHash(hash: string): AdminTab {
       if (seg2 === 'analytics') return { product: 'studio', tab: 'time-analytics' }
       return { product: 'studio', tab: 'time' }
     }
+    if (seg1 === 'settings') return { product: 'studio', tab: 'settings' }
     return { product: 'studio', tab: 'dashboard' }
   }
 
@@ -341,6 +343,7 @@ export function buildAdminHash(target: AdminTab): string {
     if (target.tab === 'finance-engagement') return `#admin/studio/finance/engagement/${target.engagementId}`
     if (target.tab === 'time')              return '#admin/studio/time'
     if (target.tab === 'time-analytics')    return '#admin/studio/time/analytics'
+    if (target.tab === 'settings')          return '#admin/studio/settings'
     return '#admin/studio'
   }
 

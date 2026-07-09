@@ -90,6 +90,7 @@ const GROUPS: NavGroup[] = [
       { key: 'studio-finance',  label: 'Finance',    hash: buildAdminHash({ product: 'studio', tab: 'finance' }),        active: (t: AdminTab) => t.product === 'studio' && t.tab === 'finance' },
       { key: 'studio-time',     label: 'Effort Log', hash: buildAdminHash({ product: 'studio', tab: 'time' }),           active: (t: AdminTab) => t.product === 'studio' && t.tab === 'time' },
       { key: 'studio-analytics',label: 'Analytics',  hash: buildAdminHash({ product: 'studio', tab: 'time-analytics' }), active: (t: AdminTab) => t.product === 'studio' && t.tab === 'time-analytics' },
+      { key: 'studio-settings', label: 'Settings',   hash: buildAdminHash({ product: 'studio', tab: 'settings' }),       active: (t: AdminTab) => t.product === 'studio' && t.tab === 'settings' },
     ],
   },
 ]

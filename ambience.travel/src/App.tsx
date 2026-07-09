@@ -84,6 +84,8 @@ import { ThemeContext } from './context/contextTheme'
 import { isImmerseHost, isTripUrlId } from './utils/utilsImmersePath'
 import type { Session } from '@supabase/supabase-js'
 import type { Page } from './components/Layout'
+import MaintenanceScreen from './components/design/MaintenanceScreen'
+import { fetchMaintenanceMode } from './queries/queriesSettings'
 
 
 // ── Lazy route components ────────────────────────────────────────────────────
@@ -244,6 +246,7 @@ function resolveRoute(): Route {
 
 export default function App() {
   const [route, setRoute] = useState<Route>(resolveRoute())
+  const [maintenance, setMaintenance] = useState<boolean | null>(null)
 
   useEffect(() => {
     function handleChange() { setRoute(resolveRoute()) }
@@ -254,6 +257,15 @@ export default function App() {
       window.removeEventListener('popstate', handleChange)
     }
   }, [])
+
+  useEffect(() => {
+    fetchMaintenanceMode().then(setMaintenance)
+  }, [])
+
+  if (maintenance === null) return <RouteLoading />
+
+  const isAdminRoute = route === 'admin-ambience' || route === 'admin-programme' || route === 'login'
+  if (maintenance && !isAdminRoute) return <MaintenanceScreen />
 
   if (route === 'landing') {
     return (
