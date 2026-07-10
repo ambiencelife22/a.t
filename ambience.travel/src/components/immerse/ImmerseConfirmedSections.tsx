@@ -514,7 +514,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     seatNumbers:       string | null
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-    rooms:             { id: string; guest: string | null; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; check_in_time: string | null; bedding_type: string | null }[]
+    rooms:             { id: string; guest: string | null; additional_guests: string[]; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; check_in_time: string | null; bedding_type: string | null }[]
     driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
   }
 
@@ -579,6 +579,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             rooms:               e.rooms.map(r => ({
               id:                  r.id,
               guest:               r.guest,
+              additional_guests:   r.additional_guests ?? [],
               room_name:           r.room_name,
               party_composition:   r.party_composition,
               confirmation_number: r.confirmation_number,
@@ -768,7 +769,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         </div>
                         <div style={{ borderTop: `0.5px solid ${c.lineStrong}` }}>
                           {item.rooms.map((room, ri) => {
-                            const rd = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name })
+                            const rd = webRoomDisplay({ guest_name: room.guest, resolved_additional_guests: room.additional_guests, party_composition: room.party_composition, room_name: room.room_name })
                             return (
                               <div key={room.id} style={{
                                 display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
@@ -957,7 +958,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
-                              const rd = webRoomDisplay({ guest_name: room.guest, party_composition: room.party_composition, room_name: room.room_name })
+                              const rd = webRoomDisplay({ guest_name: room.guest, resolved_additional_guests: room.additional_guests, party_composition: room.party_composition, room_name: room.room_name })
                               return (
                                 <div key={room.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>

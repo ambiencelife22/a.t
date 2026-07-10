@@ -9,6 +9,7 @@
 export type TimelineRoom = {
   id:                  string
   guest:               string | null
+  additional_guests:   string[]
   room_name:           string | null
   party_composition:   string | null
   confirmation_number: string | null

@@ -34,6 +34,7 @@
 export type TimelineRoom = {
   id:                  string
   guest:               string | null
+  additional_guests:   string[]
   room_name:           string | null
   party_composition:   string | null
   confirmation_number: string | null
@@ -296,6 +297,7 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
         .map(r => ({
           id:                  r.id as string,
           guest:               (r.resolved_guest_name as string | null) ?? (r.guest_name as string | null) ?? null,
+          additional_guests:   (r.resolved_additional_guests as string[] | null) ?? [],
           room_name:           (r.room_name as string | null) ?? null,
           party_composition:   (r.party_composition as string | null) ?? null,
           confirmation_number: (r.confirmation_number as string | null) ?? null,
