@@ -836,3 +836,17 @@ by hotel identity; should scope to same-person / same-room-party. Cosmetic guest
 Connects to the calendar "Stays" metric debt (S53I) — both are the hotel-vs-party conflation:
 a booking belongs to a party, not just a hotel. Enterprise-relevant (multi-party UHNW
 engagements across shared properties). Own session with the party/room-party model question.
+
+### [DEBT] Dual TimelineRoom type (EF _shared + frontend) — hand-synced, drifted (P3)
+
+Two independent TimelineRoom definitions: supabase/functions/_shared/timeline.ts (EF timeline
+builder) and src/types/typesTimeline.ts (consumed by ImmerseConfirmedSections). Kept in lockstep
+by hand — and had drifted: the frontend copy lacked additional_guests, so the programme silently
+dropped room co-guests for EVERY shared room (surfaced adding Joy Tran to Nicolas's room bc109ddc;
+the Berkeley suite's "+ Jell" was also being dropped, unnoticed). Fixed by adding the field to
+both + threading resolved_additional_guests through buildHotelItems -> TimelineRoom -> CardItem ->
+webRoomDisplay (which already composed additional guests — the confirmation surface, reading rooms
+directly not via timeline, showed them all along; only the programme's timeline path dropped them).
+Parallel-ship remains: any future TimelineRoom field must be added twice or it drifts again.
+Mission-correct fix is ONE shared type — blocked by the EF/frontend module boundary (Deno EFs
+can't import from src/), needs a shared-type strategy (generated, or shared package). Own session.
