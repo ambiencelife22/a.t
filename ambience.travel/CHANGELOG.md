@@ -918,3 +918,16 @@ directly not via timeline, showed them all along; only the programme's timeline 
 Parallel-ship remains: any future TimelineRoom field must be added twice or it drifts again.
 Mission-correct fix is ONE shared type — blocked by the EF/frontend module boundary (Deno EFs
 can't import from src/), needs a shared-type strategy (generated, or shared package). Own session.
+
+RECON (this session): confirmed the boundary is real with no existing bridge. vite.config.ts
+has NO resolve.alias — the frontend build resolves only src/ + node_modules, cannot reach
+supabase/functions/_shared/. The EF side (deno.json import map: esm.sh + npm: specifiers) is a
+separate resolution universe. So a shared-directory-both-import-from (the clean option) is NOT
+available as-is — it needs a build-setup change (Vite alias into a neutral shared dir, guarding
+Deno-style imports out of the browser bundle) OR a codegen/sync approach (one canonical file
+copied cross-boundary with a CI drift-check). This is a REPO-WIDE shared-code-strategy decision,
+the SAME blocker as the formatName() arc — solve once, both unblock. NOT to be introduced as a
+side-effect of a P3 type-dedup. The two TimelineRoom types are currently byte-identical (verified),
+so drift risk is low TODAY; the structural fix waits for the deliberate boundary decision. When
+taken: TimelineRoom is the ideal FIRST case (pure type, zero runtime) to prove the chosen pattern
+before applying it to formatName's harder runtime-logic case.
