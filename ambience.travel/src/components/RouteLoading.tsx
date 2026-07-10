@@ -12,22 +12,41 @@
 // stays visible while the engagement loads). This one renders before any
 // route component has even loaded its JS bundle.
 
+import { ID } from '../tokens/tokensLanding'
+import { TYPE } from '../tokens/tokensAmbienceTravel'
+
 export default function RouteLoading() {
   return (
     <div style={{
       minHeight:      '100vh',
       display:        'flex',
+      flexDirection:  'column',
       alignItems:     'center',
       justifyContent: 'center',
-      background:     '#1A1C1A',
+      gap:            22,
+      background:     ID.bg,
     }}>
+      <div style={{ position: 'relative', width: 72, height: 72, borderRadius: '50%', overflow: 'hidden' }}>
+        <img src='/emblem.png' alt='' style={{ width: '100%', height: '100%', display: 'block', opacity: 0.85 }} />
+        <div style={{
+          position:       'absolute',
+          inset:          0,
+          background:     `linear-gradient(105deg, transparent 30%, ${ID.gold}55 50%, transparent 70%)`,
+          backgroundSize: '250% 100%',
+          mixBlendMode:   'screen',
+          animation:      'immerseEmblemShimmer 2.2s ease-in-out infinite',
+          pointerEvents:  'none',
+        }} />
+      </div>
       <div style={{
-        fontSize:      13,
-        color:         '#7A8476',
-        letterSpacing: '0.06em',
-        fontFamily:    'system-ui, -apple-system, sans-serif',
+        fontSize:      12,
+        color:         ID.muted,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        fontWeight:    600,
+        fontFamily:    TYPE.sans,
       }}>
-        Loading…
+        Preparing Your Experience
       </div>
     </div>
   )
