@@ -262,7 +262,7 @@ export default function App() {
     fetchMaintenanceMode().then(setMaintenance)
   }, [])
 
-  if (maintenance === null) return <RouteLoading />
+  if (maintenance === null) return null
 
   const isAdminRoute = route === 'admin-ambience' || route === 'admin-programme' || route === 'login'
   if (maintenance && !isAdminRoute) return <MaintenanceScreen />

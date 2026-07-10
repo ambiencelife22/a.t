@@ -24,6 +24,7 @@
 
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
+import { TravelLoadingScreen } from './ImmerseStateScreens'
 import ImmerseEngagementSurface from './ImmerseEngagementSurface'
 import NotFoundPage from '../NotFoundPage'
 import ImmerseProposalArchivedFallback from './ImmerseProposalArchivedFallback'
@@ -139,7 +140,7 @@ export default function ImmerseEngagementRoute({
   if (state.phase === 'loading') {
     return (
       <ImmerseLayout>
-        <div style={{ minHeight: '60vh' }} />
+        <TravelLoadingScreen />
       </ImmerseLayout>
     )
   }
