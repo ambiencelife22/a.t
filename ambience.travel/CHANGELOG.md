@@ -847,6 +847,64 @@ debt (S53I) — distinct-hotel count conflating properties / principal's stays /
 carry room counts + principal/entourage distinction). The occupantsOf pattern here (party =
 union of room occupants) is the reusable primitive for it.
 
+### [ARC-pending] Canonical formatName() + fully-tailorable name register — foundational, own session
+
+Surfaced chasing a cosmetic name-register blemish ("Nico" lead vs "Joy Tran" additional guest
+on the same room); the blemish is the visible tip of a foundational gap. NOT a debt to patch —
+a foundation piece the codebase is explicitly waiting for. Do it right, own session, recon-first.
+
+THE PROBLEM (two uncoordinated name rules = parallel-ship):
+- Frontend: assembleFormalName (HouseTab.tsx:151) — the patronymic-chain composer
+  (given + [middle] + [connector]father + [connector]grandfather + [family]; Western names
+  collapse to "First Last"). LOCAL to one component. Its own code comment names the target:
+  "Single rule ... mirrored by the canonical formatName() formatter later." The codebase
+  already knows this must become canonical.
+- EF side: formatPersonName (_shared/names.ts) — nickname || full || first. A DIFFERENT rule.
+- These never coordinate. "Nico · Joy Tran" is not a bug in either — it's formatPersonName
+  preferring nickname, and Joy's nickname field literally holds "Joy Tran". Consistent logic,
+  inconsistent output, because there is no single register authority.
+
+WHY IT'S FOUNDATIONAL, not a quick fix: "fully tailorable" name register (D) means the
+designer sets, per person, how that person is presented — nickname / first / first+last /
+first+last_initial ("Mohammed Q", the last_initial field's purpose) / full-formal (the
+patronymic chain). The register must compose at ANY of these, and full-formal IS
+assembleFormalName. So the register feature REQUIRES the canonical formatName() first —
+building register on top of the two divergent rules deepens the drift the mission forbids.
+
+THE BLOCKER (shared with the dual-TimelineRoom debt): a single formatName() must be callable
+from BOTH the Vite frontend (src/) AND the Deno EFs (_shared/) — but Deno EFs cannot import
+from src/. There is no shared-code strategy in this repo yet. This is the real architectural
+decision gating both this and the TimelineRoom unification: WHERE can code live that both
+runtimes import (shared package / generated / dual-safe module)? Must be resolved FIRST.
+
+THE BUILD (once the boundary is solved), in order, no half-ship:
+1. Canonical formatName(person, register) — THE single name composer, one home both sides
+   reach. Subsumes + retires assembleFormalName (frontend) AND formatPersonName (EF). Full-
+   formal register = the patronymic rule moved here; HouseTab imports it (its live preview
+   stops owning the rule). This is the formatName() the code comment promises.
+2. Register vocabulary as a REGISTRY (global_name_display_modes: slug PK, label, sort_order),
+   NOT a 3-slug CHECK — "fully tailorable" earns a registry (the bedding_type registry call,
+   made correctly this time). Registers: nickname / first / first_last / first_last_initial /
+   full_formal (extensible).
+3. global_people.name_display FK -> registry, nullable, default null. On global_people because
+   the RLS architecture DICTATES it: global_people has the public-read gate (is_public_display
+   policy) + the name-presentation fields (first/last/nickname/last_initial); a_house_people is
+   admin-write-only (no public read policy) so a guest-surface display field there would be
+   RLS-invisible to guests. Confirmed via pg_policies — not a preference, the table purpose
+   forces it. Default null -> current nickname-or-first (privacy-preserving; full_formal is
+   deliberate designer opt-in, the one register that exposes more than the privacy default).
+4. Thread name_display through the THREE guest select sites only (_shared/names.ts:118
+   passengers, _shared/trip.ts:273 room + additional guests, travel-get-trip-confirmation:126
+   contacts) — classified: admin/operational reads (trip-admin, engagement-admin, timetracking,
+   tasks, team) stay CANONICAL (operators need unambiguous identity; register is guest-surface
+   presentation only). Adding name_display to a select is fail-safe (unselected -> null ->
+   default), unlike the bedding_type 42703 case (that was a selected-nonexistent column).
+5. Admin control: a register picker in the person editor (HouseTab PersonModal, beside the
+   name fields), designer-set per person. Without it the feature is half — this is the
+   "tailorable by designer" piece.
+VERIFY: Nico/Joy/an entourage member each render at their set register across programme +
+confirmation + brief; admin surfaces unchanged; HouseTab live preview uses the same formatName.
+
 ### [DEBT] Dual TimelineRoom type (EF _shared + frontend) — hand-synced, drifted (P3)
 
 Two independent TimelineRoom definitions: supabase/functions/_shared/timeline.ts (EF timeline
