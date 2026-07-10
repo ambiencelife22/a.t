@@ -828,14 +828,24 @@ fail loud (500), never silent-empty; [] must mean "genuinely nothing", never "fe
 Strengthens the one-EF-three-modes read-path consolidation (one honest error path vs N EFs
 each swallowing failures). Own session.
 
-### [DEBT] buildHotelItems re-check-in heuristic scopes same-hotel, should scope same-party (P3)
+### [FIX] buildHotelItems re-check-in heuristic now scopes same-party, not same-hotel (P3 closed)
 
-Nicolas (1 night, own party) shares Beverly Hilton with the entourage's 21-night booking →
-labelled "Re-Check-in · Beverly Hilton", which it is not. buildHotelItems groups split-stays
-by hotel identity; should scope to same-person / same-room-party. Cosmetic guest blemish.
-Connects to the calendar "Stays" metric debt (S53I) — both are the hotel-vs-party conflation:
-a booking belongs to a party, not just a hotel. Enterprise-relevant (multi-party UHNW
-engagements across shared properties). Own session with the party/room-party model question.
+Was: any second booking at a shared hotel got "Re-Check-in" (grouped by hotel identity +
+date range). Nicolas (1 night, {Nico, Joy}) sharing Beverly Hilton with the entourage's
+21-night stay ({Hussain, Ibrahim}) was mislabelled "Re-Check-in" though a different party.
+Fixed: re-check-in is now occupant-based — a booking is a re-check-in iff one of its
+occupants (each room's person_id + additional_guests uuids, unioned) appears in an
+earlier-STARTING stay at the same hotel. Disjoint parties sharing a hotel are independent
+first check-ins ("Check-in"); a genuine same-party split stay still reads "Re-Check-in".
+Same-range concurrent rows (one party split across booking rows) guarded via stampedStay so
+they don't flag each other. Verified live on kH9mP4wRn3x: Nico Jul 6 now "Check-in",
+entourage Jun 29 stays unchanged.
+
+This resolves the party half of the hotel-vs-party conflation. The calendar "Stays" metric
+debt (S53I) — distinct-hotel count conflating properties / principal's stays / room footprint
+— is the SAME model question on the admin side and remains open (needs the calendar EF to
+carry room counts + principal/entourage distinction). The occupantsOf pattern here (party =
+union of room occupants) is the reusable primitive for it.
 
 ### [DEBT] Dual TimelineRoom type (EF _shared + frontend) — hand-synced, drifted (P3)
 

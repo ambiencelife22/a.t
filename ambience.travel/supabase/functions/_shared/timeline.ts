@@ -220,40 +220,57 @@ function deriveCheckinTime(
 export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
 
-  // Pre-pass: detect re-check-ins (split stays). Group by hotel identity + exact
-  // date range; bookings sharing hotel AND start+end are concurrent rooms (one
-  // check-in). A booking at the same hotel with a DIFFERENT range is a re-check-in.
-  // Stay identity uses the FINANCIAL range (start_date/end_date) — that is the
-  // true booking span; the guest-facing check-in day is derived separately below.
+  // Pre-pass: detect re-check-ins (split stays). A re-check-in is the SAME PARTY
+  // returning to a hotel they already stayed at earlier on this trip — not merely
+  // any second booking at a shared hotel. Party identity = the occupant set (each
+  // room's lead person_id + additional_guests uuids, unioned across the booking).
+  // A booking is a re-check-in iff one of its occupants appears in an
+  // earlier-STARTING stay at the same hotel. Disjoint parties sharing a hotel
+  // (e.g. a guest booked into a property the principal's entourage also occupies)
+  // are independent FIRST check-ins, each labelled "Check-in", not "Re-Check-in".
+  // Ordered by start_date — the earliest stay for any given person is their
+  // check-in; a later overlapping stay is their re-check-in.
   const reCheckin = new Set<string>()
-  const byHotelStay = new Map<string, BookingLike[]>()
-  for (const b of bookings) {
-    if (b.brief_show === false) continue
-    const hasR = (b._rooms?.length ?? 0) > 0
-    if (b.booking_type !== 'Hotel' && !hasR) continue
-    if (!b.start_date) continue
+
+  const occupantsOf = (b: BookingLike): Set<string> => {
+    const s = new Set<string>()
+    for (const r of (b._rooms ?? [])) {
+      const pid = r.person_id as string | null
+      if (pid) s.add(pid)
+      for (const g of ((r.additional_guests as string[] | null) ?? [])) s.add(g)
+    }
+    return s
+  }
+
+  // Hotel-eligible bookings, ordered by start_date (stable). For each, if any
+  // occupant already appeared at this hotel in an earlier stay, it's a re-check-in.
+  const hotelBookings = bookings
+    .filter(b => b.brief_show !== false)
+    .filter(b => b.booking_type === 'Hotel' || (b._rooms?.length ?? 0) > 0)
+    .filter(b => !!b.start_date)
+    .slice()
+    .sort((x, y) => (x.start_date as string).localeCompare(y.start_date as string))
+
+  // Per hotel: the set of occupants seen in stays that STARTED strictly earlier.
+  const seenByHotel = new Map<string, Set<string>>()
+  // Group by hotel + exact range so concurrent rooms (same party, same dates,
+  // split across booking rows) don't mark each other as re-check-ins.
+  const stampedStay = new Set<string>()
+  for (const b of hotelBookings) {
     const hotelKey = (b.accom_hotel_id ?? b._hotel_name ?? b.name ?? 'Hotel') as string
     const stayKey  = `${hotelKey}::${b.start_date}::${b.end_date ?? ''}`
-    const list = byHotelStay.get(stayKey) ?? []
-    list.push(b)
-    byHotelStay.set(stayKey, list)
-  }
-  const byHotel = new Map<string, string[]>()
-  for (const stayKey of byHotelStay.keys()) {
-    const hotelKey = stayKey.split('::')[0]
-    const list = byHotel.get(hotelKey) ?? []
-    list.push(stayKey)
-    byHotel.set(hotelKey, list)
-  }
-  for (const stayKeys of byHotel.values()) {
-    if (stayKeys.length < 2) continue
-    stayKeys.sort()
-    stayKeys.forEach((stayKey, i) => {
-      if (i === 0) return
-      for (const b of byHotelStay.get(stayKey) ?? []) {
-        reCheckin.add(b.id as string)
-      }
-    })
+    const occ      = occupantsOf(b)
+    const seen     = seenByHotel.get(hotelKey) ?? new Set<string>()
+
+    // Re-check-in iff an occupant was seen at this hotel in an earlier-starting
+    // stay. Same-range concurrent rows share a stayKey and never flag each other.
+    const isReturn = !stampedStay.has(stayKey)
+      && [...occ].some(p => seen.has(p))
+    if (isReturn) reCheckin.add(b.id as string)
+
+    stampedStay.add(stayKey)
+    for (const p of occ) seen.add(p)
+    seenByHotel.set(hotelKey, seen)
   }
 
   for (const b of bookings) {
