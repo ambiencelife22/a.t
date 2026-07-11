@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
         engagement_status_label: r.engagement_status?.label ?? null,
         itinerary_status_slug:   r.itinerary_status?.slug   ?? null,
         itinerary_status_label:  r.itinerary_status?.label  ?? null,
-        trip_id:                 r.journey_id,
+        journey_id:              r.journey_id,
         trip_code:               r.trip?.journey_code      ?? null,
         trip_public_title:       r.trip?.public_title      ?? null,
         trip_start_date:         r.trip?.start_date        ?? null,
