@@ -18,7 +18,7 @@
 //   update_room | delete_room | create_aux_booking | update_aux_booking |
 //   delete_aux_booking | create_aux_passenger | update_aux_passenger |
 //   delete_aux_passenger | upsert_day | create_day_entry | update_day_entry |
-//   delete_day_entry | set_public_view
+//   delete_day_entry
 //
 // create_room / update_room resolve the room's guest name on return (S53G
 // single-source) so callers receive resolved_guest_name without a re-read.
@@ -52,7 +52,6 @@ type Mode =
   | 'delete_day_entry'
   | 'upsert_welcome_letter'
   | 'delete_welcome_letter'
-  | 'set_public_view'
   | 'create_trip'
   | 'update_trip'
   | 'update_trip_primary_client'
@@ -407,19 +406,6 @@ async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promis
   return json({ success: true })
 }
 
-async function handleSetPublicView(
-  db: SupabaseClient,
-  tripId: string,
-  publicView: boolean,
-): Promise<Response> {
-  const { error } = await db
-    .from('travel_engagements')
-    .update({ public_view: publicView })
-    .eq('id', tripId)
-  if (error) return json({ error: 'Failed to set public_view' }, 500)
-  return json({ success: true })
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 // ── Trip CRUD ─────────────────────────────────────────────────────────────────
@@ -677,11 +663,6 @@ Deno.serve(async (req: Request) => {
         const { id } = body as { id?: string }
         if (!id) return json({ error: 'id required' }, 400)
         return handleDeleteDayEntry(db, id)
-      }
-      case 'set_public_view': {
-        const { trip_id, public_view } = body as { trip_id?: string; public_view?: boolean }
-        if (!trip_id || public_view === undefined) return json({ error: 'trip_id, public_view required' }, 400)
-        return handleSetPublicView(db, trip_id, public_view)
       }
       case 'upsert_welcome_letter': {
         const { trip_id, letter } = body as { trip_id?: string; letter?: Record<string, unknown> }

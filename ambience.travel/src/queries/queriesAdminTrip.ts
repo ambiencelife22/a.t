@@ -9,11 +9,15 @@
 //
 // S52 — All read and write paths routed through Edge Functions.
 //   travel-read-trip-admin: all 7 read paths.
-//   travel-write-trip: all mutation paths.
+//   travel-write-trip: journey mutation paths (public_view retired to travel-write-engagement/set_visibility, S53P).
 //   No direct supabase table reads or writes remain in this file.
 //   supabase (session client) used for all EF calls — JWT attached automatically.
 //
-// Last updated: S50 — TripBrief gains show_advisor_email. Mirrors migration
+// Last updated: S53P — set_public_view retired: setEngagementPublicView now routes to
+//   travel-write-engagement/set_visibility (duplicate write eliminated).
+//   File pending rename to queriesAdminJourney (Step 2, engagement/journey split).
+// 
+// Prior: S50 — TripBrief gains show_advisor_email. Mirrors migration
 //   s50_add_show_advisor_email. Gates advisor_email visibility on public
 //   Contacts tab, alongside the existing show_advisor_phone toggle.
 // Prior: S48 — TripBrief gains 5 new columns: programme_show_images,
@@ -693,8 +697,11 @@ export async function deleteTripDayEntry(id: string): Promise<void> {
 
 // ── Engagement public_view toggle ─────────────────────────────────────────────
 
-export async function setEngagementPublicView(tripId: string, publicView: boolean): Promise<void> {
-  await invokeWriteTrip({ mode: 'set_public_view', trip_id: tripId, public_view: publicView })
+export async function setEngagementPublicView(engagementId: string, publicView: boolean): Promise<void> {
+  const { error } = await supabase.functions.invoke('travel-write-engagement', {
+    body: { mode: 'set_visibility', id: engagementId, public_view: publicView },
+  })
+  if (error) throw new Error(`travel-write-engagement [set_visibility]: ${error.message}`)
 }
 // ── Engagement types registry ─────────────────────────────────────────────────
 // Single source for all aux booking type dropdowns. Runtime fetch from
