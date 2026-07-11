@@ -1602,3 +1602,70 @@ surfaces in scope → stage + verify live, never a broken state. Own campaign wi
 **Correct as-is (do NOT change):** the format CHECK + UNIQUE(engagement_id, slug) on
 destination_rows itself — that table legitimately OWNS the slug and its uniqueness. The debt is
 only the COPIES on rooms/cards and the string-join they force.
+
+## 2026-07-11 (S53O — final honesty close: _shared/days.ts + ghost-constraint verify)
+
+### [DONE] _shared/days.ts TripDayItem → JourneyDayItem, trip_id field → journey_id
+
+The last flagged trip-name in the shared layer, closed. Listed as open Category-Z debt in
+several prior entries (TripDayItem.trip_id, days.ts:15/64) — now actually done. Self-contained:
+grep confirmed NO consumer reads .trip_id off buildDays' output (the field is populated but
+unread), so the rename is honesty-only, zero behavior change, zero ripple. Renamed: type
+TripDayItem → JourneyDayItem (lines 13/51), field trip_id → journey_id (15), object key (64,
+value was already journeyId post-S53P), the header comment. tsc green; grep for trip-token in
+days.ts now empty. Redeployed the 3 bundling EFs (travel-get-trip-confirmation,
+travel-get-trip-programme, travel-read-journey-admin) per the _shared-bundling rule (a shared-
+module edit isn't live until every importer redeploys). NOTE (logged, not chased): buildDays'
+journey_id field is populated but unread by any consumer — a candidate dead field, worth a
+"is this needed" check someday.
+
+### [VERIFIED CLOSED] S53L "ghost constraint" debt was stale — verify-first prevented a wrong fix
+
+The S53L debt ("destination_url_slug constraints landed on ghost travel_immerse_* names, redo
+on real tables") was VERIFIED RESOLVED, no DDL needed. Current live state is correct: format
+CHECK (slug IS NULL OR ^[a-z0-9]+$) on all 3 real tables that have the column
+(travel_overlay_engagement_destination_rows / _content_card_selections / travel_overlay_rooms);
+UNIQUE(engagement_id, destination_url_slug) WHERE NOT NULL correctly scoped to destination_rows
+only (the subpage-URL owner); no travel_immerse_* ghost tables exist. CRITICAL: the debt said
+"redo the constraints" — but verify-first showed the constraints were already correct, and a
+naive redo adding uniqueness to rooms would have BROKEN valid shared-slug rooms (rooms
+legitimately share a slug: sb×3 = 3 St Barths options on one subpage). Verify-first before DDL
+stopped us fixing a non-problem into a bug. (This probe is also what surfaced the separate
+destination_url_slug denormalization debt logged above.)
+EOF
+Output
+
+
+========================================================================
+PASTE THIS AT THE END OF CHANGELOG.md:
+========================================================================
+
+## 2026-07-11 (S53O — final honesty close: _shared/days.ts + ghost-constraint verify)
+
+### [DONE] _shared/days.ts TripDayItem → JourneyDayItem, trip_id field → journey_id
+
+The last flagged trip-name in the shared layer, closed. Listed as open Category-Z debt in
+several prior entries (TripDayItem.trip_id, days.ts:15/64) — now actually done. Self-contained:
+grep confirmed NO consumer reads .trip_id off buildDays' output (the field is populated but
+unread), so the rename is honesty-only, zero behavior change, zero ripple. Renamed: type
+TripDayItem → JourneyDayItem (lines 13/51), field trip_id → journey_id (15), object key (64,
+value was already journeyId post-S53P), the header comment. tsc green; grep for trip-token in
+days.ts now empty. Redeployed the 3 bundling EFs (travel-get-trip-confirmation,
+travel-get-trip-programme, travel-read-journey-admin) per the _shared-bundling rule (a shared-
+module edit isn't live until every importer redeploys). NOTE (logged, not chased): buildDays'
+journey_id field is populated but unread by any consumer — a candidate dead field, worth a
+"is this needed" check someday.
+
+### [VERIFIED CLOSED] S53L "ghost constraint" debt was stale — verify-first prevented a wrong fix
+
+The S53L debt ("destination_url_slug constraints landed on ghost travel_immerse_* names, redo
+on real tables") was VERIFIED RESOLVED, no DDL needed. Current live state is correct: format
+CHECK (slug IS NULL OR ^[a-z0-9]+$) on all 3 real tables that have the column
+(travel_overlay_engagement_destination_rows / _content_card_selections / travel_overlay_rooms);
+UNIQUE(engagement_id, destination_url_slug) WHERE NOT NULL correctly scoped to destination_rows
+only (the subpage-URL owner); no travel_immerse_* ghost tables exist. CRITICAL: the debt said
+"redo the constraints" — but verify-first showed the constraints were already correct, and a
+naive redo adding uniqueness to rooms would have BROKEN valid shared-slug rooms (rooms
+legitimately share a slug: sb×3 = 3 St Barths options on one subpage). Verify-first before DDL
+stopped us fixing a non-problem into a bug. (This probe is also what surfaced the separate
+destination_url_slug denormalization debt logged above.)
