@@ -1088,88 +1088,7 @@ honesty may split to its own pass if Step 3 blast radius is large; TimelineRoom 
 formatName() both blocked on the shared-code boundary (vite.config confirmed no resolve.alias —
 the boundary is real, no bridge exists).
 
-## 2026-07-10 (S53P — Stage 6 Phase 2: journey column cutover · DB+EF layer SHIPPED, verified live)
-
-### trip_id -> journey_id on the 3 base tables — the un-viewable cutover, closed
-
-**Shipped + live-verified.** The base-table columns a compat view cannot alias on write
-are renamed. Money math and guest render both confirmed green post-deploy.
-
-**DB (one transaction):**
-- travel_bookings.trip_id -> journey_id (NOT NULL, financial)
-- travel_requests.trip_id -> journey_id
-- travel_engagements.trip_id -> journey_id (the spine)
-- 3 FK constraints renamed *_trip_id_fkey -> *_journey_id_fkey (targets already
-  travel_journey, auto-followed from Phase 1)
-- Indexes idx_travel_bookings_journey + idx_engagements_journey_id: NO change — already
-  named for the target in Phase 1, column auto-followed.
-
-**ORDERING NOTE (learned the hard way):** the SQL was run BEFORE the callers were repointed
-(intended order was callers-first). This put the live surface into 42703 until the EF sweep
-landed. No data lost, no rollback — the fix was forward (repoint + deploy), which is the
-work that was queued anyway. Compat views protected the guest TABLE-name path throughout;
-only base-column WRITES/reads were exposed, admin + money surfaces, briefly. For a base-column
-rename with no downtime pressure, callers-first is still correct; when inverted, do not roll
-back — drive forward.
-
-**EF + shared-module sweep (Category A — DB-column accesses), all deployed --use-api:**
-- _shared/trip.ts (guest entry): spine select/not/guard + booking .eq
-- _shared/expenses.ts: BOOKING_FINANCIAL_SELECT trip_id -> journey_id  [the 500-causer, below]
-- travel-get-trip-confirmation, travel-get-trip-programme: booking select + .eq
-- travel-read-trip-admin: 17 accesses (spine + bookings selects/in/not, result-type fields,
-  map keys, requests select)
-- travel-read-expenses: spine select/not + 2 embed hints (travel_journey!trip_id -> !journey_id)
-- travel-read-engagement-admin: spine select + embed hint (constraint-name
-  travel_engagements_trip_id_fkey -> _journey_id_fkey) + result-type fields
-  (EngagementListQueryRow.trip_id -> journey_id, trip.trip_code -> journey_code)
-- travel-write-engagement: EDITABLE_SCALARS whitelist + reassign_trip .update
-- travel-write-trip: resolveRoomRow booking select/guard + handleCreateBooking .insert
-- travel-get-immerse-proposal: spine select
-
-**VERIFIED LIVE (rendered page + numbers, not tsc):**
-- Guest programme 1d680dcc + kH9mP4wRn3x: renders, flights present
-- OutlookTab Sharm 89aee7e3: Net Margin 666.12, Commission 951.60, Net Revenue 666.12,
-  IATA 285.48 — money math intact through the rename (double-count fix held)
-- StudioDashboard money strip
-
-### NEW STANDING RULE — _shared/ modules are the 4th invisible-to-tooling reference class
-
-The per-EF file list is NOT the deploy surface. _shared/*.ts modules bundle into every EF
-that imports them and carry their own column-name string references. File-scoped grep over
-named EFs misses them; tsc misses them (runtime strings); they surface only as a runtime 500.
-
-PROOF this session: swept 9 named EFs green, deployed, programme rendered — then OutlookTab
-500'd on "travel_bookings.trip_id does not exist" because _shared/expenses.ts:26
-BOOKING_FINANCIAL_SELECT still said trip_id. Second occurrence same session (_shared/trip.ts
-was the first).
-
-MANDATORY after any column rename:
-1. grep -rn "<oldcol>" supabase/functions/_shared/   (explicit separate step)
-2. classify: DB-column access (flip) vs type field / object-literal key / comment / local (leave)
-3. grep -rln "_shared/<module>" supabase/functions/  -> redeploy EVERY importer (bundle = runtime)
-
-Joins the 3 existing classes (loose invoke payloads, pg_proc bodies, PostgREST embed hints).
-Dev Standards §VIII.
-
-### ZSH/paste note (tooling, not code)
-Multi-line sed pastes into the VS Code integrated zsh terminal fail on `!` (history
-expansion) AND on bracketed-paste mangling even after unsetopt banghist. Reliable path for
-batch edits: author the change as per-file find/replace in the editor, OR write the script
-via editor-tab save (not terminal paste) then `bash file.sh`. Do not fight the line editor.
-
-### STILL OPEN in Phase 2 (not this entry):
-- Section C: frontend { trip_id } payload contract -> honest-per-meaning (journey_id for
-  journey-scoped, engagement_id for set_public_view). set_public_view -> set_visibility
-  duplicate retirement (set_visibility already exists in travel-write-engagement, verified).
-  Type-field honesty (Trip*.trip_id, _shared/days.ts:15+64 pair). EF handlers still
-  destructure body.trip_id — working, not broken, but the name-lie the mission ends.
-- Section D: DROP the 7 compat views (travel_trips + 5 leaf views + travel_trip_guests),
-  grep-zero old names, re-eyeball 1 guest + 1 money surface POST-drop (the drop is when a
-  missed ref surfaces).
-- Then: EF boundary sweep (spine-writer / journey-writer split per engagement_type model) —
-  own campaign, queued.
-
-  ## 2026-07-10 (S53P — Stage 6 Phase 2: journey column cutover · DB+EF layer SHIPPED, verified live)
+## 2026-07-10 (S53P — Stage 6 Phase 2: journey column cutover · DB+EF layer SHIPPED, verified live)  
 
 ### trip_id -> journey_id on the 3 base tables — the un-viewable cutover, closed
 
@@ -1290,3 +1209,121 @@ journey, invokeWriteTrip -> invokeWriteJourney, flip payload keys honest-per-mea
 EF handler destructures + outputs + frontend types in lockstep. set_public_view duplicate
 retires to the spine layer (set_visibility already exists in travel-write-engagement). Each
 line lands once, in final coherent form.
+
+## 2026-07-11 (S53O — DB health + integrity session; runs AFTER S53P Phase 2 cutover)
+
+### [DB] element_status_events built from spec — a documented-but-never-created table
+
+Arc B Phase 3 (2026-06-27 entry) documented element_status_events as a shipped append-only
+status-history table. It was NOT created live — only the WRITER shipped (fn_autopromote_on_
+confirmation carries INSERT INTO element_status_events). Every status-PROMOTION write (a
+confirmation_number first set on a not-yet-confirmed element, across travel_booking_rooms /
+travel_bookings / travel_engagement_aux_bookings) hit the phantom table and failed silently,
+platform-wide. Invisible until a real promotion fired (a room defaulting to requested getting
+a conf number) — already-confirmed elements skip the promote branch, so it never surfaced.
+
+Built from the documented spec (not guessed): (id, element_type, element_id, from_status_id,
+to_status_id, changed_by, source, changed_at); polymorphic element_id (no native FK); native
+FKs on from/to status; index (element_type, element_id, changed_at DESC); RLS enabled, NO
+policies (deny-by-default, service-role-only, matches a_ppd_*). Original trigger works unchanged
+once the table exists. Verified live: a real booking (Nicolas, room bc109ddc) inserted clean,
+auto-promoted to confirmed, event logged. Phase 3 audit logging functions for the first time.
+
+LESSON: a changelog entry saying "shipped" is NOT proof the live schema matches. Writer (trigger)
+and target (table) shipped separately; the gap was invisible to grep (no migrations — schema is
+live) and tsc, surfacing only on the promotion path. Cross-check changelog-documented DB objects
+against information_schema — proven-necessary "foundation perfect" work.
+
+### [DB] Orphan function dropped — update_travel_immerse_bottom_notes_updated_at
+
+Referenced travel_immerse_bottom_notes, a table gone since the immerse→overlay rename. No
+trigger used it (verified). Flagged db_map v10 §4; closed. The INVERSE of element_status_events:
+there a live trigger referenced a never-built table (→ built it); here a live function referenced
+a long-dead table (→ dropped it). Two schema-truth lies, opposite directions, both surfaced by
+rename-as-audit.
+
+### [DB] 5 set_updated_at triggers renamed off travel_trip_* — last travel_trip_* object token closed
+
+Trigger NAMES carried travel_trip_* tokens on renamed tables (they fire correctly — name is a
+label). Renamed to match their tables: trg_set_updated_at_travel_trip_{aux_bookings,briefs,
+day_entries,days,destinations} → _travel_engagement_aux_bookings / _travel_journey_{briefs,
+day_entries,days,destinations}. The LAST travel_trip_* token on any DB object — tables, functions,
+triggers now all consistent. DEBT (own session): set_updated_at trigger naming is inconsistent
+platform-wide (4 different patterns) — a normalization pass, cosmetic, unrelated to the rename arc.
+
+### [DB] Guest visibility untangled from lifecycle status — tg_auto_public_view DROPPED
+
+tg_auto_public_view (fired tg_engagements_public_view on travel_engagements) auto-set public_view
+from status on EVERY status change (true for confirmed/paid/in_service, false otherwise). This
+FUSED two independent concerns — lifecycle vs guest-visibility — a privacy risk + parallel-ship:
+an admin manually hiding a confirmed engagement got SILENTLY RE-EXPOSED on the next status write
+(two sources of truth, trigger wins). Conflicted with the manual visibility control + the "only 3
+public" debt.
+
+Mission fix (separate concerns, single source, privacy-first): DROPPED trigger + function.
+public_view is now SOLELY the deliberate admin control (set_public_view → handleSetPublicView).
+Status no longer touches visibility. proposal_visibility (separate column) unaffected. Existing
+values preserved (4 public / 9 hidden; DROP stops future auto-writes only). BEHAVIOR SHIFT
+(intended): confirmed trips no longer auto-appear — the "only 3 public" rule now HOLDS.
+
+### [STANDARD] no-else sweep across all pg_proc — classified, not blanket-rewritten
+
+D's standard (NEVER else/else-if; guard clauses + early returns) applied to DB functions. Swept
+for else tokens: 4 carried them.
+- tg_auto_public_view — DROPPED (visibility untangle above); moot.
+- derive_tasks_for_engagement — two CASE...ELSE NULL (redundant defaults; CASE returns NULL
+  anyway). To fix when next CREATE OR REPLACE'd. NOT folded into S53P (that shipped before this).
+- user_suffix — CASE...ELSE 0 in a hex→int hash. DEFERRED: rewrite risks changing existing
+  user-facing suffix output; ELSE 0 never fires (input is TO_HEX output). Own careful task.
+- tg_sync_trader_current_balance — ambience.SPORTS financial, control-flow IF/ELSE on TG_OP.
+  NOT TOUCHED: out of the travel arc's audited domain. Logged for the SPORTS owner.
+PRINCIPLE: "the standard says fix it" is not license to rewrite live financial code in an
+un-audited domain. Fix what's understood + provably safe; log the rest.
+
+### [DB] In-schema documentation — COMMENT ON the load-bearing core
+
+Made the schema self-documenting for multi-instance work (changelog is narrative; comments are
+ground-truth breadcrumbs in pg_proc/pg_class). Every campaign-touched FUNCTION + the load-bearing
+core TABLES now carry COMMENT ON:
+- Functions: clone_engagement (behavior + remap FKs + KNOWN bedding_type-drop bug + sort_order
+  remap constraint), derive_tasks_for_engagement, tg_derive_child_activities,
+  fn_autopromote_on_confirmation (the element_status_events history note),
+  resolve_and_project_guest_label, recompute_booking_totals (the S53K "DO NOT re-add commission
+  writes" warning — the most protective comment in the schema), check_closed_won_commission,
+  tg_project_guest_label_on_engagement, enforce_engagement_label_house_match.
+- Tables: travel_engagements (THE SPINE — service-agnostic, engagement_type, capability model),
+  travel_journey (the journey capability, was travel_trips), travel_bookings + travel_booking_rooms
+  (financial core, with inline bug-history: double-count, receipt-anchored commission, deposit=
+  awareness-not-receivable), travel_engagement_aux_bookings (Stage-7 element target),
+  travel_engagement_types (the 21-shape / 3-pillar taxonomy).
+Deliberately LEFT uncommented (restraint, per this changelog's own rule): registries, sports_*
+(separate domain), walled PII prefixes, set_updated_at family — self-evident, a comment = noise.
+
+### [DEBT] clone_engagement drops bedding_type on room clone (STANDALONE, S53P did not fold it)
+
+clone_engagement's travel_overlay_rooms INSERT omits bedding_type (column added S53K, post-dating
+the function) — every clone silently loses room bedding types. S53P Phase 2 shipped the trip_id→
+journey_id cutover WITHOUT folding this in, so it's a standalone open debt (not "fold into Phase
+2" as earlier scoped). One-line fix: add bedding_type + r.bedding_type to the room INSERT, next
+time the function is CREATE OR REPLACE'd. Noted in the function's COMMENT ON. (Yazeed v3 built by
+clone — verify its rooms carry bedding_type; may need manual backfill.)
+
+### [DEBT] Guest-read reliability — silent ?? [] must fail loud (P1, handed to counterpart)
+
+Guest-read EFs use result ?? [] on Promise.all sub-fetches → a transiently FAILED fetch (cold-
+start timeout, blip) becomes an empty array → guest sees "Nothing planned today" on a real day.
+Same silent-empty CLASS as the leaf-column/flight/hero bugs. LOCK: guest reads fail loud (500),
+never silent-empty; [] must mean "genuinely nothing". Strengthens the one-EF-three-modes read-
+path consolidation. Handed to counterpart with the read-path work.
+
+### [PROCESS] Session character — rename-as-audit earned its keep, changelog-first corrected course twice
+
+This session opened chasing a single blocked confirmation write and became a foundation-integrity
+pass. The rename campaign functioned as a full-platform audit: surfaced + fixed FOUR latent bugs
+across the arc (stale PostgREST hint 5b, public_view spine bug Phase 1, this element_status_events
+phantom-table, the orphan function), completed one half-shipped feature, removed one privacy
+tangle, swept a standard, documented the core. TWICE the changelog corrected a wrong conclusion
+mid-session: (1) the trigger bug looked like an orphan to DROP but the changelog proved a real
+half-shipped feature to BUILD; (2) Phase 2's DB cutover looked pending but the changelog showed
+it already SHIPPED (S53P) — nearly re-did done work. Reaffirms: read the changelog FIRST; live
+schema is the only truth; verify against information_schema, not memory.
