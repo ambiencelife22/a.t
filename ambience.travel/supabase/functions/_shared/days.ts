@@ -2,7 +2,7 @@
 // Single-source trip days. The list of WHICH days exist is DERIVED from the trip
 // span [start_date .. end_date] — never stored. travel_journey_days is an OVERLAY
 // holding only per-day operator overrides (show / day_label / day_note), keyed by
-// (trip_id, entry_date). buildDays merges: every date in span, with overlay applied.
+// (journey_id, entry_date). buildDays merges: every date in span, with overlay applied.
 //
 // Replaces the stored-days model (travel_journey_days as source of existence) — the
 // same store-the-derivation pattern retired for hotel/aux entries. Shift a trip
@@ -10,9 +10,9 @@
 //
 // Default when no overlay row exists for a date: show=true, no label, no note.
 
-export type TripDayItem = {
+export type JourneyDayItem = {
   id:         string | null   // overlay row id if present, otherwise null (derived-only day)
-  trip_id:    string
+  journey_id: string
   entry_date: string
   show:       boolean
   day_label:  string | null
@@ -48,7 +48,7 @@ export function buildDays(
   startDate:  string | null,
   endDate:    string | null,
   overlayRows: DayOverlayLike[],
-): TripDayItem[] {
+): JourneyDayItem[] {
   if (!startDate || !endDate) return []
 
   const overlayByDate = new Map<string, DayOverlayLike>()
@@ -61,7 +61,7 @@ export function buildDays(
     const o = overlayByDate.get(date)
     return {
       id:         o ? ((o.id as string | null) ?? null) : null,
-      trip_id:    journeyId,
+      journey_id: journeyId,
       entry_date: date,
       // Default show=true; overlay can hide. Only an explicit false hides.
       show:       o ? (o.show as boolean | null) !== false : true,
