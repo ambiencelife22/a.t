@@ -1459,131 +1459,6 @@ ROLLBACK;
 - C + D running WITHOUT error = the write paths (clone, derive-on-confirm) work end to end.
   These are the paths S53P left broken; a raised "column trip_id does not exist" would mean a
   regression returned. Always test C/D inside BEGIN/ROLLBACK so verification leaves no data.
-
-  ## 2026-07-10 (S53P — Stage 6 Phase 2: journey column cutover · DB+EF layer SHIPPED, verified live)
-
-### trip_id -> journey_id on the 3 base tables — the un-viewable cutover, closed
-
-**Shipped + live-verified.** The base-table columns a compat view cannot alias on write
-are renamed. Money math and guest render both confirmed green post-deploy.
-
-**DB (one transaction):**
-- travel_bookings.trip_id -> journey_id (NOT NULL, financial)
-- travel_requests.trip_id -> journey_id
-- travel_engagements.trip_id -> journey_id (the spine)
-- 3 FK constraints renamed *_trip_id_fkey -> *_journey_id_fkey (targets already
-  travel_journey, auto-followed from Phase 1)
-- Indexes idx_travel_bookings_journey + idx_engagements_journey_id: NO change — already
-  named for the target in Phase 1, column auto-followed.
-
-**ORDERING NOTE (learned the hard way):** the SQL was run BEFORE the callers were repointed
-(intended order was callers-first). This put the live surface into 42703 until the EF sweep
-landed. No data lost, no rollback — the fix was forward (repoint + deploy), which is the
-work that was queued anyway. Compat views protected the guest TABLE-name path throughout;
-only base-column WRITES/reads were exposed, admin + money surfaces, briefly. For a base-column
-rename with no downtime pressure, callers-first is still correct; when inverted, do not roll
-back — drive forward.
-
-**EF + shared-module sweep (Category A — DB-column accesses), all deployed --use-api:**
-- _shared/trip.ts (guest entry): spine select/not/guard + booking .eq
-- _shared/expenses.ts: BOOKING_FINANCIAL_SELECT trip_id -> journey_id  [the 500-causer, below]
-- travel-get-trip-confirmation, travel-get-trip-programme: booking select + .eq
-- travel-read-trip-admin: 17 accesses (spine + bookings selects/in/not, result-type fields,
-  map keys, requests select)
-- travel-read-expenses: spine select/not + 2 embed hints (travel_journey!trip_id -> !journey_id)
-- travel-read-engagement-admin: spine select + embed hint (constraint-name
-  travel_engagements_trip_id_fkey -> _journey_id_fkey) + result-type fields
-  (EngagementListQueryRow.trip_id -> journey_id, trip.trip_code -> journey_code)
-- travel-write-engagement: EDITABLE_SCALARS whitelist + reassign_trip .update
-- travel-write-trip: resolveRoomRow booking select/guard + handleCreateBooking .insert
-- travel-get-immerse-proposal: spine select
-
-**VERIFIED LIVE (rendered page + numbers, not tsc):**
-- Guest programme 1d680dcc + kH9mP4wRn3x: renders, flights present
-- OutlookTab Sharm 89aee7e3: Net Margin 666.12, Commission 951.60, Net Revenue 666.12,
-  IATA 285.48 — money math intact through the rename (double-count fix held)
-- StudioDashboard money strip
-
-### NEW STANDING RULE — _shared/ modules are the 4th invisible-to-tooling reference class
-
-The per-EF file list is NOT the deploy surface. _shared/*.ts modules bundle into every EF
-that imports them and carry their own column-name string references. File-scoped grep over
-named EFs misses them; tsc misses them (runtime strings); they surface only as a runtime 500.
-
-PROOF this session: swept 9 named EFs green, deployed, programme rendered — then OutlookTab
-500'd on "travel_bookings.trip_id does not exist" because _shared/expenses.ts:26
-BOOKING_FINANCIAL_SELECT still said trip_id. Second occurrence same session (_shared/trip.ts
-was the first).
-
-MANDATORY after any column rename:
-1. grep -rn "<oldcol>" supabase/functions/_shared/   (explicit separate step)
-2. classify: DB-column access (flip) vs type field / object-literal key / comment / local (leave)
-3. grep -rln "_shared/<module>" supabase/functions/  -> redeploy EVERY importer (bundle = runtime)
-
-Joins the 3 existing classes (loose invoke payloads, pg_proc bodies, PostgREST embed hints).
-Dev Standards §VIII.
-
-### ZSH/paste note (tooling, not code)
-Multi-line sed pastes into the VS Code integrated zsh terminal fail on `!` (history
-expansion) AND on bracketed-paste mangling even after unsetopt banghist. Reliable path for
-batch edits: author the change as per-file find/replace in the editor, OR write the script
-via editor-tab save (not terminal paste) then `bash file.sh`. Do not fight the line editor.
-
-### STILL OPEN in Phase 2 (not this entry):
-- Section C: frontend { trip_id } payload contract -> honest-per-meaning (journey_id for
-  journey-scoped, engagement_id for set_public_view). set_public_view -> set_visibility
-  duplicate retirement (set_visibility already exists in travel-write-engagement, verified).
-  Type-field honesty (Trip*.trip_id, _shared/days.ts:15+64 pair). EF handlers still
-  destructure body.trip_id — working, not broken, but the name-lie the mission ends.
-- Section D: DROP the 7 compat views (travel_trips + 5 leaf views + travel_trip_guests),
-  grep-zero old names, re-eyeball 1 guest + 1 money surface POST-drop (the drop is when a
-  missed ref surfaces).
-- Then: EF boundary sweep (spine-writer / journey-writer split per engagement_type model) —
-  own campaign, queued.
-
----
-
-## 2026-07-10 (S53P — Stage 6 Phase 2 Section D: compat views DROPPED · CUTOVER COMPLETE)
-
-### The 7 compat views dropped — transitional scaffolding removed, system at rest
-
-**Pre-drop gate (the drop is when a missed reference surfaces, so verify FIRST):**
-- pg_class: 7 views confirmed, all dependent_views=0 (no view-on-view, free drop order).
-- Full-codebase grep for all 7 OLD names across src/ + supabase/functions/: ZERO live
-  references. Every hit was travel_engagement_aux_bookings — the REAL table (aux is Stage 7,
-  not renamed, not a view). Phase 1 + Phase 2 repointed every reader to travel_journey_*
-  already. The views were load-bearing for nothing.
-
-**Dropped (one txn):** travel_trips, travel_engagement_briefs, travel_engagement_days,
-travel_engagement_day_entries, travel_engagement_destinations,
-travel_engagement_welcome_letters, travel_trip_guests.
-
-**Post-drop verified (rendered page, immediately):**
-- pg_class: zero rows — views gone.
-- Guest programme 1d680dcc: renders.
-- OutlookTab Sharm 89aee7e3: 666.12 / 951.60 / 285.48 — money intact.
-- StudioDashboard money strip: renders.
-
-**STATE: travel_trips no longer exists in ANY form — not a table, not a view. The name is
-gone from the database. travel_journey is the only truth. Every reader is on true names with
-zero compat scaffolding. The DB+EF layer is COHERENT with the mission model and AT REST for
-the first time in the campaign.** The Stage-1 drift (engagement_id meaning two things) is
-structurally closed.
-
-### STILL OPEN — Section C + EF boundary sweep (one combined coherent motion, per mission)
-Frontend still sends { trip_id } payload keys; EF handlers still destructure body.trip_id;
-EF outputs still emit trip_id; frontend types still declare trip_id. ALL WORKING (contract
-held end-to-end, tsc green). NOT broken — the remaining name-lie is cosmetic-honesty, not
-structural. Per mission ("no line edited twice"), Section C is done AS ONE MOTION with the
-EF boundary sweep: rename travel-write-trip -> travel-write-journey, queriesAdminTrip ->
-journey, invokeWriteTrip -> invokeWriteJourney, flip payload keys honest-per-meaning
-(journey_id journey-scoped, engagement_id for the retired set_public_view duplicate), flip
-EF handler destructures + outputs + frontend types in lockstep. set_public_view duplicate
-retires to the spine layer (set_visibility already exists in travel-write-engagement). Each
-line lands once, in final coherent form.
-
----
-
 ## 2026-07-11 (S53P — Stage 6 Phase 2 Step 2: journey EF+frontend rename · COMPLETE)
 
 ### travel-write-trip / travel-read-trip-admin -> travel-write-journey / travel-read-journey-admin
@@ -1630,3 +1505,100 @@ multi-line script body into the terminal. Cost real time this session before the
   requests have no home EF yet). Logged debt. NOT this session.
 - Category Z type-field honesty in src/ largely done via the Trip*->Journey* sweep; sweep the
   _shared/days.ts trip_id type field + object key (line 15/64) separately if not caught.
+
+  ---
+
+## 2026-07-11 (S53P — engagement list re-link · Section-C seam closed for the engagement surface)
+
+### travel-read-engagement-admin output key trip_id -> journey_id
+
+Immediately after Step 2, admin showed ALL engagements unlinked (every engagement fell into
+the orphan group, none grouped under its journey). Diagnosed WITHOUT touching data first — a
+join query proved every travel_engagements.journey_id was populated and matched travel_journey,
+FK intact, embed-hint constraint name correct. The data was never broken.
+
+ROOT CAUSE — the Section-C seam, half-crossed. The Step-2 frontend rename swept
+queriesAdminEngagements + EngagementsListTab to read row.journey_id (grouping key). But
+travel-read-engagement-admin's OUTPUT object still emitted the key as trip_id: r.journey_id
+(output keys deliberately left as trip_id, per the 07-10 "Section C deferred" note). So the
+frontend read row.journey_id -> undefined -> every row hit `if (row.journey_id == null)` ->
+all orphaned. Rendered "all unlinked."
+
+FIX (one line, finishing the seam honestly): output key trip_id -> journey_id in the list
+mapping. trip_code stays as the frontend key mapping r.trip?.journey_code (trip_code is the
+frontend's display field, journey_code the DB column — correct translation, unchanged).
+Deployed travel-read-engagement-admin. Engagements re-link.
+
+CLEANUP: removed duplicate src/queries/queriesAdminTrip.ts — a byte-identical leftover the
+Step-2 git mv left behind (or an editor restored post-commit). grep confirmed ZERO importers
+before git rm. Parallel-ship eliminated.
+
+CORRECTS the 07-10 entry's "EF outputs still emit trip_id... ALL WORKING" — that was true when
+written, but the engagement list was NOT working once the frontend expected journey_id. This
+entry closes the output-key seam for the ENGAGEMENT-LIST surface specifically. Other EF
+outputs still emit trip_id where their frontends still read trip_id (those ARE working); the
+remaining honest-per-meaning output sweep is still the deferred Section-C tail.
+
+LESSON (reinforces rename-as-free-audit): a deliberately-deferred contract seam WILL surface
+as a live break the moment one side of it is renamed past the other. When deferring an output
+key, grep the consumers first — if any consumer was swept to the new key, the seam is already
+crossed and must be finished, not deferred.
+
+### [DEBT · ARCHITECTURE] destination_url_slug is a denormalized string-FK — rooms/cards should link to the destination row by uuid, not by matching a copied slug string
+
+**Surfaced by a "why does this work this way" probe (S53O), not a bug report.** Verifying the
+S53L "ghost constraint" debt (which turned out already-resolved) led to the question: why do
+multiple rooms share a destination_url_slug? The answer exposed real architectural debt.
+
+**Current shape (works, but wrong):**
+travel_overlay_rooms and travel_overlay_engagement_content_card_selections group under a
+destination subpage by MATCHING (engagement_id, destination_url_slug string) against
+travel_overlay_engagement_destination_rows — NOT by an FK to destination_rows.id. The slug
+string is COPIED onto every room option (sb = 3 St Barths options, grossarl2 = 2, etc.). It
+renders correctly; data is currently consistent. It is latent debt, not a live break.
+
+**Why it fails the mission — measured against Universal Doc #4 STANDARDS:**
+
+- "Pristine code. No bandaids. No shortcuts. The architecture is the foundation; the foundation
+  has to be perfect." A subpage's identity (its slug) lives in TWO places: once authoritatively
+  on the destination row, and again as a copied string on every room/card that belongs to it.
+  That is the data-layer form of the parallel-ship this codebase already forbids in logic
+  ("when a value appears in 2+ places, extract to ONE source; drift is eliminated structurally,
+  not by discipline"). A slug is a value; it is currently NOT single-source. Rename a
+  destination's slug and every room/card copy is silently stale until each is hand-updated in
+  lockstep. That is drift-by-design — the opposite of a perfect foundation.
+
+- "One URL, one experience. No fragmentation." The subpage URL is the spine of the guest
+  experience, and its identity is fragmented across the room/card rows that should merely POINT
+  at it. The URL should resolve from ONE authored place (the destination row); rooms should
+  inherit it, not restate it.
+
+- THE BAR ("would a senior designer recognize craft?"): a string-matched join standing in for a
+  uuid foreign key — with a CHECK regex existing precisely BECAUSE the value is a raw
+  hand-consistent string rather than a referential id — is the kind of shortcut a senior
+  reviewer flags on sight. No FK constraint can protect it: nothing prevents a room carrying a
+  slug that no destination row owns.
+
+**Concrete downstream cost already visible:** clone_engagement remaps route_stops.destination_row_id
+and rooms.connected_overlay_id BY ID (proper FK remap via the temp id-maps) but carries
+destination_url_slug as a LITERAL STRING COPY — the clone works only because the copied slug
+happens to still match. Had rooms/cards a real destination_row_id FK, the clone would remap it
+cleanly like the others; the string slug is why that part of the clone is fragile.
+
+**Proper fix (own session — foundational, not a side-quest):**
+1. Add destination_row_id uuid FK on travel_overlay_rooms + _content_card_selections →
+   travel_overlay_engagement_destination_rows(id).
+2. Backfill it by the current (engagement_id, slug) match.
+3. Repoint the render path (subpage room-grouping) + every query that joins on slug to join on
+   the FK; derive the slug THROUGH the relationship.
+4. clone_engagement: remap the new destination_row_id via the existing _clone_dest_row_map
+   (drops the fragile string-carry).
+5. Once all callers read through the FK, DROP the denormalized destination_url_slug from
+   rooms/cards (keep it ONLY on destination_rows, its single authoritative home) + drop the two
+   now-unneeded format CHECKs there.
+Touches: guest render (subpage grouping), clone, and the join-by-slug queries. Guest + money
+surfaces in scope → stage + verify live, never a broken state. Own campaign with its own recon.
+
+**Correct as-is (do NOT change):** the format CHECK + UNIQUE(engagement_id, slug) on
+destination_rows itself — that table legitimately OWNS the slug and its uniqueness. The debt is
+only the COPIES on rooms/cards and the string-join they force.
