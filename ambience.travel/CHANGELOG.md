@@ -1355,3 +1355,107 @@ clone_engagement fix (two "successful" runs that didn't persist) before the erro
 Add to the batch-edit checklist alongside the ZSH/bracketed-paste note: for functions, run via
 `psql -f file.sql` (file-based, no paste truncation, prints the real error+line) rather than
 pasting large bodies into the SQL editor.
+
+# S53O — trip_id → journey_id function repoint + verification note
+
+## What was wrong
+S53P renamed base-table columns `trip_id → journey_id` (travel_bookings, travel_requests,
+travel_engagements) but did NOT repoint the 3 DB functions that referenced the `trip_id` column.
+All 3 were silently broken from S53P until fixed S53O. No user hit them in the window
+(verified: zero engagements created/status-changed since S53P — "no rows returned").
+
+## What changed (S53O)
+
+### 1. derive_tasks_for_engagement(uuid)  [SECURITY DEFINER, RETURNS void]
+- `SELECT trip_id ...` → `SELECT journey_id ...` (from travel_engagements)
+- `WHERE b.trip_id = ...` → `WHERE b.journey_id = ...` (travel_bookings)
+- local `v_trip_id` → `v_journey_id` (all refs)
+- aux loop kept `a.engagement_id = v_journey_id` (engagement_id is the SPINE pointer — correct, unchanged)
+- removed two `CASE ... ELSE NULL` (redundant defaults; a CASE with no matching WHEN returns NULL) — no-else standard
+- COMMENT ON updated
+
+### 2. tg_derive_child_activities()  [SECURITY DEFINER, trigger fn]
+- `NEW.trip_id` → `NEW.journey_id` (single ref)
+- fires as trigger `tg_engagements_derive_children` on travel_engagements (AFTER UPDATE OF status)
+- calls derive_tasks_for_engagement(NEW.id)
+- COMMENT ON updated
+
+### 3. clone_engagement(uuid, text, text)  [RETURNS uuid]
+- spine INSERT column list: `... iteration_label, trip_id, person_id ...` → `journey_id`
+- spine SELECT: same position → `journey_id`
+- (earlier S53O) bedding_type restored to the travel_overlay_rooms INSERT (col list + VALUES)
+- `trip_destination_row_id` on travel_overlay_destination_pricing_rows LEFT AS-IS — it is a
+  DIFFERENT column, not a trip_id ref (a separate future rename question)
+- COMMENT ON updated
+
+## Process notes for future instances
+- `pg_get_functiondef` output has NO trailing `;` after the closing `$function$`. When re-creating,
+  add `$function$;` or any following statement (COMMENT ON, COMMIT) throws 42601 and rolls back the
+  whole block. Symptom: "ran successfully" but change didn't persist (verify returns false).
+- Run function replaces via `psql -f file.sql` (file-based, no paste truncation, prints real error+line),
+  not by pasting large bodies into the SQL editor.
+
+## HOW TO VERIFY THESE 3 FUNCTIONS STILL WORK (future instance checklist)
+
+### A. Static — no stale trip_id column ref remains (fast, run anytime)
+```sql
+select proname, pg_get_functiondef(oid) ~ '\mtrip_id\M' as still_has_trip_id_col
+from pg_proc
+where proname in ('clone_engagement','derive_tasks_for_engagement','tg_derive_child_activities')
+order by proname;
+-- EXPECT: all three still_has_trip_id_col = false
+-- (clone shows false because trip_destination_row_id is NOT a \mtrip_id\M word-boundary match)
+```
+
+### B. Static — no else token (derive_tasks)
+```sql
+select pg_get_functiondef('derive_tasks_for_engagement'::regproc) ~* '\melse\M' as has_else;
+-- EXPECT: false
+```
+
+### C. Live — clone_engagement round-trips a whole engagement (write-path proof)
+Pick any existing engagement id as source. Run in a transaction you ROLL BACK so it leaves no trace:
+```sql
+BEGIN;
+  SELECT clone_engagement(
+    (select id from travel_engagements where url_id = 'oQC68jVKgcm'),  -- any real source
+    'verify-clone-temp-' || substr(gen_random_uuid()::text,1,8),
+    'verify clone'
+  ) AS new_id \gset
+  -- confirm the clone exists with journey_id copied + children present
+  select id, journey_id, engagement_status_id from travel_engagements where id = :'new_id';
+  select count(*) as rooms      from travel_overlay_rooms                     where engagement_id = :'new_id';
+  select count(*) as dest_rows  from travel_overlay_engagement_destination_rows where engagement_id = :'new_id';
+  -- confirm bedding_type carried (if source rooms have it set)
+  select count(*) filter (where bedding_type is not null) as rooms_with_bedding
+  from travel_overlay_rooms where engagement_id = :'new_id';
+ROLLBACK;
+-- EXPECT: the SELECT after clone returns 1 row with a non-null journey_id, child counts > 0,
+--         no error. (If clone_engagement raised, it would abort here.) ROLLBACK discards the test.
+```
+
+### D. Live — derive_tasks + trigger fire on a status change (write-path proof)
+The trigger (tg_engagements_derive_children) fires on status change to confirmed/paid/in_service.
+Test in a rolled-back transaction so nothing persists:
+```sql
+BEGIN;
+  -- pick a top-level engagement (parent NULL, journey_id set) currently NOT confirmed
+  -- set it to confirmed; the trigger should PERFORM derive_tasks_for_engagement with no error
+  UPDATE travel_engagements
+  SET engagement_status_id = (select id from travel_lifecycle_statuses where slug='confirmed')
+  WHERE id = '<a top-level engagement id, parent_engagement_id IS NULL, journey_id NOT NULL>'
+  RETURNING id, journey_id, engagement_status_id;
+  -- if it returns without error, the trigger + derive_tasks ran clean.
+  -- optionally inspect what got derived:
+  select count(*) as child_engagements from travel_engagements where parent_engagement_id = '<same id>';
+  select count(*) as tasks from travel_tasks where engagement_id = '<same id>';
+ROLLBACK;
+-- EXPECT: UPDATE returns without "column trip_id does not exist" or any error.
+--         Pre-S53O this raised; post-fix it succeeds. ROLLBACK discards.
+```
+
+### Interpreting results
+- A + B green = the static repoint + no-else are intact.
+- C + D running WITHOUT error = the write paths (clone, derive-on-confirm) work end to end.
+  These are the paths S53P left broken; a raised "column trip_id does not exist" would mean a
+  regression returned. Always test C/D inside BEGIN/ROLLBACK so verification leaves no data.
