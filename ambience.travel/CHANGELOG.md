@@ -1669,3 +1669,78 @@ naive redo adding uniqueness to rooms would have BROKEN valid shared-slug rooms 
 legitimately share a slug: sb×3 = 3 St Barths options on one subpage). Verify-first before DDL
 stopped us fixing a non-problem into a bug. (This probe is also what surfaced the separate
 destination_url_slug denormalization debt logged above.)
+
+## 2026-07-11 (S53Q — Stage 7 DB layer: the engagement tree, built + populated)
+
+### [DB][ARC] Stage 7 Phase 1 — typed engagement tree created + populated from aux (readers pending)
+
+The typed engagement-tree model's DB layer. travel_engagements is now a typed tree:
+every element is a node (engagement_type_id + parent_engagement_id), standalone-vs-child
+is only whether parent_engagement_id is null. Element detail is the leaf node's payload
+in 1:1 detail tables keyed on the NODE id. Live Supabase — invisible to git; this is the
+record. NOT "rename aux -> elements": aux stays as the live source until the readers move
+(next session). Greenfield — the tree columns were dormant scaffolding (row counts proved
+empty: nodes_from_aux=0 pre-run), so this is population, not a shadow-collapse migration.
+
+5 tables created (all RLS + constraints + COMMENT ON):
+- travel_cabin_classes / travel_aircraft_types / travel_airports — reference registries.
+  RLS public-read / admin-write (labels non-sensitive; closes the "RLS not enabled"
+  advisor finding — registries got RLS-decided at creation, the new standing rule).
+  Seeded 4 / 4 / 11. Registry values auto-mapped from the former aux free-text columns
+  (cabin_class, aircraft_type, depart/arrive_airport) — all live values matched a seed
+  row, zero unmapped.
+- travel_engagement_transport_detail / travel_engagement_dining_detail — 1:1 element
+  detail, node_id PK REFERENCES travel_engagements(id) ON DELETE CASCADE. Keyed on the
+  NODE, NOT engagement_id (engagement_id on aux points at travel_journey = the Stage-1
+  drift; node-keyed avoids re-introducing it). RLS admin-only, mirrors the aux posture
+  (Admin full access, ALL, authenticated, is_admin_user()) — NO public read; guests reach
+  detail via guest EFs (service role), same wall as aux.
+
+Population — 25 element nodes on travel_engagements, one per aux row:
+- Parent = travel_journey.confirmed_engagement_id (via aux.engagement_id -> journey ->
+  confirmed). Correct on the clone lineage (fcdcec92 has 3 spine engagements; parent
+  resolves to the confirmed winner 5857d344, NOT the arbitrary min()). 1:1 on the other 3
+  journeys. Pre-flight proved: all 25 resolve exactly one parent, 0 missing, 0 bad.
+- Type split: 15 flight -> transport detail, 5 dining -> dining detail, 5 (airport_transfer
+  + meet_greet) -> BARE NODES (no detail table; all their data is node-level). Building
+  empty detail tables for the bare types would be dead scaffolding (the seat_type restraint,
+  applied to whole tables).
+- NOT-NULL contract on the spine satisfied: engagement_status_id <- aux.status_id (1:1, all
+  25 populated); itinerary_status_id = 'confirmed' (element line = confirmed itinerary,
+  node-only concept, flagged decision — could later derive from parent); audience=private,
+  proposal_visibility=active, is_public=false (element inherits exposure via parent + guest
+  EF, never independently public); iteration_label='element', journey_types='{}'.
+
+Element free-text placed on the DETAIL tables, NOT the node — corrected against live schema:
+travel_engagements has no origin/destination/notes/booked_by columns (it's a proposal/
+presentation table), so element text lives on detail. Two data traps caught in recon:
+(1) origin/destination are the complete route (15/15 flights) while airport codes are sparse
+(5/15) — normalizing only codes + dropping origin/destination would have lost the route on
+10 flights; both kept, airport FKs are nullable overlay. (2) airline_name is the ONLY airline
+signal (airline_supplier_id 0/25) — not dropped as "legacy". travel_seat_types NOT created
+(0/25 rows carry seat_type — proven on data).
+
+VERIFY (banked as the aux-retire parity gate): nodes=25, transport=15, dining=5, bare=5,
+missing_parent=0, flights_missing_route=0, airline_preserved=1, cabin=5, aircraft=7,
+depart=5, arrive=5. Before aux is dropped, the tree must still prove these or a reader
+rewire silently lost data.
+
+STATE: data lives in BOTH aux (untouched live source) and the tree (built, dormant, read by
+nothing). Safe intended in-between. No guest or money surface touched.
+
+### NEXT — Stage 7 Phase 2 (readers, own session, recon-first)
+Rewire the 8 aux readers (typesAuxBookings, TripDossierSection, AuxPassengersEditor, both
+guest EFs, travel-read-journey-admin, _shared/trip.ts, travel-write-journey) to read node +
+detail; dining venue via the existing enrichment (no parallel-ship). Resolve the calendar
+filter (parent_engagement_id journey-vs-engagement ids — now live, behavior-changing). Retire
+aux LAST (grep-empty + row-parity gate against the banked numbers; drop dead seat_type with it).
+Party-primitive migration for dining guest_name (global_people) is a logged follow-on.
+
+### [PROCESS] Supabase editor swallows BEGIN-wrapped multi-statement batches
+The population BEGIN...INSERT...verify batch rolled back silently in the SQL editor — surfaced
+as an all-zeros verify with NO error. Root: the editor's own transaction handling fought the
+explicit BEGIN. Fix: run write statements ONE AT A TIME under autocommit, verify separately.
+Do NOT wrap population in BEGIN/COMMIT in the editor. Stronger form of the existing "editor
+returns only the last result set" rule. Also reaffirmed: \echo / psql meta-commands fail in
+the editor (strip to SQL comments); every new PostgREST-exposed table gets an explicit RLS
+decision at creation, reference tables included (the registry advisor finding).
