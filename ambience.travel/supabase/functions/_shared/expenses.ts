@@ -23,7 +23,7 @@ export const EXPENSE_SELECT = `
 `
 
 export const BOOKING_FINANCIAL_SELECT = `
-  id, trip_id, engagement_id, name, booking_type, status, confirmation_number,
+  id, journey_id, engagement_id, name, booking_type, status, confirmation_number,
   accom_hotel_id, supplier_id, supplier_name_override,
   start_date, end_date, nights, currency, price,
   cost,

@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
       // hotel policy fallback in deriveCheckinTime() inside timeline.ts.
       db.from('travel_bookings')
         .select(`
-          id, trip_id, house_id, booking_type, name, status, confirmation_number,
+          id, journey_id, house_id, booking_type, name, status, confirmation_number,
           start_date, check_in_date, start_time, check_in_note, check_out_note,
           end_date, nights, party_composition, brief_show, brief_image_src,
           booked_by, accom_hotel_id, sort_order,
@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
           )
         `)
         .eq('house_id', houseId)
-        .eq('trip_id', tripId),
+        .eq('journey_id', tripId),
 
       db.from('travel_engagement_aux_bookings')
         .select(AUX_BOOKING_SELECT)

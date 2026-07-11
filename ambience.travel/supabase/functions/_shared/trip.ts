@@ -39,18 +39,18 @@ export async function resolveTripIds(
 ): Promise<{ tripId: string; houseId: string } | null> {
   const { data: eng, error: engErr } = await db
     .from('travel_engagements')
-    .select('trip_id')
+    .select('journey_id')
     .eq('url_id', urlId)
-    .not('trip_id', 'is', null)
+    .not('journey_id', 'is', null)
     .limit(1)
     .single()
-  if (engErr || !eng?.trip_id) return null
-  const tripId = eng.trip_id as string
+  if (engErr || !eng?.journey_id) return null
+  const tripId = eng.journey_id as string
 
   const { data: booking, error: bookErr } = await db
     .from('travel_bookings')
     .select('house_id')
-    .eq('trip_id', tripId)
+    .eq('journey_id', tripId)
     .not('house_id', 'is', null)
     .limit(1)
     .single()

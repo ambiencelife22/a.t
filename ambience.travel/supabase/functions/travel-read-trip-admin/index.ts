@@ -82,15 +82,15 @@ async function handleDossier(db: SupabaseClient, houseId: string): Promise<Respo
   // 1. Trip IDs via bookings
   const { data: bookTripData, error: bookTripErr } = await db
     .from('travel_bookings')
-    .select('trip_id')
+    .select('journey_id')
     .eq('house_id', houseId)
-    .not('trip_id', 'is', null)
+    .not('journey_id', 'is', null)
 
   if (bookTripErr) return err('Failed to fetch bookings', 500)
-  const bookTripRows = (bookTripData ?? []) as { trip_id: string }[]
+  const bookTripRows = (bookTripData ?? []) as { journey_id: string }[]
   if (bookTripRows.length === 0) return ok({ trips: [], partners: {}, house: null })
 
-  const tripIds = [...new Set(bookTripRows.map(r => r.trip_id))]
+  const tripIds = [...new Set(bookTripRows.map(r => r.journey_id))]
 
   // 2. Trips
   const { data: tripData, error: tripErr } = await db
@@ -131,7 +131,7 @@ for (const t of tripRows) {
   // 3. Bookings
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
-    .select('id, trip_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
+    .select('id, journey_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
     .eq('house_id', houseId)
     .order('start_date', { ascending: true, nullsFirst: false })
     .order('end_date',   { ascending: true, nullsFirst: false })
@@ -172,9 +172,9 @@ for (const t of tripRows) {
       .in('journey_id', tripIds)
       .order('sort_order', { ascending: true }),
     db.from('travel_engagements')
-      .select('trip_id, url_id, hero_image_src, title')
-      .in('trip_id', tripIds)
-      .not('trip_id', 'is', null),
+      .select('journey_id, url_id, hero_image_src, title')
+      .in('journey_id', tripIds)
+      .not('journey_id', 'is', null),
   ])
 
   if (partnerResult.error) return err('Failed to fetch partners', 500)
@@ -207,13 +207,13 @@ for (const t of tripRows) {
 
   // Engagement hero + title are canon. brief overlay only (null = fall through).
   const engByTrip = new Map<string, { hero_image_src: string | null; title: string | null }>()
-  for (const e of (engResult.data ?? []) as Array<{ trip_id: string; hero_image_src: string | null; title: string | null }>) {
-    if (!engByTrip.has(e.trip_id)) engByTrip.set(e.trip_id, { hero_image_src: e.hero_image_src, title: e.title })
+  for (const e of (engResult.data ?? []) as Array<{ journey_id: string; hero_image_src: string | null; title: string | null }>) {
+    if (!engByTrip.has(e.journey_id)) engByTrip.set(e.journey_id, { hero_image_src: e.hero_image_src, title: e.title })
   }
   const briefs = ((briefResult.data ?? []) as Array<Record<string, unknown>>).map(b => ({
     ...b,
-    hero_image_src: (b.hero_image_src as string | null) ?? engByTrip.get(b.trip_id as string)?.hero_image_src ?? null,
-    brief_title:    (b.brief_title    as string | null) ?? engByTrip.get(b.trip_id as string)?.title           ?? null,
+    hero_image_src: (b.hero_image_src as string | null) ?? engByTrip.get(b.journey_id as string)?.hero_image_src ?? null,
+    brief_title:    (b.brief_title    as string | null) ?? engByTrip.get(b.journey_id as string)?.title           ?? null,
   }))
 
   return ok({
@@ -567,12 +567,12 @@ async function handleCalendar(
   // 3. Bookings (stays) for those trips — start_date/end_date are check-in/out.
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
-    .select('id, trip_id, name, status, booking_type, start_date, end_date, accom_hotel_id, confirmation_number')
-    .in('trip_id', tripIds)
+    .select('id, journey_id, name, status, booking_type, start_date, end_date, accom_hotel_id, confirmation_number')
+    .in('journey_id', tripIds)
     .order('start_date', { ascending: true, nullsFirst: false })
   if (bookErr) return err('Failed to fetch calendar bookings', 500)
   const bookings = (bookData ?? []) as Array<{
-    id: string; trip_id: string; name: string | null; status: string | null
+    id: string; journey_id: string; name: string | null; status: string | null
     booking_type: string | null; start_date: string | null; end_date: string | null
     accom_hotel_id: string | null; confirmation_number: string | null
   }>
@@ -680,7 +680,7 @@ async function handleCalendar(
 
   // 5. Shape: trips each carrying their stays (booking + resolved hotel name + slug).
   const byTrip = new Map<string, typeof bookings>()
-  for (const b of bookings) (byTrip.get(b.trip_id) ?? byTrip.set(b.trip_id, []).get(b.trip_id)!).push(b)
+  for (const b of bookings) (byTrip.get(b.journey_id) ?? byTrip.set(b.journey_id, []).get(b.journey_id)!).push(b)
 
   const out = confirmedTrips.map(t => ({
     id:            t.id,
@@ -774,8 +774,8 @@ async function handleActivityDetail(
     // child-activity derivation.) Falls back to the single booking if the anchor
     // has no accom_hotel_id (non-hotel stay).
     const { data: bk } = await db
-      .from('travel_bookings').select('trip_id, accom_hotel_id').eq('id', bookingId).maybeSingle()
-    const tripId = (bk?.trip_id as string | null) ?? null
+      .from('travel_bookings').select('journey_id, accom_hotel_id').eq('id', bookingId).maybeSingle()
+    const tripId = (bk?.journey_id as string | null) ?? null
     const hotelId = (bk?.accom_hotel_id as string | null) ?? null
     const partyLabel = await partyLabelForTrip(db, tripId)
 
@@ -943,7 +943,7 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await serviceClient
           .from('travel_bookings')
           .select('house_id')
-          .eq('trip_id', trip_id)
+          .eq('journey_id', trip_id)
           .not('house_id', 'is', null)
           .limit(1)
           .maybeSingle()
@@ -963,7 +963,7 @@ Deno.serve(async (req: Request) => {
         if (!house_id) return err('house_id is required for requests mode', 400)
         const { data, error } = await serviceClient
           .from('travel_requests')
-          .select('id, house_id, trip_id, engagement_id, channel, received_at, request_body, status, handled_by, notes, created_at, updated_at')
+          .select('id, house_id, journey_id, engagement_id, channel, received_at, request_body, status, handled_by, notes, created_at, updated_at')
           .eq('house_id', house_id)
           .order('received_at', { ascending: false })
         if (error) return err('Failed to fetch requests', 500)

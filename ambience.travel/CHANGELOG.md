@@ -931,3 +931,240 @@ side-effect of a P3 type-dedup. The two TimelineRoom types are currently byte-id
 so drift risk is low TODAY; the structural fix waits for the deliberate boundary decision. When
 taken: TimelineRoom is the ideal FIRST case (pure type, zero runtime) to prove the chosen pattern
 before applying it to formatName's harder runtime-logic case.
+
+## 2026-07-05 (S53L — DB integrity session, self-audited)
+
+### [DB] Session intent + honest accounting — verify-against-live-schema-FIRST reaffirmed
+
+INTENT: foundational DB integrity work clear of M's HPGL/rename arcs — close free-text
+smells, enforce implied invariants, kill naming drift. Make the foundation honest, not
+add features. Six pieces attempted.
+
+METHODOLOGICAL ERROR (the reason this entry matters more than the work): consulted
+information_schema per-table intermittently but NEVER read this changelog before starting
+DB work — so did not know the travel_immerse_* → travel_overlay_* → engagement/journey
+rename campaign was in flight. Built confidently against stale travel_immerse_* names that
+were renamed campaigns ago. Same failure class as every rename-audit lesson already logged
+here: the live schema is the only truth, git can't show it, and the changelog is the only
+record of renames. Consult BOTH before any DB work — not after it breaks.
+
+SOLID (tables outside the rename campaign — verified live, correct):
+- website_url → website convergence: renamed on travel_accom_brands, travel_accom_hotels,
+  travel_happenings, travel_suppliers (4 tables) + 6 guest-frontend consumer files. Platform
+  now uniform on `website` (non-redundant name; the _url suffix is decorative). EF-safe
+  (zero EF refs). Shared-DB safe sequence: frontend deploy THEN rename, graceful degradation
+  (links briefly absent, never errored). tsc-verified, live-verified.
+- is_public ⟹ is_active CHECK on travel_shopping + travel_happenings
+  (travel_{shopping,happenings}_public_implies_active). Enforces the two-stage model
+  (is_active=lifecycle, is_public=audience) — inactive+public now structurally impossible.
+- link_type → engagement_link_type enum (guide/custom parallel-built; extended to the full
+  UHNW set: +form, confirmation, document, payment, contact). travel_engagement_links,
+  confirmed engagement_id-keyed (current post-5a). NOTE: 5 new enum values have NO distinct
+  render yet — assign a link a new type only after its render ships, or the type claims
+  meaning the UI ignores.
+- Per-surface engagement links: show_on_proposal (default false) + show_on_confirmation
+  (default true) on travel_engagement_links. Both EFs filter by them; proposal EF gained
+  the links feature it never had. Defaults preserve prior behavior. Both paths verified,
+  test-elect reverted.
+- opening_hours jsonb (nullable) on travel_dining_venues (the `website` col already existed —
+  original "add website" half was a phantom). Shape = Option B (per-day service periods +
+  bounded notes), enforced app-layer per existing bullets-jsonb convention. INERT: no
+  reader/writer yet — TS type + admin form + card render are the completion (follow-on).
+
+SUSPECT — ran against STALE travel_immerse_* names, must be re-verified + likely redone on
+correct tables:
+- destination_url_slug format CHECK + per-trip unique index: ran against
+  travel_immerse_trip_destination_rows + travel_immerse_rooms — names that no longer exist.
+  Live truth: the destination-rows table is now travel_overlay_engagement_destination_rows
+  (and/or travel_journey_destinations — the rename split), rooms is travel_overlay_rooms.
+  Post-audit, ONLY card_selections_slug_format survives (on
+  travel_overlay_engagement_content_card_selections). The two intended constraints
+  (destination-rows format+uniqueness, rooms format) are NOT on the live tables — landed on
+  ghosts or nowhere. MUST redo on: travel_overlay_engagement_destination_rows (or
+  travel_journey_destinations — confirm which holds destination_url_slug), travel_overlay_rooms.
+  Design decisions still valid (format ^[a-z0-9]+$ on all slug-bearing tables; per-"trip"
+  uniqueness on the canonical/identity table — but the trip_id column is now journey_id/
+  engagement_id, so the unique index key must be re-derived on the real column).
+- HPGL DB foundation done early this session (house_label_context enum, engagement_houses
+  join, Austria seed): a_house_* / engagement_houses may be OUTSIDE the rename path (verify),
+  but re-confirm table names before trusting. M owns the HPGL arc — coordinate.
+
+RETRACTED — trip-surface consolidation arc spec (arc_trip_consolidation.md): DISCARD. It
+duplicates work M is ACTIVELY building ("one-EF-three-modes read-path consolidation",
+referenced in the 07-08 guest-read-reliability entry). Scoped before reading the changelog =
+the exact parallel-planning the changelog exists to prevent. Not a contribution; a collision.
+
+LESSON (standing, reaffirmed not new): before ANY DB work — (1) read this changelog for
+in-flight rename campaigns, (2) resolve every target table name against information_schema,
+(3) THEN act. In-context table names are stale by default in this repo. "Success. No rows
+returned" on a DDL against a nonexistent-name table is NOT proof it applied to the table you
+meant — verify the constraint/column exists on the LIVE table by its CURRENT name afterward.
+
+## 2026-07-10 (S53P — Stage 6 Phase 2 + EF boundary sweep · INTENTION, recon-frozen)
+
+### [INTENT] Journey column cutover + travel-write-trip dissolution — mission-derived, recon-first
+
+**The intent.** Close Stage 6: rename the three base-table columns trip_id -> journey_id
+(travel_bookings NOT NULL/financial, travel_requests, travel_engagements/spine), drop the
+7 Phase-1 compat views, and — because the mission forbids shipping an honest column into a
+dishonest EF — dissolve travel-write-trip along the engagement-type model. The engagement is
+the top-level entity; engagement_type resolves the capability tier (journey / acquisition /
+dining / concierge / stay / transport / experience / ...). A writer named after "trip" (a
+table that no longer exists) that writes across spine + journey + requests + hosted arm is
+itself the debt. D ruling: full mission, "as far as verified-safe takes us."
+
+**The home map (D-ruled).**
+- SPINE (type-agnostic, every engagement): set_public_view is the ONLY pure-spine mode in
+  the file (writes travel_engagements by id). Payload key -> engagement_id.
+- JOURNEY ARM (one capability; a dining engagement never touches it — "dining-only
+  engagements have no room for trip anywhere"): create_trip/update_trip/
+  update_trip_primary_client (journey CREATION), briefs, days, day_entries, destinations,
+  welcome_letters, journey-scoped bookings, aux (until Stage 7 retargets aux to spine as
+  ELEMENTS). Payload key -> journey_id. This is the ONLY place "trip" survives, renamed to
+  journey. File -> travel-write-journey.
+- REQUESTS: cross-cutting, own home. create/update/delete_request.
+- HOSTED ARM: link/unlink/remove_programme_guest — S53N independent peer arm, does NOT
+  belong in a travel-engagement writer. DEFERRED to own session (logged debt); stays in
+  place tonight (no 404).
+
+**Ruling 1 (confirmed): honest-per-meaning payload keys.** NOT a blanket trip_id->journey_id.
+Each payload key becomes the name of what its value identifies — journey_id for journey-scoped
+modes, engagement_id for set_public_view (spine). create_request already correctly separates
+trip_id + engagement_id. A blanket rename would MINT a lie in set_public_view (its value is a
+spine id, not a journey_id) — the exact drift the campaign kills.
+
+**RECON FINDINGS (07-10, live) — two corrections to the prior plan, banked before acting:**
+
+1. travel-write-engagement is NOT a mode-dispatcher — grep "case '" returned EMPTY. Its
+   reassign_trip path (L448) is inline, not a switch. So "lift set_public_view into the spine
+   writer" is NOT a drop-in mode move — that EF's shape must be READ before set_public_view's
+   home is decided. Prior plan assumed a switch that isn't there. MUST read
+   travel-write-engagement/index.ts before Step 1.
+
+2. The leaf reads are MOSTLY ALREADY CORRECT — Phase 1 threaded the engagement_id:journey_id
+   projection-alias pattern through them. Verified clean: travel-read-trip-admin:171,373 and
+   _shared/trip.ts:109 all use .eq('journey_id', ...) with the alias. So the prior "two
+   live-behind-view leaf bugs" claim is UNVERIFIED and likely wrong. The remaining trip_id
+   references cluster on the THREE BASE TABLES (spine/bookings/requests = Category A, the real
+   rename targets) + payload keys (Category C) + TS type fields (Category D honesty) + comments.
+   _shared/trip.ts:53 (.eq('trip_id', tripId)) still needs its BLOCK read (L50-55) to classify
+   which table it targets — spine-base (Category A) vs leaf (bug). Do NOT assume; read it.
+
+**Category map (the classified sweep, per the rename-ripple rule — classify each hit by its
+table, never blanket-sed):**
+- A (DB column on the 3 renamed base tables -> journey_id): the .eq/.select/.in/.not/.insert
+  on travel_bookings, travel_requests, travel_engagements. Includes handleCreateBooking:172
+  .insert({trip_id}) — the ONE hard SQL-coupled write in travel-write-trip.
+- B (embed hints, invisible-to-tooling): travel-read-expenses:65,208 (travel_journey!trip_id
+  -> !journey_id); travel-read-engagement-admin:124 (travel_engagements_trip_id_fkey ->
+  _journey_id_fkey, the renamed constraint).
+- C (payload keys, tsc-blind loose invoke): the whole travel-write-trip mode surface +
+  travel-read-trip-admin mode dispatch + queriesAdminTrip/Requests/Engagements invoke bodies.
+  Honest-per-meaning (Ruling 1).
+- D (type fields + comments, honesty): Trip*.trip_id type fields, TripDayItem.trip_id,
+  url_id->trip_id->house_id comments. Category Z, folds in.
+
+**SEQUENCE (view-protected, one home at a time, rendered-page eyeball between each — the
+mission bar "admin/client never in a broken state" made literal; NOT all-at-once):**
+- Step 0: DONE — this recon freeze.
+- Step 1: read travel-write-engagement; lift set_public_view to spine (payload engagement_id);
+  forwarder stays in travel-write-trip until Step 4. Verify: public_view toggle live, old+new path.
+- Step 2: extract create/update/delete_request to their home. Verify: request create.
+- Step 3: journey writer + COLUMN RENAME together. SQL (3 cols + 3 constraints, one txn;
+  indexes already Phase-1-renamed, skip). Flip handleCreateBooking:172. Honest journey_id
+  payloads. Category-A caller repoint (classified). Embed hints (B). Rename file
+  travel-write-trip -> travel-write-journey. Verify: Sharm 951.60/666.12, Austria destinations,
+  guest programme 1d680dcc (6 flights), Yazeed proposal, an admin brief write + booking create.
+- Step 4: drop forwarders + 7 compat views. Grep-zero old names. RE-EYEBALL one guest + one
+  money surface AFTER drop (the drop is when a missed ref surfaces).
+
+**VERIFICATION DISCIPLINE (standing, reaffirmed): the rendered page is the check, not tsc/grep.
+Prove the pattern on ONE file + deploy + eyeball BEFORE scaling. Grep callers for payload keys
+(compiler blind to loose invoke). Grep .select() for ! embed hints + old constraint stems.
+Read _shared/trip.ts:53's block before classifying it — inspect, never infer.**
+
+DEFERRED (logged, not this session): hosted-arm handler extraction; Trip* TS type-field
+honesty may split to its own pass if Step 3 blast radius is large; TimelineRoom dual-type +
+formatName() both blocked on the shared-code boundary (vite.config confirmed no resolve.alias —
+the boundary is real, no bridge exists).
+
+## 2026-07-10 (S53P — Stage 6 Phase 2: journey column cutover · DB+EF layer SHIPPED, verified live)
+
+### trip_id -> journey_id on the 3 base tables — the un-viewable cutover, closed
+
+**Shipped + live-verified.** The base-table columns a compat view cannot alias on write
+are renamed. Money math and guest render both confirmed green post-deploy.
+
+**DB (one transaction):**
+- travel_bookings.trip_id -> journey_id (NOT NULL, financial)
+- travel_requests.trip_id -> journey_id
+- travel_engagements.trip_id -> journey_id (the spine)
+- 3 FK constraints renamed *_trip_id_fkey -> *_journey_id_fkey (targets already
+  travel_journey, auto-followed from Phase 1)
+- Indexes idx_travel_bookings_journey + idx_engagements_journey_id: NO change — already
+  named for the target in Phase 1, column auto-followed.
+
+**ORDERING NOTE (learned the hard way):** the SQL was run BEFORE the callers were repointed
+(intended order was callers-first). This put the live surface into 42703 until the EF sweep
+landed. No data lost, no rollback — the fix was forward (repoint + deploy), which is the
+work that was queued anyway. Compat views protected the guest TABLE-name path throughout;
+only base-column WRITES/reads were exposed, admin + money surfaces, briefly. For a base-column
+rename with no downtime pressure, callers-first is still correct; when inverted, do not roll
+back — drive forward.
+
+**EF + shared-module sweep (Category A — DB-column accesses), all deployed --use-api:**
+- _shared/trip.ts (guest entry): spine select/not/guard + booking .eq
+- _shared/expenses.ts: BOOKING_FINANCIAL_SELECT trip_id -> journey_id  [the 500-causer, below]
+- travel-get-trip-confirmation, travel-get-trip-programme: booking select + .eq
+- travel-read-trip-admin: 17 accesses (spine + bookings selects/in/not, result-type fields,
+  map keys, requests select)
+- travel-read-expenses: spine select/not + 2 embed hints (travel_journey!trip_id -> !journey_id)
+- travel-read-engagement-admin: spine select + embed hint (constraint-name
+  travel_engagements_trip_id_fkey -> _journey_id_fkey) + result-type fields
+  (EngagementListQueryRow.trip_id -> journey_id, trip.trip_code -> journey_code)
+- travel-write-engagement: EDITABLE_SCALARS whitelist + reassign_trip .update
+- travel-write-trip: resolveRoomRow booking select/guard + handleCreateBooking .insert
+- travel-get-immerse-proposal: spine select
+
+**VERIFIED LIVE (rendered page + numbers, not tsc):**
+- Guest programme 1d680dcc + kH9mP4wRn3x: renders, flights present
+- OutlookTab Sharm 89aee7e3: Net Margin 666.12, Commission 951.60, Net Revenue 666.12,
+  IATA 285.48 — money math intact through the rename (double-count fix held)
+- StudioDashboard money strip
+
+### NEW STANDING RULE — _shared/ modules are the 4th invisible-to-tooling reference class
+
+The per-EF file list is NOT the deploy surface. _shared/*.ts modules bundle into every EF
+that imports them and carry their own column-name string references. File-scoped grep over
+named EFs misses them; tsc misses them (runtime strings); they surface only as a runtime 500.
+
+PROOF this session: swept 9 named EFs green, deployed, programme rendered — then OutlookTab
+500'd on "travel_bookings.trip_id does not exist" because _shared/expenses.ts:26
+BOOKING_FINANCIAL_SELECT still said trip_id. Second occurrence same session (_shared/trip.ts
+was the first).
+
+MANDATORY after any column rename:
+1. grep -rn "<oldcol>" supabase/functions/_shared/   (explicit separate step)
+2. classify: DB-column access (flip) vs type field / object-literal key / comment / local (leave)
+3. grep -rln "_shared/<module>" supabase/functions/  -> redeploy EVERY importer (bundle = runtime)
+
+Joins the 3 existing classes (loose invoke payloads, pg_proc bodies, PostgREST embed hints).
+Dev Standards §VIII.
+
+### ZSH/paste note (tooling, not code)
+Multi-line sed pastes into the VS Code integrated zsh terminal fail on `!` (history
+expansion) AND on bracketed-paste mangling even after unsetopt banghist. Reliable path for
+batch edits: author the change as per-file find/replace in the editor, OR write the script
+via editor-tab save (not terminal paste) then `bash file.sh`. Do not fight the line editor.
+
+### STILL OPEN in Phase 2 (not this entry):
+- Section C: frontend { trip_id } payload contract -> honest-per-meaning (journey_id for
+  journey-scoped, engagement_id for set_public_view). set_public_view -> set_visibility
+  duplicate retirement (set_visibility already exists in travel-write-engagement, verified).
+  Type-field honesty (Trip*.trip_id, _shared/days.ts:15+64 pair). EF handlers still
+  destructure body.trip_id — working, not broken, but the name-lie the mission ends.
+- Section D: DROP the 7 compat views (travel_trips + 5 leaf views + travel_trip_guests),
+  grep-zero old names, re-eyeball 1 guest + 1 money surface POST-drop (the drop is when a
+  missed ref surfaces).
+- Then: EF boundary sweep (spine-writer / journey-writer split per engagement_type model) —
+  own campaign, queued.

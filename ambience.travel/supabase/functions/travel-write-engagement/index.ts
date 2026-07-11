@@ -89,7 +89,7 @@ const json = (body: unknown, status = 200) =>
 //   public_view, is_public, is_public_template (visibility mode / separate).
 const EDITABLE_SCALARS = [
   'title', 'audience', 'journey_types',
-  'iteration_label', 'trip_id', 'person_id', 'slug', 'status_label',
+  'iteration_label', 'journey_id', 'person_id', 'slug', 'status_label',
   'eyebrow', 'hero_tagline', 'subtitle',
   'hero_image_src', 'hero_image_alt', 'hero_image_src_2', 'hero_image_alt_2',
   'hero_title_2', 'hero_subtitle_2', 'hero_pills', 'hero_eyebrow_override',
@@ -450,7 +450,7 @@ Deno.serve(async (req: Request) => {
 
       const { error } = await serviceClient
         .from('travel_engagements')
-        .update({ trip_id: new_trip_id })
+        .update({ journey_id: new_trip_id })
         .eq('id', id)
       if (error) {
         console.error('reassign_trip error:', error)

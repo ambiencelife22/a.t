@@ -89,14 +89,14 @@ async function resolveRoomRow(
   let partyLabel: string | null = null
   const { data: booking } = await db
     .from('travel_bookings')
-    .select('trip_id')
+    .select('journey_id')
     .eq('id', room.booking_id as string)
     .maybeSingle()
-  if (booking?.trip_id) {
+  if (booking?.journey_id) {
     const { data: brief } = await db
       .from('travel_journey_briefs')
       .select('prepared_for')
-      .eq('journey_id', booking.trip_id as string)
+      .eq('journey_id', booking.journey_id as string)
       .maybeSingle()
     partyLabel = (brief?.prepared_for as string | null) ?? null
   }
@@ -169,7 +169,7 @@ async function handleCreateBooking(
 ): Promise<Response> {
   const { data, error } = await db
     .from('travel_bookings')
-    .insert({ trip_id: tripId, ...patch })
+    .insert({ journey_id: tripId, ...patch })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create booking' }, 500)

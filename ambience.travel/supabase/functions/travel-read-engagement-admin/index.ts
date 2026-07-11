@@ -74,11 +74,11 @@ type EngagementListQueryRow = {
   sort_order: number
   created_at: string
   iteration_label: string | null
-  trip_id: string | null
+  journey_id: string | null
   engagement_status: { slug: string | null; label: string | null } | null
   itinerary_status:  { slug: string | null; label: string | null } | null
   trip: {
-    trip_code: string | null
+    journey_code: string | null
     public_title: string | null
     start_date: string | null
     primary_client_id: string | null
@@ -118,10 +118,10 @@ Deno.serve(async (req: Request) => {
         .select(`
           id, url_id, title, audience, is_public_template,
           engagement_status_id, itinerary_status_id, sort_order, created_at,
-          iteration_label, trip_id,
+          iteration_label, journey_id,
           engagement_status:travel_lifecycle_statuses(slug, label),
           itinerary_status:travel_itinerary_statuses(slug, label),
-          trip:travel_journey!travel_engagements_trip_id_fkey(
+          trip:travel_journey!travel_engagements_journey_id_fkey(
             journey_code, public_title, start_date, primary_client_id,
             primary_client:global_people!travel_journey_primary_client_id_fkey(
               id, first_name, last_name, nickname
@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
         engagement_status_label: r.engagement_status?.label ?? null,
         itinerary_status_slug:   r.itinerary_status?.slug   ?? null,
         itinerary_status_label:  r.itinerary_status?.label  ?? null,
-        trip_id:                 r.trip_id,
+        trip_id:                 r.journey_id,
         trip_code:               r.trip?.journey_code      ?? null,
         trip_public_title:       r.trip?.public_title      ?? null,
         trip_start_date:         r.trip?.start_date        ?? null,

@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
       const [engRes, bookingsRes, expensesRes] = await Promise.all([
         db.from('travel_engagements')
-          .select('id, title, url_id, travel_journey!trip_id(journey_code, start_date, end_date)')
+          .select('id, title, url_id, travel_journey!journey_id(journey_code, start_date, end_date)')
           .eq('id', engagement_id)
           .single(),
         db.from('travel_bookings')
@@ -205,9 +205,9 @@ Deno.serve(async (req: Request) => {
     if (mode === 'pipeline') {
       const { data: engRows, error: engErr } = await db
         .from('travel_engagements')
-        .select('id, trip_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_journey!trip_id(journey_code, start_date, end_date, primary_client_id)')
+        .select('id, journey_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_journey!journey_id(journey_code, start_date, end_date, primary_client_id)')
         .is('parent_engagement_id', null)
-        .not('trip_id', 'is', null)
+        .not('journey_id', 'is', null)
         .order('created_at', { ascending: false })
       if (engErr) { console.error(engErr); return json({ error: 'Failed to fetch pipeline' }, 500) }
 

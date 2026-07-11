@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
 // ── Engagement column list ────────────────────────────────────────────────────
 
 const ENGAGEMENT_COLS = `
-  id, url_id, slug, trip_id, audience, journey_types,
+  id, url_id, slug, journey_id, audience, journey_types,
   person_id, status_label, public_view, proposal_visibility,
   engagement_status_id, itinerary_status_id,
   travel_lifecycle_statuses (id, slug, label, sort_order, is_active),
