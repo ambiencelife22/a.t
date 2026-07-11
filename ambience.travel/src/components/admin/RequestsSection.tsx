@@ -169,7 +169,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           >
             {REQUEST_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          {req.trip_id && (
+          {req.journey_id && (
             <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>Trip linked</span>
           )}
         </div>

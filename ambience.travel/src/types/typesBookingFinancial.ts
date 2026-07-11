@@ -40,7 +40,7 @@ export type BookingFinancialRoom = {
 export type BookingFinancial = {
   // ── Identity ──────────────────────────────────────────────────────────────
   id:                     string
-  trip_id:                string
+  journey_id:                string
   engagement_id:          string | null
   booking_type:           string | null
   name:                   string | null

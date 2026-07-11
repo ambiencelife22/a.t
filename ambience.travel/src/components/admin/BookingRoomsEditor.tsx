@@ -33,8 +33,8 @@ import { PersonLinkPicker } from './PersonLinkPicker'
 import AssetPicker from './AssetPicker'
 import {
   createBookingRoom, updateBookingRoom, deleteBookingRoom,
-} from '../../queries/queriesAdminTrip'
-import type { TripBooking, BookingRoom, BookingRoomPatch } from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
+import type { TripBooking, BookingRoom, BookingRoomPatch } from '../../queries/queriesAdminJourney'
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 

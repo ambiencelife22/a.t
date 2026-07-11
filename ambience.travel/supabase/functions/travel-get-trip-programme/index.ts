@@ -44,7 +44,7 @@ import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
-import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { resolvejourneyIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
 import { enrichBookingWithHotelPolicy } from '../_shared/expenses.ts'
@@ -70,11 +70,11 @@ Deno.serve(async (req: Request) => {
     const visibilityGate = await checkPublicView(db, url_id)
     if (visibilityGate) return visibilityGate
 
-    const ids = await resolveTripIds(db, url_id)
+    const ids = await resolvejourneyIds(db, url_id)
     if (!ids) {
       return json({ error: 'Not found' }, 404)
     }
-    const { tripId, houseId } = ids
+    const { journeyId, houseId } = ids
 
     // ── 5. Parallel fetch — core (single-source) + programme-specific ─────────
     const [
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
       daysResult,
       entriesResult,
     ] = await Promise.all([
-      fetchTripCore(db, tripId, houseId),
+      fetchTripCore(db, journeyId, houseId),
 
       // Bookings — programme column set + derived check-in columns (S53G v3).
       // travel_accom_hotels join brings standard_checkin/checkout_time for the
@@ -105,11 +105,11 @@ Deno.serve(async (req: Request) => {
           )
         `)
         .eq('house_id', houseId)
-        .eq('journey_id', tripId),
+        .eq('journey_id', journeyId),
 
       db.from('travel_engagement_aux_bookings')
         .select(AUX_BOOKING_SELECT)
-        .eq('engagement_id', tripId)
+        .eq('engagement_id', journeyId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
 
@@ -117,13 +117,13 @@ Deno.serve(async (req: Request) => {
       // these per-day overrides. No show filter; buildDays honors show.
       db.from('travel_journey_days')
         .select('id, engagement_id:journey_id, entry_date, show, day_label, day_note')
-        .eq('journey_id', tripId),
+        .eq('journey_id', journeyId),
 
       // Standalone stored entries (dining/experience/notes). Booking-sourced entries
       // are excluded downstream by timeline.ts (they are derived from bookings now).
       db.from('travel_journey_day_entries')
         .select('id, engagement_id:journey_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_aux_id, source_dining_id, source_experience_id')
-        .eq('journey_id', tripId)
+        .eq('journey_id', journeyId)
         .eq('brief_show', true)
         .order('entry_date', { ascending: true })
         .order('sort_order', { ascending: true }),
@@ -266,7 +266,7 @@ Deno.serve(async (req: Request) => {
       auxBookings,
       urlId:           url_id,
       days:            buildDays(
-                         tripId,
+                         journeyId,
                          trip.start_date as string | null,
                          trip.end_date as string | null,
                          (daysResult.data ?? []) as Record<string, unknown>[],

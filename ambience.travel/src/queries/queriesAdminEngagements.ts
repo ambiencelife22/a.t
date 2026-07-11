@@ -75,7 +75,7 @@ export type EngagementListRow = {
   itinerary_status_label:  string | null
 
   // Trip linkage (NULL when engagement isn't linked to a canonical trip)
-  trip_id:           string | null
+  journey_id:           string | null
   trip_code:         string | null
   trip_public_title: string | null
   trip_start_date:   string | null
@@ -105,7 +105,7 @@ export type EngagementDetailRow = {
 
   // Linkage
   person_id:           string | null
-  trip_id:             string | null
+  journey_id:             string | null
   engagement_type_id:  string | null
   // Guest label (Step 11)
   public_label_id:              string | null
@@ -201,11 +201,11 @@ export type ChildCounts = {
 
 // ── Trip-grouped list shape ───────────────────────────────────────────────────
 // The list tab consumes this — trips at top level, engagements as children.
-// Orphans (engagements with trip_id NULL) collected into a synthetic group.
+// Orphans (engagements with journey_id NULL) collected into a synthetic group.
 
 export type TripGroup = {
   // null when this is the orphan group
-  trip_id:           string | null
+  journey_id:           string | null
   trip_code:         string | null
   trip_public_title: string | null
   trip_start_date:   string | null
@@ -225,7 +225,7 @@ export async function fetchEngagementList(): Promise<EngagementListRow[]> {
   return rows
 }
 
-// Group engagements by trip_id. Orphans (NULL trip_id) into a synthetic
+// Group engagements by journey_id. Orphans (NULL journey_id) into a synthetic
 // group sorted to the bottom. Within each group, engagements ordered by
 // created_at ASC so v1/v2/v3 reads chronologically top-to-bottom.
 export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
@@ -233,11 +233,11 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
   const orphans: EngagementListRow[] = []
 
   for (const row of rows) {
-    if (row.trip_id == null) {
+    if (row.journey_id == null) {
       orphans.push(row)
       continue
     }
-    const existing = groups.get(row.trip_id)
+    const existing = groups.get(row.journey_id)
     if (existing) {
       existing.engagements.push(row)
       continue
@@ -245,8 +245,8 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
     const joined = [row.client_first_name, row.client_last_name].filter(Boolean).join(' ')
     const clientDisplay = row.client_nickname ?? (joined || null)
 
-    groups.set(row.trip_id, {
-      trip_id:           row.trip_id,
+    groups.set(row.journey_id, {
+      journey_id:           row.journey_id,
       trip_code:         row.trip_code,
       trip_public_title: row.trip_public_title,
       trip_start_date:   row.trip_start_date,
@@ -278,7 +278,7 @@ export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
   if (orphans.length > 0) {
     orphans.sort((a, b) => a.created_at.localeCompare(b.created_at))
     tripGroups.push({
-      trip_id:           null,
+      journey_id:           null,
       trip_code:         null,
       trip_public_title: null,
       trip_start_date:   null,
@@ -521,7 +521,7 @@ export async function createTrip(payload: TripCreatePayload): Promise<string> {
   if (!payload.trip_code || !payload.trip_code.trim()) {
     throw new Error('trip_code is required')
   }
-  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
+  const { data, error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'create_trip', ...payload },
   })
   if (error) throw error
@@ -537,7 +537,7 @@ export type TripUpdatePayload = {
 }
 
 export async function updateTrip(id: string, payload: TripUpdatePayload): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
+  const { data, error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'update_trip', id, ...payload },
   })
   if (error) throw error
@@ -564,14 +564,14 @@ export async function updatePerson(id: string, payload: PersonUpdatePayload): Pr
 
 // ── Engagement re-parenting (drag-and-drop target) ────────────────────────────
 // Reassigns an engagement to a different trip (or to NULL = Unlinked).
-// trip_id NULL is valid per FK constraint (ON DELETE SET NULL).
+// journey_id NULL is valid per FK constraint (ON DELETE SET NULL).
 
 export async function reassignEngagementTrip(
   engagementId: string,
-  newTripId:    string | null,
+  newjourneyId:    string | null,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke('travel-write-engagement', {
-    body: { mode: 'reassign_trip', id: engagementId, trip_id: newTripId },
+    body: { mode: 'reassign_trip', id: engagementId, journey_id: newjourneyId },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
@@ -582,11 +582,11 @@ export async function reassignEngagementTrip(
 // engagement list group header when no client is currently linked.
 
 export async function updateTripPrimaryClient(
-  tripId:   string,
+  journeyId:   string,
   personId: string | null,
 ): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
-    body: { mode: 'update_trip_primary_client', id: tripId, primary_client_id: personId },
+  const { data, error } = await supabase.functions.invoke('travel-write-journey', {
+    body: { mode: 'update_trip_primary_client', id: journeyId, primary_client_id: personId },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)

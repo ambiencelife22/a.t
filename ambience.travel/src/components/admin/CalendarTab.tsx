@@ -1,6 +1,6 @@
 // CalendarTab.tsx — Admin Calendar (Stage 1, rebuilt S55 for span integrity).
 //
-// Derives entirely from the `calendar` mode of travel-read-trip-admin — confirmed/
+// Derives entirely from the `calendar` mode of travel-read-journey-admin — confirmed/
 // upcoming trips + stays. The calendar owns NO dates; it renders what the EF returns.
 //
 // S55 rebuild — span integrity (live clients travelling; this is an ops surface):
@@ -184,13 +184,13 @@ export default function CalendarTab() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>('month')
   const [cursor, setCursor] = useState<Date>(() => new Date())
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
+  const [selectedjourneyId, setSelectedjourneyId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true); setError(null)
-      const { data, error } = await supabase.functions.invoke('travel-read-trip-admin', { body: { mode: 'calendar' } })
+      const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body: { mode: 'calendar' } })
       if (cancelled) return
       if (error) { setError('Could not load the calendar. Try again.'); setLoading(false); return }
       setTrips((data?.trips ?? []) as CalendarTrip[]); setLoading(false)
@@ -198,7 +198,7 @@ export default function CalendarTab() {
     load(); return () => { cancelled = true }
   }, [])
 
-  const selectedTrip = useMemo(() => trips.find(t => t.id === selectedTripId) ?? null, [trips, selectedTripId])
+  const selectedTrip = useMemo(() => trips.find(t => t.id === selectedjourneyId) ?? null, [trips, selectedjourneyId])
   const headingTitle = useMemo(() => {
     if (view === 'agenda') return 'Upcoming'
     if (view === 'week') {
@@ -245,11 +245,11 @@ export default function CalendarTab() {
           {view !== 'agenda' && <CalendarKey view={view} />}
           <div style={{ display:'grid', gridTemplateColumns: selectedTrip ? 'minmax(0,1fr) 320px' : '1fr', gap:18, alignItems:'start' }}>
             <div style={{ minWidth: 0 }}>
-              {view === 'month'  && <MonthView  cursor={cursor} trips={trips} onSelect={setSelectedTripId} />}
-              {view === 'week'   && <WeekView   cursor={cursor} trips={trips} onSelect={setSelectedTripId} />}
-              {view === 'agenda' && <AgendaView trips={trips} onSelect={setSelectedTripId} />}
+              {view === 'month'  && <MonthView  cursor={cursor} trips={trips} onSelect={setSelectedjourneyId} />}
+              {view === 'week'   && <WeekView   cursor={cursor} trips={trips} onSelect={setSelectedjourneyId} />}
+              {view === 'agenda' && <AgendaView trips={trips} onSelect={setSelectedjourneyId} />}
             </div>
-            {selectedTrip && <TripPanel trip={selectedTrip} onClose={() => setSelectedTripId(null)} />}
+            {selectedTrip && <TripPanel trip={selectedTrip} onClose={() => setSelectedjourneyId(null)} />}
           </div>
         </>
       )}
@@ -643,7 +643,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
       const body = span
         ? { mode: 'activity_detail', booking_id: activity.source_booking_id, category: activity.category }
         : { mode: 'activity_detail', aux_booking_id: activity.source_aux_booking_id, category: activity.category }
-      const { data } = await supabase.functions.invoke('travel-read-trip-admin', { body })
+      const { data } = await supabase.functions.invoke('travel-read-journey-admin', { body })
       setDetail((data ?? null) as ActivityDetail | null)
       setLoadingDetail(false)
     }

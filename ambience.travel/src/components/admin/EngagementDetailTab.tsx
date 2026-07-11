@@ -888,7 +888,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <PersonTypeahead value={draft.person_id} onChange={v => patch('person_id', v)} />
         </Field>
         <Field label='Trip (canonical)'>
-          <TripTypeahead value={draft.trip_id} onChange={v => patch('trip_id', v)} />
+          <TripTypeahead value={draft.journey_id} onChange={v => patch('journey_id', v)} />
         </Field>
       </Section>
 

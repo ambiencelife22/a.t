@@ -64,11 +64,11 @@ type Mode =
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
 // returned row carries resolved_guest_name. Walk: room.person_id → global_people;
-// room.booking_id → travel_bookings.trip_id → travel_journey_briefs.prepared_for.
+// room.booking_id → travel_bookings.journey_id → travel_journey_briefs.prepared_for.
 // FK path verified via information_schema S53G:
 //   travel_booking_rooms.booking_id (uuid NOT NULL)
-//     → travel_bookings.trip_id (uuid NOT NULL)
-//     → travel_journey_briefs.trip_id → prepared_for (text nullable)
+//     → travel_bookings.journey_id (uuid NOT NULL)
+//     → travel_journey_briefs.journey_id → prepared_for (text nullable)
 async function resolveRoomRow(
   db: SupabaseClient,
   room: Record<string, unknown>,
@@ -84,7 +84,7 @@ async function resolveRoomRow(
     person = data ?? null
   }
 
-  // party label: booking_id → trip_id → brief.prepared_for
+  // party label: booking_id → journey_id → brief.prepared_for
   let partyLabel: string | null = null
   const { data: booking } = await db
     .from('travel_bookings')
@@ -560,7 +560,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
 
   try {
-    const body = await req.json().catch(() => ({}))
+    const body = await req.json()
     const { mode } = body as { mode?: string }
     if (!mode) return json({ error: 'mode is required' }, 400)
 
@@ -570,9 +570,9 @@ Deno.serve(async (req: Request) => {
 
     switch (mode as Mode) {
       case 'upsert_brief': {
-        const { trip_id, house_id, patch } = body as { trip_id?: string; house_id?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !house_id || !patch) return json({ error: 'trip_id, house_id, patch required' }, 400)
-        return handleUpsertBrief(db, trip_id, house_id, patch)
+        const { journey_id, house_id, patch } = body as { journey_id?: string; house_id?: string; patch?: Record<string, unknown> }
+        if (!journey_id || !house_id || !patch) return json({ error: 'journey_id, house_id, patch required' }, 400)
+        return handleUpsertBrief(db, journey_id, house_id, patch)
       }
       case 'update_booking_brief': {
         const { booking_id, patch } = body as { booking_id?: string; patch?: Record<string, unknown> }
@@ -580,9 +580,9 @@ Deno.serve(async (req: Request) => {
         return handleUpdateBookingBrief(db, booking_id, patch)
       }
       case 'create_booking': {
-        const { trip_id, patch } = body as { trip_id?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !patch) return json({ error: 'trip_id, patch required' }, 400)
-        return handleCreateBooking(db, trip_id, patch)
+        const { journey_id, patch } = body as { journey_id?: string; patch?: Record<string, unknown> }
+        if (!journey_id || !patch) return json({ error: 'journey_id, patch required' }, 400)
+        return handleCreateBooking(db, journey_id, patch)
       }
       case 'create_room': {
         const { booking_id, patch } = body as { booking_id?: string; patch?: Record<string, unknown> }
@@ -600,9 +600,9 @@ Deno.serve(async (req: Request) => {
         return handleDeleteRoom(db, room_id)
       }
       case 'create_aux_booking': {
-        const { trip_id, patch } = body as { trip_id?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !patch) return json({ error: 'trip_id, patch required' }, 400)
-        return handleCreateAuxBooking(db, trip_id, patch)
+        const { journey_id, patch } = body as { journey_id?: string; patch?: Record<string, unknown> }
+        if (!journey_id || !patch) return json({ error: 'journey_id, patch required' }, 400)
+        return handleCreateAuxBooking(db, journey_id, patch)
       }
       case 'update_aux_booking': {
         const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
@@ -645,14 +645,14 @@ Deno.serve(async (req: Request) => {
         return handleDeleteAuxDriverDetail(db, id)
       }
       case 'upsert_day': {
-        const { trip_id, entry_date, patch } = body as { trip_id?: string; entry_date?: string; patch?: Record<string, unknown> }
-        if (!trip_id || !entry_date || !patch) return json({ error: 'trip_id, entry_date, patch required' }, 400)
-        return handleUpsertDay(db, trip_id, entry_date, patch)
+        const { journey_id, entry_date, patch } = body as { journey_id?: string; entry_date?: string; patch?: Record<string, unknown> }
+        if (!journey_id || !entry_date || !patch) return json({ error: 'journey_id, entry_date, patch required' }, 400)
+        return handleUpsertDay(db, journey_id, entry_date, patch)
       }
       case 'create_day_entry': {
-        const { trip_id, entry } = body as { trip_id?: string; entry?: Record<string, unknown> }
-        if (!trip_id || !entry) return json({ error: 'trip_id, entry required' }, 400)
-        return handleCreateDayEntry(db, trip_id, entry)
+        const { journey_id, entry } = body as { journey_id?: string; entry?: Record<string, unknown> }
+        if (!journey_id || !entry) return json({ error: 'journey_id, entry required' }, 400)
+        return handleCreateDayEntry(db, journey_id, entry)
       }
       case 'update_day_entry': {
         const { id, patch } = body as { id?: string; patch?: Record<string, unknown> }
@@ -665,9 +665,9 @@ Deno.serve(async (req: Request) => {
         return handleDeleteDayEntry(db, id)
       }
       case 'upsert_welcome_letter': {
-        const { trip_id, letter } = body as { trip_id?: string; letter?: Record<string, unknown> }
-        if (!trip_id || !letter) return json({ error: 'trip_id, letter required' }, 400)
-        return handleUpsertWelcomeLetter(db, trip_id, letter)
+        const { journey_id, letter } = body as { journey_id?: string; letter?: Record<string, unknown> }
+        if (!journey_id || !letter) return json({ error: 'journey_id, letter required' }, 400)
+        return handleUpsertWelcomeLetter(db, journey_id, letter)
       }
       case 'delete_welcome_letter': {
         const { id } = body as { id?: string }
@@ -681,12 +681,12 @@ Deno.serve(async (req: Request) => {
       case 'update_trip_primary_client':
         return handleUpdateTripPrimaryClient(db, body as Record<string, unknown>)
       case 'create_request': {
-        const { house_id, request_body, channel, received_at, trip_id, engagement_id, handled_by, notes } = body as Record<string, unknown>
+        const { house_id, request_body, channel, received_at, journey_id, engagement_id, handled_by, notes } = body as Record<string, unknown>
         if (!house_id || !request_body) return json({ error: 'house_id, request_body required' }, 400)
         const { error } = await db.from('travel_requests').insert({
           house_id, request_body, channel: channel ?? null,
           received_at: received_at ?? new Date().toISOString(),
-          trip_id: trip_id ?? null, engagement_id: engagement_id ?? null,
+          journey_id: journey_id ?? null, engagement_id: engagement_id ?? null,
           handled_by: handled_by ?? null, notes: notes ?? null, status: 'New',
         })
         if (error) return json({ error: 'Failed to create request' }, 500)

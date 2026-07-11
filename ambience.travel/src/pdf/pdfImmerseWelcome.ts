@@ -22,7 +22,7 @@ import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, serif } from './pdfUtils'
 import type { Img } from './pdfUtils'
 import { T, P, CW, ASSETS, stampPageChrome } from './pdfShared'
-import type { TripBrief, DossierTrip } from '../queries/queriesAdminTrip'
+import type { TripBrief, DossierTrip } from '../queries/queriesAdminJourney'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 

@@ -44,7 +44,7 @@ function datesInSpan(startDate: string, endDate: string): string[] {
 // Derive the ordered day list from span, applying the overlay per date.
 // overlayRows are travel_journey_days rows (any that exist for this trip).
 export function buildDays(
-  tripId:     string,
+  journeyId:     string,
   startDate:  string | null,
   endDate:    string | null,
   overlayRows: DayOverlayLike[],
@@ -61,7 +61,7 @@ export function buildDays(
     const o = overlayByDate.get(date)
     return {
       id:         o ? ((o.id as string | null) ?? null) : null,
-      trip_id:    tripId,
+      trip_id:    journeyId,
       entry_date: date,
       // Default show=true; overlay can hide. Only an explicit false hides.
       show:       o ? (o.show as boolean | null) !== false : true,

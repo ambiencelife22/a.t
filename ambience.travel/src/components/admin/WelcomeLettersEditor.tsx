@@ -25,10 +25,10 @@ import {
   fetchTripWelcomeLetters,
   upsertTripWelcomeLetter,
   deleteTripWelcomeLetter,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import type {
   DossierTrip, TripBooking, BookingRoom, TripWelcomeLetter,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import { exportWelcomeLetterPdf } from '../../pdf/pdfImmerseWelcome'
 import { roomGuestName } from '../../utils/utilsRoomDisplay'
 

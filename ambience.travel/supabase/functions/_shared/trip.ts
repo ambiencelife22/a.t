@@ -33,10 +33,10 @@ import { fetchHotelsByIds } from './bookings.ts'
 // ── url_id -> trip_id -> house_id ─────────────────────────────────────────────
 // Returns the ids, or null when the trip cannot be resolved (caller returns 404).
 
-export async function resolveTripIds(
+export async function resolvejourneyIds(
   db: SupabaseClient,
   urlId: string,
-): Promise<{ tripId: string; houseId: string } | null> {
+): Promise<{ journeyId: string; houseId: string } | null> {
   const { data: eng, error: engErr } = await db
     .from('travel_engagements')
     .select('journey_id')
@@ -45,18 +45,18 @@ export async function resolveTripIds(
     .limit(1)
     .single()
   if (engErr || !eng?.journey_id) return null
-  const tripId = eng.journey_id as string
+  const journeyId = eng.journey_id as string
 
   const { data: booking, error: bookErr } = await db
     .from('travel_bookings')
     .select('house_id')
-    .eq('journey_id', tripId)
+    .eq('journey_id', journeyId)
     .not('house_id', 'is', null)
     .limit(1)
     .single()
   if (bookErr || !booking?.house_id) return null
 
-  return { tripId, houseId: booking.house_id as string }
+  return { journeyId, houseId: booking.house_id as string }
 }
 
 // ── Core fetch: trip + brief + house + destinations ───────────────────────────
@@ -74,13 +74,13 @@ export interface TripCore {
 
 export async function fetchTripCore(
   db: SupabaseClient,
-  tripId: string,
+  journeyId: string,
   houseId: string,
 ): Promise<TripCore> {
   const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
     db.from('travel_journey')
       .select('id, journey_code, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
-      .eq('id', tripId)
+      .eq('id', journeyId)
       .single(),
 
     db.from('travel_journey_briefs')
@@ -97,7 +97,7 @@ export async function fetchTripCore(
         contact_person_ids, contact_name_format,
         created_at, updated_at
       `)
-      .eq('journey_id', tripId)
+      .eq('journey_id', journeyId)
       .maybeSingle(),
 
     db.from('a_houses')
@@ -107,7 +107,7 @@ export async function fetchTripCore(
 
     db.from('travel_journey_destinations')
       .select('id, engagement_id:journey_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
-      .eq('journey_id', tripId)
+      .eq('journey_id', journeyId)
       .order('sort_order', { ascending: true }),
   ])
 

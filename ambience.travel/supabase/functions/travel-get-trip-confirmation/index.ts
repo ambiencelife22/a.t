@@ -12,7 +12,7 @@
 
 import { createServiceClient } from '../_shared/client.ts'
 import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
-import { resolveTripIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { resolvejourneyIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
 import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
@@ -36,11 +36,11 @@ Deno.serve(async (req: Request) => {
     const visibilityGate = await checkPublicView(db, url_id)
     if (visibilityGate) return visibilityGate
 
-    const ids = await resolveTripIds(db, url_id)
+    const ids = await resolvejourneyIds(db, url_id)
     if (!ids) {
       return json({ error: 'Not found' }, 404)
     }
-    const { tripId, houseId } = ids
+    const { journeyId, houseId } = ids
 
     // core trip data (single-source) + confirmation-specific bookings/aux
     const [
@@ -48,20 +48,20 @@ Deno.serve(async (req: Request) => {
       bookingsResult,
       auxResult,
     ] = await Promise.all([
-      fetchTripCore(db, tripId, houseId),
+      fetchTripCore(db, journeyId, houseId),
 
       // confirmation needs financial-adjacent columns (deposit/balance paid, taxes)
       db.from('travel_bookings')
         .select('id, journey_id, house_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, inclusions_override, cancellation_policy, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override, created_at, updated_at')
         .eq('house_id', houseId)
-        .eq('journey_id', tripId)
+        .eq('journey_id', journeyId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('end_date',   { ascending: true, nullsFirst: false })
         .order('id',         { ascending: true }),
 
       db.from('travel_engagement_aux_bookings')
         .select(AUX_BOOKING_SELECT)
-        .eq('engagement_id', tripId)
+        .eq('engagement_id', journeyId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('start_time', { ascending: true, nullsFirst: false }),
     ])

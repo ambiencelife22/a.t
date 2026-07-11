@@ -17,8 +17,8 @@ import { A } from '../../tokens/tokensAdmin'
 import { useAdminToast } from './_adminPrimitives'
 import {
   fetchAuxDriverDetails, createAuxDriverDetail, updateAuxDriverDetail, deleteAuxDriverDetail,
-} from '../../queries/queriesAdminTrip'
-import type { TripAuxDriverDetail, TripAuxDriverDetailPatch } from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
+import type { TripAuxDriverDetail, TripAuxDriverDetailPatch } from '../../queries/queriesAdminJourney'
 
 const inputStyle: React.CSSProperties = {
   fontFamily: A.font, fontSize: 11, color: A.text, background: A.bg,

@@ -531,7 +531,7 @@ export interface EngagementWritableFields {
   audience:                       EngagementAudience
   journey_types:                  string[]
   iteration_label:                string
-  trip_id:                        string | null
+  journey_id:                        string | null
   person_id:                      string | null
   slug:                           string | null
   status_label:                   string | null
@@ -594,7 +594,7 @@ export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 
 
 // ─── Trip client surface (confirmation / programme / brief) ───────────────────
 // Client-owned contracts for the /immerse/ trip pages. ONE-WAY RULE: client files
-// import these; they NEVER import from queriesAdminTrip. These intentionally OMIT
+// import these; they NEVER import from queriesAdminJourney. These intentionally OMIT
 // ambience's margin (commission_*, net_revenue, commissionable_rate, invoice_number,
 // iata/referral/individual shares) — a client type must not even DESCRIBE the agency's
 // profit. The client's-own-bill fields (price, rates, taxes, deposit/balance) ARE kept;
@@ -628,7 +628,7 @@ export type ImmerseTripHouse = {
 
 export type ImmerseTripBrief = {
   id:                    string
-  trip_id:               string
+  journey_id:               string
   house_id:              string | null
   brief_title:           string | null
   brief_subtitle:        string | null
@@ -664,7 +664,7 @@ export type ImmerseTripBrief = {
 
 export type ImmerseTripDay = {
   id:         string | null
-  trip_id:    string
+  journey_id:    string
   entry_date: string
   show:       boolean
   day_label:  string | null
@@ -676,7 +676,7 @@ export type ImmerseTripDay = {
 
 export type ImmerseTripDayEntry = {
   id:                  string
-  trip_id:             string
+  journey_id:             string
   entry_date:          string
   start_time:          string | null
   end_time:            string | null
@@ -722,7 +722,7 @@ export type ImmerseTripAuxDriverDetail = {
 
 export type ImmerseTripAuxBooking = {
   id:                  string
-  trip_id:             string
+  journey_id:             string
   engagement_type_id:  string | null
   booking_type:        string | null
   booking_type_label:  string | null
@@ -817,7 +817,7 @@ export type ImmerseBookingRoom = {
 // supplier_*, primary/supplier contact fields, cancellation/booking policy.
 export type ImmerseTripBooking = {
   id:                  string
-  trip_id:             string
+  journey_id:             string
   house_id:            string | null
   engagement_id:       string | null
   booking_type:        string | null

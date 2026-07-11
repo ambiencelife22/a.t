@@ -49,7 +49,7 @@ import {
   type DestinationStatus, type DestinationTripType, type ContactType,
   type HouseLabel, type HouseLabelKey,
 } from '../../queries/queriesAdminHouse'
-import { fetchTripDossierForHouse, type TripDossierData } from '../../queries/queriesAdminTrip'
+import { fetchJourneyDossierForHouse, type TripDossierData } from '../../queries/queriesAdminJourney'
 import {
   capitalize, formatDOB,
   DesigBadge, StatusFilterBar, AddFormShell, EntryCard,
@@ -759,7 +759,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
         fetchContactsForHouse(house.id),
         fetchLabelsForHouse(house.id),
         fetchPPDForHouse(house.id),
-        fetchTripDossierForHouse(house.id),
+        fetchJourneyDossierForHouse(house.id),
         fetchRequestsForHouse(house.id),
         fetchHouseRoles(),
       ])

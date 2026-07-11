@@ -9,7 +9,7 @@
 //   rate_types        — all active travel_rate_types
 //
 // Single source for supplier/partner reference data platform-wide.
-// travel-read-trip-admin reads travel_partners directly — debt to migrate here
+// travel-read-journey-admin reads travel_partners directly — debt to migrate here
 // once supplier management is built out.
 //
 // Last updated: S53H — initial ship.

@@ -22,7 +22,7 @@ export type TripCreateModalProps = {
   engagementTitle: string | null
   engagementUrlId: string | null
   onClose:         () => void
-  onSuccess:       (newTripId: string) => void
+  onSuccess:       (newjourneyId: string) => void
   showToast:       (msg: string, type: 'success' | 'error') => void
 }
 
@@ -155,7 +155,7 @@ export default function TripCreateModal({
 
     setSaving(true)
     try {
-      const newTripId = await createTrip({
+      const newjourneyId = await createTrip({
         trip_code:         tripCode.trim(),
         public_title:      publicTitle.trim() ?? null,
         start_date:        startDate ?? null,
@@ -163,9 +163,9 @@ export default function TripCreateModal({
         currency:          currency.trim() || 'USD',
         primary_client_id: null,
       })
-      await reassignEngagementTrip(engagementId, newTripId)
+      await reassignEngagementTrip(engagementId, newjourneyId)
       showToast('Trip created. Engagement linked.', 'success')
-      onSuccess(newTripId)
+      onSuccess(newjourneyId)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'
       // Common case: duplicate trip_code. Surface it cleanly.

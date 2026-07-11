@@ -21,11 +21,11 @@ import { moneyDec as fmt } from '../../utils/utilsCurrency'
 import type {
   TripDossierData, DossierTrip, TripBooking, TripPartner,
   HouseProfile,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import { getEventStatusMeta } from '../../types/typesEventStatus'
-import { updateBookingBriefFields, createBooking, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminTrip'
-import type { TripAuxBooking, TripAuxBookingPatch, EngagementTypeOption } from '../../queries/queriesAdminTrip'
-import { fetchEngagementTypes } from '../../queries/queriesAdminTrip'
+import { updateBookingBriefFields, createBooking, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminJourney'
+import type { TripAuxBooking, TripAuxBookingPatch, EngagementTypeOption } from '../../queries/queriesAdminJourney'
+import { fetchEngagementTypes } from '../../queries/queriesAdminJourney'
 import { isFlightBooking, isHotelBooking, isGroundTransportBooking } from '../../types/typesAuxBookings'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
@@ -141,7 +141,7 @@ function TripActionPanel({ trip, house }: {
   return (
     <div style={{ marginBottom: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <button
-        onClick={() => navigateAdmin({ product: 'trips', tab: 'brief', tripId: trip.id })}
+        onClick={() => navigateAdmin({ product: 'trips', tab: 'brief', journeyId: trip.id })}
         style={{ ...btnBase, background: A.bgCard, color: A.gold, border: `1px solid ${A.gold}40` }}
       >
         {trip.brief ? 'Edit Brief' : 'Create Brief'}
@@ -159,7 +159,7 @@ function TripActionPanel({ trip, house }: {
         {pdfDownloading ? 'Generating...' : 'Download Confirmation Brief'}
       </button>
       <button
-        onClick={() => navigateAdmin({ product: 'trips', tab: 'programme', tripId: trip.id })}
+        onClick={() => navigateAdmin({ product: 'trips', tab: 'programme', journeyId: trip.id })}
         style={{ ...btnBase, background: A.bgCard, color: A.muted, border: `1px solid ${A.border}` }}
       >
         Daily Programme
@@ -407,7 +407,7 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagem
   )
 }
 
-function AuxBookingsEditor({ tripId }: { tripId: string }) {
+function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
   const [aux,             setAux]             = useState<TripAuxBooking[] | null>(null)
   const [engagementTypes, setEngagementTypes] = useState<EngagementType[]>([])
   const [loading,         setLoading]         = useState(false)
@@ -420,7 +420,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
   function load() {
     setLoading(true)
     Promise.all([
-      fetchTripAuxBookings(tripId),
+      fetchTripAuxBookings(journeyId),
       fetchEngagementTypes(),
     ])
       .then(([rows, types]) => {
@@ -459,7 +459,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
         success('Flight updated')
         return
       }
-      const created = await createTripAuxBooking(tripId, patch)
+      const created = await createTripAuxBooking(journeyId, patch)
       setAux(prev => [...(prev ?? []), created].sort((x, y) => x.sort_order - y.sort_order))
       setAdding(false)
       success('Flight added')
@@ -478,7 +478,7 @@ function AuxBookingsEditor({ tripId }: { tripId: string }) {
   }
 
   // Load once on mount (editor only mounts when the trip block is expanded)
-  useEffect(() => { load() }, [tripId])
+  useEffect(() => { load() }, [journeyId])
 
   const rowLine = (a: TripAuxBooking): string => {
     const route = [a.origin, a.destination].filter(Boolean).join(' \u2192 ')
@@ -803,8 +803,8 @@ function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
   }
 }
 
-function BookingCreator({ tripId, onCreated }: {
-  tripId:    string
+function BookingCreator({ journeyId, onCreated }: {
+  journeyId:    string
   onCreated: (booking: TripBooking) => void
 }) {
   const [open,   setOpen]   = useState(false)
@@ -818,7 +818,7 @@ function BookingCreator({ tripId, onCreated }: {
   async function handleCreate() {
     setSaving(true)
     try {
-      const raw = await createBooking(tripId, bookingDraftToPatch(draft))
+      const raw = await createBooking(journeyId, bookingDraftToPatch(draft))
       const hydrated: TripBooking = { ...raw, _hotel_name: null, _hotel_image_src: null, _rooms: [] }
       onCreated(hydrated)
       setOpen(false)
@@ -966,9 +966,9 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
             )
           }
 
-          <BookingCreator tripId={trip.id} onCreated={b => setBookings(prev => [...prev, b])} />
+          <BookingCreator journeyId={trip.id} onCreated={b => setBookings(prev => [...prev, b])} />
 
-          <AuxBookingsEditor tripId={trip.id} />
+          <AuxBookingsEditor journeyId={trip.id} />
         </div>
       )}
     </div>

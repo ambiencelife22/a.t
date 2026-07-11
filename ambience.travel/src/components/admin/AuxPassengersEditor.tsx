@@ -20,8 +20,8 @@ import { useAdminToast } from './_adminPrimitives'
 import { PersonLinkPicker } from './PersonLinkPicker'
 import {
   createAuxPassenger, updateAuxPassenger, deleteAuxPassenger,
-} from '../../queries/queriesAdminTrip'
-import type { TripAuxPassenger, TripAuxPassengerPatch } from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
+import type { TripAuxPassenger, TripAuxPassengerPatch } from '../../queries/queriesAdminJourney'
 import { passengerName } from '../../utils/utilsRoomDisplay'
 
 // ── Local styles + field ───────────────────────────────────────────────────────

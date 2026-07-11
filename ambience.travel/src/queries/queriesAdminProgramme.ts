@@ -386,7 +386,7 @@ export interface GuestSearchResult {
 }
 
 export async function fetchProgrammeGuests(programmeId: string): Promise<ProgrammeGuest[]> {
-  const { data, error } = await supabase.functions.invoke('travel-read-trip-admin', {
+  const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', {
     body: { mode: 'programme_guests', programme_id: programmeId },
   })
   if (error) throw error
@@ -395,7 +395,7 @@ export async function fetchProgrammeGuests(programmeId: string): Promise<Program
 }
 
 export async function searchProgrammeGuestCandidates(query: string): Promise<GuestSearchResult[]> {
-  const { data, error } = await supabase.functions.invoke('travel-read-trip-admin', {
+  const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', {
     body: { mode: 'programme_guest_search', query },
   })
   if (error) throw error
@@ -410,7 +410,7 @@ export async function searchProgrammeGuestCandidates(query: string): Promise<Gue
 }
 
 export async function linkProgrammeGuest(programmeId: string, personId: string): Promise<ProgrammeGuest> {
-  const { data, error } = await supabase.functions.invoke('travel-write-trip', {
+  const { data, error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'link_programme_guest', programme_id: programmeId, person_id: personId },
   })
   if (error) throw await toLinkError(error)
@@ -418,14 +418,14 @@ export async function linkProgrammeGuest(programmeId: string, personId: string):
 }
 
 export async function unlinkProgrammeGuest(guestId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('travel-write-trip', {
+  const { error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'unlink_programme_guest', guest_id: guestId },
   })
   if (error) throw error
 }
 
 export async function removeProgrammeGuest(guestId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('travel-write-trip', {
+  const { error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'remove_programme_guest', guest_id: guestId },
   })
   if (error) throw error

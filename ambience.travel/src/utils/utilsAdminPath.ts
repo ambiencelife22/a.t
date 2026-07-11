@@ -125,8 +125,8 @@ export type AdminTab =
   // ── New taxonomy ──
   | { product: 'trips';      tab: 'list' }
   | { product: 'trips';      tab: EngagementDetailTabId; urlId: string }      // inline detail tabs (url_id based)
-  | { product: 'trips';      tab: 'programme';     tripId: string }     // full-page editor (uuid based)
-  | { product: 'trips';      tab: 'brief';         tripId: string }     // full-page editor (uuid based)
+  | { product: 'trips';      tab: 'programme';     journeyId: string }     // full-page editor (uuid based)
+  | { product: 'trips';      tab: 'brief';         journeyId: string }     // full-page editor (uuid based)
   | { product: 'clients';    tab: 'list' }
   | { product: 'clients';    tab: 'detail';     houseId: string }
   | { product: 'content';    tab: ContentTabId; destinationId?: string | null }
@@ -192,8 +192,8 @@ export function parseAdminHash(hash: string): AdminTab {
 
     // Full-page editors: #admin/trips/<uuid>/programme|brief
     if (UUID_RE.test(seg1)) {
-      if (seg2 === 'programme') return { product: 'trips', tab: 'programme', tripId: seg1 }
-      if (seg2 === 'brief')     return { product: 'trips', tab: 'brief',     tripId: seg1 }
+      if (seg2 === 'programme') return { product: 'trips', tab: 'programme', journeyId: seg1 }
+      if (seg2 === 'brief')     return { product: 'trips', tab: 'brief',     journeyId: seg1 }
     }
 
     // Detail tabs: #admin/trips/<url_id>[/<tab>]
@@ -317,8 +317,8 @@ export function buildAdminHash(target: AdminTab): string {
   if (target.product === 'trips') {
     if (target.tab === 'list') return '#admin/trips'
     if (target.tab === 'programme' || target.tab === 'brief') {
-      const t = target as { tab: EngagementEditorTabId; tripId: string }
-      return `#admin/trips/${t.tripId}/${t.tab}`
+      const t = target as { tab: EngagementEditorTabId; journeyId: string }
+      return `#admin/trips/${t.journeyId}/${t.tab}`
     }
     // Detail tabs keyed by url_id (overview, bookings, contacts, activity)
     const t = target as { tab: EngagementDetailTabId; urlId: string }

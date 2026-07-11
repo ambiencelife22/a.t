@@ -27,7 +27,7 @@
 
 import { serif, sans, drawRule, loadImg, loadSvg, makeCoverCropAsync } from './pdfUtils'
 import type { RGB, Img } from './pdfUtils'
-import type { TripBrief } from '../queries/queriesAdminTrip'
+import type { TripBrief } from '../queries/queriesAdminJourney'
 import { roomGuestName, passengerName } from '../utils/utilsRoomDisplay'
 import { beddingLabel } from '../utils/utilsBooking'
 

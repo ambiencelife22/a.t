@@ -4,7 +4,7 @@
  * Trip-grouped collapsible structure (S33):
  *   - Top-level rows are trips (canonical travel_journey)
  *   - Each trip expands to show its engagement iterations (v1/v2/...)
- *   - Engagements with trip_id=NULL collected into an "Unlinked" group
+ *   - Engagements with journey_id=NULL collected into an "Unlinked" group
  *     pinned to the bottom
  *   - Within a group, engagements ordered by created_at ASC
  *
@@ -643,26 +643,26 @@ function TripGroupBlock({
     field: 'engagement_status_id' | 'itinerary_status_id',
     value: string,
   ) => void
-  onTripUpdate: (tripId: string, field: 'trip_code' | 'public_title', value: string) => Promise<void>
+  onTripUpdate: (journeyId: string, field: 'trip_code' | 'public_title', value: string) => Promise<void>
   onPersonUpdate: (personId: string, field: 'first_name' | 'nickname', value: string) => Promise<void>
-  onSetTripClient:         (tripId: string, personId: string) => Promise<void>
+  onSetTripClient:         (journeyId: string, personId: string) => Promise<void>
   pickingClientForTrip:    string | null
   setPickingClientForTrip: (id: string | null) => void
   isDragOverFromOtherGroup: boolean
   draggingFromThisGroup:    boolean
 }) {
-  const isOrphan = group.trip_id == null
-  const dropId   = isOrphan ? '__group_orphan__' : `group_${group.trip_id}`
+  const isOrphan = group.journey_id == null
+  const dropId   = isOrphan ? '__group_orphan__' : `group_${group.journey_id}`
   const { setNodeRef, isOver } = useDroppable({
     id:   dropId,
-    data: { type: 'group', tripId: group.trip_id },
+    data: { type: 'group', journeyId: group.journey_id },
   })
 
   const showDropHighlight  = isOver && isDragOverFromOtherGroup
   const personEditable     = !isOrphan && group.client_id != null
   const clientNameValue    = group.client_nickname ?? group.client_first_name ?? ''
-  const tripFieldsEditable = !isOrphan && group.trip_id != null
-  const isPickingHere      = group.trip_id != null && pickingClientForTrip === group.trip_id
+  const tripFieldsEditable = !isOrphan && group.journey_id != null
+  const isPickingHere      = group.journey_id != null && pickingClientForTrip === group.journey_id
 
   return (
     <div
@@ -737,18 +737,18 @@ function TripGroupBlock({
                       await onPersonUpdate(group.client_id, 'first_name', v)
                     }}
                   />
-                ) : group.trip_id ? (
+                ) : group.journey_id ? (
                   isPickingHere ? (
                     <ClientPicker
                       onSet={async (personId) => {
-                        await onSetTripClient(group.trip_id!, personId)
+                        await onSetTripClient(group.journey_id!, personId)
                         setPickingClientForTrip(null)
                       }}
                       onCancel={() => setPickingClientForTrip(null)}
                     />
                   ) : (
                     <span
-                      onClick={e => { e.stopPropagation(); setPickingClientForTrip(group.trip_id!) }}
+                      onClick={e => { e.stopPropagation(); setPickingClientForTrip(group.journey_id!) }}
                       style={{
                         fontSize:     18,
                         fontWeight:   700,
@@ -783,8 +783,8 @@ function TripGroupBlock({
                   editable={tripFieldsEditable}
                   ariaLabel='Edit public title'
                   onCommit={async (v) => {
-                    if (!group.trip_id) return
-                    await onTripUpdate(group.trip_id, 'public_title', v)
+                    if (!group.journey_id) return
+                    await onTripUpdate(group.journey_id, 'public_title', v)
                   }}
                 />
               </div>
@@ -801,8 +801,8 @@ function TripGroupBlock({
                   ariaLabel='Edit trip code'
                   rejectEmpty
                   onCommit={async (v) => {
-                    if (!group.trip_id) return
-                    await onTripUpdate(group.trip_id, 'trip_code', v)
+                    if (!group.journey_id) return
+                    await onTripUpdate(group.journey_id, 'trip_code', v)
                   }}
                 />
                 {group.trip_start_date && (
@@ -1054,7 +1054,7 @@ export default function EngagementsListTab() {
 
   const groups = useMemo(() => groupByTrip(rows), [rows])
 
-  function groupKey(g: TripGroup): string { return g.trip_id ?? '__orphan__' }
+  function groupKey(g: TripGroup): string { return g.journey_id ?? '__orphan__' }
 
   function toggle(g: TripGroup) {
     const key = groupKey(g)
@@ -1092,16 +1092,16 @@ export default function EngagementsListTab() {
     }
   }
 
-  async function handleTripUpdate(tripId: string, field: 'trip_code' | 'public_title', value: string) {
+  async function handleTripUpdate(journeyId: string, field: 'trip_code' | 'public_title', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
-      if (r.trip_id !== tripId) return r
+      if (r.journey_id !== journeyId) return r
       if (field === 'trip_code')    return { ...r, trip_code: value }
       if (field === 'public_title') return { ...r, trip_public_title: value || null }
       return r
     }))
     try {
-      await updateTrip(tripId, { [field]: value })
+      await updateTrip(journeyId, { [field]: value })
       success('Trip updated.')
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'
@@ -1131,9 +1131,9 @@ export default function EngagementsListTab() {
     }
   }
 
-  async function handleSetTripClient(tripId: string, personId: string) {
+  async function handleSetTripClient(journeyId: string, personId: string) {
     try {
-      await updateTripPrimaryClient(tripId, personId)
+      await updateTripPrimaryClient(journeyId, personId)
       success('Client linked.')
       load()
     } catch (e: unknown) {
@@ -1153,17 +1153,17 @@ export default function EngagementsListTab() {
     setDraggingId(null)
     setDraggingRow(null)
     if (!e.over || !activeRow) return
-    const overData = e.over.data.current as { type?: string; tripId?: string | null } | undefined
+    const overData = e.over.data.current as { type?: string; journeyId?: string | null } | undefined
     if (!overData) return
     if (overData.type === 'new_trip') { setPendingCreateForEngagement(activeRow); return }
     if (overData.type === 'group') {
-      const newTripId = overData.tripId ?? null
-      if (newTripId === activeRow.trip_id) return
+      const newjourneyId = overData.journeyId ?? null
+      if (newjourneyId === activeRow.journey_id) return
       const prevSnapshot = rows
-      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, trip_id: newTripId } : r))
+      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, journey_id: newjourneyId } : r))
       try {
-        await reassignEngagementTrip(activeRow.id, newTripId)
-        success(newTripId ? 'Engagement moved.' : 'Engagement unlinked.')
+        await reassignEngagementTrip(activeRow.id, newjourneyId)
+        success(newjourneyId ? 'Engagement moved.' : 'Engagement unlinked.')
         load()
       } catch (e2: unknown) {
         const message = e2 instanceof Error ? e2.message : 'unknown error'
@@ -1177,11 +1177,11 @@ export default function EngagementsListTab() {
 
   function isDragFromOtherGroup(targetGroup: TripGroup): boolean {
     if (!draggingRow) return false
-    return draggingRow.trip_id !== targetGroup.trip_id
+    return draggingRow.journey_id !== targetGroup.journey_id
   }
   function isDraggingFromGroup(group: TripGroup): boolean {
     if (!draggingRow) return false
-    return draggingRow.trip_id === group.trip_id
+    return draggingRow.journey_id === group.journey_id
   }
 
   return (

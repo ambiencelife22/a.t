@@ -1327,3 +1327,31 @@ mid-session: (1) the trigger bug looked like an orphan to DROP but the changelog
 half-shipped feature to BUILD; (2) Phase 2's DB cutover looked pending but the changelog showed
 it already SHIPPED (S53P) — nearly re-did done work. Reaffirms: read the changelog FIRST; live
 schema is the only truth; verify against information_schema, not memory.
+
+### [DB/FIXED] clone_engagement bedding_type restored — was silently dropped on every clone
+
+clone_engagement's travel_overlay_rooms INSERT omitted bedding_type (column added S53K,
+post-dated the function) — every cloned engagement silently lost room bedding types. FIXED
+S53O: bedding_type + r.bedding_type added to the room INSERT (column list + VALUES), nothing
+else changed. COMMENT ON updated. Verified live (pg_get_functiondef ~ 'r\.bedding_type' = true).
+
+No backfill needed: checked Yazeed v3 (oQC68jVKgcm) — all 55 rooms had bedding_type NULL AND
+bed_config_override NULL, i.e. the SOURCE never had bedding set, so the clone dropped nothing
+that existed. The bug was real (would lose data if the source had it) but no data was actually
+lost. Discipline note: verified against the data before assuming a backfill — no phantom restore
+on values that were never there.
+
+### [DEV STANDARDS / GOTCHA] Re-creating a function from pg_get_functiondef: terminate $function$
+
+pg_get_functiondef() returns a function definition WITHOUT a trailing semicolon after the
+closing $function$ delimiter. When round-tripping (edit the dump, CREATE OR REPLACE it), if any
+statement FOLLOWS it (e.g. COMMENT ON, or wrapped in BEGIN/COMMIT), the parser stays inside the
+function body and throws `42601 syntax error at or near "<next keyword>"` — which rolls back the
+WHOLE block. Symptom: the CREATE OR REPLACE appears to run but does not take (verify query returns
+false) with no obvious error if the rollback is silent.
+
+FIX: add ';' after the closing $function$ before any following statement. This bit twice on the
+clone_engagement fix (two "successful" runs that didn't persist) before the error surfaced.
+Add to the batch-edit checklist alongside the ZSH/bracketed-paste note: for functions, run via
+`psql -f file.sql` (file-based, no paste truncation, prints the real error+line) rather than
+pasting large bodies into the SQL editor.

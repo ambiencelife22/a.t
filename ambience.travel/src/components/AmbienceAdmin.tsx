@@ -10,8 +10,8 @@
  *
  * Prior: S43 Add 2 — lazy() code splitting + Suspense.
  * Prior: S49 — programme tabs imported from ProgrammeAdmin.tsx.
- * Prior: S45 — ItineraryEditorPage at #admin/trips/{tripId}/itinerary.
- * Prior: S46 — BriefEditorPage at #admin/trips/{tripId}/brief.
+ * Prior: S45 — ItineraryEditorPage at #admin/trips/{journeyId}/itinerary.
+ * Prior: S46 — BriefEditorPage at #admin/trips/{journeyId}/brief.
  * Prior: S40D — House product group.
  * Prior: S36 — Library + Guides product groups.
  * Prior: S33
@@ -129,14 +129,14 @@ function AdminShell() {
   if (tab.product === 'trips' && tab.tab === 'programme') {
     return (
       <Suspense fallback={<AdminLoading />}>
-        <ItineraryEditorPage tripId={tab.tripId} />
+        <ItineraryEditorPage journeyId={tab.journeyId} />
       </Suspense>
     )
   }
   if (tab.product === 'trips' && tab.tab === 'brief') {
     return (
       <Suspense fallback={<AdminLoading />}>
-        <BriefEditorPage tripId={tab.tripId} />
+        <BriefEditorPage journeyId={tab.journeyId} />
       </Suspense>
     )
   }

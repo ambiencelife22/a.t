@@ -1,6 +1,6 @@
 /* ItineraryEditorPage.tsx
  * Dedicated full-page itinerary editor for a single trip.
- * Route: #admin/trips/{tripId}/itinerary
+ * Route: #admin/trips/{journeyId}/itinerary
  *
  * Layout:
  *   - Cream background — matches Brief Editor aesthetic
@@ -28,14 +28,14 @@ import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { fmtTime, formatDateWeekday } from '../../utils/utilsDates'
 import {
-  fetchTripDossierForHouse,
+  fetchJourneyDossierForHouse,
   fetchTripDays,
   fetchTripDayEntries,
   upsertTripDay,
   createTripDayEntry,
   updateTripDayEntry,
   deleteTripDayEntry,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import type {
   DossierTrip,
   HouseProfile,
@@ -43,7 +43,7 @@ import type {
   TripDayEntry,
   TripDayPatch,
   TripDayEntryPatch,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import type { TimelineItem } from '../../types/typesTimeline'
@@ -89,11 +89,11 @@ const btnBase: React.CSSProperties = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function resolveHouseIdForTrip(tripId: string): Promise<string | null> {
+async function resolveHouseIdForTrip(journeyId: string): Promise<string | null> {
   const { data } = await supabase
     .from('travel_bookings')
     .select('house_id')
-    .eq('trip_id', tripId)
+    .eq('journey_id', journeyId)
     .not('house_id', 'is', null)
     .limit(1)
     .single()
@@ -253,14 +253,14 @@ function EntryRow({ entry, onUpdate, onDelete }: {
 
 // ── DayBlock ──────────────────────────────────────────────────────────────────
 
-function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onEntryAdd, tripId }: {
+function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onEntryAdd, journeyId }: {
   day:           TripDay
   entries:       TripDayEntry[]
   onDayUpdate:   (entryDate: string, patch: TripDayPatch) => void
   onEntryUpdate: (id: string, patch: TripDayEntryPatch) => void
   onEntryDelete: (id: string) => void
   onEntryAdd:    (entry: TripDayEntry) => void
-  tripId:        string
+  journeyId:        string
 }) {
   const [expanded, setExpanded] = useState(true)
   const [adding,   setAdding]   = useState(false)
@@ -269,7 +269,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
 
   async function handleAddEntry() {
     if (!newTitle.trim()) return
-    const entry = await createTripDayEntry(tripId, {
+    const entry = await createTripDayEntry(journeyId, {
       entry_date:          day.entry_date,
       start_time:          null,
       end_time:            null,
@@ -285,7 +285,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
       is_auto_derived:     false,
       source_booking_id:   null,
       source_aux_id:       null,
-      trip_id:             tripId,
+      journey_id:             journeyId,
     })
     onEntryAdd(entry)
     setNewTitle('')
@@ -305,7 +305,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: expanded ? `1px solid ${RULE}` : 'none' }}>
         {/* Show/hide toggle */}
         <button
-          onClick={() => { onDayUpdate(day.entry_date, { show: !day.show }); upsertTripDay(tripId, day.entry_date, { show: !day.show }) }}
+          onClick={() => { onDayUpdate(day.entry_date, { show: !day.show }); upsertTripDay(journeyId, day.entry_date, { show: !day.show }) }}
           style={{ fontFamily: A.font, fontSize: 9, color: day.show ? GOLD : FAINT, background: 'transparent', border: `1px solid ${day.show ? GOLD + '50' : RULE}`, borderRadius: 4, padding: '2px 7px', cursor: 'pointer', flexShrink: 0 }}
         >{day.show ? 'Shown' : 'Hidden'}</button>
 
@@ -326,7 +326,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
               <input
                 style={inputStyle} value={day.day_label ?? ''}
                 onChange={e => onDayUpdate(day.entry_date, { day_label: e.target.value })}
-                onBlur={e => upsertTripDay(tripId, day.entry_date, { day_label: e.target.value || null })}
+                onBlur={e => upsertTripDay(journeyId, day.entry_date, { day_label: e.target.value || null })}
                 placeholder={formatDateWeekday(day.entry_date)}
               />
             </div>
@@ -335,7 +335,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
               <input
                 style={inputStyle} value={day.day_note ?? ''}
                 onChange={e => onDayUpdate(day.entry_date, { day_note: e.target.value })}
-                onBlur={e => upsertTripDay(tripId, day.entry_date, { day_note: e.target.value || null })}
+                onBlur={e => upsertTripDay(journeyId, day.entry_date, { day_note: e.target.value || null })}
                 placeholder='No plans today'
               />
             </div>
@@ -489,7 +489,7 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
+export default function ItineraryEditorPage({ journeyId }: { journeyId: string }) {
   const [trip,     setTrip]     = useState<DossierTrip | null>(null)
   const [house,    setHouse]    = useState<HouseProfile | null>(null)
   const [days,     setDays]     = useState<TripDay[]>([])
@@ -509,16 +509,16 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
 
   useEffect(() => {
     async function load() {
-      const houseId = await resolveHouseIdForTrip(tripId)
+      const houseId = await resolveHouseIdForTrip(journeyId)
       if (!houseId) { setLoadErr('No house linked to this trip.'); return }
 
       const [dossier, daysData, entriesData] = await Promise.all([
-        fetchTripDossierForHouse(houseId),
-        fetchTripDays(tripId),
-        fetchTripDayEntries(tripId),
+        fetchJourneyDossierForHouse(houseId),
+        fetchTripDays(journeyId),
+        fetchTripDayEntries(journeyId),
       ])
 
-      const found = dossier.trips.find(t => t.id === tripId)
+      const found = dossier.trips.find(t => t.id === journeyId)
       if (!found) { setLoadErr('Trip not found.'); return }
 
       setTrip(found)
@@ -527,7 +527,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
       setEntries(entriesData)
     }
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
-  }, [tripId])
+  }, [journeyId])
 
   // Pull the canonical programme timeline from the guest EF once we know url_id.
   useEffect(() => {
@@ -621,7 +621,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
           style={{ ...btnBase, background: 'transparent', color: MUTED, border: `1px solid ${RULE}`, padding: '4px 10px', fontSize: 10 }}
         >← Houses</button>
         <button
-          onClick={() => navigateAdmin({ product: 'trips', tab: 'brief', tripId })}
+          onClick={() => navigateAdmin({ product: 'trips', tab: 'brief', journeyId })}
           style={{ ...btnBase, background: 'transparent', color: MUTED, border: `1px solid ${RULE}`, padding: '4px 10px', fontSize: 10 }}
         >Brief</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -673,7 +673,7 @@ export default function ItineraryEditorPage({ tripId }: { tripId: string }) {
                 onEntryUpdate={updateEntryLocal}
                 onEntryDelete={deleteEntryLocal}
                 onEntryAdd={addEntryLocal}
-                tripId={tripId}
+                journeyId={journeyId}
               />
             ))
           )}

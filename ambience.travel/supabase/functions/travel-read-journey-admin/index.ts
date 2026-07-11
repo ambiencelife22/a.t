@@ -17,12 +17,12 @@
 //
 // Modes:
 //   dossier      { house_id: string }
-//   brief        { trip_id: string }
+//   brief        { journey_id: string }
 //   rooms        { booking_id: string }
-//   days         { trip_id: string }
-//   day_entries  { trip_id: string }
-//   aux_bookings { trip_id: string }
-//   public_view  { trip_id: string }
+//   days         { journey_id: string }
+//   day_entries  { journey_id: string }
+//   aux_bookings { journey_id: string }
+//   public_view  { journey_id: string }
 //
 // Response (200):
 //   mode-specific payload (see each handler)
@@ -617,7 +617,6 @@ async function handleCalendar(
   //     as created (category = registry slug, never hardcoded). Fetched independently
   //     of trip span so out-of-span activities survive (e.g. a return flight the day
   //     after end_date).
-  const journeyIds = [...new Set(confirmedTrips.map(t => t.confirmed_engagement_id).filter((x): x is string => !!x))]
   const activitiesByJourney = new Map<string, Array<Record<string, unknown>>>()
   if (journeyIds.length > 0) {
     const { data: actData, error: actErr } = await db
@@ -875,11 +874,11 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
 
   try {
-    const body = await req.json().catch(() => ({}))
-    const { mode, house_id, trip_id, booking_id, aux_booking_id, category, range_start, range_end, programme_id, query } = body as {
+    const body = await req.json()
+    const { mode, house_id, journey_id, booking_id, aux_booking_id, category, range_start, range_end, programme_id, query } = body as {
       mode:           string | undefined
       house_id?:      string
-      trip_id?:       string
+      journey_id?:       string
       booking_id?:    string
       aux_booking_id?: string
       category?:      string
@@ -901,8 +900,8 @@ Deno.serve(async (req: Request) => {
         return handleDossier(serviceClient, house_id)
 
       case 'brief':
-        if (!trip_id) return err('trip_id is required for brief mode', 400)
-        return handleBrief(serviceClient, trip_id)
+        if (!journey_id) return err('journey_id is required for brief mode', 400)
+        return handleBrief(serviceClient, journey_id)
 
       case 'rooms':
         if (!booking_id) return err('booking_id is required for rooms mode', 400)
@@ -913,24 +912,24 @@ Deno.serve(async (req: Request) => {
         return handleAuxDriverDetails(serviceClient, aux_booking_id)
 
       case 'days':
-        if (!trip_id) return err('trip_id is required for days mode', 400)
-        return handleDays(serviceClient, trip_id)
+        if (!journey_id) return err('journey_id is required for days mode', 400)
+        return handleDays(serviceClient, journey_id)
 
       case 'welcome_letters':
-        if (!trip_id) return err('trip_id is required for welcome_letters mode', 400)
-        return handleWelcomeLetters(serviceClient, trip_id)
+        if (!journey_id) return err('journey_id is required for welcome_letters mode', 400)
+        return handleWelcomeLetters(serviceClient, journey_id)
 
       case 'day_entries':
-        if (!trip_id) return err('trip_id is required for day_entries mode', 400)
-        return handleDayEntries(serviceClient, trip_id)
+        if (!journey_id) return err('journey_id is required for day_entries mode', 400)
+        return handleDayEntries(serviceClient, journey_id)
 
       case 'aux_bookings':
-        if (!trip_id) return err('trip_id is required for aux_bookings mode', 400)
-        return handleAuxBookings(serviceClient, trip_id)
+        if (!journey_id) return err('journey_id is required for aux_bookings mode', 400)
+        return handleAuxBookings(serviceClient, journey_id)
 
       case 'public_view':
-        if (!trip_id) return err('trip_id is required for public_view mode', 400)
-        return handlePublicView(serviceClient, trip_id)
+        if (!journey_id) return err('journey_id is required for public_view mode', 400)
+        return handlePublicView(serviceClient, journey_id)
 
       case 'calendar':
         return handleCalendar(serviceClient, range_start ?? null, range_end ?? null)
@@ -939,11 +938,11 @@ Deno.serve(async (req: Request) => {
         return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null, category ?? null)
 
       case 'house_id_for_trip': {
-        if (!trip_id) return err('trip_id is required for house_id_for_trip mode', 400)
+        if (!journey_id) return err('journey_id is required for house_id_for_trip mode', 400)
         const { data, error } = await serviceClient
           .from('travel_bookings')
           .select('house_id')
-          .eq('journey_id', trip_id)
+          .eq('journey_id', journey_id)
           .not('house_id', 'is', null)
           .limit(1)
           .maybeSingle()

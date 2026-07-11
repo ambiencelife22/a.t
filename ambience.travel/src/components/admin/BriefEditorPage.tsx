@@ -1,6 +1,6 @@
 /* BriefEditorPage.tsx
  * Dedicated full-page brief editor for a single trip.
- * Route: #admin/trips/{tripId}/brief
+ * Route: #admin/trips/{journeyId}/brief
  *
  * Last updated: S53O — brief accommodation reduced to index shape (hotel,
  *   dates, nights, party composition, room categories + per-room conf,
@@ -37,14 +37,14 @@ import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { formatDate, formatDateRange } from '../../utils/utilsDates'
 import {
-  fetchTripDossierForHouse,
+  fetchJourneyDossierForHouse,
   fetchTripAuxBookings,
   upsertTripBrief,
   updateBookingRoom,
   updateTripAuxBooking,
   fetchEngagementPublicView,
   setEngagementPublicView,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import type {
   DossierTrip,
   HouseProfile,
@@ -52,13 +52,13 @@ import type {
   TripBriefPatch,
   TripBooking,
   TripAuxBooking,
-} from '../../queries/queriesAdminTrip'
+} from '../../queries/queriesAdminJourney'
 import { groupAuxBySection, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
 import { AirlinePicker } from './AirlinePicker'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
 import { bookedByLabel } from '../../utils/utilsBooking'
-import { fetchEngagementTypes, fetchHouseIdForTrip, type EngagementTypeOption } from '../../queries/queriesAdminTrip'
+import { fetchEngagementTypes, fetchHouseIdForTrip, type EngagementTypeOption } from '../../queries/queriesAdminJourney'
 import { AuxPassengersEditor } from './AuxPassengersEditor'
 import { BookingRoomsEditor, roomToDraft, type RoomDraft } from './BookingRoomsEditor'
 import { WelcomeLettersEditor } from './WelcomeLettersEditor'
@@ -730,7 +730,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ── Main page ────────────────────────────────────────────────────────────────
 
-export default function BriefEditorPage({ tripId }: { tripId: string }) {
+export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
   useEffect(() => {
     function onResize() { setWindowWidth(window.innerWidth) }
@@ -782,18 +782,18 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
 
   useEffect(() => {
     async function load() {
-      const houseId = await fetchHouseIdForTrip(tripId)
+      const houseId = await fetchHouseIdForTrip(journeyId)
       if (!houseId) { setLoadErr('No house linked to this trip. Open the trip from the House tab.'); return }
 
       const [dossier, auxData, isPublic, engTypes] = await Promise.all([
-        fetchTripDossierForHouse(houseId),
-        fetchTripAuxBookings(tripId),
-        fetchEngagementPublicView(tripId),
+        fetchJourneyDossierForHouse(houseId),
+        fetchTripAuxBookings(journeyId),
+        fetchEngagementPublicView(journeyId),
         fetchEngagementTypes(),
       ])
       setEngagementTypes(engTypes)
 
-      const found = dossier.trips.find(t => t.id === tripId)
+      const found = dossier.trips.find(t => t.id === journeyId)
       if (!found) { setLoadErr('Trip not found in dossier.'); return }
       setTrip(found)
       setHouse(dossier.house)
@@ -826,7 +826,7 @@ export default function BriefEditorPage({ tripId }: { tripId: string }) {
       setBriefTitle(found.destinations[0]?.name ?? '')
     }
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
-  }, [tripId])
+  }, [journeyId])
 
   async function handleTogglePublicView() {
     if (!trip) return
