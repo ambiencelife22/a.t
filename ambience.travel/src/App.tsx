@@ -91,20 +91,21 @@ import { fetchMaintenanceMode } from './queries/queriesSettings'
 // ── Lazy route components ────────────────────────────────────────────────────
 
 const LandingLayout            = lazy(() => import('./components/layouts/LandingLayout'))
-const ProgrammeRoute           = lazy(() => import('./components/programme/ProgrammeRoute'))
-const ProgrammeAdmin           = lazy(() => import('./components/admin/ProgrammeAdmin'))
-const AmbienceAdmin            = lazy(() => import('./components/AmbienceAdmin'))
 const Layout                   = lazy(() => import('./components/Layout'))
 const Dashboard                = lazy(() => import('./components/Dashboard'))
-const ProgrammeList            = lazy(() => import('./components/ProgrammeList'))
 const Profile                  = lazy(() => import('./components/Profile'))
 const Auth                     = lazy(() => import('./components/Auth'))
+const AmbienceAdmin            = lazy(() => import('./components/AmbienceAdmin'))
+const ProgrammeAdmin           = lazy(() => import('./components/admin/ProgrammeAdmin'))
 const SignatureExperiencePage  = lazy(() => import('./components/landing/experiences/SignatureExperiencePage'))
 const ImmerseEngagementRoute   = lazy(() => import('./components/immerse/ImmerseEngagementRoute'))
 const GuideRouteDining         = lazy(() => import('./components/guides/GuideRouteDining'))
 const GuideRouteHotels         = lazy(() => import('./components/guides/GuideRouteHotels'))
 const GuideRouteExperiences    = lazy(() => import('./components/guides/GuideRouteExperiences'))
 const GuideRouteShopping       = lazy(() => import('./components/guides/GuideRouteShopping'))
+const ProgrammeRoute           = lazy(() => import('./components/programme/ProgrammeRoute'))
+const ProgrammeList            = lazy(() => import('./components/ProgrammeList'))
+const NotFoundPage             = lazy(() => import('./components/NotFoundPage'))
 
 type Route =
   | 'landing'
@@ -318,9 +319,11 @@ export default function App() {
       )
     }
 
-    const homeUrl = isImmerseHost() ? 'https://ambience.travel/' : '/'
-    window.location.replace(homeUrl)
-    return <RouteLoading />
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <NotFoundPage />
+      </Suspense>
+    )
   }
 
   if (route === 'guides-dining') {
