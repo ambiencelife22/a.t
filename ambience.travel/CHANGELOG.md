@@ -1744,3 +1744,150 @@ Do NOT wrap population in BEGIN/COMMIT in the editor. Stronger form of the exist
 returns only the last result set" rule. Also reaffirmed: \echo / psql meta-commands fail in
 the editor (strip to SQL comments); every new PostgREST-exposed table gets an explicit RLS
 decision at creation, reference tables included (the registry advisor finding).
+
+# S53N Session Log — Property arm: security fix + Property Spine spec (parallel to M's Collapse A)
+
+**Date:** 05 Jul 2026 · repo `ambiencelife22/a.t` on `main` · Supabase `rjobcbpnhymuczjhqzmh`
+**Lane:** Property/hosted-guest arm + DB entity reconciliation. Ran PARALLEL to M (Collapse A6–A8 + token spine). Zero lane collisions — confirmed throughout.
+
+---
+
+## SHIPPED + VERIFIED THIS SESSION
+
+### DB entity reconciliation (Engagement Spine spec, phases 0–1)
+- **Phase 0** — dropped `s53k_tasks_pre_dismissed`. Correction: spec called it "session scratch"; live read proved it was a 31-row 1:1 backup of `travel_tasks` holding live-engagement task data (Austria, Yazeed). Fully superseded (all 31 IDs present in `travel_tasks`), zero code refs. Snapshot preserved. Verified gone via `pg_class`.
+- **Phase 1** — dropped `clients` P0 privacy table (unwalled `passport_number`/`date_of_birth` in public). Correction: spec called it a "pure drop"; live `pg_constraint` showed 2 inbound FKs (`travel_programme_master`, `travel_programme_guests`). Repointed both `client_id` FKs → `global_people` (D-ratified), THEN dropped. `a_ppd_*` KV pattern already covers the sensitive fields (no schema gap). Verified: `clients` gone, both FKs → `global_people`, zero → `clients`.
+- **`travel-read-ops-admin`** — verified fully removed (repo + `supabase functions list` + explicit delete confirm). Handover claim held; no action needed.
+
+### Guest-portal credential leak — CLOSED + VERIFIED (the session's main build)
+The stay portal (`ProgrammeRoute.tsx`) read `travel_programme_*` tables DIRECTLY from the browser and delivered the FULL payload — alarm codes, wifi password (`Romeu2026`), real address, gated phones — to un-logged-in guests, hiding them only in React render. Secrets sat in the network response regardless. A live privacy hole (physical-property access credentials).
+
+**Fix (pushed to main):**
+- New Class B EF `travel-get-stay` (2 modes: `resolve`, `my_stays`). Redacts credential-bearing content SERVER-SIDE on the anon/gated path: Alarm / Arrival / Entry & Keys sections + wifi blocks stripped unless the matching `public_*` flag reveals them; owner/manager phones + maps URLs gated likewise. Authenticated sessions → full access unchanged.
+- Honors `_shared/auth.ts` + `_shared/client.ts` security contracts: NO hand-rolled anon client (that construction is private to auth.ts by design); service client built only after caller established (verified user OR anon-viewing-public). First draft violated this; corrected after reading the actual `_shared` files.
+- Layering corrected to `EF → types → queries → front`: `ProgrammeRoute` calls the queries layer only (`getStayByUrlId` / `getMyStaysRaw`); `queriesProgramme` owns EF invocation + mapping; `StayResult` discriminated union surfaces EF error codes as typed outcomes. First draft had the component invoking the EF directly — corrected on D's catch.
+- **Verified:** anon resolve of `casa-romeu-preview` returns no secrets (`grep` for `Romeu2026`/`Romeu de Corbera` → CLEAN). tsc clean.
+- **OUTSTANDING check:** authenticated path (logged-in guest still sees wifi/alarm) — verify manually post-Vercel-deploy. Expected fine (`!gated` skips redaction) but not yet confirmed.
+
+### Designed (design-only, no execution)
+- **Property Spine spec** (`ambience_travel_property_spine_spec_05Jul26.pdf`) — full replacement/superset for the April Programme handover. The hosted-guest counterpart to the Engagement Spine spec. Entity model `property → stay → access package`; `travel_property` w/ `management_type` (owned|managed|partner — ambience may manage third-party homes, not just own); in-stay concierge/lifestyle services reference the UNIVERSAL `travel_engagement_types` registry (not local enums); two-tier walled portal; 3-stage rename (DB+EF → types/queries → frontend). Hybrid listing-vs-booking seam (curated listings = local content; actioned bookings = spawned engagements) — mission-led, D-ratified.
+
+---
+
+## RECONCILIATION WITH M'S S53M (Collapse A) — READ THIS
+
+M and I converged on the SAME P0 from two directions:
+- **M's logged follow-up #4** = EF-compliance audit: ~15 files make direct `.from()` bypassing EFs. Names `queriesProgramme` + `ProgrammeAdmin` as violators.
+- **My session** = closed the guest-read half of exactly that violation on the programme surface.
+
+**Updates to M's EF-compliance debt list:**
+- `queriesProgramme` — guest-read path now EF-routed (`travel-get-stay`). REMOVE from violator list for the guest surface. (Profile/ticket/login functions still read `global_*` direct — those remain, separate concern.)
+- `ProgrammeAdmin:1338` (`global_profiles`) — STILL a live violation. My fix closed only the GUEST read path; the ADMIN side still reads tables direct. Programme surface is now HALF-compliant.
+- The EF-compliance arc M scoped and I started should be unified: my `travel-get-stay` is its first executed slice. The audit doc M proposed (`ambience_travel_ef_compliance_debt_[date].md`) should note the programme guest-read as DONE.
+
+**Naming reconciliation (consistent, logged so it doesn't drift):**
+- M ratified `immerse` = brand prefix, retained (client-surface: `ImmerseDeliveryPage`, `DeliveryData`).
+- My spec: `programme → stay/property`, `immerse` survives as brand only.
+- CONSISTENT: M's `immerse` = design-client delivery surface; my `stay/property` = hosted-guest surface. Both keep `immerse` as essence. No collision.
+- **TWO SPINES, one platform, sharing `global_people` + `a_ppd_*`:**
+  - ENGAGEMENT spine (M's model): `client → engagement → journey → overlay → delivery`. ambience DESIGNS for a client.
+  - PROPERTY spine (my spec): `property → stay → access package`. ambience HOSTS a guest.
+  - Do NOT force the property work into the engagement model. They meet at: shared `global_people`, shared `travel_engagement_types` registry, shared `travel_suppliers` (post-reconcile).
+
+**M's "Client = identity only" law — ADOPT.** M ratified: "client" = the person/party (identity); bookings/confirmations/accom/delivery are engagement/delivery data, NOT client data. This applies to the property spine too: `travel_stay_guest.person_id → global_people` is IDENTITY; the stay/access-package is delivery-class. Honors the same law.
+
+---
+
+## LOGGED FOLLOW-UPS (property arm) — sequenced, each its own commit/arc
+
+1. **Verify authenticated path** on the security fix (manual, post-deploy). Small but not done.
+2. **Security-fix hardening (2 items):** (a) tighten "any session → full" to "this stay's LINKED guest → full" via `travel_programme_guests.profile_id`; (b) switch inner-tier auth to stay-level `password_hash` (option B — currently all hashes null, session-auth used). Each its own commit.
+3. **ProgrammeAdmin EF-compliance** — the admin half of the programme surface still reads tables direct (`global_profiles` + others). Route through EFs. Folds into M's EF-compliance arc.
+4. **Property Spine rename** (`programme → stay/property`) — NOW UNBLOCKED: the frontend no longer reads these tables directly (this session cleared the last obstacle). 3-stage sequence in the spec. Coordinate `travel_programme_guests` rename with M-adjacent trip EFs (`travel-write-trip`/`travel-read-trip-admin` read `.profile_id`).
+5. **Engagement Spine Phase 2 (supplier reconcile)** — staged w/ ground truth. Bare `suppliers` is orphaned-richer-duplicate (spec's "schism" claim corrected: zero readers — no EF, no frontend). Needs D direction ratification (merge ~11 cols onto `travel_suppliers`, drop bare). Property layer's 3 supplier FKs repoint as part of it.
+6. **Em-dash punch-list** — 30 DB columns / ~110 rows with em-dash/curly-quote violations, incl. 2 live-engagement strings (`hero_tagline`, `status_label`). Per-string editorial, not blind replace. Pull strings for review.
+7. **`travel_programme_guests` double-pointer** — RESOLVED as non-issue this session: `client_id → global_people` (identity) + `profile_id → auth.users` (login) are distinct correct concerns (residence guests DO log in). Keep both. Consider renaming `profile_id → auth_user_id` for clarity. `master` has only `client_id` (single-table scope).
+
+---
+
+## STANDING (reaffirmed, cross-session)
+Every audit + edit holds to: dev standards, seeding standards, universal reference guide, and MISSION (paramount). No bandaids, no shortcuts, no good enough. Fix structure not symptoms. One concern per commit. Inspect-first — this session, 3 assumptions caught wrong by live reads (debris-not-scratch, pure-drop-was-repoint, EF-violated-auth-contract). Verify against ground truth, not code appearance.
+
+---
+
+## FOUNDER RULING (S53N, ratified against the v2 engagement-OS model) — STANDING CANON
+
+**The hosted/property arm is an ENTIRELY SEPARATE THING from the engagement spine.**
+
+Context: two diagrams arrived (M's engagement spine v1, then a v2 "engagement operating
+system" model showing `stay` as a capability module + `guests`/`letters`/`contacts`/`tasks`
+as cross-cutting OS tables "shared by every engagement, never stored twice"). The v2 model
+raised a real fork: is a hosted stay (Casa Romeu) a `stay`-TYPE ENGAGEMENT folded into
+travel_immerse_engagements, OR its own peer arm?
+
+**D RULED: entirely separate thing. Peer arm, not a stay-type engagement.**
+
+Rationale (why this is mission-correct, not fragmentation):
+- Casa Romeu is ambience-as-HOST (owned/managed property, guest occupancy). No client,
+  no proposal, no commission, no design deliverable. The engagement spine models
+  client ENGAGEMENTS (ambience-as-DESIGNER). Different relationship = different arm.
+- The two arms share ONLY true primitives: global_people (identity — same person,
+  different relationships), travel_engagement_types registry, travel_suppliers (post-reconcile).
+- They do NOT share guest/letter/section tables. A hosted-stay guest and a design-engagement
+  guest are the SAME PERSON (global_people) in DIFFERENT relationship tables (occupancy vs
+  engagement party). Separate link tables + one identity source = correct normalization,
+  NOT the "stored twice" the mission forbids. "Never stored twice" is satisfied at the
+  IDENTITY layer (global_people), which is where it must be.
+
+CONSEQUENCES:
+- This session's travel_hosted_* work is CORRECT and PERMANENT — the destination, not a
+  way-station. The programme->hosted rename + schema pass + six-table shape all stand.
+- The admin rewrite (ProgrammeAdmin + queriesAdminProgramme + 2 admin EFs) is UNBLOCKED:
+  the hosted surface is confirmed NOT pending dissolution, so rewriting it to travel_hosted_*
+  builds toward the permanent model (satisfies "never build on surfaces pending dissolution").
+- Do NOT re-litigate. A future instance seeing the v2 OS diagram may be tempted to fold the
+  hosted arm into the spine as a stay-type engagement. D has ruled against this. The hosted
+  arm is a peer.
+
+DESIGN PRINCIPLE reinforced (from the ChatGPT observer + v2 model, D-endorsed direction):
+- Build the durable FOUNDATION now (spine + shared primitives), add each capability/detail
+  MODULE just-in-time when a real engagement demands it. Not speculative. The grayed "future"
+  boxes (acquisition, dining detail) are correctly UNBUILT until a real request arrives.
+- This applies to the hosted arm too: build to CURRENT six-table reality, no speculative
+  generalization toward a hosted-engagement abstraction.
+
+  ## 2026-07-11 (S53Q — client P0 close: visibility audit + gate + not-found)
+
+### [DECISION][VISIBILITY] Public engagements = FOUR, v2 deliberately public (D-adjudicated)
+Audit of public_view across all top-level engagements. public_view is the guest gate;
+is_public is uniformly false (NOT the control). Four engagements are public and D
+ratified this as correct — the earlier "only three public" rule (S53I) is SUPERSEDED:
+  - kH9mP4wRn3x (6711b0f3) — London & Beverly Hills 2026
+  - kF4nP8wRm2x (5857d344) — Together In The Alps v2 (the confirmed clone winner)
+  - oQC68jVKgcm (e14b273f) — Yazeed Honeymoon v3
+  - oQC68jVKgcI (da3c4600) — Yazeed Honeymoon v2, kept public DELIBERATELY so the guest
+    can compare v2/v3 side by side.
+All other engagements correctly public_view=false. NO data changed — the data was already
+correct; the documented rule was stale. Recorded so a future audit does NOT re-flag v2 as
+a violation and "helpfully" hide a live guest trip. An audit surfaces discrepancies for D
+to adjudicate; it does not decide which side of a discrepancy is the error.
+
+### [FIX][immerse] Bad/bare immerse URL renders branded NotFoundPage (was silent redirect)
+A bad or bare immerse URL silently window.location.replace'd to the marketing site
+(App.tsx immerse-branch fallthrough) — an unexplained teleport, mission-failing (no dead
+ends, no unexplained bounce). Now renders the branded NotFoundPage (dark, emblem, "Return
+to ambience.travel"). Added NotFoundPage lazy import (fallthrough-last). Verified live:
+/thisdoesnotexist99 → "We couldn't find that page."; the bad-id path flows through
+ImmerseEngagementRoute → resolver → not-found → NotFoundPage (no second teleport).
+Guest dead-end states now consistent: hidden → cream ImmerseNotPublicFallback ("reach out
+to your travel designer"), not-found → dark NotFoundPage, both with a way home.
+
+### [VERIFY][visibility] Guest gate confirmed live + stale comment corrected
+Guest visibility gate verified end-to-end on a hidden CONFIRMED trip (Sharm NfXkQ2mRp7B →
+cream "not publicly visible" screen). Gate chain: travel-get-immerse-proposal returns 403
+not_public as the universal first gate for ALL engagements (proposal + confirmed) →
+NOT_PUBLIC_SENTINEL → phase:'not-public' → ImmerseNotPublicFallback. checkPublicView in the
+two trip EFs is defense-in-depth, not the primary gate. Corrected the stale _shared/
+visibility.ts header (claimed 404-indistinguishable; code returns DISTINGUISHABLE 403
+not_public / 404 not_found — the distinction is load-bearing for the two branded screens).
+Redeployed travel-get-trip-confirmation + travel-get-trip-programme (--use-api).
