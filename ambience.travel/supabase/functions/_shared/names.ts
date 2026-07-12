@@ -106,8 +106,8 @@ export async function attachPassengers(
   const ids = aux.map(a => a.id as string)
   const { data: pax } = await db
     .from('travel_engagement_aux_passengers')
-    .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
-    .in('aux_booking_id', ids)
+    .select('id, node_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
+    .in('node_id', ids)
     .order('sort_order', { ascending: true })
 
   const personIds = [...new Set((pax ?? []).map((p: Record<string, unknown>) => p.person_id).filter(Boolean))] as string[]
@@ -127,7 +127,7 @@ export async function attachPassengers(
       p.passenger_label as string | null,
       partyLabel,
     )
-    ;(byAux[p.aux_booking_id as string] ??= []).push({ ...p, resolved_passenger_label: resolved })
+    ;(byAux[p.node_id as string] ??= []).push({ ...p, resolved_passenger_label: resolved })
   }
   return aux.map(a => ({ ...a, passengers: byAux[a.id as string] ?? [] }))
 }
@@ -145,13 +145,13 @@ export async function attachDriverDetails(
   const ids = aux.map(a => a.id as string)
   const { data: veh } = await db
     .from('travel_aux_driver_details')
-    .select('id, aux_booking_id, driver_name, driver_phone, car_model, plate, vehicle_role, sort_order')
-    .in('aux_booking_id', ids)
+    .select('id, node_id, driver_name, driver_phone, car_model, plate, vehicle_role, sort_order')
+    .in('node_id', ids)
     .order('sort_order', { ascending: true })
 
   const byAux: Record<string, Record<string, unknown>[]> = {}
   for (const v of (veh ?? []) as Record<string, unknown>[]) {
-    ;(byAux[v.aux_booking_id as string] ??= []).push({
+    ;(byAux[v.node_id as string] ??= []).push({
       id:           v.id,
       driver_name:  v.driver_name,
       driver_phone: v.driver_phone,

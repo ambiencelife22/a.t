@@ -250,9 +250,12 @@ async function handleCreateAuxPassenger(
   auxBookingId: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
+  // auxBookingId is the source aux id; resolve to node_id (Stage 7 Phase 2 retire).
+  const { data: node } = await db
+    .from('travel_engagements').select('id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
   const { data, error } = await db
     .from('travel_engagement_aux_passengers')
-    .insert({ aux_booking_id: auxBookingId, ...patch })
+    .insert({ node_id: (node?.id as string | null) ?? null, ...patch })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create aux passenger' }, 500)
@@ -288,9 +291,12 @@ async function handleCreateAuxDriverDetail(
   auxBookingId: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
+  // auxBookingId is the source aux id; resolve to node_id (Stage 7 Phase 2 retire).
+  const { data: node } = await db
+    .from('travel_engagements').select('id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
   const { data, error } = await db
     .from('travel_aux_driver_details')
-    .insert({ aux_booking_id: auxBookingId, ...patch })
+    .insert({ node_id: (node?.id as string | null) ?? null, ...patch })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create driver detail' }, 500)

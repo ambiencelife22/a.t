@@ -250,10 +250,14 @@ async function handleRooms(db: SupabaseClient, bookingId: string): Promise<Respo
 }
 
 async function handleAuxDriverDetails(db: SupabaseClient, auxBookingId: string): Promise<Response> {
+  // auxBookingId is the source aux id (from the itinerary row); resolve to node,
+  // driver details key on node_id (Stage 7 Phase 2 retire).
+  const { data: node } = await db
+    .from('travel_engagements').select('id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
   const { data, error } = await db
     .from('travel_aux_driver_details')
-    .select('id, aux_booking_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
-    .eq('aux_booking_id', auxBookingId)
+    .select('id, node_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
+    .eq('node_id', (node?.id as string | null) ?? null)
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch driver details', 500)
   return ok({ driverDetails: data ?? [] })
@@ -414,19 +418,19 @@ async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise
   if (jErr) return err('Failed to resolve journey', 500)
   const aux = await fetchElementsFlat(db, (j?.confirmed_engagement_id as string | null) ?? null)
   if (aux.length === 0) return ok({ auxBookings: [] })
-  // Passengers still key on the aux id; nodes carry it as source_aux_booking_id.
-  const auxIds = aux.map(a => a.source_aux_booking_id as string).filter(Boolean)
+  // Passengers key on node_id; flat rows carry id = node id (Stage 7 Phase 2 retire).
+  const nodeIds = aux.map(a => a.id as string).filter(Boolean)
   const { data: pax } = await db
     .from('travel_engagement_aux_passengers')
-    .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
-    .in('aux_booking_id', auxIds)
+    .select('id, node_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
+    .in('node_id', nodeIds)
     .order('sort_order', { ascending: true })
-  const byAux: Record<string, unknown[]> = {}
+  const byNode: Record<string, unknown[]> = {}
   for (const p of (pax ?? []) as Record<string, unknown>[]) {
-    const k = p.aux_booking_id as string
-    ;(byAux[k] ??= []).push(p)
+    const k = p.node_id as string
+    ;(byNode[k] ??= []).push(p)
   }
-  const withPax = aux.map(a => ({ ...a, passengers: byAux[a.source_aux_booking_id as string] ?? [] }))
+  const withPax = aux.map(a => ({ ...a, passengers: byNode[a.id as string] ?? [] }))
   return ok({ auxBookings: withPax })
 }
 
@@ -849,8 +853,8 @@ async function handleActivityDetail(
     if (isGroundCar) {
       const { data: vehData, error: vehErr } = await db
         .from('travel_aux_driver_details')
-        .select('id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
-        .eq('aux_booking_id', auxBookingId)
+        .select('id, node_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
+        .eq('node_id', (await db.from('travel_engagements').select('id').eq('source_aux_booking_id', auxBookingId).maybeSingle()).data?.id ?? null)
         .order('sort_order', { ascending: true })
       if (vehErr) return err('Failed to fetch driver details', 500)
       const vehicles = (vehData ?? []) as Array<Record<string, unknown>>
@@ -862,15 +866,15 @@ async function handleActivityDetail(
     // parent (confirmed) engagement, for the party label. (Stage 7: node carries
     // parent_engagement_id = the confirmed engagement; the journey keys on it.)
     const { data: node } = await db
-      .from('travel_engagements').select('parent_engagement_id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
+      .from('travel_engagements').select('id, parent_engagement_id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
     const { data: jrow } = node?.parent_engagement_id
       ? await db.from('travel_journey').select('id').eq('confirmed_engagement_id', node.parent_engagement_id as string).maybeSingle()
       : { data: null }
     const partyLabel = await partyLabelForTrip(db, (jrow?.id as string | null) ?? null)
     const { data: paxData, error: paxErr } = await db
       .from('travel_engagement_aux_passengers')
-      .select('id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
-      .eq('aux_booking_id', auxBookingId)
+      .select('id, node_id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
+      .eq('node_id', (node?.id as string | null) ?? null)
       .order('sort_order', { ascending: true })
     if (paxErr) return err('Failed to fetch passengers', 500)
     const pax = (paxData ?? []) as Array<Record<string, unknown>>

@@ -436,12 +436,11 @@ export async function enrichElements(
 ): Promise<Array<Record<string, unknown>>> {
   if (elements.length === 0) return []
 
-  // Passengers + drivers key on the aux id. Flat rows carry it as
-  // source_aux_booking_id; alias to id for the attach helpers, restore after.
-  const forAttach = elements.map(e => ({ ...e, id: e.source_aux_booking_id ?? e.id, __node_id: e.id }))
+  // Passengers + drivers now key on node_id; flat rows carry id = node id, so pass
+  // them through directly (no aliasing).
   const withPax = await attachDriverDetails(
     db,
-    await attachPassengers(db, forAttach, partyLabel),
+    await attachPassengers(db, elements, partyLabel),
   ) as Array<Record<string, unknown>>
 
   const venueIds = [...new Set(
@@ -458,10 +457,8 @@ export async function enrichElements(
 
   return withPax.map(a => {
     const v = a.dining_venue_id ? venueById[a.dining_venue_id as string] : null
-    const { __node_id, ...rest } = a
     return {
-      ...rest,
-      id: __node_id,  // restore node id
+      ...a,
       image_src: (v?.image_src as string | null) ?? null,
       venue: v ? {
         address:         (v.address as string | null) ?? null,

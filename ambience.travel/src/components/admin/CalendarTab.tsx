@@ -642,7 +642,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
       setLoadingDetail(true)
       const body = span
         ? { mode: 'activity_detail', booking_id: activity.source_booking_id, category: activity.category }
-        : { mode: 'activity_detail', aux_booking_id: activity.source_aux_booking_id, category: activity.category }
+        : { mode: 'activity_detail', node_id: activity.id, category: activity.category }
       const { data } = await supabase.functions.invoke('travel-read-journey-admin', { body })
       setDetail((data ?? null) as ActivityDetail | null)
       setLoadingDetail(false)
