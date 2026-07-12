@@ -858,9 +858,15 @@ async function handleActivityDetail(
       return ok({ kind: 'ground_transport', vehicles })
     }
 
-    const { data: aux } = await db
-      .from('travel_engagement_aux_bookings').select('engagement_id').eq('id', auxBookingId).maybeSingle()
-    const partyLabel = await partyLabelForTrip(db, (aux?.engagement_id as string | null) ?? null)
+    // Resolve the element node by its source aux id, then its journey via the
+    // parent (confirmed) engagement, for the party label. (Stage 7: node carries
+    // parent_engagement_id = the confirmed engagement; the journey keys on it.)
+    const { data: node } = await db
+      .from('travel_engagements').select('parent_engagement_id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
+    const { data: jrow } = node?.parent_engagement_id
+      ? await db.from('travel_journey').select('id').eq('confirmed_engagement_id', node.parent_engagement_id as string).maybeSingle()
+      : { data: null }
+    const partyLabel = await partyLabelForTrip(db, (jrow?.id as string | null) ?? null)
     const { data: paxData, error: paxErr } = await db
       .from('travel_engagement_aux_passengers')
       .select('id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
