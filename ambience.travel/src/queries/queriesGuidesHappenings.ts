@@ -12,11 +12,12 @@
 //
 // Security model:
 //   - Reads travel_happenings via RLS-gated SELECT
-//   - Public clients only see is_active = true AND is_public = true rows
+//   - Public clients only see is_active = true AND public_preview_rank IS NOT NULL rows (RLS: happenings_public_read, also gated end_date >= today)
 //   - Admin clients see all rows (via separate RLS policy)
 //   - Industry-data classification — no Edge Function needed
 //
-// Last updated: S53 — public_preview_rank added to type. select('*') pulls
+// Last updated: S53 — public_preview_rank added to type. (is_public column dropped S53O;
+//   the migration recipe below is historical record of the original backfill.) select('*') pulls
 //   it once the column ships. Aligns travel_happenings with the canonical
 //   Gateable contract in utilsGuideGating. Requires DB migration:
 //     ALTER TABLE travel_happenings ADD COLUMN public_preview_rank INTEGER;
