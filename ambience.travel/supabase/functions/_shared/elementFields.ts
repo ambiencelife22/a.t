@@ -1,0 +1,59 @@
+// _shared/elementFields.ts
+// SINGLE SOURCE for the flat<->normalized element field mapping. Consumed by BOTH
+// the read-flatten (buildElementFlat) and the write-split (travel-write-journey),
+// so they cannot drift. Never hand-mirror the split in a handler — import here.
+//
+// Stage 7: flat travel_engagement_aux_bookings -> NODE (travel_engagements) + 1:1
+// detail (transport OR dining). Bare types (airport_transfer, meet_greet) = node only.
+
+// NODE columns. Cross-cutting (same meaning across every element type).
+// Left = flat field name (read contract / patch). Right = actual node column.
+export const NODE_FIELD_MAP: Record<string, string> = {
+  engagement_type_id:           'engagement_type_id',
+  name:                         'title',
+  start_date:                   'activity_date',
+  end_date:                     'activity_end_date',
+  start_time:                   'activity_start_time',
+  end_time:                     'activity_end_time',
+  confirmation_number:          'confirmation_number',
+  brief_show:                   'brief_show',
+  cancellation_penalty_applied: 'cancellation_penalty_applied',
+  show_cancellation:            'show_cancellation',
+  sort_order:                   'sort_order',
+}
+
+// travel_engagement_transport_detail columns (flight). Flat name == column name.
+export const TRANSPORT_FIELDS = [
+  'depart_airport_id', 'arrive_airport_id', 'aircraft_type_id', 'cabin_class_id',
+  'airline_supplier_id', 'airline_name', 'flight_number', 'origin', 'destination',
+  'notes', 'booked_by',
+] as const
+
+// travel_engagement_dining_detail columns. Flat name == column name.
+export const DINING_FIELDS = [
+  'dining_venue_id', 'guest_name', 'guest_count', 'dining_status', 'contact_name',
+  'contact_phone', 'cancellation_note', 'booking_terms_override', 'notes', 'booked_by',
+] as const
+
+// Flat patch carries these as FREE TEXT; tables store registry FKs. Write-split
+// resolves text -> id. flat text field -> { registry table, match col, detail fk col }.
+export const TRANSPORT_TEXT_TO_FK: Record<string, { table: string; match: string; fk: string }> = {
+  cabin_class:    { table: 'travel_cabin_classes',  match: 'label', fk: 'cabin_class_id' },
+  aircraft_type:  { table: 'travel_aircraft_types', match: 'label', fk: 'aircraft_type_id' },
+  depart_airport: { table: 'travel_airports',       match: 'iata',  fk: 'depart_airport_id' },
+  arrive_airport: { table: 'travel_airports',       match: 'iata',  fk: 'arrive_airport_id' },
+}
+
+// READ-ONLY enrichment — composed on read, NEVER written.
+// venue: joined from dining_venue_id. booking_type/label: from engagement_type_id FK.
+export const READ_ONLY_FLAT_FIELDS = ['venue', 'booking_type', 'booking_type_label'] as const
+
+// DROPPED at aux retire (0/25 ever populated). Never write, never read.
+export const DROPPED_FIELDS = ['seat_type'] as const
+
+// Detail table for an element type. null = bare node (no detail row).
+export function detailTableForType(slug: string | null): string | null {
+  if (slug === 'flight') return 'travel_engagement_transport_detail'
+  if (slug === 'dining') return 'travel_engagement_dining_detail'
+  return null
+}

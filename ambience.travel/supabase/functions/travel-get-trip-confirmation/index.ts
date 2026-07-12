@@ -11,8 +11,7 @@
 //   (uuid[] of a_house_people.person_id) + contact_name_format ('first'|'full').
 
 import { createServiceClient } from '../_shared/client.ts'
-import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
-import { resolvejourneyIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchElementsFlat, enrichElements } from '../_shared/engagement.ts'
 import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
@@ -46,9 +45,8 @@ Deno.serve(async (req: Request) => {
     const [
       core,
       bookingsResult,
-      auxResult,
     ] = await Promise.all([
-      fetchTripCore(db, journeyId, houseId),
+      fetchEngagementCore(db, journeyId, houseId),
 
       // confirmation needs financial-adjacent columns (deposit/balance paid, taxes)
       db.from('travel_bookings')
@@ -58,12 +56,6 @@ Deno.serve(async (req: Request) => {
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('end_date',   { ascending: true, nullsFirst: false })
         .order('id',         { ascending: true }),
-
-      db.from('travel_engagement_aux_bookings')
-        .select(AUX_BOOKING_SELECT)
-        .eq('engagement_id', journeyId)
-        .order('start_date', { ascending: true, nullsFirst: false })
-        .order('start_time', { ascending: true, nullsFirst: false }),
     ])
 
     if (!core.trip) {
@@ -73,13 +65,11 @@ Deno.serve(async (req: Request) => {
     const trip         = core.trip
     const brief        = core.brief
     const house        = core.house
-    // HPGL: canonical public guest label (projected, single-source via _shared/trip.ts).
+    // HPGL: canonical public guest label (projected, single-source via _shared/engagement.ts).
     // resolved_guest_label wins; prepared_for is the legacy fallback. Never ||.
     const guestDisplayName = core.resolved_guest_label ?? ((brief?.prepared_for as string | null) ?? null)
     const destinations = core.destinations
     const bookings     = bookingsResult.data ?? []
-    const auxBookings  = auxResult.data ?? []
-    if (auxResult.error) console.error('AUX ERROR:', JSON.stringify(auxResult.error))
 
     // Fetch engagement links using confirmed_engagement_id from trip row.
     const confirmedEngagementId = (trip?.confirmed_engagement_id as string | null) ?? null
@@ -109,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
     // shared bookings enrich (rooms + resolved guest names + canon/hotel maps)
     const partyLabel = (brief?.prepared_for as string | null) ?? null
-    const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel, houseId)
+    const { roomsByBooking, canonRoomById, hotelById } = await fetchEngagementBookings(db, bookings, partyLabel, houseId)
 
     // ── Contacts: resolve brief.contact_person_ids → house people (S54) ───────
     const contacts: Array<{
@@ -160,7 +150,7 @@ Deno.serve(async (req: Request) => {
         const canon = r.room_id ? canonRoomById[r.room_id] : null
         return {
           ...r,
-          // resolved_guest_name already set by fetchTripBookings (single-source)
+          // resolved_guest_name already set by fetchEngagementBookings (single-source)
           resolved_image_src:
             r.brief_image_src ?? canon?.image_src ?? b.brief_image_src ?? hotel?.hero_image_src ?? null,
           resolved_image_alt: canon?.image_alt ?? r.room_name ?? null,
@@ -203,34 +193,11 @@ Deno.serve(async (req: Request) => {
       contacts,
       guestDisplayName,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings: await (async () => {
-        const withPax = await attachDriverDetails(db, await attachPassengers(db, auxBookings as unknown as Record<string, unknown>[], (brief?.prepared_for as string | null) ?? null))
-        const diningVenueIds = [...new Set(
-          (withPax as Record<string, unknown>[]).map(a => a.dining_venue_id).filter(Boolean)
-        )] as string[]
-        if (diningVenueIds.length === 0) return (withPax as Record<string, unknown>[]).map(flattenAuxType)
-        const { data: diningVenues } = await db.from('travel_dining_venues')
-          .select('id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
-          .in('id', diningVenueIds)
-        const venueById: Record<string, Record<string, unknown>> = {}
-        for (const d of (diningVenues ?? []) as Record<string, unknown>[]) venueById[d.id as string] = d
-        return (withPax as Record<string, unknown>[]).map(a => {
-          const v = a.dining_venue_id ? venueById[a.dining_venue_id as string] : null
-          return {
-            ...flattenAuxType(a),
-            image_src: (v?.image_src as string | null) ?? null,
-            venue: v ? {
-              address:         (v.address as string | null) ?? null,
-              maps_url:        (v.maps_url as string | null) ?? null,
-              phone:           (v.phone as string | null) ?? null,
-              dress_code:      (v.dress_code as string | null) ?? null,
-              children_policy: (v.children_policy as string | null) ?? null,
-              table_hold_note: (v.table_hold_note as string | null) ?? null,
-              booking_terms:   (v.booking_terms as string | null) ?? null,
-            } : null,
-          }
-        })
-      })(),
+      auxBookings: await enrichElements(
+              db,
+              await fetchElementsFlat(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
+              (brief?.prepared_for as string | null) ?? null,
+            ),
       urlId: url_id,
       links: (engagementLinksResult.data ?? [] as unknown[]).map((l: any) => ({
         id:         l.id,

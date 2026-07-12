@@ -18,7 +18,7 @@
 //
 // Created: S55 — _shared/trip.ts extraction (single-source quest #1).
 // S53O — error guards added to the engagement + engagement_display fetches in
-//   fetchTripCore (was silent; the class of bug that hid the bedding_type and
+//   fetchEngagementCore (was silent; the class of bug that hid the bedding_type and
 //   is_total phantom-column failures). Overlay rename (travel_immerse_* ->
 //   travel_overlay_*) is IN PROGRESS: engagement_display is now renamed
 //   (travel_overlay_engagement_display, line ~139). This file still reads the
@@ -28,6 +28,7 @@
 
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { resolvePartyName, formatPersonName } from './names.ts'
+import { NODE_FIELD_MAP } from './elementFields.ts'
 import { fetchHotelsByIds } from './bookings.ts'
 
 // ── url_id -> trip_id -> house_id ─────────────────────────────────────────────
@@ -64,7 +65,7 @@ export async function resolvejourneyIds(
 // welcome; programme: programme_notes). Extra columns are harmless to either.
 // Returns trip=null when the trip row is missing (caller returns 404).
 
-export interface TripCore {
+export interface EngagementCore {
   trip:                 Record<string, unknown> | null
   brief:                Record<string, unknown> | null
   house:                Record<string, unknown> | null
@@ -72,11 +73,11 @@ export interface TripCore {
   resolved_guest_label: string | null
 }
 
-export async function fetchTripCore(
+export async function fetchEngagementCore(
   db: SupabaseClient,
   journeyId: string,
   houseId: string,
-): Promise<TripCore> {
+): Promise<EngagementCore> {
   const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
     db.from('travel_journey')
       .select('id, journey_code, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
@@ -148,8 +149,8 @@ export async function fetchTripCore(
         .eq('engagement_id', confirmedEngId)
         .maybeSingle(),
     ])
-    if (engRes.error) console.error('[fetchTripCore] engagement fetch error:', JSON.stringify(engRes.error))
-    if (displayRes.error) console.error('[fetchTripCore] engagement_display fetch error:', JSON.stringify(displayRes.error))
+    if (engRes.error) console.error('[fetchEngagementCore] engagement fetch error:', JSON.stringify(engRes.error))
+    if (displayRes.error) console.error('[fetchEngagementCore] engagement_display fetch error:', JSON.stringify(displayRes.error))
     engHeroSrc         = (engRes.data?.hero_image_src as string | null) ?? null
     engTitle           = (engRes.data?.title          as string | null) ?? null
     resolvedGuestLabel = (displayRes.data?.house_display_name as string | null) ?? null
@@ -182,7 +183,7 @@ export async function fetchTripCore(
 //
 // Rooms already carry resolved_guest_name. roomsByBooking groups them.
 
-export interface TripBookingsData {
+export interface EngagementBookingsData {
   bookings:       Array<Record<string, unknown>>
   roomsByBooking: Record<string, Array<Record<string, unknown>>>
   canonRoomById:  Record<string, { image_src: string | null; image_alt: string | null }>
@@ -219,12 +220,94 @@ export function flattenAuxType(a: Record<string, unknown>): Record<string, unkno
   }
 }
 
-export async function fetchTripBookings(
+// ── Element read: node+detail -> flat aux shape ───────────────────────────────
+// Stage 7 Phase 2. travel_engagement_aux_bookings was normalized into a typed tree
+// (NODE on travel_engagements + 1:1 transport/dining detail). This produces the
+// SAME flat shape AUX_BOOKING_SELECT + flattenAuxType did, read from the tree, so
+// consumers are unchanged. Separate-fetch pattern (matches fetchEngagementBookings below).
+// Registry FKs are reversed to free-text on read so the flat shape matches legacy aux.
+// parentEngId = the journey's confirmed engagement (already resolved by fetchEngagementCore
+// as confirmed_engagement_id — pass it in, do not re-fetch).
+
+const NODE_COL_TO_FLAT: Record<string, string> = Object.fromEntries(
+  Object.entries(NODE_FIELD_MAP).map(([flat, col]) => [col, flat]),
+)
+
+export async function fetchElementsFlat(
+  db: SupabaseClient,
+  parentEngId: string | null,
+): Promise<Array<Record<string, unknown>>> {
+  if (!parentEngId) return []
+
+  const { data: nodes } = await db
+    .from('travel_engagements')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, source_aux_booking_id, travel_engagement_types(slug, label)')
+    .eq('parent_engagement_id', parentEngId)
+    .not('source_aux_booking_id', 'is', null)
+    .order('activity_date', { ascending: true, nullsFirst: false })
+    .order('activity_start_time', { ascending: true, nullsFirst: false })
+  const nodeRows = (nodes ?? []) as Array<Record<string, unknown>>
+  if (nodeRows.length === 0) return []
+
+  const ids = nodeRows.map(n => n.id as string)
+  const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
+    db.from('travel_engagement_transport_detail')
+      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, airline_supplier_id, airline_name, flight_number, origin, destination, notes, booked_by')
+      .in('node_id', ids),
+    db.from('travel_engagement_dining_detail')
+      .select('node_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
+      .in('node_id', ids),
+    db.from('travel_cabin_classes').select('id, label'),
+    db.from('travel_aircraft_types').select('id, label'),
+    db.from('travel_airports').select('id, iata'),
+  ])
+  const tById = new Map(((tRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
+  const dById = new Map(((dRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
+  const cabinById    = new Map(((cabinRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
+  const aircraftById = new Map(((acRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
+  const airportById  = new Map(((apRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.iata as string]))
+
+  return nodeRows.map(n => {
+    const et = n.travel_engagement_types as { slug: string; label: string } | { slug: string; label: string }[] | null
+    const etObj = Array.isArray(et) ? et[0] : et
+    const t = tById.get(n.id as string)
+    const d = dById.get(n.id as string)
+
+    const flat: Record<string, unknown> = {
+      id:                 n.id,
+      engagement_id:      n.parent_engagement_id,
+      booking_type:       etObj?.slug  ?? null,
+      booking_type_label: etObj?.label ?? null,
+      created_at:            n.created_at,
+      updated_at:            n.updated_at,
+      source_aux_booking_id: n.source_aux_booking_id,
+      seat_type:             null,
+    }
+    for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
+
+    const detail = t ?? d ?? {}
+    for (const [k, v] of Object.entries(detail)) { if (k !== 'node_id') flat[k] = v ?? null }
+
+    flat.cabin_class    = null
+    flat.aircraft_type  = null
+    flat.depart_airport = null
+    flat.arrive_airport = null
+    if (t) {
+      flat.cabin_class    = t.cabin_class_id    ? cabinById.get(t.cabin_class_id as string)      ?? null : null
+      flat.aircraft_type  = t.aircraft_type_id  ? aircraftById.get(t.aircraft_type_id as string) ?? null : null
+      flat.depart_airport = t.depart_airport_id ? airportById.get(t.depart_airport_id as string) ?? null : null
+      flat.arrive_airport = t.arrive_airport_id ? airportById.get(t.arrive_airport_id as string) ?? null : null
+    }
+    return flat
+  })
+}
+
+export async function fetchEngagementBookings(
   db: SupabaseClient,
   bookings: Array<Record<string, unknown>>,
   partyLabel: string | null,
   houseId: string,
-): Promise<TripBookingsData> {
+): Promise<EngagementBookingsData> {
   const bookingIds = bookings.map(b => b.id as string)
 
   // Rooms for all bookings. Select the superset of columns both EFs read;
@@ -235,7 +318,7 @@ export async function fetchTripBookings(
         .in('booking_id', bookingIds)
         .order('sort_order', { ascending: true })
     : { data: [], error: null }
-  if (roomsResult.error) console.error('[fetchTripBookings] rooms fetch error:', JSON.stringify(roomsResult.error))
+  if (roomsResult.error) console.error('[fetchEngagementBookings] rooms fetch error:', JSON.stringify(roomsResult.error))
   const rooms = (roomsResult.data ?? []) as Array<Record<string, unknown>>
 
   // Canon rooms (image_src + alt) via room_id.
@@ -335,4 +418,60 @@ export async function fetchTripBookings(
   }
 
   return { bookings, roomsByBooking, canonRoomById, hotelById }
+}
+
+// ── Element enrichment — passengers + drivers + dining venue ──────────────────
+// Shared by confirmation + programme (was inlined verbatim in both — same select,
+// same output shape, a drift risk). Takes flat element rows from fetchElementsFlat,
+// attaches passengers/drivers (keyed on the aux id, carried as source_aux_booking_id),
+// resolves the dining venue into image_src + nested venue{} facts.
+// fetchElementsFlat already produces the flat+typed shape, so no flattenAuxType here.
+
+import { attachPassengers, attachDriverDetails } from './names.ts'
+
+export async function enrichElements(
+  db: SupabaseClient,
+  elements: Array<Record<string, unknown>>,
+  partyLabel: string | null,
+): Promise<Array<Record<string, unknown>>> {
+  if (elements.length === 0) return []
+
+  // Passengers + drivers key on the aux id. Flat rows carry it as
+  // source_aux_booking_id; alias to id for the attach helpers, restore after.
+  const forAttach = elements.map(e => ({ ...e, id: e.source_aux_booking_id ?? e.id, __node_id: e.id }))
+  const withPax = await attachDriverDetails(
+    db,
+    await attachPassengers(db, forAttach, partyLabel),
+  ) as Array<Record<string, unknown>>
+
+  const venueIds = [...new Set(
+    withPax.map(a => a.dining_venue_id).filter(Boolean),
+  )] as string[]
+
+  const venueById: Record<string, Record<string, unknown>> = {}
+  if (venueIds.length > 0) {
+    const { data: venues } = await db.from('travel_dining_venues')
+      .select('id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
+      .in('id', venueIds)
+    for (const d of (venues ?? []) as Array<Record<string, unknown>>) venueById[d.id as string] = d
+  }
+
+  return withPax.map(a => {
+    const v = a.dining_venue_id ? venueById[a.dining_venue_id as string] : null
+    const { __node_id, ...rest } = a
+    return {
+      ...rest,
+      id: __node_id,  // restore node id
+      image_src: (v?.image_src as string | null) ?? null,
+      venue: v ? {
+        address:         (v.address as string | null) ?? null,
+        maps_url:        (v.maps_url as string | null) ?? null,
+        phone:           (v.phone as string | null) ?? null,
+        dress_code:      (v.dress_code as string | null) ?? null,
+        children_policy: (v.children_policy as string | null) ?? null,
+        table_hold_note: (v.table_hold_note as string | null) ?? null,
+        booking_terms:   (v.booking_terms as string | null) ?? null,
+      } : null,
+    }
+  })
 }

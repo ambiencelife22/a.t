@@ -1891,3 +1891,351 @@ two trip EFs is defense-in-depth, not the primary gate. Corrected the stale _sha
 visibility.ts header (claimed 404-indistinguishable; code returns DISTINGUISHABLE 403
 not_public / 404 not_found — the distinction is load-bearing for the two branded screens).
 Redeployed travel-get-trip-confirmation + travel-get-trip-programme (--use-api).
+
+## 2026-07-05 (S53L — DB integrity session, self-audited)
+
+### [DB] Session intent + honest accounting — verify-against-live-schema-FIRST reaffirmed
+
+INTENT: foundational DB integrity work clear of M's HPGL/rename arcs — close free-text
+smells, enforce implied invariants, kill naming drift. Make the foundation honest, not
+add features. Six pieces attempted.
+
+METHODOLOGICAL ERROR (the reason this entry matters more than the work): consulted
+information_schema per-table intermittently but NEVER read this changelog before starting
+DB work — so did not know the travel_immerse_* → travel_overlay_* → engagement/journey
+rename campaign was in flight. Built confidently against stale travel_immerse_* names that
+were renamed campaigns ago. Same failure class as every rename-audit lesson already logged
+here: the live schema is the only truth, git can't show it, and the changelog is the only
+record of renames. Consult BOTH before any DB work — not after it breaks.
+
+SOLID (tables outside the rename campaign — verified live, correct):
+- website_url → website convergence: renamed on travel_accom_brands, travel_accom_hotels,
+  travel_happenings, travel_suppliers (4 tables) + 6 guest-frontend consumer files. Platform
+  now uniform on `website` (non-redundant name; the _url suffix is decorative). EF-safe
+  (zero EF refs). Shared-DB safe sequence: frontend deploy THEN rename, graceful degradation
+  (links briefly absent, never errored). tsc-verified, live-verified.
+- is_public ⟹ is_active CHECK on travel_shopping + travel_happenings
+  (travel_{shopping,happenings}_public_implies_active). Enforces the two-stage model
+  (is_active=lifecycle, is_public=audience) — inactive+public now structurally impossible.
+- link_type → engagement_link_type enum (guide/custom parallel-built; extended to the full
+  UHNW set: +form, confirmation, document, payment, contact). travel_engagement_links,
+  confirmed engagement_id-keyed (current post-5a). NOTE: 5 new enum values have NO distinct
+  render yet — assign a link a new type only after its render ships, or the type claims
+  meaning the UI ignores.
+- Per-surface engagement links: show_on_proposal (default false) + show_on_confirmation
+  (default true) on travel_engagement_links. Both EFs filter by them; proposal EF gained
+  the links feature it never had. Defaults preserve prior behavior. Both paths verified,
+  test-elect reverted.
+- opening_hours jsonb (nullable) on travel_dining_venues (the `website` col already existed —
+  original "add website" half was a phantom). Shape = Option B (per-day service periods +
+  bounded notes), enforced app-layer per existing bullets-jsonb convention. INERT: no
+  reader/writer yet — TS type + admin form + card render are the completion (follow-on).
+
+SUSPECT — ran against STALE travel_immerse_* names, must be re-verified + likely redone on
+correct tables:
+- destination_url_slug format CHECK + per-trip unique index: ran against
+  travel_immerse_trip_destination_rows + travel_immerse_rooms — names that no longer exist.
+  Live truth: the destination-rows table is now travel_overlay_engagement_destination_rows
+  (and/or travel_journey_destinations — the rename split), rooms is travel_overlay_rooms.
+  Post-audit, ONLY card_selections_slug_format survives (on
+  travel_overlay_engagement_content_card_selections). The two intended constraints
+  (destination-rows format+uniqueness, rooms format) are NOT on the live tables — landed on
+  ghosts or nowhere. MUST redo on: travel_overlay_engagement_destination_rows (or
+  travel_journey_destinations — confirm which holds destination_url_slug), travel_overlay_rooms.
+  Design decisions still valid (format ^[a-z0-9]+$ on all slug-bearing tables; per-"trip"
+  uniqueness on the canonical/identity table — but the trip_id column is now journey_id/
+  engagement_id, so the unique index key must be re-derived on the real column).
+- HPGL DB foundation done early this session (house_label_context enum, engagement_houses
+  join, Austria seed): a_house_* / engagement_houses may be OUTSIDE the rename path (verify),
+  but re-confirm table names before trusting. M owns the HPGL arc — coordinate.
+
+RETRACTED — trip-surface consolidation arc spec (arc_trip_consolidation.md): DISCARD. It
+duplicates work M is ACTIVELY building ("one-EF-three-modes read-path consolidation",
+referenced in the 07-08 guest-read-reliability entry). Scoped before reading the changelog =
+the exact parallel-planning the changelog exists to prevent. Not a contribution; a collision.
+
+LESSON (standing, reaffirmed not new): before ANY DB work — (1) read this changelog for
+in-flight rename campaigns, (2) resolve every target table name against information_schema,
+(3) THEN act. In-context table names are stale by default in this repo. "Success. No rows
+returned" on a DDL against a nonexistent-name table is NOT proof it applied to the table you
+meant — verify the constraint/column exists on the LIVE table by its CURRENT name afterward.
+
+---
+
+### [CANON] Universal Document #4 superseded — 12 Jul 2026 (widens travel → lifestyle design)
+
+The Mission evolved. Registering the deltas that bear on live work:
+
+- MISSION widened: "Be the best in the world at designing life's most meaningful moments."
+  Travel is now explicitly the center of gravity + the craft-benchmark, NOT the whole.
+  Lifestyle design is the discipline. Confirms the service-agnostic-spine reasoning the
+  Phase B model-correction already anticipated — now canon.
+- NORTH STAR: "One ENGAGEMENT. One URL. One experience." (was "One trip"). The Phase B
+  campaign (travel_trips retired as spine → travel_engagements the service-agnostic entity;
+  travel_trips → travel_journey the capability module) is now DIRECTLY MANDATED by the North
+  Star's wording. The rename is the Mission made structural, not just cleanup.
+- THE NINE are canon. Every engagement is one of: Journey, Stay, Dining, Reservation,
+  Transport, Experience, Acquisition, Arrangement, Concierge Service.
+  - Arrangement = BROKERED (a third party performs it — the supplier/partner path).
+  - Concierge Service = OURS (ambience performs it directly — research, appointments, the
+    house's direct work, personal assistance).
+  - The Arrangement/Concierge Service distinction is "deliberate and load-bearing" (doc's
+    words): different fulfillment models, not a label. Never conflate.
+
+### [ARC-pending] travel_engagement_types needs THE NINE — add Concierge Service, split from Arrangement
+
+Schema + registry work, own slice. travel_engagement_types must carry all nine canon types.
+Concierge Service is NEW and must be SPLIT from Arrangement (brokered-vs-ours is load-bearing
+per Doc #4). Recon-first: read current travel_engagement_types rows/shape against
+information_schema, confirm which of the nine already exist, add the missing (incl. Concierge
+Service), ensure the type distinction is modeled (not just a label) where fulfillment differs.
+
+### [NOTE] Flat-read is a BRIDGE, not the end state (Phase 2)
+The current flat-read path is transitional. Phase 2's end state = consumers on the engagement
+shape; the flat-read is DELETED with aux (aux_bookings → elements, Stage 7). Do not build
+new consumers assuming flat-read permanence — it is scaffolding with a demolition date.
+
+## 2026-07-05 (S53L — DB integrity session, self-audited)
+
+### [DB] Session intent + honest accounting — verify-against-live-schema-FIRST reaffirmed
+
+INTENT: foundational DB integrity work clear of M's HPGL/rename arcs — close free-text
+smells, enforce implied invariants, kill naming drift. Make the foundation honest, not
+add features. Six pieces attempted.
+
+METHODOLOGICAL ERROR (the reason this entry matters more than the work): consulted
+information_schema per-table intermittently but NEVER read this changelog before starting
+DB work — so did not know the travel_immerse_* → travel_overlay_* → engagement/journey
+rename campaign was in flight. Built confidently against stale travel_immerse_* names that
+were renamed campaigns ago. Same failure class as every rename-audit lesson already logged
+here: the live schema is the only truth, git can't show it, and the changelog is the only
+record of renames. Consult BOTH before any DB work — not after it breaks.
+
+SOLID (tables outside the rename campaign — verified live, correct):
+- website_url → website convergence: renamed on travel_accom_brands, travel_accom_hotels,
+  travel_happenings, travel_suppliers (4 tables) + 6 guest-frontend consumer files. Platform
+  now uniform on `website` (non-redundant name; the _url suffix is decorative). EF-safe
+  (zero EF refs). Shared-DB safe sequence: frontend deploy THEN rename, graceful degradation
+  (links briefly absent, never errored). tsc-verified, live-verified.
+- is_public ⟹ is_active CHECK on travel_shopping + travel_happenings
+  (travel_{shopping,happenings}_public_implies_active). Enforces the two-stage model
+  (is_active=lifecycle, is_public=audience) — inactive+public now structurally impossible.
+- link_type → engagement_link_type enum (guide/custom parallel-built; extended to the full
+  UHNW set: +form, confirmation, document, payment, contact). travel_engagement_links,
+  confirmed engagement_id-keyed (current post-5a). NOTE: 5 new enum values have NO distinct
+  render yet — assign a link a new type only after its render ships, or the type claims
+  meaning the UI ignores.
+- Per-surface engagement links: show_on_proposal (default false) + show_on_confirmation
+  (default true) on travel_engagement_links. Both EFs filter by them; proposal EF gained
+  the links feature it never had. Defaults preserve prior behavior. Both paths verified,
+  test-elect reverted.
+- opening_hours jsonb (nullable) on travel_dining_venues (the `website` col already existed —
+  original "add website" half was a phantom). Shape = Option B (per-day service periods +
+  bounded notes), enforced app-layer per existing bullets-jsonb convention. INERT: no
+  reader/writer yet — TS type + admin form + card render are the completion (follow-on).
+
+SUSPECT — ran against STALE travel_immerse_* names, must be re-verified + likely redone on
+correct tables:
+- destination_url_slug format CHECK + per-trip unique index: ran against
+  travel_immerse_trip_destination_rows + travel_immerse_rooms — names that no longer exist.
+  Live truth: the destination-rows table is now travel_overlay_engagement_destination_rows
+  (and/or travel_journey_destinations — the rename split), rooms is travel_overlay_rooms.
+  Post-audit, ONLY card_selections_slug_format survives (on
+  travel_overlay_engagement_content_card_selections). The two intended constraints
+  (destination-rows format+uniqueness, rooms format) are NOT on the live tables — landed on
+  ghosts or nowhere. MUST redo on: travel_overlay_engagement_destination_rows (or
+  travel_journey_destinations — confirm which holds destination_url_slug), travel_overlay_rooms.
+  Design decisions still valid (format ^[a-z0-9]+$ on all slug-bearing tables; per-"trip"
+  uniqueness on the canonical/identity table — but the trip_id column is now journey_id/
+  engagement_id, so the unique index key must be re-derived on the real column).
+- HPGL DB foundation done early this session (house_label_context enum, engagement_houses
+  join, Austria seed): a_house_* / engagement_houses may be OUTSIDE the rename path (verify),
+  but re-confirm table names before trusting. M owns the HPGL arc — coordinate.
+
+RETRACTED — trip-surface consolidation arc spec (arc_trip_consolidation.md): DISCARD. It
+duplicates work M is ACTIVELY building ("one-EF-three-modes read-path consolidation",
+referenced in the 07-08 guest-read-reliability entry). Scoped before reading the changelog =
+the exact parallel-planning the changelog exists to prevent. Not a contribution; a collision.
+
+LESSON (standing, reaffirmed not new): before ANY DB work — (1) read this changelog for
+in-flight rename campaigns, (2) resolve every target table name against information_schema,
+(3) THEN act. In-context table names are stale by default in this repo. "Success. No rows
+returned" on a DDL against a nonexistent-name table is NOT proof it applied to the table you
+meant — verify the constraint/column exists on the LIVE table by its CURRENT name afterward.
+
+---
+
+### [CANON] Universal Document #4 superseded — 12 Jul 2026 (widens travel → lifestyle design)
+
+The Mission evolved. Registering the deltas that bear on live work:
+
+- MISSION widened: "Be the best in the world at designing life's most meaningful moments."
+  Travel is now explicitly the center of gravity + the craft-benchmark, NOT the whole.
+  Lifestyle design is the discipline. Confirms the service-agnostic-spine reasoning the
+  Phase B model-correction already anticipated — now canon.
+- NORTH STAR: "One ENGAGEMENT. One URL. One experience." (was "One trip"). The Phase B
+  campaign (travel_trips retired as spine → travel_engagements the service-agnostic entity;
+  travel_trips → travel_journey the capability module) is now DIRECTLY MANDATED by the North
+  Star's wording. The rename is the Mission made structural, not just cleanup.
+- THE NINE are canon. Every engagement is one of: Journey, Stay, Dining, Reservation,
+  Transport, Experience, Acquisition, Arrangement, Concierge Service.
+  - Arrangement = BROKERED (a third party performs it — the supplier/partner path).
+  - Concierge Service = OURS (ambience performs it directly — research, appointments, the
+    house's direct work, personal assistance).
+  - The Arrangement/Concierge Service distinction is "deliberate and load-bearing" (doc's
+    words): different fulfillment models, not a label. Never conflate.
+
+### [ARC-pending] travel_engagement_types needs THE NINE — add Concierge Service, split from Arrangement
+
+Schema + registry work, own slice. travel_engagement_types must carry all nine canon types.
+Concierge Service is NEW and must be SPLIT from Arrangement (brokered-vs-ours is load-bearing
+per Doc #4). Recon-first: read current travel_engagement_types rows/shape against
+information_schema, confirm which of the nine already exist, add the missing (incl. Concierge
+Service), ensure the type distinction is modeled (not just a label) where fulfillment differs.
+
+### [NOTE] Flat-read is a BRIDGE, not the end state (Phase 2)
+The current flat-read path is transitional. Phase 2's end state = consumers on the engagement
+shape; the flat-read is DELETED with aux (aux_bookings → elements, Stage 7). Do not build
+new consumers assuming flat-read permanence — it is scaffolding with a demolition date.
+
+---
+
+### [STANDING RULE] Every table: RLS + Constraints + Comments (D, S53L)
+
+No table is complete without all three:
+1. **RLS with EXPLICIT policies.** RLS-enabled + zero-policies = silent deny-all (a latent bug —
+   works only via service-role bypass, silently empty on any other path). Every table declares
+   its posture explicitly: public-read where non-sensitive, admin-write, guest-data behind the
+   wall. Never rely on omission.
+2. **Constraints that enforce real invariants.** Slug format (no free text — `^[a-z0-9_]+$`),
+   non-blank CHECKs on required text, FKs for references, enums/registries for bounded value
+   spaces, uniqueness where identity. A bare column is a smell.
+3. **COMMENTs — self-documenting schema.** COMMENT ON TABLE (what it is, how it relates) +
+   COMMENT ON COLUMN for any load-bearing/non-obvious column. The schema explains itself to the
+   next instance without a handover.
+
+Applied to travel_engagement_types this session: found RLS-on-zero-policies (deny-all bug) →
+added public-read + admin-write; added slug-format + label-nonblank CHECKs; added table +
+level + slug comments.
+
+### [SHAPE/ELEMENT SPLIT — Phase B/Stage 7] Progress: classification landed (S53L)
+
+Real work started on the shape-vs-element conflation. travel_engagement_types held BOTH the
+nine engagement shapes AND the element types (flight/car/transfer) in one flat list, with the
+conflation LIVE on the spine: travel_engagements.engagement_type_id had 15 rows typed 'journey'
+(shape) and 15 typed 'flight' (element) — same column, two levels.
+
+DONE this session (additive, non-breaking, no spine retype):
+- Added engagement_type_level enum ('shape','element').
+- Added travel_engagement_types.level column, NOT NULL, classified all 22 rows:
+  9 SHAPES (acquisition, arrangement, concierge_service, dining, experience, journey,
+  reservation, stay, transport) + 13 ELEMENTS (airport_transfer, car_rental, car_service,
+  cruise, flight, heli_transfer, meet_greet, other, private_jet, public_transport, tour,
+  transfer, yacht_charter).
+- Added transport + concierge_service shape rows (completing the Nine).
+- RLS + constraints + comments (per the new standing rule).
+
+The conflation is now VISIBLE + ENFORCED at the classification level — prerequisite for the
+retype. NOT YET DONE (the delicate, sequenced next cuts — each its own gated step, snapshot-first):
+- RETYPE THE SPINE: the 15 'flight' + 3 'airport_transfer' + 2 'meet_greet' engagements are
+  element-typed and must remap to their correct SHAPE (Transport), with the element detail
+  moving DOWN to the element/aux layer. 20 engagements to reclassify. Snapshot + reversible.
+- ENFORCE LEVEL-BY-REFERENCE: travel_engagements.engagement_type_id must reference only SHAPE
+  rows; travel_engagement_aux_bookings.engagement_type_id only ELEMENT rows. Currently
+  unenforced (that's how 'flight' engagements exist). Trigger or filtered-FK.
+- RECONCILE WITH EXISTING ELEMENT INFRA (do NOT duplicate): element_status_events.element_type,
+  travel_bookings.booking_type, _shared/elementFields.ts already exist as element-layer
+  groundwork. The element vocabulary may belong unified with these, not a fresh table.
+- 12 CONSUMERS to migrate: typesAuxBookings, typesImmerse, queriesAdminJourney,
+  queriesAdminEngagements, ImmerseDetailPage, TripDossierSection, BriefEditorPage,
+  EngagementDetailTab, travel-read-engagement-admin, travel-read-journey-admin, _shared/trip.ts,
+  _shared/elementFields.ts.
+- 'dining' is both a shape AND appears element-ishly — resolve explicitly during retype.
+
+### [CORRECTION + FINDING] Public-read dropped; existing 8-shape code map found (must reconcile to 9)
+
+- RLS CORRECTION: dropped "Public read travel_engagement_types" — grep confirmed ALL consumers
+  are service-role EFs (_shared/trip.ts, travel-read-engagement-admin, travel-read-journey-admin)
+  or admin surfaces. Nothing needs anon read. Default-closed is correct (the "remove public
+  read/write where not needed" pattern). Final posture: Admin write (FOR ALL, covers admin read)
+  + service-role EF bypass. Public read was "harmless to expose" but not "needed" — the weaker
+  standard. Removed.
+- SLUGS JUSTIFIED (were questioned): code branches on slug everywhere (_shared/trip.ts flattens
+  by .slug; queriesAdminJourney booking_type = slug is "canonical type field"; typesImmerse has
+  a slug→shape map; "never hardcode the list in frontend"). Slug is the canonical contract key;
+  UUID is the join mechanic. Keep.
+- FINDING (reconciliation the retype MUST do): typesImmerse.ts:260,278 ALREADY has a shape model —
+  "the 8 top-level shapes" + "every travel_engagement_types slug (20 rows) maps to one of the 8
+  shapes." Code models EIGHT shapes (pre-Concierge-Service-split). Doc #4 (12 Jul) canonizes NINE
+  (Concierge Service split from Arrangement = the 9th). My level-classification marked 9 shapes.
+  CODE (8) vs TABLE (9) NOW DISAGREE. The retype's first move: reconcile typesImmerse.ts's
+  8-shape slug→shape map to the canonical 9, aligned with the new level column. typesImmerse.ts
+  is the head-of-work consumer — read it FIRST.
+
+### [CONFIRMED] No extra table created; conflation quantified; element model already exists
+
+NO NEW TABLE was created this session. The shape/element work was ENTIRELY: engagement_type_level
+enum + travel_engagement_types.level column + 2 rows (transport, concierge_service) + RLS/CHECKs/
+comments. Confirmed: only 2 FKs reference travel_engagement_types (travel_engagements +
+travel_engagement_aux_bookings) — no travel_engagement_shapes / travel_element_types exist.
+
+KEY ARCHITECTURE FINDING (from _shared/elementFields.ts): elements do NOT need a second type
+registry. The element model is NODE + DETAIL, already built:
+- Element type stays engagement_type_id → travel_engagement_types (level='element' rows).
+- flat aux_bookings → NODE (travel_engagements) + 1:1 DETAIL (travel_engagement_transport_detail
+  for flight, travel_engagement_dining_detail for dining). Bare types (airport_transfer,
+  meet_greet) = node only. detailTableForType(slug) selects.
+- So the level column I added IS the correct shape/element separation. ONE vocabulary table,
+  level-split. NOT two type tables. (Earlier "two separate tables" framing was wrong — corrected.)
+
+CONFLATION QUANTIFIED (travel_engagements.engagement_type_id by level):
+- CORRECT (shape): journey 15, dining 5 = 20 genuine shape-engagements.
+- MIS-TYPED (element promoted to top-level engagement): flight 15, airport_transfer 3,
+  meet_greet 2 = 20 element-engagements that per Stage 7 should be ELEMENTS inside a Transport
+  engagement (node+detail), not standalone engagements.
+
+REMAINING WORK (boundary of mine vs M's):
+- MINE, DONE: level classification — conflation now visible/queryable. Complete, non-colliding.
+- M's STAGE 7: remap the 20 element-engagements → node+detail element model (exactly what
+  elementFields.ts describes M building). DO NOT parallel-build.
+- BLOCKED until after remap: the level-enforcement constraint (travel_engagements.engagement_type_id
+  must reference level='shape' only; aux → level='element' only). Cannot add while 20 engagements
+  violate it. Goes on AFTER M's remap clears violators. This is the final integrity lock.
+- typesImmerse.ts: 8-shape map → reconcile to canonical 9 (Concierge Service). EFs first, then FE.
+
+### [CONFIRMED] No extra table created; shape/element = level column on the ONE table (correct architecture)
+
+Verified: I created NO new table this arc. Footprint = engagement_type_level enum + level column
++ 2 rows (transport, concierge_service) + RLS/constraints/comments, ALL on the existing
+travel_engagement_types. travel_engagement_shapes / travel_element_types do NOT exist and are NOT
+needed — elementFields.ts proves the element layer is node+detail (travel_engagements +
+travel_engagement_{transport,dining}_detail), NOT a second type registry. Shapes + elements share
+ONE vocabulary table, split by level. The classification cut this session was the correct and
+complete architecture for this layer.
+
+### [LIVE CONFLATION QUANTIFIED — blocks enforcement until Stage 7 remap]
+
+travel_engagements.engagement_type_id spread by level (the exact violation state):
+- journey (shape) 15 ✓  |  dining (shape) 5 ✓   → 20 engagements correctly reference SHAPES
+- flight (element) 15 ✗  |  airport_transfer (element) 3 ✗  |  meet_greet (element) 2 ✗
+  → 20 engagements INCORRECTLY reference ELEMENTS (the live conflation)
+
+Exactly half the engagements are element-typed top-level engagements — flight/transfer/meet_greet
+promoted to engagements instead of being ELEMENTS inside a Transport engagement.
+
+CANNOT add the enforcement constraint ("travel_engagements.engagement_type_id must reference
+level='shape'") yet — it would fail on these 20 violators. Enforcement is BLOCKED ON the remap.
+
+REMAINING WORK (correctly characterized, Stage-7-dependent — NOT a fresh table build):
+1. REMAP (M's Stage 7, aux→node+detail): the 15 flight + 3 airport_transfer + 2 meet_greet
+   engagements → become ELEMENTS (nodes + detail) inside their correct Transport-shape engagement.
+   detailTableForType: flight→travel_engagement_transport_detail; bare (airport_transfer,
+   meet_greet)→node only.
+2. ENFORCE level-by-reference (AFTER remap): engagements→shape rows only; aux/elements→element
+   rows only. Trigger or filtered constraint. Blocked until #1 clears the 20 violators.
+3. RECONCILE 8→9 shapes in typesImmerse.ts (the frontend slug→shape map is 8; Doc #4 canon is 9).
+4. EF-FIRST ordering (D): when the retype happens, _shared/trip.ts + read EFs before frontend.
+
+This session's contribution to the split: the level classification (correct, complete, banked) +
+the exact violation map + confirmation that no second table is needed. The remap + enforce are
+M's Stage 7, now with level ready to enforce against.

@@ -3,7 +3,7 @@
 // Canonical per-booking lookups. One source for "booking-adjacent" fetches that
 // were previously inlined across the read EFs (hotel-name maps in
 // travel-read-expenses, travel-read-journey-admin dossier + calendar, and
-// _shared/trip.ts). Every consumer routes through these atoms — no parallel copies.
+// _shared/engagement.ts). Every consumer routes through these atoms — no parallel copies.
 //
 // Created: S53K — hotel-lookup consolidation + commission-splits fetch (born shared).
 

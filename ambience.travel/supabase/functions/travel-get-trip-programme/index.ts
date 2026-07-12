@@ -43,8 +43,7 @@
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
-import { attachPassengers, attachDriverDetails } from '../_shared/names.ts'
-import { resolvejourneyIds, fetchTripCore, fetchTripBookings, AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchElementsFlat, enrichElements } from '../_shared/engagement.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
 import { enrichBookingWithHotelPolicy } from '../_shared/expenses.ts'
@@ -80,11 +79,10 @@ Deno.serve(async (req: Request) => {
     const [
       core,
       bookingsResult,
-      auxResult,
       daysResult,
       entriesResult,
     ] = await Promise.all([
-      fetchTripCore(db, journeyId, houseId),
+      fetchEngagementCore(db, journeyId, houseId),
 
       // Bookings — programme column set + derived check-in columns (S53G v3).
       // travel_accom_hotels join brings standard_checkin/checkout_time for the
@@ -106,12 +104,6 @@ Deno.serve(async (req: Request) => {
         `)
         .eq('house_id', houseId)
         .eq('journey_id', journeyId),
-
-      db.from('travel_engagement_aux_bookings')
-        .select(AUX_BOOKING_SELECT)
-        .eq('engagement_id', journeyId)
-        .order('start_date', { ascending: true, nullsFirst: false })
-        .order('start_time', { ascending: true, nullsFirst: false }),
 
       // Overlay only — buildDays derives the day list from trip span and applies
       // these per-day overrides. No show filter; buildDays honors show.
@@ -138,7 +130,7 @@ Deno.serve(async (req: Request) => {
     const entries    = (entriesResult.data ?? []) as Record<string, unknown>[]
 
     // ── 6. Shared bookings enrich: rooms + resolved guest names + lookup maps ──
-    const { roomsByBooking, canonRoomById, hotelById } = await fetchTripBookings(db, bookings, partyLabel, houseId)
+    const { roomsByBooking, canonRoomById, hotelById } = await fetchEngagementBookings(db, bookings, partyLabel, houseId)
 
     // ── 7. Programme image composition (canon-default, override-first) ─────────
     // First-room-per-booking image (room override → canon room image).
@@ -175,43 +167,12 @@ Deno.serve(async (req: Request) => {
       })
     })
 
-    // ── 9. Aux with resolved passengers + driver details ──────────────────────
-    const auxBookings = await attachDriverDetails(
+   // ── 9. Aux elements from the tree, enriched (passengers/drivers/dining) ────
+    const auxBookingsWithImg = await enrichElements(
       db,
-      await attachPassengers(db, (auxResult.data ?? []) as unknown as Record<string, unknown>[], partyLabel),
+      await fetchElementsFlat(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
+      partyLabel,
     )
-
-    // ── 10. Dining venue images for aux bookings (dining_venue_id FK) ─────────
-    const auxDiningIds = [...new Set(
-      (auxBookings as Record<string, unknown>[])
-        .map(a => a.dining_venue_id)
-        .filter(Boolean)
-    )] as string[]
-    const auxDiningVenueResult = auxDiningIds.length > 0
-      ? await db.from('travel_dining_venues')
-          .select('id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
-          .in('id', auxDiningIds)
-      : { data: [], error: null }
-    const auxVenueById: Record<string, Record<string, unknown>> = {}
-    for (const d of (auxDiningVenueResult.data ?? []) as Record<string, unknown>[]) {
-      auxVenueById[d.id as string] = d
-    }
-    const auxBookingsWithImg = (auxBookings as Record<string, unknown>[]).map(a => {
-      const v = a.dining_venue_id ? auxVenueById[a.dining_venue_id as string] : null
-      return {
-        ...flattenAuxType(a),
-        image_src: (v?.image_src as string | null) ?? null,
-        venue: v ? {
-          address:         (v.address as string | null) ?? null,
-          maps_url:        (v.maps_url as string | null) ?? null,
-          phone:           (v.phone as string | null) ?? null,
-          dress_code:      (v.dress_code as string | null) ?? null,
-          children_policy: (v.children_policy as string | null) ?? null,
-          table_hold_note: (v.table_hold_note as string | null) ?? null,
-          booking_terms:   (v.booking_terms as string | null) ?? null,
-        } : null,
-      }
-    })
 
     // ── 10b. Dining / experience images for standalone entries ─────────────────
     const diningIds     = [...new Set(entries.map(e => e.source_dining_id).filter(Boolean))] as string[]
@@ -263,7 +224,7 @@ Deno.serve(async (req: Request) => {
       brief,
       house:           core.house,
       destinationName: (destinations[0]?.name as string) ?? '',
-      auxBookings,
+      auxBookings: auxBookingsWithImg,
       urlId:           url_id,
       days:            buildDays(
                          journeyId,

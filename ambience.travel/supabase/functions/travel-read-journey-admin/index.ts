@@ -41,7 +41,7 @@ import { json, preflight } from '../_shared/http.ts'
 import { buildDays } from '../_shared/days.ts'
 import { deriveElementStatus, type ChildStatus } from '../_shared/elementStatus.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
-import { AUX_BOOKING_SELECT, flattenAuxType } from '../_shared/trip.ts'
+import { fetchElementsFlat } from '../_shared/engagement.ts'
 import { fetchHotelsByIds } from '../_shared/bookings.ts'
 
 
@@ -181,7 +181,7 @@ for (const t of tripRows) {
 
   // Resolve room occupants (lead person_id + additional_guests uuids) → names at
   // the source, so every dossier consumer (brief preview, brief PDF) shows real
-  // names, never raw uuids. Same resolver shape as _shared/trip.ts and
+  // names, never raw uuids. Same resolver shape as _shared/engagement.ts and
   // activity_detail — one resolution truth across all three read paths. Party
   // label is per-trip (brief.prepared_for); the dossier spans trips, so lead
   // resolution here is person → guest_name override (party-label fallback is
@@ -404,31 +404,29 @@ async function handleDayEntries(db: SupabaseClient, journeyId: string): Promise<
 }
 
 async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise<Response> {
-  const { data, error } = await db
-    .from('travel_engagement_aux_bookings')
-    .select(AUX_BOOKING_SELECT)
-    .eq('engagement_id', journeyId)
-    .order('start_date', { ascending: true, nullsFirst: false })
-    .order('start_time', { ascending: true, nullsFirst: false })
-  if (error) return err('Failed to fetch aux bookings', 500)
-
-  const aux = ((data ?? []) as unknown as Record<string, unknown>[]).map(flattenAuxType)
+  // Stage 7 Phase 2: read elements from the tree (node+detail) via fetchElementsFlat,
+  // flattened to the legacy aux shape. Parent = journey.confirmed_engagement_id.
+  const { data: j, error: jErr } = await db
+    .from('travel_journey')
+    .select('confirmed_engagement_id')
+    .eq('id', journeyId)
+    .maybeSingle()
+  if (jErr) return err('Failed to resolve journey', 500)
+  const aux = await fetchElementsFlat(db, (j?.confirmed_engagement_id as string | null) ?? null)
   if (aux.length === 0) return ok({ auxBookings: [] })
-
-  const ids = aux.map(a => a.id as string)
+  // Passengers still key on the aux id; nodes carry it as source_aux_booking_id.
+  const auxIds = aux.map(a => a.source_aux_booking_id as string).filter(Boolean)
   const { data: pax } = await db
     .from('travel_engagement_aux_passengers')
     .select('id, aux_booking_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
-    .in('aux_booking_id', ids)
+    .in('aux_booking_id', auxIds)
     .order('sort_order', { ascending: true })
-
   const byAux: Record<string, unknown[]> = {}
   for (const p of (pax ?? []) as Record<string, unknown>[]) {
     const k = p.aux_booking_id as string
     ;(byAux[k] ??= []).push(p)
   }
-
-  const withPax = aux.map(a => ({ ...a, passengers: byAux[a.id as string] ?? [] }))
+  const withPax = aux.map(a => ({ ...a, passengers: byAux[a.source_aux_booking_id as string] ?? [] }))
   return ok({ auxBookings: withPax })
 }
 
