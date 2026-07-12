@@ -616,39 +616,61 @@ async function handleCalendar(
   //     of trip span so out-of-span activities survive (e.g. a return flight the day
   //     after end_date).
   const activitiesByJourney = new Map<string, Array<Record<string, unknown>>>()
+  // Element nodes hang off the confirmed ENGAGEMENT id (parent_engagement_id),
+  // not the journey id. Resolve journeyId -> confirmed_engagement_id to filter the
+  // activity read, then map results back to journey id (the calendar's grouping key).
+  const journeyByEngagement = new Map<string, string>()
   if (journeyIds.length > 0) {
+    const { data: jrows } = await db
+      .from('travel_journey')
+      .select('id, confirmed_engagement_id')
+      .in('id', journeyIds)
+    for (const j of (jrows ?? []) as Array<Record<string, unknown>>) {
+      if (j.confirmed_engagement_id) journeyByEngagement.set(j.confirmed_engagement_id as string, j.id as string)
+    }
+  }
+  const engagementIds = [...journeyByEngagement.keys()]
+  if (engagementIds.length > 0) {
     const { data: actData, error: actErr } = await db
       .from('travel_engagements')
-      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, source_booking_id, source_aux_booking_id, travel_engagement_types!travel_engagements_engagement_type_id_fkey(slug, label)')
-      .in('parent_engagement_id', journeyIds)
+      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, source_booking_id, source_aux_booking_id, travel_engagement_types!travel_engagements_engagement_type_id_fkey(slug, label)')
+      .in('parent_engagement_id', engagementIds)
       .not('activity_date', 'is', null)
       .order('activity_date', { ascending: true })
     if (actErr) return err('Failed to fetch calendar activities', 500)
 
-    // Enrich movement activities with their aux booking's flight detail + booked_by.
-    // The activity is the engagement-spine row; the aux booking is the source of
-    // record for route/times/flight number/who-arranged. One batch join, attached
-    // per activity so the calendar renders flight fine-print + the Own Arrangements
-    // axis (booked_by) without a second round-trip. bookedByLabel() owns the display.
-    const auxIds = [...new Set(
-      (actData ?? [])
-        .map(a => a.source_aux_booking_id as string | null)
-        .filter((x): x is string => !!x)
-    )]
+    // Enrich movement activities with their transport-detail flight fields + booked_by,
+    // sourced from the engagement tree (Stage 7). The activity IS the element node;
+    // its transport detail holds route/flight/airline/booked_by. depart/arrive airports
+    // are registry FKs reversed to IATA. Keyed by NODE id (not aux). One batch join.
+    const nodeIds = (actData ?? []).map(a => a.id as string)
     const auxById = new Map<string, Record<string, unknown>>()
-    if (auxIds.length > 0) {
-      const { data: auxData } = await db
-        .from('travel_engagement_aux_bookings')
-        .select('id, booked_by, origin, destination, depart_airport, arrive_airport, flight_number, airline_name, start_time, end_time')
-        .in('id', auxIds)
-      for (const ax of (auxData ?? []) as Array<Record<string, unknown>>) auxById.set(ax.id as string, ax)
+    if (nodeIds.length > 0) {
+      const [tRes, apRes] = await Promise.all([
+        db.from('travel_engagement_transport_detail')
+          .select('node_id, booked_by, origin, destination, depart_airport_id, arrive_airport_id, flight_number, airline_name')
+          .in('node_id', nodeIds),
+        db.from('travel_airports').select('id, iata'),
+      ])
+      const airportById = new Map(((apRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.iata as string]))
+      for (const t of (tRes.data ?? []) as Array<Record<string, unknown>>) {
+        auxById.set(t.node_id as string, {
+          booked_by:      t.booked_by ?? null,
+          origin:         t.origin ?? null,
+          destination:    t.destination ?? null,
+          depart_airport: t.depart_airport_id ? airportById.get(t.depart_airport_id as string) ?? null : null,
+          arrive_airport: t.arrive_airport_id ? airportById.get(t.arrive_airport_id as string) ?? null : null,
+          flight_number:  t.flight_number ?? null,
+          airline_name:   t.airline_name ?? null,
+        })
+      }
     }
 
     for (const a of (actData ?? []) as Array<Record<string, unknown>>) {
       const parent = a.parent_engagement_id as string
       const typeRaw = a.travel_engagement_types
       const type = Array.isArray(typeRaw) ? typeRaw[0] : typeRaw
-      const aux = a.source_aux_booking_id ? auxById.get(a.source_aux_booking_id as string) : null
+      const aux = auxById.get(a.id as string) ?? null
       ;(activitiesByJourney.get(parent) ?? activitiesByJourney.set(parent, []).get(parent)!).push({
         id:         a.id,
         category:   (type as { slug: string } | null)?.slug ?? null,
@@ -659,7 +681,7 @@ async function handleCalendar(
         // Departure time: the aux booking's start_time is the source of record for a
         // movement (the engagement's activity_start_time is null for derived flights).
         // Falls back to the activity's own time for non-aux activities.
-        time:       (aux?.start_time as string | null) ?? a.activity_start_time,
+        time:       a.activity_start_time,
         source_booking_id:     a.source_booking_id,
         source_aux_booking_id: a.source_aux_booking_id,
         // Flight detail (movement activities only; null for stays/others)
@@ -670,7 +692,7 @@ async function handleCalendar(
         arrive_airport: (aux?.arrive_airport as string | null) ?? null,
         flight_number:  (aux?.flight_number as string | null) ?? null,
         airline_name:   (aux?.airline_name as string | null) ?? null,
-        end_time:       (aux?.end_time as string | null) ?? null,
+        end_time:       (a.activity_end_time as string | null) ?? null,
       })
     }
   }
