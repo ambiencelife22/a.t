@@ -249,15 +249,12 @@ async function handleRooms(db: SupabaseClient, bookingId: string): Promise<Respo
   return ok({ rooms: data ?? [] })
 }
 
-async function handleAuxDriverDetails(db: SupabaseClient, auxBookingId: string): Promise<Response> {
-  // auxBookingId is the source aux id (from the itinerary row); resolve to node,
-  // driver details key on node_id (Stage 7 Phase 2 retire).
-  const { data: node } = await db
-    .from('travel_engagements').select('id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
+async function handleAuxDriverDetails(db: SupabaseClient, nodeId: string): Promise<Response> {
+  // nodeId is the element node id (frontend sends it directly; Stage 7 Phase 2 retire).
   const { data, error } = await db
     .from('travel_aux_driver_details')
     .select('id, node_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
-    .eq('node_id', (node?.id as string | null) ?? null)
+    .eq('node_id', nodeId)
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch driver details', 500)
   return ok({ driverDetails: data ?? [] })
@@ -637,7 +634,7 @@ async function handleCalendar(
   if (engagementIds.length > 0) {
     const { data: actData, error: actErr } = await db
       .from('travel_engagements')
-      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, source_booking_id, source_aux_booking_id, travel_engagement_types!travel_engagements_engagement_type_id_fkey(slug, label)')
+      .select('id, parent_engagement_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, source_booking_id, travel_engagement_types!travel_engagements_engagement_type_id_fkey(slug, label)')
       .in('parent_engagement_id', engagementIds)
       .not('activity_date', 'is', null)
       .order('activity_date', { ascending: true })
@@ -687,7 +684,7 @@ async function handleCalendar(
         // Falls back to the activity's own time for non-aux activities.
         time:       a.activity_start_time,
         source_booking_id:     a.source_booking_id,
-        source_aux_booking_id: a.source_aux_booking_id,
+        is_element: !a.source_booking_id,
         // Flight detail (movement activities only; null for stays/others)
         booked_by:      (aux?.booked_by as string | null) ?? null,
         origin:         (aux?.origin as string | null) ?? null,
@@ -854,7 +851,7 @@ async function handleActivityDetail(
       const { data: vehData, error: vehErr } = await db
         .from('travel_aux_driver_details')
         .select('id, node_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
-        .eq('node_id', (await db.from('travel_engagements').select('id').eq('source_aux_booking_id', auxBookingId).maybeSingle()).data?.id ?? null)
+        .eq('node_id', auxBookingId)
         .order('sort_order', { ascending: true })
       if (vehErr) return err('Failed to fetch driver details', 500)
       const vehicles = (vehData ?? []) as Array<Record<string, unknown>>
@@ -862,11 +859,10 @@ async function handleActivityDetail(
       return ok({ kind: 'ground_transport', vehicles })
     }
 
-    // Resolve the element node by its source aux id, then its journey via the
-    // parent (confirmed) engagement, for the party label. (Stage 7: node carries
-    // parent_engagement_id = the confirmed engagement; the journey keys on it.)
+    // auxBookingId is now the element node id (frontend sends it directly). Look up
+    // the node's parent engagement for the journey -> party label.
     const { data: node } = await db
-      .from('travel_engagements').select('id, parent_engagement_id').eq('source_aux_booking_id', auxBookingId).maybeSingle()
+      .from('travel_engagements').select('id, parent_engagement_id').eq('id', auxBookingId).maybeSingle()
     const { data: jrow } = node?.parent_engagement_id
       ? await db.from('travel_journey').select('id').eq('confirmed_engagement_id', node.parent_engagement_id as string).maybeSingle()
       : { data: null }
@@ -874,7 +870,7 @@ async function handleActivityDetail(
     const { data: paxData, error: paxErr } = await db
       .from('travel_engagement_aux_passengers')
       .select('id, node_id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
-      .eq('node_id', (node?.id as string | null) ?? null)
+      .eq('node_id', auxBookingId)
       .order('sort_order', { ascending: true })
     if (paxErr) return err('Failed to fetch passengers', 500)
     const pax = (paxData ?? []) as Array<Record<string, unknown>>
@@ -905,12 +901,12 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json()
-    const { mode, house_id, journey_id, booking_id, aux_booking_id, category, range_start, range_end, programme_id, query } = body as {
+    const { mode, house_id, journey_id, booking_id, node_id, category, range_start, range_end, programme_id, query } = body as {
       mode:           string | undefined
       house_id?:      string
       journey_id?:       string
       booking_id?:    string
-      aux_booking_id?: string
+      node_id?:       string
       category?:      string
       range_start?:   string
       range_end?:     string
@@ -938,8 +934,8 @@ Deno.serve(async (req: Request) => {
         return handleRooms(serviceClient, booking_id)
 
       case 'aux_driver_details':
-        if (!aux_booking_id) return err('aux_booking_id is required for aux_driver_details mode', 400)
-        return handleAuxDriverDetails(serviceClient, aux_booking_id)
+        if (!node_id) return err('node_id is required for aux_driver_details mode', 400)
+        return handleAuxDriverDetails(serviceClient, node_id)
 
       case 'days':
         if (!journey_id) return err('journey_id is required for days mode', 400)
@@ -965,7 +961,7 @@ Deno.serve(async (req: Request) => {
         return handleCalendar(serviceClient, range_start ?? null, range_end ?? null)
 
       case 'activity_detail':
-        return handleActivityDetail(serviceClient, booking_id ?? null, aux_booking_id ?? null, category ?? null)
+        return handleActivityDetail(serviceClient, booking_id ?? null, node_id ?? null, category ?? null)
 
       case 'house_id_for_trip': {
         if (!journey_id) return err('journey_id is required for house_id_for_trip mode', 400)

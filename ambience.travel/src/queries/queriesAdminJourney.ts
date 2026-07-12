@@ -588,9 +588,9 @@ export async function deleteTripAuxBooking(id: string): Promise<void> {
 
 export type TripAuxPassengerPatch = Partial<Omit<TripAuxPassenger, 'id' | 'aux_booking_id'>>
 
-export async function createAuxPassenger(auxBookingId: string, patch: TripAuxPassengerPatch): Promise<TripAuxPassenger> {
+export async function createAuxPassenger(nodeId: string, patch: TripAuxPassengerPatch): Promise<TripAuxPassenger> {
   const { auxPassenger } = await invokeWriteJourney<{ auxPassenger: TripAuxPassenger }>({
-    mode: 'create_aux_passenger', aux_booking_id: auxBookingId, patch,
+    mode: 'create_aux_passenger', node_id: nodeId, patch,
   })
   return auxPassenger
 }
@@ -610,14 +610,14 @@ export async function deleteAuxPassenger(id: string): Promise<void> {
 
 export async function fetchAuxDriverDetails(auxBookingId: string): Promise<TripAuxDriverDetail[]> {
   const { driverDetails } = await invokeReadJourney<{ driverDetails: TripAuxDriverDetail[] }>({
-    mode: 'aux_driver_details', aux_booking_id: auxBookingId,
+    mode: 'aux_driver_details', node_id: auxBookingId,
   })
   return driverDetails
 }
 
 export async function createAuxDriverDetail(auxBookingId: string, patch: TripAuxDriverDetailPatch): Promise<TripAuxDriverDetail> {
   const { driverDetail } = await invokeWriteJourney<{ driverDetail: TripAuxDriverDetail }>({
-    mode: 'create_aux_driver_detail', aux_booking_id: auxBookingId, patch,
+    mode: 'create_aux_driver_detail', node_id: auxBookingId, patch,
   })
   return driverDetail
 }

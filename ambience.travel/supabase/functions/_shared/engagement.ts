@@ -241,9 +241,9 @@ export async function fetchElementsFlat(
 
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, source_aux_booking_id, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('parent_engagement_id', parentEngId)
-    .not('source_aux_booking_id', 'is', null)
+    .eq('iteration_label', 'element')
     .order('activity_date', { ascending: true, nullsFirst: false })
     .order('activity_start_time', { ascending: true, nullsFirst: false })
   const nodeRows = (nodes ?? []) as Array<Record<string, unknown>>
@@ -280,7 +280,6 @@ export async function fetchElementsFlat(
       booking_type_label: etObj?.label ?? null,
       created_at:            n.created_at,
       updated_at:            n.updated_at,
-      source_aux_booking_id: n.source_aux_booking_id,
       seat_type:             null,
     }
     for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
@@ -484,7 +483,7 @@ export async function fetchOneElementFlat(
 ): Promise<Record<string, unknown> | null> {
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, source_aux_booking_id, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('id', nodeId)
     .maybeSingle()
   if (!nodes) return null
@@ -513,7 +512,6 @@ export async function fetchOneElementFlat(
     booking_type_label: etObj?.label ?? null,
     created_at:         n.created_at,
     updated_at:         n.updated_at,
-    source_aux_booking_id: n.source_aux_booking_id,
     seat_type:          null,
   }
   for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null

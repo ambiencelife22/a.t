@@ -97,7 +97,7 @@ type CalendarStay = {
 type CalendarActivity = {
   id: string; category: string | null; label: string | null; title: string | null
   date: string | null; end_date: string | null; time: string | null
-  source_booking_id: string | null; source_aux_booking_id: string | null
+  source_booking_id: string | null; is_element: boolean
   // Flight detail (movement activities; null for stays/others)
   booked_by: string | null; origin: string | null; destination: string | null
   depart_airport: string | null; arrive_airport: string | null
@@ -632,7 +632,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const span = activityIsSpan(activity)
-  const canExpand = span ? !!activity.source_booking_id : !!activity.source_aux_booking_id
+  const canExpand = span ? !!activity.source_booking_id : activity.is_element
 
   async function toggle() {
     if (!canExpand) return
