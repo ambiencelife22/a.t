@@ -267,15 +267,16 @@ export type EngagementShape =
   | 'reservation'  // generic reservation (non-dining)
   | 'transport'    // flight / transfer / car / heli / jet as the deliverable
   | 'experience'   // tour / activity / experience as the deliverable
-  | 'acquisition'  // single-product procurement (watch / handbag / artwork)
-  | 'arrangement'  // bespoke arrangement not covered by the above
+  | 'acquisition'      // single-product procurement (watch / handbag / artwork)
+  | 'arrangement'      // brokered: a service procured through a third party on the guest's behalf
+  | 'concierge_service' // ours: a service ambience renders itself (research, appointments, the direct work of the house)
 
 export const ENGAGEMENT_SHAPES: readonly EngagementShape[] = [
   'journey', 'stay', 'dining', 'reservation',
-  'transport', 'experience', 'acquisition', 'arrangement',
+  'transport', 'experience', 'acquisition', 'arrangement', 'concierge_service',
 ] as const
 
-// Every travel_engagement_types slug (20 rows) maps to one of the 8 shapes.
+// Every travel_engagement_types slug maps to one of THE NINE shapes.
 // Top-level shapes map to themselves; element/booking sub-types roll up.
 // Null / unknown → 'journey' (the safe superset — renders the full surface).
 const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
@@ -285,7 +286,8 @@ const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
   reservation:      'reservation',
   experience:       'experience',
   acquisition:      'acquisition',
-  arrangement:      'arrangement',
+  arrangement:       'arrangement',
+  concierge_service: 'concierge_service',
   flight:           'transport',
   private_jet:      'transport',
   airport_transfer: 'transport',
