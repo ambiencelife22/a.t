@@ -30,6 +30,7 @@ import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { resolveRoomGuestName, formatPersonName } from '../_shared/names.ts'
+import { fetchOneElementFlat } from '../_shared/engagement.ts'
 type Mode =
   | 'upsert_brief'
   | 'update_booking_brief'
@@ -220,13 +221,11 @@ async function handleCreateAuxBooking(
   journeyId: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
-  const { data, error } = await db
-    .from('travel_engagement_aux_bookings')
-    .insert({ engagement_id: journeyId, ...patch })
-    .select()
-    .single()
-  if (error) return json({ error: 'Failed to create aux booking' }, 500)
-  return json({ auxBooking: data })
+  // Stage 7 Phase 2: transactional element create via RPC (node + detail atomic).
+  const { data, error } = await db.rpc('create_element', { p_journey_id: journeyId, p_patch: patch })
+  if (error) return json({ error: 'Failed to create element' }, 500)
+  const row = await fetchOneElementFlat(db, data as string)
+  return json({ auxBooking: row })
 }
 
 async function handleUpdateAuxBooking(
@@ -234,22 +233,15 @@ async function handleUpdateAuxBooking(
   id: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
-  const { data, error } = await db
-    .from('travel_engagement_aux_bookings')
-    .update(patch)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) return json({ error: 'Failed to update aux booking' }, 500)
-  return json({ auxBooking: data })
+  const { data, error } = await db.rpc('update_element', { p_node_id: id, p_patch: patch })
+  if (error) return json({ error: 'Failed to update element' }, 500)
+  const row = await fetchOneElementFlat(db, data as string)
+  return json({ auxBooking: row })
 }
 
 async function handleDeleteAuxBooking(db: SupabaseClient, id: string): Promise<Response> {
-  const { error } = await db
-    .from('travel_engagement_aux_bookings')
-    .delete()
-    .eq('id', id)
-  if (error) return json({ error: 'Failed to delete aux booking' }, 500)
+  const { error } = await db.rpc('delete_element', { p_node_id: id })
+  if (error) return json({ error: 'Failed to delete element' }, 500)
   return json({ success: true })
 }
 

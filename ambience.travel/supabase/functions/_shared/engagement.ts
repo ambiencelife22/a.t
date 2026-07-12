@@ -475,3 +475,64 @@ export async function enrichElements(
     }
   })
 }
+
+// ── Single element by node id, flat shape ─────────────────────────────────────
+// Used by the write path (travel-write-journey) to return the created/updated
+// element in the SAME flat shape the readers use — one source of truth for the
+// shape (the flatten below), no duplication in the write RPC. Reuses the exact
+// per-node flatten as fetchElementsFlat.
+export async function fetchOneElementFlat(
+  db: SupabaseClient,
+  nodeId: string,
+): Promise<Record<string, unknown> | null> {
+  const { data: nodes } = await db
+    .from('travel_engagements')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, source_aux_booking_id, travel_engagement_types(slug, label)')
+    .eq('id', nodeId)
+    .maybeSingle()
+  if (!nodes) return null
+  const n = nodes as Record<string, unknown>
+
+  const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
+    db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, airline_supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_engagement_dining_detail').select('node_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_cabin_classes').select('id, label'),
+    db.from('travel_aircraft_types').select('id, label'),
+    db.from('travel_airports').select('id, iata'),
+  ])
+  const t = tRes.data as Record<string, unknown> | null
+  const d = dRes.data as Record<string, unknown> | null
+  const cabinById    = new Map(((cabinRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
+  const aircraftById = new Map(((acRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
+  const airportById  = new Map(((apRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.iata as string]))
+
+  const et = n.travel_engagement_types as { slug: string; label: string } | { slug: string; label: string }[] | null
+  const etObj = Array.isArray(et) ? et[0] : et
+
+  const flat: Record<string, unknown> = {
+    id:                 n.id,
+    engagement_id:      n.parent_engagement_id,
+    booking_type:       etObj?.slug  ?? null,
+    booking_type_label: etObj?.label ?? null,
+    created_at:         n.created_at,
+    updated_at:         n.updated_at,
+    source_aux_booking_id: n.source_aux_booking_id,
+    seat_type:          null,
+  }
+  for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
+
+  const detail = t ?? d ?? {}
+  for (const [k, v] of Object.entries(detail)) { if (k !== 'node_id') flat[k] = v ?? null }
+
+  flat.cabin_class    = null
+  flat.aircraft_type  = null
+  flat.depart_airport = null
+  flat.arrive_airport = null
+  if (t) {
+    flat.cabin_class    = t.cabin_class_id    ? cabinById.get(t.cabin_class_id as string)      ?? null : null
+    flat.aircraft_type  = t.aircraft_type_id  ? aircraftById.get(t.aircraft_type_id as string) ?? null : null
+    flat.depart_airport = t.depart_airport_id ? airportById.get(t.depart_airport_id as string) ?? null : null
+    flat.arrive_airport = t.arrive_airport_id ? airportById.get(t.arrive_airport_id as string) ?? null : null
+  }
+  return flat
+}
