@@ -2657,3 +2657,176 @@ shape once, buildTimeline is rewritten once to consume it, and the shim is delet
 S53Q flat shim WITHIN the one-engagement-surface consolidation (Collapse A), same consumers, one pass.
 Do not migrate buildTimeline / confirmation / dossier off the flat shape standalone — you'd touch the
 guest surfaces twice.
+
+## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
+
+### [ARC][DB] travel_engagement_aux_bookings DROPPED — every element now lives solely as a typed engagement-tree node
+
+The flat aux table is gone — not a table, not a view (`to_regclass` returns null). Every
+element (flight / dining / airport_transfer / meet_greet) now exists ONLY as a node on
+`travel_engagements` (`iteration_label='element'`, `parent_engagement_id` = the confirmed
+engagement) + its 1:1 detail row (`travel_engagement_transport_detail` for flights,
+`travel_engagement_dining_detail` for dining; bare nodes for transfer/meet_greet). No parallel
+source remains. This closes the Stage-7 model: the engagement tree is the single truth for
+elements, read + written transactionally. Live Supabase — invisible to git; this is the record.
+
+**Read path (all readers on the tree, verified live):**
+- `_shared/engagement.ts` (was `_shared/trip.ts` — renamed, the last trip-named survivor in the
+  shared layer; exports `fetchEngagementCore`/`EngagementCore`/`fetchEngagementBookings`).
+  `fetchElementsFlat(db, parentEngId)` reads node+detail and flattens to the legacy aux shape
+  (a BRIDGE — deleted when consumers read engagement shape directly; do not calcify).
+  `fetchOneElementFlat(db, nodeId)` for the write return-shape. `enrichElements(db, elements,
+  partyLabel)` — GLOBALIZED passenger/driver/dining enrichment (was inlined verbatim in both
+  guest EFs, a live drift risk; now one home).
+- `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
+  and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
+  dining→dining, else bare node.
+- The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
+  all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
+  passengers + dining venues (Mister Nice, China Tang) from the tree.
+- Calendar activity read: fixed the journey-vs-engagement filter (elements' parent_engagement_id
+  is the CONFIRMED ENGAGEMENT id, not the journey id — resolve journeyId→confirmed_engagement_id
+  for the `.in()` filter, group results back by engagement id). Was showing "No itinerary recorded"
+  on EVERY trip. Now renders full itineraries; flight detail enriched from transport_detail +
+  the airport registry (no aux).
+
+**Write path (transactional RPCs, replace the aux passthrough handlers):**
+- 3 SECURITY DEFINER plpgsql functions, each atomic (a function body is one txn — fixes the
+  orphan-on-failure + type-change-leak of an app-layer sequential-insert draft):
+  - `create_element(p_journey_id uuid, p_patch jsonb) → uuid`: resolves parent
+    (journey.confirmed_engagement_id), inserts node (full NOT-NULL spine contract:
+    engagement_status_id=confirmed, itinerary_status_id=confirmed, audience=private,
+    proposal_visibility=active, is_public=false, iteration_label='element', journey_types='{}'),
+    then detail by slug. Free-text→FK resolved in-txn (cabin_class label→id, aircraft_type
+    label→id, depart/arrive_airport iata→id). PROVEN live (rolled-back txn: created a flight,
+    verify returned cabin_resolved="Business", airport_resolved="DOH").
+  - `update_element(p_node_id, p_patch)`: COALESCE keeps existing node values for absent keys;
+    on type-change DELETEs mismatched detail + upserts correct (ON CONFLICT node_id).
+  - `delete_element(p_node_id)`: DELETE node; detail cascades via node_id FK ON DELETE CASCADE.
+- travel-write-journey handleCreate/Update/DeleteAuxBooking now call the RPCs and re-read via
+  `fetchOneElementFlat` to return the full flat row (TripDossierSection splices it into state).
+
+**The five-table FK migration (aux was tethered by 5 FKs, all ON DELETE CASCADE except 2 SET NULL
+— a naive DROP would have destroyed passengers, drivers, tasks):**
+Each tethered table: ADD COLUMN node_id uuid + FK→travel_engagements(id) ON DELETE CASCADE,
+backfill via the source_aux_booking_id mapping, repoint code, DROP old aux column.
+- travel_engagement_aux_passengers (51 rows) — aux_booking_id → node_id
+- travel_aux_driver_details (2 rows) — aux_booking_id → node_id
+- travel_tasks (3 linked rows) — aux_booking_id → node_id (nullable; most tasks aren't element-linked)
+- travel_journey_day_entries (0 linked) — source_aux_id column dropped (cosmetic)
+- travel_engagements.source_aux_booking_id (the mapping itself) — dropped LAST, after all backfills
+Backfills all proven clean pre-migration (every linked row mapped to exactly one node, no
+multi-node, no orphans).
+
+**The aux_booking_id → node_id API-contract sweep (payload-key honesty, tsc-blind — grep the
+callers):** switched the expander + driver-editor + passenger-editor contract from passing the
+aux id to passing the node id (which the callers already had as `a.id` / `activity.id` — the flat
+rows and calendar activities carry the node id). Touched: CalendarTab (activity_detail body →
+node_id; canExpand → activity.is_element; type field source_aux_booking_id → is_element),
+queriesAdminJourney (3 mode payloads), both EF handlers (handleActivityDetail /
+handleAuxDriverDetails take node id directly, no source_aux_booking_id resolve). The EF calendar
+projection now emits `is_element: !a.source_booking_id` (the durable "expandable" flag) instead of
+carrying the dropped column.
+
+**Element-selection predicate swap (the one late change to eyeball):** `fetchElementsFlat` filtered
+elements by `.not('source_aux_booking_id', 'is', null)`. Column dropped → filter switched to
+`.eq('iteration_label', 'element')`. Verified equivalent: all 25 element nodes carry
+iteration_label='element' (the create_element/populate contract); the lone non-element child (label
+'B') correctly excluded.
+
+**Parity gate (banked, held throughout):** nodes=25, transport=15, dining=5, bare=5, passengers=51,
+drivers=2, tasks=3. Tree = source before the drop.
+
+### [PROCESS / LESSONS]
+- Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
+  verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
+  `\echo` are psql meta-commands, fail in the editor.
+- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
+- Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
+  current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
+  are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
+- The rendered page is the verification, not tsc/grep (the journey-vs-engagement calendar filter was
+  tsc-green while every trip showed "No itinerary").
+
+### STILL OPEN (scoped, non-blocking)
+- Type-field honesty (Category Z): TripAuxPassenger/TripAuxDriverDetail `.aux_booking_id` type fields
+  + `auxBookingId` variable/prop names still say "aux" but hold node ids — values correct, names stale.
+- fetchElementsFlat/fetchOneElementFlat/enrichElements flat-read is a BRIDGE (flattens tree→aux shape
+  for cutover); delete when consumers read engagement shape directly.
+- engagement.ts:425 — one stale comment still mentions source_aux_booking_id.
+- Calendar "Stays" metric (S53I debt, re-confirmed on HRH AMF): flat distinct-hotel count conflates
+  properties / principal's stays / room footprint — needs a design decision + EF room-count carry.
+- typesImmerse 8→9 shape reconcile (L's border): frontend slug→shape map is 8 shapes; Doc #4 canon is
+  9 (Concierge Service split from Arrangement). EF-first.
+- Passenger party-primitive migration (passenger_label free-text → global_people) — logged follow-on,
+  independent of the retire.
+
+### [ARC][DB+FE] THE NINE — modeled, enforced, rendered (S53Q, same session)
+
+Doc #4 canonizes nine engagement shapes. Verified complete across all three layers:
+
+**Modeled (DB, verified):** `travel_engagement_types` holds exactly 9 `level='shape'` rows —
+acquisition, arrangement, concierge_service, dining, experience, journey, reservation, stay,
+transport — + 13 `level='element'` rows. Concierge Service is split from Arrangement (both
+level='shape'); Doc #4's brokered-vs-ours distinction is real in the registry.
+
+**Spine clean (the retype L scoped — done as a Stage-7 side effect):** L's feared conflation
+("20 element-typed top-level engagements") is RESOLVED. Verified live: 14 top-level engagements
+(parent_engagement_id IS NULL), ALL 14 are level='shape', 0 element-typed, 0 null-level. The
+elements became child nodes when Stage 7 reparented them. The "spine retype" handed to M/Stage 7
+is complete — the reparenting did it.
+
+**Enforced (trigger, proven both directions):** `trg_enforce_top_level_shape` (fn
+`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per no-else standard).
+Rule: top-level engagements (parent_engagement_id IS NULL) MUST reference a level='shape' type;
+children may be any level (an element, or a shape nested in a journey — 6 shape-typed children
+exist legitimately). CHECK can't hold the subquery, so it's a trigger (L's scoped design choice).
+PROVEN in rolled-back txns: inserting a top-level flight → RAISES 'must be a shape (THE NINE);
+got level=element'; inserting a top-level journey → succeeds. NOTE FOR L: this was L's owned
+integrity lock; fired this session under D's direct instruction after verifying 0 violators
+(Stage 7 cleared them). L: it's live, proven — review the guard form / add any RLS-comment per
+your standing convention.
+
+**Rendered (frontend, tsc-verified):** typesImmerse.ts was at 8 shapes; added concierge_service
+to the EngagementShape union, ENGAGEMENT_SHAPES array, and SLUG_TO_SHAPE map. Now 9. tsc green —
+the Record<EngagementShape,SectionType[]> completeness check passed, so SECTION_REGISTRY handles
+the new shape without a gap. (Supersedes the earlier "typesImmerse 8→9 reconcile pending" note.)
+
+**Left deliberately (needs D's call):** SLUG_TO_SHAPE maps `other → arrangement`. `other` is
+ambiguous between brokered (arrangement) and ours (concierge_service); left at arrangement as the
+safe default, not reclassified without direction.
+
+SUPERSEDES the pre-Stage-7 board items: "THE NINE modeled+enforced (pending)", "spine retype
+(handed to M)", "typesImmerse 8→9 reconcile", "enforcement constraint BLOCKED until violators
+clear" — all now DONE.
+
+### [SCOPING][honest correction] The flat-read shim — built S53Q, retire WITHIN surface consolidation (NOT standalone)
+
+Correction to my own framing. `fetchElementsFlat` / `fetchOneElementFlat` / `enrichElements`-flatten
+were built THIS session (S53Q) as a compatibility shim during the aux-reader cutover: they read the
+new node+detail tree and reshape it into the OLD flat aux shape so existing consumers didn't have to
+change mid-migration. I flagged it as a "bridge to delete" as if it were external arc work — it is my
+own deferred scaffolding, not a discovered legacy violation.
+
+**Is it a violation?** No — not a correctness one. It reads the ONE source (the tree); it is not a
+parallel source of truth and is not drift-prone the way the aux TABLE was. It IS a cleanliness debt:
+it's shaped as the retired aux contract (booking_type, aux-flavoured fields) rather than a clean
+consumer-shaped type — a shim wearing the dead table's clothes. Cleanliness, not correctness.
+
+**Do NOT retire it standalone.** Its heaviest consumer is buildTimeline (_shared/timeline.ts) — the
+guest programme's core builder — which is woven through the flat aux vocabulary: `booking_type` is the
+type discriminator (hotel/flight/transfer branching, flight detection at line ~390), plus cabin_class /
+aircraft_type / origin / destination / passengers / name. The other consumers are the confirmation
+`auxBookings` render and the admin dossier/AuxBookingsEditor. ALL of these are inside the
+one-engagement-surface consolidation's (Collapse A) blast radius — that campaign rewrites buildTimeline
++ the confirmation render + the section registry to render by stage × shape from the tree.
+
+Retiring the shim now = rewrite buildTimeline to read node+detail, THEN rewrite it again during
+consolidation = TWO passes over the guest programme's spine. That is the bandaid the Standards forbid.
+The clean move is ONE pass: surface consolidation defines the canonical EngagementElement / timeline-item
+shape once, buildTimeline is rewritten once to consume it, and the shim is deleted as part of that work.
+
+**Board reclassification:** "delete flat-read bridge" is NOT independent arc work. It is: retire the
+S53Q flat shim WITHIN the one-engagement-surface consolidation (Collapse A), same consumers, one pass.
+Do not migrate buildTimeline / confirmation / dossier off the flat shape standalone — you'd touch the
+guest surfaces twice.
