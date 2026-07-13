@@ -258,7 +258,7 @@ function emptyAuxDraft(sortOrder: number, defaultTypeId = '', defaultSlug = 'fli
 function auxToDraft(a: TripAuxBooking): AuxDraft {
   return {
     engagementTypeId:  a.engagement_type_id  ?? '',
-    bookingTypeSlug:   a.booking_type        ?? 'flight',
+    bookingTypeSlug:   a.element_type        ?? 'flight',
     name:                a.name                ?? '',
     start_date:          a.start_date          ?? '',
     start_time:          a.start_time          ?? '',
@@ -506,7 +506,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
           <div key={a.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.booking_type_label ?? a.booking_type ?? 'Other'}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.booking_type_label ?? a.element_type ?? 'Other'}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{a.name ?? 'Booking'}</span>
                 {!a.brief_show && <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>hidden</span>}
               </div>
@@ -514,10 +514,10 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
                 {a.start_date && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.start_date}{a.start_time ? ` ${a.start_time.slice(0, 5)}` : ''}</span>}
               </div>
-              {isFlightElement(a.booking_type) && (
+              {isFlightElement(a.element_type) && (
                 <AuxPassengersEditor auxBookingId={a.id} initial={a.passengers ?? []} />
               )}
-              {isGroundTransportElement(a.booking_type) && (
+              {isGroundTransportElement(a.element_type) && (
                 <AuxDriverDetailsEditor auxBookingId={a.id} />
               )}
             </div>
@@ -738,7 +738,7 @@ const BOOKING_TYPES  = ['Hotel', 'Flight', 'Transfer', 'Restaurant', 'Experience
 const BOOKING_STATUS = ['quoted', 'confirmed', 'pending', 'cancelled', 'recommended', 'requested', 'awaiting_decision', 'paid']
 
 type BookingDraft = {
-  booking_type:        string
+  element_type:        string
   name:                string
   status:              string
   confirmation_number: string
@@ -760,7 +760,7 @@ type BookingDraft = {
 
 function emptyBookingDraft(): BookingDraft {
   return {
-    booking_type: 'Hotel', name: '', status: 'confirmed', confirmation_number: '',
+    element_type: 'Hotel', name: '', status: 'confirmed', confirmation_number: '',
     accom_hotel_id: '', start_date: '', end_date: '', nights: '',
     currency: 'EUR', commissionable_rate: '', total_rate: '', taxes_and_fees: '',
     rate_type: '', booked_by: 'ambience', brief_category: '', cancellation_policy: '',
@@ -777,11 +777,11 @@ function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
     return Number.isFinite(n) ? n : null
   }
   return {
-    booking_type:        orNull(d.booking_type),
+    element_type:        orNull(d.element_type),
     name:                orNull(d.name),
     status:              orNull(d.status),
     confirmation_number: orNull(d.confirmation_number),
-    accom_hotel_id:      isHotelElement(d.booking_type) ? orNull(d.accom_hotel_id) : null,
+    accom_hotel_id:      isHotelElement(d.element_type) ? orNull(d.accom_hotel_id) : null,
     start_date:          orNull(d.start_date),
     end_date:            orNull(d.end_date),
     nights:              numOrNull(d.nights),
@@ -808,7 +808,7 @@ function BookingCreator({ journeyId, onCreated }: {
   const { success, error } = useAdminToast()
 
   const set = <K extends keyof BookingDraft>(k: K, v: BookingDraft[K]) => setDraft({ ...draft, [k]: v })
-  const isHotel = isHotelElement(draft.booking_type)
+  const isHotel = isHotelElement(draft.element_type)
 
   async function handleCreate() {
     setSaving(true)
@@ -838,7 +838,7 @@ function BookingCreator({ journeyId, onCreated }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div>
           <label style={labelStyle}>Type</label>
-          <select style={inputStyle} value={draft.booking_type} onChange={e => set('booking_type', e.target.value)}>
+          <select style={inputStyle} value={draft.element_type} onChange={e => set('element_type', e.target.value)}>
             {BOOKING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>

@@ -209,13 +209,12 @@ export const AUX_BOOKING_SELECT = [
 ].join(', ')
 
 // Flatten the embedded travel_engagement_types join onto an aux booking row.
-// Returns booking_type (slug) + booking_type_label for all consumers.
+// Returns element_type (slug) + booking_type_label for all consumers.
 export function flattenAuxType(a: Record<string, unknown>): Record<string, unknown> {
   const et = a.travel_engagement_types as { slug: string; label: string } | { slug: string; label: string }[] | null
   const etObj = Array.isArray(et) ? et[0] : et
   return {
     ...a,
-    booking_type:       etObj?.slug  ?? null,
     element_type:       etObj?.slug  ?? null,
     booking_type_label: etObj?.label ?? null,
   }
@@ -277,7 +276,6 @@ export async function fetchElementsFlat(
     const flat: Record<string, unknown> = {
       id:                 n.id,
       engagement_id:      n.parent_engagement_id,
-      booking_type:       etObj?.slug  ?? null,
       element_type:       etObj?.slug  ?? null,
       booking_type_label: etObj?.label ?? null,
       created_at:            n.created_at,
@@ -509,7 +507,6 @@ export async function fetchOneElementFlat(
   const flat: Record<string, unknown> = {
     id:                 n.id,
     engagement_id:      n.parent_engagement_id,
-    booking_type:       etObj?.slug  ?? null,
     element_type:       etObj?.slug  ?? null,
     booking_type_label: etObj?.label ?? null,
     created_at:         n.created_at,

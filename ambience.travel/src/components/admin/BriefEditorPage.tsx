@@ -369,7 +369,7 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, e
     return auxDrafts[aux.id] ?? {
       name:              aux.name              ?? '',
       engagementTypeId:  aux.engagement_type_id ?? '',
-      bookingTypeSlug:   aux.booking_type       ?? '',
+      bookingTypeSlug:   aux.element_type       ?? '',
       origin:              aux.origin              ?? '',
       destination:         aux.destination         ?? '',
       start_date:          aux.start_date          ?? '',
@@ -915,7 +915,6 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       return {
         ...aux,
         name:                d.name                || aux.name,
-        booking_type:        aux.booking_type,
         element_type:        aux.element_type,
         origin:              d.origin              || aux.origin,
         destination:         d.destination         || aux.destination,
