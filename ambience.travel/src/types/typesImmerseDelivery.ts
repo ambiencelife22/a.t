@@ -38,13 +38,13 @@ import type {
 } from './typesImmerse'
 import type { TimelineItem } from './typesTimeline'
 
-export type TripGuides = {
+export type EngagementGuides = {
   hasDining:       boolean
   hasExperiences:  boolean
   destinationSlug: string | null
 }
 
-export type TripContact = {
+export type EngagementContact = {
   id:    string
   name:  string
   role:  string | null
@@ -76,8 +76,8 @@ export type DeliveryData = {
   house:            ImmerseTripHouse | null
   destinationName:  string
   auxBookings:      ImmerseTripAuxBooking[]
-  guides:           TripGuides
-  contacts:         TripContact[]
+  guides:           EngagementGuides
+  contacts:         EngagementContact[]
   links:            EngagementLink[]
   urlId:            string
   guestDisplayName: string | null

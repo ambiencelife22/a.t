@@ -20,7 +20,7 @@
 // Last updated: S53H · A2 — extracted from ImmerseTripPage.tsx.
 
 import { useEffect, useState } from 'react'
-import type { DeliveryData, TripContact } from '../../queries/queriesImmerseEngagement'
+import type { DeliveryData, EngagementContact } from '../../queries/queriesImmerseEngagement'
 import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {
@@ -1516,7 +1516,7 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
   const staff    = all.filter(c => c.role === 'staff')
   const hasAny   = all.length > 0
 
-  function ContactBlock({ label, people }: { label: string; people: TripContact[] }) {
+  function ContactBlock({ label, people }: { label: string; people: EngagementContact[] }) {
     if (people.length === 0) return null
     return (
       <div style={{ marginBottom: 32 }}>
