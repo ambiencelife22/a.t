@@ -53,9 +53,9 @@ type Mode =
   | 'delete_day_entry'
   | 'upsert_welcome_letter'
   | 'delete_welcome_letter'
-  | 'create_trip'
-  | 'update_trip'
-  | 'update_trip_primary_client'
+  | 'create_journey'
+  | 'update_journey'
+  | 'update_journey_primary_client'
   | 'create_request'
   | 'update_request'
   | 'delete_request'
@@ -404,7 +404,7 @@ async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promis
 
 // ── Trip CRUD ─────────────────────────────────────────────────────────────────
 
-async function handleCreateTrip(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+async function handleCreateJourney(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
   const trip_code = (body.trip_code as string | undefined)?.trim()
   if (!trip_code) return json({ error: 'trip_code is required' }, 400)
 
@@ -418,11 +418,11 @@ async function handleCreateTrip(db: SupabaseClient, body: Record<string, unknown
   }
 
   const { data, error } = await db.from('travel_journey').insert(insert).select('id').single()
-  if (error) { console.error('create_trip error:', error); return json({ error: 'Failed to create trip' }, 500) }
+  if (error) { console.error('create_journey error:', error); return json({ error: 'Failed to create trip' }, 500) }
   return json({ trip: data })
 }
 
-async function handleUpdateTrip(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+async function handleUpdateJourney(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
   const id = body.id as string | undefined
   if (!id) return json({ error: 'id is required' }, 400)
 
@@ -439,17 +439,17 @@ async function handleUpdateTrip(db: SupabaseClient, body: Record<string, unknown
   if (Object.keys(patch).length === 0) return json({ error: 'nothing to update' }, 400)
 
   const { error } = await db.from('travel_journey').update(patch).eq('id', id)
-  if (error) { console.error('update_trip error:', error); return json({ error: 'Failed to update trip' }, 500) }
+  if (error) { console.error('update_journey error:', error); return json({ error: 'Failed to update trip' }, 500) }
   return json({ ok: true })
 }
 
-async function handleUpdateTripPrimaryClient(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+async function handleUpdateJourneyPrimaryClient(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
   const id        = body.id as string | undefined
   const person_id = (body.primary_client_id as string | null) ?? null
   if (!id) return json({ error: 'id is required' }, 400)
 
   const { error } = await db.from('travel_journey').update({ primary_client_id: person_id }).eq('id', id)
-  if (error) { console.error('update_trip_primary_client error:', error); return json({ error: 'Failed to update primary client' }, 500) }
+  if (error) { console.error('update_journey_primary_client error:', error); return json({ error: 'Failed to update primary client' }, 500) }
   return json({ ok: true })
 }
 
@@ -668,12 +668,12 @@ Deno.serve(async (req: Request) => {
         if (!id) return json({ error: 'id required' }, 400)
         return handleDeleteWelcomeLetter(db, id)
       }
-      case 'create_trip':
-        return handleCreateTrip(db, body as Record<string, unknown>)
-      case 'update_trip':
-        return handleUpdateTrip(db, body as Record<string, unknown>)
-      case 'update_trip_primary_client':
-        return handleUpdateTripPrimaryClient(db, body as Record<string, unknown>)
+      case 'create_journey':
+        return handleCreateJourney(db, body as Record<string, unknown>)
+      case 'update_journey':
+        return handleUpdateJourney(db, body as Record<string, unknown>)
+      case 'update_journey_primary_client':
+        return handleUpdateJourneyPrimaryClient(db, body as Record<string, unknown>)
       case 'create_request': {
         const { house_id, request_body, channel, received_at, journey_id, engagement_id, handled_by, notes } = body as Record<string, unknown>
         if (!house_id || !request_body) return json({ error: 'house_id, request_body required' }, 400)

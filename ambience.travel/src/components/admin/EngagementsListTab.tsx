@@ -60,7 +60,7 @@ import {
   updateTrip,
   updatePerson,
   updateEngagementPrimaryClient,
-  reassignEngagementTrip,
+  reassignEngagementJourney,
   fetchPeople,
   type EngagementListRow,
   type StatusLookup,
@@ -1162,7 +1162,7 @@ export default function EngagementsListTab() {
       const prevSnapshot = rows
       setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, journey_id: newjourneyId } : r))
       try {
-        await reassignEngagementTrip(activeRow.id, newjourneyId)
+        await reassignEngagementJourney(activeRow.id, newjourneyId)
         success(newjourneyId ? 'Engagement moved.' : 'Engagement unlinked.')
         load()
       } catch (e2: unknown) {

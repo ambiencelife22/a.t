@@ -11,7 +11,7 @@
 // Prior: S54 — Read paths migrated to travel-read-engagement-admin EF
 //   (max_sort_order later removed — sort_order computed server-side on create).
 // Prior: S33B — Added trip + person inline-edit + drag-and-drop re-parenting
-//   writes. New: updateTrip, createEngagement, updatePerson, reassignEngagementTrip.
+//   writes. New: updateTrip, createEngagement, updatePerson, reassignEngagementJourney.
 // Prior: S33 — Added iteration_label. List query joins travel_journey +
 //   global_people for trip-group rendering.
 
@@ -517,12 +517,12 @@ export type EngagementCreatePayload = {
   primary_client_id: string | null
 }
 
-export async function createEngagementLegacy(payload: EngagementCreatePayload): Promise<string> {
+export async function createJourney(payload: EngagementCreatePayload): Promise<string> {
   if (!payload.trip_code || !payload.trip_code.trim()) {
     throw new Error('trip_code is required')
   }
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
-    body: { mode: 'create_trip', ...payload },
+    body: { mode: 'create_journey', ...payload },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
@@ -538,7 +538,7 @@ export type EngagementUpdatePayload = {
 
 export async function updateTrip(id: string, payload: EngagementUpdatePayload): Promise<void> {
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
-    body: { mode: 'update_trip', id, ...payload },
+    body: { mode: 'update_journey', id, ...payload },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
@@ -566,7 +566,7 @@ export async function updatePerson(id: string, payload: PersonUpdatePayload): Pr
 // Reassigns an engagement to a different trip (or to NULL = Unlinked).
 // journey_id NULL is valid per FK constraint (ON DELETE SET NULL).
 
-export async function reassignEngagementTrip(
+export async function reassignEngagementJourney(
   engagementId: string,
   newjourneyId:    string | null,
 ): Promise<void> {
@@ -586,7 +586,7 @@ export async function updateEngagementPrimaryClient(
   personId: string | null,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
-    body: { mode: 'update_trip_primary_client', id: journeyId, primary_client_id: personId },
+    body: { mode: 'update_journey_primary_client', id: journeyId, primary_client_id: personId },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
