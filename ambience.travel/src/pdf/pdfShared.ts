@@ -155,7 +155,7 @@ export function drawFrostedLogoCard(
 export interface HeroParams {
   title:          string
   subtitle?:      string | null  // brief_subtitle — renders below title
-  docType:        string        // e.g. "Trip Confirmation" / "Daily Programme" / "Trip Brief"
+  docType:        string        // e.g. "Engagement Confirmation" / "Daily Programme" / "Engagement Brief"
   preparedFor:    string | null
   dateRange?:     string | null // optional — confirmation + brief show dates in hero
   heroImageData:  string | null

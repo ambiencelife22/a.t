@@ -1,4 +1,4 @@
-// pdfImmerseConfirmation.ts — Trip Confirmation Brief PDF export
+// pdfImmerseConfirmation.ts — Engagement Confirmation PDF export
 //
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
@@ -533,7 +533,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 
   let y = await drawPdfHero(doc, {
     title,
-    docType:       'Trip Confirmation',
+    docType:       'Engagement Confirmation',
     subtitle:      brief?.brief_subtitle ?? null,
     preparedFor,
     dateRange,
@@ -647,7 +647,7 @@ function buildFilename(d: ConfirmationBriefData): string {
       return `${sd.getDate()}-${ed.getDate()} ${month} ${year}`
     return `${sd.getDate()} ${month} ${year}`
   })()
-  return ['Trip Confirmation', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'
+  return ['Engagement Confirmation', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
