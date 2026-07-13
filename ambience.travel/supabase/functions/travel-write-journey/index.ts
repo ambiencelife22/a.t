@@ -405,11 +405,11 @@ async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promis
 // ── Trip CRUD ─────────────────────────────────────────────────────────────────
 
 async function handleCreateJourney(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
-  const trip_code = (body.trip_code as string | undefined)?.trim()
-  if (!trip_code) return json({ error: 'trip_code is required' }, 400)
+  const journey_code = (body.journey_code as string | undefined)?.trim()
+  if (!journey_code) return json({ error: 'journey_code is required' }, 400)
 
   const insert: Record<string, unknown> = {
-    journey_code: trip_code,
+    journey_code: journey_code,
     public_title:       (body.public_title as string | undefined)?.trim() ?? null,
     start_date:         (body.start_date as string | undefined) ?? null,
     end_date:           (body.end_date as string | undefined) ?? null,
@@ -427,9 +427,9 @@ async function handleUpdateJourney(db: SupabaseClient, body: Record<string, unkn
   if (!id) return json({ error: 'id is required' }, 400)
 
   const patch: Record<string, unknown> = {}
-  if (body.trip_code !== undefined) {
-    const trimmed = (body.trip_code as string).trim()
-    if (!trimmed) return json({ error: 'trip_code cannot be empty' }, 400)
+  if (body.journey_code !== undefined) {
+    const trimmed = (body.journey_code as string).trim()
+    if (!trimmed) return json({ error: 'journey_code cannot be empty' }, 400)
     patch.journey_code = trimmed
   }
   if (body.public_title !== undefined) {

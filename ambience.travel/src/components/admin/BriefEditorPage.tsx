@@ -538,7 +538,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
 function BriefPreview({ fields }: { fields: PreviewFields }) {
   const { briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, elements, auxDrafts } = fields
 
-  const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.trip_code
+  const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.journey_code
   const subtitle = (briefSubtitle || 'TRIP CONFIRMATION BRIEF').toUpperCase()
   const pfor     = preparedFor || house?.display_name || ''
   const dates    = formatDateRange(trip.start_date, trip.end_date)
@@ -950,7 +950,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
         show_advisor_phone: showAdvisorPhone,
       } as any),
       house,
-      destinationName: trip.destinations[0]?.name ?? trip.trip_code,
+      destinationName: trip.destinations[0]?.name ?? trip.journey_code,
       heroImageData:   heroData,
       elements:     mergedAux,
       guestDisplayName: null,
@@ -997,7 +997,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: A.bgCard, borderBottom: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
         <button onClick={() => navigateAdmin({ product: 'house', tab: 'houses' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.journey_code}</span>
           <span style={{ fontSize: 10, color: A.muted }}>Confirmation Brief</span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

@@ -132,7 +132,7 @@ export type BookingFinancial = {
   // is the odd one out and its adapter maps hotel_name -> _hotel_name. Reconciling
   // that naming divergence is part of this consolidation, not a bandaid around it.
   _hotel_name?:           string | null
-  _trip_code?:            string | null
+  _journey_code?:            string | null
   _house_name?:           string | null
   _house_id?:             string | null
 }

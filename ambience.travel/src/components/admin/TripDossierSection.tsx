@@ -131,7 +131,7 @@ function TripActionPanel({ trip, house }: {
       trip,
       brief:           trip.brief,
       house,
-      destinationName: trip.destinations[0]?.name ?? trip.trip_code,
+      destinationName: trip.destinations[0]?.name ?? trip.journey_code,
       heroImageData:   heroData,
       elements,
       guestDisplayName: null,
@@ -918,7 +918,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
     <div style={{ background: A.bgCard, border: `1px solid ${expanded ? A.gold + '40' : A.border}`, borderRadius: 12, overflow: 'hidden', transition: 'border-color 150ms ease' }}>
       <div onClick={onToggle} style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.trip_code}</span>
+          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.journey_code}</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: tripColor, fontFamily: A.font, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tripStageText}</span>
           {trip.start_date && (
             <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>

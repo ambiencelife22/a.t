@@ -72,7 +72,7 @@ export type EngagementFull = {
     id:      string
     title:   string | null
     url_id:  string
-    travel_journey: { trip_code: string | null; start_date: string | null; end_date: string | null } | null
+    travel_journey: { journey_code: string | null; start_date: string | null; end_date: string | null } | null
   }
   bookings: Record<string, unknown>[]
   expenses: Expense[]
@@ -84,7 +84,7 @@ export type PipelineTrip = {
   url_id:                  string
   title:                   string | null
   status_slug:             string | null
-  trip_code:               string | null
+  journey_code:               string | null
   start_date:              string | null
   end_date:                string | null
   primary_client_id:       string | null

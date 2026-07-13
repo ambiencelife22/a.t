@@ -346,7 +346,7 @@ function EngagementTypeahead({
           background: A.bgInput, border: `1px solid ${A.border}`,
           fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace',
         }}>
-          {selected.trip_code}
+          {selected.journey_code}
           {selected.start_date && <span style={{ color: A.faint, marginLeft: 8, fontSize: 11 }}>{selected.start_date}</span>}
         </div>
         <button onClick={() => { setOpen(true); setQuery('') }} style={btnGhost}>Change</button>
@@ -381,7 +381,7 @@ function EngagementTypeahead({
                 borderBottom: `1px solid ${A.border}`,
               }}
             >
-              {t.trip_code}
+              {t.journey_code}
               {t.start_date && <span style={{ color: A.faint, marginLeft: 8 }}>{t.start_date}</span>}
             </div>
           ))}

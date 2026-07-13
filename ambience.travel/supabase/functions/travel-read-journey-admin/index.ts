@@ -533,7 +533,7 @@ async function handleCalendar(
   const slugByEng = new Map<string, string>()
   // The engagement title is the canonical display name (engagement = the universal
   // spine). public_title is an optional override; when null, the calendar reads the
-  // engagement's title — never the bare trip_code if a real name exists upstream.
+  // engagement's title — never the bare journey_code if a real name exists upstream.
   const titleByEng = new Map<string, string>()
   if (engIds.length > 0) {
     const { data: engRows, error: engErr } = await db
@@ -704,7 +704,7 @@ async function handleCalendar(
 
   const out = confirmedTrips.map(t => ({
     id:            t.id,
-    trip_code:     t.journey_code,
+    journey_code:     t.journey_code,
     // Engagement title is the source; public_title overrides only when explicitly set.
     title:         t.public_title ?? (t.confirmed_engagement_id ? (titleByEng.get(t.confirmed_engagement_id) ?? null) : null),
     start_date:    t.start_date,

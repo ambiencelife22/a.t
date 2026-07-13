@@ -105,7 +105,7 @@ type CalendarActivity = {
 }
 type TripState = 'completed' | 'confirmed' | 'pending'
 type CalendarTrip = {
-  id: string; trip_code: string; title: string | null
+  id: string; journey_code: string; title: string | null
   start_date: string | null; end_date: string | null
   status_slug: string | null; state: TripState; primary_client_id: string | null
   stays: CalendarStay[]; activities: CalendarActivity[]
@@ -380,7 +380,7 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
                     display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))',
                     gridAutoRows:`${BAR_H + BAR_GAP}px`, padding:'0 6px', boxSizing:'border-box' }}>
         {bars.map((b, i) => {
-          const label = b.trip.title || b.trip.trip_code
+          const label = b.trip.title || b.trip.journey_code
           const sb = stateBandStyle(b.trip.state)
           return (
             <button key={i} onClick={() => onSelect(b.trip.id)} title={`${label}${b.trip.state==='completed'?' · Completed':b.trip.state==='pending'?' · Securing':''}`} style={{
@@ -449,9 +449,9 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
                 const isStart = t.start_date===iso, isEnd = t.end_date===iso
                 const phase = isStart?'Begins':isEnd?'Ends':'In progress'
                 return (
-                  <button key={`t-${j}`} onClick={()=>onSelect(t.id)} title={`${t.title||t.trip_code} · ${phase}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
+                  <button key={`t-${j}`} onClick={()=>onSelect(t.id)} title={`${t.title||t.journey_code} · ${phase}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
                     borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px ${stateBandStyle(t.state).dashed?'dashed':'solid'} ${stateBandStyle(t.state).border}`, background:stateBandStyle(t.state).bg, opacity: (isStart||isEnd)?1:0.86, boxSizing:'border-box', minWidth:0 }}>
-                    <strong style={{ display:'block', fontSize:11.5, color:stateBandStyle(t.state).fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title||t.trip_code}</strong>
+                    <strong style={{ display:'block', fontSize:11.5, color:stateBandStyle(t.state).fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title||t.journey_code}</strong>
                     <span style={{ fontSize:10, color:L.muted }}>{phase}</span>
                   </button>
                 )
@@ -582,7 +582,7 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
 
   // Trip start/end branch.
   const timeLabel = ev.kind==='trip-start'?'Starts':'Ends'
-  const title = ev.trip.title || ev.trip.trip_code
+  const title = ev.trip.title || ev.trip.journey_code
   const sub = `${tripStatusLabel(ev.trip.status_slug)} · ${fmtRange(ev.trip.start_date, ev.trip.end_date)}`
   return (
     <button onClick={()=>onSelect(ev.trip.id)} style={{ ...ROW_STYLE, border:`1px solid ${L.line}` }}>
@@ -602,7 +602,7 @@ function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void })
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, borderBottom:`1px solid ${L.line}`, paddingBottom:14, marginBottom:14 }}>
         <div>
           <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:6 }}>Selected trip</div>
-          <h2 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:22, lineHeight:1.15, color:L.ink }}>{trip.title||trip.trip_code}</h2>
+          <h2 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:22, lineHeight:1.15, color:L.ink }}>{trip.title||trip.journey_code}</h2>
           <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6, background:L.goldTint, border:`1px solid ${L.goldBorder}`, borderRadius:999, padding:'5px 10px', fontSize:11, fontWeight:700, color:L.band }}>{tripStatusLabel(trip.status_slug)}</div>
         </div>
         <button onClick={onClose} aria-label="Close" style={{ appearance:'none', cursor:'pointer', border:`1px solid ${L.line}`, background:L.panel, borderRadius:'50%', width:30, height:30, color:L.muted, fontSize:16, lineHeight:1 }}>×</button>

@@ -79,7 +79,7 @@ function AttentionItem({ engagement, reason, amount, color, onClick }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{engagement.title ?? engagement.url_id}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
-          {engagement.trip_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{engagement.trip_code}</span>}
+          {engagement.journey_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{engagement.journey_code}</span>}
           <span style={{ fontSize: 10, fontWeight: 700, color, fontFamily: A.font, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{reason}</span>
         </div>
       </div>
@@ -164,7 +164,7 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
           {e.title ?? e.url_id}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {e.trip_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{e.trip_code}</span>}
+          {e.journey_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{e.journey_code}</span>}
           {e.start_date && (
             <span style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>
               {formatDateShortRange(e.start_date, e.end_date)}

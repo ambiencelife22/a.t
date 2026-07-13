@@ -869,7 +869,7 @@ export type ImmerseEngagementBooking = {
 
 export type ImmerseDossierJourney = {
   id:                   string
-  trip_code:            string
+  journey_code:            string
   stage:                EngagementStage | null
   start_date:           string | null
   end_date:             string | null

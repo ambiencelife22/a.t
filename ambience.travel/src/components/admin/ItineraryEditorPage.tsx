@@ -389,7 +389,7 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
   house:          HouseProfile | null
 }) {
   const visibleDays = days.filter(d => d.show)
-  const destName    = trip.destinations[0]?.name ?? trip.trip_code
+  const destName    = trip.destinations[0]?.name ?? trip.journey_code
   const preparedFor = house?.display_name ?? ''
 
   return (
@@ -625,7 +625,7 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
           style={{ ...btnBase, background: 'transparent', color: MUTED, border: `1px solid ${RULE}`, padding: '4px 10px', fontSize: 10 }}
         >Brief</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{trip.trip_code}</span>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{trip.journey_code}</span>
           <span style={{ fontSize: 10, color: MUTED }}>Daily Programme</span>
         </div>
         <select

@@ -261,7 +261,7 @@ Deno.serve(async (req: Request) => {
 
         return {
           engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
-          trip_code: trip?.journey_code ?? null, start_date: trip?.start_date ?? null,
+          journey_code: trip?.journey_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,
           commission_outstanding: net_commission_expected - commission_received,

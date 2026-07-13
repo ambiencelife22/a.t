@@ -643,7 +643,7 @@ function EngagementGroupBlock({
     field: 'engagement_status_id' | 'itinerary_status_id',
     value: string,
   ) => void
-  onEngagementUpdate: (journeyId: string, field: 'trip_code' | 'public_title', value: string) => Promise<void>
+  onEngagementUpdate: (journeyId: string, field: 'journey_code' | 'public_title', value: string) => Promise<void>
   onPersonUpdate: (personId: string, field: 'first_name' | 'nickname', value: string) => Promise<void>
   onSetEngagementClient:         (journeyId: string, personId: string) => Promise<void>
   pickingClientForTrip:    string | null
@@ -792,7 +792,7 @@ function EngagementGroupBlock({
               {/* Trip code + date — DM Mono 11pt dim */}
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 <EditableText
-                  value={group.trip_code ?? ''}
+                  value={group.journey_code ?? ''}
                   placeholder='Add trip code'
                   size='sm'
                   monospace
@@ -802,7 +802,7 @@ function EngagementGroupBlock({
                   rejectEmpty
                   onCommit={async (v) => {
                     if (!group.journey_id) return
-                    await onEngagementUpdate(group.journey_id, 'trip_code', v)
+                    await onEngagementUpdate(group.journey_id, 'journey_code', v)
                   }}
                 />
                 {group.trip_start_date && (
@@ -840,7 +840,7 @@ function EngagementGroupBlock({
           color:         A.gold,
           fontFamily:    A.font,
         }}>
-          Drop to {isOrphan ? 'unlink' : `move to ${group.trip_code ?? 'this trip'}`}
+          Drop to {isOrphan ? 'unlink' : `move to ${group.journey_code ?? 'this trip'}`}
         </div>
       )}
 
@@ -1092,11 +1092,11 @@ export default function EngagementsListTab() {
     }
   }
 
-  async function handleEngagementUpdate(journeyId: string, field: 'trip_code' | 'public_title', value: string) {
+  async function handleEngagementUpdate(journeyId: string, field: 'journey_code' | 'public_title', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
       if (r.journey_id !== journeyId) return r
-      if (field === 'trip_code')    return { ...r, trip_code: value }
+      if (field === 'journey_code')    return { ...r, journey_code: value }
       if (field === 'public_title') return { ...r, trip_public_title: value || null }
       return r
     }))

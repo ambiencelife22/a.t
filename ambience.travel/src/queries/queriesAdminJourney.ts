@@ -321,7 +321,7 @@ export type EngagementBooking = {
 
 export type DossierJourney = {
   id:                   string
-  trip_code:            string
+  journey_code:            string
   stage:                EngagementStage | null   // S53G+ derived from winning engagement
   start_date:           string | null
   end_date:             string | null
@@ -343,7 +343,7 @@ export type EngagementDossierData = {
 
 // ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
-type TripRow     = { id: string; trip_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
+type TripRow     = { id: string; journey_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
 type BookingRow  = Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
 type HotelEntry  = { name: string; hero_image_src: string | null }
 type BriefRow    = EngagementBrief
@@ -435,7 +435,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
 
   const trips: DossierJourney[] = tripRows.map(t => ({
     id:                   t.id,
-    trip_code:            t.trip_code,
+    journey_code:            t.journey_code,
     stage:                t.derived_status_slug
                             ? computeEngagementStage({ statusSlug: t.derived_status_slug as any })
                             : null,

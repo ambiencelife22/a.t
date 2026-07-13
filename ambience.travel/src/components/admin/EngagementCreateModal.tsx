@@ -90,7 +90,7 @@ const helpStyle: React.CSSProperties = {
 const TRIP_CODE_REGEX = /^[A-Z0-9]{3,8}-\d{4}-[A-Z0-9]{2,8}$/i
 
 function suggestTripCode(engagementTitle: string | null): string {
-  // Suggest a trip_code shape like NEW-YYYY-XX based on the engagement's
+  // Suggest a journey_code shape like NEW-YYYY-XX based on the engagement's
   // title — operator can edit before submit. Pure UX nicety; no DB call.
   const year = new Date().getFullYear()
   const titleSlug = (engagementTitle ?? '')
@@ -156,7 +156,7 @@ export default function EngagementCreateModal({
     setSaving(true)
     try {
       const newjourneyId = await createJourney({
-        trip_code:         tripCode.trim(),
+        journey_code:         tripCode.trim(),
         public_title:      publicTitle.trim() ?? null,
         start_date:        startDate ?? null,
         end_date:          endDate ?? null,
@@ -168,7 +168,7 @@ export default function EngagementCreateModal({
       onSuccess(newjourneyId)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'
-      // Common case: duplicate trip_code. Surface it cleanly.
+      // Common case: duplicate journey_code. Surface it cleanly.
       if (message.toLowerCase().includes('duplicate') || message.includes('23505')) {
         showToast(`Trip code "${tripCode.trim()}" already exists.`, 'error')
       }

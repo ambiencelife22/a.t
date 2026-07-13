@@ -76,7 +76,7 @@ export type EngagementListRow = {
 
   // Trip linkage (NULL when engagement isn't linked to a canonical trip)
   journey_id:           string | null
-  trip_code:         string | null
+  journey_code:         string | null
   trip_public_title: string | null
   trip_start_date:   string | null
 
@@ -184,7 +184,7 @@ export type PersonOption = {
 
 export type EngagementOption = {
   id:         string
-  trip_code:  string
+  journey_code:  string
   start_date: string | null
 }
 
@@ -206,7 +206,7 @@ export type ChildCounts = {
 export type EngagementGroup = {
   // null when this is the orphan group
   journey_id:           string | null
-  trip_code:         string | null
+  journey_code:         string | null
   trip_public_title: string | null
   trip_start_date:   string | null
   client_id:         string | null
@@ -247,7 +247,7 @@ export function groupByEngagement(rows: EngagementListRow[]): EngagementGroup[] 
 
     groups.set(row.journey_id, {
       journey_id:           row.journey_id,
-      trip_code:         row.trip_code,
+      journey_code:         row.journey_code,
       trip_public_title: row.trip_public_title,
       trip_start_date:   row.trip_start_date,
       client_id:         row.client_id,
@@ -279,7 +279,7 @@ export function groupByEngagement(rows: EngagementListRow[]): EngagementGroup[] 
     orphans.sort((a, b) => a.created_at.localeCompare(b.created_at))
     tripGroups.push({
       journey_id:           null,
-      trip_code:         null,
+      journey_code:         null,
       trip_public_title: null,
       trip_start_date:   null,
       client_id:         null,
@@ -509,7 +509,7 @@ export async function updateWelcomeLetter(patch: WelcomeLetterPatch): Promise<We
 // ── Trip create (drag-to-create-new-trip flow) ───────────────────────────────
 
 export type EngagementCreatePayload = {
-  trip_code:       string
+  journey_code:       string
   public_title:    string | null
   start_date:      string | null   // ISO YYYY-MM-DD
   end_date:        string | null   // ISO YYYY-MM-DD
@@ -518,8 +518,8 @@ export type EngagementCreatePayload = {
 }
 
 export async function createJourney(payload: EngagementCreatePayload): Promise<string> {
-  if (!payload.trip_code || !payload.trip_code.trim()) {
-    throw new Error('trip_code is required')
+  if (!payload.journey_code || !payload.journey_code.trim()) {
+    throw new Error('journey_code is required')
   }
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'create_journey', ...payload },
@@ -529,10 +529,10 @@ export async function createJourney(payload: EngagementCreatePayload): Promise<s
   return (data as { trip: { id: string } }).trip.id
 }
 
-// ── Trip update (group-header inline edits for trip_code + public_title) ─────
+// ── Trip update (group-header inline edits for journey_code + public_title) ─────
 
 export type EngagementUpdatePayload = {
-  trip_code?:    string
+  journey_code?:    string
   public_title?: string | null
 }
 
