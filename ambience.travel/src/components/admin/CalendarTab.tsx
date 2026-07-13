@@ -179,7 +179,7 @@ type ActivityDetail =
   | { kind: 'ground_transport'; vehicles: VehicleDetail[] }
 
 export default function CalendarTab() {
-  const [trips, setTrips] = useState<CalendarEngagement[]>([])
+  const [trips, setEngagements] = useState<CalendarEngagement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>('month')
@@ -193,7 +193,7 @@ export default function CalendarTab() {
       const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body: { mode: 'calendar' } })
       if (cancelled) return
       if (error) { setError('Could not load the calendar. Try again.'); setLoading(false); return }
-      setTrips((data?.trips ?? []) as CalendarEngagement[]); setLoading(false)
+      setEngagements((data?.engagements ?? []) as CalendarEngagement[]); setLoading(false)
     }
     load(); return () => { cancelled = true }
   }, [])
@@ -219,7 +219,7 @@ export default function CalendarTab() {
                   border: `1px solid ${L.line}`, padding: 'clamp(18px,3vw,28px)', minHeight: 600 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16, flexWrap:'wrap', marginBottom:18 }}>
         <div>
-          <div style={{ textTransform:'uppercase', letterSpacing:'0.14em', fontSize:11, fontWeight:700, color:L.muted, marginBottom:8 }}>All trips</div>
+          <div style={{ textTransform:'uppercase', letterSpacing:'0.14em', fontSize:11, fontWeight:700, color:L.muted, marginBottom:8 }}>All engagements</div>
           <h1 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:'clamp(28px,4vw,40px)', lineHeight:1.05, letterSpacing:'-0.01em', color:L.ink }}>{headingTitle}</h1>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
@@ -237,7 +237,7 @@ export default function CalendarTab() {
       {loading && <Centered>Loading the calendar…</Centered>}
       {error && !loading && <Centered tone="danger">{error}</Centered>}
       {!loading && !error && trips.length === 0 && (
-        <Centered>No trips to show. All confirmed trips — past, current, and upcoming — appear here.</Centered>
+        <Centered>No engagements to show. All confirmed engagements — past, current, and upcoming — appear here.</Centered>
       )}
 
       {!loading && !error && trips.length > 0 && (

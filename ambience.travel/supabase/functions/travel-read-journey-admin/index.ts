@@ -526,7 +526,7 @@ async function handleCalendar(
     start_date: string | null; end_date: string | null
     confirmed_engagement_id: string | null; primary_client_id: string | null
   }>
-  if (trips.length === 0) return ok({ trips: [] })
+  if (trips.length === 0) return ok({ engagements: [] })
 
   // 2. Resolve each winning engagement's status slug; keep only confirmed-stage.
   const engIds = [...new Set(trips.map(t => t.confirmed_engagement_id).filter((x): x is string => !!x))]
@@ -559,7 +559,7 @@ async function handleCalendar(
     stateByTrip.set(t.id, state)
     return true
   })
-  if (confirmedTrips.length === 0) return ok({ trips: [] })
+  if (confirmedTrips.length === 0) return ok({ engagements: [] })
 
   const journeyIds = confirmedTrips.map(t => t.id)
 
@@ -739,7 +739,7 @@ async function handleCalendar(
     activities: t.confirmed_engagement_id ? (activitiesByJourney.get(t.confirmed_engagement_id) ?? []) : [],
   }))
 
-  return ok({ trips: out })
+  return ok({ engagements: out })
 }
 
 // ── Activity detail (6C drill-down) ───────────────────────────────────────────
