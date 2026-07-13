@@ -2,7 +2,7 @@
  * Trip Dossier surface for HouseTab.
  *
  * Last updated: S48 — Copy Link buttons added to TripActionPanel for
- *   /confirmation and /programme client URLs. url_id now on DossierTrip.
+ *   /confirmation and /programme client URLs. url_id now on DossierJourney.
  *   buildClientUrl + copyLink helpers. copied state with 2s feedback.
  * Prior: S48 — fetchTripAuxBookings imported. handleDownload fetches aux.
  * Prior: S47 — navigateAdmin imported from adminPath. TripActionPanel
@@ -19,7 +19,7 @@ import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import { formatDateShort, formatDateShortRange, formatDateRange } from '../../utils/utilsDates'
 import { moneyDec as fmt } from '../../utils/utilsCurrency'
 import type {
-  TripDossierData, DossierTrip, EngagementBooking, TripPartner,
+  TripDossierData, DossierJourney, EngagementBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminJourney'
 import { getEventStatusMeta } from '../../types/typesEventStatus'
@@ -85,7 +85,7 @@ const labelStyle: React.CSSProperties = {
 // ── TripActionPanel ───────────────────────────────────────────────────────────
 
 function TripActionPanel({ trip, house }: {
-  trip:  DossierTrip
+  trip:  DossierJourney
   house: HouseProfile | null
 }) {
   const { pdfReady, pdfDownloading, handleDownloadBrief } = useImmerseConfirmationPdf()
@@ -897,7 +897,7 @@ function BookingCreator({ journeyId, onCreated }: {
 // ── TripBlock ─────────────────────────────────────────────────────────────────
 
 function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
-  trip:     DossierTrip
+  trip:     DossierJourney
   partners: Record<string, TripPartner>
   mobile:   boolean
   expanded: boolean

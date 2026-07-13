@@ -26,7 +26,7 @@ import {
 } from './pdfShared'
 import type {
   ImmerseTripDay as TripDay,
-  ImmerseDossierTrip as DossierTrip,
+  ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
   ImmerseTripBrief as TripBrief,
 } from '../types/typesImmerse'
@@ -37,7 +37,7 @@ import { isMeetGreetElement, isDiningElement } from '../types/typesElements'
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface DailyProgrammeData {
-  journey:          DossierTrip
+  journey:          DossierJourney
   brief:            TripBrief | null
   house:            HouseProfile | null
   days:             TripDay[]
@@ -96,7 +96,7 @@ function fmtTimeOnly(t: string | null): string {
   return `${h}:${m ?? '00'}`
 }
 
-function buildFilename(trip: DossierTrip): string {
+function buildFilename(trip: DossierJourney): string {
   const today = new Date()
   const dd    = String(today.getDate()).padStart(2, '0')
   const mon   = ['January','February','March','April','May','June','July','August','September','October','November','December'][today.getMonth()]

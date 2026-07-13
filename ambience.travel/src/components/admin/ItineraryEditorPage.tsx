@@ -37,7 +37,7 @@ import {
   deleteTripDayEntry,
 } from '../../queries/queriesAdminJourney'
 import type {
-  DossierTrip,
+  DossierJourney,
   HouseProfile,
   TripDay,
   TripDayEntry,
@@ -385,7 +385,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
 function ItineraryPreview({ days, entriesByDate, trip, house }: {
   days:           TripDay[]
   entriesByDate:  Record<string, TimelineItem[]>
-  trip:           DossierTrip
+  trip:           DossierJourney
   house:          HouseProfile | null
 }) {
   const visibleDays = days.filter(d => d.show)
@@ -490,7 +490,7 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ItineraryEditorPage({ journeyId }: { journeyId: string }) {
-  const [trip,     setTrip]     = useState<DossierTrip | null>(null)
+  const [trip,     setTrip]     = useState<DossierJourney | null>(null)
   const [house,    setHouse]    = useState<HouseProfile | null>(null)
   const [days,     setDays]     = useState<TripDay[]>([])
   const [entries,  setEntries]  = useState<TripDayEntry[]>([])

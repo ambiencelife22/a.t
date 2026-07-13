@@ -43,7 +43,7 @@ import {
 import type {
   ImmerseTripBrief as TripBrief,
   ImmerseEngagementBooking as EngagementBooking,
-  ImmerseDossierTrip as DossierTrip,
+  ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
   EngagementElement as TripAuxBooking,
 } from '../types/typesImmerse'
@@ -53,7 +53,7 @@ import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface TripBriefPdfData {
-  trip:             DossierTrip
+  trip:             DossierJourney
   brief:            TripBrief | null
   house:            HouseProfile | null
   destinationName:  string

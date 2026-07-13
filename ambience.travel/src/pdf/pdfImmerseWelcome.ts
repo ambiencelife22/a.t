@@ -22,7 +22,7 @@ import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, serif } from './pdfUtils'
 import type { Img } from './pdfUtils'
 import { T, P, CW, ASSETS, stampPageChrome } from './pdfShared'
-import type { TripBrief, DossierTrip } from '../queries/queriesAdminJourney'
+import type { TripBrief, DossierJourney } from '../queries/queriesAdminJourney'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ export interface WelcomeRecipient {
 }
 
 export interface WelcomeLetterData {
-  trip:        DossierTrip
+  trip:        DossierJourney
   brief:       TripBrief | null
   recipients:  WelcomeRecipient[]
   accomName:   string         // hotel name for filename

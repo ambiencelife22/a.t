@@ -30,7 +30,7 @@
 import type {
   ImmerseEngagementData,
   ImmerseDestinationData,
-  ImmerseDossierTrip,
+  ImmerseDossierJourney,
   ImmerseTripBrief,
   ImmerseTripHouse,
   EngagementElement,
@@ -71,7 +71,7 @@ export type EngagementLink = {
 }
 
 export type DeliveryData = {
-  journey:          ImmerseDossierTrip
+  journey:          ImmerseDossierJourney
   brief:            ImmerseTripBrief | null
   house:            ImmerseTripHouse | null
   destinationName:  string

@@ -31,7 +31,7 @@ import {
 import type {
   ImmerseTripBrief as TripBrief,
   ImmerseEngagementBooking as EngagementBooking,
-  ImmerseDossierTrip as DossierTrip,
+  ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
   ImmerseBookingRoom as BookingRoom,
   EngagementElement as TripAuxBooking,
@@ -50,7 +50,7 @@ export interface ConfirmationContact {
 }
 
 export interface ConfirmationBriefData {
-  trip:             DossierTrip
+  trip:             DossierJourney
   brief:            TripBrief | null
   house:            HouseProfile | null
   destinationName:  string

@@ -867,7 +867,7 @@ export type ImmerseEngagementBooking = {
   _invoices:        BookingInvoice[]
 }
 
-export type ImmerseDossierTrip = {
+export type ImmerseDossierJourney = {
   id:                   string
   trip_code:            string
   stage:                EngagementStage | null

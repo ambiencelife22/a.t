@@ -23,7 +23,7 @@
 // Prior: S48 — TripBrief gains 5 new columns: programme_show_images,
 //   welcome_letter, show_tab_confirmation, show_tab_programme, show_tab_brief,
 //   show_tab_contacts. Mirrors migration s48_trip_page_controls.
-// Prior: S48 — url_id added to DossierTrip. Engagement join in fetchJourneyDossierForHouse.
+// Prior: S48 — url_id added to DossierJourney. Engagement join in fetchJourneyDossierForHouse.
 // Prior: S48 — booked_by text added to TripAuxBooking. TripAuxBookingPatch added.
 // Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
 // Prior: S46 — _hotel_image_src added to EngagementBooking.
@@ -319,7 +319,7 @@ export type EngagementBooking = {
   _invoices:        BookingInvoice[]
 }
 
-export type DossierTrip = {
+export type DossierJourney = {
   id:                   string
   trip_code:            string
   stage:                EngagementStage | null   // S53G+ derived from winning engagement
@@ -336,7 +336,7 @@ export type DossierTrip = {
 }
 
 export type TripDossierData = {
-  trips:    DossierTrip[]
+  trips:    DossierJourney[]
   partners: Record<string, TripPartner>
   house:    HouseProfile | null
 }
@@ -433,7 +433,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Trip
     if (!urlIdByTrip.has(row.journey_id)) urlIdByTrip.set(row.journey_id, row.url_id)
   }
 
-  const trips: DossierTrip[] = tripRows.map(t => ({
+  const trips: DossierJourney[] = tripRows.map(t => ({
     id:                   t.id,
     trip_code:            t.trip_code,
     stage:                t.derived_status_slug

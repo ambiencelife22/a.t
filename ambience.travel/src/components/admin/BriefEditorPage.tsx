@@ -46,7 +46,7 @@ import {
   setEngagementPublicView,
 } from '../../queries/queriesAdminJourney'
 import type {
-  DossierTrip,
+  DossierJourney,
   HouseProfile,
   TripBrief,
   TripBriefPatch,
@@ -140,7 +140,7 @@ interface PreviewFields {
   preparedFor:   string
   heroImageSrc:  string
   logoVariant:   string
-  trip:          DossierTrip
+  trip:          DossierJourney
   house:         HouseProfile | null
   roomImageSrcs: Record<string, string>
   roomDrafts:    Record<string, RoomDraft>
@@ -723,7 +723,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
   const isMobile = windowWidth < 768
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit')
 
-  const [trip,        setTrip]        = useState<DossierTrip | null>(null)
+  const [trip,        setTrip]        = useState<DossierJourney | null>(null)
   const [house,       setHouse]       = useState<HouseProfile | null>(null)
   const [elements, setAuxBookings] = useState<TripAuxBooking[]>([])
   const [loadErr,     setLoadErr]     = useState<string | null>(null)

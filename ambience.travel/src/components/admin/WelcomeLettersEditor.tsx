@@ -27,7 +27,7 @@ import {
   deleteTripWelcomeLetter,
 } from '../../queries/queriesAdminJourney'
 import type {
-  DossierTrip, EngagementBooking, BookingRoom, TripWelcomeLetter,
+  DossierJourney, EngagementBooking, BookingRoom, TripWelcomeLetter,
 } from '../../queries/queriesAdminJourney'
 import { exportWelcomeLetterPdf } from '../../pdf/pdfImmerseWelcome'
 import { roomGuestName } from '../../utils/utilsRoomDisplay'
@@ -89,7 +89,7 @@ function buildRows(bookings: EngagementBooking[], letters: TripWelcomeLetter[]):
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function WelcomeLettersEditor({ trip }: { trip: DossierTrip }) {
+export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
   const { success, error } = useAdminToast()
   const [rows,    setRows]    = useState<LetterRow[]>([])
   const [loading, setLoading] = useState(true)
