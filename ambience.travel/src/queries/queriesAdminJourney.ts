@@ -256,7 +256,6 @@ export type TripBooking = {
   journey_id:                   string
   house_id:                  string | null
   engagement_id:             string | null
-  booking_type:              string | null
   name:                      string | null
   status:                    string | null
   confirmation_number:       string | null

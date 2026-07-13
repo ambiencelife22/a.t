@@ -563,7 +563,7 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
   const depositPaid  = !!b.deposit_paid_at
   const balancePaid  = !!b.balance_paid_at
   const commTotal    = b.commissionable_rate != null && b.nights != null ? b.commissionable_rate * b.nights : null
-  const typeColor    = isHotelElement(b.booking_type) ? A.gold : isFlightElement(b.booking_type) ? '#93c5fd' : A.border
+  const typeColor    = A.gold
 
   async function saveBriefFields() {
     setSaving(true)
@@ -577,8 +577,7 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
       <div onClick={() => setExpanded(e => !e)} style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{b.name ?? supplierName ?? b.booking_type ?? 'Booking'}</span>
-            {b.booking_type && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{b.booking_type}</span>}
+            <span style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{b.name ?? supplierName ?? 'Booking'}</span>
             <BookingStatusPip status={b.status} />
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

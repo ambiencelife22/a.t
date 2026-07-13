@@ -131,7 +131,7 @@ for (const t of tripRows) {
   // 3. Bookings
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
-    .select('id, journey_id, house_id, engagement_id, booking_type, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
+    .select('id, journey_id, house_id, engagement_id, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, rate_type, inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
     .eq('house_id', houseId)
     .order('start_date', { ascending: true, nullsFirst: false })
     .order('end_date',   { ascending: true, nullsFirst: false })
@@ -566,7 +566,7 @@ async function handleCalendar(
   // 3. Bookings (stays) for those trips — start_date/end_date are check-in/out.
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
-    .select('id, journey_id, name, status, booking_type, start_date, end_date, accom_hotel_id, confirmation_number')
+    .select('id, journey_id, name, status, start_date, end_date, accom_hotel_id, confirmation_number')
     .in('journey_id', journeyIds)
     .order('start_date', { ascending: true, nullsFirst: false })
   if (bookErr) return err('Failed to fetch calendar bookings', 500)
@@ -727,7 +727,6 @@ async function handleCalendar(
         id:           b.id,
         name:         b.name,
         status:       b.status,
-        booking_type: b.booking_type,
         check_in:     b.start_date,
         check_out:    b.end_date,
         hotel_id:     b.accom_hotel_id,

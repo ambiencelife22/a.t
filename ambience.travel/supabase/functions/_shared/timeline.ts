@@ -246,7 +246,7 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
   // occupant already appeared at this hotel in an earlier stay, it's a re-check-in.
   const hotelBookings = bookings
     .filter(b => b.brief_show !== false)
-    .filter(b => b.booking_type === 'Hotel' || (b._rooms?.length ?? 0) > 0)
+    .filter(b => !!b.accom_hotel_id || (b._rooms?.length ?? 0) > 0)
     .filter(b => !!b.start_date)
     .slice()
     .sort((x, y) => (x.start_date as string).localeCompare(y.start_date as string))
@@ -276,7 +276,8 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
   for (const b of bookings) {
     if (b.brief_show === false) continue
     const hasRooms = (b._rooms?.length ?? 0) > 0
-    if (!hasRooms) continue
+    const isHotelStay = !!b.accom_hotel_id || hasRooms
+    if (!isHotelStay) continue
 
     const hotelName     = b._hotel_name ?? b.name ?? 'Hotel'
     const img           = b.brief_image_src ?? b._hotel_image_src ?? null

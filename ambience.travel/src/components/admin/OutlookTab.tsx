@@ -42,7 +42,6 @@ import {
   type PaymentPlatform,
   type SupplierPartner,
 } from '../../queries/queriesAdminFinance'
-import { isHotelElement } from '../../types/typesElements'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -381,7 +380,7 @@ function BookingRow({
   const toast = useAdminToast()
 
   const currency     = b.currency ?? 'USD'
-  const isHotel      = isHotelElement(b.booking_type)
+  const isHotel      = (b.rooms?.length ?? 0) > 0
   const commAmt_     = b.commission_amount_usd ?? b.commission_amount ?? 0
   const totalRate    = b.total_rate_usd ?? b.total_rate ?? 0
   const commBase     = b.commissionable_rate_usd ?? b.commissionable_rate ?? 0

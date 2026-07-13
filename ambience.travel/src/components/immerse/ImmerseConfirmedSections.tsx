@@ -28,7 +28,7 @@ import type {
   ImmerseTripDay as TripDay,
 } from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'
-import { groupElementsBySection, isFlightElement, isTransferElement, isHotelElement, isGroundTransportElement, isDiningElement, isMeetGreetElement } from '../../types/typesElements'
+import { groupElementsBySection, isFlightElement, isTransferElement, isGroundTransportElement, isDiningElement, isMeetGreetElement } from '../../types/typesElements'
 import { getEventStatusMeta }            from '../../types/typesEventStatus'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, beddingLabel } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
@@ -1145,7 +1145,7 @@ export function TripBriefTab({ clientData }: {
 
   const flights   = auxBookings.filter(a => isFlightElement(a.element_type))
   const transfers = auxBookings.filter(a => isTransferElement(a.element_type))
-  const hotels    = trip.bookings.filter(b => isHotelElement(b.booking_type) && b.brief_show !== false)
+  const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
