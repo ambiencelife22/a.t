@@ -625,9 +625,9 @@ function EngagementGroupBlock({
   engagementStatuses,
   itineraryStatuses,
   onStatusChange,
-  onTripUpdate,
+  onEngagementUpdate,
   onPersonUpdate,
-  onSetTripClient,
+  onSetEngagementClient,
   pickingClientForTrip,
   setPickingClientForTrip,
   isDragOverFromOtherGroup,
@@ -643,9 +643,9 @@ function EngagementGroupBlock({
     field: 'engagement_status_id' | 'itinerary_status_id',
     value: string,
   ) => void
-  onTripUpdate: (journeyId: string, field: 'trip_code' | 'public_title', value: string) => Promise<void>
+  onEngagementUpdate: (journeyId: string, field: 'trip_code' | 'public_title', value: string) => Promise<void>
   onPersonUpdate: (personId: string, field: 'first_name' | 'nickname', value: string) => Promise<void>
-  onSetTripClient:         (journeyId: string, personId: string) => Promise<void>
+  onSetEngagementClient:         (journeyId: string, personId: string) => Promise<void>
   pickingClientForTrip:    string | null
   setPickingClientForTrip: (id: string | null) => void
   isDragOverFromOtherGroup: boolean
@@ -741,7 +741,7 @@ function EngagementGroupBlock({
                   isPickingHere ? (
                     <ClientPicker
                       onSet={async (personId) => {
-                        await onSetTripClient(group.journey_id!, personId)
+                        await onSetEngagementClient(group.journey_id!, personId)
                         setPickingClientForTrip(null)
                       }}
                       onCancel={() => setPickingClientForTrip(null)}
@@ -784,7 +784,7 @@ function EngagementGroupBlock({
                   ariaLabel='Edit public title'
                   onCommit={async (v) => {
                     if (!group.journey_id) return
-                    await onTripUpdate(group.journey_id, 'public_title', v)
+                    await onEngagementUpdate(group.journey_id, 'public_title', v)
                   }}
                 />
               </div>
@@ -802,7 +802,7 @@ function EngagementGroupBlock({
                   rejectEmpty
                   onCommit={async (v) => {
                     if (!group.journey_id) return
-                    await onTripUpdate(group.journey_id, 'trip_code', v)
+                    await onEngagementUpdate(group.journey_id, 'trip_code', v)
                   }}
                 />
                 {group.trip_start_date && (
@@ -1229,9 +1229,9 @@ export default function EngagementsListTab() {
                   engagementStatuses={engagementStatuses}
                   itineraryStatuses={itineraryStatuses}
                   onStatusChange={handleStatusChange}
-                  onTripUpdate={handleEngagementUpdate}
+                  onEngagementUpdate={handleEngagementUpdate}
                   onPersonUpdate={handlePersonUpdate}
-                  onSetTripClient={handleSetEngagementClient}
+                  onSetEngagementClient={handleSetEngagementClient}
                   pickingClientForTrip={pickingClientForTrip}
                   setPickingClientForTrip={setPickingClientForTrip}
                   isDragOverFromOtherGroup={isDragFromOtherGroup(group)}
