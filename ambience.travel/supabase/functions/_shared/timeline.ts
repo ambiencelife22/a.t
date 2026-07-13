@@ -127,7 +127,7 @@ type BookingLike = {
 type AuxLike = {
   id?:                  unknown
   element_type?:        string | null
-  element_type_label?:  string | null
+  booking_type_label?:  string | null
   name?:                string | null
   start_date?:          string | null
   end_date?:            string | null   // arrival date — used for same-day match
@@ -408,7 +408,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
     out.push({
       id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
-      category: a.element_type ?? 'arrangement', categoryLabel: a.element_type_label ?? null,
+      category: a.element_type ?? 'arrangement', categoryLabel: a.booking_type_label ?? null,
       title: a.name ?? a.element_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
