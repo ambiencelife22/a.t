@@ -70,7 +70,7 @@ img {
 }
 
 /* ─── Immerse keyframes (S31) ───────────────────────────────────────────── */
-/* Hoisted from inline <style> blocks in ImmerseDestinationComponents.tsx.   */
+/* Hoisted from inline <style> blocks in ImmerseDestComponents.tsx.   */
 /* Consumed by section components in immerse/* (Hotel options, Dest pricing,*/
 /* Room category, Content cards, Carousel nav).                             */
 

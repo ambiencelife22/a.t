@@ -13,7 +13,7 @@
 //   page jump. Pure-presentation prop; no state moved.
 // Prior: S31 — Mobile arrow size bumped a further 22% (font 22→27,
 //   padding 11/16→13/20). fontWeight 600 retained.
-// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx.
+// Prior: S31 — Extracted from ImmerseDestComponents.tsx.
 //   Mobile arrow size bumped 10% (font 20→22, padding 10/14→11/16) +
 //   fontWeight 600 added.
 // Prior: S30G — Mobile arrows: removed background pill, border, border-radius.
