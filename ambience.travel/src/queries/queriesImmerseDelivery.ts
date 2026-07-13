@@ -60,13 +60,10 @@ export async function fetchDeliveryBundle(urlId: string): Promise<DeliveryBundle
       guides:           { hasDining: false, hasExperiences: false, destinationSlug: null },
       links:            confPayload.links ?? [],
       urlId,
-    } as DeliveryData
-
-    return {
-      clientData,
-      days:    progPayload?.days    ?? [],
+      days:    progPayload?.days ?? [],
       entries: progPayload?.entries ?? [],
-    }
+    } as DeliveryData
+    return clientData
   } catch (err) {
     console.error('fetchDeliveryBundle error:', err)
     return null

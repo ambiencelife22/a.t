@@ -81,7 +81,10 @@ export type DeliveryData = {
   links:            EngagementLink[]
   urlId:            string
   guestDisplayName: string | null
+  days:             ImmerseJourneyDay[]
+  entries:          TimelineItem[]
 }
+export type DeliveryBundle = DeliveryData
 
 // ── Discriminated union ───────────────────────────────────────────────────────
 
@@ -89,11 +92,6 @@ export type DeliveryData = {
 // Full render payload for the delivery surface: DeliveryData (confirmation half)
 // + programme days/entries. Assembled by fetchDeliveryBundle from both delivery
 // Edge Functions.
-export type DeliveryBundle = {
-  clientData: DeliveryData
-  days:       ImmerseJourneyDay[]
-  entries:    TimelineItem[]
-}
 
 // Tab identifiers for the delivery surface's tabbed navigation.
 export type DeliveryTabId = 'welcome' | 'confirmation' | 'programme' | 'brief' | 'contacts'

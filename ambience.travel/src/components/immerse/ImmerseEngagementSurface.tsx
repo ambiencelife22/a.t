@@ -61,7 +61,7 @@ export default function ImmerseEngagementSurface({
 
   // ── Delivery / completed: tabbed ─────────────────────────────────────────────
   if (data.stage === 'delivery') {
-    const brief = data.bundle.clientData.brief
+    const brief = data.bundle.brief
     // Registry section set, minus any show_tab_* the operator switched off.
     const tabSections = sections
       .map(s => s.id)

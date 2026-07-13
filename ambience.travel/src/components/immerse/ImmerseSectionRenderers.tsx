@@ -89,7 +89,7 @@ function proposalHero(ctx: Extract<EngagementClientData, { stage: 'proposal' }>)
 
 // ── Delivery hero props (built from brief/trip) ──────────────────────────────
 function deliveryHero(ctx: Extract<EngagementClientData, { stage: 'delivery' }>): ReactNode {
-  const { clientData } = ctx.bundle
+  const clientData = ctx.bundle
   const { journey: trip, brief } = clientData
   const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
@@ -162,12 +162,13 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
 
   confirmation: (ctx) => {
     if (ctx.stage !== 'delivery') return null
-    return <ConfirmationTab clientData={ctx.bundle.clientData} />
+    return <ConfirmationTab clientData={ctx.bundle} />
   },
 
   programme: (ctx, shell) => {
     if (ctx.stage !== 'delivery') return null
-    const { days, entries, clientData } = ctx.bundle
+    const { days, entries } = ctx.bundle
+    const clientData = ctx.bundle
     return (
       <ProgrammeTab
         days={days}
@@ -180,12 +181,12 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
 
   brief: (ctx) => {
     if (ctx.stage !== 'delivery') return null
-    return <EngagementBriefTab clientData={ctx.bundle.clientData} />
+    return <EngagementBriefTab clientData={ctx.bundle} />
   },
 
   contacts: (ctx) => {
     if (ctx.stage !== 'delivery') return null
-    return <ContactsTab clientData={ctx.bundle.clientData} />
+    return <ContactsTab clientData={ctx.bundle} />
   },
 
   // ── Stay-detail sections (eight-shape Stage A — ship dark) ─────────────────

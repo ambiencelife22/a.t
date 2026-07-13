@@ -57,8 +57,8 @@ export function ImmerseDeliveryTabShell({
 
   const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief, handleDownloadEngagementBrief } = useImmerseConfirmationPdf()
   const { pdfReady: progPdfReady, pdfDownloading: progPdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
-
-  const { clientData, days, entries } = ctx.bundle
+  const clientData = ctx.bundle
+  const { days, entries } = clientData
   const { journey: trip, brief, house } = clientData
 
   const welcomeLetter = (brief as { welcome_letter?: string } | null)?.welcome_letter ?? null
