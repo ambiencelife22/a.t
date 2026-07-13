@@ -204,7 +204,7 @@ export type ImmerseDestinationRow = {
   heroEyebrowOverride?: string    // S53B Closing+1 — per-destination_row eyebrow
 }
 
-export type ImmerseTripPricingRow = {
+export type ImmerseEngagementPricingRow = {
   id:               string
   destination:      string
   recommendedBasis: string
@@ -434,7 +434,7 @@ export type ImmerseEngagementData = {
   pricingHeading:      string
   pricingTitle:        string
   pricingBody:         string
-  pricingRows:         ImmerseTripPricingRow[]
+  pricingRows:         ImmerseEngagementPricingRow[]
   pricingTotalLabel:   string
   pricingTotalValue:   string
   pricingNotesHeading: string
@@ -603,7 +603,7 @@ export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 
 // each surface decides what it renders. (Phase 1, S53F. Phase 2 will make the admin
 // types extend these as base & margin so there's a single definition.)
 
-export type ImmerseTripDestination = {
+export type ImmerseEngagementDestination = {
   id:             string
   destination_id: string
   sort_order:     number
@@ -619,7 +619,7 @@ export type ImmerseJourneyStep = {
   detail: string
 }
 
-export type ImmerseTripHouse = {
+export type ImmerseEngagementHouse = {
   id:                 string
   display_name:       string
   salutation_rule:    string | null
@@ -875,7 +875,7 @@ export type ImmerseDossierJourney = {
   end_date:             string | null
   duration_nights:      number | null
   trip_type:            string | null
-  destinations:         ImmerseTripDestination[]
+  destinations:         ImmerseEngagementDestination[]
   guest_count_adults:   number | null
   guest_count_children: number | null
   bookings:             ImmerseEngagementBooking[]

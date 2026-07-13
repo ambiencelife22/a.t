@@ -19,7 +19,7 @@ import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import { formatDateShort, formatDateShortRange, formatDateRange } from '../../utils/utilsDates'
 import { moneyDec as fmt } from '../../utils/utilsCurrency'
 import type {
-  TripDossierData, DossierJourney, EngagementBooking, TripPartner,
+  EngagementDossierData, DossierJourney, EngagementBooking, EngagementPartner,
   HouseProfile,
 } from '../../queries/queriesAdminJourney'
 import { getEventStatusMeta } from '../../types/typesEventStatus'
@@ -542,7 +542,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
 
 function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
   booking:   EngagementBooking
-  partners:  Record<string, TripPartner>
+  partners:  Record<string, EngagementPartner>
   mobile:    boolean
   house:     HouseProfile | null
   partyLabel: string | null
@@ -898,7 +898,7 @@ function BookingCreator({ journeyId, onCreated }: {
 
 function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
   trip:     DossierJourney
-  partners: Record<string, TripPartner>
+  partners: Record<string, EngagementPartner>
   mobile:   boolean
   expanded: boolean
   onToggle: () => void
@@ -973,7 +973,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
 // ── TripDossierSection ────────────────────────────────────────────────────────
 
 export function TripDossierSection({ dossier, mobile }: {
-  dossier: TripDossierData
+  dossier: EngagementDossierData
   mobile:  boolean
 }) {
   const [expandedTrip, setExpandedTrip] = useState<string | null>(

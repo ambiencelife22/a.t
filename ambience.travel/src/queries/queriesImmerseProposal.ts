@@ -36,7 +36,7 @@ import type {
   ImmersePricingNote,
   ImmerseRouteStop,
   ImmerseDestinationRow,
-  ImmerseTripPricingRow,
+  ImmerseEngagementPricingRow,
   ImmerseWelcomeLetter,
   EngagementAudience,
   EngagementStatusSlug,
@@ -176,7 +176,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     }
   })
 
-  const tripPricingRows: ImmerseTripPricingRow[] = pricing.map(r => {
+  const tripPricingRows: ImmerseEngagementPricingRow[] = pricing.map(r => {
     const gd = r.global_destinations as Record<string, unknown> | null
     return {
       id:               r.id as string,

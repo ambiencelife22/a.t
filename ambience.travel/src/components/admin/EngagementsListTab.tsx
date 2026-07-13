@@ -15,11 +15,11 @@
  *
  * S42 additions:
  *   - "Add client" affordance + ClientPicker typeahead.
- *   - updateTripPrimaryClient write path.
+ *   - updateEngagementPrimaryClient write path.
  *
  * S43 additions (Phase 3 redesign):
  *   - Local Toast/useToast replaced by AdminToastProvider/useAdminToast.
- *   - TripGroupBlock header: client name 18pt Cormorant serif, trip code
+ *   - EngagementGroupBlock header: client name 18pt Cormorant serif, trip code
  *     DM Mono 11pt dim below.
  *   - EngagementCardInner: title 14pt semibold dominant, url_id mono faint,
  *     status pills right-aligned via StatusPill (replaces raw <select>).
@@ -56,15 +56,15 @@ import {
   setEngagementStatus,
   setItineraryStatus,
   createEngagement,
-  groupByTrip,
+  groupByEngagement,
   updateTrip,
   updatePerson,
-  updateTripPrimaryClient,
+  updateEngagementPrimaryClient,
   reassignEngagementTrip,
   fetchPeople,
   type EngagementListRow,
   type StatusLookup,
-  type TripGroup,
+  type EngagementGroup,
   type PersonOption,
 } from '../../queries/queriesAdminEngagements'
 import {
@@ -79,7 +79,7 @@ import {
   useAdminToast,
 } from './_adminPrimitives'
 import type { EngagementStatusSlug, ItineraryStatusSlug } from '../../types/typesImmerse'
-import TripCreateModal from './TripCreateModal'
+import EngagementCreateModal from './EngagementCreateModal'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 
@@ -618,7 +618,7 @@ function DraggableEngagementCard({
 
 // ── Trip group block ─────────────────────────────────────────────────────────
 
-function TripGroupBlock({
+function EngagementGroupBlock({
   group,
   expanded,
   onToggle,
@@ -633,7 +633,7 @@ function TripGroupBlock({
   isDragOverFromOtherGroup,
   draggingFromThisGroup,
 }: {
-  group:                    TripGroup
+  group:                    EngagementGroup
   expanded:                 boolean
   onToggle:                 () => void
   engagementStatuses:       StatusLookup[]
@@ -1052,11 +1052,11 @@ export default function EngagementsListTab() {
 
   useEffect(() => { load() }, [])
 
-  const groups = useMemo(() => groupByTrip(rows), [rows])
+  const groups = useMemo(() => groupByEngagement(rows), [rows])
 
-  function groupKey(g: TripGroup): string { return g.journey_id ?? '__orphan__' }
+  function groupKey(g: EngagementGroup): string { return g.journey_id ?? '__orphan__' }
 
-  function toggle(g: TripGroup) {
+  function toggle(g: EngagementGroup) {
     const key = groupKey(g)
     setCollapsedKeys(prev => {
       const next = new Set(prev)
@@ -1133,7 +1133,7 @@ export default function EngagementsListTab() {
 
   async function handleSetTripClient(journeyId: string, personId: string) {
     try {
-      await updateTripPrimaryClient(journeyId, personId)
+      await updateEngagementPrimaryClient(journeyId, personId)
       success('Client linked.')
       load()
     } catch (e: unknown) {
@@ -1175,11 +1175,11 @@ export default function EngagementsListTab() {
 
   function handleDragCancel() { setDraggingId(null); setDraggingRow(null) }
 
-  function isDragFromOtherGroup(targetGroup: TripGroup): boolean {
+  function isDragFromOtherGroup(targetGroup: EngagementGroup): boolean {
     if (!draggingRow) return false
     return draggingRow.journey_id !== targetGroup.journey_id
   }
-  function isDraggingFromGroup(group: TripGroup): boolean {
+  function isDraggingFromGroup(group: EngagementGroup): boolean {
     if (!draggingRow) return false
     return draggingRow.journey_id === group.journey_id
   }
@@ -1221,7 +1221,7 @@ export default function EngagementsListTab() {
               const key      = groupKey(group)
               const expanded = !collapsedKeys.has(key)
               return (
-                <TripGroupBlock
+                <EngagementGroupBlock
                   key={key}
                   group={group}
                   expanded={expanded}
@@ -1270,7 +1270,7 @@ export default function EngagementsListTab() {
       )}
 
       {pendingCreateForEngagement && (
-        <TripCreateModal
+        <EngagementCreateModal
           engagementId={pendingCreateForEngagement.id}
           engagementTitle={pendingCreateForEngagement.title}
           engagementUrlId={pendingCreateForEngagement.url_id}

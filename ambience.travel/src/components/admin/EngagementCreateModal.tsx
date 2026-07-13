@@ -1,4 +1,4 @@
-/* TripCreateModal.tsx
+/* EngagementCreateModal.tsx
  * Modal form for creating a new travel_journey row, opened when an engagement
  * is dragged onto the "+ Drop here to create new trip" zone.
  *
@@ -15,7 +15,7 @@ import { A } from '../../tokens/tokensAdmin'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type TripCreateModalProps = {
+export type EngagementCreateModalProps = {
   // The engagement being dragged onto the create zone — for context label
   // and for the post-create reassignment.
   engagementId:    string
@@ -103,14 +103,14 @@ function suggestTripCode(engagementTitle: string | null): string {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function TripCreateModal({
+export default function EngagementCreateModal({
   engagementId,
   engagementTitle,
   engagementUrlId,
   onClose,
   onSuccess,
   showToast,
-}: TripCreateModalProps) {
+}: EngagementCreateModalProps) {
   const [tripCode, setTripCode]       = useState(() => suggestTripCode(engagementTitle))
   const [publicTitle, setPublicTitle] = useState('')
   const [startDate, setStartDate]     = useState('')

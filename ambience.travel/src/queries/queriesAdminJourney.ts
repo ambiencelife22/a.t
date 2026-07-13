@@ -35,7 +35,7 @@ import { computeEngagementStage, type EngagementStage, type BookingInvoice } fro
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type TripPartner = {
+export type EngagementPartner = {
   id:                string
   name:              string
   partner_type:      string
@@ -53,7 +53,7 @@ export type HouseProfile = {
   service_notes:      string | null
 }
 
-export type TripDestination = {
+export type EngagementDestination = {
   id:             string
   destination_id: string
   sort_order:     number
@@ -327,7 +327,7 @@ export type DossierJourney = {
   end_date:             string | null
   duration_nights:      number | null
   trip_type:            string | null
-  destinations:         TripDestination[]
+  destinations:         EngagementDestination[]
   guest_count_adults:   number | null
   guest_count_children: number | null
   bookings:             EngagementBooking[]
@@ -335,9 +335,9 @@ export type DossierJourney = {
   url_id:               string | null
 }
 
-export type TripDossierData = {
+export type EngagementDossierData = {
   trips:    DossierJourney[]
-  partners: Record<string, TripPartner>
+  partners: Record<string, EngagementPartner>
   house:    HouseProfile | null
 }
 
@@ -369,12 +369,12 @@ async function invokeWriteJourney<T>(body: Record<string, unknown>): Promise<T> 
 
 // ── Main dossier query ────────────────────────────────────────────────────────
 
-export async function fetchJourneyDossierForHouse(houseId: string): Promise<TripDossierData> {
+export async function fetchJourneyDossierForHouse(houseId: string): Promise<EngagementDossierData> {
   const raw = await invokeReadJourney<{
     tripRows:    TripRow[]
     bookingRows: BookingRow[]
     hotelMap:    Record<string, HotelEntry>
-    partners:    TripPartner[]
+    partners:    EngagementPartner[]
     house:       HouseProfile | null
     briefs:      BriefRow[]
     rooms:       RoomRow[]
@@ -386,7 +386,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Trip
 
   if (!tripRows || tripRows.length === 0) return { trips: [], partners: {}, house: null }
 
-  const partnerMap: Record<string, TripPartner> = {}
+  const partnerMap: Record<string, EngagementPartner> = {}
   for (const p of partners) partnerMap[p.id] = p
 
   const briefMap = new Map<string, EngagementBrief>()
@@ -398,7 +398,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Trip
     roomsByBooking.get(r.booking_id)!.push(r)
   }
 
-  const destsByTrip = new Map<string, TripDestination[]>()
+  const destsByTrip = new Map<string, EngagementDestination[]>()
   for (const row of dests) {
     if (!destsByTrip.has(row.journey_id)) destsByTrip.set(row.journey_id, [])
     const gdRaw = row.global_destinations

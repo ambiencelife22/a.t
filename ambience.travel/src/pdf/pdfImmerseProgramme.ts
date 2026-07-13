@@ -27,7 +27,7 @@ import {
 import type {
   ImmerseJourneyDay as JourneyDay,
   ImmerseDossierJourney as DossierJourney,
-  ImmerseTripHouse as HouseProfile,
+  ImmerseEngagementHouse as HouseProfile,
   ImmerseEngagementBrief as EngagementBrief,
 } from '../types/typesImmerse'
 import type { TimelineItem } from '../types/typesTimeline'

@@ -49,7 +49,7 @@ import {
   type DestinationStatus, type DestinationTripType, type ContactType,
   type HouseLabel, type HouseLabelKey,
 } from '../../queries/queriesAdminHouse'
-import { fetchJourneyDossierForHouse, type TripDossierData } from '../../queries/queriesAdminJourney'
+import { fetchJourneyDossierForHouse, type EngagementDossierData } from '../../queries/queriesAdminJourney'
 import {
   capitalize, formatDOB,
   DesigBadge, StatusFilterBar, AddFormShell, EntryCard,
@@ -131,7 +131,7 @@ interface AllData {
   contacts:     HouseContact[]
   labels:       HouseLabel[]
   ppd:          PPDPeopleEntry[]
-  dossier:      TripDossierData
+  dossier:      EngagementDossierData
   requests:     TravelRequest[]
   roles:        HouseRole_Registry[]
 }

@@ -32,7 +32,7 @@ import type {
   ImmerseEngagementBrief as EngagementBrief,
   ImmerseEngagementBooking as EngagementBooking,
   ImmerseDossierJourney as DossierJourney,
-  ImmerseTripHouse as HouseProfile,
+  ImmerseEngagementHouse as HouseProfile,
   ImmerseBookingRoom as BookingRoom,
   EngagementElement as AdminEngagementElement,
 } from '../types/typesImmerse'

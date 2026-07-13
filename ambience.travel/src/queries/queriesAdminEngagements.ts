@@ -182,7 +182,7 @@ export type PersonOption = {
   nickname:   string | null
 }
 
-export type TripOption = {
+export type EngagementOption = {
   id:         string
   trip_code:  string
   start_date: string | null
@@ -203,7 +203,7 @@ export type ChildCounts = {
 // The list tab consumes this — trips at top level, engagements as children.
 // Orphans (engagements with journey_id NULL) collected into a synthetic group.
 
-export type TripGroup = {
+export type EngagementGroup = {
   // null when this is the orphan group
   journey_id:           string | null
   trip_code:         string | null
@@ -228,8 +228,8 @@ export async function fetchEngagementList(): Promise<EngagementListRow[]> {
 // Group engagements by journey_id. Orphans (NULL journey_id) into a synthetic
 // group sorted to the bottom. Within each group, engagements ordered by
 // created_at ASC so v1/v2/v3 reads chronologically top-to-bottom.
-export function groupByTrip(rows: EngagementListRow[]): TripGroup[] {
-  const groups = new Map<string, TripGroup>()
+export function groupByEngagement(rows: EngagementListRow[]): EngagementGroup[] {
+  const groups = new Map<string, EngagementGroup>()
   const orphans: EngagementListRow[] = []
 
   for (const row of rows) {
@@ -467,8 +467,8 @@ export async function fetchPeople(query: string): Promise<PersonOption[]> {
   return rows
 }
 
-export async function fetchTrips(query: string): Promise<TripOption[]> {
-  const { rows } = await invokeRead<{ rows: TripOption[] }>('trips', { query })
+export async function fetchTrips(query: string): Promise<EngagementOption[]> {
+  const { rows } = await invokeRead<{ rows: EngagementOption[] }>('trips', { query })
   return rows
 }
 
@@ -477,8 +477,8 @@ export async function fetchPersonById(id: string): Promise<PersonOption | null> 
   return row
 }
 
-export async function fetchTripById(id: string): Promise<TripOption | null> {
-  const { row } = await invokeRead<{ row: TripOption | null }>('trip_by_id', { id })
+export async function fetchTripById(id: string): Promise<EngagementOption | null> {
+  const { row } = await invokeRead<{ row: EngagementOption | null }>('trip_by_id', { id })
   return row
 }
 
@@ -581,7 +581,7 @@ export async function reassignEngagementTrip(
 // Appended S42. Allows setting primary_client_id on travel_journey from the
 // engagement list group header when no client is currently linked.
 
-export async function updateTripPrimaryClient(
+export async function updateEngagementPrimaryClient(
   journeyId:   string,
   personId: string | null,
 ): Promise<void> {

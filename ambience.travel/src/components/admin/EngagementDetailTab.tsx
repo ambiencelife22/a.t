@@ -55,7 +55,7 @@ import {
   type EngagementDetailRow,
   type StatusLookup,
   type PersonOption,
-  type TripOption,
+  type EngagementOption,
   type ChildCounts,
   type WelcomeLetterCanonical,
 } from '../../queries/queriesAdminEngagements'
@@ -321,9 +321,9 @@ function TripTypeahead({
   onChange: (id: string | null) => void
 }) {
   const [query, setQuery]       = useState('')
-  const [options, setOptions]   = useState<TripOption[]>([])
+  const [options, setOptions]   = useState<EngagementOption[]>([])
   const [open, setOpen]         = useState(false)
-  const [selected, setSelected] = useState<TripOption | null>(null)
+  const [selected, setSelected] = useState<EngagementOption | null>(null)
 
   useEffect(() => {
     if (!value) { setSelected(null); return }
