@@ -276,7 +276,7 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
   for (const b of bookings) {
     if (b.brief_show === false) continue
     const hasRooms = (b._rooms?.length ?? 0) > 0
-    if (b.booking_type !== 'Hotel' && !hasRooms) continue
+    if (!hasRooms) continue
 
     const hotelName     = b._hotel_name ?? b.name ?? 'Hotel'
     const img           = b.brief_image_src ?? b._hotel_image_src ?? null
