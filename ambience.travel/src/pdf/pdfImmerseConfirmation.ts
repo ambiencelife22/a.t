@@ -37,7 +37,7 @@ import type {
   ImmerseTripAuxBooking as TripAuxBooking,
 } from '../types/typesImmerse'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
-import { isGroundTransportBooking, groupAuxBySection, isMeetGreetBooking, isDiningBooking } from '../types/typesAuxBookings'
+import { isGroundTransportElement, groupElementsBySection, isMeetGreetElement, isDiningElement } from '../types/typesElements'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -378,7 +378,7 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const bookedByText = bookedByLabel(aux.booked_by)
   const ownArr       = isOwnArrangements(aux.booked_by)
   const paxLines     = passengerLines(aux)
-  const isGroundCar  = isGroundTransportBooking(aux.booking_type)
+  const isGroundCar  = isGroundTransportElement(aux.booking_type)
   const detailLines  = isGroundCar ? driverDetailLines(aux) : paxLines
 
   // Vertical rhythm: header block (icon row · name/route/meta) is a fixed 23mm,
@@ -567,7 +567,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   //    dining, etc), mirroring the web confirmation. ────────────────────────────
 
   const visibleAux = d.auxBookings.filter(a => a.brief_show !== false)
-  const auxSections = groupAuxBySection(visibleAux)
+  const auxSections = groupElementsBySection(visibleAux)
 
   for (const section of auxSections) {
     y = addCreamPage(doc)
@@ -577,13 +577,13 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.text(section.label.toUpperCase(), P.margin, y, { charSpace: 0.5 }); y += 7
 
     for (const aux of section.items) {
-      if (isMeetGreetBooking(aux.booking_type)) {
+      if (isMeetGreetElement(aux.booking_type)) {
         const h = Math.max(24, HOTEL_PADV - 1 + 6 + 5 + greeterLines(aux).length * 4.8 + HOTEL_PADV - 1)
         if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
         y += drawGreeterCard(doc, aux, y) + 4
         continue
       }
-      if (isDiningBooking(aux.booking_type)) {
+      if (isDiningElement(aux.booking_type)) {
         const v = aux.venue
         const rowN = [v?.address, v?.phone, v?.dress_code, v?.children_policy, v?.table_hold_note].filter(Boolean).length
         const gl = (aux.guest_name || aux.guest_count) ? 1 : 0
@@ -593,7 +593,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         y += drawDiningCard(doc, aux, y) + 4
         continue
       }
-      const detailN = isGroundTransportBooking(aux.booking_type) ? driverDetailLines(aux).length : (aux.passengers ?? []).length
+      const detailN = isGroundTransportElement(aux.booking_type) ? driverDetailLines(aux).length : (aux.passengers ?? []).length
       const h = Math.max(34, 30 + Math.max(detailN, 1) * 5 + 4)
       if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
       y += drawFlightCard(doc, aux, y) + 4

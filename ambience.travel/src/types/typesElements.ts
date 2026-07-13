@@ -1,7 +1,7 @@
-// typesAuxBookings.ts — Canonical aux booking + day-entry display registry.
+// typesElements.ts — Canonical aux booking + day-entry display registry.
 //
 // What it owns:
-//   - AUX_BOOKING_TYPE_META + getAuxTypeMeta (icon + display meta, slug-keyed)
+//   - ELEMENT_TYPE_META + getElementTypeMeta (icon + display meta, slug-keyed)
 //   - FLIGHT_BOOKING_TYPES + isFlightType
 //   - CABIN_CLASSES + SEAT_TYPES (includes 'Mixed')
 //   - AIRCRAFT_TYPES — curated registry (commercial + private aviation).
@@ -9,7 +9,7 @@
 //     to this file. Data integrity compounds; curated lists are how
 //     enterprise platforms keep reference data clean over years.
 //   - CATEGORY_ACCENT + getCategoryAccent
-//   - Booking type predicates (isFlightBooking, isHotelBooking, etc.)
+//   - Booking type predicates (isFlightElement, isHotelElement, etc.)
 //
 // What it does not own:
 //   - Supplier identity / commission terms (see typesSuppliers.ts)
@@ -28,9 +28,9 @@
 //
 // S53H: realigned to the 18-type slug registry (travel_engagement_types).
 //   booking_type is a SLUG everywhere (S53G). META re-keyed Title-Case -> slug;
-//   getAuxTypeMeta casing bug fixed (was lowercasing a Title-keyed map -> every
-//   lookup fell through). Predicates rewritten to compare SLUGS (isHotelBooking
-//   = 'stay', isFlightBooking = flight/private_jet, ground = transfer/
+//   getElementTypeMeta casing bug fixed (was lowercasing a Title-keyed map -> every
+//   lookup fell through). Predicates rewritten to compare SLUGS (isHotelElement
+//   = 'stay', isFlightElement = flight/private_jet, ground = transfer/
 //   airport_transfer/car_service). Curated aircraft/cabin/seat lists untouched.
 // Prior: S50 — AIRCRAFT_TYPES curated registry added (~75 entries). SEAT_TYPES
 //   gains 'Mixed'. Aircraft is dropdown-only.
@@ -43,13 +43,13 @@
 // arrangement/acquisition are non-movement types but carry icons for any surface
 // that renders them.
 
-export interface AuxBookingTypeMeta {
+export interface ElementTypeMeta {
   label:      string
   icon:       string
   sort_order: number
 }
 
-const AUX_BOOKING_TYPE_META: Record<string, AuxBookingTypeMeta> = {
+const ELEMENT_TYPE_META: Record<string, ElementTypeMeta> = {
   acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sort_order: 1 },
   airport_transfer: { label: 'AIRPORT TRANSFERS', icon: '\uD83D\uDE97', sort_order: 2 },
   arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sort_order: 3 },
@@ -79,10 +79,10 @@ function toSlug(value: string): string {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_')
 }
 
-export function getAuxTypeMeta(bookingType: string | null | undefined): AuxBookingTypeMeta {
-  if (!bookingType) return AUX_BOOKING_TYPE_META.other
+export function getElementTypeMeta(bookingType: string | null | undefined): ElementTypeMeta {
+  if (!bookingType) return ELEMENT_TYPE_META.other
   const slug = toSlug(bookingType)
-  const known = AUX_BOOKING_TYPE_META[slug]
+  const known = ELEMENT_TYPE_META[slug]
   if (known) return known
   // Unknown type: derive a display label, no icon, sort last.
   const label = bookingType.toUpperCase() + (bookingType.endsWith('s') ? '' : 'S')
@@ -97,21 +97,21 @@ export function getAuxTypeMeta(bookingType: string | null | undefined): AuxBooki
 // never the display label. Generic over the row type so each surface can pass its
 // own aux shape as long as it carries booking_type, brief_show, and sort_order.
 
-export interface AuxSection<T> {
+export interface ElementSection<T> {
   type:  string   // registry slug
   label: string
   icon:  string
   items: T[]
 }
 
-export function groupAuxBySection<T extends { booking_type: string | null; brief_show?: boolean; sort_order: number }>(
+export function groupElementsBySection<T extends { booking_type: string | null; brief_show?: boolean; sort_order: number }>(
   auxBookings: T[],
-): AuxSection<T>[] {
+): ElementSection<T>[] {
   const sorted = auxBookings
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
-      const ma = getAuxTypeMeta(a.booking_type)
-      const mb = getAuxTypeMeta(b.booking_type)
+      const ma = getElementTypeMeta(a.booking_type)
+      const mb = getElementTypeMeta(b.booking_type)
       if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
       const aKey = `${(a as any).start_date ?? ''}${(a as any).start_time ?? ''}`
       const bKey = `${(b as any).start_date ?? ''}${(b as any).start_time ?? ''}`
@@ -119,10 +119,10 @@ export function groupAuxBySection<T extends { booking_type: string | null; brief
       return a.sort_order - b.sort_order
     })
 
-  const sections: AuxSection<T>[] = []
+  const sections: ElementSection<T>[] = []
   for (const aux of sorted) {
     const slug = aux.booking_type ?? 'other'
-    const meta = getAuxTypeMeta(slug)
+    const meta = getElementTypeMeta(slug)
     const last = sections[sections.length - 1]
     if (last && last.type === slug) {
       last.items.push(aux)
@@ -339,30 +339,30 @@ export function getCategoryAccent(category: string | null | undefined): string {
 // Slug-based (S53G): booking_type is a registry slug. Accepts slug or label via
 // toSlug normalization, so a stray Title Case value still resolves correctly.
 
-export function isFlightBooking(bookingType: string | null | undefined): boolean {
+export function isFlightElement(bookingType: string | null | undefined): boolean {
   const t = toSlug(bookingType ?? '')
   return t === 'flight' || t === 'private_jet'
 }
 
-export function isTransferBooking(bookingType: string | null | undefined): boolean {
+export function isTransferElement(bookingType: string | null | undefined): boolean {
   const t = toSlug(bookingType ?? '')
   return t === 'transfer' || t === 'airport_transfer' || t === 'car_service'
 }
 
-export function isHotelBooking(bookingType: string | null | undefined): boolean {
+export function isHotelElement(bookingType: string | null | undefined): boolean {
   const t = toSlug(bookingType ?? '')
   return t === 'stay' || t === 'hotel' || t === 'accommodation'
 }
 
-export function isGroundTransportBooking(bookingType: string | null | undefined): boolean {
+export function isGroundTransportElement(bookingType: string | null | undefined): boolean {
   const t = toSlug(bookingType ?? '')
   return t === 'transfer' || t === 'airport_transfer' || t === 'car_service'
 }
 
-export function isDiningBooking(bookingType: string | null | undefined): boolean {
+export function isDiningElement(bookingType: string | null | undefined): boolean {
   return toSlug(bookingType ?? '') === 'dining'
 }
 
-export function isMeetGreetBooking(bookingType: string | null | undefined): boolean {
+export function isMeetGreetElement(bookingType: string | null | undefined): boolean {
   return toSlug(bookingType ?? '') === 'meet_greet'
 }

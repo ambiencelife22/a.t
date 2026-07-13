@@ -53,7 +53,7 @@ import type {
   TripBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminJourney'
-import { groupAuxBySection, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesAuxBookings'
+import { groupElementsBySection, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesElements'
 import { AirlinePicker } from './AirlinePicker'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
@@ -379,7 +379,7 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, e
   onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
   isMobile:          boolean
 }) {
-  const sections = groupAuxBySection(auxBookings)
+  const sections = groupElementsBySection(auxBookings)
 
   function getDraft(aux: TripAuxBooking): AuxDraft {
     return auxDrafts[aux.id] ?? {
@@ -565,7 +565,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  const auxSections = groupAuxBySection(auxBookings)
+  const auxSections = groupElementsBySection(auxBookings)
 
   return (
     <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100%', padding: '0 0 40px' }}>

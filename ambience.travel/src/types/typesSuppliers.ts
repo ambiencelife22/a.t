@@ -5,7 +5,7 @@
 //     travel_suppliers.supplier_type and supplier-related UI dropdowns.
 //
 // What it does not own:
-//   - Aux booking types, flight enums, category accents (see typesAuxBookings.ts)
+//   - Aux booking types, flight enums, category accents (see typesElements.ts)
 //   - Event lifecycle status (see typesEventStatus.ts)
 //   - DB queries, UI rendering
 //
@@ -20,7 +20,7 @@
 //   retired the text+CHECK taxonomy. supplier_type is now enum-backed.
 // Prior: S50 — slimmed to single responsibility. Aux booking,
 //   flight, category accent, and event status concerns extracted to
-//   typesAuxBookings.ts and typesEventStatus.ts respectively.
+//   typesElements.ts and typesEventStatus.ts respectively.
 // Prior: S48 — Economy Extra + SEAT_TYPES added. Renamed from
 //   supplierTypes.ts to typesSuppliers.ts per types* convention.
 // Prior: S48 — initial ship.

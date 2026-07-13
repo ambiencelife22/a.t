@@ -9,7 +9,7 @@
 //
 // What it does not own:
 //   - Supplier identity (see typesSuppliers.ts)
-//   - Aux booking type taxonomy or display metadata (see typesAuxBookings.ts)
+//   - Aux booking type taxonomy or display metadata (see typesElements.ts)
 //   - DB queries, UI rendering
 //
 // Source of truth for:

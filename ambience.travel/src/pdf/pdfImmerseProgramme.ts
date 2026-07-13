@@ -13,7 +13,7 @@
 //   - entryPadV: 3.5 → 5 (more air above title)
 //   - booked_by italic: more breathing room before detail lines
 //   - Day header: DAY N eyebrow larger (8pt), date larger (15pt), rule thicker
-//   - isMeetGreetBooking / isDiningBooking: now receive it.category (slug)
+//   - isMeetGreetElement / isDiningElement: now receive it.category (slug)
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
@@ -32,7 +32,7 @@ import type {
 } from '../types/typesImmerse'
 import type { TimelineItem } from '../types/typesTimeline'
 import { bookedByLabel, isOwnArrangements, categoryAccentRgb } from '../utils/utilsBooking'
-import { isMeetGreetBooking, isDiningBooking } from '../types/typesAuxBookings'
+import { isMeetGreetElement, isDiningElement } from '../types/typesElements'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -132,12 +132,12 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
 
     const vehLines = driverDetailLines(it)
 
-    // category is now a slug — isMeetGreetBooking + isDiningBooking accept slugs
-    const greetLines = isMeetGreetBooking(it.category)
+    // category is now a slug — isMeetGreetElement + isDiningElement accept slugs
+    const greetLines = isMeetGreetElement(it.category)
       ? greeterLines({ contact_name: it.contact_name, contact_phone: it.contact_phone, notes: null })
       : []
 
-    const isDining = isDiningBooking(it.category)
+    const isDining = isDiningElement(it.category)
     const diningPill = isDining
       ? diningPdfStatus({
           show_cancellation:            it.show_cancellation,

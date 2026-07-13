@@ -47,7 +47,7 @@ import type {
   ImmerseTripHouse as HouseProfile,
   ImmerseTripAuxBooking as TripAuxBooking,
 } from '../types/typesImmerse'
-import { isFlightBooking, isTransferBooking, isHotelBooking, isMeetGreetBooking, isDiningBooking } from '../types/typesAuxBookings'
+import { isFlightElement, isTransferElement, isHotelElement, isMeetGreetElement, isDiningElement } from '../types/typesElements'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -234,7 +234,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Accommodation ─────────────────────────────────────────────────────────
 
-  const hotels = trip.bookings.filter((b: TripBooking) => isHotelBooking(b.booking_type) && b.brief_show !== false)
+  const hotels = trip.bookings.filter((b: TripBooking) => isHotelElement(b.booking_type) && b.brief_show !== false)
   if (hotels.length > 0) {
     y = drawSectionHeader(doc, 'Accommodation', y)
     for (const h of hotels) {
@@ -276,7 +276,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Flights ───────────────────────────────────────────────────────────────
 
-  const flights = d.auxBookings.filter(a => isFlightBooking(a.booking_type))
+  const flights = d.auxBookings.filter(a => isFlightElement(a.booking_type))
   if (flights.length > 0) {
     y = drawSectionHeader(doc, 'Flights', y)
     for (const f of flights) {
@@ -307,7 +307,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Transfers ─────────────────────────────────────────────────────────────
 
-  const transfers = d.auxBookings.filter(a => isTransferBooking(a.booking_type))
+  const transfers = d.auxBookings.filter(a => isTransferElement(a.booking_type))
   if (transfers.length > 0) {
     y = drawSectionHeader(doc, 'Transfers', y)
     for (const t of transfers) {
@@ -336,7 +336,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Airport Meet & Greet ────────────────────────────────────────────────────
 
-  const greeters = d.auxBookings.filter(a => isMeetGreetBooking(a.booking_type) && a.brief_show !== false)
+  const greeters = d.auxBookings.filter(a => isMeetGreetElement(a.booking_type) && a.brief_show !== false)
   if (greeters.length > 0) {
     y = drawSectionHeader(doc, 'Airport Meet & Greet', y)
     for (const g of greeters) {
@@ -358,7 +358,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Dining ──────────────────────────────────────────────────────────────────
 
-  const dining = d.auxBookings.filter(a => isDiningBooking(a.booking_type) && a.brief_show !== false)
+  const dining = d.auxBookings.filter(a => isDiningElement(a.booking_type) && a.brief_show !== false)
   if (dining.length > 0) {
     y = drawSectionHeader(doc, 'Dining', y)
     for (const dd of dining) {
