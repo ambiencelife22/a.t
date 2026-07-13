@@ -628,7 +628,7 @@ export type ImmerseTripHouse = {
   service_notes:      string | null
 }
 
-export type ImmerseTripBrief = {
+export type ImmerseEngagementBrief = {
   id:                    string
   journey_id:               string
   house_id:              string | null
@@ -879,6 +879,6 @@ export type ImmerseDossierJourney = {
   guest_count_adults:   number | null
   guest_count_children: number | null
   bookings:             ImmerseEngagementBooking[]
-  brief:                ImmerseTripBrief | null
+  brief:                ImmerseEngagementBrief | null
   url_id:               string | null
 }

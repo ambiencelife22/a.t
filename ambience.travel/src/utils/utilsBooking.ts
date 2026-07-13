@@ -7,7 +7,7 @@
 //   - 'self'                    → 'Own Arrangements'
 //   - anything otherwise             → 'Booked by {value}'//
 // Used by:
-//   - ImmerseConfirmedSections.tsx (TripBriefTab web surface)
+//   - ImmerseConfirmedSections.tsx (EngagementBriefTab web surface)
 //   - ImmerseConfirmedSections.tsx (confirmation + brief tabs)
 //   - pdfImmerseBrief.ts (Trip Brief PDF)
 //   - pdfImmerseProgramme.ts (Daily Programme PDF)

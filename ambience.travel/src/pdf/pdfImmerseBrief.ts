@@ -41,7 +41,7 @@ import {
   type ExportBranding, type PdfEngagementLink,
 } from './pdfShared'
 import type {
-  ImmerseTripBrief as TripBrief,
+  ImmerseEngagementBrief as EngagementBrief,
   ImmerseEngagementBooking as EngagementBooking,
   ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
@@ -52,9 +52,9 @@ import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
-export interface TripBriefPdfData {
+export interface EngagementBriefPdfData {
   trip:             DossierJourney
-  brief:            TripBrief | null
+  brief:            EngagementBrief | null
   house:            HouseProfile | null
   destinationName:  string
   heroImageData:    string | null
@@ -192,7 +192,7 @@ function drawDataRow(doc: any, o: DataRowOpts, y: number): number {
 
 // ── Main render ───────────────────────────────────────────────────────────────
 
-async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo: Img | null, branding: ExportBranding = 'ambience') {
+async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null, logo: Img | null, branding: ExportBranding = 'ambience') {
   const { trip, brief, house } = d
 
   const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
@@ -434,7 +434,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
 // ── Filename ──────────────────────────────────────────────────────────────────
 
-function buildFilename(d: TripBriefPdfData): string {
+function buildFilename(d: EngagementBriefPdfData): string {
   const safe        = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
   const clientName  = d.guestDisplayName ?? d.brief?.prepared_for ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
@@ -444,7 +444,7 @@ function buildFilename(d: TripBriefPdfData): string {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export async function exportTripBriefPdf(data: TripBriefPdfData, branding: ExportBranding = 'ambience'): Promise<void> {
+export async function exportEngagementBriefPdf(data: EngagementBriefPdfData, branding: ExportBranding = 'ambience'): Promise<void> {
   const jsPDF    = assertJsPdf()
   const fontData = await loadGuideFonts()
   const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })

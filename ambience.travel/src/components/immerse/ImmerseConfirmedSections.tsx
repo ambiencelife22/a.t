@@ -7,7 +7,7 @@
 // Sections:
 //   ConfirmationTab  — accommodation cards + aux bookings
 //   ProgrammeTab     — day-by-day with collapsible sidebar
-//   TripBriefTab     — structured summary (flights, hotels, transfers, contacts)
+//   EngagementBriefTab     — structured summary (flights, hotels, transfers, contacts)
 //   ContactsTab      — advisor + selected house people
 //
 // Shared helpers (used only by these sections):
@@ -1138,7 +1138,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 
 // ── Trip Brief tab ────────────────────────────────────────────────────────────
 
-export function TripBriefTab({ clientData }: {
+export function EngagementBriefTab({ clientData }: {
   clientData: DeliveryData
 }) {
   const { journey: trip, house, elements } = clientData

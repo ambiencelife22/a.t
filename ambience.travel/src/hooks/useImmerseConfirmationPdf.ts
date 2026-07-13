@@ -4,15 +4,15 @@
 // Exports two handlers from one hook so both PDF types share a single
 // jsPDF load lifecycle:
 //   handleDownloadBrief(data)        — Trip Confirmation PDF
-//   handleDownloadTripBrief(data)    — Trip Brief PDF (structured summary)
+//   handleDownloadEngagementBrief(data)    — Trip Brief PDF (structured summary)
 //
-// Last updated: S49 — added handleDownloadTripBrief for Trip Brief tab.
+// Last updated: S49 — added handleDownloadEngagementBrief for Trip Brief tab.
 //   Both handlers share pdfReady / pdfDownloading state from one jsPDF load.
 // Prior: S45 — initial ship.
 
 import { useEffect, useRef, useState } from 'react'
 import { exportConfirmationBriefPdf, type ConfirmationBriefData } from '../pdf/pdfImmerseConfirmation'
-import { exportTripBriefPdf, type TripBriefPdfData } from '../pdf/pdfImmerseBrief'
+import { exportEngagementBriefPdf, type EngagementBriefPdfData } from '../pdf/pdfImmerseBrief'
 import { useToast } from '../providers/ToastContext'
 
 const JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
@@ -64,11 +64,11 @@ export function useImmerseConfirmationPdf() {
   }
 
   // Trip Brief PDF — structured summary (overview table + sections)
-  async function handleDownloadTripBrief(data: TripBriefPdfData, branding: import('../pdf/pdfShared').ExportBranding = 'ambience') {
+  async function handleDownloadEngagementBrief(data: EngagementBriefPdfData, branding: import('../pdf/pdfShared').ExportBranding = 'ambience') {
     if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
     setPdfDownloading(true)
     try {
-      await exportTripBriefPdf(data, branding)
+      await exportEngagementBriefPdf(data, branding)
     } catch (err) {
       console.error('Trip Brief PDF export failed:', err)
       toastRef.current.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -77,5 +77,5 @@ export function useImmerseConfirmationPdf() {
     }
   }
 
-  return { pdfReady, pdfDownloading, handleDownloadBrief, handleDownloadTripBrief }
+  return { pdfReady, pdfDownloading, handleDownloadBrief, handleDownloadEngagementBrief }
 }

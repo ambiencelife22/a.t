@@ -5,7 +5,7 @@
  * Last updated: S53O — brief accommodation reduced to index shape (hotel,
  *   dates, nights, party composition, room categories + per-room conf,
  *   booked-by). Guest names, cancellation, invoices, inclusions removed —
- *   those live on Confirmation + Programme. Matches TripBriefTab + PDF.
+ *   those live on Confirmation + Programme. Matches EngagementBriefTab + PDF.
  * Prior: S54 — Tabs section added. Four show_tab_* booleans
  *   (confirmation, programme, brief, contacts) now wired into the admin UI
  *   with inline-save toggles, mirroring the public_view + advisor visibility
@@ -39,7 +39,7 @@ import { formatDate, formatDateRange } from '../../utils/utilsDates'
 import {
   fetchJourneyDossierForHouse,
   fetchAdminEngagementElements,
-  upsertTripBrief,
+  upsertEngagementBrief,
   updateBookingRoom,
   updateAdminEngagementElement,
   fetchEngagementPublicView,
@@ -48,8 +48,8 @@ import {
 import type {
   DossierJourney,
   HouseProfile,
-  TripBrief,
-  TripBriefPatch,
+  EngagementBrief,
+  EngagementBriefPatch,
   EngagementBooking,
   AdminEngagementElement,
 } from '../../queries/queriesAdminJourney'
@@ -613,7 +613,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                     // Category + count + per-room conf. Names omitted — the brief is
                     // an index; guest names live on the Confirmation surface. Draft
                     // room_name honoured (|| falls through empty override). Same
-                    // grouping shape as TripBriefTab + pdfImmerseBrief (no drift).
+                    // grouping shape as EngagementBriefTab + pdfImmerseBrief (no drift).
                     const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, room) => {
                       const d    = roomDrafts[room.id]
                       const name = (d?.room_name || room.room_name) ?? 'Room'
@@ -836,7 +836,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
   ) {
     if (!trip || !house) return
     try {
-      await upsertTripBrief(trip.id, house.id, { [field]: value } as any)
+      await upsertEngagementBrief(trip.id, house.id, { [field]: value } as any)
     } catch { /* silent — UI already updated optimistically */ }
   }
 
@@ -844,7 +844,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
     if (!trip || !house) return
     setSaving(true); setSaveErr(null); setSaved(false)
     try {
-      const patch: TripBriefPatch = {
+      const patch: EngagementBriefPatch = {
         brief_title:           briefTitle    || null,
         brief_subtitle:        briefSubtitle || null,
         prepared_for:          preparedFor   || null,
@@ -860,7 +860,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
         show_tab_brief:        showTabBrief,
         show_tab_contacts:     showTabContacts,
       }
-      const savedBrief = await upsertTripBrief(trip.id, house.id, patch)
+      const savedBrief = await upsertEngagementBrief(trip.id, house.id, patch)
       setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -1273,7 +1273,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
             setPickerOpen(false)
             if (trip && house) {
               try {
-                const savedBrief = await upsertTripBrief(trip.id, house.id, {
+                const savedBrief = await upsertEngagementBrief(trip.id, house.id, {
                   brief_title:    briefTitle    || null,
                   brief_subtitle: briefSubtitle || null,
                   prepared_for:   preparedFor   || null,

@@ -55,7 +55,7 @@ export function ImmerseDeliveryTabShell({
   }, [])
   const shell: ShellHandshake = { onActiveDayChange }
 
-  const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief, handleDownloadTripBrief } = useImmerseConfirmationPdf()
+  const { pdfReady: briefPdfReady, pdfDownloading: briefPdfDownloading, handleDownloadBrief, handleDownloadEngagementBrief } = useImmerseConfirmationPdf()
   const { pdfReady: progPdfReady, pdfDownloading: progPdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
   const { clientData, days, entries } = ctx.bundle
@@ -108,7 +108,7 @@ export function ImmerseDeliveryTabShell({
     }
     const branding = (brief?.logo_variant ?? 'ambience') as ExportBranding
     if (activeTab === 'brief') {
-      handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, branding)
+      handleDownloadEngagementBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, branding)
       return
     }
     handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName }, branding)

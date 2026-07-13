@@ -21,7 +21,7 @@ import ImmerseHero from './ImmerseHero'
 import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
 import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
-import { ConfirmationTab, ProgrammeTab, TripBriefTab, ContactsTab } from './ImmerseConfirmedSections'
+import { ConfirmationTab, ProgrammeTab, EngagementBriefTab, ContactsTab } from './ImmerseConfirmedSections'
 import { ImmerseDestIntro, ImmerseContentGrid, ImmerseDestPricing } from './ImmerseDestComponents'
 import { ImmerseHotelOptions } from './ImmerseHotelOptions'
 import { formatDateRange } from '../../utils/utilsDates'
@@ -180,7 +180,7 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
 
   brief: (ctx) => {
     if (ctx.stage !== 'delivery') return null
-    return <TripBriefTab clientData={ctx.bundle.clientData} />
+    return <EngagementBriefTab clientData={ctx.bundle.clientData} />
   },
 
   contacts: (ctx) => {

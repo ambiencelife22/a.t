@@ -28,7 +28,7 @@ import type {
   ImmerseJourneyDay as JourneyDay,
   ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
-  ImmerseTripBrief as TripBrief,
+  ImmerseEngagementBrief as EngagementBrief,
 } from '../types/typesImmerse'
 import type { TimelineItem } from '../types/typesTimeline'
 import { bookedByLabel, isOwnArrangements, categoryAccentRgb } from '../utils/utilsBooking'
@@ -38,7 +38,7 @@ import { isMeetGreetElement, isDiningElement } from '../types/typesElements'
 
 export interface DailyProgrammeData {
   journey:          DossierJourney
-  brief:            TripBrief | null
+  brief:            EngagementBrief | null
   house:            HouseProfile | null
   days:             JourneyDay[]
   entriesByDate:    Record<string, TimelineItem[]>

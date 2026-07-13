@@ -29,7 +29,7 @@ import {
   type ExportBranding,
 } from './pdfShared'
 import type {
-  ImmerseTripBrief as TripBrief,
+  ImmerseEngagementBrief as EngagementBrief,
   ImmerseEngagementBooking as EngagementBooking,
   ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
@@ -51,7 +51,7 @@ export interface ConfirmationContact {
 
 export interface ConfirmationBriefData {
   trip:             DossierJourney
-  brief:            TripBrief | null
+  brief:            EngagementBrief | null
   house:            HouseProfile | null
   destinationName:  string
   heroImageData:    string | null

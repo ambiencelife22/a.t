@@ -17,10 +17,10 @@
 //   travel-write-engagement/set_visibility (duplicate write eliminated).
 //   File pending rename to queriesAdminJourney (Step 2, engagement/journey split).
 // 
-// Prior: S50 — TripBrief gains show_advisor_email. Mirrors migration
+// Prior: S50 — EngagementBrief gains show_advisor_email. Mirrors migration
 //   s50_add_show_advisor_email. Gates advisor_email visibility on public
 //   Contacts tab, alongside the existing show_advisor_phone toggle.
-// Prior: S48 — TripBrief gains 5 new columns: programme_show_images,
+// Prior: S48 — EngagementBrief gains 5 new columns: programme_show_images,
 //   welcome_letter, show_tab_confirmation, show_tab_programme, show_tab_brief,
 //   show_tab_contacts. Mirrors migration s48_trip_page_controls.
 // Prior: S48 — url_id added to DossierJourney. Engagement join in fetchJourneyDossierForHouse.
@@ -69,7 +69,7 @@ export type JourneyStep = {
   detail: string
 }
 
-export type TripBrief = {
+export type EngagementBrief = {
   id:                    string
   journey_id:               string
   house_id:              string | null
@@ -220,7 +220,7 @@ export type ElementDriverDetail = {
 }
 export type ElementDriverDetailPatch = Partial<Omit<ElementDriverDetail, 'id' | 'aux_booking_id'>>
 
-export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type EngagementBriefPatch = Partial<Omit<EngagementBrief, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 
 export type BookingRoom = {
   id:                  string
@@ -331,7 +331,7 @@ export type DossierJourney = {
   guest_count_adults:   number | null
   guest_count_children: number | null
   bookings:             EngagementBooking[]
-  brief:                TripBrief | null
+  brief:                EngagementBrief | null
   url_id:               string | null
 }
 
@@ -346,7 +346,7 @@ export type TripDossierData = {
 type TripRow     = { id: string; trip_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
 type BookingRow  = Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
 type HotelEntry  = { name: string; hero_image_src: string | null }
-type BriefRow    = TripBrief
+type BriefRow    = EngagementBrief
 type RoomRow     = BookingRoom
 type TripDestRow = { id: string; journey_id: string; destination_id: string; sort_order: number; global_destinations: { slug: string; name: string; storage_path: string | null; hero_image_src: string | null } | { slug: string; name: string; storage_path: string | null; hero_image_src: string | null }[] }
 type EngRow      = { journey_id: string; url_id: string }
@@ -389,7 +389,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Trip
   const partnerMap: Record<string, TripPartner> = {}
   for (const p of partners) partnerMap[p.id] = p
 
-  const briefMap = new Map<string, TripBrief>()
+  const briefMap = new Map<string, EngagementBrief>()
   for (const br of briefs) briefMap.set(br.journey_id, br)
 
   const roomsByBooking = new Map<string, BookingRoom[]>()
@@ -456,8 +456,8 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Trip
 
 // ── Brief read ────────────────────────────────────────────────────────────────
 
-export async function fetchJourneyBrief(journeyId: string): Promise<TripBrief | null> {
-  const { brief } = await invokeReadJourney<{ brief: TripBrief | null }>({
+export async function fetchJourneyBrief(journeyId: string): Promise<EngagementBrief | null> {
+  const { brief } = await invokeReadJourney<{ brief: EngagementBrief | null }>({
     mode: 'brief', journey_id: journeyId,
   })
   return brief
@@ -510,8 +510,8 @@ export async function fetchEngagementPublicView(journeyId: string): Promise<bool
 
 // ── Brief write ───────────────────────────────────────────────────────────────
 
-export async function upsertTripBrief(journeyId: string, houseId: string, patch: TripBriefPatch): Promise<TripBrief> {
-  const { brief } = await invokeWriteJourney<{ brief: TripBrief }>({
+export async function upsertEngagementBrief(journeyId: string, houseId: string, patch: EngagementBriefPatch): Promise<EngagementBrief> {
+  const { brief } = await invokeWriteJourney<{ brief: EngagementBrief }>({
     mode: 'upsert_brief', journey_id: journeyId, house_id: houseId, patch,
   })
   return brief

@@ -27,7 +27,7 @@
 
 import { serif, sans, drawRule, loadImg, loadSvg, makeCoverCropAsync } from './pdfUtils'
 import type { RGB, Img } from './pdfUtils'
-import type { TripBrief } from '../queries/queriesAdminJourney'
+import type { EngagementBrief } from '../queries/queriesAdminJourney'
 import { roomGuestName, passengerName } from '../utils/utilsRoomDisplay'
 import { beddingLabel } from '../utils/utilsBooking'
 
@@ -257,7 +257,7 @@ export async function drawPdfHero(doc: any, params: HeroParams): Promise<number>
 // Renders on every page: rule + tagline + page n of N.
 // brief?.footer_tagline overrides the default when set.
 
-export function stampPageChrome(doc: any, brief: TripBrief | null): void {
+export function stampPageChrome(doc: any, brief: EngagementBrief | null): void {
   const count   = doc.getNumberOfPages()
   const FOOTER_TAGLINE = 'TAILORED TRAVEL DESIGN  \u00b7  CONCIERGE SUPPORT  \u00b7  ambience.travel'
   const footer  = brief?.footer_tagline ?? FOOTER_TAGLINE
