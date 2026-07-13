@@ -34,7 +34,7 @@ import type {
   ImmerseTripBrief,
   ImmerseTripHouse,
   EngagementElement,
-  ImmerseTripDay,
+  ImmerseJourneyDay,
 } from './typesImmerse'
 import type { TimelineItem } from './typesTimeline'
 
@@ -91,7 +91,7 @@ export type DeliveryData = {
 // Edge Functions.
 export type DeliveryBundle = {
   clientData: DeliveryData
-  days:       ImmerseTripDay[]
+  days:       ImmerseJourneyDay[]
   entries:    TimelineItem[]
 }
 

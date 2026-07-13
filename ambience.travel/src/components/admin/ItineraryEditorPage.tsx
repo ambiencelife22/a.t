@@ -29,20 +29,20 @@ import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { fmtTime, formatDateWeekday } from '../../utils/utilsDates'
 import {
   fetchJourneyDossierForHouse,
-  fetchTripDays,
-  fetchTripDayEntries,
-  upsertTripDay,
-  createTripDayEntry,
-  updateTripDayEntry,
-  deleteTripDayEntry,
+  fetchJourneyDays,
+  fetchJourneyDayEntries,
+  upsertJourneyDay,
+  createJourneyDayEntry,
+  updateJourneyDayEntry,
+  deleteJourneyDayEntry,
 } from '../../queries/queriesAdminJourney'
 import type {
   DossierJourney,
   HouseProfile,
-  TripDay,
-  TripDayEntry,
-  TripDayPatch,
-  TripDayEntryPatch,
+  JourneyDay,
+  JourneyDayEntry,
+  JourneyDayPatch,
+  JourneyDayEntryPatch,
 } from '../../queries/queriesAdminJourney'
 import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
@@ -121,8 +121,8 @@ function categoryColor(cat: string | null): string {
 // ── EntryRow ──────────────────────────────────────────────────────────────────
 
 function EntryRow({ entry, onUpdate, onDelete }: {
-  entry:    TripDayEntry
-  onUpdate: (id: string, patch: TripDayEntryPatch) => void
+  entry:    JourneyDayEntry
+  onUpdate: (id: string, patch: JourneyDayEntryPatch) => void
   onDelete: (id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -130,7 +130,7 @@ function EntryRow({ entry, onUpdate, onDelete }: {
 
   async function handleDelete() {
     setDeleting(true)
-    try { await deleteTripDayEntry(entry.id); onDelete(entry.id) }
+    try { await deleteJourneyDayEntry(entry.id); onDelete(entry.id) }
     catch { setDeleting(false) }
   }
 
@@ -181,31 +181,31 @@ function EntryRow({ entry, onUpdate, onDelete }: {
             {field('Title',
               <input style={inputStyle} value={entry.title}
                 onChange={e => onUpdate(entry.id, { title: e.target.value })}
-                onBlur={e => updateTripDayEntry(entry.id, { title: e.target.value })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { title: e.target.value })}
               />
             )}
             {field('Subtitle',
               <input style={inputStyle} value={entry.subtitle ?? ''}
                 onChange={e => onUpdate(entry.id, { subtitle: e.target.value })}
-                onBlur={e => updateTripDayEntry(entry.id, { subtitle: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { subtitle: e.target.value || null })}
                 placeholder='Optional'
               />
             )}
             {field('Start Time',
               <input style={inputStyle} type='time' value={entry.start_time?.slice(0,5) ?? ''}
                 onChange={e => onUpdate(entry.id, { start_time: e.target.value || null })}
-                onBlur={e => updateTripDayEntry(entry.id, { start_time: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { start_time: e.target.value || null })}
               />
             )}
             {field('End Time',
               <input style={inputStyle} type='time' value={entry.end_time?.slice(0,5) ?? ''}
                 onChange={e => onUpdate(entry.id, { end_time: e.target.value || null })}
-                onBlur={e => updateTripDayEntry(entry.id, { end_time: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { end_time: e.target.value || null })}
               />
             )}
             {field('Category',
               <select style={inputStyle} value={entry.category ?? ''}
-                onChange={e => { onUpdate(entry.id, { category: e.target.value || null }); updateTripDayEntry(entry.id, { category: e.target.value || null }) }}
+                onChange={e => { onUpdate(entry.id, { category: e.target.value || null }); updateJourneyDayEntry(entry.id, { category: e.target.value || null }) }}
               >
                 <option value=''>—</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -213,7 +213,7 @@ function EntryRow({ entry, onUpdate, onDelete }: {
             )}
             {field('Booked By',
               <select style={inputStyle} value={entry.booked_by}
-                onChange={e => { onUpdate(entry.id, { booked_by: e.target.value }); updateTripDayEntry(entry.id, { booked_by: e.target.value }) }}
+                onChange={e => { onUpdate(entry.id, { booked_by: e.target.value }); updateJourneyDayEntry(entry.id, { booked_by: e.target.value }) }}
               >
                 {BOOKED_BY.map(b => <option key={b} value={b}>{b === 'ambience' ? 'Booked by ambience' : b === 'self' ? 'Self-arranged' : 'TBC'}</option>)}
               </select>
@@ -221,21 +221,21 @@ function EntryRow({ entry, onUpdate, onDelete }: {
             {field('Guest',
               <input style={inputStyle} value={entry.guest_label ?? ''}
                 onChange={e => onUpdate(entry.id, { guest_label: e.target.value })}
-                onBlur={e => updateTripDayEntry(entry.id, { guest_label: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { guest_label: e.target.value || null })}
                 placeholder='All guests'
               />
             )}
             {field('Confirmation #',
               <input style={inputStyle} value={entry.confirmation_number ?? ''}
                 onChange={e => onUpdate(entry.id, { confirmation_number: e.target.value })}
-                onBlur={e => updateTripDayEntry(entry.id, { confirmation_number: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { confirmation_number: e.target.value || null })}
               />
             )}
           </div>
           {field('Notes',
             <input style={inputStyle} value={entry.notes ?? ''}
               onChange={e => onUpdate(entry.id, { notes: e.target.value })}
-              onBlur={e => updateTripDayEntry(entry.id, { notes: e.target.value || null })}
+              onBlur={e => updateJourneyDayEntry(entry.id, { notes: e.target.value || null })}
               placeholder='Optional note for this entry'
             />
           )}
@@ -254,12 +254,12 @@ function EntryRow({ entry, onUpdate, onDelete }: {
 // ── DayBlock ──────────────────────────────────────────────────────────────────
 
 function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onEntryAdd, journeyId }: {
-  day:           TripDay
-  entries:       TripDayEntry[]
-  onDayUpdate:   (entryDate: string, patch: TripDayPatch) => void
-  onEntryUpdate: (id: string, patch: TripDayEntryPatch) => void
+  day:           JourneyDay
+  entries:       JourneyDayEntry[]
+  onDayUpdate:   (entryDate: string, patch: JourneyDayPatch) => void
+  onEntryUpdate: (id: string, patch: JourneyDayEntryPatch) => void
   onEntryDelete: (id: string) => void
-  onEntryAdd:    (entry: TripDayEntry) => void
+  onEntryAdd:    (entry: JourneyDayEntry) => void
   journeyId:        string
 }) {
   const [expanded, setExpanded] = useState(true)
@@ -269,7 +269,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
 
   async function handleAddEntry() {
     if (!newTitle.trim()) return
-    const entry = await createTripDayEntry(journeyId, {
+    const entry = await createJourneyDayEntry(journeyId, {
       entry_date:          day.entry_date,
       start_time:          null,
       end_time:            null,
@@ -305,7 +305,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: expanded ? `1px solid ${RULE}` : 'none' }}>
         {/* Show/hide toggle */}
         <button
-          onClick={() => { onDayUpdate(day.entry_date, { show: !day.show }); upsertTripDay(journeyId, day.entry_date, { show: !day.show }) }}
+          onClick={() => { onDayUpdate(day.entry_date, { show: !day.show }); upsertJourneyDay(journeyId, day.entry_date, { show: !day.show }) }}
           style={{ fontFamily: A.font, fontSize: 9, color: day.show ? GOLD : FAINT, background: 'transparent', border: `1px solid ${day.show ? GOLD + '50' : RULE}`, borderRadius: 4, padding: '2px 7px', cursor: 'pointer', flexShrink: 0 }}
         >{day.show ? 'Shown' : 'Hidden'}</button>
 
@@ -326,7 +326,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
               <input
                 style={inputStyle} value={day.day_label ?? ''}
                 onChange={e => onDayUpdate(day.entry_date, { day_label: e.target.value })}
-                onBlur={e => upsertTripDay(journeyId, day.entry_date, { day_label: e.target.value || null })}
+                onBlur={e => upsertJourneyDay(journeyId, day.entry_date, { day_label: e.target.value || null })}
                 placeholder={formatDateWeekday(day.entry_date)}
               />
             </div>
@@ -335,7 +335,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
               <input
                 style={inputStyle} value={day.day_note ?? ''}
                 onChange={e => onDayUpdate(day.entry_date, { day_note: e.target.value })}
-                onBlur={e => upsertTripDay(journeyId, day.entry_date, { day_note: e.target.value || null })}
+                onBlur={e => upsertJourneyDay(journeyId, day.entry_date, { day_note: e.target.value || null })}
                 placeholder='No plans today'
               />
             </div>
@@ -383,7 +383,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
 // ── ItineraryPreview ──────────────────────────────────────────────────────────
 
 function ItineraryPreview({ days, entriesByDate, trip, house }: {
-  days:           TripDay[]
+  days:           JourneyDay[]
   entriesByDate:  Record<string, TimelineItem[]>
   trip:           DossierJourney
   house:          HouseProfile | null
@@ -492,8 +492,8 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
 export default function ItineraryEditorPage({ journeyId }: { journeyId: string }) {
   const [trip,     setTrip]     = useState<DossierJourney | null>(null)
   const [house,    setHouse]    = useState<HouseProfile | null>(null)
-  const [days,     setDays]     = useState<TripDay[]>([])
-  const [entries,  setEntries]  = useState<TripDayEntry[]>([])
+  const [days,     setDays]     = useState<JourneyDay[]>([])
+  const [entries,  setEntries]  = useState<JourneyDayEntry[]>([])
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
@@ -505,7 +505,7 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
   // the derived check-ins/flights/dining). One source for "what's in the
   // programme": the EF. Stored day_entries remain for overlay EDITING only.
   const [timelineEntries, setTimelineEntries] = useState<TimelineItem[]>([])
-  const [timelineDays,    setTimelineDays]    = useState<TripDay[] | null>(null)
+  const [timelineDays,    setTimelineDays]    = useState<JourneyDay[] | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -514,8 +514,8 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
 
       const [dossier, daysData, entriesData] = await Promise.all([
         fetchJourneyDossierForHouse(houseId),
-        fetchTripDays(journeyId),
-        fetchTripDayEntries(journeyId),
+        fetchJourneyDays(journeyId),
+        fetchJourneyDayEntries(journeyId),
       ])
 
       const found = dossier.trips.find(t => t.id === journeyId)
@@ -545,31 +545,31 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
         const payload = await res.json()
         if (cancelled) return
         setTimelineEntries((payload?.entries as TimelineItem[]) ?? [])
-        setTimelineDays((payload?.days as TripDay[]) ?? null)
+        setTimelineDays((payload?.days as JourneyDay[]) ?? null)
       } catch { /* preview falls back to stored entries */ }
     })()
     return () => { cancelled = true }
   }, [trip?.url_id])
 
-  function updateDayLocal(entryDate: string, patch: TripDayPatch) {
+  function updateDayLocal(entryDate: string, patch: JourneyDayPatch) {
     setDays(prev => prev.map(d => d.entry_date === entryDate ? { ...d, ...patch } : d))
   }
 
-  function updateEntryLocal(id: string, patch: TripDayEntryPatch) {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, ...patch } as TripDayEntry : e))
+  function updateEntryLocal(id: string, patch: JourneyDayEntryPatch) {
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, ...patch } as JourneyDayEntry : e))
   }
 
   function deleteEntryLocal(id: string) {
     setEntries(prev => prev.filter(e => e.id !== id))
   }
 
-  function addEntryLocal(entry: TripDayEntry) {
+  function addEntryLocal(entry: JourneyDayEntry) {
     setEntries(prev => [...prev, entry])
   }
 
   // Overlay entries (stored day_entries) — used ONLY by the left-panel editor
   // for standalone-entry CRUD. NOT the programme content source.
-  const overlayByDate: Record<string, TripDayEntry[]> = {}
+  const overlayByDate: Record<string, JourneyDayEntry[]> = {}
   for (const e of entries) {
     if (!overlayByDate[e.entry_date]) overlayByDate[e.entry_date] = []
     overlayByDate[e.entry_date].push(e)

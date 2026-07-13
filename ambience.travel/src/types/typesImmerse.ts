@@ -664,7 +664,7 @@ export type ImmerseTripBrief = {
   updated_at:            string
 }
 
-export type ImmerseTripDay = {
+export type ImmerseJourneyDay = {
   id:         string | null
   journey_id:    string
   entry_date: string
@@ -676,7 +676,7 @@ export type ImmerseTripDay = {
   updated_at: string
 }
 
-export type ImmerseTripDayEntry = {
+export type ImmerseJourneyDayEntry = {
   id:                  string
   journey_id:             string
   entry_date:          string

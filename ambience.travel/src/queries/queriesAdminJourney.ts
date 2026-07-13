@@ -105,7 +105,7 @@ export type TripBrief = {
   updated_at:            string
 }
 
-export type TripDay = {
+export type JourneyDay = {
   id:         string | null
   journey_id:    string
   entry_date: string
@@ -117,7 +117,7 @@ export type TripDay = {
   updated_at: string
 }
 
-export type TripDayEntry = {
+export type JourneyDayEntry = {
   id:                  string
   journey_id:             string
   entry_date:          string
@@ -139,8 +139,8 @@ export type TripDayEntry = {
   updated_at:          string
 }
 
-export type TripDayPatch      = Partial<Omit<TripDay,      'id' | 'journey_id' | 'created_at' | 'updated_at'>>
-export type TripDayEntryPatch = Partial<Omit<TripDayEntry, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type JourneyDayPatch      = Partial<Omit<JourneyDay,      'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type JourneyDayEntryPatch = Partial<Omit<JourneyDayEntry, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 
 export type AdminEngagementElement = {
   id:                  string
@@ -474,8 +474,8 @@ export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[
 
 // ── Days read ─────────────────────────────────────────────────────────────────
 
-export async function fetchTripDays(journeyId: string): Promise<TripDay[]> {
-  const { days } = await invokeReadJourney<{ days: TripDay[] }>({
+export async function fetchJourneyDays(journeyId: string): Promise<JourneyDay[]> {
+  const { days } = await invokeReadJourney<{ days: JourneyDay[] }>({
     mode: 'days', journey_id: journeyId,
   })
   return days
@@ -483,8 +483,8 @@ export async function fetchTripDays(journeyId: string): Promise<TripDay[]> {
 
 // ── Day entries read ──────────────────────────────────────────────────────────
 
-export async function fetchTripDayEntries(journeyId: string): Promise<TripDayEntry[]> {
-  const { dayEntries } = await invokeReadJourney<{ dayEntries: TripDayEntry[] }>({
+export async function fetchJourneyDayEntries(journeyId: string): Promise<JourneyDayEntry[]> {
+  const { dayEntries } = await invokeReadJourney<{ dayEntries: JourneyDayEntry[] }>({
     mode: 'day_entries', journey_id: journeyId,
   })
   return dayEntries
@@ -669,28 +669,28 @@ export async function deleteTripWelcomeLetter(id: string): Promise<void> {
 
 // ── Itinerary CRUD ────────────────────────────────────────────────────────────
 
-export async function upsertTripDay(journeyId: string, date: string, patch: TripDayPatch): Promise<TripDay> {
-  const { day } = await invokeWriteJourney<{ day: TripDay }>({
+export async function upsertJourneyDay(journeyId: string, date: string, patch: JourneyDayPatch): Promise<JourneyDay> {
+  const { day } = await invokeWriteJourney<{ day: JourneyDay }>({
     mode: 'upsert_day', journey_id: journeyId, entry_date: date, patch,
   })
   return day
 }
 
-export async function createTripDayEntry(journeyId: string, entry: Omit<TripDayEntry, 'id' | 'created_at' | 'updated_at'>): Promise<TripDayEntry> {
-  const { dayEntry } = await invokeWriteJourney<{ dayEntry: TripDayEntry }>({
+export async function createJourneyDayEntry(journeyId: string, entry: Omit<JourneyDayEntry, 'id' | 'created_at' | 'updated_at'>): Promise<JourneyDayEntry> {
+  const { dayEntry } = await invokeWriteJourney<{ dayEntry: JourneyDayEntry }>({
     mode: 'create_day_entry', journey_id: journeyId, entry,
   })
   return dayEntry
 }
 
-export async function updateTripDayEntry(id: string, patch: TripDayEntryPatch): Promise<TripDayEntry> {
-  const { dayEntry } = await invokeWriteJourney<{ dayEntry: TripDayEntry }>({
+export async function updateJourneyDayEntry(id: string, patch: JourneyDayEntryPatch): Promise<JourneyDayEntry> {
+  const { dayEntry } = await invokeWriteJourney<{ dayEntry: JourneyDayEntry }>({
     mode: 'update_day_entry', id, patch,
   })
   return dayEntry
 }
 
-export async function deleteTripDayEntry(id: string): Promise<void> {
+export async function deleteJourneyDayEntry(id: string): Promise<void> {
   await invokeWriteJourney({ mode: 'delete_day_entry', id })
 }
 

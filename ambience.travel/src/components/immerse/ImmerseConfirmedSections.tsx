@@ -25,7 +25,7 @@ import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {
   EngagementElement as AdminEngagementElement,
-  ImmerseTripDay as TripDay,
+  ImmerseJourneyDay as JourneyDay,
 } from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'
 import { groupElementsBySection, isFlightElement, isTransferElement, isGroundTransportElement, isDiningElement, isMeetGreetElement } from '../../types/typesElements'
@@ -462,7 +462,7 @@ const auxSections = groupElementsBySection(elements)
 // ── Programme tab ─────────────────────────────────────────────────────────────
 
 export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
-  days:               TripDay[]
+  days:               JourneyDay[]
   entries:            TimelineItem[]
   brief:              any
   onActiveDayChange?: (label: string, openSidebar: () => void) => void

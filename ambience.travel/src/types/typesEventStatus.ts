@@ -14,7 +14,7 @@
 //
 // Source of truth for:
 //   - JourneyEvent.status CHECK constraint
-//   - TripDayEntry.status (future)
+//   - JourneyDayEntry.status (future)
 //   - AdminEngagementElement.status (future)
 //   - All status pills across admin + client surfaces
 //

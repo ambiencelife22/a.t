@@ -25,7 +25,7 @@ import {
   type PdfEngagementLink,
 } from './pdfShared'
 import type {
-  ImmerseTripDay as TripDay,
+  ImmerseJourneyDay as JourneyDay,
   ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
   ImmerseTripBrief as TripBrief,
@@ -40,7 +40,7 @@ export interface DailyProgrammeData {
   journey:          DossierJourney
   brief:            TripBrief | null
   house:            HouseProfile | null
-  days:             TripDay[]
+  days:             JourneyDay[]
   entriesByDate:    Record<string, TimelineItem[]>
   links:            PdfEngagementLink[]
   guestDisplayName: string | null
@@ -383,7 +383,7 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
 
 // ── Day headers ─────────────────────────────────────────────────────────────────
 
-function drawDayHeader(doc: any, day: TripDay, dayIdx: number, y: number): number {
+function drawDayHeader(doc: any, day: JourneyDay, dayIdx: number, y: number): number {
   // S53G: DAY N eyebrow larger, date larger, rule thicker
   sans(doc, 'bold', 8)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
@@ -398,7 +398,7 @@ function drawDayHeader(doc: any, day: TripDay, dayIdx: number, y: number): numbe
   return y + 8
 }
 
-function drawContinuedHeader(doc: any, day: TripDay, dayIdx: number, y: number): number {
+function drawContinuedHeader(doc: any, day: JourneyDay, dayIdx: number, y: number): number {
   sans(doc, 'bold', 7.5)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text(`DAY ${dayIdx + 1} (CONTINUED)`, P.margin, y + 5, { charSpace: 0.6 })
@@ -414,7 +414,7 @@ function drawContinuedHeader(doc: any, day: TripDay, dayIdx: number, y: number):
 
 async function renderActiveDay(
   doc:     any,
-  day:     TripDay,
+  day:     JourneyDay,
   entries: ProgrammeEntry[],
   dayIdx:  number,
   yIn:     number,
@@ -453,7 +453,7 @@ async function renderActiveDay(
 
 const EMPTY_DAY_H = 22   // header + "Nothing planned" line
 
-function drawEmptyDay(doc: any, day: TripDay, dayIdx: number, y: number): number {
+function drawEmptyDay(doc: any, day: JourneyDay, dayIdx: number, y: number): number {
   // Compact day label: DAY N · date on one line
   sans(doc, 'bold', 7.5)
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
