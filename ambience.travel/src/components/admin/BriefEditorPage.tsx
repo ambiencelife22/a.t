@@ -53,7 +53,7 @@ import type {
   TripBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminJourney'
-import { groupElementsBySection, isFlightType, CABIN_CLASSES, SEAT_TYPES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesElements'
+import { groupElementsBySection, isFlightType, CABIN_CLASSES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesElements'
 import { AirlinePicker } from './AirlinePicker'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
 import AssetPicker from './AssetPicker'
@@ -131,7 +131,6 @@ type AuxDraft = {
   arrive_airport:      string
   cabin_class:         string
   seat_numbers:        string
-  seat_type:           string
   aircraft_type:       string
 }
 
@@ -341,21 +340,6 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
           </select>
         </div>
 
-        {/* Seat type */}
-        <div>
-          <label style={fieldLabelStyle}>Seat Type</label>
-          <select
-            style={{ ...fieldStyle, cursor: 'pointer' }}
-            value={draft.seat_type}
-            onChange={e => { patch(aux.id, aux, 'seat_type', e.target.value); save(aux.id, 'seat_type', e.target.value) }}
-          >
-            <option value=''>{'\u2014 Select seat type \u2014'}</option>
-            {SEAT_TYPES.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-
         {/* Seat numbers */}
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={fieldLabelStyle}>Seat Numbers</label>
@@ -401,7 +385,6 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, e
       arrive_airport:      aux.arrive_airport      ?? '',
       cabin_class:         aux.cabin_class         ?? '',
       seat_numbers:        (aux as any).seat_numbers        ?? '',
-      seat_type:           aux.seat_type           ?? '',
       aircraft_type:       aux.aircraft_type       ?? '',
     }
   }
@@ -948,7 +931,6 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
         arrive_airport:      d.arrive_airport      || aux.arrive_airport,
         cabin_class:         d.cabin_class         || aux.cabin_class,
         seat_numbers:        d.seat_numbers        || (aux as any).seat_numbers,
-        seat_type:           d.seat_type           || aux.seat_type,
         aircraft_type:       d.aircraft_type       || aux.aircraft_type,
       }
     })

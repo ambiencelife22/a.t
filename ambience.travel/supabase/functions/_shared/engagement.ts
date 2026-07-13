@@ -204,7 +204,7 @@ export const AUX_BOOKING_SELECT = [
   'contact_name', 'contact_phone',
   'dining_status', 'cancellation_penalty_applied', 'cancellation_note', 'show_cancellation',
   'brief_show', 'sort_order', 'created_at', 'updated_at',
-  'flight_number', 'airline_name', 'cabin_class', 'seat_type', 'aircraft_type',
+  'flight_number', 'airline_name', 'cabin_class', 'aircraft_type',
   'depart_airport', 'arrive_airport', 'airline_supplier_id', 'dining_venue_id',
 ].join(', ')
 
@@ -280,7 +280,6 @@ export async function fetchElementsFlat(
       booking_type_label: etObj?.label ?? null,
       created_at:            n.created_at,
       updated_at:            n.updated_at,
-      seat_type:             null,
     }
     for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
 
@@ -512,7 +511,6 @@ export async function fetchOneElementFlat(
     booking_type_label: etObj?.label ?? null,
     created_at:         n.created_at,
     updated_at:         n.updated_at,
-    seat_type:          null,
   }
   for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
 

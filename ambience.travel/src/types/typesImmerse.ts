@@ -763,7 +763,6 @@ export type ImmerseTripAuxBooking = {
   depart_airport:      string | null
   arrive_airport:      string | null
   cabin_class:         string | null
-  seat_type:           string | null
   aircraft_type:       string | null
   dining_venue_id?:    string | null
   image_src?:          string | null

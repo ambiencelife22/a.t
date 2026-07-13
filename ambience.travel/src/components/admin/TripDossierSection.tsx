@@ -237,7 +237,6 @@ type AuxDraft = {
   depart_airport:      string
   arrive_airport:      string
   cabin_class:         string
-  seat_type:           string
   aircraft_type:       string
   booked_by:           string
   notes:               string
@@ -251,7 +250,7 @@ function emptyAuxDraft(sortOrder: number, defaultTypeId = '', defaultSlug = 'fli
     start_date: '', start_time: '', end_date: '', end_time: '',
     origin: '', destination: '', airline_supplier_id: '', airline_name: '', flight_number: '',
     depart_airport: '', arrive_airport: '', cabin_class: '',
-    seat_type: '', aircraft_type: '', booked_by: '', notes: '',
+    aircraft_type: '', booked_by: '', notes: '',
     brief_show: true, sort_order: sortOrder,
   }
 }
@@ -273,7 +272,6 @@ function auxToDraft(a: TripAuxBooking): AuxDraft {
     depart_airport:      a.depart_airport      ?? '',
     arrive_airport:      a.arrive_airport      ?? '',
     cabin_class:         a.cabin_class         ?? '',
-    seat_type:           a.seat_type           ?? '',
     aircraft_type:       a.aircraft_type       ?? '',
     booked_by:           a.booked_by           ?? '',
     notes:               a.notes               ?? '',
@@ -300,7 +298,6 @@ function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
     depart_airport:      orNull(d.depart_airport),
     arrive_airport:      orNull(d.arrive_airport),
     cabin_class:         orNull(d.cabin_class),
-    seat_type:           orNull(d.seat_type),
     aircraft_type:       orNull(d.aircraft_type),
     booked_by:           orNull(d.booked_by),
     notes:               orNull(d.notes),
@@ -376,7 +373,6 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagem
             <AuxField label='Depart Airport' value={draft.depart_airport} onChange={v => set('depart_airport', v)} placeholder='RUH' />
             <AuxField label='Arrive Airport' value={draft.arrive_airport} onChange={v => set('arrive_airport', v)} placeholder='SZG' />
             <AuxField label='Cabin Class' value={draft.cabin_class} onChange={v => set('cabin_class', v)} placeholder='Business' />
-            <AuxField label='Seat Type' value={draft.seat_type} onChange={v => set('seat_type', v)} placeholder='Lie-flat' />
             <AuxField label='Aircraft' value={draft.aircraft_type} onChange={v => set('aircraft_type', v)} placeholder='Boeing 777-300ER' />
           </div>
         </div>
