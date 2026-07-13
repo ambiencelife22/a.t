@@ -125,7 +125,7 @@ function TripActionPanel({ trip, house }: {
       } catch { heroData = null }
     }
 
-    const auxBookings = await fetchTripAuxBookings(trip.id).catch(() => [])
+    const elements = await fetchTripAuxBookings(trip.id).catch(() => [])
 
     handleDownloadBrief({
       trip,
@@ -133,7 +133,7 @@ function TripActionPanel({ trip, house }: {
       house,
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
-      auxBookings,
+      elements,
       guestDisplayName: null,
     })
   }

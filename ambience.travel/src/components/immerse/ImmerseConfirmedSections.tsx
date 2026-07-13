@@ -169,7 +169,7 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
 // ── Confirmation tab ──────────────────────────────────────────────────────────
 
 export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
- const { trip, auxBookings } = clientData
+ const { trip, elements } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
   const destHero = trip.destinations[0]?.hero_image_src ?? null
@@ -179,7 +179,7 @@ export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-const auxSections = groupElementsBySection(auxBookings)
+const auxSections = groupElementsBySection(elements)
 
   return (
     <div>
@@ -1141,10 +1141,10 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 export function TripBriefTab({ clientData }: {
   clientData: DeliveryData
 }) {
-  const { trip, house, auxBookings } = clientData
+  const { trip, house, elements } = clientData
 
-  const flights   = auxBookings.filter(a => isFlightElement(a.element_type))
-  const transfers = auxBookings.filter(a => isTransferElement(a.element_type))
+  const flights   = elements.filter(a => isFlightElement(a.element_type))
+  const transfers = elements.filter(a => isTransferElement(a.element_type))
   const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -1345,7 +1345,7 @@ export function TripBriefTab({ clientData }: {
       )}
 
       {(() => {
-        const greeters = auxBookings.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
+        const greeters = elements.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
         return greeters.length > 0 ? (
           <BriefSection title='Airport Meet & Greet'>
             {greeters.map(g => (
@@ -1367,7 +1367,7 @@ export function TripBriefTab({ clientData }: {
       })()}
 
       {(() => {
-        const dining = auxBookings.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
+        const dining = elements.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
         return dining.length > 0 ? (
           <BriefSection title='Dining'>
             {dining.map(d => {

@@ -108,10 +108,10 @@ export function ImmerseDeliveryTabShell({
     }
     const branding = (brief?.logo_variant ?? 'ambience') as ExportBranding
     if (activeTab === 'brief') {
-      handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, branding)
+      handleDownloadTripBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, branding)
       return
     }
-    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, auxBookings: clientData.auxBookings, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName }, branding)
+    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName }, branding)
   }
 
   function downloadProgramme() {

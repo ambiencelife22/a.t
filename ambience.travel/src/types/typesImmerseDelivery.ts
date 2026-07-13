@@ -75,7 +75,7 @@ export type DeliveryData = {
   brief:            ImmerseTripBrief | null
   house:            ImmerseTripHouse | null
   destinationName:  string
-  auxBookings:      EngagementElement[]
+  elements:      EngagementElement[]
   guides:           EngagementGuides
   contacts:         EngagementContact[]
   links:            EngagementLink[]

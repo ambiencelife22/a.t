@@ -22,7 +22,7 @@
  *   travel-get-immerse-proposal Edge Function (S53H cutover; the old
  *   get-engagement-stage EF is retired). Default false; admin flips on per engagement.
  * Prior: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
- *   auxBookings fetched in parallel with dossier. auxDrafts state added.
+ *   elements fetched in parallel with dossier. auxDrafts state added.
  *   mergedAux built in handleDownload and passed to handleDownloadBrief.
  *   Design, BriefPreview, BriefAuxEditor — all untouched.
  * Prior: S48 — aux sections grouped by booking_type via auxBookingTypes
@@ -144,7 +144,7 @@ interface PreviewFields {
   house:         HouseProfile | null
   roomImageSrcs: Record<string, string>
   roomDrafts:    Record<string, RoomDraft>
-  auxBookings:   TripAuxBooking[]
+  elements:   TripAuxBooking[]
   auxDrafts:     Record<string, AuxDraft>
 }
 
@@ -356,14 +356,14 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
 
 // ── BriefAuxEditor ────────────────────────────────────────────────────────────
 
-function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, engagementTypes }: {
-  auxBookings:       TripAuxBooking[]
+function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, engagementTypes }: {
+  elements:       TripAuxBooking[]
   engagementTypes:   EngagementTypeOption[]
   auxDrafts:         Record<string, AuxDraft>
   onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
   isMobile:          boolean
 }) {
-  const sections = groupElementsBySection(auxBookings)
+  const sections = groupElementsBySection(elements)
 
   function getDraft(aux: TripAuxBooking): AuxDraft {
     return auxDrafts[aux.id] ?? {
@@ -536,7 +536,7 @@ function BriefAuxEditor({ auxBookings, auxDrafts, onAuxDraftsChange, isMobile, e
 // ── BriefPreview ──────────────────────────────────────────────────────────────
 
 function BriefPreview({ fields }: { fields: PreviewFields }) {
-  const { briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, auxBookings, auxDrafts } = fields
+  const { briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, elements, auxDrafts } = fields
 
   const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.trip_code
   const subtitle = (briefSubtitle || 'TRIP CONFIRMATION BRIEF').toUpperCase()
@@ -548,7 +548,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
-  const auxSections = groupElementsBySection(auxBookings)
+  const auxSections = groupElementsBySection(elements)
 
   return (
     <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100%', padding: '0 0 40px' }}>
@@ -725,7 +725,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
 
   const [trip,        setTrip]        = useState<DossierTrip | null>(null)
   const [house,       setHouse]       = useState<HouseProfile | null>(null)
-  const [auxBookings, setAuxBookings] = useState<TripAuxBooking[]>([])
+  const [elements, setAuxBookings] = useState<TripAuxBooking[]>([])
   const [loadErr,     setLoadErr]     = useState<string | null>(null)
   const [saving,      setSaving]      = useState(false)
   const [saveErr,     setSaveErr]     = useState<string | null>(null)
@@ -909,7 +909,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       })),
     }
 
-    const mergedAux = auxBookings.map(aux => {
+    const mergedAux = elements.map(aux => {
       const d = auxDrafts[aux.id]
       if (!d) return aux
       return {
@@ -952,7 +952,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       house,
       destinationName: trip.destinations[0]?.name ?? trip.trip_code,
       heroImageData:   heroData,
-      auxBookings:     mergedAux,
+      elements:     mergedAux,
       guestDisplayName: null,
     })
   }
@@ -964,9 +964,9 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
     if (!trip) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      setPreviewFields({ briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, auxBookings, auxDrafts })
+      setPreviewFields({ briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, elements, auxDrafts })
     }, 300)
-  }, [briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, auxBookings, auxDrafts])
+  }, [briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, elements, auxDrafts])
 
   useEffect(() => { schedulePreview() }, [schedulePreview])
 
@@ -989,7 +989,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
     </div>
   )
 
-  const hasVisibleAux = auxBookings.filter(a => a.brief_show !== false).length > 0
+  const hasVisibleAux = elements.filter(a => a.brief_show !== false).length > 0
 
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
@@ -1242,7 +1242,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
             <section>
               <div style={sectionHeadStyle}>Transport & Transfers</div>
               <BriefAuxEditor
-                auxBookings={auxBookings}
+                elements={elements}
                 auxDrafts={auxDrafts}
                 onAuxDraftsChange={setAuxDrafts}
                 isMobile={isMobile}

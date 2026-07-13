@@ -55,7 +55,7 @@ export interface ConfirmationBriefData {
   house:            HouseProfile | null
   destinationName:  string
   heroImageData:    string | null
-  auxBookings:      TripAuxBooking[]
+  elements:      TripAuxBooking[]
   guestDisplayName: string | null
   contacts?:        ConfirmationContact[]
 }
@@ -566,7 +566,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   // ── Aux sections — grouped by registry section (flights, transfers, greeters,
   //    dining, etc), mirroring the web confirmation. ────────────────────────────
 
-  const visibleAux = d.auxBookings.filter(a => a.brief_show !== false)
+  const visibleAux = d.elements.filter(a => a.brief_show !== false)
   const auxSections = groupElementsBySection(visibleAux)
 
   for (const section of auxSections) {

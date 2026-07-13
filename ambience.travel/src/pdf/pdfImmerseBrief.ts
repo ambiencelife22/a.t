@@ -58,7 +58,7 @@ export interface TripBriefPdfData {
   house:            HouseProfile | null
   destinationName:  string
   heroImageData:    string | null
-  auxBookings:      TripAuxBooking[]
+  elements:      TripAuxBooking[]
   links:            PdfEngagementLink[]
   guestDisplayName: string | null
 }
@@ -276,7 +276,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Flights ───────────────────────────────────────────────────────────────
 
-  const flights = d.auxBookings.filter(a => isFlightElement(a.element_type))
+  const flights = d.elements.filter(a => isFlightElement(a.element_type))
   if (flights.length > 0) {
     y = drawSectionHeader(doc, 'Flights', y)
     for (const f of flights) {
@@ -307,7 +307,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Transfers ─────────────────────────────────────────────────────────────
 
-  const transfers = d.auxBookings.filter(a => isTransferElement(a.element_type))
+  const transfers = d.elements.filter(a => isTransferElement(a.element_type))
   if (transfers.length > 0) {
     y = drawSectionHeader(doc, 'Transfers', y)
     for (const t of transfers) {
@@ -336,7 +336,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Airport Meet & Greet ────────────────────────────────────────────────────
 
-  const greeters = d.auxBookings.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
+  const greeters = d.elements.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
   if (greeters.length > 0) {
     y = drawSectionHeader(doc, 'Airport Meet & Greet', y)
     for (const g of greeters) {
@@ -358,7 +358,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Dining ──────────────────────────────────────────────────────────────────
 
-  const dining = d.auxBookings.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
+  const dining = d.elements.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
   if (dining.length > 0) {
     y = drawSectionHeader(doc, 'Dining', y)
     for (const dd of dining) {

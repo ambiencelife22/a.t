@@ -414,7 +414,7 @@ async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise
     .maybeSingle()
   if (jErr) return err('Failed to resolve journey', 500)
   const aux = await fetchEngagementElements(db, (j?.confirmed_engagement_id as string | null) ?? null)
-  if (aux.length === 0) return ok({ auxBookings: [] })
+  if (aux.length === 0) return ok({ elements: [] })
   // Passengers key on node_id; flat rows carry id = node id (Stage 7 Phase 2 retire).
   const nodeIds = aux.map(a => a.id as string).filter(Boolean)
   const { data: pax } = await db
@@ -428,7 +428,7 @@ async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise
     ;(byNode[k] ??= []).push(p)
   }
   const withPax = aux.map(a => ({ ...a, passengers: byNode[a.id as string] ?? [] }))
-  return ok({ auxBookings: withPax })
+  return ok({ elements: withPax })
 }
 
 async function handlePublicView(db: SupabaseClient, journeyId: string): Promise<Response> {

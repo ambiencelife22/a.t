@@ -193,7 +193,7 @@ Deno.serve(async (req: Request) => {
       contacts,
       guestDisplayName,
       destinationName: destinations[0]?.name ?? '',
-      auxBookings: await enrichElements(
+      elements: await enrichElements(
               db,
               await fetchEngagementElements(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
               (brief?.prepared_for as string | null) ?? null,

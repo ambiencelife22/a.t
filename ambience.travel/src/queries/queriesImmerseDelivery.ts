@@ -56,7 +56,7 @@ export async function fetchDeliveryBundle(urlId: string): Promise<DeliveryBundle
       contacts:         confPayload.contacts ?? [],
       guestDisplayName: confPayload.guestDisplayName ?? null,
       destinationName:  confPayload.destinationName,
-      auxBookings:      confPayload.auxBookings ?? [],
+      elements:      confPayload.elements ?? [],
       guides:           { hasDining: false, hasExperiences: false, destinationSlug: null },
       links:            confPayload.links ?? [],
       urlId,

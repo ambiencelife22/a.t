@@ -11,7 +11,7 @@
 //
 // Request body: { url_id: string }
 //
-// Response: { trip, brief, house, destinationName, auxBookings, urlId, days, entries }
+// Response: { trip, brief, house, destinationName, elements, urlId, days, entries }
 //   `entries` is the SINGLE-SOURCE ordered timeline (TimelineItem[]) built server-side
 //   by _shared/timeline.ts from bookings + aux + standalone stored entries:
 //     - hotel check-in/out DERIVED from travel_bookings (never stored); check-in carries
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
     })
 
    // ── 9. Aux elements from the tree, enriched (passengers/drivers/dining) ────
-    const auxBookingsWithImg = await enrichElements(
+    const elementsWithImg = await enrichElements(
       db,
       await fetchEngagementElements(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
       partyLabel,
@@ -207,7 +207,7 @@ Deno.serve(async (req: Request) => {
     // (from enrichBookingWithHotelPolicy) and transfer_minutes / approved time
     // columns from the DB. buildTimeline passes aux through buildHotelItems so
     // deriveCheckinTime() can match same-day arrivals.
-    const timeline = buildTimeline(enrichedBookings, auxBookingsWithImg, enrichedEntries)
+    const timeline = buildTimeline(enrichedBookings, elementsWithImg, enrichedEntries)
 
     // ── 12. Destinations + return ─────────────────────────────────────────────
     const destinations = core.destinations
@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
       brief,
       house:           core.house,
       destinationName: (destinations[0]?.name as string) ?? '',
-      auxBookings: auxBookingsWithImg,
+      elements: elementsWithImg,
       urlId:           url_id,
       days:            buildDays(
                          journeyId,

@@ -105,9 +105,9 @@ export interface ElementSection<T> {
 }
 
 export function groupElementsBySection<T extends { element_type: string | null; brief_show?: boolean; sort_order: number }>(
-  auxBookings: T[],
+  elements: T[],
 ): ElementSection<T>[] {
-  const sorted = auxBookings
+  const sorted = elements
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
       const ma = getElementTypeMeta(a.element_type)

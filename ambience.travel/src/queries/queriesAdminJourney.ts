@@ -493,10 +493,10 @@ export async function fetchTripDayEntries(journeyId: string): Promise<TripDayEnt
 // ── Aux bookings read ─────────────────────────────────────────────────────────
 
 export async function fetchTripAuxBookings(journeyId: string): Promise<TripAuxBooking[]> {
-  const { auxBookings } = await invokeReadJourney<{ auxBookings: TripAuxBooking[] }>({
+  const { elements } = await invokeReadJourney<{ elements: TripAuxBooking[] }>({
     mode: 'aux_bookings', journey_id: journeyId,
   })
-  return auxBookings
+  return elements
 }
 
 // ── Public view read ──────────────────────────────────────────────────────────
