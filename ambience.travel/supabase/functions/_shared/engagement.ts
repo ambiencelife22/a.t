@@ -1,4 +1,4 @@
-// supabase/functions/_shared/trip.ts
+// supabase/functions/_shared/engagement.ts
 //
 // Single-source trip assembly for the client EFs (travel-get-engagement-confirmation
 // and travel-get-engagement-programme). Both EFs previously duplicated, verbatim:
@@ -66,7 +66,7 @@ export async function resolvejourneyIds(
 // Returns trip=null when the trip row is missing (caller returns 404).
 
 export interface EngagementCore {
-  trip:                 Record<string, unknown> | null
+  journey:              Record<string, unknown> | null
   brief:                Record<string, unknown> | null
   house:                Record<string, unknown> | null
   destinations:         Array<Record<string, unknown>>
@@ -166,7 +166,7 @@ export async function fetchEngagementCore(
     : null
 
   return {
-    trip:                 tripResult.data ?? null,
+    journey:              tripResult.data ?? null,
     brief:                resolvedBrief,
     house:                houseResult.data ?? null,
     destinations,

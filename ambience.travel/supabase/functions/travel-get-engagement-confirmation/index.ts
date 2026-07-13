@@ -58,11 +58,11 @@ Deno.serve(async (req: Request) => {
         .order('id',         { ascending: true }),
     ])
 
-    if (!core.trip) {
+    if (!core.journey) {
       return json({ error: 'Trip not found' }, 404)
     }
 
-    const trip         = core.trip
+    const trip         = core.journey
     const brief        = core.brief
     const house        = core.house
     // HPGL: canonical public guest label (projected, single-source via _shared/engagement.ts).
@@ -195,7 +195,7 @@ Deno.serve(async (req: Request) => {
       destinationName: destinations[0]?.name ?? '',
       elements: await enrichElements(
               db,
-              await fetchEngagementElements(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
+              await fetchEngagementElements(db, (core.journey?.confirmed_engagement_id as string | null) ?? null),
               (brief?.prepared_for as string | null) ?? null,
             ),
       urlId: url_id,

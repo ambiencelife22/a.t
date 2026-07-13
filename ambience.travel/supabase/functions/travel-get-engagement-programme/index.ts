@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
         .order('sort_order', { ascending: true }),
     ])
 
-    if (!core.trip) {
+    if (!core.journey) {
       return json({ error: 'Trip not found' }, 404)
     }
     const brief      = core.brief
@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
    // ── 9. Aux elements from the tree, enriched (passengers/drivers/dining) ────
     const elementsWithImg = await enrichElements(
       db,
-      await fetchEngagementElements(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
+      await fetchEngagementElements(db, (core.journey?.confirmed_engagement_id as string | null) ?? null),
       partyLabel,
     )
 
@@ -213,7 +213,7 @@ Deno.serve(async (req: Request) => {
     const destinations = core.destinations
 
     // ── 13. Return ────────────────────────────────────────────────────────────
-    const trip = core.trip as Record<string, unknown>
+    const trip = core.journey as Record<string, unknown>
     const payload = {
       trip: {
         ...trip,
