@@ -324,10 +324,12 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
           check_in_time:       (r.check_in_time as string | null) ?? resolvedCheckinTime,
           bedding_type:        (r.bedding_type as string | null) ?? null,
         }))
+      const roomCheckinTimes = rooms.map(r => r.check_in_time).filter((t): t is string => !!t).sort()
+      const effectiveCheckinTime = resolvedCheckinTime ?? roomCheckinTimes[0] ?? null
 
       out.push({
         id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: checkInDay,
-        start_time: resolvedCheckinTime,
+        start_time: effectiveCheckinTime,
         end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `${checkinLabel} \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
