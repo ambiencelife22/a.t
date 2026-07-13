@@ -3,7 +3,7 @@
 //
 // Exports two handlers from one hook so both PDF types share a single
 // jsPDF load lifecycle:
-//   handleDownloadBrief(data)        — Trip Confirmation PDF
+//   handleDownloadBrief(data)        — Engagement Confirmation PDF
 //   handleDownloadEngagementBrief(data)    — Trip Brief PDF (structured summary)
 //
 // Last updated: S49 — added handleDownloadEngagementBrief for Trip Brief tab.

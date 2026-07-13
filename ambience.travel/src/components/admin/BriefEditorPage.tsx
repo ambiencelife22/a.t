@@ -1049,7 +1049,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
                   <input style={inputStyle} value={briefTitle} onChange={e => setBriefTitle(e.target.value)} placeholder={trip.destinations.map(d => d.name).join(' & ') || 'e.g. Maldives Family Escape'} />
                 </Field>
                 <Field label='Subtitle'>
-                  <input style={inputStyle} value={briefSubtitle} onChange={e => setBriefSubtitle(e.target.value)} placeholder='Trip Confirmation Brief' />
+                  <input style={inputStyle} value={briefSubtitle} onChange={e => setBriefSubtitle(e.target.value)} placeholder='Engagement Confirmation Brief' />
                 </Field>
               </div>
               <Field label='Logo'>
