@@ -9,7 +9,7 @@
 //   Empty string or null body no longer creates an empty <ImmerseBody>
 //   element with its margins. Pattern: {body && <ImmerseBody>...}.
 //   Same pattern should apply to other section bodies as a follow-up audit.
-// Prior: S31 — Extracted from ImmerseDestinationComponents.tsx; inline
+// Prior: S31 — Extracted from ImmerseDestComponents.tsx (was ImmerseDestinationComponents); inline
 //   <style> keyframe block removed (now global in src/index.css).
 // Prior: S23 addendum — bullets_heading render added in ContentCard.
 // Prior: S23 — Added PRICING_CLOSER_DEFAULT constant + closer render row.
