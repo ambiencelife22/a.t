@@ -45,12 +45,12 @@ export async function fetchDeliveryBundle(urlId: string): Promise<DeliveryBundle
       return null
     }
     const confPayload = await confRes.json()
-    if (confPayload.error || !confPayload.trip) return null
+    if (confPayload.error || !confPayload.journey) return null
 
     const progPayload = progRes.ok ? await progRes.json() : null
 
     const clientData: DeliveryData = {
-      trip:             confPayload.trip,
+      journey:          confPayload.journey,
       brief:            confPayload.brief,
       house:            confPayload.house,
       contacts:         confPayload.contacts ?? [],

@@ -215,7 +215,7 @@ Deno.serve(async (req: Request) => {
     // ── 13. Return ────────────────────────────────────────────────────────────
     const trip = core.journey as Record<string, unknown>
     const payload = {
-      trip: {
+      journey: {
         ...trip,
         destinations,
         bookings: enrichedBookings,

@@ -169,7 +169,7 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
 // ── Confirmation tab ──────────────────────────────────────────────────────────
 
 export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
- const { trip, elements } = clientData
+ const { journey: trip, elements } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
   const destHero = trip.destinations[0]?.hero_image_src ?? null
@@ -1141,7 +1141,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 export function TripBriefTab({ clientData }: {
   clientData: DeliveryData
 }) {
-  const { trip, house, elements } = clientData
+  const { journey: trip, house, elements } = clientData
 
   const flights   = elements.filter(a => isFlightElement(a.element_type))
   const transfers = elements.filter(a => isTransferElement(a.element_type))

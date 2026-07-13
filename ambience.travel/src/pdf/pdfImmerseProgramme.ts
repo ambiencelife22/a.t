@@ -37,7 +37,7 @@ import { isMeetGreetElement, isDiningElement } from '../types/typesElements'
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface DailyProgrammeData {
-  trip:             DossierTrip
+  journey:          DossierTrip
   brief:            TripBrief | null
   house:            HouseProfile | null
   days:             TripDay[]
@@ -491,7 +491,7 @@ export async function exportDailyProgrammePdf(
   ])
 
   let heroImageData: string | null = null
-  const heroSrc = data.brief?.hero_image_src ?? data.trip.destinations[0]?.hero_image_src ?? null
+  const heroSrc = data.brief?.hero_image_src ?? data.journey.destinations[0]?.hero_image_src ?? null
   if (heroSrc) {
     try {
       const blob = await fetch(heroSrc).then(r => r.blob())
@@ -502,14 +502,14 @@ export async function exportDailyProgrammePdf(
   }
 
   const preparedFor = data.guestDisplayName ?? data.brief?.prepared_for ?? null
-  const title       = data.brief?.brief_title ?? data.trip.destinations[0]?.name ?? ''
+  const title       = data.brief?.brief_title ?? data.journey.destinations[0]?.name ?? ''
 
   let y = await drawPdfHero(doc, {
     title,
     docType:       'Daily Programme',
     subtitle:      data.brief?.brief_subtitle ?? null,
     preparedFor,
-    dateRange:     buildDateRange(data.trip.start_date, data.trip.end_date),
+    dateRange:     buildDateRange(data.journey.start_date, data.journey.end_date),
     heroImageData,
     emblem,
     logo,
@@ -591,5 +591,5 @@ export async function exportDailyProgrammePdf(
   }
 
   stampPageChrome(doc, data.brief)
-  doc.save(buildFilename(data.trip))
+  doc.save(buildFilename(data.journey))
 }

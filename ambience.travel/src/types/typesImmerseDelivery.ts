@@ -71,7 +71,7 @@ export type EngagementLink = {
 }
 
 export type DeliveryData = {
-  trip:             ImmerseDossierTrip
+  journey:          ImmerseDossierTrip
   brief:            ImmerseTripBrief | null
   house:            ImmerseTripHouse | null
   destinationName:  string

@@ -187,7 +187,7 @@ Deno.serve(async (req: Request) => {
     })
 
     const payload = {
-      trip: { ...trip, destinations, bookings: fullBookings, brief },
+      journey: { ...trip, destinations, bookings: fullBookings, brief },
       brief,
       house,
       contacts,

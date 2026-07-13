@@ -59,7 +59,7 @@ export function ImmerseDeliveryTabShell({
   const { pdfReady: progPdfReady, pdfDownloading: progPdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
 
   const { clientData, days, entries } = ctx.bundle
-  const { trip, brief, house } = clientData
+  const { journey: trip, brief, house } = clientData
 
   const welcomeLetter = (brief as { welcome_letter?: string } | null)?.welcome_letter ?? null
   const welcomeAsTab  = (brief as { show_tab_welcome?: boolean } | null)?.show_tab_welcome === true && !!welcomeLetter
@@ -120,7 +120,7 @@ export function ImmerseDeliveryTabShell({
       if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
       entriesByDate[e.entry_date].push(e)
     }
-    handleDownloadProgramme({ trip, brief, house, days, entriesByDate, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName })
+    handleDownloadProgramme({ journey: trip, brief, house, days, entriesByDate, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName })
   }
 
   return (

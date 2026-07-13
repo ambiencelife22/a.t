@@ -90,7 +90,7 @@ function proposalHero(ctx: Extract<EngagementClientData, { stage: 'proposal' }>)
 // ── Delivery hero props (built from brief/trip) ──────────────────────────────
 function deliveryHero(ctx: Extract<EngagementClientData, { stage: 'delivery' }>): ReactNode {
   const { clientData } = ctx.bundle
-  const { trip, brief } = clientData
+  const { journey: trip, brief } = clientData
   const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
