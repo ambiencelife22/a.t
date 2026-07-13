@@ -34,7 +34,7 @@ import type {
   ImmerseDossierTrip as DossierTrip,
   ImmerseTripHouse as HouseProfile,
   ImmerseBookingRoom as BookingRoom,
-  ImmerseTripAuxBooking as TripAuxBooking,
+  EngagementElement as TripAuxBooking,
 } from '../types/typesImmerse'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 import { isGroundTransportElement, groupElementsBySection, isMeetGreetElement, isDiningElement } from '../types/typesElements'
@@ -276,7 +276,7 @@ function drawGreeterCard(doc: any, aux: TripAuxBooking, y: number): number {
   const tx = P.margin + padH; let ty = y + padV
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text((aux.booking_type_label ?? 'Airport Meet & Greet').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
+  doc.text((aux.element_type_label ?? 'Airport Meet & Greet').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
 
   serif(doc, 'normal', 10.5)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
@@ -321,7 +321,7 @@ function drawDiningCard(doc: any, aux: TripAuxBooking, y: number): number {
   const tx = P.margin + padH; let ty = y + padV
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text((aux.booking_type_label ?? 'Dining').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
+  doc.text((aux.element_type_label ?? 'Dining').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
 
   serif(doc, 'normal', 10.5)
   doc.setTextColor(cancelled ? T.faint[0] : T.ink[0], cancelled ? T.faint[1] : T.ink[1], cancelled ? T.faint[2] : T.ink[2])

@@ -24,7 +24,7 @@ import type { DeliveryData, EngagementContact } from '../../queries/queriesImmer
 import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {
-  ImmerseTripAuxBooking as TripAuxBooking,
+  EngagementElement as TripAuxBooking,
   ImmerseTripDay as TripDay,
 } from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'

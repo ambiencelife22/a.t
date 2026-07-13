@@ -30,7 +30,7 @@ import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { resolveRoomGuestName, formatPersonName } from '../_shared/names.ts'
-import { fetchOneElementFlat } from '../_shared/engagement.ts'
+import { fetchEngagementElement } from '../_shared/engagement.ts'
 type Mode =
   | 'upsert_brief'
   | 'update_booking_brief'
@@ -224,7 +224,7 @@ async function handleCreateAuxBooking(
   // Stage 7 Phase 2: transactional element create via RPC (node + detail atomic).
   const { data, error } = await db.rpc('create_element', { p_journey_id: journeyId, p_patch: patch })
   if (error) return json({ error: 'Failed to create element' }, 500)
-  const row = await fetchOneElementFlat(db, data as string)
+  const row = await fetchEngagementElement(db, data as string)
   return json({ auxBooking: row })
 }
 
@@ -235,7 +235,7 @@ async function handleUpdateAuxBooking(
 ): Promise<Response> {
   const { data, error } = await db.rpc('update_element', { p_node_id: id, p_patch: patch })
   if (error) return json({ error: 'Failed to update element' }, 500)
-  const row = await fetchOneElementFlat(db, data as string)
+  const row = await fetchEngagementElement(db, data as string)
   return json({ auxBooking: row })
 }
 

@@ -124,10 +124,10 @@ type BookingLike = {
   [k: string]:                    unknown
 }
 
-type AuxLike = {
+type EngagementElementLike = {
   id?:                  unknown
   element_type?:        string | null
-  booking_type_label?:  string | null
+  element_type_label?:  string | null
   name?:                string | null
   start_date?:          string | null
   end_date?:            string | null   // arrival date — used for same-day match
@@ -184,7 +184,7 @@ function deriveCheckinTime(
   checkInDay: string,
   transferMinutes: number | null | undefined,
   standardCheckinTime: string | null | undefined,
-  aux: AuxLike[],
+  aux: EngagementElementLike[],
 ): { time: string | null; isDerived: boolean } {
   if (transferMinutes != null && transferMinutes >= 0) {
     const arrivals = aux.filter(
@@ -217,7 +217,7 @@ function deriveCheckinTime(
 // Hotel check-in (with rooms) + check-out (bare) from each shown booking.
 // resolved_guest_name is set by the caller (names.ts) before this runs.
 // aux is passed through so deriveCheckinTime() can match same-day arrivals.
-export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): TimelineItem[] {
+export function buildHotelItems(bookings: BookingLike[], aux: EngagementElementLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
 
   // Pre-pass: detect re-check-ins (split stays). A re-check-in is the SAME PARTY
@@ -385,7 +385,7 @@ export function buildHotelItems(bookings: BookingLike[], aux: AuxLike[]): Timeli
 }
 
 // Flights/transfers from aux bookings, carrying resolved passengers.
-export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
+export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
   for (const a of aux) {
     if (a.brief_show === false) continue
@@ -411,7 +411,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
     out.push({
       id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
-      category: a.element_type ?? 'arrangement', categoryLabel: a.booking_type_label ?? null,
+      category: a.element_type ?? 'arrangement', categoryLabel: a.element_type_label ?? null,
       title: a.name ?? a.element_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
@@ -497,12 +497,12 @@ export function timelineComparator(a: TimelineItem, b: TimelineItem): number {
 // aux is now passed to buildHotelItems for same-day arrival derivation.
 export function buildTimeline(
   bookings: BookingLike[],
-  aux:      AuxLike[],
+  aux:      EngagementElementLike[],
   entries:  EntryLike[],
 ): TimelineItem[] {
   return [
     ...buildHotelItems(bookings, aux),
-    ...buildAuxItems(aux),
+    ...buildElementItems(aux),
     ...buildEntryItems(entries),
   ].sort(timelineComparator)
 }

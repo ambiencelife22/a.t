@@ -18,7 +18,7 @@
 //   - The canonical type list itself — that lives in travel_engagement_types
 //     (DB registry). This file holds only DISPLAY meta (icons) the registry
 //     does not carry. Type labels + sort_order come from the registry via the
-//     EF (booking_type_label); META is keyed by registry SLUG.
+//     EF (element_type_label); META is keyed by registry SLUG.
 //
 // Source of truth for:
 //   - travel_engagement_aux_bookings.cabin_class CHECK constraint
@@ -73,7 +73,7 @@ const ELEMENT_TYPE_META: Record<string, ElementTypeMeta> = {
 }
 
 // Normalize a slug OR a Title Case label to a registry slug. Accepts both so
-// callers passing booking_type (slug) or booking_type_label (Title Case) both
+// callers passing booking_type (slug) or element_type_label (Title Case) both
 // resolve. 'Airport Transfer' -> 'airport_transfer', 'flight' -> 'flight'.
 function toSlug(value: string): string {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_')

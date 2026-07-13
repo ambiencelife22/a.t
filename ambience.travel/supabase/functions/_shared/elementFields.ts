@@ -44,11 +44,7 @@ export const TRANSPORT_TEXT_TO_FK: Record<string, { table: string; match: string
   arrive_airport: { table: 'travel_airports',       match: 'iata',  fk: 'arrive_airport_id' },
 }
 
-// READ-ONLY enrichment — composed on read, NEVER written.
-// venue: joined from dining_venue_id. booking_type/label: from engagement_type_id FK.
-export const READ_ONLY_FLAT_FIELDS = ['venue', 'booking_type', 'booking_type_label'] as const
 
-// DROPPED at aux retire (0/25 ever populated). Never write, never read.
 export const DROPPED_FIELDS = ['seat_type'] as const
 
 // Detail table for an element type. null = bare node (no detail row).

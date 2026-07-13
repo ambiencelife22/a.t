@@ -45,7 +45,7 @@ import type {
   ImmerseTripBooking as TripBooking,
   ImmerseDossierTrip as DossierTrip,
   ImmerseTripHouse as HouseProfile,
-  ImmerseTripAuxBooking as TripAuxBooking,
+  EngagementElement as TripAuxBooking,
 } from '../types/typesImmerse'
 import { isFlightElement, isTransferElement, isMeetGreetElement, isDiningElement } from '../types/typesElements'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'

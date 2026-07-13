@@ -209,14 +209,14 @@ export const AUX_BOOKING_SELECT = [
 ].join(', ')
 
 // Flatten the embedded travel_engagement_types join onto an aux booking row.
-// Returns element_type (slug) + booking_type_label for all consumers.
+// Returns element_type (slug) + element_type_label for all consumers.
 export function flattenAuxType(a: Record<string, unknown>): Record<string, unknown> {
   const et = a.travel_engagement_types as { slug: string; label: string } | { slug: string; label: string }[] | null
   const etObj = Array.isArray(et) ? et[0] : et
   return {
     ...a,
     element_type:       etObj?.slug  ?? null,
-    booking_type_label: etObj?.label ?? null,
+    element_type_label: etObj?.label ?? null,
   }
 }
 
@@ -233,7 +233,7 @@ const NODE_COL_TO_FLAT: Record<string, string> = Object.fromEntries(
   Object.entries(NODE_FIELD_MAP).map(([flat, col]) => [col, flat]),
 )
 
-export async function fetchElementsFlat(
+export async function fetchEngagementElements(
   db: SupabaseClient,
   parentEngId: string | null,
 ): Promise<Array<Record<string, unknown>>> {
@@ -277,7 +277,7 @@ export async function fetchElementsFlat(
       id:                 n.id,
       engagement_id:      n.parent_engagement_id,
       element_type:       etObj?.slug  ?? null,
-      booking_type_label: etObj?.label ?? null,
+      element_type_label: etObj?.label ?? null,
       created_at:            n.created_at,
       updated_at:            n.updated_at,
     }
@@ -420,10 +420,10 @@ export async function fetchEngagementBookings(
 
 // ── Element enrichment — passengers + drivers + dining venue ──────────────────
 // Shared by confirmation + programme (was inlined verbatim in both — same select,
-// same output shape, a drift risk). Takes flat element rows from fetchElementsFlat,
+// same output shape, a drift risk). Takes flat element rows from fetchEngagementElements,
 // attaches passengers/drivers (keyed on the aux id, carried as source_aux_booking_id),
 // resolves the dining venue into image_src + nested venue{} facts.
-// fetchElementsFlat already produces the flat+typed shape, so no flattenAuxType here.
+// fetchEngagementElements already produces the flat+typed shape, so no flattenAuxType here.
 
 import { attachPassengers, attachDriverDetails } from './names.ts'
 
@@ -475,8 +475,8 @@ export async function enrichElements(
 // Used by the write path (travel-write-journey) to return the created/updated
 // element in the SAME flat shape the readers use — one source of truth for the
 // shape (the flatten below), no duplication in the write RPC. Reuses the exact
-// per-node flatten as fetchElementsFlat.
-export async function fetchOneElementFlat(
+// per-node flatten as fetchEngagementElements.
+export async function fetchEngagementElement(
   db: SupabaseClient,
   nodeId: string,
 ): Promise<Record<string, unknown> | null> {
@@ -508,7 +508,7 @@ export async function fetchOneElementFlat(
     id:                 n.id,
     engagement_id:      n.parent_engagement_id,
     element_type:       etObj?.slug  ?? null,
-    booking_type_label: etObj?.label ?? null,
+    element_type_label: etObj?.label ?? null,
     created_at:         n.created_at,
     updated_at:         n.updated_at,
   }

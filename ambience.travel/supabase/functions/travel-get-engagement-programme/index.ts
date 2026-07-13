@@ -43,7 +43,7 @@
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
-import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchElementsFlat, enrichElements } from '../_shared/engagement.ts'
+import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchEngagementElements, enrichElements } from '../_shared/engagement.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
 import { enrichBookingWithHotelPolicy } from '../_shared/expenses.ts'
@@ -170,7 +170,7 @@ Deno.serve(async (req: Request) => {
    // ── 9. Aux elements from the tree, enriched (passengers/drivers/dining) ────
     const auxBookingsWithImg = await enrichElements(
       db,
-      await fetchElementsFlat(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
+      await fetchEngagementElements(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
       partyLabel,
     )
 

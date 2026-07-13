@@ -302,7 +302,7 @@ export interface AuxPassengerLike {
   sort_order:               number
 }
 
-export interface AuxLike {
+export interface EngagementElementLike {
   passengers?: AuxPassengerLike[] | null
 }
 
@@ -328,7 +328,7 @@ export function driverDetailLines(aux: AuxWithDriverDetails): string[] {
   })
 }
 
-export function passengerLines(aux: AuxLike): string[] {
+export function passengerLines(aux: EngagementElementLike): string[] {
   const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   return pax.map(p => [
     passengerName(p),

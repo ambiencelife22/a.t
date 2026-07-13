@@ -11,7 +11,7 @@
 //   (uuid[] of a_house_people.person_id) + contact_name_format ('first'|'full').
 
 import { createServiceClient } from '../_shared/client.ts'
-import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchElementsFlat, enrichElements } from '../_shared/engagement.ts'
+import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchEngagementElements, enrichElements } from '../_shared/engagement.ts'
 import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
@@ -195,7 +195,7 @@ Deno.serve(async (req: Request) => {
       destinationName: destinations[0]?.name ?? '',
       auxBookings: await enrichElements(
               db,
-              await fetchElementsFlat(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
+              await fetchEngagementElements(db, (core.trip?.confirmed_engagement_id as string | null) ?? null),
               (brief?.prepared_for as string | null) ?? null,
             ),
       urlId: url_id,

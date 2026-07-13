@@ -41,7 +41,7 @@ import { json, preflight } from '../_shared/http.ts'
 import { buildDays } from '../_shared/days.ts'
 import { deriveElementStatus, type ChildStatus } from '../_shared/elementStatus.ts'
 import { resolveRoomGuestName, resolvePartyName, formatPersonName } from '../_shared/names.ts'
-import { fetchElementsFlat } from '../_shared/engagement.ts'
+import { fetchEngagementElements } from '../_shared/engagement.ts'
 import { fetchHotelsByIds } from '../_shared/bookings.ts'
 
 
@@ -405,7 +405,7 @@ async function handleDayEntries(db: SupabaseClient, journeyId: string): Promise<
 }
 
 async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise<Response> {
-  // Stage 7 Phase 2: read elements from the tree (node+detail) via fetchElementsFlat,
+  // Stage 7 Phase 2: read elements from the tree (node+detail) via fetchEngagementElements,
   // flattened to the legacy aux shape. Parent = journey.confirmed_engagement_id.
   const { data: j, error: jErr } = await db
     .from('travel_journey')
@@ -413,7 +413,7 @@ async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise
     .eq('id', journeyId)
     .maybeSingle()
   if (jErr) return err('Failed to resolve journey', 500)
-  const aux = await fetchElementsFlat(db, (j?.confirmed_engagement_id as string | null) ?? null)
+  const aux = await fetchEngagementElements(db, (j?.confirmed_engagement_id as string | null) ?? null)
   if (aux.length === 0) return ok({ auxBookings: [] })
   // Passengers key on node_id; flat rows carry id = node id (Stage 7 Phase 2 retire).
   const nodeIds = aux.map(a => a.id as string).filter(Boolean)

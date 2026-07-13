@@ -722,12 +722,12 @@ export type ImmerseTripAuxDriverDetail = {
   sort_order:     number
 }
 
-export type ImmerseTripAuxBooking = {
+export type EngagementElement = {
   id:                  string
   journey_id:             string
   engagement_type_id:  string | null
   element_type:        string | null
-  booking_type_label:  string | null
+  element_type_label:  string | null
   name:                string | null
   start_date:          string | null
   start_time:          string | null

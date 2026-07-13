@@ -33,7 +33,7 @@ import type {
   ImmerseDossierTrip,
   ImmerseTripBrief,
   ImmerseTripHouse,
-  ImmerseTripAuxBooking,
+  EngagementElement,
   ImmerseTripDay,
 } from './typesImmerse'
 import type { TimelineItem } from './typesTimeline'
@@ -75,7 +75,7 @@ export type DeliveryData = {
   brief:            ImmerseTripBrief | null
   house:            ImmerseTripHouse | null
   destinationName:  string
-  auxBookings:      ImmerseTripAuxBooking[]
+  auxBookings:      EngagementElement[]
   guides:           EngagementGuides
   contacts:         EngagementContact[]
   links:            EngagementLink[]
