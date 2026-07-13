@@ -22,12 +22,12 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { useAdminToast } from './_adminPrimitives'
 import {
-  fetchTripWelcomeLetters,
-  upsertTripWelcomeLetter,
-  deleteTripWelcomeLetter,
+  fetchEngagementWelcomeLetters,
+  upsertEngagementWelcomeLetter,
+  deleteEngagementWelcomeLetter,
 } from '../../queries/queriesAdminJourney'
 import type {
-  DossierJourney, EngagementBooking, BookingRoom, TripWelcomeLetter,
+  DossierJourney, EngagementBooking, BookingRoom, EngagementWelcomeLetter,
 } from '../../queries/queriesAdminJourney'
 import { exportWelcomeLetterPdf } from '../../pdf/pdfImmerseWelcome'
 import { roomGuestName } from '../../utils/utilsRoomDisplay'
@@ -64,8 +64,8 @@ function roomGuest(r: BookingRoom): string {
 }
 
 // Bookings that are accommodations (have rooms). Flights/aux have none.
-function buildRows(bookings: EngagementBooking[], letters: TripWelcomeLetter[]): LetterRow[] {
-  const byRoom = new Map<string, TripWelcomeLetter>()
+function buildRows(bookings: EngagementBooking[], letters: EngagementWelcomeLetter[]): LetterRow[] {
+  const byRoom = new Map<string, EngagementWelcomeLetter>()
   for (const l of letters) if (l.room_id) byRoom.set(l.room_id, l)
 
   const rows: LetterRow[] = []
@@ -100,7 +100,7 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
     let alive = true
     async function load() {
       try {
-        const letters = await fetchTripWelcomeLetters(trip.id)
+        const letters = await fetchEngagementWelcomeLetters(trip.id)
         if (!alive) return
         setRows(buildRows(trip.bookings ?? [], letters))
       } catch (e) {
@@ -118,7 +118,7 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
 
   const saveRow = useCallback(async (row: LetterRow, body: string) => {
     try {
-      const saved = await upsertTripWelcomeLetter(trip.id, {
+      const saved = await upsertEngagementWelcomeLetter(trip.id, {
         ...(row.letter_id ? { id: row.letter_id } : {}),
         booking_id: row.booking_id,
         room_id:    row.room_id,
@@ -156,7 +156,7 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
     setSaving(group[0].booking_id)
     try {
       for (const r of group) {
-        const saved = await upsertTripWelcomeLetter(trip.id, {
+        const saved = await upsertEngagementWelcomeLetter(trip.id, {
           ...(r.letter_id ? { id: r.letter_id } : {}),
           booking_id: r.booking_id,
           room_id:    r.room_id,

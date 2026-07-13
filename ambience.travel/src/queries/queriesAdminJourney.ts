@@ -635,7 +635,7 @@ export async function deleteAuxDriverDetail(id: string): Promise<void> {
 // ── Welcome letters (arrival) ─────────────────────────────────────────────────
 // Per room-guest per accommodation. One PDF letter per row, for the hotel to print.
 
-export type TripWelcomeLetter = {
+export type EngagementWelcomeLetter = {
   id:         string
   journey_id:    string
   booking_id: string
@@ -647,23 +647,23 @@ export type TripWelcomeLetter = {
   updated_at: string
 }
 
-export type TripWelcomeLetterPatch = Partial<Omit<TripWelcomeLetter, 'journey_id' | 'created_at' | 'updated_at'>>
+export type EngagementWelcomeLetterPatch = Partial<Omit<EngagementWelcomeLetter, 'journey_id' | 'created_at' | 'updated_at'>>
 
-export async function fetchTripWelcomeLetters(journeyId: string): Promise<TripWelcomeLetter[]> {
-  const { letters } = await invokeReadJourney<{ letters: TripWelcomeLetter[] }>({
+export async function fetchEngagementWelcomeLetters(journeyId: string): Promise<EngagementWelcomeLetter[]> {
+  const { letters } = await invokeReadJourney<{ letters: EngagementWelcomeLetter[] }>({
     mode: 'welcome_letters', journey_id: journeyId,
   })
   return letters
 }
 
-export async function upsertTripWelcomeLetter(journeyId: string, letter: TripWelcomeLetterPatch): Promise<TripWelcomeLetter> {
-  const { letter: row } = await invokeWriteJourney<{ letter: TripWelcomeLetter }>({
+export async function upsertEngagementWelcomeLetter(journeyId: string, letter: EngagementWelcomeLetterPatch): Promise<EngagementWelcomeLetter> {
+  const { letter: row } = await invokeWriteJourney<{ letter: EngagementWelcomeLetter }>({
     mode: 'upsert_welcome_letter', journey_id: journeyId, letter,
   })
   return row
 }
 
-export async function deleteTripWelcomeLetter(id: string): Promise<void> {
+export async function deleteEngagementWelcomeLetter(id: string): Promise<void> {
   await invokeWriteJourney({ mode: 'delete_welcome_letter', id })
 }
 
