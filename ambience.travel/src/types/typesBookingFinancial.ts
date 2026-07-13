@@ -12,7 +12,7 @@
 // canonical shape both surfaces re-type onto. It is the SUPERSET: every field
 // either surface reads. Surface-specific *_usd derivations and _resolved fields
 // are optional so a producer that does not compute them is honestly typed
-// (absent, not fabricated) — same discipline as ImmerseTripBooking.payment_exception.
+// (absent, not fabricated) — same discipline as ImmerseEngagementBooking.payment_exception.
 //
 // Once B2 (one read EF) + B4 (one surface) land, BookingRow and OpsBooking are
 // deleted and every consumer reads BookingFinancial directly.

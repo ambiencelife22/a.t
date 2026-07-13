@@ -26,7 +26,7 @@
 // Prior: S48 — url_id added to DossierTrip. Engagement join in fetchJourneyDossierForHouse.
 // Prior: S48 — booked_by text added to TripAuxBooking. TripAuxBookingPatch added.
 // Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
-// Prior: S46 — _hotel_image_src added to TripBooking.
+// Prior: S46 — _hotel_image_src added to EngagementBooking.
 // Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
 // Prior: S44 — initial ship.
 
@@ -251,7 +251,7 @@ export type BookingRoom = {
 
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>
 
-export type TripBooking = {
+export type EngagementBooking = {
   id:                        string
   journey_id:                   string
   house_id:                  string | null
@@ -330,7 +330,7 @@ export type DossierTrip = {
   destinations:         TripDestination[]
   guest_count_adults:   number | null
   guest_count_children: number | null
-  bookings:             TripBooking[]
+  bookings:             EngagementBooking[]
   brief:                TripBrief | null
   url_id:               string | null
 }
@@ -344,7 +344,7 @@ export type TripDossierData = {
 // ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
 type TripRow     = { id: string; trip_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
-type BookingRow  = Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
+type BookingRow  = Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
 type HotelEntry  = { name: string; hero_image_src: string | null }
 type BriefRow    = TripBrief
 type RoomRow     = BookingRoom
@@ -415,7 +415,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Trip
     })
   }
 
-  const bookingsByTrip = new Map<string, TripBooking[]>()
+  const bookingsByTrip = new Map<string, EngagementBooking[]>()
   for (const b of bookingRows) {
     if (!bookingsByTrip.has(b.journey_id)) bookingsByTrip.set(b.journey_id, [])
     const hotel = b.accom_hotel_id ? (hotelMap[b.accom_hotel_id] ?? null) : null
@@ -526,7 +526,7 @@ export async function updateBookingBriefFields(
 
 // Generic booking-field update — update_booking_brief is generic-patch server-side,
 // so this writes any travel_bookings column. Returns nothing (EF returns {success}).
-export async function updateBookingFields(bookingId: string, patch: Partial<TripBooking>): Promise<void> {
+export async function updateBookingFields(bookingId: string, patch: Partial<EngagementBooking>): Promise<void> {
   await invokeWriteJourney({ mode: 'update_booking_brief', booking_id: bookingId, patch })
 }
 
@@ -535,9 +535,9 @@ export async function updateBookingFields(bookingId: string, patch: Partial<Trip
 // (without the client-resolved _hotel_name/_hotel_image_src/_rooms fields).
 export async function createBooking(
   journeyId: string,
-  patch: Partial<Omit<TripBooking, 'id' | 'journey_id' | '_hotel_name' | '_hotel_image_src' | '_rooms'>>,
-): Promise<Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>> {
-  const { booking } = await invokeWriteJourney<{ booking: Omit<TripBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'> }>({
+  patch: Partial<Omit<EngagementBooking, 'id' | 'journey_id' | '_hotel_name' | '_hotel_image_src' | '_rooms'>>,
+): Promise<Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>> {
+  const { booking } = await invokeWriteJourney<{ booking: Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'> }>({
     mode: 'create_booking', journey_id: journeyId, patch,
   })
   return booking

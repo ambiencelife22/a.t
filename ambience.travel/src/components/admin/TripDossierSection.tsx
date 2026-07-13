@@ -19,7 +19,7 @@ import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import { formatDateShort, formatDateShortRange, formatDateRange } from '../../utils/utilsDates'
 import { moneyDec as fmt } from '../../utils/utilsCurrency'
 import type {
-  TripDossierData, DossierTrip, TripBooking, TripPartner,
+  TripDossierData, DossierTrip, EngagementBooking, TripPartner,
   HouseProfile,
 } from '../../queries/queriesAdminJourney'
 import { getEventStatusMeta } from '../../types/typesEventStatus'
@@ -38,7 +38,7 @@ import { HotelPicker } from './HotelPicker'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function mapBookingToDossier(b: TripBooking, house: HouseProfile | null): ClientDossierData {
+function mapBookingToDossier(b: EngagementBooking, house: HouseProfile | null): ClientDossierData {
   const hotelName = b._hotel_name ?? b.supplier_name_override ?? b.name ?? 'Supplier'
   const checkIn   = b.start_date ? formatDateShort(b.start_date) : '--'
   const checkOut  = b.end_date   ? formatDateShort(b.end_date)   : '--'
@@ -541,7 +541,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
 // ── BookingCard ───────────────────────────────────────────────────────────────
 
 function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
-  booking:   TripBooking
+  booking:   EngagementBooking
   partners:  Record<string, TripPartner>
   mobile:    boolean
   house:     HouseProfile | null
@@ -800,7 +800,7 @@ function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
 
 function BookingCreator({ journeyId, onCreated }: {
   journeyId:    string
-  onCreated: (booking: TripBooking) => void
+  onCreated: (booking: EngagementBooking) => void
 }) {
   const [open,   setOpen]   = useState(false)
   const [draft,  setDraft]  = useState<BookingDraft>(emptyBookingDraft())
@@ -814,7 +814,7 @@ function BookingCreator({ journeyId, onCreated }: {
     setSaving(true)
     try {
       const raw = await createBooking(journeyId, bookingDraftToPatch(draft))
-      const hydrated: TripBooking = { ...raw, _hotel_name: null, _hotel_image_src: null, _rooms: [] }
+      const hydrated: EngagementBooking = { ...raw, _hotel_name: null, _hotel_image_src: null, _rooms: [] }
       onCreated(hydrated)
       setOpen(false)
       setDraft(emptyBookingDraft())
@@ -904,7 +904,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
   onToggle: () => void
   house:    HouseProfile | null
 }) {
-  const [bookings, setBookings] = useState<TripBooking[]>(trip.bookings)
+  const [bookings, setBookings] = useState<EngagementBooking[]>(trip.bookings)
   // Stage-based pill (S53G+): derived from the winning engagement, not a
   // free-text trip column. 5 stages; null winner → "Pre-confirmation".
   const stageColor: Record<string, string> = { trip: '#4ade80', completed: '#86efac', proposal: '#E8C547', draft: A.faint, cancelled: '#f87171' }

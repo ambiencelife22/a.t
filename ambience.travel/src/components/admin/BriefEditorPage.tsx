@@ -50,7 +50,7 @@ import type {
   HouseProfile,
   TripBrief,
   TripBriefPatch,
-  TripBooking,
+  EngagementBooking,
   TripAuxBooking,
 } from '../../queries/queriesAdminJourney'
 import { groupElementsBySection, isFlightType, CABIN_CLASSES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesElements'

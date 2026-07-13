@@ -34,7 +34,7 @@ import AssetPicker from './AssetPicker'
 import {
   createBookingRoom, updateBookingRoom, deleteBookingRoom,
 } from '../../queries/queriesAdminJourney'
-import type { TripBooking, BookingRoom, BookingRoomPatch } from '../../queries/queriesAdminJourney'
+import type { EngagementBooking, BookingRoom, BookingRoomPatch } from '../../queries/queriesAdminJourney'
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -275,7 +275,7 @@ function RoomImageStrip({ roomId, src, presetPath, onPick, onClear }: {
 // ── Props ───────────────────────────────────────────────────────────────────
 
 interface BookingRoomsEditorProps {
-  booking:            TripBooking
+  booking:            EngagementBooking
   partyLabel?:        string | null
   imagePresetPath?:   string
   // Controlled (brief) mode — when present, drafts/images are lifted.
@@ -382,7 +382,7 @@ function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onR
 
 // ── Uncontrolled (dossier) — own state, save-on-submit ──────────────────────
 
-function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: TripBooking; partyLabel: string | null; imagePresetPath?: string }) {
+function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: EngagementBooking; partyLabel: string | null; imagePresetPath?: string }) {
   const [rooms,  setRooms]  = useState<BookingRoom[]>(booking._rooms ?? [])
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)

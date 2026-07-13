@@ -27,7 +27,7 @@ import {
   deleteTripWelcomeLetter,
 } from '../../queries/queriesAdminJourney'
 import type {
-  DossierTrip, TripBooking, BookingRoom, TripWelcomeLetter,
+  DossierTrip, EngagementBooking, BookingRoom, TripWelcomeLetter,
 } from '../../queries/queriesAdminJourney'
 import { exportWelcomeLetterPdf } from '../../pdf/pdfImmerseWelcome'
 import { roomGuestName } from '../../utils/utilsRoomDisplay'
@@ -64,7 +64,7 @@ function roomGuest(r: BookingRoom): string {
 }
 
 // Bookings that are accommodations (have rooms). Flights/aux have none.
-function buildRows(bookings: TripBooking[], letters: TripWelcomeLetter[]): LetterRow[] {
+function buildRows(bookings: EngagementBooking[], letters: TripWelcomeLetter[]): LetterRow[] {
   const byRoom = new Map<string, TripWelcomeLetter>()
   for (const l of letters) if (l.room_id) byRoom.set(l.room_id, l)
 

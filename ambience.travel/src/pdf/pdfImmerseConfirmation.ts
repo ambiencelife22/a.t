@@ -30,7 +30,7 @@ import {
 } from './pdfShared'
 import type {
   ImmerseTripBrief as TripBrief,
-  ImmerseTripBooking as TripBooking,
+  ImmerseEngagementBooking as EngagementBooking,
   ImmerseDossierTrip as DossierTrip,
   ImmerseTripHouse as HouseProfile,
   ImmerseBookingRoom as BookingRoom,
@@ -74,7 +74,7 @@ const HOTEL_PADH  = 8
 type RoomMeasure = { room: BookingRoom; h: number }
 type HotelMeasure = { headerH: number; rooms: RoomMeasure[]; nameLines: string[] }
 
-function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
+function measureHotel(doc: any, booking: EngagementBooking): HotelMeasure {
   const contentW = CW - HOTEL_IMG_W
   const rooms    = booking._rooms ?? []
   const headerConf = rooms.length === 0 && booking.confirmation_number
@@ -112,7 +112,7 @@ function measureHotel(doc: any, booking: TripBooking): HotelMeasure {
   return { headerH, rooms: roomMeasures, nameLines }
 }
 
-async function drawHotelHeader(doc: any, booking: TripBooking, y: number, m: HotelMeasure, continuation: boolean): Promise<void> {
+async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, m: HotelMeasure, continuation: boolean): Promise<void> {
   const imgW = HOTEL_IMG_W
   const contentX = P.margin + HOTEL_PADH + imgW; const contentW = CW - HOTEL_PADH - imgW
   const ownArr = isOwnArrangements(booking.booked_by)
@@ -206,7 +206,7 @@ async function drawHotelHeader(doc: any, booking: TripBooking, y: number, m: Hot
   if (!isOwnArrangements(booking.booked_by)) { sans(doc, 'italic', 7.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(bookedByText, tx, ty) }
 }
 
-function drawRoomRow(doc: any, rm: RoomMeasure, booking: TripBooking, y: number): void {
+function drawRoomRow(doc: any, rm: RoomMeasure, booking: EngagementBooking, y: number): void {
   const ownArr = isOwnArrangements(booking.booked_by)
   const rtx = P.margin + HOTEL_PADH
   const d = roomDisplay(rm.room)
@@ -235,7 +235,7 @@ function drawRoomRow(doc: any, rm: RoomMeasure, booking: TripBooking, y: number)
 }
 
 // Orchestrator: draws header + rooms with row-level pagination. Returns final y.
-async function drawHotelSplit(doc: any, booking: TripBooking, y: number, footerMargin: number): Promise<number> {
+async function drawHotelSplit(doc: any, booking: EngagementBooking, y: number, footerMargin: number): Promise<number> {
   const m = measureHotel(doc, booking)
   const pageBottom = P.h - footerMargin
 

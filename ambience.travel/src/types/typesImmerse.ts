@@ -812,11 +812,11 @@ export type ImmerseBookingRoom = {
   resolved_additional_guests?: string[] | null
 }
 
-// Booking: client's-bill KEPT, MARGIN STRIPPED. Omitted vs admin TripBooking:
+// Booking: client's-bill KEPT, MARGIN STRIPPED. Omitted vs admin EngagementBooking:
 // commissionable_rate, commission_pct, commission_amount, net_revenue,
 // commission_paid_at, invoice_number, iata_*, referral_*, individual_*,
 // supplier_*, primary/supplier contact fields, cancellation/booking policy.
-export type ImmerseTripBooking = {
+export type ImmerseEngagementBooking = {
   id:                  string
   journey_id:             string
   house_id:            string | null
@@ -856,7 +856,7 @@ export type ImmerseTripBooking = {
   created_at:          string | null
   updated_at:          string | null
   // Derived on the wire by travel-get-engagement-confirmation only. Optional because
-  // admin surfaces construct ImmerseTripBooking without computing it; absent
+  // admin surfaces construct ImmerseEngagementBooking without computing it; absent
   // reads as "no exception". The raw balance date/override that produce it are
   // never sent to the client.
   payment_exception?:  boolean
@@ -878,7 +878,7 @@ export type ImmerseDossierTrip = {
   destinations:         ImmerseTripDestination[]
   guest_count_adults:   number | null
   guest_count_children: number | null
-  bookings:             ImmerseTripBooking[]
+  bookings:             ImmerseEngagementBooking[]
   brief:                ImmerseTripBrief | null
   url_id:               string | null
 }

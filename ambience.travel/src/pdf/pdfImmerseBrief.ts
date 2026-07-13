@@ -42,7 +42,7 @@ import {
 } from './pdfShared'
 import type {
   ImmerseTripBrief as TripBrief,
-  ImmerseTripBooking as TripBooking,
+  ImmerseEngagementBooking as EngagementBooking,
   ImmerseDossierTrip as DossierTrip,
   ImmerseTripHouse as HouseProfile,
   EngagementElement as TripAuxBooking,
@@ -234,7 +234,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   // ── Accommodation ─────────────────────────────────────────────────────────
 
-  const hotels = trip.bookings.filter((b: TripBooking) => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
+  const hotels = trip.bookings.filter((b: EngagementBooking) => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
   if (hotels.length > 0) {
     y = drawSectionHeader(doc, 'Accommodation', y)
     for (const h of hotels) {
