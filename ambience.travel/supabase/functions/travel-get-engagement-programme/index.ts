@@ -1,6 +1,6 @@
-// supabase/functions/travel-get-trip-programme/index.ts
+// supabase/functions/travel-get-engagement-programme/index.ts
 //
-// Edge Function: travel-get-trip-programme
+// Edge Function: travel-get-engagement-programme
 // Reads daily programme data for client-facing programme pages.
 //
 // Security model:
@@ -238,7 +238,7 @@ Deno.serve(async (req: Request) => {
     return json(payload, 200)
 
   } catch (err) {
-    console.error('travel-get-trip-programme unexpected error:', err)
+    console.error('travel-get-engagement-programme unexpected error:', err)
     return json({ error: 'Internal server error' }, 500)
   }
 })

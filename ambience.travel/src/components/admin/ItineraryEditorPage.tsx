@@ -48,7 +48,7 @@ import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import type { TimelineItem } from '../../types/typesTimeline'
 
-const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-trip-programme`
+const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-engagement-programme`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 // ── Constants ─────────────────────────────────────────────────────────────────

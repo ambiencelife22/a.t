@@ -2,7 +2,7 @@
 //
 // What it owns:
 //   - fetchDeliveryBundle: calls BOTH delivery Edge Functions
-//     (travel-get-trip-confirmation + travel-get-trip-programme) and merges
+//     (travel-get-engagement-confirmation + travel-get-engagement-programme) and merges
 //     them into the DeliveryBundle the delivery surface renders. Single entry
 //     point — the surface never fetches raw.
 //
@@ -24,8 +24,8 @@ import type { DeliveryData, DeliveryBundle } from '../types/typesImmerseDelivery
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-const CONFIRMATION_FN = `${SUPABASE_URL}/functions/v1/travel-get-trip-confirmation`
-const PROGRAMME_FN    = `${SUPABASE_URL}/functions/v1/travel-get-trip-programme`
+const CONFIRMATION_FN = `${SUPABASE_URL}/functions/v1/travel-get-engagement-confirmation`
+const PROGRAMME_FN    = `${SUPABASE_URL}/functions/v1/travel-get-engagement-programme`
 
 const EF_HEADERS = {
   'Content-Type':  'application/json',

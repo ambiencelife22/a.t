@@ -1,7 +1,7 @@
 // supabase/functions/_shared/names.ts
 // Shared name resolution for travel EFs. Extracted S53G from the verbatim
-// (and already-drifted) copies in travel-get-trip-confirmation and
-// travel-get-trip-programme.
+// (and already-drifted) copies in travel-get-engagement-confirmation and
+// travel-get-engagement-programme.
 //
 // Precedence (single-source): linked person (global_people) → free-text
 // override → party label (brief.prepared_for). A person is the source when

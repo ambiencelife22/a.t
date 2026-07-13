@@ -13,7 +13,7 @@
 //   const gate = await checkPublicView(db, url_id)
 //   if (gate) return gate  // 403 (hidden) or 404 (nonexistent) Response
 //
-// travel-get-trip-confirmation and travel-get-trip-programme call this.
+// travel-get-engagement-confirmation and travel-get-engagement-programme call this.
 // Any future client-facing EF must call this before returning data.
 
 import { json } from './http.ts'

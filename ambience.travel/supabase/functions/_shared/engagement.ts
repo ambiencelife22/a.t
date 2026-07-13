@@ -1,7 +1,7 @@
 // supabase/functions/_shared/trip.ts
 //
-// Single-source trip assembly for the client EFs (travel-get-trip-confirmation
-// and travel-get-trip-programme). Both EFs previously duplicated, verbatim:
+// Single-source trip assembly for the client EFs (travel-get-engagement-confirmation
+// and travel-get-engagement-programme). Both EFs previously duplicated, verbatim:
 //   - url_id -> trip_id -> house_id resolution (incl 404 cases)
 //   - trip / brief / house / destinations fetch
 //   - bookings + rooms fetch, room guest-name resolution, hotel + canon-room

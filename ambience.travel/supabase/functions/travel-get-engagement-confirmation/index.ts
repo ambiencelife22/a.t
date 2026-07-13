@@ -1,6 +1,6 @@
-// supabase/functions/travel-get-trip-confirmation/index.ts
+// supabase/functions/travel-get-engagement-confirmation/index.ts
 //
-// Edge Function: travel-get-trip-confirmation
+// Edge Function: travel-get-engagement-confirmation
 // Resolves a trip confirmation brief for client-facing pages.
 //
 // Last updated: S43 Add 2 — deposit_paid_at + balance_paid_at added to
@@ -215,7 +215,7 @@ Deno.serve(async (req: Request) => {
     return json(payload, 200)
 
   } catch (err) {
-    console.error('travel-get-trip-confirmation unexpected error:', err)
+    console.error('travel-get-engagement-confirmation unexpected error:', err)
     return json({ error: 'Internal server error' }, 500)
   }
 })
