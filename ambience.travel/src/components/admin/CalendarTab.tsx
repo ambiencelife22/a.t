@@ -80,7 +80,7 @@ function MarkerIcon({ kind, size = 14, color = 'currentColor' }: { kind: MarkerK
 
 // One source for a trip's bar styling, keyed off the EF-derived state. Confirmed is
 // the gold default; completed reads muted grey-green; pending is lighter + dashed.
-function stateBandStyle(state: TripState): { bg: string; fg: string; border: string; dashed: boolean } {
+function stateBandStyle(state: EngagementState): { bg: string; fg: string; border: string; dashed: boolean } {
   if (state === 'completed') return { bg: L.completedTint, fg: L.completedBand, border: L.completedBorder, dashed: false }
   if (state === 'pending')   return { bg: L.pendingTint,   fg: L.pendingBand,   border: L.pendingBorder,   dashed: true }
   return { bg: L.goldTint, fg: L.band, border: L.goldBorder, dashed: false }
@@ -103,11 +103,11 @@ type CalendarActivity = {
   depart_airport: string | null; arrive_airport: string | null
   flight_number: string | null; airline_name: string | null; end_time: string | null
 }
-type TripState = 'completed' | 'confirmed' | 'pending'
+type EngagementState = 'completed' | 'confirmed' | 'pending'
 type CalendarEngagement = {
   id: string; journey_code: string; title: string | null
   start_date: string | null; end_date: string | null
-  status_slug: string | null; state: TripState; primary_client_id: string | null
+  status_slug: string | null; state: EngagementState; primary_client_id: string | null
   stays: CalendarStay[]; activities: CalendarActivity[]
 }
 type ViewMode = 'month' | 'week' | 'agenda'
@@ -290,7 +290,7 @@ function CalendarKey({ view }: { view: ViewMode }) {
       <span style={{ fontSize:9.5, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:L.muted }}>{label}</span>
     </span>
   )
-  const bar = (s: TripState) => {
+  const bar = (s: EngagementState) => {
     const sb = stateBandStyle(s)
     return <span style={{ width:18, height:11, borderRadius:3, background:sb.bg, border:`1px ${sb.dashed?'dashed':'solid'} ${sb.border}`, flexShrink:0 }} />
   }
