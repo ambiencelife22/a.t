@@ -26,7 +26,7 @@ const c = AMBIENCE.light
 // Map delivery SectionType -> tab label. Welcome is a synthetic tab (not a
 // registry section — it's brief.welcome_letter content) handled separately.
 const TAB_LABEL: Partial<Record<SectionType, string>> = {
-  brief:        'Trip Brief',
+  brief:        'Engagement Brief',
   programme:    'Programme',
   confirmation: 'Confirmation',
   contacts:     'Contacts',

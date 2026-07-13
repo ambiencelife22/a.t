@@ -200,7 +200,7 @@ async function renderAll(doc: any, d: TripBriefPdfData, emblem: Img | null, logo
 
   let y = await drawPdfHero(doc, {
     title,
-    docType:       'Trip Brief',
+    docType:       'Engagement Brief',
     subtitle:      brief?.brief_subtitle ?? null,
     preparedFor,
     dateRange:     buildDateRange(trip.start_date, trip.end_date),
@@ -439,7 +439,7 @@ function buildFilename(d: TripBriefPdfData): string {
   const clientName  = d.guestDisplayName ?? d.brief?.prepared_for ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
   const dateRange   = buildDateRange(d.trip.start_date, d.trip.end_date)
-  return ['Trip Brief', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'
+  return ['Engagement Brief', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────

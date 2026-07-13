@@ -25,6 +25,77 @@ Tags: **[DB]** = live schema/data change in Supabase (not in repo diffs).
 
 ---
 
+## CURRENT TRUTH · state of the schema as of S53R (13 Jul 2026)
+
+> This block is the reconciled ground-truth snapshot. Read it FIRST. It is verified against
+> `information_schema` / `pg_catalog` (S53R ground-truth pack), not reconstructed from entries below.
+> Entries beneath it are the chronological record (newest-first); where an older entry's claim was
+> later found false, it carries an inline `[CORRECTED S53R: ...]` annotation — the claim is preserved,
+> not erased, so the record of what was believed stays intact.
+
+**The spine.** `travel_engagements` is the service-agnostic spine (40 rows live), typed by
+`engagement_type_id`, self-nesting via `parent_engagement_id`. `travel_trips` is GONE (table).
+`travel_overlay_engagements` is GONE (renamed to the spine). `travel_engagement_aux_bookings` is
+GONE (Stage 7 — elements are now typed child nodes). 26 inbound FKs to the spine (verified).
+
+**The nine shapes** live in `travel_engagement_types` with a `level` column (`shape` | `element`):
+9 shapes (journey, stay, dining, reservation, transport, experience, acquisition, arrangement,
+concierge_service) + 13 element types. Confirmed present live.
+
+**Journey capability:** `travel_journey` (7 rows), `confirmed_engagement_id` → spine.
+**Overlay:** `travel_overlay_*` (per-engagement authored content). **Hosted arm:** `travel_hosted_*`
+(the founder-ratified PEER — do NOT fold into the spine). **Element detail:**
+`travel_engagement_transport_detail` / `_dining_detail` (1:1, node-keyed); write path via the three
+`create/update/delete_element` RPCs.
+
+**Registries (live):** `travel_lifecycle_statuses` (10–90 ladder + off-ladder 200s),
+`travel_itinerary_statuses`, `travel_payment_platforms`, `travel_rate_types`, + Stage-7
+`travel_cabin_classes`/`travel_aircraft_types`/`travel_airports`.
+
+**Known open reconciliations (see debts board):** frontend `typesImmerse.ts` still maps 8 shapes
+(DB has 9 — concierge routes to journey by fallback · D3); dining element nodes borrow the `dining`
+shape slug, split pending (D4); 7 residual `travel_trip_*` index/constraint tokens (D12); `public_view`
+still defaults `true`, ruled → `false` (D2); two grammar-law name violations (`travel_aux_driver_details`,
+`travel_engagement_aux_passengers` · D12); two residual EF names (`-trip-`, `-programme-` · D13).
+
+**Doc set (S53R):** Universal Doc #4 Mission (canon) · Reference Guide v6 · Dev Standards v3.5 ·
+Open Debts board. Reference Guide v5 RETAINED as the cross-product/infra doc. This changelog was
+reconciled S53R (deduplicated — the S53Q block was pasted 4×, S53L 3× — false claims corrected inline).
+
+---
+
+## 2026-07-13 (S53R — doc-set rebuild + RLS posture correction + changelog reconcile)
+
+### [DB] Seven RLS-zero-policy tables closed — silent deny-all → explicit admin-only
+
+Ground-truth audit (Q13) found seven tables with RLS enabled and ZERO policies — the silent
+deny-all latent bug the S53L standing rule forbids (works only via service-role bypass, empty on
+any other path). Added `FOR ALL TO authenticated USING (is_admin_user()) WITH CHECK (is_admin_user())`
+to: `travel_engagement_expenses`, `travel_expense_items`, `travel_partners`, `travel_task_templates`,
+`travel_tasks`, `travel_aux_driver_details`, `travel_journey_welcome_letters`. Verified live: each
+moved 0→1 policy. `element_status_events` deliberately LEFT at 0 policies (documented service-role-only
+audit log — the one correct deny-all). Used `TO authenticated` (tighter) over the drifted `TO public`
+seen on some existing policies. This is the only live schema write of S53R.
+
+### [CANON] Rulings ratified this session (D)
+
+- `public_view` default → `false` (D2). GUARDRAIL: do not touch the 4 currently-public engagements.
+- Dining shape/element SPLIT (D4, "mission always") — add a distinct dining element slug, no shared name.
+- Grammar law is LAW (not description): tables under the spine are named `travel_engagement*`; the two
+  `aux` violations are name-lies to correct (D12).
+- The nine shapes confirmed present in `travel_engagement_types` (concierge_service, level='shape').
+- SPORTS standards stay in their own doc; Ref Guide v5 retained as cross-product/infra home.
+
+### [PROCESS] Changelog reconciled — deduplicated + false claims corrected
+
+This file was corrupted by copy-paste: the S53Q Stage-7 block appeared 4×, S53L 3×, several others 2×
+(~550 lines of pure duplication). Reconciled conservatively: kept the fullest copy of each block, removed
+duplicates, preserved every unique entry's wording. The S53O "last travel_trip_* token closed" claim was
+found false (7 tokens remain) and is annotated inline `[CORRECTED S53R]` rather than deleted. A
+CURRENT-TRUTH header (above) was added as the read-first ground-truth snapshot. Nothing real was removed.
+
+---
+
 ## 2026-07-01
 
 ### [DB] payment_exception_override on travel_bookings (Arc B Phase 6, first client slice)
@@ -791,7 +862,7 @@ referenced a table long dead (→ dropped it). Two schema-truth lies pointing op
 directions, both surfaced by the rename-as-audit, both "foundation perfect" corrections
 that only became visible because every reference got exercised.
 
-### [DB] 5 set_updated_at triggers renamed off travel_trip_* — last travel_trip_* object-name lie closed
+### [DB] 5 set_updated_at triggers renamed off travel_trip_* — set_updated_at trigger names closed  [CORRECTED S53R: NOT the last travel_trip_* token — 7 index/constraint objects remain (travel_trip_guests_pkey, idx_travel_trip_guests_person/_trip, travel_trip_statuses_pkey/_slug_key, + 2 unique-triple indexes). See debts board D12.]
 
 Trigger NAMES still carried `travel_trip_*` tokens while sitting on renamed tables (they
 fire set_updated_at correctly — the name is a label, not a reference, so no bug). Renamed
@@ -931,74 +1002,6 @@ side-effect of a P3 type-dedup. The two TimelineRoom types are currently byte-id
 so drift risk is low TODAY; the structural fix waits for the deliberate boundary decision. When
 taken: TimelineRoom is the ideal FIRST case (pure type, zero runtime) to prove the chosen pattern
 before applying it to formatName's harder runtime-logic case.
-
-## 2026-07-05 (S53L — DB integrity session, self-audited)
-
-### [DB] Session intent + honest accounting — verify-against-live-schema-FIRST reaffirmed
-
-INTENT: foundational DB integrity work clear of M's HPGL/rename arcs — close free-text
-smells, enforce implied invariants, kill naming drift. Make the foundation honest, not
-add features. Six pieces attempted.
-
-METHODOLOGICAL ERROR (the reason this entry matters more than the work): consulted
-information_schema per-table intermittently but NEVER read this changelog before starting
-DB work — so did not know the travel_immerse_* → travel_overlay_* → engagement/journey
-rename campaign was in flight. Built confidently against stale travel_immerse_* names that
-were renamed campaigns ago. Same failure class as every rename-audit lesson already logged
-here: the live schema is the only truth, git can't show it, and the changelog is the only
-record of renames. Consult BOTH before any DB work — not after it breaks.
-
-SOLID (tables outside the rename campaign — verified live, correct):
-- website_url → website convergence: renamed on travel_accom_brands, travel_accom_hotels,
-  travel_happenings, travel_suppliers (4 tables) + 6 guest-frontend consumer files. Platform
-  now uniform on `website` (non-redundant name; the _url suffix is decorative). EF-safe
-  (zero EF refs). Shared-DB safe sequence: frontend deploy THEN rename, graceful degradation
-  (links briefly absent, never errored). tsc-verified, live-verified.
-- is_public ⟹ is_active CHECK on travel_shopping + travel_happenings
-  (travel_{shopping,happenings}_public_implies_active). Enforces the two-stage model
-  (is_active=lifecycle, is_public=audience) — inactive+public now structurally impossible.
-- link_type → engagement_link_type enum (guide/custom parallel-built; extended to the full
-  UHNW set: +form, confirmation, document, payment, contact). travel_engagement_links,
-  confirmed engagement_id-keyed (current post-5a). NOTE: 5 new enum values have NO distinct
-  render yet — assign a link a new type only after its render ships, or the type claims
-  meaning the UI ignores.
-- Per-surface engagement links: show_on_proposal (default false) + show_on_confirmation
-  (default true) on travel_engagement_links. Both EFs filter by them; proposal EF gained
-  the links feature it never had. Defaults preserve prior behavior. Both paths verified,
-  test-elect reverted.
-- opening_hours jsonb (nullable) on travel_dining_venues (the `website` col already existed —
-  original "add website" half was a phantom). Shape = Option B (per-day service periods +
-  bounded notes), enforced app-layer per existing bullets-jsonb convention. INERT: no
-  reader/writer yet — TS type + admin form + card render are the completion (follow-on).
-
-SUSPECT — ran against STALE travel_immerse_* names, must be re-verified + likely redone on
-correct tables:
-- destination_url_slug format CHECK + per-trip unique index: ran against
-  travel_immerse_trip_destination_rows + travel_immerse_rooms — names that no longer exist.
-  Live truth: the destination-rows table is now travel_overlay_engagement_destination_rows
-  (and/or travel_journey_destinations — the rename split), rooms is travel_overlay_rooms.
-  Post-audit, ONLY card_selections_slug_format survives (on
-  travel_overlay_engagement_content_card_selections). The two intended constraints
-  (destination-rows format+uniqueness, rooms format) are NOT on the live tables — landed on
-  ghosts or nowhere. MUST redo on: travel_overlay_engagement_destination_rows (or
-  travel_journey_destinations — confirm which holds destination_url_slug), travel_overlay_rooms.
-  Design decisions still valid (format ^[a-z0-9]+$ on all slug-bearing tables; per-"trip"
-  uniqueness on the canonical/identity table — but the trip_id column is now journey_id/
-  engagement_id, so the unique index key must be re-derived on the real column).
-- HPGL DB foundation done early this session (house_label_context enum, engagement_houses
-  join, Austria seed): a_house_* / engagement_houses may be OUTSIDE the rename path (verify),
-  but re-confirm table names before trusting. M owns the HPGL arc — coordinate.
-
-RETRACTED — trip-surface consolidation arc spec (arc_trip_consolidation.md): DISCARD. It
-duplicates work M is ACTIVELY building ("one-EF-three-modes read-path consolidation",
-referenced in the 07-08 guest-read-reliability entry). Scoped before reading the changelog =
-the exact parallel-planning the changelog exists to prevent. Not a contribution; a collision.
-
-LESSON (standing, reaffirmed not new): before ANY DB work — (1) read this changelog for
-in-flight rename campaigns, (2) resolve every target table name against information_schema,
-(3) THEN act. In-context table names are stale by default in this repo. "Success. No rows
-returned" on a DDL against a nonexistent-name table is NOT proof it applied to the table you
-meant — verify the constraint/column exists on the LIVE table by its CURRENT name afterward.
 
 ## 2026-07-10 (S53P — Stage 6 Phase 2 + EF boundary sweep · INTENTION, recon-frozen)
 
@@ -1234,7 +1237,7 @@ and target (table) shipped separately; the gap was invisible to grep (no migrati
 live) and tsc, surfacing only on the promotion path. Cross-check changelog-documented DB objects
 against information_schema — proven-necessary "foundation perfect" work.
 
-### [DB] Orphan function dropped — update_travel_immerse_bottom_notes_updated_at
+### [DB] Orphan function dropped — update_travel_immerse_bottom_notes_updated_at  [same event also logged in the S53O consolidated block above — cross-reference, not a second drop]
 
 Referenced travel_immerse_bottom_notes, a table gone since the immerse→overlay rename. No
 trigger used it (verified). Flagged db_map v10 §4; closed. The INVERSE of element_status_events:
@@ -1242,7 +1245,7 @@ there a live trigger referenced a never-built table (→ built it); here a live 
 a long-dead table (→ dropped it). Two schema-truth lies, opposite directions, both surfaced by
 rename-as-audit.
 
-### [DB] 5 set_updated_at triggers renamed off travel_trip_* — last travel_trip_* object token closed
+### [DB] 5 set_updated_at triggers renamed off travel_trip_* — set_updated_at trigger tokens closed  [CORRECTED S53R: NOT the last — 7 index/constraint tokens remain, see debts D12]
 
 Trigger NAMES carried travel_trip_* tokens on renamed tables (they fire correctly — name is a
 label). Renamed to match their tables: trg_set_updated_at_travel_trip_{aux_bookings,briefs,
@@ -1640,36 +1643,6 @@ Output
 PASTE THIS AT THE END OF CHANGELOG.md:
 ========================================================================
 
-## 2026-07-11 (S53O — final honesty close: _shared/days.ts + ghost-constraint verify)
-
-### [DONE] _shared/days.ts TripDayItem → JourneyDayItem, trip_id field → journey_id
-
-The last flagged trip-name in the shared layer, closed. Listed as open Category-Z debt in
-several prior entries (TripDayItem.trip_id, days.ts:15/64) — now actually done. Self-contained:
-grep confirmed NO consumer reads .trip_id off buildDays' output (the field is populated but
-unread), so the rename is honesty-only, zero behavior change, zero ripple. Renamed: type
-TripDayItem → JourneyDayItem (lines 13/51), field trip_id → journey_id (15), object key (64,
-value was already journeyId post-S53P), the header comment. tsc green; grep for trip-token in
-days.ts now empty. Redeployed the 3 bundling EFs (travel-get-trip-confirmation,
-travel-get-trip-programme, travel-read-journey-admin) per the _shared-bundling rule (a shared-
-module edit isn't live until every importer redeploys). NOTE (logged, not chased): buildDays'
-journey_id field is populated but unread by any consumer — a candidate dead field, worth a
-"is this needed" check someday.
-
-### [VERIFIED CLOSED] S53L "ghost constraint" debt was stale — verify-first prevented a wrong fix
-
-The S53L debt ("destination_url_slug constraints landed on ghost travel_immerse_* names, redo
-on real tables") was VERIFIED RESOLVED, no DDL needed. Current live state is correct: format
-CHECK (slug IS NULL OR ^[a-z0-9]+$) on all 3 real tables that have the column
-(travel_overlay_engagement_destination_rows / _content_card_selections / travel_overlay_rooms);
-UNIQUE(engagement_id, destination_url_slug) WHERE NOT NULL correctly scoped to destination_rows
-only (the subpage-URL owner); no travel_immerse_* ghost tables exist. CRITICAL: the debt said
-"redo the constraints" — but verify-first showed the constraints were already correct, and a
-naive redo adding uniqueness to rooms would have BROKEN valid shared-slug rooms (rooms
-legitimately share a slug: sb×3 = 3 St Barths options on one subpage). Verify-first before DDL
-stopped us fixing a non-problem into a bug. (This probe is also what surfaced the separate
-destination_url_slug denormalization debt logged above.)
-
 ## 2026-07-11 (S53Q — Stage 7 DB layer: the engagement tree, built + populated)
 
 ### [DB][ARC] Stage 7 Phase 1 — typed engagement tree created + populated from aux (readers pending)
@@ -1995,109 +1968,6 @@ The current flat-read path is transitional. Phase 2's end state = consumers on t
 shape; the flat-read is DELETED with aux (aux_bookings → elements, Stage 7). Do not build
 new consumers assuming flat-read permanence — it is scaffolding with a demolition date.
 
-## 2026-07-05 (S53L — DB integrity session, self-audited)
-
-### [DB] Session intent + honest accounting — verify-against-live-schema-FIRST reaffirmed
-
-INTENT: foundational DB integrity work clear of M's HPGL/rename arcs — close free-text
-smells, enforce implied invariants, kill naming drift. Make the foundation honest, not
-add features. Six pieces attempted.
-
-METHODOLOGICAL ERROR (the reason this entry matters more than the work): consulted
-information_schema per-table intermittently but NEVER read this changelog before starting
-DB work — so did not know the travel_immerse_* → travel_overlay_* → engagement/journey
-rename campaign was in flight. Built confidently against stale travel_immerse_* names that
-were renamed campaigns ago. Same failure class as every rename-audit lesson already logged
-here: the live schema is the only truth, git can't show it, and the changelog is the only
-record of renames. Consult BOTH before any DB work — not after it breaks.
-
-SOLID (tables outside the rename campaign — verified live, correct):
-- website_url → website convergence: renamed on travel_accom_brands, travel_accom_hotels,
-  travel_happenings, travel_suppliers (4 tables) + 6 guest-frontend consumer files. Platform
-  now uniform on `website` (non-redundant name; the _url suffix is decorative). EF-safe
-  (zero EF refs). Shared-DB safe sequence: frontend deploy THEN rename, graceful degradation
-  (links briefly absent, never errored). tsc-verified, live-verified.
-- is_public ⟹ is_active CHECK on travel_shopping + travel_happenings
-  (travel_{shopping,happenings}_public_implies_active). Enforces the two-stage model
-  (is_active=lifecycle, is_public=audience) — inactive+public now structurally impossible.
-- link_type → engagement_link_type enum (guide/custom parallel-built; extended to the full
-  UHNW set: +form, confirmation, document, payment, contact). travel_engagement_links,
-  confirmed engagement_id-keyed (current post-5a). NOTE: 5 new enum values have NO distinct
-  render yet — assign a link a new type only after its render ships, or the type claims
-  meaning the UI ignores.
-- Per-surface engagement links: show_on_proposal (default false) + show_on_confirmation
-  (default true) on travel_engagement_links. Both EFs filter by them; proposal EF gained
-  the links feature it never had. Defaults preserve prior behavior. Both paths verified,
-  test-elect reverted.
-- opening_hours jsonb (nullable) on travel_dining_venues (the `website` col already existed —
-  original "add website" half was a phantom). Shape = Option B (per-day service periods +
-  bounded notes), enforced app-layer per existing bullets-jsonb convention. INERT: no
-  reader/writer yet — TS type + admin form + card render are the completion (follow-on).
-
-SUSPECT — ran against STALE travel_immerse_* names, must be re-verified + likely redone on
-correct tables:
-- destination_url_slug format CHECK + per-trip unique index: ran against
-  travel_immerse_trip_destination_rows + travel_immerse_rooms — names that no longer exist.
-  Live truth: the destination-rows table is now travel_overlay_engagement_destination_rows
-  (and/or travel_journey_destinations — the rename split), rooms is travel_overlay_rooms.
-  Post-audit, ONLY card_selections_slug_format survives (on
-  travel_overlay_engagement_content_card_selections). The two intended constraints
-  (destination-rows format+uniqueness, rooms format) are NOT on the live tables — landed on
-  ghosts or nowhere. MUST redo on: travel_overlay_engagement_destination_rows (or
-  travel_journey_destinations — confirm which holds destination_url_slug), travel_overlay_rooms.
-  Design decisions still valid (format ^[a-z0-9]+$ on all slug-bearing tables; per-"trip"
-  uniqueness on the canonical/identity table — but the trip_id column is now journey_id/
-  engagement_id, so the unique index key must be re-derived on the real column).
-- HPGL DB foundation done early this session (house_label_context enum, engagement_houses
-  join, Austria seed): a_house_* / engagement_houses may be OUTSIDE the rename path (verify),
-  but re-confirm table names before trusting. M owns the HPGL arc — coordinate.
-
-RETRACTED — trip-surface consolidation arc spec (arc_trip_consolidation.md): DISCARD. It
-duplicates work M is ACTIVELY building ("one-EF-three-modes read-path consolidation",
-referenced in the 07-08 guest-read-reliability entry). Scoped before reading the changelog =
-the exact parallel-planning the changelog exists to prevent. Not a contribution; a collision.
-
-LESSON (standing, reaffirmed not new): before ANY DB work — (1) read this changelog for
-in-flight rename campaigns, (2) resolve every target table name against information_schema,
-(3) THEN act. In-context table names are stale by default in this repo. "Success. No rows
-returned" on a DDL against a nonexistent-name table is NOT proof it applied to the table you
-meant — verify the constraint/column exists on the LIVE table by its CURRENT name afterward.
-
----
-
-### [CANON] Universal Document #4 superseded — 12 Jul 2026 (widens travel → lifestyle design)
-
-The Mission evolved. Registering the deltas that bear on live work:
-
-- MISSION widened: "Be the best in the world at designing life's most meaningful moments."
-  Travel is now explicitly the center of gravity + the craft-benchmark, NOT the whole.
-  Lifestyle design is the discipline. Confirms the service-agnostic-spine reasoning the
-  Phase B model-correction already anticipated — now canon.
-- NORTH STAR: "One ENGAGEMENT. One URL. One experience." (was "One trip"). The Phase B
-  campaign (travel_trips retired as spine → travel_engagements the service-agnostic entity;
-  travel_trips → travel_journey the capability module) is now DIRECTLY MANDATED by the North
-  Star's wording. The rename is the Mission made structural, not just cleanup.
-- THE NINE are canon. Every engagement is one of: Journey, Stay, Dining, Reservation,
-  Transport, Experience, Acquisition, Arrangement, Concierge Service.
-  - Arrangement = BROKERED (a third party performs it — the supplier/partner path).
-  - Concierge Service = OURS (ambience performs it directly — research, appointments, the
-    house's direct work, personal assistance).
-  - The Arrangement/Concierge Service distinction is "deliberate and load-bearing" (doc's
-    words): different fulfillment models, not a label. Never conflate.
-
-### [ARC-pending] travel_engagement_types needs THE NINE — add Concierge Service, split from Arrangement
-
-Schema + registry work, own slice. travel_engagement_types must carry all nine canon types.
-Concierge Service is NEW and must be SPLIT from Arrangement (brokered-vs-ours is load-bearing
-per Doc #4). Recon-first: read current travel_engagement_types rows/shape against
-information_schema, confirm which of the nine already exist, add the missing (incl. Concierge
-Service), ensure the type distinction is modeled (not just a label) where fulfillment differs.
-
-### [NOTE] Flat-read is a BRIDGE, not the end state (Phase 2)
-The current flat-read path is transitional. Phase 2's end state = consumers on the engagement
-shape; the flat-read is DELETED with aux (aux_bookings → elements, Stage 7). Do not build
-new consumers assuming flat-read permanence — it is scaffolding with a demolition date.
-
 ---
 
 ### [STANDING RULE] Every table: RLS + Constraints + Comments (D, S53L)
@@ -2239,424 +2109,6 @@ REMAINING WORK (correctly characterized, Stage-7-dependent — NOT a fresh table
 This session's contribution to the split: the level classification (correct, complete, banked) +
 the exact violation map + confirmation that no second table is needed. The remap + enforce are
 M's Stage 7, now with level ready to enforce against.
-
-## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
-
-### [ARC][DB] travel_engagement_aux_bookings DROPPED — every element now lives solely as a typed engagement-tree node
-
-The flat aux table is gone — not a table, not a view (`to_regclass` returns null). Every
-element (flight / dining / airport_transfer / meet_greet) now exists ONLY as a node on
-`travel_engagements` (`iteration_label='element'`, `parent_engagement_id` = the confirmed
-engagement) + its 1:1 detail row (`travel_engagement_transport_detail` for flights,
-`travel_engagement_dining_detail` for dining; bare nodes for transfer/meet_greet). No parallel
-source remains. This closes the Stage-7 model: the engagement tree is the single truth for
-elements, read + written transactionally. Live Supabase — invisible to git; this is the record.
-
-**Read path (all readers on the tree, verified live):**
-- `_shared/engagement.ts` (was `_shared/trip.ts` — renamed, the last trip-named survivor in the
-  shared layer; exports `fetchEngagementCore`/`EngagementCore`/`fetchEngagementBookings`).
-  `fetchElementsFlat(db, parentEngId)` reads node+detail and flattens to the legacy aux shape
-  (a BRIDGE — deleted when consumers read engagement shape directly; do not calcify).
-  `fetchOneElementFlat(db, nodeId)` for the write return-shape. `enrichElements(db, elements,
-  partyLabel)` — GLOBALIZED passenger/driver/dining enrichment (was inlined verbatim in both
-  guest EFs, a live drift risk; now one home).
-- `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
-  and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
-  dining→dining, else bare node.
-- The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
-  all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
-  passengers + dining venues (Mister Nice, China Tang) from the tree.
-- Calendar activity read: fixed the journey-vs-engagement filter (elements' parent_engagement_id
-  is the CONFIRMED ENGAGEMENT id, not the journey id — resolve journeyId→confirmed_engagement_id
-  for the `.in()` filter, group results back by engagement id). Was showing "No itinerary recorded"
-  on EVERY trip. Now renders full itineraries; flight detail enriched from transport_detail +
-  the airport registry (no aux).
-
-**Write path (transactional RPCs, replace the aux passthrough handlers):**
-- 3 SECURITY DEFINER plpgsql functions, each atomic (a function body is one txn — fixes the
-  orphan-on-failure + type-change-leak of an app-layer sequential-insert draft):
-  - `create_element(p_journey_id uuid, p_patch jsonb) → uuid`: resolves parent
-    (journey.confirmed_engagement_id), inserts node (full NOT-NULL spine contract:
-    engagement_status_id=confirmed, itinerary_status_id=confirmed, audience=private,
-    proposal_visibility=active, is_public=false, iteration_label='element', journey_types='{}'),
-    then detail by slug. Free-text→FK resolved in-txn (cabin_class label→id, aircraft_type
-    label→id, depart/arrive_airport iata→id). PROVEN live (rolled-back txn: created a flight,
-    verify returned cabin_resolved="Business", airport_resolved="DOH").
-  - `update_element(p_node_id, p_patch)`: COALESCE keeps existing node values for absent keys;
-    on type-change DELETEs mismatched detail + upserts correct (ON CONFLICT node_id).
-  - `delete_element(p_node_id)`: DELETE node; detail cascades via node_id FK ON DELETE CASCADE.
-- travel-write-journey handleCreate/Update/DeleteAuxBooking now call the RPCs and re-read via
-  `fetchOneElementFlat` to return the full flat row (TripDossierSection splices it into state).
-
-**The five-table FK migration (aux was tethered by 5 FKs, all ON DELETE CASCADE except 2 SET NULL
-— a naive DROP would have destroyed passengers, drivers, tasks):**
-Each tethered table: ADD COLUMN node_id uuid + FK→travel_engagements(id) ON DELETE CASCADE,
-backfill via the source_aux_booking_id mapping, repoint code, DROP old aux column.
-- travel_engagement_aux_passengers (51 rows) — aux_booking_id → node_id
-- travel_aux_driver_details (2 rows) — aux_booking_id → node_id
-- travel_tasks (3 linked rows) — aux_booking_id → node_id (nullable; most tasks aren't element-linked)
-- travel_journey_day_entries (0 linked) — source_aux_id column dropped (cosmetic)
-- travel_engagements.source_aux_booking_id (the mapping itself) — dropped LAST, after all backfills
-Backfills all proven clean pre-migration (every linked row mapped to exactly one node, no
-multi-node, no orphans).
-
-**The aux_booking_id → node_id API-contract sweep (payload-key honesty, tsc-blind — grep the
-callers):** switched the expander + driver-editor + passenger-editor contract from passing the
-aux id to passing the node id (which the callers already had as `a.id` / `activity.id` — the flat
-rows and calendar activities carry the node id). Touched: CalendarTab (activity_detail body →
-node_id; canExpand → activity.is_element; type field source_aux_booking_id → is_element),
-queriesAdminJourney (3 mode payloads), both EF handlers (handleActivityDetail /
-handleAuxDriverDetails take node id directly, no source_aux_booking_id resolve). The EF calendar
-projection now emits `is_element: !a.source_booking_id` (the durable "expandable" flag) instead of
-carrying the dropped column.
-
-**Element-selection predicate swap (the one late change to eyeball):** `fetchElementsFlat` filtered
-elements by `.not('source_aux_booking_id', 'is', null)`. Column dropped → filter switched to
-`.eq('iteration_label', 'element')`. Verified equivalent: all 25 element nodes carry
-iteration_label='element' (the create_element/populate contract); the lone non-element child (label
-'B') correctly excluded.
-
-**Parity gate (banked, held throughout):** nodes=25, transport=15, dining=5, bare=5, passengers=51,
-drivers=2, tasks=3. Tree = source before the drop.
-
-### [PROCESS / LESSONS]
-- Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
-  verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
-  `\echo` are psql meta-commands, fail in the editor.
-- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
-- Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
-  current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
-  are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
-- The rendered page is the verification, not tsc/grep (the journey-vs-engagement calendar filter was
-  tsc-green while every trip showed "No itinerary").
-
-### STILL OPEN (scoped, non-blocking)
-- Type-field honesty (Category Z): TripAuxPassenger/TripAuxDriverDetail `.aux_booking_id` type fields
-  + `auxBookingId` variable/prop names still say "aux" but hold node ids — values correct, names stale.
-- fetchElementsFlat/fetchOneElementFlat/enrichElements flat-read is a BRIDGE (flattens tree→aux shape
-  for cutover); delete when consumers read engagement shape directly.
-- engagement.ts:425 — one stale comment still mentions source_aux_booking_id.
-- Calendar "Stays" metric (S53I debt, re-confirmed on HRH AMF): flat distinct-hotel count conflates
-  properties / principal's stays / room footprint — needs a design decision + EF room-count carry.
-- typesImmerse 8→9 shape reconcile (L's border): frontend slug→shape map is 8 shapes; Doc #4 canon is
-  9 (Concierge Service split from Arrangement). EF-first.
-- Passenger party-primitive migration (passenger_label free-text → global_people) — logged follow-on,
-  independent of the retire.
-
-  ## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
-
-### [ARC][DB] travel_engagement_aux_bookings DROPPED — every element now lives solely as a typed engagement-tree node
-
-The flat aux table is gone — not a table, not a view (`to_regclass` returns null). Every
-element (flight / dining / airport_transfer / meet_greet) now exists ONLY as a node on
-`travel_engagements` (`iteration_label='element'`, `parent_engagement_id` = the confirmed
-engagement) + its 1:1 detail row (`travel_engagement_transport_detail` for flights,
-`travel_engagement_dining_detail` for dining; bare nodes for transfer/meet_greet). No parallel
-source remains. This closes the Stage-7 model: the engagement tree is the single truth for
-elements, read + written transactionally. Live Supabase — invisible to git; this is the record.
-
-**Read path (all readers on the tree, verified live):**
-- `_shared/engagement.ts` (was `_shared/trip.ts` — renamed, the last trip-named survivor in the
-  shared layer; exports `fetchEngagementCore`/`EngagementCore`/`fetchEngagementBookings`).
-  `fetchElementsFlat(db, parentEngId)` reads node+detail and flattens to the legacy aux shape
-  (a BRIDGE — deleted when consumers read engagement shape directly; do not calcify).
-  `fetchOneElementFlat(db, nodeId)` for the write return-shape. `enrichElements(db, elements,
-  partyLabel)` — GLOBALIZED passenger/driver/dining enrichment (was inlined verbatim in both
-  guest EFs, a live drift risk; now one home).
-- `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
-  and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
-  dining→dining, else bare node.
-- The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
-  all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
-  passengers + dining venues (Mister Nice, China Tang) from the tree.
-- Calendar activity read: fixed the journey-vs-engagement filter (elements' parent_engagement_id
-  is the CONFIRMED ENGAGEMENT id, not the journey id — resolve journeyId→confirmed_engagement_id
-  for the `.in()` filter, group results back by engagement id). Was showing "No itinerary recorded"
-  on EVERY trip. Now renders full itineraries; flight detail enriched from transport_detail +
-  the airport registry (no aux).
-
-**Write path (transactional RPCs, replace the aux passthrough handlers):**
-- 3 SECURITY DEFINER plpgsql functions, each atomic (a function body is one txn — fixes the
-  orphan-on-failure + type-change-leak of an app-layer sequential-insert draft):
-  - `create_element(p_journey_id uuid, p_patch jsonb) → uuid`: resolves parent
-    (journey.confirmed_engagement_id), inserts node (full NOT-NULL spine contract:
-    engagement_status_id=confirmed, itinerary_status_id=confirmed, audience=private,
-    proposal_visibility=active, is_public=false, iteration_label='element', journey_types='{}'),
-    then detail by slug. Free-text→FK resolved in-txn (cabin_class label→id, aircraft_type
-    label→id, depart/arrive_airport iata→id). PROVEN live (rolled-back txn: created a flight,
-    verify returned cabin_resolved="Business", airport_resolved="DOH").
-  - `update_element(p_node_id, p_patch)`: COALESCE keeps existing node values for absent keys;
-    on type-change DELETEs mismatched detail + upserts correct (ON CONFLICT node_id).
-  - `delete_element(p_node_id)`: DELETE node; detail cascades via node_id FK ON DELETE CASCADE.
-- travel-write-journey handleCreate/Update/DeleteAuxBooking now call the RPCs and re-read via
-  `fetchOneElementFlat` to return the full flat row (TripDossierSection splices it into state).
-
-**The five-table FK migration (aux was tethered by 5 FKs, all ON DELETE CASCADE except 2 SET NULL
-— a naive DROP would have destroyed passengers, drivers, tasks):**
-Each tethered table: ADD COLUMN node_id uuid + FK→travel_engagements(id) ON DELETE CASCADE,
-backfill via the source_aux_booking_id mapping, repoint code, DROP old aux column.
-- travel_engagement_aux_passengers (51 rows) — aux_booking_id → node_id
-- travel_aux_driver_details (2 rows) — aux_booking_id → node_id
-- travel_tasks (3 linked rows) — aux_booking_id → node_id (nullable; most tasks aren't element-linked)
-- travel_journey_day_entries (0 linked) — source_aux_id column dropped (cosmetic)
-- travel_engagements.source_aux_booking_id (the mapping itself) — dropped LAST, after all backfills
-Backfills all proven clean pre-migration (every linked row mapped to exactly one node, no
-multi-node, no orphans).
-
-**The aux_booking_id → node_id API-contract sweep (payload-key honesty, tsc-blind — grep the
-callers):** switched the expander + driver-editor + passenger-editor contract from passing the
-aux id to passing the node id (which the callers already had as `a.id` / `activity.id` — the flat
-rows and calendar activities carry the node id). Touched: CalendarTab (activity_detail body →
-node_id; canExpand → activity.is_element; type field source_aux_booking_id → is_element),
-queriesAdminJourney (3 mode payloads), both EF handlers (handleActivityDetail /
-handleAuxDriverDetails take node id directly, no source_aux_booking_id resolve). The EF calendar
-projection now emits `is_element: !a.source_booking_id` (the durable "expandable" flag) instead of
-carrying the dropped column.
-
-**Element-selection predicate swap (the one late change to eyeball):** `fetchElementsFlat` filtered
-elements by `.not('source_aux_booking_id', 'is', null)`. Column dropped → filter switched to
-`.eq('iteration_label', 'element')`. Verified equivalent: all 25 element nodes carry
-iteration_label='element' (the create_element/populate contract); the lone non-element child (label
-'B') correctly excluded.
-
-**Parity gate (banked, held throughout):** nodes=25, transport=15, dining=5, bare=5, passengers=51,
-drivers=2, tasks=3. Tree = source before the drop.
-
-### [PROCESS / LESSONS]
-- Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
-  verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
-  `\echo` are psql meta-commands, fail in the editor.
-- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
-- Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
-  current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
-  are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
-- The rendered page is the verification, not tsc/grep (the journey-vs-engagement calendar filter was
-  tsc-green while every trip showed "No itinerary").
-
-### STILL OPEN (scoped, non-blocking)
-- Type-field honesty (Category Z): TripAuxPassenger/TripAuxDriverDetail `.aux_booking_id` type fields
-  + `auxBookingId` variable/prop names still say "aux" but hold node ids — values correct, names stale.
-- fetchElementsFlat/fetchOneElementFlat/enrichElements flat-read is a BRIDGE (flattens tree→aux shape
-  for cutover); delete when consumers read engagement shape directly.
-- engagement.ts:425 — one stale comment still mentions source_aux_booking_id.
-- Calendar "Stays" metric (S53I debt, re-confirmed on HRH AMF): flat distinct-hotel count conflates
-  properties / principal's stays / room footprint — needs a design decision + EF room-count carry.
-- typesImmerse 8→9 shape reconcile (L's border): frontend slug→shape map is 8 shapes; Doc #4 canon is
-  9 (Concierge Service split from Arrangement). EF-first.
-- Passenger party-primitive migration (passenger_label free-text → global_people) — logged follow-on,
-  independent of the retire.
-
-### [ARC][DB+FE] THE NINE — modeled, enforced, rendered (S53Q, same session)
-
-Doc #4 canonizes nine engagement shapes. Verified complete across all three layers:
-
-**Modeled (DB, verified):** `travel_engagement_types` holds exactly 9 `level='shape'` rows —
-acquisition, arrangement, concierge_service, dining, experience, journey, reservation, stay,
-transport — + 13 `level='element'` rows. Concierge Service is split from Arrangement (both
-level='shape'); Doc #4's brokered-vs-ours distinction is real in the registry.
-
-**Spine clean (the retype L scoped — done as a Stage-7 side effect):** L's feared conflation
-("20 element-typed top-level engagements") is RESOLVED. Verified live: 14 top-level engagements
-(parent_engagement_id IS NULL), ALL 14 are level='shape', 0 element-typed, 0 null-level. The
-elements became child nodes when Stage 7 reparented them. The "spine retype" handed to M/Stage 7
-is complete — the reparenting did it.
-
-**Enforced (trigger, proven both directions):** `trg_enforce_top_level_shape` (fn
-`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per no-else standard).
-Rule: top-level engagements (parent_engagement_id IS NULL) MUST reference a level='shape' type;
-children may be any level (an element, or a shape nested in a journey — 6 shape-typed children
-exist legitimately). CHECK can't hold the subquery, so it's a trigger (L's scoped design choice).
-PROVEN in rolled-back txns: inserting a top-level flight → RAISES 'must be a shape (THE NINE);
-got level=element'; inserting a top-level journey → succeeds. NOTE FOR L: this was L's owned
-integrity lock; fired this session under D's direct instruction after verifying 0 violators
-(Stage 7 cleared them). L: it's live, proven — review the guard form / add any RLS-comment per
-your standing convention.
-
-**Rendered (frontend, tsc-verified):** typesImmerse.ts was at 8 shapes; added concierge_service
-to the EngagementShape union, ENGAGEMENT_SHAPES array, and SLUG_TO_SHAPE map. Now 9. tsc green —
-the Record<EngagementShape,SectionType[]> completeness check passed, so SECTION_REGISTRY handles
-the new shape without a gap. (Supersedes the earlier "typesImmerse 8→9 reconcile pending" note.)
-
-**Left deliberately (needs D's call):** SLUG_TO_SHAPE maps `other → arrangement`. `other` is
-ambiguous between brokered (arrangement) and ours (concierge_service); left at arrangement as the
-safe default, not reclassified without direction.
-
-SUPERSEDES the pre-Stage-7 board items: "THE NINE modeled+enforced (pending)", "spine retype
-(handed to M)", "typesImmerse 8→9 reconcile", "enforcement constraint BLOCKED until violators
-clear" — all now DONE.
-
-## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
-
-### [ARC][DB] travel_engagement_aux_bookings DROPPED — every element now lives solely as a typed engagement-tree node
-
-The flat aux table is gone — not a table, not a view (`to_regclass` returns null). Every
-element (flight / dining / airport_transfer / meet_greet) now exists ONLY as a node on
-`travel_engagements` (`iteration_label='element'`, `parent_engagement_id` = the confirmed
-engagement) + its 1:1 detail row (`travel_engagement_transport_detail` for flights,
-`travel_engagement_dining_detail` for dining; bare nodes for transfer/meet_greet). No parallel
-source remains. This closes the Stage-7 model: the engagement tree is the single truth for
-elements, read + written transactionally. Live Supabase — invisible to git; this is the record.
-
-**Read path (all readers on the tree, verified live):**
-- `_shared/engagement.ts` (was `_shared/trip.ts` — renamed, the last trip-named survivor in the
-  shared layer; exports `fetchEngagementCore`/`EngagementCore`/`fetchEngagementBookings`).
-  `fetchElementsFlat(db, parentEngId)` reads node+detail and flattens to the legacy aux shape
-  (a BRIDGE — deleted when consumers read engagement shape directly; do not calcify).
-  `fetchOneElementFlat(db, nodeId)` for the write return-shape. `enrichElements(db, elements,
-  partyLabel)` — GLOBALIZED passenger/driver/dining enrichment (was inlined verbatim in both
-  guest EFs, a live drift risk; now one home).
-- `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
-  and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
-  dining→dining, else bare node.
-- The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
-  all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
-  passengers + dining venues (Mister Nice, China Tang) from the tree.
-- Calendar activity read: fixed the journey-vs-engagement filter (elements' parent_engagement_id
-  is the CONFIRMED ENGAGEMENT id, not the journey id — resolve journeyId→confirmed_engagement_id
-  for the `.in()` filter, group results back by engagement id). Was showing "No itinerary recorded"
-  on EVERY trip. Now renders full itineraries; flight detail enriched from transport_detail +
-  the airport registry (no aux).
-
-**Write path (transactional RPCs, replace the aux passthrough handlers):**
-- 3 SECURITY DEFINER plpgsql functions, each atomic (a function body is one txn — fixes the
-  orphan-on-failure + type-change-leak of an app-layer sequential-insert draft):
-  - `create_element(p_journey_id uuid, p_patch jsonb) → uuid`: resolves parent
-    (journey.confirmed_engagement_id), inserts node (full NOT-NULL spine contract:
-    engagement_status_id=confirmed, itinerary_status_id=confirmed, audience=private,
-    proposal_visibility=active, is_public=false, iteration_label='element', journey_types='{}'),
-    then detail by slug. Free-text→FK resolved in-txn (cabin_class label→id, aircraft_type
-    label→id, depart/arrive_airport iata→id). PROVEN live (rolled-back txn: created a flight,
-    verify returned cabin_resolved="Business", airport_resolved="DOH").
-  - `update_element(p_node_id, p_patch)`: COALESCE keeps existing node values for absent keys;
-    on type-change DELETEs mismatched detail + upserts correct (ON CONFLICT node_id).
-  - `delete_element(p_node_id)`: DELETE node; detail cascades via node_id FK ON DELETE CASCADE.
-- travel-write-journey handleCreate/Update/DeleteAuxBooking now call the RPCs and re-read via
-  `fetchOneElementFlat` to return the full flat row (TripDossierSection splices it into state).
-
-**The five-table FK migration (aux was tethered by 5 FKs, all ON DELETE CASCADE except 2 SET NULL
-— a naive DROP would have destroyed passengers, drivers, tasks):**
-Each tethered table: ADD COLUMN node_id uuid + FK→travel_engagements(id) ON DELETE CASCADE,
-backfill via the source_aux_booking_id mapping, repoint code, DROP old aux column.
-- travel_engagement_aux_passengers (51 rows) — aux_booking_id → node_id
-- travel_aux_driver_details (2 rows) — aux_booking_id → node_id
-- travel_tasks (3 linked rows) — aux_booking_id → node_id (nullable; most tasks aren't element-linked)
-- travel_journey_day_entries (0 linked) — source_aux_id column dropped (cosmetic)
-- travel_engagements.source_aux_booking_id (the mapping itself) — dropped LAST, after all backfills
-Backfills all proven clean pre-migration (every linked row mapped to exactly one node, no
-multi-node, no orphans).
-
-**The aux_booking_id → node_id API-contract sweep (payload-key honesty, tsc-blind — grep the
-callers):** switched the expander + driver-editor + passenger-editor contract from passing the
-aux id to passing the node id (which the callers already had as `a.id` / `activity.id` — the flat
-rows and calendar activities carry the node id). Touched: CalendarTab (activity_detail body →
-node_id; canExpand → activity.is_element; type field source_aux_booking_id → is_element),
-queriesAdminJourney (3 mode payloads), both EF handlers (handleActivityDetail /
-handleAuxDriverDetails take node id directly, no source_aux_booking_id resolve). The EF calendar
-projection now emits `is_element: !a.source_booking_id` (the durable "expandable" flag) instead of
-carrying the dropped column.
-
-**Element-selection predicate swap (the one late change to eyeball):** `fetchElementsFlat` filtered
-elements by `.not('source_aux_booking_id', 'is', null)`. Column dropped → filter switched to
-`.eq('iteration_label', 'element')`. Verified equivalent: all 25 element nodes carry
-iteration_label='element' (the create_element/populate contract); the lone non-element child (label
-'B') correctly excluded.
-
-**Parity gate (banked, held throughout):** nodes=25, transport=15, dining=5, bare=5, passengers=51,
-drivers=2, tasks=3. Tree = source before the drop.
-
-### [PROCESS / LESSONS]
-- Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
-  verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
-  `\echo` are psql meta-commands, fail in the editor.
-- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
-- Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
-  current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
-  are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
-- The rendered page is the verification, not tsc/grep (the journey-vs-engagement calendar filter was
-  tsc-green while every trip showed "No itinerary").
-
-### STILL OPEN (scoped, non-blocking)
-- Type-field honesty (Category Z): TripAuxPassenger/TripAuxDriverDetail `.aux_booking_id` type fields
-  + `auxBookingId` variable/prop names still say "aux" but hold node ids — values correct, names stale.
-- fetchElementsFlat/fetchOneElementFlat/enrichElements flat-read is a BRIDGE (flattens tree→aux shape
-  for cutover); delete when consumers read engagement shape directly.
-- engagement.ts:425 — one stale comment still mentions source_aux_booking_id.
-- Calendar "Stays" metric (S53I debt, re-confirmed on HRH AMF): flat distinct-hotel count conflates
-  properties / principal's stays / room footprint — needs a design decision + EF room-count carry.
-- typesImmerse 8→9 shape reconcile (L's border): frontend slug→shape map is 8 shapes; Doc #4 canon is
-  9 (Concierge Service split from Arrangement). EF-first.
-- Passenger party-primitive migration (passenger_label free-text → global_people) — logged follow-on,
-  independent of the retire.
-
-### [ARC][DB+FE] THE NINE — modeled, enforced, rendered (S53Q, same session)
-
-Doc #4 canonizes nine engagement shapes. Verified complete across all three layers:
-
-**Modeled (DB, verified):** `travel_engagement_types` holds exactly 9 `level='shape'` rows —
-acquisition, arrangement, concierge_service, dining, experience, journey, reservation, stay,
-transport — + 13 `level='element'` rows. Concierge Service is split from Arrangement (both
-level='shape'); Doc #4's brokered-vs-ours distinction is real in the registry.
-
-**Spine clean (the retype L scoped — done as a Stage-7 side effect):** L's feared conflation
-("20 element-typed top-level engagements") is RESOLVED. Verified live: 14 top-level engagements
-(parent_engagement_id IS NULL), ALL 14 are level='shape', 0 element-typed, 0 null-level. The
-elements became child nodes when Stage 7 reparented them. The "spine retype" handed to M/Stage 7
-is complete — the reparenting did it.
-
-**Enforced (trigger, proven both directions):** `trg_enforce_top_level_shape` (fn
-`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per no-else standard).
-Rule: top-level engagements (parent_engagement_id IS NULL) MUST reference a level='shape' type;
-children may be any level (an element, or a shape nested in a journey — 6 shape-typed children
-exist legitimately). CHECK can't hold the subquery, so it's a trigger (L's scoped design choice).
-PROVEN in rolled-back txns: inserting a top-level flight → RAISES 'must be a shape (THE NINE);
-got level=element'; inserting a top-level journey → succeeds. NOTE FOR L: this was L's owned
-integrity lock; fired this session under D's direct instruction after verifying 0 violators
-(Stage 7 cleared them). L: it's live, proven — review the guard form / add any RLS-comment per
-your standing convention.
-
-**Rendered (frontend, tsc-verified):** typesImmerse.ts was at 8 shapes; added concierge_service
-to the EngagementShape union, ENGAGEMENT_SHAPES array, and SLUG_TO_SHAPE map. Now 9. tsc green —
-the Record<EngagementShape,SectionType[]> completeness check passed, so SECTION_REGISTRY handles
-the new shape without a gap. (Supersedes the earlier "typesImmerse 8→9 reconcile pending" note.)
-
-**Left deliberately (needs D's call):** SLUG_TO_SHAPE maps `other → arrangement`. `other` is
-ambiguous between brokered (arrangement) and ours (concierge_service); left at arrangement as the
-safe default, not reclassified without direction.
-
-SUPERSEDES the pre-Stage-7 board items: "THE NINE modeled+enforced (pending)", "spine retype
-(handed to M)", "typesImmerse 8→9 reconcile", "enforcement constraint BLOCKED until violators
-clear" — all now DONE.
-
-### [SCOPING][honest correction] The flat-read shim — built S53Q, retire WITHIN surface consolidation (NOT standalone)
-
-Correction to my own framing. `fetchElementsFlat` / `fetchOneElementFlat` / `enrichElements`-flatten
-were built THIS session (S53Q) as a compatibility shim during the aux-reader cutover: they read the
-new node+detail tree and reshape it into the OLD flat aux shape so existing consumers didn't have to
-change mid-migration. I flagged it as a "bridge to delete" as if it were external arc work — it is my
-own deferred scaffolding, not a discovered legacy violation.
-
-**Is it a violation?** No — not a correctness one. It reads the ONE source (the tree); it is not a
-parallel source of truth and is not drift-prone the way the aux TABLE was. It IS a cleanliness debt:
-it's shaped as the retired aux contract (booking_type, aux-flavoured fields) rather than a clean
-consumer-shaped type — a shim wearing the dead table's clothes. Cleanliness, not correctness.
-
-**Do NOT retire it standalone.** Its heaviest consumer is buildTimeline (_shared/timeline.ts) — the
-guest programme's core builder — which is woven through the flat aux vocabulary: `booking_type` is the
-type discriminator (hotel/flight/transfer branching, flight detection at line ~390), plus cabin_class /
-aircraft_type / origin / destination / passengers / name. The other consumers are the confirmation
-`auxBookings` render and the admin dossier/AuxBookingsEditor. ALL of these are inside the
-one-engagement-surface consolidation's (Collapse A) blast radius — that campaign rewrites buildTimeline
-+ the confirmation render + the section registry to render by stage × shape from the tree.
-
-Retiring the shim now = rewrite buildTimeline to read node+detail, THEN rewrite it again during
-consolidation = TWO passes over the guest programme's spine. That is the bandaid the Standards forbid.
-The clean move is ONE pass: surface consolidation defines the canonical EngagementElement / timeline-item
-shape once, buildTimeline is rewritten once to consume it, and the shim is deleted as part of that work.
-
-**Board reclassification:** "delete flat-read bridge" is NOT independent arc work. It is: retire the
-S53Q flat shim WITHIN the one-engagement-surface consolidation (Collapse A), same consumers, one pass.
-Do not migrate buildTimeline / confirmation / dossier off the flat shape standalone — you'd touch the
-guest surfaces twice.
 
 ## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
 
