@@ -378,7 +378,7 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   const bookedByText = bookedByLabel(aux.booked_by)
   const ownArr       = isOwnArrangements(aux.booked_by)
   const paxLines     = passengerLines(aux)
-  const isGroundCar  = isGroundTransportElement(aux.booking_type)
+  const isGroundCar  = isGroundTransportElement(aux.element_type)
   const detailLines  = isGroundCar ? driverDetailLines(aux) : paxLines
 
   // Vertical rhythm: header block (icon row · name/route/meta) is a fixed 23mm,
@@ -398,7 +398,7 @@ function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('\u2708', iconX, y + padV + 5)
 
-  const typeLabel = (aux.booking_type ?? 'Flight').toUpperCase()
+  const typeLabel = (aux.element_type ?? 'Flight').toUpperCase()
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
   doc.text(typeLabel, iconX, y + padV + 11, { charSpace: 0.3 })
@@ -577,13 +577,13 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.text(section.label.toUpperCase(), P.margin, y, { charSpace: 0.5 }); y += 7
 
     for (const aux of section.items) {
-      if (isMeetGreetElement(aux.booking_type)) {
+      if (isMeetGreetElement(aux.element_type)) {
         const h = Math.max(24, HOTEL_PADV - 1 + 6 + 5 + greeterLines(aux).length * 4.8 + HOTEL_PADV - 1)
         if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
         y += drawGreeterCard(doc, aux, y) + 4
         continue
       }
-      if (isDiningElement(aux.booking_type)) {
+      if (isDiningElement(aux.element_type)) {
         const v = aux.venue
         const rowN = [v?.address, v?.phone, v?.dress_code, v?.children_policy, v?.table_hold_note].filter(Boolean).length
         const gl = (aux.guest_name || aux.guest_count) ? 1 : 0
@@ -593,7 +593,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         y += drawDiningCard(doc, aux, y) + 4
         continue
       }
-      const detailN = isGroundTransportElement(aux.booking_type) ? driverDetailLines(aux).length : (aux.passengers ?? []).length
+      const detailN = isGroundTransportElement(aux.element_type) ? driverDetailLines(aux).length : (aux.passengers ?? []).length
       const h = Math.max(34, 30 + Math.max(detailN, 1) * 5 + 4)
       if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
       y += drawFlightCard(doc, aux, y) + 4

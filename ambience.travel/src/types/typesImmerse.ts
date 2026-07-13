@@ -726,7 +726,7 @@ export type ImmerseTripAuxBooking = {
   id:                  string
   journey_id:             string
   engagement_type_id:  string | null
-  booking_type:        string | null
+  element_type:        string | null
   booking_type_label:  string | null
   name:                string | null
   start_date:          string | null

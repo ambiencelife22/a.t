@@ -104,14 +104,14 @@ export interface ElementSection<T> {
   items: T[]
 }
 
-export function groupElementsBySection<T extends { booking_type: string | null; brief_show?: boolean; sort_order: number }>(
+export function groupElementsBySection<T extends { element_type: string | null; brief_show?: boolean; sort_order: number }>(
   auxBookings: T[],
 ): ElementSection<T>[] {
   const sorted = auxBookings
     .filter(a => a.brief_show !== false)
     .sort((a, b) => {
-      const ma = getElementTypeMeta(a.booking_type)
-      const mb = getElementTypeMeta(b.booking_type)
+      const ma = getElementTypeMeta(a.element_type)
+      const mb = getElementTypeMeta(b.element_type)
       if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
       const aKey = `${(a as any).start_date ?? ''}${(a as any).start_time ?? ''}`
       const bKey = `${(b as any).start_date ?? ''}${(b as any).start_time ?? ''}`
@@ -121,7 +121,7 @@ export function groupElementsBySection<T extends { booking_type: string | null; 
 
   const sections: ElementSection<T>[] = []
   for (const aux of sorted) {
-    const slug = aux.booking_type ?? 'other'
+    const slug = aux.element_type ?? 'other'
     const meta = getElementTypeMeta(slug)
     const last = sections[sections.length - 1]
     if (last && last.type === slug) {

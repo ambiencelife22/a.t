@@ -126,8 +126,8 @@ type BookingLike = {
 
 type AuxLike = {
   id?:                  unknown
-  booking_type?:        string | null
-  booking_type_label?:  string | null
+  element_type?:        string | null
+  element_type_label?:  string | null
   name?:                string | null
   start_date?:          string | null
   end_date?:            string | null   // arrival date — used for same-day match
@@ -387,7 +387,7 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
   for (const a of aux) {
     if (a.brief_show === false) continue
     if (!a.start_date) continue
-    const isFlight = (a.booking_type ?? '') === 'flight' || (a.booking_type ?? '') === 'private_jet'
+    const isFlight = (a.element_type ?? '') === 'flight' || (a.element_type ?? '') === 'private_jet'
     const route = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
     const subtitle = isFlight
       ? ([route, a.cabin_class, a.aircraft_type].filter(Boolean).join('  \u00b7  ') || null)
@@ -408,8 +408,8 @@ export function buildAuxItems(aux: AuxLike[]): TimelineItem[] {
     out.push({
       id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
-      category: a.booking_type ?? 'arrangement', categoryLabel: a.booking_type_label ?? null,
-      title: a.name ?? a.booking_type ?? 'Booking', subtitle, notes: a.notes ?? null,
+      category: a.element_type ?? 'arrangement', categoryLabel: a.element_type_label ?? null,
+      title: a.name ?? a.element_type ?? 'Booking', subtitle, notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
       check_in_note: null, check_out_note: null,

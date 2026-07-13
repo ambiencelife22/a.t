@@ -397,7 +397,7 @@ const auxSections = groupElementsBySection(auxBookings)
                     )
                   })()}
                   {(() => {
-                    const isGroundCar = isGroundTransportElement(aux.booking_type)
+                    const isGroundCar = isGroundTransportElement(aux.element_type)
                     const veh = isGroundCar ? (aux.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order) : []
                     if (veh.length === 0) return null
                     return (
@@ -414,7 +414,7 @@ const auxSections = groupElementsBySection(auxBookings)
                       </div>
                     )
                   })()}
-                  {isMeetGreetElement(aux.booking_type) && (aux.contact_name || aux.contact_phone) && (
+                  {isMeetGreetElement(aux.element_type) && (aux.contact_name || aux.contact_phone) && (
                     <div style={{ marginTop: 8 }}>
                       {aux.contact_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{aux.contact_name}</div>}
                       {aux.contact_phone && (
@@ -423,7 +423,7 @@ const auxSections = groupElementsBySection(auxBookings)
                       {aux.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
                     </div>
                   )}
-                  {isDiningElement(aux.booking_type) && (() => {
+                  {isDiningElement(aux.element_type) && (() => {
                     const v = aux.venue
                     const guestLine = [aux.guest_name, aux.guest_count ? `${aux.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const rows: { label: string; value: string }[] = []
@@ -1143,8 +1143,8 @@ export function TripBriefTab({ clientData }: {
 }) {
   const { trip, house, auxBookings } = clientData
 
-  const flights   = auxBookings.filter(a => isFlightElement(a.booking_type))
-  const transfers = auxBookings.filter(a => isTransferElement(a.booking_type))
+  const flights   = auxBookings.filter(a => isFlightElement(a.element_type))
+  const transfers = auxBookings.filter(a => isTransferElement(a.element_type))
   const hotels    = trip.bookings.filter(b => isHotelElement(b.booking_type) && b.brief_show !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -1345,7 +1345,7 @@ export function TripBriefTab({ clientData }: {
       )}
 
       {(() => {
-        const greeters = auxBookings.filter(a => isMeetGreetElement(a.booking_type) && a.brief_show !== false)
+        const greeters = auxBookings.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
         return greeters.length > 0 ? (
           <BriefSection title='Airport Meet & Greet'>
             {greeters.map(g => (
@@ -1367,7 +1367,7 @@ export function TripBriefTab({ clientData }: {
       })()}
 
       {(() => {
-        const dining = auxBookings.filter(a => isDiningElement(a.booking_type) && a.brief_show !== false)
+        const dining = auxBookings.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
         return dining.length > 0 ? (
           <BriefSection title='Dining'>
             {dining.map(d => {

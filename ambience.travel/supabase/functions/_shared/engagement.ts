@@ -216,6 +216,7 @@ export function flattenAuxType(a: Record<string, unknown>): Record<string, unkno
   return {
     ...a,
     booking_type:       etObj?.slug  ?? null,
+    element_type:       etObj?.slug  ?? null,
     booking_type_label: etObj?.label ?? null,
   }
 }
@@ -277,6 +278,7 @@ export async function fetchElementsFlat(
       id:                 n.id,
       engagement_id:      n.parent_engagement_id,
       booking_type:       etObj?.slug  ?? null,
+      element_type:       etObj?.slug  ?? null,
       booking_type_label: etObj?.label ?? null,
       created_at:            n.created_at,
       updated_at:            n.updated_at,
@@ -508,6 +510,7 @@ export async function fetchOneElementFlat(
     id:                 n.id,
     engagement_id:      n.parent_engagement_id,
     booking_type:       etObj?.slug  ?? null,
+    element_type:       etObj?.slug  ?? null,
     booking_type_label: etObj?.label ?? null,
     created_at:         n.created_at,
     updated_at:         n.updated_at,

@@ -147,6 +147,7 @@ export type TripAuxBooking = {
   journey_id:             string
   engagement_type_id:  string | null
   booking_type:        string | null  // slug from travel_engagement_types — canonical type field
+  element_type:        string | null  // slug from travel_engagement_types — the honest name (booking_type retiring)
   booking_type_label:  string | null  // display label from travel_engagement_types
   name:                string | null
   start_date:          string | null

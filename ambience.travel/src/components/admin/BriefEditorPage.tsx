@@ -916,6 +916,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
         ...aux,
         name:                d.name                || aux.name,
         booking_type:        aux.booking_type,
+        element_type:        aux.element_type,
         origin:              d.origin              || aux.origin,
         destination:         d.destination         || aux.destination,
         start_date:          d.start_date          || aux.start_date,
