@@ -15,7 +15,7 @@
 // Source of truth for:
 //   - JourneyEvent.status CHECK constraint
 //   - TripDayEntry.status (future)
-//   - TripAuxBooking.status (future)
+//   - AdminEngagementElement.status (future)
 //   - All status pills across admin + client surfaces
 //
 // Last updated: S50 — extracted from typesSuppliers.ts. Lifecycle status is

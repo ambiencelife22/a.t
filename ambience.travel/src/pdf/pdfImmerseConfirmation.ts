@@ -34,7 +34,7 @@ import type {
   ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
   ImmerseBookingRoom as BookingRoom,
-  EngagementElement as TripAuxBooking,
+  EngagementElement as AdminEngagementElement,
 } from '../types/typesImmerse'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
 import { isGroundTransportElement, groupElementsBySection, isMeetGreetElement, isDiningElement } from '../types/typesElements'
@@ -55,7 +55,7 @@ export interface ConfirmationBriefData {
   house:            HouseProfile | null
   destinationName:  string
   heroImageData:    string | null
-  elements:      TripAuxBooking[]
+  elements:      AdminEngagementElement[]
   guestDisplayName: string | null
   contacts?:        ConfirmationContact[]
 }
@@ -263,7 +263,7 @@ async function drawHotelSplit(doc: any, booking: EngagementBooking, y: number, f
   return y
 }
 // ── Greeter card ──────────────────────────────────────────────────────────────
-function drawGreeterCard(doc: any, aux: TripAuxBooking, y: number): number {
+function drawGreeterCard(doc: any, aux: AdminEngagementElement, y: number): number {
   const padV = 6; const padH = 10
   const lines = greeterLines(aux)
   const cardH = Math.max(24, padV + 6 + 5 + lines.length * 4.8 + padV)
@@ -297,7 +297,7 @@ function drawGreeterCard(doc: any, aux: TripAuxBooking, y: number): number {
 }
 
 // ── Dining card ───────────────────────────────────────────────────────────────
-function drawDiningCard(doc: any, aux: TripAuxBooking, y: number): number {
+function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): number {
   const padV = 6; const padH = 10
   const cancelled = isDiningCancelled(aux)
   const v = aux.venue
@@ -373,7 +373,7 @@ function drawDiningCard(doc: any, aux: TripAuxBooking, y: number): number {
 
 // ── Flight card ───────────────────────────────────────────────────────────────
 
-function drawFlightCard(doc: any, aux: TripAuxBooking, y: number): number {
+function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): number {
   const padV = 7; const padH = 10
   const bookedByText = bookedByLabel(aux.booked_by)
   const ownArr       = isOwnArrangements(aux.booked_by)

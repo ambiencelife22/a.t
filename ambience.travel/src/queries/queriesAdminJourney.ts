@@ -24,7 +24,7 @@
 //   welcome_letter, show_tab_confirmation, show_tab_programme, show_tab_brief,
 //   show_tab_contacts. Mirrors migration s48_trip_page_controls.
 // Prior: S48 — url_id added to DossierJourney. Engagement join in fetchJourneyDossierForHouse.
-// Prior: S48 — booked_by text added to TripAuxBooking. TripAuxBookingPatch added.
+// Prior: S48 — booked_by text added to AdminEngagementElement. AdminEngagementElementPatch added.
 // Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
 // Prior: S46 — _hotel_image_src added to EngagementBooking.
 // Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
@@ -142,7 +142,7 @@ export type TripDayEntry = {
 export type TripDayPatch      = Partial<Omit<TripDay,      'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 export type TripDayEntryPatch = Partial<Omit<TripDayEntry, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 
-export type TripAuxBooking = {
+export type AdminEngagementElement = {
   id:                  string
   journey_id:             string
   engagement_type_id:  string | null
@@ -187,13 +187,13 @@ export type TripAuxBooking = {
   aircraft_type:       string | null
   dining_venue_id?:    string | null
   image_src?:          string | null
-  passengers?:         TripAuxPassenger[]
-  driver_details?:     TripAuxDriverDetail[]
+  passengers?:         ElementPassenger[]
+  driver_details?:     ElementDriverDetail[]
   created_at:          string
   updated_at:          string
 }
 
-export type TripAuxPassenger = {
+export type ElementPassenger = {
   id:                       string
   aux_booking_id:           string
   person_id:                string | null
@@ -205,9 +205,9 @@ export type TripAuxPassenger = {
   resolved_passenger_label?: string | null
 }
 
-export type TripAuxBookingPatch = Partial<Omit<TripAuxBooking, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type AdminEngagementElementPatch = Partial<Omit<AdminEngagementElement, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 
-export type TripAuxDriverDetail = {
+export type ElementDriverDetail = {
   id:            string
   aux_booking_id: string
   driver_name:   string | null
@@ -218,7 +218,7 @@ export type TripAuxDriverDetail = {
   vehicle_role:  string | null
   sort_order:    number
 }
-export type TripAuxDriverDetailPatch = Partial<Omit<TripAuxDriverDetail, 'id' | 'aux_booking_id'>>
+export type ElementDriverDetailPatch = Partial<Omit<ElementDriverDetail, 'id' | 'aux_booking_id'>>
 
 export type TripBriefPatch = Partial<Omit<TripBrief, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 
@@ -492,8 +492,8 @@ export async function fetchTripDayEntries(journeyId: string): Promise<TripDayEnt
 
 // ── Aux bookings read ─────────────────────────────────────────────────────────
 
-export async function fetchTripAuxBookings(journeyId: string): Promise<TripAuxBooking[]> {
-  const { elements } = await invokeReadJourney<{ elements: TripAuxBooking[] }>({
+export async function fetchAdminEngagementElements(journeyId: string): Promise<AdminEngagementElement[]> {
+  const { elements } = await invokeReadJourney<{ elements: AdminEngagementElement[] }>({
     mode: 'aux_bookings', journey_id: journeyId,
   })
   return elements
@@ -565,37 +565,37 @@ export async function deleteBookingRoom(roomId: string): Promise<void> {
 
 // ── Aux booking write ─────────────────────────────────────────────────────────
 
-export async function createTripAuxBooking(journeyId: string, patch: TripAuxBookingPatch): Promise<TripAuxBooking> {
-  const { auxBooking } = await invokeWriteJourney<{ auxBooking: TripAuxBooking }>({
+export async function createAdminEngagementElement(journeyId: string, patch: AdminEngagementElementPatch): Promise<AdminEngagementElement> {
+  const { auxBooking } = await invokeWriteJourney<{ auxBooking: AdminEngagementElement }>({
     mode: 'create_aux_booking', journey_id: journeyId, patch,
   })
   return auxBooking
 }
 
-export async function updateTripAuxBooking(id: string, patch: TripAuxBookingPatch): Promise<TripAuxBooking> {
-  const { auxBooking } = await invokeWriteJourney<{ auxBooking: TripAuxBooking }>({
+export async function updateAdminEngagementElement(id: string, patch: AdminEngagementElementPatch): Promise<AdminEngagementElement> {
+  const { auxBooking } = await invokeWriteJourney<{ auxBooking: AdminEngagementElement }>({
     mode: 'update_aux_booking', id, patch,
   })
   return auxBooking
 }
 
-export async function deleteTripAuxBooking(id: string): Promise<void> {
+export async function deleteAdminEngagementElement(id: string): Promise<void> {
   await invokeWriteJourney({ mode: 'delete_aux_booking', id })
 }
 
 // ── Aux passenger write ───────────────────────────────────────────────────────
 
-export type TripAuxPassengerPatch = Partial<Omit<TripAuxPassenger, 'id' | 'aux_booking_id'>>
+export type ElementPassengerPatch = Partial<Omit<ElementPassenger, 'id' | 'aux_booking_id'>>
 
-export async function createAuxPassenger(nodeId: string, patch: TripAuxPassengerPatch): Promise<TripAuxPassenger> {
-  const { auxPassenger } = await invokeWriteJourney<{ auxPassenger: TripAuxPassenger }>({
+export async function createAuxPassenger(nodeId: string, patch: ElementPassengerPatch): Promise<ElementPassenger> {
+  const { auxPassenger } = await invokeWriteJourney<{ auxPassenger: ElementPassenger }>({
     mode: 'create_aux_passenger', node_id: nodeId, patch,
   })
   return auxPassenger
 }
 
-export async function updateAuxPassenger(id: string, patch: TripAuxPassengerPatch): Promise<TripAuxPassenger> {
-  const { auxPassenger } = await invokeWriteJourney<{ auxPassenger: TripAuxPassenger }>({
+export async function updateAuxPassenger(id: string, patch: ElementPassengerPatch): Promise<ElementPassenger> {
+  const { auxPassenger } = await invokeWriteJourney<{ auxPassenger: ElementPassenger }>({
     mode: 'update_aux_passenger', id, patch,
   })
   return auxPassenger
@@ -607,22 +607,22 @@ export async function deleteAuxPassenger(id: string): Promise<void> {
 
 // ── Aux driver details write (ground-car vehicles) ────────────────────────────
 
-export async function fetchAuxDriverDetails(auxBookingId: string): Promise<TripAuxDriverDetail[]> {
-  const { driverDetails } = await invokeReadJourney<{ driverDetails: TripAuxDriverDetail[] }>({
+export async function fetchAuxDriverDetails(auxBookingId: string): Promise<ElementDriverDetail[]> {
+  const { driverDetails } = await invokeReadJourney<{ driverDetails: ElementDriverDetail[] }>({
     mode: 'aux_driver_details', node_id: auxBookingId,
   })
   return driverDetails
 }
 
-export async function createAuxDriverDetail(auxBookingId: string, patch: TripAuxDriverDetailPatch): Promise<TripAuxDriverDetail> {
-  const { driverDetail } = await invokeWriteJourney<{ driverDetail: TripAuxDriverDetail }>({
+export async function createAuxDriverDetail(auxBookingId: string, patch: ElementDriverDetailPatch): Promise<ElementDriverDetail> {
+  const { driverDetail } = await invokeWriteJourney<{ driverDetail: ElementDriverDetail }>({
     mode: 'create_aux_driver_detail', node_id: auxBookingId, patch,
   })
   return driverDetail
 }
 
-export async function updateAuxDriverDetail(id: string, patch: TripAuxDriverDetailPatch): Promise<TripAuxDriverDetail> {
-  const { driverDetail } = await invokeWriteJourney<{ driverDetail: TripAuxDriverDetail }>({
+export async function updateAuxDriverDetail(id: string, patch: ElementDriverDetailPatch): Promise<ElementDriverDetail> {
+  const { driverDetail } = await invokeWriteJourney<{ driverDetail: ElementDriverDetail }>({
     mode: 'update_aux_driver_detail', id, patch,
   })
   return driverDetail

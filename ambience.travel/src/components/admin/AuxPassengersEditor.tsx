@@ -21,7 +21,7 @@ import { PersonLinkPicker } from './PersonLinkPicker'
 import {
   createAuxPassenger, updateAuxPassenger, deleteAuxPassenger,
 } from '../../queries/queriesAdminJourney'
-import type { TripAuxPassenger, TripAuxPassengerPatch } from '../../queries/queriesAdminJourney'
+import type { ElementPassenger, ElementPassengerPatch } from '../../queries/queriesAdminJourney'
 import { passengerName } from '../../utils/utilsRoomDisplay'
 
 // ── Local styles + field ───────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ function emptyPaxDraft(sortOrder: number): PaxDraft {
   return { person_id: null, passenger_label: '', confirmation_number: '', seat_numbers: '', sort_order: sortOrder }
 }
 
-function paxToDraft(p: TripAuxPassenger): PaxDraft {
+function paxToDraft(p: ElementPassenger): PaxDraft {
   return {
     person_id:           p.person_id            ?? null,
     passenger_label:     p.passenger_label     ?? '',
@@ -74,7 +74,7 @@ function paxToDraft(p: TripAuxPassenger): PaxDraft {
   }
 }
 
-function paxDraftToPatch(d: PaxDraft): TripAuxPassengerPatch {
+function paxDraftToPatch(d: PaxDraft): ElementPassengerPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
     person_id:           d.person_id,
@@ -87,8 +87,8 @@ function paxDraftToPatch(d: PaxDraft): TripAuxPassengerPatch {
 
 // ── AuxPassengersEditor ───────────────────────────────────────────────────────
 
-export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { auxBookingId: string; initial: TripAuxPassenger[]; partyLabel?: string | null }) {
-  const [pax,    setPax]    = useState<TripAuxPassenger[]>(initial)
+export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { auxBookingId: string; initial: ElementPassenger[]; partyLabel?: string | null }) {
+  const [pax,    setPax]    = useState<ElementPassenger[]>(initial)
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [draft,  setDraft]  = useState<PaxDraft>(emptyPaxDraft(0))
@@ -103,7 +103,7 @@ export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { aux
     setDraft(emptyPaxDraft(pax.length))
     setAdding(true)
   }
-  function beginEdit(p: TripAuxPassenger) {
+  function beginEdit(p: ElementPassenger) {
     setAdding(false)
     setEditId(p.id)
     setDraft(paxToDraft(p))

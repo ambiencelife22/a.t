@@ -18,7 +18,7 @@ import { useAdminToast } from './_adminPrimitives'
 import {
   fetchAuxDriverDetails, createAuxDriverDetail, updateAuxDriverDetail, deleteAuxDriverDetail,
 } from '../../queries/queriesAdminJourney'
-import type { TripAuxDriverDetail, TripAuxDriverDetailPatch } from '../../queries/queriesAdminJourney'
+import type { ElementDriverDetail, ElementDriverDetailPatch } from '../../queries/queriesAdminJourney'
 
 const inputStyle: React.CSSProperties = {
   fontFamily: A.font, fontSize: 11, color: A.text, background: A.bg,
@@ -51,7 +51,7 @@ type VehDraft = {
 function emptyVehDraft(sortOrder: number): VehDraft {
   return { driver_name: '', driver_phone: '', car_model: '', plate: '', company: '', vehicle_role: '', sort_order: sortOrder }
 }
-function vehToDraft(v: TripAuxDriverDetail): VehDraft {
+function vehToDraft(v: ElementDriverDetail): VehDraft {
   return {
     driver_name:  v.driver_name  ?? '',
     driver_phone: v.driver_phone ?? '',
@@ -62,7 +62,7 @@ function vehToDraft(v: TripAuxDriverDetail): VehDraft {
     sort_order:   v.sort_order,
   }
 }
-function vehDraftToPatch(d: VehDraft): TripAuxDriverDetailPatch {
+function vehDraftToPatch(d: VehDraft): ElementDriverDetailPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
     driver_name:  orNull(d.driver_name),
@@ -76,7 +76,7 @@ function vehDraftToPatch(d: VehDraft): TripAuxDriverDetailPatch {
 }
 
 export function AuxDriverDetailsEditor({ auxBookingId }: { auxBookingId: string }) {
-  const [veh,    setVeh]    = useState<TripAuxDriverDetail[] | null>(null)
+  const [veh,    setVeh]    = useState<ElementDriverDetail[] | null>(null)
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [draft,  setDraft]  = useState<VehDraft>(emptyVehDraft(0))
@@ -92,7 +92,7 @@ export function AuxDriverDetailsEditor({ auxBookingId }: { auxBookingId: string 
   const sorted = [...(veh ?? [])].sort((a, b) => a.sort_order - b.sort_order)
 
   function beginAdd() { setEditId(null); setDraft(emptyVehDraft(veh?.length ?? 0)); setAdding(true) }
-  function beginEdit(v: TripAuxDriverDetail) { setAdding(false); setEditId(v.id); setDraft(vehToDraft(v)) }
+  function beginEdit(v: ElementDriverDetail) { setAdding(false); setEditId(v.id); setDraft(vehToDraft(v)) }
 
   async function handleSave() {
     setSaving(true)

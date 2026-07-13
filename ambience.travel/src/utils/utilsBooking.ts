@@ -88,7 +88,7 @@ const CATEGORY_ACCENT_DEFAULT = { hex: '#B4AFA5', rgb: [180, 175, 165] as RGB }
 // Composes route + times + flight number into one display string.
 // Used by CalendarTab (web) and PDF surfaces. Never compose inline.
 //
-// Input shape is the minimal intersection of CalendarActivity and TripAuxBooking
+// Input shape is the minimal intersection of CalendarActivity and AdminEngagementElement
 // that all surfaces have in common. Pass what you have; missing fields are omitted.
 
 export interface FlightDetailInput {

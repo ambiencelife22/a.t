@@ -21,7 +21,7 @@
  *   of the engagement to public anon clients. Enforced server-side by the
  *   travel-get-immerse-proposal Edge Function (S53H cutover; the old
  *   get-engagement-stage EF is retired). Default false; admin flips on per engagement.
- * Prior: S48 — fetchTripAuxBookings + updateTripAuxBooking wired in.
+ * Prior: S48 — fetchAdminEngagementElements + updateAdminEngagementElement wired in.
  *   elements fetched in parallel with dossier. auxDrafts state added.
  *   mergedAux built in handleDownload and passed to handleDownloadBrief.
  *   Design, BriefPreview, BriefAuxEditor — all untouched.
@@ -38,10 +38,10 @@ import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { formatDate, formatDateRange } from '../../utils/utilsDates'
 import {
   fetchJourneyDossierForHouse,
-  fetchTripAuxBookings,
+  fetchAdminEngagementElements,
   upsertTripBrief,
   updateBookingRoom,
-  updateTripAuxBooking,
+  updateAdminEngagementElement,
   fetchEngagementPublicView,
   setEngagementPublicView,
 } from '../../queries/queriesAdminJourney'
@@ -51,7 +51,7 @@ import type {
   TripBrief,
   TripBriefPatch,
   EngagementBooking,
-  TripAuxBooking,
+  AdminEngagementElement,
 } from '../../queries/queriesAdminJourney'
 import { groupElementsBySection, isFlightType, CABIN_CLASSES, AIRCRAFT_TYPE_GROUPS } from '../../types/typesElements'
 import { AirlinePicker } from './AirlinePicker'
@@ -144,7 +144,7 @@ interface PreviewFields {
   house:         HouseProfile | null
   roomImageSrcs: Record<string, string>
   roomDrafts:    Record<string, RoomDraft>
-  elements:   TripAuxBooking[]
+  elements:   AdminEngagementElement[]
   auxDrafts:     Record<string, AuxDraft>
 }
 
@@ -206,9 +206,9 @@ const FLIGHT_NUMBER_REGEX = /^[A-Z]{2,3}\d{1,4}[A-Z]?$/
 const AIRPORT_REGEX       = /^[A-Z]{3,4}$/
 
 function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTypeLabel }: {
-  aux:    TripAuxBooking
+  aux:    AdminEngagementElement
   draft:  AuxDraft
-  patch:  (id: string, aux: TripAuxBooking, field: keyof AuxDraft, value: string) => void
+  patch:  (id: string, aux: AdminEngagementElement, field: keyof AuxDraft, value: string) => void
   save:   (id: string, field: keyof AuxDraft, value: string) => Promise<void>
   isMobile: boolean
   bookingTypeLabel: string
@@ -357,7 +357,7 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
 // ── BriefAuxEditor ────────────────────────────────────────────────────────────
 
 function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, engagementTypes }: {
-  elements:       TripAuxBooking[]
+  elements:       AdminEngagementElement[]
   engagementTypes:   EngagementTypeOption[]
   auxDrafts:         Record<string, AuxDraft>
   onAuxDraftsChange: (drafts: Record<string, AuxDraft>) => void
@@ -365,7 +365,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
 }) {
   const sections = groupElementsBySection(elements)
 
-  function getDraft(aux: TripAuxBooking): AuxDraft {
+  function getDraft(aux: AdminEngagementElement): AuxDraft {
     return auxDrafts[aux.id] ?? {
       name:              aux.name              ?? '',
       engagementTypeId:  aux.engagement_type_id ?? '',
@@ -389,7 +389,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
     }
   }
 
-  function patch(id: string, aux: TripAuxBooking, field: keyof AuxDraft, value: string) {
+  function patch(id: string, aux: AdminEngagementElement, field: keyof AuxDraft, value: string) {
     const prev = getDraft(aux)
     onAuxDraftsChange({ ...auxDrafts, [id]: { ...prev, [field]: value } })
   }
@@ -399,7 +399,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
     // directly as patch fields. Type changes go via the type select handler below.
     if (field === 'engagementTypeId' || field === 'bookingTypeSlug') return
     try {
-      await updateTripAuxBooking(id, { [field]: value || null } as Parameters<typeof updateTripAuxBooking>[1])
+      await updateAdminEngagementElement(id, { [field]: value || null } as Parameters<typeof updateAdminEngagementElement>[1])
     } catch (e) {
       console.error(`[BriefEditorPage] save aux ${id} field=${field}`, e)
     }
@@ -442,7 +442,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
                           const et = engagementTypes.find(t => t.id === e.target.value)
                           patch(aux.id, aux, 'engagementTypeId', e.target.value)
                           patch(aux.id, aux, 'bookingTypeSlug', et?.slug ?? '')
-                          updateTripAuxBooking(aux.id, { engagement_type_id: e.target.value || null }).catch(err =>
+                          updateAdminEngagementElement(aux.id, { engagement_type_id: e.target.value || null }).catch(err =>
                             console.error('[BriefEditorPage] update engagement_type_id', err)
                           )
                         }}
@@ -725,7 +725,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
 
   const [trip,        setTrip]        = useState<DossierJourney | null>(null)
   const [house,       setHouse]       = useState<HouseProfile | null>(null)
-  const [elements, setAuxBookings] = useState<TripAuxBooking[]>([])
+  const [elements, setAuxBookings] = useState<AdminEngagementElement[]>([])
   const [loadErr,     setLoadErr]     = useState<string | null>(null)
   const [saving,      setSaving]      = useState(false)
   const [saveErr,     setSaveErr]     = useState<string | null>(null)
@@ -770,7 +770,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
 
       const [dossier, auxData, isPublic, engTypes] = await Promise.all([
         fetchJourneyDossierForHouse(houseId),
-        fetchTripAuxBookings(journeyId),
+        fetchAdminEngagementElements(journeyId),
         fetchEngagementPublicView(journeyId),
         fetchEngagementTypes(),
       ])

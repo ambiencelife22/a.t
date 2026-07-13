@@ -4,7 +4,7 @@
  * Last updated: S48 — Copy Link buttons added to TripActionPanel for
  *   /confirmation and /programme client URLs. url_id now on DossierJourney.
  *   buildClientUrl + copyLink helpers. copied state with 2s feedback.
- * Prior: S48 — fetchTripAuxBookings imported. handleDownload fetches aux.
+ * Prior: S48 — fetchAdminEngagementElements imported. handleDownload fetches aux.
  * Prior: S47 — navigateAdmin imported from adminPath. TripActionPanel
  *   onBriefSaved prop removed. trips local state removed.
  * Prior: S46 — Edit Brief navigates to BriefEditorPage.
@@ -23,8 +23,8 @@ import type {
   HouseProfile,
 } from '../../queries/queriesAdminJourney'
 import { getEventStatusMeta } from '../../types/typesEventStatus'
-import { updateBookingBriefFields, createBooking, fetchTripAuxBookings, createTripAuxBooking, updateTripAuxBooking, deleteTripAuxBooking } from '../../queries/queriesAdminJourney'
-import type { TripAuxBooking, TripAuxBookingPatch, EngagementTypeOption } from '../../queries/queriesAdminJourney'
+import { updateBookingBriefFields, createBooking, fetchAdminEngagementElements, createAdminEngagementElement, updateAdminEngagementElement, deleteAdminEngagementElement } from '../../queries/queriesAdminJourney'
+import type { AdminEngagementElement, AdminEngagementElementPatch, EngagementTypeOption } from '../../queries/queriesAdminJourney'
 import { fetchEngagementTypes } from '../../queries/queriesAdminJourney'
 import { isFlightElement, isHotelElement, isGroundTransportElement } from '../../types/typesElements'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
@@ -125,7 +125,7 @@ function TripActionPanel({ trip, house }: {
       } catch { heroData = null }
     }
 
-    const elements = await fetchTripAuxBookings(trip.id).catch(() => [])
+    const elements = await fetchAdminEngagementElements(trip.id).catch(() => [])
 
     handleDownloadBrief({
       trip,
@@ -255,7 +255,7 @@ function emptyAuxDraft(sortOrder: number, defaultTypeId = '', defaultSlug = 'fli
   }
 }
 
-function auxToDraft(a: TripAuxBooking): AuxDraft {
+function auxToDraft(a: AdminEngagementElement): AuxDraft {
   return {
     engagementTypeId:  a.engagement_type_id  ?? '',
     bookingTypeSlug:   a.element_type        ?? 'flight',
@@ -281,7 +281,7 @@ function auxToDraft(a: TripAuxBooking): AuxDraft {
 }
 
 // Map draft -> patch. Empty strings on nullable text columns become null.
-function draftToPatch(d: AuxDraft): TripAuxBookingPatch {
+function draftToPatch(d: AuxDraft): AdminEngagementElementPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
     engagement_type_id:  d.engagementTypeId ?? null,
@@ -404,7 +404,7 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagem
 }
 
 function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
-  const [aux,             setAux]             = useState<TripAuxBooking[] | null>(null)
+  const [aux,             setAux]             = useState<AdminEngagementElement[] | null>(null)
   const [engagementTypes, setEngagementTypes] = useState<EngagementType[]>([])
   const [loading,         setLoading]         = useState(false)
   const [adding,          setAdding]          = useState(false)
@@ -416,7 +416,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
   function load() {
     setLoading(true)
     Promise.all([
-      fetchTripAuxBookings(journeyId),
+      fetchAdminEngagementElements(journeyId),
       fetchEngagementTypes(),
     ])
       .then(([rows, types]) => {
@@ -438,7 +438,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
     setAdding(true)
   }
 
-  function beginEdit(a: TripAuxBooking) {
+  function beginEdit(a: AdminEngagementElement) {
     setAdding(false)
     setEditId(a.id)
     setDraft(auxToDraft(a))
@@ -449,13 +449,13 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
     try {
       const patch = draftToPatch(draft)
       if (editId) {
-        const updated = await updateTripAuxBooking(editId, patch)
+        const updated = await updateAdminEngagementElement(editId, patch)
         setAux(prev => (prev ?? []).map(a => a.id === editId ? updated : a).sort((x, y) => x.sort_order - y.sort_order))
         setEditId(null)
         success('Flight updated')
         return
       }
-      const created = await createTripAuxBooking(journeyId, patch)
+      const created = await createAdminEngagementElement(journeyId, patch)
       setAux(prev => [...(prev ?? []), created].sort((x, y) => x.sort_order - y.sort_order))
       setAdding(false)
       success('Flight added')
@@ -466,7 +466,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
   async function handleDelete(id: string) {
     setSaving(true)
     try {
-      await deleteTripAuxBooking(id)
+      await deleteAdminEngagementElement(id)
       setAux(prev => (prev ?? []).filter(a => a.id !== id))
       success('Flight removed')
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to delete flight') }
@@ -476,7 +476,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
   // Load once on mount (editor only mounts when the trip block is expanded)
   useEffect(() => { load() }, [journeyId])
 
-  const rowLine = (a: TripAuxBooking): string => {
+  const rowLine = (a: AdminEngagementElement): string => {
     const route = [a.origin, a.destination].filter(Boolean).join(' \u2192 ')
     const seats = a.cabin_class ?? ''
     return [route, seats].filter(Boolean).join('  \u00b7  ')

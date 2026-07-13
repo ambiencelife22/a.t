@@ -24,7 +24,7 @@ import type { DeliveryData, EngagementContact } from '../../queries/queriesImmer
 import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {
-  EngagementElement as TripAuxBooking,
+  EngagementElement as AdminEngagementElement,
   ImmerseTripDay as TripDay,
 } from '../../types/typesImmerse'
 import type { TimelineItem } from '../../types/typesTimeline'
@@ -95,7 +95,7 @@ function DiningPillBox({ model }: { model: { color: string; label: string } | nu
   )
 }
 
-function DiningPill({ aux }: { aux: TripAuxBooking }) {
+function DiningPill({ aux }: { aux: AdminEngagementElement }) {
   return <DiningPillBox model={diningPillModel({
     showCancellation: aux.show_cancellation ?? null,
     diningStatus:     aux.dining_status ?? null,

@@ -698,7 +698,7 @@ export type ImmerseTripDayEntry = {
   updated_at:          string
 }
 
-export type ImmerseTripAuxPassenger = {
+export type ImmerseElementPassenger = {
   id:                        string
   aux_booking_id:            string
   person_id:                 string | null
@@ -711,7 +711,7 @@ export type ImmerseTripAuxPassenger = {
 
 // Driver detail: client-safe. `company` (operator-internal) deliberately OMITTED —
 // matches attachDriverDetails in _shared/names.ts which never sends it client-side.
-export type ImmerseTripAuxDriverDetail = {
+export type ImmerseElementDriverDetail = {
   id:             string
   aux_booking_id: string
   driver_name:    string | null
@@ -766,8 +766,8 @@ export type EngagementElement = {
   aircraft_type:       string | null
   dining_venue_id?:    string | null
   image_src?:          string | null
-  passengers?:         ImmerseTripAuxPassenger[]
-  driver_details?:     ImmerseTripAuxDriverDetail[]
+  passengers?:         ImmerseElementPassenger[]
+  driver_details?:     ImmerseElementDriverDetail[]
   created_at:          string
   updated_at:          string
 }

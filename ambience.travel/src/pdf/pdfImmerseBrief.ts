@@ -45,7 +45,7 @@ import type {
   ImmerseEngagementBooking as EngagementBooking,
   ImmerseDossierJourney as DossierJourney,
   ImmerseTripHouse as HouseProfile,
-  EngagementElement as TripAuxBooking,
+  EngagementElement as AdminEngagementElement,
 } from '../types/typesImmerse'
 import { isFlightElement, isTransferElement, isMeetGreetElement, isDiningElement } from '../types/typesElements'
 import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
@@ -58,7 +58,7 @@ export interface TripBriefPdfData {
   house:            HouseProfile | null
   destinationName:  string
   heroImageData:    string | null
-  elements:      TripAuxBooking[]
+  elements:      AdminEngagementElement[]
   links:            PdfEngagementLink[]
   guestDisplayName: string | null
 }
