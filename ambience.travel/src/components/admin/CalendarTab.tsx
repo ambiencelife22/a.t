@@ -104,7 +104,7 @@ type CalendarActivity = {
   flight_number: string | null; airline_name: string | null; end_time: string | null
 }
 type TripState = 'completed' | 'confirmed' | 'pending'
-type CalendarTrip = {
+type CalendarEngagement = {
   id: string; journey_code: string; title: string | null
   start_date: string | null; end_date: string | null
   status_slug: string | null; state: TripState; primary_client_id: string | null
@@ -179,7 +179,7 @@ type ActivityDetail =
   | { kind: 'ground_transport'; vehicles: VehicleDetail[] }
 
 export default function CalendarTab() {
-  const [trips, setTrips] = useState<CalendarTrip[]>([])
+  const [trips, setTrips] = useState<CalendarEngagement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>('month')
@@ -193,7 +193,7 @@ export default function CalendarTab() {
       const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body: { mode: 'calendar' } })
       if (cancelled) return
       if (error) { setError('Could not load the calendar. Try again.'); setLoading(false); return }
-      setTrips((data?.trips ?? []) as CalendarTrip[]); setLoading(false)
+      setTrips((data?.trips ?? []) as CalendarEngagement[]); setLoading(false)
     }
     load(); return () => { cancelled = true }
   }, [])
@@ -249,7 +249,7 @@ export default function CalendarTab() {
               {view === 'week'   && <WeekView   cursor={cursor} trips={trips} onSelect={setSelectedjourneyId} />}
               {view === 'agenda' && <AgendaView trips={trips} onSelect={setSelectedjourneyId} />}
             </div>
-            {selectedTrip && <TripPanel trip={selectedTrip} onClose={() => setSelectedjourneyId(null)} />}
+            {selectedTrip && <EngagementPanel trip={selectedTrip} onClose={() => setSelectedjourneyId(null)} />}
           </div>
         </>
       )}
@@ -315,9 +315,9 @@ function Centered({ children, tone }: { children: React.ReactNode; tone?: 'dange
   )
 }
 
-type WeekBar = { trip: CalendarTrip; startCol: number; endCol: number; continuesLeft: boolean; continuesRight: boolean; lane: number }
+type WeekBar = { trip: CalendarEngagement; startCol: number; endCol: number; continuesLeft: boolean; continuesRight: boolean; lane: number }
 
-function MonthView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTrip[]; onSelect: (id: string)=>void }) {
+function MonthView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarEngagement[]; onSelect: (id: string)=>void }) {
   const first = startOfMonth(cursor), last = endOfMonth(cursor)
   const gridStart = startOfWeek(first)
   const weeks: Date[][] = []
@@ -339,7 +339,7 @@ function MonthView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarT
   )
 }
 
-function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; cursorMonth: number; today: Date; trips: CalendarTrip[]; onSelect: (id: string)=>void }) {
+function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; cursorMonth: number; today: Date; trips: CalendarEngagement[]; onSelect: (id: string)=>void }) {
   const weekStartISO = fmtISO(week[0]); const weekEndISO = fmtISO(week[6])
   const bars = useMemo<WeekBar[]>(() => {
     const overlapping = trips.filter(t => t.start_date && t.end_date && t.start_date <= weekEndISO && t.end_date >= weekStartISO)
@@ -403,7 +403,7 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
 // Transport mark — a connector, not a destination. Lighter than a stay marker: a gold
 // departure time + flight name, no border fill. Click selects the trip (the panel
 // itinerary carries the detail; 6C day-detail will carry per-passenger fine-print).
-function TransportMark({ trip, activity, onSelect }: { trip: CalendarTrip; activity: CalendarActivity; onSelect:(id:string)=>void }) {
+function TransportMark({ trip, activity, onSelect }: { trip: CalendarEngagement; activity: CalendarActivity; onSelect:(id:string)=>void }) {
   const time = fmtTime(activity.time)
   const name = activity.title || 'Transport'
   return (
@@ -417,7 +417,7 @@ function TransportMark({ trip, activity, onSelect }: { trip: CalendarTrip; activ
   )
 }
 
-function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTrip[]; onSelect:(id:string)=>void }) {
+function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarEngagement[]; onSelect:(id:string)=>void }) {
   const ws = startOfWeek(cursor); const days = Array.from({length:7}, (_,i) => addDays(ws,i)); const today = new Date()
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:ID.radiusMd, overflow:'hidden', background:L.panel }}>
@@ -425,7 +425,7 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
         {days.map((day, i) => {
           const iso = fmtISO(day); const isToday = sameDay(day, today)
           const spanning = trips.filter(t => t.start_date && t.end_date && t.start_date <= iso && t.end_date >= iso)
-          const checkins: {trip:CalendarTrip;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarTrip;stay:CalendarStay}[] = []
+          const checkins: {trip:CalendarEngagement;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarEngagement;stay:CalendarStay}[] = []
           // Deduplicate by hotel_id + date — one marker per distinct hotel per day
           const seenIn = new Set<string>(); const seenOut = new Set<string>()
           for (const t of trips) for (const s of t.stays) {
@@ -434,7 +434,7 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
             if (s.check_in===iso && !seenIn.has(inKey)) { checkins.push({trip:t,stay:s}); seenIn.add(inKey) }
             if (s.check_out===iso && !seenOut.has(outKey)) { checkouts.push({trip:t,stay:s}); seenOut.add(outKey) }
           }
-          const transport: {trip:CalendarTrip;activity:CalendarActivity}[] = []
+          const transport: {trip:CalendarEngagement;activity:CalendarActivity}[] = []
           for (const t of trips) for (const a of t.activities) { if (a.category !== 'stay' && a.date===iso) transport.push({trip:t,activity:a}) }
           transport.sort((x,y) => (x.activity.time ?? '') < (y.activity.time ?? '') ? -1 : 1)
           const empty = spanning.length===0 && checkins.length===0 && checkouts.length===0 && transport.length===0
@@ -466,7 +466,7 @@ function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarTr
     </div>
   )
 }
-function WeekStay({ trip, stay, kind, onSelect }: { trip:CalendarTrip; stay:CalendarStay; kind:'in'|'out'; onSelect:(id:string)=>void }) {
+function WeekStay({ trip, stay, kind, onSelect }: { trip:CalendarEngagement; stay:CalendarStay; kind:'in'|'out'; onSelect:(id:string)=>void }) {
   const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
   const hotel = stay.hotel_name||stay.name||'Stay'
   const verb = kind==='in'?'Check-in':'Check-out'
@@ -482,12 +482,12 @@ function WeekStay({ trip, stay, kind, onSelect }: { trip:CalendarTrip; stay:Cale
 }
 
 type DayEvent =
-  | { kind:'trip-start'|'trip-end'; trip: CalendarTrip }
-  | { kind:'stay-checkin'|'stay-checkout'; trip: CalendarTrip; stay: CalendarStay }
-  | { kind:'transport'; trip: CalendarTrip; activity: CalendarActivity }
+  | { kind:'trip-start'|'trip-end'; trip: CalendarEngagement }
+  | { kind:'stay-checkin'|'stay-checkout'; trip: CalendarEngagement; stay: CalendarStay }
+  | { kind:'transport'; trip: CalendarEngagement; activity: CalendarActivity }
 type AgendaItem = { date: string; sort: number; node: DayEvent }
 
-function AgendaView({ trips, onSelect }: { trips: CalendarTrip[]; onSelect:(id:string)=>void }) {
+function AgendaView({ trips, onSelect }: { trips: CalendarEngagement[]; onSelect:(id:string)=>void }) {
   const groups = useMemo(() => {
     const start = todayISO(); const acc: AgendaItem[] = []
     for (const t of trips) {
@@ -591,24 +591,24 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
         <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:3 }}>{title}</strong>
         <span style={{ fontSize:12, color:L.muted }}>{sub}</span>
       </span>
-      <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.band, alignSelf:'center' }}>Trip</span>
+      <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.band, alignSelf:'center' }}>Engagement</span>
     </button>
   )
 }
 
-function TripPanel({ trip, onClose }: { trip: CalendarTrip; onClose: ()=>void }) {
+function EngagementPanel({ trip, onClose }: { trip: CalendarEngagement; onClose: ()=>void }) {
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:ID.radiusMd, background:L.panel, padding:18, position:'sticky', top:12 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, borderBottom:`1px solid ${L.line}`, paddingBottom:14, marginBottom:14 }}>
         <div>
-          <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:6 }}>Selected trip</div>
+          <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:6 }}>Selected engagement</div>
           <h2 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:22, lineHeight:1.15, color:L.ink }}>{trip.title||trip.journey_code}</h2>
           <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6, background:L.goldTint, border:`1px solid ${L.goldBorder}`, borderRadius:999, padding:'5px 10px', fontSize:11, fontWeight:700, color:L.band }}>{tripStatusLabel(trip.status_slug)}</div>
         </div>
         <button onClick={onClose} aria-label="Close" style={{ appearance:'none', cursor:'pointer', border:`1px solid ${L.line}`, background:L.panel, borderRadius:'50%', width:30, height:30, color:L.muted, fontSize:16, lineHeight:1 }}>×</button>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
-        <Info label="Trip dates" value={fmtRange(trip.start_date, trip.end_date)} />
+        <Info label="Engagement dates" value={fmtRange(trip.start_date, trip.end_date)} />
         <Info label="Stays" value={`${new Set(trip.stays.map(s => s.hotel_id).filter(Boolean)).size || trip.stays.length}`} />
       </div>
       <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:8 }}>Itinerary</div>
