@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { createTrip, reassignEngagementTrip } from '../../queries/queriesAdminEngagements'
+import { createEngagementLegacy, reassignEngagementTrip } from '../../queries/queriesAdminEngagements'
 import { A } from '../../tokens/tokensAdmin'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ export default function EngagementCreateModal({
 
     setSaving(true)
     try {
-      const newjourneyId = await createTrip({
+      const newjourneyId = await createEngagementLegacy({
         trip_code:         tripCode.trim(),
         public_title:      publicTitle.trim() ?? null,
         start_date:        startDate ?? null,

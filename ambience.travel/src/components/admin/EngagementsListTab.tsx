@@ -874,7 +874,7 @@ function EngagementGroupBlock({
 
 // ── New trip drop zone ───────────────────────────────────────────────────────
 
-function NewTripDropZone({ active }: { active: boolean }) {
+function NewEngagementDropZone({ active }: { active: boolean }) {
   const { setNodeRef, isOver } = useDroppable({
     id:   '__new_trip_zone__',
     data: { type: 'new_trip' },
@@ -1092,7 +1092,7 @@ export default function EngagementsListTab() {
     }
   }
 
-  async function handleTripUpdate(journeyId: string, field: 'trip_code' | 'public_title', value: string) {
+  async function handleEngagementUpdate(journeyId: string, field: 'trip_code' | 'public_title', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
       if (r.journey_id !== journeyId) return r
@@ -1131,7 +1131,7 @@ export default function EngagementsListTab() {
     }
   }
 
-  async function handleSetTripClient(journeyId: string, personId: string) {
+  async function handleSetEngagementClient(journeyId: string, personId: string) {
     try {
       await updateEngagementPrimaryClient(journeyId, personId)
       success('Client linked.')
@@ -1229,9 +1229,9 @@ export default function EngagementsListTab() {
                   engagementStatuses={engagementStatuses}
                   itineraryStatuses={itineraryStatuses}
                   onStatusChange={handleStatusChange}
-                  onTripUpdate={handleTripUpdate}
+                  onTripUpdate={handleEngagementUpdate}
                   onPersonUpdate={handlePersonUpdate}
-                  onSetTripClient={handleSetTripClient}
+                  onSetTripClient={handleSetEngagementClient}
                   pickingClientForTrip={pickingClientForTrip}
                   setPickingClientForTrip={setPickingClientForTrip}
                   isDragOverFromOtherGroup={isDragFromOtherGroup(group)}
@@ -1239,7 +1239,7 @@ export default function EngagementsListTab() {
                 />
               )
             })}
-            <NewTripDropZone active={draggingId != null} />
+            <NewEngagementDropZone active={draggingId != null} />
           </div>
 
           <DragOverlay dropAnimation={null}>

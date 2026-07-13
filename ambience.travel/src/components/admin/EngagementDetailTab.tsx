@@ -43,7 +43,7 @@ import {
   fetchPeople,
   fetchTrips,
   fetchPersonById,
-  fetchTripById,
+  fetchEngagementById,
   fetchWelcomeLetterCanonical,
   updateEngagement,
   setEngagementStatus,
@@ -313,7 +313,7 @@ function HouseTypeahead({ onPick }: { onPick: (houseId: string) => void }) {
   )
 }
 
-function TripTypeahead({
+function EngagementTypeahead({
   value,
   onChange,
 }: {
@@ -327,7 +327,7 @@ function TripTypeahead({
 
   useEffect(() => {
     if (!value) { setSelected(null); return }
-    fetchTripById(value).then(t => setSelected(t))
+    fetchEngagementById(value).then(t => setSelected(t))
   }, [value])
 
   useEffect(() => {
@@ -888,7 +888,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <PersonTypeahead value={draft.person_id} onChange={v => patch('person_id', v)} />
         </Field>
         <Field label='Trip (canonical)'>
-          <TripTypeahead value={draft.journey_id} onChange={v => patch('journey_id', v)} />
+          <EngagementTypeahead value={draft.journey_id} onChange={v => patch('journey_id', v)} />
         </Field>
       </Section>
 

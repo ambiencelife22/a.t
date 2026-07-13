@@ -11,7 +11,7 @@
 // Prior: S54 — Read paths migrated to travel-read-engagement-admin EF
 //   (max_sort_order later removed — sort_order computed server-side on create).
 // Prior: S33B — Added trip + person inline-edit + drag-and-drop re-parenting
-//   writes. New: updateTrip, createTrip, updatePerson, reassignEngagementTrip.
+//   writes. New: updateTrip, createEngagement, updatePerson, reassignEngagementTrip.
 // Prior: S33 — Added iteration_label. List query joins travel_journey +
 //   global_people for trip-group rendering.
 
@@ -477,7 +477,7 @@ export async function fetchPersonById(id: string): Promise<PersonOption | null> 
   return row
 }
 
-export async function fetchTripById(id: string): Promise<EngagementOption | null> {
+export async function fetchEngagementById(id: string): Promise<EngagementOption | null> {
   const { row } = await invokeRead<{ row: EngagementOption | null }>('trip_by_id', { id })
   return row
 }
@@ -508,7 +508,7 @@ export async function updateWelcomeLetter(patch: WelcomeLetterPatch): Promise<We
 
 // ── Trip create (drag-to-create-new-trip flow) ───────────────────────────────
 
-export type TripCreatePayload = {
+export type EngagementCreatePayload = {
   trip_code:       string
   public_title:    string | null
   start_date:      string | null   // ISO YYYY-MM-DD
@@ -517,7 +517,7 @@ export type TripCreatePayload = {
   primary_client_id: string | null
 }
 
-export async function createTrip(payload: TripCreatePayload): Promise<string> {
+export async function createEngagementLegacy(payload: EngagementCreatePayload): Promise<string> {
   if (!payload.trip_code || !payload.trip_code.trim()) {
     throw new Error('trip_code is required')
   }
@@ -531,12 +531,12 @@ export async function createTrip(payload: TripCreatePayload): Promise<string> {
 
 // ── Trip update (group-header inline edits for trip_code + public_title) ─────
 
-export type TripUpdatePayload = {
+export type EngagementUpdatePayload = {
   trip_code?:    string
   public_title?: string | null
 }
 
-export async function updateTrip(id: string, payload: TripUpdatePayload): Promise<void> {
+export async function updateTrip(id: string, payload: EngagementUpdatePayload): Promise<void> {
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
     body: { mode: 'update_trip', id, ...payload },
   })

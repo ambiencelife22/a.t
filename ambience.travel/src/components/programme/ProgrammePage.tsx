@@ -512,7 +512,7 @@ function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPh
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export type TripPageProps = {
+export type ProgrammePageProps = {
   booking:             Booking
   property:            Property
   manual:              ManualSection[]
@@ -526,7 +526,7 @@ export type TripPageProps = {
   publicArrival?: boolean
 }
 
-export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false, publicArrival = false }: TripPageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false, publicArrival = false }: ProgrammePageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {
