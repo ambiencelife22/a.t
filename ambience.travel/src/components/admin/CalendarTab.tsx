@@ -179,7 +179,7 @@ type ActivityDetail =
   | { kind: 'ground_transport'; vehicles: VehicleDetail[] }
 
 export default function CalendarTab() {
-  const [trips, setEngagements] = useState<CalendarEngagement[]>([])
+  const [engagements, setEngagements] = useState<CalendarEngagement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>('month')
@@ -193,12 +193,12 @@ export default function CalendarTab() {
       const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body: { mode: 'calendar' } })
       if (cancelled) return
       if (error) { setError('Could not load the calendar. Try again.'); setLoading(false); return }
-      setEngagements((data?.engagements ?? []) as CalendarEngagement[]); setLoading(false)
+      setEngagements((data?.trips ?? []) as CalendarEngagement[]); setLoading(false)
     }
     load(); return () => { cancelled = true }
   }, [])
 
-  const selectedTrip = useMemo(() => trips.find(t => t.id === selectedjourneyId) ?? null, [trips, selectedjourneyId])
+  const selectedEngagement = useMemo(() => engagements.find(t => t.id === selectedjourneyId) ?? null, [engagements, selectedjourneyId])
   const headingTitle = useMemo(() => {
     if (view === 'agenda') return 'Upcoming'
     if (view === 'week') {
@@ -236,20 +236,20 @@ export default function CalendarTab() {
 
       {loading && <Centered>Loading the calendar…</Centered>}
       {error && !loading && <Centered tone="danger">{error}</Centered>}
-      {!loading && !error && trips.length === 0 && (
+      {!loading && !error && engagements.length === 0 && (
         <Centered>No engagements to show. All confirmed engagements — past, current, and upcoming — appear here.</Centered>
       )}
 
-      {!loading && !error && trips.length > 0 && (
+      {!loading && !error && engagements.length > 0 && (
         <>
           {view !== 'agenda' && <CalendarKey view={view} />}
-          <div style={{ display:'grid', gridTemplateColumns: selectedTrip ? 'minmax(0,1fr) 320px' : '1fr', gap:18, alignItems:'start' }}>
+          <div style={{ display:'grid', gridTemplateColumns: selectedEngagement ? 'minmax(0,1fr) 320px' : '1fr', gap:18, alignItems:'start' }}>
             <div style={{ minWidth: 0 }}>
-              {view === 'month'  && <MonthView  cursor={cursor} trips={trips} onSelect={setSelectedjourneyId} />}
-              {view === 'week'   && <WeekView   cursor={cursor} trips={trips} onSelect={setSelectedjourneyId} />}
-              {view === 'agenda' && <AgendaView trips={trips} onSelect={setSelectedjourneyId} />}
+              {view === 'month'  && <MonthView  cursor={cursor} engagements={engagements} onSelect={setSelectedjourneyId} />}
+              {view === 'week'   && <WeekView   cursor={cursor} engagements={engagements} onSelect={setSelectedjourneyId} />}
+              {view === 'agenda' && <AgendaView engagements={engagements} onSelect={setSelectedjourneyId} />}
             </div>
-            {selectedTrip && <EngagementPanel trip={selectedTrip} onClose={() => setSelectedjourneyId(null)} />}
+            {selectedEngagement && <EngagementPanel trip={selectedEngagement} onClose={() => setSelectedjourneyId(null)} />}
           </div>
         </>
       )}
@@ -317,7 +317,7 @@ function Centered({ children, tone }: { children: React.ReactNode; tone?: 'dange
 
 type WeekBar = { trip: CalendarEngagement; startCol: number; endCol: number; continuesLeft: boolean; continuesRight: boolean; lane: number }
 
-function MonthView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarEngagement[]; onSelect: (id: string)=>void }) {
+function MonthView({ cursor, engagements, onSelect }: { cursor: Date; engagements: CalendarEngagement[]; onSelect: (id: string)=>void }) {
   const first = startOfMonth(cursor), last = endOfMonth(cursor)
   const gridStart = startOfWeek(first)
   const weeks: Date[][] = []
@@ -334,15 +334,15 @@ function MonthView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarE
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))', borderBottom:`1px solid ${L.line}`, background:L.goldTint }}>
         {WD.map(w => (<div key={w} style={{ padding:'10px 12px', textAlign:'right', textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted }}>{w}</div>))}
       </div>
-      {weeks.map((week, wi) => (<WeekRow key={wi} week={week} cursorMonth={cursor.getMonth()} today={today} trips={trips} onSelect={onSelect} />))}
+      {weeks.map((week, wi) => (<WeekRow key={wi} week={week} cursorMonth={cursor.getMonth()} today={today} engagements={engagements} onSelect={onSelect} />))}
     </div>
   )
 }
 
-function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; cursorMonth: number; today: Date; trips: CalendarEngagement[]; onSelect: (id: string)=>void }) {
+function WeekRow({ week, cursorMonth, today, engagements, onSelect }: { week: Date[]; cursorMonth: number; today: Date; engagements: CalendarEngagement[]; onSelect: (id: string)=>void }) {
   const weekStartISO = fmtISO(week[0]); const weekEndISO = fmtISO(week[6])
   const bars = useMemo<WeekBar[]>(() => {
-    const overlapping = trips.filter(t => t.start_date && t.end_date && t.start_date <= weekEndISO && t.end_date >= weekStartISO)
+    const overlapping = engagements.filter(t => t.start_date && t.end_date && t.start_date <= weekEndISO && t.end_date >= weekStartISO)
     overlapping.sort((a,b) => (a.start_date! < b.start_date! ? -1 : 1))
     const laneEnds: number[] = []; const result: WeekBar[] = []
     for (const t of overlapping) {
@@ -354,7 +354,7 @@ function WeekRow({ week, cursorMonth, today, trips, onSelect }: { week: Date[]; 
       result.push({ trip: t, startCol, endCol, lane, continuesLeft: t.start_date! < weekStartISO, continuesRight: t.end_date! > weekEndISO })
     }
     return result
-  }, [trips, weekStartISO, weekEndISO])
+  }, [engagements, weekStartISO, weekEndISO])
 
   const laneCount = bars.reduce((m,b) => Math.max(m, b.lane+1), 0)
   const BAR_H = 22, BAR_GAP = 3
@@ -417,25 +417,25 @@ function TransportMark({ trip, activity, onSelect }: { trip: CalendarEngagement;
   )
 }
 
-function WeekView({ cursor, trips, onSelect }: { cursor: Date; trips: CalendarEngagement[]; onSelect:(id:string)=>void }) {
+function WeekView({ cursor, engagements, onSelect }: { cursor: Date; engagements: CalendarEngagement[]; onSelect:(id:string)=>void }) {
   const ws = startOfWeek(cursor); const days = Array.from({length:7}, (_,i) => addDays(ws,i)); const today = new Date()
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:ID.radiusMd, overflow:'hidden', background:L.panel }}>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))' }}>
         {days.map((day, i) => {
           const iso = fmtISO(day); const isToday = sameDay(day, today)
-          const spanning = trips.filter(t => t.start_date && t.end_date && t.start_date <= iso && t.end_date >= iso)
+          const spanning = engagements.filter(t => t.start_date && t.end_date && t.start_date <= iso && t.end_date >= iso)
           const checkins: {trip:CalendarEngagement;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarEngagement;stay:CalendarStay}[] = []
           // Deduplicate by hotel_id + date — one marker per distinct hotel per day
           const seenIn = new Set<string>(); const seenOut = new Set<string>()
-          for (const t of trips) for (const s of t.stays) {
+          for (const t of engagements) for (const s of t.stays) {
             const inKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_in}`
             const outKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_out}`
             if (s.check_in===iso && !seenIn.has(inKey)) { checkins.push({trip:t,stay:s}); seenIn.add(inKey) }
             if (s.check_out===iso && !seenOut.has(outKey)) { checkouts.push({trip:t,stay:s}); seenOut.add(outKey) }
           }
           const transport: {trip:CalendarEngagement;activity:CalendarActivity}[] = []
-          for (const t of trips) for (const a of t.activities) { if (a.category !== 'stay' && a.date===iso) transport.push({trip:t,activity:a}) }
+          for (const t of engagements) for (const a of t.activities) { if (a.category !== 'stay' && a.date===iso) transport.push({trip:t,activity:a}) }
           transport.sort((x,y) => (x.activity.time ?? '') < (y.activity.time ?? '') ? -1 : 1)
           const empty = spanning.length===0 && checkins.length===0 && checkouts.length===0 && transport.length===0
           return (
@@ -487,10 +487,10 @@ type DayEvent =
   | { kind:'transport'; trip: CalendarEngagement; activity: CalendarActivity }
 type AgendaItem = { date: string; sort: number; node: DayEvent }
 
-function AgendaView({ trips, onSelect }: { trips: CalendarEngagement[]; onSelect:(id:string)=>void }) {
+function AgendaView({ engagements, onSelect }: { engagements: CalendarEngagement[]; onSelect:(id:string)=>void }) {
   const groups = useMemo(() => {
     const start = todayISO(); const acc: AgendaItem[] = []
-    for (const t of trips) {
+    for (const t of engagements) {
       if (t.start_date && t.start_date >= start) acc.push({ date:t.start_date, sort:0, node:{kind:'trip-start',trip:t} })
       if (t.end_date && t.end_date >= start) acc.push({ date:t.end_date, sort:3, node:{kind:'trip-end',trip:t} })
       const seenAgendaIn = new Set<string>(); const seenAgendaOut = new Set<string>()
@@ -519,7 +519,7 @@ function AgendaView({ trips, onSelect }: { trips: CalendarEngagement[]; onSelect
       g.push({date:it.date, items:[it]})
     }
     return g
-  }, [trips])
+  }, [engagements])
   if (groups.length===0) return <Centered>No milestones to show.</Centered>
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:ID.radiusMd, background:L.panel, padding:'4px 18px 18px' }}>
