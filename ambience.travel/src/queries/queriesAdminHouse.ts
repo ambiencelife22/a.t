@@ -113,7 +113,7 @@ export interface HouseDiningEntry {
   country:         string | null
   status:          DiningStatus
   visit_date:      string | null
-  trip_ref:        string | null
+  journey_id:      string | null
   venue_id:        string | null
   notes:           string | null
   created_at:      string
@@ -129,7 +129,7 @@ export interface HouseDestination {
   trip_type:        DestinationTripType | null
   status:           DestinationStatus
   visit_date:       string | null
-  trip_ref:         string | null
+  journey_id:       string | null
   notes:            string | null
   created_at:       string
   updated_at:       string
@@ -397,7 +397,7 @@ export async function deletePreference(id: string): Promise<void> {
 
 export async function fetchDiningHistoryForHouse(houseId: string): Promise<HouseDiningEntry[]> {
   const { data, error } = await supabase
-    .from('a_house_dininghistory').select('id, house_id, restaurant_name, city, country, status, visit_date, trip_ref, venue_id, notes, created_at, updated_at').eq('house_id', houseId)
+    .from('a_house_dininghistory').select('id, house_id, restaurant_name, city, country, status, visit_date, journey_id, venue_id, notes, created_at, updated_at').eq('house_id', houseId)
     .order('status', { ascending: true }).order('restaurant_name', { ascending: true })
   if (error) throw new Error(`Failed to fetch dining history: ${error.message}`)
   return (data ?? []) as HouseDiningEntry[]
@@ -405,14 +405,14 @@ export async function fetchDiningHistoryForHouse(houseId: string): Promise<House
 
 export async function createDiningEntry(
   houseId: string, restaurantName: string, city: string | null, country: string | null,
-  status: DiningStatus, visitDate: string | null, tripRef: string | null,
+  status: DiningStatus, visitDate: string | null, journeyId: string | null,
   venueId: string | null, notes: string | null,
 ): Promise<void> {
   const { error } = await supabase.functions.invoke('a-write-house-records', {
     body: {
       mode: 'create', table: 'dining',
       house_id: houseId, restaurant_name: restaurantName, city, country,
-      status, visit_date: visitDate, trip_ref: tripRef, venue_id: venueId, notes,
+      status, visit_date: visitDate, journey_id: journeyId, venue_id: venueId, notes,
     },
   })
   if (error) throw new Error(`Failed to create dining entry: ${error.message}`)
@@ -436,7 +436,7 @@ export async function deleteDiningEntry(id: string): Promise<void> {
 
 export async function fetchDestinationsForHouse(houseId: string): Promise<HouseDestination[]> {
   const { data, error } = await supabase
-    .from('a_house_destinations').select('id, house_id, destination_name, country, city, trip_type, status, visit_date, trip_ref, notes, created_at, updated_at').eq('house_id', houseId)
+    .from('a_house_destinations').select('id, house_id, destination_name, country, city, trip_type, status, visit_date, journey_id, notes, created_at, updated_at').eq('house_id', houseId)
     .order('status', { ascending: true })
     .order('destination_name', { ascending: true })
   if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
@@ -447,13 +447,13 @@ export async function createDestination(
   houseId: string, destinationName: string, country: string | null,
   city: string | null, tripType: DestinationTripType | null,
   status: DestinationStatus, visitDate: string | null,
-  tripRef: string | null, notes: string | null,
+  journeyId: string | null, notes: string | null,
 ): Promise<void> {
   const { error } = await supabase.functions.invoke('a-write-house-records', {
     body: {
       mode: 'create', table: 'destinations',
       house_id: houseId, destination_name: destinationName, country, city,
-      trip_type: tripType, status, visit_date: visitDate, trip_ref: tripRef, notes,
+      trip_type: tripType, status, visit_date: visitDate, journey_id: journeyId, notes,
     },
   })
   if (error) throw new Error(`Failed to create destination: ${error.message}`)

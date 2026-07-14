@@ -56,17 +56,17 @@ const TABLES: Record<TableKey, TableConfig> = {
   },
   dining: {
     db:       'a_house_dininghistory',
-    select:   'id, house_id, restaurant_name, city, country, status, visit_date, trip_ref, venue_id, notes, created_at, updated_at',
-    create:   ['house_id', 'restaurant_name', 'city', 'country', 'status', 'visit_date', 'trip_ref', 'venue_id', 'notes'],
+    select:   'id, house_id, restaurant_name, city, country, status, visit_date, journey_id, venue_id, notes, created_at, updated_at',
+    create:   ['house_id', 'restaurant_name', 'city', 'country', 'status', 'visit_date', 'journey_id', 'venue_id', 'notes'],
     required: ['house_id', 'restaurant_name'],
-    update:   ['restaurant_name', 'city', 'country', 'status', 'visit_date', 'trip_ref', 'venue_id', 'notes'],
+    update:   ['restaurant_name', 'city', 'country', 'status', 'visit_date', 'journey_id', 'venue_id', 'notes'],
   },
   destinations: {
     db:       'a_house_destinations',
-    select:   'id, house_id, destination_name, country, city, trip_type, status, visit_date, trip_ref, notes, created_at, updated_at',
-    create:   ['house_id', 'destination_name', 'country', 'city', 'trip_type', 'status', 'visit_date', 'trip_ref', 'notes'],
+    select:   'id, house_id, destination_name, country, city, trip_type, status, visit_date, journey_id, notes, created_at, updated_at',
+    create:   ['house_id', 'destination_name', 'country', 'city', 'trip_type', 'status', 'visit_date', 'journey_id', 'notes'],
     required: ['house_id', 'destination_name', 'status'],
-    update:   ['destination_name', 'country', 'city', 'trip_type', 'status', 'visit_date', 'trip_ref', 'notes'],
+    update:   ['destination_name', 'country', 'city', 'trip_type', 'status', 'visit_date', 'journey_id', 'notes'],
   },
 }
 

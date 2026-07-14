@@ -1450,7 +1450,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
   const [filter, setFilter] = useState<DiningStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as DiningStatus, visit_date: '', trip_ref: '', notes: '' })
+  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as DiningStatus, visit_date: '', journey_id: '', notes: '' })
   const { success, error }  = useAdminToast()
   const STATUSES: DiningStatus[] = ['favorite', 'visited', 'to_try', 'avoid']
 
@@ -1472,10 +1472,10 @@ function DiningSection({ data, houseId, onReload, mobile }: {
     if (!draft.restaurant_name.trim()) return
     setSaving(true)
     try {
-      await createDiningEntry(houseId, draft.restaurant_name.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visit_date || null, draft.trip_ref.trim() || null, null, draft.notes.trim() || null)
+      await createDiningEntry(houseId, draft.restaurant_name.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visit_date || null, draft.journey_id || null, null, draft.notes.trim() || null)
       success('Added.')
       setAdding(false)
-      setDraft({ restaurant_name: '', city: '', country: '', status: 'visited', visit_date: '', trip_ref: '', notes: '' })
+      setDraft({ restaurant_name: '', city: '', country: '', status: 'visited', visit_date: '', journey_id: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1517,7 +1517,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visit_date} onChange={e => setDraft(d => ({ ...d, visit_date: e.target.value }))} /></Field>
-            <Field label='Trip Ref'><input style={inputStyle} placeholder='YAZ-2027-HM...' value={draft.trip_ref} onChange={e => setDraft(d => ({ ...d, trip_ref: e.target.value }))} /></Field>
+            <Field label='Journey'><select style={inputStyle} value={draft.journey_id} onChange={e => setDraft(d => ({ ...d, journey_id: e.target.value }))}><option value=''>None</option>{data.dossier.engagements.map(j => <option key={j.id} value={j.id}>{j.journey_code}</option>)}</select></Field>
           </div>
           <Field label='Notes'><input style={inputStyle} placeholder='What they thought...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
@@ -1538,7 +1538,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
                       <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                         {(e.city || e.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[e.city, e.country].filter(Boolean).join(', ')}</span>}
                         {e.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(e.visit_date)}</span>}
-                        {e.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{e.trip_ref}</span>}
+                        {e.journey_id && <span style={{ fontSize: 10, color: A.faint, fontFamily: "DM Mono, monospace" }}>{data.dossier.engagements.find(j => j.id === e.journey_id)?.journey_code ?? ""}</span>}
                       </div>
                       {e.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
                     </div>
@@ -1565,7 +1565,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
   const [filter, setFilter] = useState<DestinationStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ destination_name: '', country: '', city: '', trip_type: '' as DestinationTripType | '', status: 'visited' as DestinationStatus, visit_date: '', trip_ref: '', notes: '' })
+  const [draft, setDraft]   = useState({ destination_name: '', country: '', city: '', trip_type: '' as DestinationTripType | '', status: 'visited' as DestinationStatus, visit_date: '', journey_id: '', notes: '' })
   const { success, error }  = useAdminToast()
 
   const grouped = useMemo(() => {
@@ -1586,10 +1586,10 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
     if (!draft.destination_name.trim()) return
     setSaving(true)
     try {
-      await createDestination(houseId, draft.destination_name.trim(), draft.country.trim() || null, draft.city.trim() || null, (draft.trip_type || null) as DestinationTripType | null, draft.status, draft.visit_date || null, draft.trip_ref.trim() || null, draft.notes.trim() || null)
+      await createDestination(houseId, draft.destination_name.trim(), draft.country.trim() || null, draft.city.trim() || null, (draft.trip_type || null) as DestinationTripType | null, draft.status, draft.visit_date || null, draft.journey_id || null, draft.notes.trim() || null)
       success('Added.')
       setAdding(false)
-      setDraft({ destination_name: '', country: '', city: '', trip_type: '', status: 'visited', visit_date: '', trip_ref: '', notes: '' })
+      setDraft({ destination_name: '', country: '', city: '', trip_type: '', status: 'visited', visit_date: '', journey_id: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1639,7 +1639,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visit_date} onChange={e => setDraft(d => ({ ...d, visit_date: e.target.value }))} /></Field>
-            <Field label='Trip Ref'><input style={inputStyle} placeholder='YAZ-2027-HM...' value={draft.trip_ref} onChange={e => setDraft(d => ({ ...d, trip_ref: e.target.value }))} /></Field>
+            <Field label='Journey'><select style={inputStyle} value={draft.journey_id} onChange={e => setDraft(d => ({ ...d, journey_id: e.target.value }))}><option value=''>None</option>{data.dossier.engagements.map(j => <option key={j.id} value={j.id}>{j.journey_code}</option>)}</select></Field>
           </div>
           <Field label='Notes'><input style={inputStyle} placeholder='Any notes...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
@@ -1661,7 +1661,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
                         {(dest.city || dest.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[dest.city, dest.country].filter(Boolean).join(', ')}</span>}
                         {dest.trip_type && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{dest.trip_type}</span>}
                         {dest.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(dest.visit_date)}</span>}
-                        {dest.trip_ref && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{dest.trip_ref}</span>}
+                        {dest.journey_id && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{data.dossier.engagements.find(j => j.id === dest.journey_id)?.journey_code ?? ''}</span>}
                       </div>
                       {dest.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{dest.notes}</div>}
                     </div>
