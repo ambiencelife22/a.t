@@ -52,7 +52,7 @@ const GROUPS: NavGroup[] = [
     key: 'clients', label: 'Clients', icon: Home,
     items: [
       {
-        key: 'clients-list', label: 'Households',
+        key: 'clients-list', label: 'Clients',
         hash: buildAdminHash({ product: 'clients', tab: 'list' }),
         active: t => t.product === 'clients',
       },

@@ -670,9 +670,9 @@ function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 6 }}>ambience · HOUSE</div>
-        <div style={{ fontSize: 24, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', marginBottom: 3 }}>Client Houses</div>
-        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>{houses.length} household{houses.length !== 1 ? 's' : ''}</div>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 6 }}>ambience · CLIENTS</div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', marginBottom: 3 }}>Clients</div>
+        <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>{houses.length} client{houses.length !== 1 ? "s" : ""}</div>
       </div>
       <input style={{ ...inputStyle, fontSize: 14, padding: '12px 14px' }} placeholder='Search...' value={search} onChange={e => setSearch(e.target.value)} autoFocus />
       {loading ? (
