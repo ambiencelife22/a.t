@@ -1,6 +1,6 @@
 /* AuxPassengersEditor.tsx
  * Shared per-flight passenger editor. Lifted verbatim from the inline
- * PassengersSubEditor in TripDossierSection.tsx (S54) so both the dossier
+ * PassengersSubEditor in EngagementDossierSection.tsx (S54) so both the dossier
  * AuxBookingsEditor and BriefEditorPage's BriefAuxEditor edit passengers
  * from a single source.
  *

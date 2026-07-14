@@ -14,7 +14,7 @@
 //   - Font loading / registration (guidePdfFonts.ts)
 //   - Image loading, SVG rasterisation, font helpers (pdfUtils.ts)
 //   - Data fetching (caller passes ClientDossierData)
-//   - UI trigger (TripDossierSection owns the Download button)
+//   - UI trigger (EngagementDossierSection owns the Download button)
 //   - jsPDF script loading (useDossierDownload owns this)
 //
 // Highlight tiers:

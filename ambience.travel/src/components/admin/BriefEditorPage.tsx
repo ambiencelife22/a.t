@@ -776,7 +776,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       ])
       setEngagementTypes(engTypes)
 
-      const found = dossier.trips.find(t => t.id === journeyId)
+      const found = dossier.engagements.find(t => t.id === journeyId)
       if (!found) { setLoadErr('Trip not found in dossier.'); return }
       setTrip(found)
       setHouse(dossier.house)

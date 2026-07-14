@@ -4,7 +4,7 @@
  * types) with inline creation of a new airline if it's not yet registered.
  *
  * Extracted from BriefEditorPage's FlightDetailsSubsection so the dossier
- * AuxForm (TripDossierSection) and the brief editor share one implementation —
+ * AuxForm (EngagementDossierSection) and the brief editor share one implementation —
  * closing the airline supplier parity gap (dossier previously had free-text
  * airline_name only; brief had the supplier picker).
  *

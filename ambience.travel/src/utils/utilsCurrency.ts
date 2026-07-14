@@ -15,7 +15,7 @@
  *
  * Created S53M. Extracted after a currency-formatting audit found inline
  * Intl.NumberFormat copies + a hand-built `$`-concat across four files
- * (OutlookTab usd/usdDec, StudioDashboard usd, TripDossierSection, TimeAnalyticsTab).
+ * (OutlookTab usd/usdDec, StudioDashboard usd, EngagementDossierSection, TimeAnalyticsTab).
  */
 
 // Currency -> display prefix. USD is the only symbol-bearer; EUR is the one

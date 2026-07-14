@@ -3,7 +3,7 @@
  * identity (person_id link + guest_name override), images, names, rates.
  *
  * Replaces two prior editors that both wrote guest_name as free text:
- *   - RoomsEditor      (inline in TripDossierSection) — full create/edit/delete
+ *   - RoomsEditor      (inline in EngagementDossierSection) — full create/edit/delete
  *   - BriefRoomEditor  (in BriefEditorPage)           — names + images + preview
  * Two surfaces editing one column was the drift. This is the one place.
  *

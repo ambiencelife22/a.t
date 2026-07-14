@@ -12,7 +12,7 @@
  *   single-source rule). Now imported from typesPpd.ts as PPD_PEOPLE_KEYS,
  *   aliased to PPD_KEYS locally to preserve all call sites.
  * Prior: S44 — refactor. Extracted section components + shared primitives.
- *   Added Trip Dossier section (TripDossierSection) + adminTripQueries fetch.
+ *   Added Trip Dossier section (EngagementDossierSection) + adminTripQueries fetch.
  * Prior: S43 — Phase 4 redesign (useAdminToast, HouseCard, shared primitives).
  * Prior: S41 — Destinations + Contacts sections added.
  * Prior: S40D — mobile-responsive layout pass.
@@ -55,7 +55,7 @@ import {
   DesigBadge, StatusFilterBar, AddFormShell, EntryCard,
   SectionHeader, FormActions, SourceSelect, PPDValueInput,
 } from './houseUi'
-import { TripDossierSection } from './TripDossierSection'
+import { EngagementDossierSection } from './EngagementDossierSection'
 import { RequestsSection } from './RequestsSection'
 import { PersonLinkPicker } from './PersonLinkPicker'
 import {
@@ -71,7 +71,7 @@ import { useWindowWidth } from '../../hooks/useWindowWidth'
 
 // Sections are defined inline below (OverviewSection, PreferencesSection, etc.)
 // They remain here because they are tightly coupled to AllData and house context.
-// TripDossierSection is standalone and lives in its own file.
+// EngagementDossierSection is standalone and lives in its own file.
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -138,7 +138,7 @@ interface AllData {
 
 const EMPTY_DATA: AllData = {
   people: [], preferences: [], dining: [], destinations: [],
-  contacts: [], labels: [], ppd: [], dossier: { trips: [], partners: {}, house: null }, requests: [],
+  contacts: [], labels: [], ppd: [], dossier: { engagements: [], partners: {}, house: null }, requests: [],
   roles: [],
 }
 
@@ -820,7 +820,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
 
   const NAV: Array<{ id: Section; label: string; count?: number }> = [
     { id: 'overview',     label: 'Overview' },
-    { id: 'trips',        label: 'Trips',        count: data.dossier.trips.length },
+    { id: 'trips',        label: 'Trips',        count: data.dossier.engagements.length },
     { id: 'preferences',  label: 'Preferences',  count: data.preferences.length },
     { id: 'dining',       label: 'Dining',        count: data.dining.length },
     { id: 'destinations', label: 'Destinations',  count: data.destinations.length },
@@ -865,7 +865,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     if (loading) return <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>Loading...</div>
     switch (section) {
       case 'overview':     return <OverviewSection     house={house} data={data} onSaved={reloadHouse} onReload={loadAll} mobile={mobile} />
-      case 'trips': return <TripDossierSection         dossier={data.dossier} mobile={mobile} />
+      case 'trips': return <EngagementDossierSection         dossier={data.dossier} mobile={mobile} />
       case 'requests':    return <RequestsSection     requests={data.requests} houseId={house.id} onReload={loadAll} mobile={mobile} />
       case 'preferences':  return <PreferencesSection  data={data} houseId={house.id} onReload={loadAll} personRef={personRef} mobile={mobile} />
       case 'dining':       return <DiningSection       data={data} houseId={house.id} onReload={loadAll} mobile={mobile} />

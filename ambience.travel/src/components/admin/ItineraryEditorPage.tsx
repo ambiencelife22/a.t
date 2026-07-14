@@ -518,7 +518,7 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
         fetchJourneyDayEntries(journeyId),
       ])
 
-      const found = dossier.trips.find(t => t.id === journeyId)
+      const found = dossier.engagements.find(t => t.id === journeyId)
       if (!found) { setLoadErr('Trip not found.'); return }
 
       setTrip(found)

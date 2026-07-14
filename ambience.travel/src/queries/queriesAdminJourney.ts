@@ -336,7 +336,7 @@ export type DossierJourney = {
 }
 
 export type EngagementDossierData = {
-  trips:    DossierJourney[]
+  engagements: DossierJourney[]
   partners: Record<string, EngagementPartner>
   house:    HouseProfile | null
 }
@@ -384,7 +384,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
 
   const { tripRows, bookingRows, hotelMap, partners, house, briefs, rooms, dests, engagements } = raw
 
-  if (!tripRows || tripRows.length === 0) return { trips: [], partners: {}, house: null }
+  if (!tripRows || tripRows.length === 0) return { engagements: [], partners: {}, house: null }
 
   const partnerMap: Record<string, EngagementPartner> = {}
   for (const p of partners) partnerMap[p.id] = p
@@ -433,7 +433,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
     if (!urlIdByTrip.has(row.journey_id)) urlIdByTrip.set(row.journey_id, row.url_id)
   }
 
-  const trips: DossierJourney[] = tripRows.map(t => ({
+  const journeys: DossierJourney[] = tripRows.map(t => ({
     id:                   t.id,
     journey_code:            t.journey_code,
     stage:                t.derived_status_slug
@@ -451,7 +451,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
     url_id:               urlIdByTrip.get(t.id) ?? null,
   }))
 
-  return { trips, partners: partnerMap, house }
+  return { engagements: journeys, partners: partnerMap, house }
 }
 
 // ── Brief read ────────────────────────────────────────────────────────────────

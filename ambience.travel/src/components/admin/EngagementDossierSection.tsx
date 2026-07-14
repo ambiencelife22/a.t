@@ -1,14 +1,14 @@
-/* TripDossierSection.tsx
- * Trip Dossier surface for HouseTab.
+/* EngagementDossierSection.tsx
+ * Engagement dossier surface for ClientsTab.
  *
- * Last updated: S48 — Copy Link buttons added to TripActionPanel for
+ * Last updated: S48 — Copy Link buttons added to EngagementActionPanel for
  *   /confirmation and /programme client URLs. url_id now on DossierJourney.
  *   buildClientUrl + copyLink helpers. copied state with 2s feedback.
  * Prior: S48 — fetchAdminEngagementElements imported. handleDownload fetches aux.
- * Prior: S47 — navigateAdmin imported from adminPath. TripActionPanel
+ * Prior: S47 — navigateAdmin imported from adminPath. EngagementActionPanel
  *   onBriefSaved prop removed. trips local state removed.
  * Prior: S46 — Edit Brief navigates to BriefEditorPage.
- * Prior: S45 — TripActionPanel; confirmationBriefPdf; RoomsEditor.
+ * Prior: S45 — EngagementActionPanel; confirmationBriefPdf; RoomsEditor.
  * Prior: S44 — initial ship.
  */
 
@@ -82,9 +82,9 @@ const labelStyle: React.CSSProperties = {
   fontFamily: A.font, marginBottom: 3, display: 'block',
 }
 
-// ── TripActionPanel ───────────────────────────────────────────────────────────
+// ── EngagementActionPanel ───────────────────────────────────────────────────────────
 
-function TripActionPanel({ trip, house }: {
+function EngagementActionPanel({ trip, house }: {
   trip:  DossierJourney
   house: HouseProfile | null
 }) {
@@ -894,9 +894,9 @@ function BookingCreator({ journeyId, onCreated }: {
   )
 }
 
-// ── TripBlock ─────────────────────────────────────────────────────────────────
+// ── EngagementBlock ─────────────────────────────────────────────────────────────────
 
-function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
+function EngagementBlock({ trip, partners, mobile, expanded, onToggle, house }: {
   trip:     DossierJourney
   partners: Record<string, EngagementPartner>
   mobile:   boolean
@@ -950,7 +950,7 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
             )}
           </div>
 
-          <TripActionPanel trip={trip} house={house} />
+          <EngagementActionPanel trip={trip} house={house} />
 
           {bookings.length === 0
             ? <AdminEmptyState message='No bookings on this trip yet.' />
@@ -970,22 +970,22 @@ function TripBlock({ trip, partners, mobile, expanded, onToggle, house }: {
   )
 }
 
-// ── TripDossierSection ────────────────────────────────────────────────────────
+// ── EngagementDossierSection ────────────────────────────────────────────────────────
 
-export function TripDossierSection({ dossier, mobile }: {
+export function EngagementDossierSection({ dossier, mobile }: {
   dossier: EngagementDossierData
   mobile:  boolean
 }) {
   const [expandedTrip, setExpandedTrip] = useState<string | null>(
-    dossier.trips.length === 1 ? dossier.trips[0].id : null
+    dossier.engagements.length === 1 ? dossier.engagements[0].id : null
   )
 
-  if (dossier.trips.length === 0) return <AdminEmptyState message='No trips linked to this household yet.' />
+  if (dossier.engagements.length === 0) return <AdminEmptyState message='No engagements linked to this client yet.' />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {dossier.trips.map(trip => (
-        <TripBlock
+      {dossier.engagements.map(trip => (
+        <EngagementBlock
           key={trip.id}
           trip={trip}
           partners={dossier.partners}
