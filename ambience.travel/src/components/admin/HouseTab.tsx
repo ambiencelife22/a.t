@@ -820,7 +820,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
 
   const NAV: Array<{ id: Section; label: string; count?: number }> = [
     { id: 'overview',     label: 'Overview' },
-    { id: 'trips',        label: 'Trips',        count: data.dossier.engagements.length },
+    { id: 'trips',        label: 'Engagements',        count: data.dossier.engagements.length },
     { id: 'preferences',  label: 'Preferences',  count: data.preferences.length },
     { id: 'dining',       label: 'Dining',        count: data.dining.length },
     { id: 'destinations', label: 'Destinations',  count: data.destinations.length },

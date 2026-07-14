@@ -3839,3 +3839,1110 @@ Spine single-source; aux eliminated; booking_type→element_type + column droppe
 bottom. What remains carries 'trip' correctly (DB/semantic/external/dissolving-on-schedule). "Zero trip
 strings" is neither achievable nor correct. The mission's bar — no leftover travel-shaped label masking
 the entity — is MET and VERIFIED. Two real remainders logged as their own campaigns.
+
+## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
+
+### [ARC][DB] travel_engagement_aux_bookings DROPPED — every element now lives solely as a typed engagement-tree node
+
+The flat aux table is gone — not a table, not a view (`to_regclass` returns null). Every
+element (flight / dining / airport_transfer / meet_greet) now exists ONLY as a node on
+`travel_engagements` (`iteration_label='element'`, `parent_engagement_id` = the confirmed
+engagement) + its 1:1 detail row (`travel_engagement_transport_detail` for flights,
+`travel_engagement_dining_detail` for dining; bare nodes for transfer/meet_greet). No parallel
+source remains. This closes the Stage-7 model: the engagement tree is the single truth for
+elements, read + written transactionally. Live Supabase — invisible to git; this is the record.
+
+**Read path (all readers on the tree, verified live):**
+- `_shared/engagement.ts` (was `_shared/trip.ts` — renamed, the last trip-named survivor in the
+  shared layer; exports `fetchEngagementCore`/`EngagementCore`/`fetchEngagementBookings`).
+  `fetchElementsFlat(db, parentEngId)` reads node+detail and flattens to the legacy aux shape
+  (a BRIDGE — deleted when consumers read engagement shape directly; do not calcify).
+  `fetchOneElementFlat(db, nodeId)` for the write return-shape. `enrichElements(db, elements,
+  partyLabel)` — GLOBALIZED passenger/driver/dining enrichment (was inlined verbatim in both
+  guest EFs, a live drift risk; now one home).
+- `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
+  and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
+  dining→dining, else bare node.
+- The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
+  all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
+  passengers + dining venues (Mister Nice, China Tang) from the tree.
+- Calendar activity read: fixed the journey-vs-engagement filter (elements' parent_engagement_id
+  is the CONFIRMED ENGAGEMENT id, not the journey id — resolve journeyId→confirmed_engagement_id
+  for the `.in()` filter, group results back by engagement id). Was showing "No itinerary recorded"
+  on EVERY trip. Now renders full itineraries; flight detail enriched from transport_detail +
+  the airport registry (no aux).
+
+**Write path (transactional RPCs, replace the aux passthrough handlers):**
+- 3 SECURITY DEFINER plpgsql functions, each atomic (a function body is one txn — fixes the
+  orphan-on-failure + type-change-leak of an app-layer sequential-insert draft):
+  - `create_element(p_journey_id uuid, p_patch jsonb) → uuid`: resolves parent
+    (journey.confirmed_engagement_id), inserts node (full NOT-NULL spine contract:
+    engagement_status_id=confirmed, itinerary_status_id=confirmed, audience=private,
+    proposal_visibility=active, is_public=false, iteration_label='element', journey_types='{}'),
+    then detail by slug. Free-text→FK resolved in-txn (cabin_class label→id, aircraft_type
+    label→id, depart/arrive_airport iata→id). PROVEN live (rolled-back txn: created a flight,
+    verify returned cabin_resolved="Business", airport_resolved="DOH").
+  - `update_element(p_node_id, p_patch)`: COALESCE keeps existing node values for absent keys;
+    on type-change DELETEs mismatched detail + upserts correct (ON CONFLICT node_id).
+  - `delete_element(p_node_id)`: DELETE node; detail cascades via node_id FK ON DELETE CASCADE.
+- travel-write-journey handleCreate/Update/DeleteAuxBooking now call the RPCs and re-read via
+  `fetchOneElementFlat` to return the full flat row (TripDossierSection splices it into state).
+
+**The five-table FK migration (aux was tethered by 5 FKs, all ON DELETE CASCADE except 2 SET NULL
+— a naive DROP would have destroyed passengers, drivers, tasks):**
+Each tethered table: ADD COLUMN node_id uuid + FK→travel_engagements(id) ON DELETE CASCADE,
+backfill via the source_aux_booking_id mapping, repoint code, DROP old aux column.
+- travel_engagement_aux_passengers (51 rows) — aux_booking_id → node_id
+- travel_aux_driver_details (2 rows) — aux_booking_id → node_id
+- travel_tasks (3 linked rows) — aux_booking_id → node_id (nullable; most tasks aren't element-linked)
+- travel_journey_day_entries (0 linked) — source_aux_id column dropped (cosmetic)
+- travel_engagements.source_aux_booking_id (the mapping itself) — dropped LAST, after all backfills
+Backfills all proven clean pre-migration (every linked row mapped to exactly one node, no
+multi-node, no orphans).
+
+**The aux_booking_id → node_id API-contract sweep (payload-key honesty, tsc-blind — grep the
+callers):** switched the expander + driver-editor + passenger-editor contract from passing the
+aux id to passing the node id (which the callers already had as `a.id` / `activity.id` — the flat
+rows and calendar activities carry the node id). Touched: CalendarTab (activity_detail body →
+node_id; canExpand → activity.is_element; type field source_aux_booking_id → is_element),
+queriesAdminJourney (3 mode payloads), both EF handlers (handleActivityDetail /
+handleAuxDriverDetails take node id directly, no source_aux_booking_id resolve). The EF calendar
+projection now emits `is_element: !a.source_booking_id` (the durable "expandable" flag) instead of
+carrying the dropped column.
+
+**Element-selection predicate swap (the one late change to eyeball):** `fetchElementsFlat` filtered
+elements by `.not('source_aux_booking_id', 'is', null)`. Column dropped → filter switched to
+`.eq('iteration_label', 'element')`. Verified equivalent: all 25 element nodes carry
+iteration_label='element' (the create_element/populate contract); the lone non-element child (label
+'B') correctly excluded.
+
+**Parity gate (banked, held throughout):** nodes=25, transport=15, dining=5, bare=5, passengers=51,
+drivers=2, tasks=3. Tree = source before the drop.
+
+### [PROCESS / LESSONS]
+- Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
+  verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
+  `\echo` are psql meta-commands, fail in the editor.
+- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
+- Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
+  current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
+  are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
+- The rendered page is the verification, not tsc/grep (the journey-vs-engagement calendar filter was
+  tsc-green while every trip showed "No itinerary").
+
+### STILL OPEN (scoped, non-blocking)
+- Type-field honesty (Category Z): TripAuxPassenger/TripAuxDriverDetail `.aux_booking_id` type fields
+  + `auxBookingId` variable/prop names still say "aux" but hold node ids — values correct, names stale.
+- fetchElementsFlat/fetchOneElementFlat/enrichElements flat-read is a BRIDGE (flattens tree→aux shape
+  for cutover); delete when consumers read engagement shape directly.
+- engagement.ts:425 — one stale comment still mentions source_aux_booking_id.
+- Calendar "Stays" metric (S53I debt, re-confirmed on HRH AMF): flat distinct-hotel count conflates
+  properties / principal's stays / room footprint — needs a design decision + EF room-count carry.
+- typesImmerse 8→9 shape reconcile (L's border): frontend slug→shape map is 8 shapes; Doc #4 canon is
+  9 (Concierge Service split from Arrangement). EF-first.
+- Passenger party-primitive migration (passenger_label free-text → global_people) — logged follow-on,
+  independent of the retire.
+
+### [ARC][DB+FE] THE NINE — modeled, enforced, rendered (S53Q, same session)
+
+Doc #4 canonizes nine engagement shapes. Verified complete across all three layers:
+
+**Modeled (DB, verified):** `travel_engagement_types` holds exactly 9 `level='shape'` rows —
+acquisition, arrangement, concierge_service, dining, experience, journey, reservation, stay,
+transport — + 13 `level='element'` rows. Concierge Service is split from Arrangement (both
+level='shape'); Doc #4's brokered-vs-ours distinction is real in the registry.
+
+**Spine clean (the retype L scoped — done as a Stage-7 side effect):** L's feared conflation
+("20 element-typed top-level engagements") is RESOLVED. Verified live: 14 top-level engagements
+(parent_engagement_id IS NULL), ALL 14 are level='shape', 0 element-typed, 0 null-level. The
+elements became child nodes when Stage 7 reparented them. The "spine retype" handed to M/Stage 7
+is complete — the reparenting did it.
+
+**Enforced (trigger, proven both directions):** `trg_enforce_top_level_shape` (fn
+`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per no-else standard).
+Rule: top-level engagements (parent_engagement_id IS NULL) MUST reference a level='shape' type;
+children may be any level (an element, or a shape nested in a journey — 6 shape-typed children
+exist legitimately). CHECK can't hold the subquery, so it's a trigger (L's scoped design choice).
+PROVEN in rolled-back txns: inserting a top-level flight → RAISES 'must be a shape (THE NINE);
+got level=element'; inserting a top-level journey → succeeds. NOTE FOR L: this was L's owned
+integrity lock; fired this session under D's direct instruction after verifying 0 violators
+(Stage 7 cleared them). L: it's live, proven — review the guard form / add any RLS-comment per
+your standing convention.
+
+**Rendered (frontend, tsc-verified):** typesImmerse.ts was at 8 shapes; added concierge_service
+to the EngagementShape union, ENGAGEMENT_SHAPES array, and SLUG_TO_SHAPE map. Now 9. tsc green —
+the Record<EngagementShape,SectionType[]> completeness check passed, so SECTION_REGISTRY handles
+the new shape without a gap. (Supersedes the earlier "typesImmerse 8→9 reconcile pending" note.)
+
+**Left deliberately (needs D's call):** SLUG_TO_SHAPE maps `other → arrangement`. `other` is
+ambiguous between brokered (arrangement) and ours (concierge_service); left at arrangement as the
+safe default, not reclassified without direction.
+
+SUPERSEDES the pre-Stage-7 board items: "THE NINE modeled+enforced (pending)", "spine retype
+(handed to M)", "typesImmerse 8→9 reconcile", "enforcement constraint BLOCKED until violators
+clear" — all now DONE.
+
+### [SCOPING][honest correction] The flat-read shim — built S53Q, retire WITHIN surface consolidation (NOT standalone)
+
+Correction to my own framing. `fetchElementsFlat` / `fetchOneElementFlat` / `enrichElements`-flatten
+were built THIS session (S53Q) as a compatibility shim during the aux-reader cutover: they read the
+new node+detail tree and reshape it into the OLD flat aux shape so existing consumers didn't have to
+change mid-migration. I flagged it as a "bridge to delete" as if it were external arc work — it is my
+own deferred scaffolding, not a discovered legacy violation.
+
+**Is it a violation?** No — not a correctness one. It reads the ONE source (the tree); it is not a
+parallel source of truth and is not drift-prone the way the aux TABLE was. It IS a cleanliness debt:
+it's shaped as the retired aux contract (booking_type, aux-flavoured fields) rather than a clean
+consumer-shaped type — a shim wearing the dead table's clothes. Cleanliness, not correctness.
+
+**Do NOT retire it standalone.** Its heaviest consumer is buildTimeline (_shared/timeline.ts) — the
+guest programme's core builder — which is woven through the flat aux vocabulary: `booking_type` is the
+type discriminator (hotel/flight/transfer branching, flight detection at line ~390), plus cabin_class /
+aircraft_type / origin / destination / passengers / name. The other consumers are the confirmation
+`auxBookings` render and the admin dossier/AuxBookingsEditor. ALL of these are inside the
+one-engagement-surface consolidation's (Collapse A) blast radius — that campaign rewrites buildTimeline
++ the confirmation render + the section registry to render by stage × shape from the tree.
+
+Retiring the shim now = rewrite buildTimeline to read node+detail, THEN rewrite it again during
+consolidation = TWO passes over the guest programme's spine. That is the bandaid the Standards forbid.
+The clean move is ONE pass: surface consolidation defines the canonical EngagementElement / timeline-item
+shape once, buildTimeline is rewritten once to consume it, and the shim is deleted as part of that work.
+
+**Board reclassification:** "delete flat-read bridge" is NOT independent arc work. It is: retire the
+S53Q flat shim WITHIN the one-engagement-surface consolidation (Collapse A), same consumers, one pass.
+Do not migrate buildTimeline / confirmation / dossier off the flat shape standalone — you'd touch the
+guest surfaces twice.
+
+### [NAMING][arc] "trip must disappear" — guest-facing labels retired (S53Q, same session)
+
+The unified engagement surface (ImmerseEngagementSurface, registry-driven, stage × shape)
+was found ALREADY BUILT this session — A3/S53O collapsed ImmerseEngagementPage +
+ImmerseDeliveryPage into one surface. So Collapse A (the "one client surface" North Star
+piece) is substantially DONE. Remaining arc work is naming discipline ("trip" is a leftover
+travel-shaped label that must disappear) + the contained flat shim. Progress this run,
+guest-facing labels first (highest visibility):
+
+**Guest EFs renamed (commit 46d30a7):**
+- `travel-get-trip-programme` → `travel-get-engagement-programme`
+- `travel-get-trip-confirmation` → `travel-get-engagement-confirmation`
+Sequence (never a broken state): cp folder to new name → deploy new → repoint the 3 callers
+(queriesImmerseDelivery CONFIRMATION_FN/PROGRAMME_FN, ItineraryEditorPage PROGRAMME_FN) →
+tsc → deploy → VERIFY LIVE (Alps kF4nP8wRm2x guest programme rendered full: Emirates/flydubai
+flights, all passengers + seats + confs, Rosewood Schloss Fuschl rooms) → delete old folders +
+delete from Supabase dashboard. Shared-module header comments (engagement.ts/visibility.ts/
+names.ts) + the typesImmerse.ts:860 wire comment updated to new names.
+
+**Guest "Trip Brief" → "Engagement Brief" (commit 57231eb):** the last trip-label a guest READS
+on the delivery surface. 3 guest-facing sites: tab label (ImmerseDeliveryTabShell brief:),
+PDF docType + PDF filename (pdfImmerseBrief). Internal comment refs left for the broader sweep.
+
+**Dead Dest re-export shim removed (commits f56f884, 3153385):** ImmerseDestinationComponents.tsx
+was a 15-line re-export shim over the real 415-line ImmerseDestComponents.tsx — NOT a parallel-ship
+(no duplication/drift), just a redundant indirection with ZERO real importers (SectionRenderers
+already imported the real file; the only ImmerseDestinationComponents refs were comments). Deleted
+the shim; fixed stale comment refs in ImmerseEngagementComponents, ImmerseCarouselNav, index.css,
+ImmerseDestComponents. tsc green.
+
+**Architecture re-verified this session (live schema, not memory — earlier board was 2 sessions
+stale):** the surface consolidation is BUILT — ImmerseEngagementSurface computes (stage, shape),
+calls resolveSectionSet, renders proposal=scroll / delivery=tabs, content from SECTION_RENDERERS
+(single source). queriesImmerseEngagement is the one orchestrator; queriesImmerseDelivery is its
+delivery-half sub-fetch (healthy layering, not parallel-ship). The two old EFs it calls are the
+last home of the flat shim (fetchElementsFlat feeds buildTimeline + the confirmation payload) —
+shim retires when those EF internals are rewritten, contained to that layer, NOT spread.
+
+**STILL OPEN (naming/cleanliness, none guest-visible):**
+- Types still carry trip: TripContact / TripGuides / DeliveryData.
+- `Dest` abbreviation (Dest → Destination) if full word wanted — note "destination" is itself
+  journey-vocabulary (a destination-within-a-journey).
+- Long tail: ~76 structural trip refs, 659 files touching "trip" (much comments/incidental).
+- Flat shim: retire within the old programme/confirmation EF internals (contained).
+
+### [DECISION][next campaign] booking_type — element_type honesty + retire vestigial bookings column (decided S53Q, D-ratified, execute next)
+
+Investigated the booking_type field (was slated as a rename slice; turned out to be a modeling
+question). LIVE DATA settled it: travel_bookings.booking_type is a text column where ALL 16 rows =
+'Hotel' — a frozen constant, not a real discriminator. It is NOT a legitimate parallel use of the
+name; it's vestigial. The element type field (flight/dining/transfer, from travel_engagement_types
+slug, surfaced via the shim as booking_type) is the ONLY place the field does real discriminating
+work.
+
+DECIDED DIRECTION (mission-aligned: name things by what they are; every column earns its place;
+no parallel-ship):
+1. Elements get an honest type field name: element_type (or category) — NOT booking_type.
+2. Retire the vestigial travel_bookings.booking_type column (constant 'Hotel'). "Is this a hotel
+   booking" becomes STRUCTURAL (a travel_bookings row with rooms IS a hotel booking), not a
+   redundant string check.
+3. The 6 discriminators (isHotelElement / isFlightElement / … in typesElements.ts) get rewritten:
+   the element ones key on element_type; the isHotelElement-on-bookings checks become structural
+   (it's a booking → it's a hotel) or are dropped where they only ever returned true.
+
+WHY NOT DONE THIS SESSION: touches travel_bookings — the money/confirmation/pricing layer (the
+confirmation EF selects booking_type, timeline.ts:249/279 filters b.booking_type==='Hotel',
+typesBookingFinancial + expenses.ts read it). ~70 booking_type sites across 18 files. A rename of a
+live booking-layer column is a staged campaign requiring live-verification of confirmation + pricing
+surfaces — deliberately NOT an end-of-session sed. Sequenced as the next dedicated campaign.
+
+UNBLOCKS: the flat-shim retirement (fetchElementsFlat consumers key on booking_type — once the
+field is honestly element_type and consumers move, the shim's aux-costume output can be replaced
+with a clean EngagementElement shape and fetchElementsFlat/fetchOneElementFlat/enrichElements-flatten
+deleted). Do the field decision FIRST, then the shim retires cleanly in the same campaign.
+
+NOTE the two are one campaign: element_type rename + vestigial column retire + shim retirement all
+turn on the same field. Do them together, staged, money-layer-verified. NOT piecemeal.
+
+### [ARC][element_type honesty — Stage 1b SHIPPED + timeline structural, Stage 2 column-drop deferred] (S53Q)
+
+Executed the element_type-honesty half of the decided booking_type campaign. Additive-first,
+money-layer-safe, verified live. Commits d91d4ef (label fix) / fb7d8d3 (timeline structural),
+element migration in dbc089a.
+
+**Stage 1a — shim emits both (additive, non-breaking):** _shared/engagement.ts now emits
+element_type alongside booking_type at all 3 output sites (same etObj.slug value). Deployed; nothing
+broke.
+
+**Stage 1b — all ELEMENT consumers migrated booking_type → element_type:** timeline buildAuxItems
+(AuxLike type + the 390/411/412 reads), typesImmerse ImmerseTripAuxBooking (element type),
+queriesAdminJourney TripAuxBooking (+ element_type added to the type, populated from shim),
+BriefEditorPage mergedAux, ImmerseConfirmedSections (~10 is*Element(aux.element_type) sites +
+groupElementsBySection generic constraint in typesElements.ts — the constraint was the keystone: it
+narrowed T to {booking_type,...} and cascaded ~20 errors until renamed), both PDF exporters
+(pdfImmerseBrief, pdfImmerseConfirmation). tsc-followed to green — each error mapped the next element
+consumer. BOOKING booking_type deliberately UNTOUCHED (that's the vestigial-column half, Stage 2).
+VERIFIED LIVE: HRH AMF confirmation + programme, Alps programme — flights (QR/EK/BA/Emirates), dining,
+transfers, meet&greet, all rooms render. Deployed both engagement EFs.
+
+**Regression caught + fixed (d91d4ef):** programme flight label rendered lowercase "flight" (raw slug)
+because buildAuxItems categoryLabel read a.element_type_label which the shim never emits (only the
+type-slug field was renamed, NOT the label — label stays booking_type_label). Reverted the AuxLike
+label field + the 411 read to booking_type_label (matches shim). "Flight" capitalized again. LESSON:
+when renaming a field, the sibling *_label field is a SEPARATE emission — don't rename it unless the
+shim emits the new name.
+
+**Timeline hotel test → structural (fb7d8d3, the one behavioral change):** timeline.ts 249/279
+filtered hotels by b.booking_type==='Hotel'. Since travel_bookings.booking_type is the vestigial
+constant ('Hotel' × all 16 rows), rewrote to structural: a booking with rooms IS a hotel
+(_rooms.length > 0). 249 → .filter(b => (b._rooms?.length ?? 0) > 0); 279 → if (!hasRooms) continue.
+VERIFIED LIVE: Rosewood/Waldorf/Berkeley hotels still render on Alps + HRH programme. This removes the
+timeline's dependency on the vestigial column.
+
+**Stage 2 (column DROP) DEFERRED — own money-focused pass:** travel_bookings.booking_type column
+still read by: OutlookTab:384 (isHotelElement(b.booking_type) — LIVE MONEY tab), the dissolving
+TripDossierSection (566/580/581/785/812/842), and 4 EF selects (confirmation:53, journey-admin:134/569,
+expenses:26) + journey-admin:730 output + typesBookingFinancial:45 + TripBooking type. To drop: rewrite
+OutlookTab's hotel check structural, drop from selects/types, verify Outlook/Studio/pricing NUMBERS,
+then DROP COLUMN. Entangled with a live money surface + a dissolving admin surface — deliberately NOT
+end-of-session. Timeline (the guest read) is already off it; the remaining readers are admin/money.
+
+**Also still element-side, low-priority:** BriefEditorPage 372/918 + TripDossierSection element reads
+still say booking_type (should be element_type). TripDossierSection is the dissolving HouseTab surface
+— resolves on its dissolution. BriefEditorPage is live but non-guest-visible.
+
+### [ARC][Stage 2 COMPLETE — vestigial booking_type column DROPPED] (S53Q, commit 04ce31c)
+
+The full booking_type campaign is done: element_type honesty (Stage 1b) + this — retiring the
+vestigial travel_bookings.booking_type column (constant 'Hotel' × 16 rows).
+
+**Structural hotel checks (replaced booking_type==='Hotel' everywhere):**
+- timeline.ts buildHotelItems: the item-builder gate → `!!b.accom_hotel_id || hasRooms` (a booking
+  linked to a hotel OR carrying rooms IS a hotel stay). The re-check-in pre-pass filter likewise.
+  NOTE: the original `booking_type==='Hotel' || _rooms.length>0` carried real load — some hotel
+  bookings have empty _rooms at timeline time — so the structural test MUST include accom_hotel_id,
+  not just rooms. (First cut used rooms-only and dropped hotels; accom_hotel_id is the honest signal.)
+- OutlookTab isHotel → (b.rooms?.length ?? 0) > 0. pdfImmerseBrief + ImmerseConfirmedSections hotel
+  filters → structural. isHotelElement import removed where now unused.
+
+**Column removed from every EF select + type:** confirmation EF, programme EF (line 92 — the one that
+bit us), journey-admin (2 selects), expenses shared select; typesBookingFinancial, ImmerseTripBooking,
+TripBooking, journey-admin inline type. Then ALTER TABLE travel_bookings DROP COLUMN booking_type.
+
+**VERIFIED LIVE across guest + money:** programme hotels render (HRH Berkeley + Alps Rosewood),
+StudioDashboard (pipeline $302,420, commission, margins), OutlookTab (4 HRH bookings, $19,217
+commission, rooms, financials), travel-read-expenses 500 cleared. Deployed all EFs importing the
+changed shared modules (timeline/engagement/expenses): confirmation, programme, journey-admin,
+write-journey, read-expenses.
+
+**CRITICAL LESSON (this stage nearly shipped broken):** the DROP ran while the programme EF select
+STILL listed booking_type. A deployed Postgres EF selecting a dropped column does not error loudly —
+the whole query returns empty. Result: bookings:[] silently, hotels vanished from the programme with
+NO error surfaced in the UI. Diagnosed only by inspecting the raw EF response (no category:'stay',
+bookings:[]) → traced to the stale select. RULE FOR COLUMN DROPS: scrub the column from EVERY EF
+select AND redeploy ALL importing EFs (incl. shared-module importers) BEFORE running the DROP — never
+after. A select of a dropped column empties the query silently. Verify the rendered surface, not just
+tsc/deploy — tsc can't see a Postgres select string, and the deploy succeeds fine; only the live
+response reveals the empty query.
+
+booking_type→element_type ARC COMPLETE. The field is honestly named on elements; the vestigial
+booking column is gone; hotel identity is structural. Mission: name things by what they are, every
+column earns its place — satisfied.
+
+### [ARC][trip vocabulary campaign — the code layer catches up to the spine] (S53Q, commits dbc089a…5011de0)
+
+The DB spine was already mission-clean (travel_engagements, THE NINE, no trips/aux/overlay tables).
+This campaign brought the CODE layer's vocabulary into line — retiring the 'trip' costume wherever it
+masked the real entity (engagement/journey). Additive-first where guest-facing, tsc-gated throughout,
+rendered-page verified per surface.
+
+**THE AUX CONCEPT — eliminated top to bottom (the retired table's vocabulary is gone):**
+- element read path de-costumed: fetchElementsFlat→fetchEngagementElements, fetchOneElementFlat→
+  fetchEngagementElement, ImmerseTripAuxBooking→EngagementElement, AuxLike→EngagementElementLike
+  (timeline+pdf), buildAuxItems→buildElementItems, booking_type_label→element_type_label
+- admin element types: TripAuxBooking→AdminEngagementElement, TripAuxPassenger→ElementPassenger,
+  TripAuxDriverDetail→ElementDriverDetail (+Patch variants) — distinct from frontend EngagementElement
+  to avoid collision
+- delivery payload field: auxBookings→elements (13 files, EF emits + DeliveryData + all reads)
+- dead double-emit removed: the shim's Stage-1a booking_type emit (zero readers) deleted at source
+
+**THE 'trip' COSTUME — renamed wherever it masked the entity:**
+- TripBooking/ImmerseTripBooking → EngagementBooking
+- EngagementCore.trip → .journey (holds travel_journey record); DeliveryData.trip → .journey
+  (the payload contract — components destructure {journey: trip}); EF emit trip:→journey: on
+  confirmation; queriesImmerseDelivery reads confPayload.journey
+- DossierTrip/ImmerseDossierTrip → DossierJourney/ImmerseDossierJourney
+- TripDay/TripDayEntry → JourneyDay/JourneyDayEntry (+ ImmerseTripDay* frontend, fetch/upsert fns)
+- TripBrief family → EngagementBrief (type/Patch/Tab/PdfData/Immerse* + export/handleDownload/upsert)
+  — matches the guest-facing 'Engagement Brief' label set earlier this session
+- TripWelcomeLetter → EngagementWelcomeLetter (type/Patch/fetch/upsert/delete)
+- structural cluster → Engagement*: TripPricingRow, TripDestination, TripHouse, TripPartner,
+  TripDossierData, TripOption, TripGroup, TripPrimaryClient, ImmerseTrip{PricingRow,Destination,House}
+- fns/components: fetchTripById→fetchEngagementById, TripCreate/UpdatePayload→Engagement*,
+  createTrip→createEngagementLegacy (COLLISION: a modern createEngagement already existed — createTrip
+  was a DISTINCT legacy trip-code path, renamed to *Legacy not merged; caller EngagementCreateModal
+  routed to it), TripTypeahead→EngagementTypeahead, NewTripDropZone→NewEngagementDropZone,
+  handleTripUpdate/SetTripClient→handleEngagement*
+
+**DELIBERATELY LEFT — legitimate, not costume (recorded so it's not re-flagged):**
+- TripDossierSection/TripActionPanel/TripBlock — the DISSOLVING HouseTab surface; renaming polishes
+  code slated for deletion. Dies with the surface.
+- CalendarTrip/TripPanel (CalendarTab) — the admin CALENDAR's own concept, separate from delivery.
+- TripType/TripStatus/TripState/DestinationTripType — SEMANTIC enums (a journey's kind/state); the
+  values are DB data, "trip type" is domain meaning not leftover label.
+- trip_code / TripCode / TripUrlId / isTripUrlId — real DB column (trip_code) + URL routing.
+- TouristTripSchema — Schema.org vocabulary (TouristTrip is their external term).
+- TripPage (ProgrammePage.tsx) — the programme-page component (programme concept, separate path).
+- TripRow / TripDestRow — inline DB-row-shaped types wrapping trip_code/trip_type columns.
+
+**TWO GENUINE REMAINDERS (real work, each its own future campaign — NOT vocabulary):**
+1. Legacy create path: createEngagementLegacy still calls the write EF with mode:'create_trip' and
+   requires trip_code. Migrating this is a WRITE-EF + DB-column change (create_trip mode → create_
+   engagement, trip_code semantics), not a rename. Deeper.
+2. TripDossierSection / HouseTab dissolution — EngagementDetail replaced it; the old surface should be
+   deleted (grep-zero gate), at which point its Trip* internals vanish with it.
+
+**GUEST-SURFACE FIXES caught during this campaign (rendered-page verification, not tsc):**
+- lowercase 'flight' label regression (element_type_label read; shim emits booking_type_label) — fixed
+- hotel check-in sort: item start_time now falls back to earliest room check_in_time when booking-level
+  is null (Berkeley check-in was floating below evening dining while Abdalla's room showed 08:00) — fixed
+- the whole element_type migration + auxBookings→elements verified live on HRH AMF + Alps
+  programme/confirmation before each commit
+
+**HONEST STATE:** the CONCEPT is complete — every 'trip' costume over the real entity is renamed; the
+spine is single-source; aux is eliminated; guest surfaces say Engagement/Journey; payload contracts,
+type families, and the read path are honest. "Zero trip strings" is neither achievable nor correct
+(DB columns, semantic enums, Schema.org, routing legitimately carry it). The mission's actual bar —
+no leftover travel-shaped label masking the entity — is met. Two real remainders (legacy create_trip
+write path; HouseTab dissolution) are logged as their own campaigns.
+
+### [ARC][trip vocabulary — CONCEPT COMPLETE, verified end-to-end] (S53Q close, commits …d904dcf)
+
+Final stretch after the main campaign: cleared the last guest-visible + live-code trip stragglers,
+verified the whole system end to end.
+
+- Guest-facing PDF labels: 'Trip Confirmation' → 'Engagement Confirmation' (docType + filename +
+  comments). Programme PDF already 'Daily Programme'. Brief already 'Engagement Brief'. → NO guest-
+  visible 'trip' on any downloadable surface or web tab.
+- Last live-code prop names: onTripUpdate→onEngagementUpdate, onSetTripClient→onSetEngagementClient.
+- VERIFIED END TO END this session: guest programme + confirmation + brief (web), Confirmation PDF
+  export (10pp, all hotels/rooms/confs/images/pagination correct), StudioDashboard, OutlookTab money,
+  full tsc clean.
+
+**CARRIES 'trip' LEGITIMATELY (deliberate, precise list — do NOT re-flag):**
+- DB columns: trip_code/journey_code, trip_id (Layer-5 FK holding the ENGAGEMENT id — documented
+  legacy name), + suggestTripCode/tripCode UI vars naming the trip_code input
+- Semantic enums: TripType/TripStatus/TripState (journey kind/state — DB values, domain meaning)
+- Dissolving surface: TripDossierSection/TripActionPanel/TripBlock/HouseTab (dies with ClientsTab P5)
+- Admin calendar: CalendarTrip/TripPanel (separate concept)
+- External: TouristTripSchema (Schema.org term)
+- Programme component: TripPage (ProgrammePage.tsx render path)
+- Historical comments
+
+**TWO LOGGED REMAINDERS (own future campaigns, NOT renames):**
+1. create_trip write-EF mode → create_engagement. The EF ALREADY writes journey_code (line 412
+   journey_code: trip_code) — so it's the mode string + input param name + createEngagementLegacy,
+   a clean-ish write-path change, not a DB migration. Small but a live write.
+2. HouseTab/TripDossierSection dissolution — BLOCKED on ClientsTab (Phase 5). HouseTab is currently
+   the live Clients-surface stand-in (AmbienceAdmin:194 + :251 route to it). Cannot delete until
+   ClientsTab is built. Renaming its internals now = polishing code slated for deletion.
+
+**HONEST FINAL STATE:** the trip COSTUME is eliminated — every 'trip' that masked the real entity is
+renamed (types, fns, props, payload contracts, read path, guest labels web+PDF). Guest sees no 'trip'.
+Spine single-source; aux eliminated; booking_type→element_type + column dropped; concepts honest top to
+bottom. What remains carries 'trip' correctly (DB/semantic/external/dissolving-on-schedule). "Zero trip
+strings" is neither achievable nor correct. The mission's bar — no leftover travel-shaped label masking
+the entity — is MET and VERIFIED. Two real remainders logged as their own campaigns.
+
+### [FOUNDATION AUDIT — text-FK hazard remediation] (S53Q, DB-core arc)
+
+D pushed: "prove the foundation/core/roots are best-in-the-world grade" — specifically flagged the
+class "text where a UUID FK belongs; names change → things break if not FK'd to UUID." Ran a live
+DB audit (information_schema + pg_catalog, via CSV-export channel).
+
+**VERDICT (evidence-based):**
+- The FK spine is GENUINELY STRONG / mission-grade. Nearly everything keys to UUID with proper
+  ON DELETE: house→a_houses, people→global_people, bookings→journey→engagements, rooms→hotels,
+  dests→global_destinations. Rename-proof core. D's demand for proof met on the spine.
+- D was ALSO RIGHT to doubt — real text-should-be-FK hazards found (the exact class named):
+
+**HAZARD 1 — trip_ref — CLOSED (built the feature, not dropped):**
+- a_house_destinations.trip_ref + a_house_dininghistory.trip_ref were text meant to hold a journey
+  code, never FK'd. Audit: 0/10 dest + 0/39 dining populated = DEAD (unwired feature, not drift).
+- D's call (mission): best-in-world captures client history maximally, wired properly → BUILD the FK,
+  don't drop. Linking a dining/destination memory to the journey it happened on is real CRM value.
+- Fix: ADD journey_id uuid REFERENCES travel_journey(id) ON DELETE SET NULL on both; scrubbed all
+  app refs (queriesAdminHouse types+selects+create params tripRef→journeyId; a-write-house-records
+  EF allowlists; HouseTab drafts/handleAdd/reset); TEXT INPUT → JOURNEY PICKER (populated from
+  data.dossier.engagements, stores journey_id, display resolves journey_code); DROPPED trip_ref.
+  Committed 0e22038. EF redeploy + picker-works verification pending at time of entry.
+- PATTERN ESTABLISHED: a dead text-FK hazard, if the feature has value, is closed by BUILDING the
+  UUID FK (easiest when empty — no backfill), not dropping. Mission-led default for the rest.
+
+**HAZARD 2 — destination_url_slug — IN PROGRESS (populated, higher stakes):**
+- 3 overlay tables (content_card_selections 30 rows, destination_rows 6, rooms 9). Text slug that
+  should FK to travel_destinations(id). POPULATED = live proposal content, not dead.
+- Audit found an ALREADY-DANGLING ORPHAN: destination_url_slug='salzburg2' on dest_rows has NO
+  matching travel_destinations.url_slug — the exact silent-orphan the missing FK allowed. Context:
+  engagement af7e652d (kF4nP8wRm2y), subpage_status=hidden, public_view=false = a correctly-hidden
+  Alps non-winner clone (low stakes — orphan on a dead row, not a live guest surface).
+- salzburg2 confirmed NOT a region either (travel_destination_regions: no rows) and no travel_
+  destinations LIKE 'salzburg%' — it is a stale slug on a dead clone, references nothing.
+- All other slugs map cleanly to travel_destinations by url_slug (alkhobar/grossarl2/newyork2/
+  sharmelsheikh/sharmelsheikh2 all resolve).
+- FIX SHAPE (mission-right, same pattern): destination_url_slug text → destination_id uuid FK to
+  travel_destinations. Populated, so: ADD column → backfill by slug-match → RESOLVE salzburg2 orphan
+  (delete stale hidden-clone row, or confirm) → verify all mapped → DROP text → scrub app code.
+  Cannot ADD the FK until salzburg2 resolved (constraint would reject the violating row).
+  NEXT STEP when resumed: resolve salzburg2, then the 3-table FK migration.
+
+**REMAINING HAZARDS (queued, same evidence-first method — populated? maps? authoritative _id twin?):**
+- element_status_events.element_type (text) → should be engagement_type_id FK (same class as the
+  retired booking_type).
+- Redundant text-with-_id-twin: travel_bookings.rate_type (text) alongside rate_type_id FK;
+  travel_accom_rooms.category_slug alongside category_id FK; various _type/_status text columns.
+  These are drift-prone (two sources for one fact) — confirm the _id twin is authoritative, drop text.
+- Legit-as-text (audited, NO FK needed): member_ref, data_key, zip_code, dress_code, *_transaction_ref,
+  receipt_ref, bedding_type, stripe_customer_id, secure_id, bet_display_id, names. Not hazards.
+
+**SEPARATELY SURFACED (logged as defined debt, NOT this arc — real design decisions, live data):**
+- Non-hotel commercial model gap (found via transfer + flight seeding): element nodes carry NO
+  price/cost/commission columns. Priced transfers + commission have no modeled home (travel_bookings
+  is hotel-shaped; travel_engagement_expenses is operator-cost not revenue). travel_suppliers IS the
+  intended commercial layer (airline_supplier_id FK + supplier_type='airline' exist, unpopulated).
+  Flight data is half-structured/half-prose (airline in title text; flight_number inconsistent;
+  airline_supplier_id NULL on all 9 flights across Alps + HRH). FIX has 2 design decisions inside
+  (flight title-vs-structured display model + frontend render; codeshare handling for single-valued
+  structured fields) → deliberate debt, decided WITH the frontend, NOT improvised. Airlines (Emirates/
+  flydubai/Qatar/BA) being seeded as travel_suppliers separately (unambiguous first step). Consider
+  scoping "non-hotel commercial model" (transport suppliers + money) as one coherent foundation piece.
+
+  ## 2026-07-12 (S53Q — Stage 7 Phase 2 COMPLETE: aux table retired, elements are the tree)
+
+### [ARC][DB] travel_engagement_aux_bookings DROPPED — every element now lives solely as a typed engagement-tree node
+
+The flat aux table is gone — not a table, not a view (`to_regclass` returns null). Every
+element (flight / dining / airport_transfer / meet_greet) now exists ONLY as a node on
+`travel_engagements` (`iteration_label='element'`, `parent_engagement_id` = the confirmed
+engagement) + its 1:1 detail row (`travel_engagement_transport_detail` for flights,
+`travel_engagement_dining_detail` for dining; bare nodes for transfer/meet_greet). No parallel
+source remains. This closes the Stage-7 model: the engagement tree is the single truth for
+elements, read + written transactionally. Live Supabase — invisible to git; this is the record.
+
+**Read path (all readers on the tree, verified live):**
+- `_shared/engagement.ts` (was `_shared/trip.ts` — renamed, the last trip-named survivor in the
+  shared layer; exports `fetchEngagementCore`/`EngagementCore`/`fetchEngagementBookings`).
+  `fetchElementsFlat(db, parentEngId)` reads node+detail and flattens to the legacy aux shape
+  (a BRIDGE — deleted when consumers read engagement shape directly; do not calcify).
+  `fetchOneElementFlat(db, nodeId)` for the write return-shape. `enrichElements(db, elements,
+  partyLabel)` — GLOBALIZED passenger/driver/dining enrichment (was inlined verbatim in both
+  guest EFs, a live drift risk; now one home).
+- `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
+  and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
+  dining→dining, else bare node.
+- The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
+  all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
+  passengers + dining venues (Mister Nice, China Tang) from the tree.
+- Calendar activity read: fixed the journey-vs-engagement filter (elements' parent_engagement_id
+  is the CONFIRMED ENGAGEMENT id, not the journey id — resolve journeyId→confirmed_engagement_id
+  for the `.in()` filter, group results back by engagement id). Was showing "No itinerary recorded"
+  on EVERY trip. Now renders full itineraries; flight detail enriched from transport_detail +
+  the airport registry (no aux).
+
+**Write path (transactional RPCs, replace the aux passthrough handlers):**
+- 3 SECURITY DEFINER plpgsql functions, each atomic (a function body is one txn — fixes the
+  orphan-on-failure + type-change-leak of an app-layer sequential-insert draft):
+  - `create_element(p_journey_id uuid, p_patch jsonb) → uuid`: resolves parent
+    (journey.confirmed_engagement_id), inserts node (full NOT-NULL spine contract:
+    engagement_status_id=confirmed, itinerary_status_id=confirmed, audience=private,
+    proposal_visibility=active, is_public=false, iteration_label='element', journey_types='{}'),
+    then detail by slug. Free-text→FK resolved in-txn (cabin_class label→id, aircraft_type
+    label→id, depart/arrive_airport iata→id). PROVEN live (rolled-back txn: created a flight,
+    verify returned cabin_resolved="Business", airport_resolved="DOH").
+  - `update_element(p_node_id, p_patch)`: COALESCE keeps existing node values for absent keys;
+    on type-change DELETEs mismatched detail + upserts correct (ON CONFLICT node_id).
+  - `delete_element(p_node_id)`: DELETE node; detail cascades via node_id FK ON DELETE CASCADE.
+- travel-write-journey handleCreate/Update/DeleteAuxBooking now call the RPCs and re-read via
+  `fetchOneElementFlat` to return the full flat row (TripDossierSection splices it into state).
+
+**The five-table FK migration (aux was tethered by 5 FKs, all ON DELETE CASCADE except 2 SET NULL
+— a naive DROP would have destroyed passengers, drivers, tasks):**
+Each tethered table: ADD COLUMN node_id uuid + FK→travel_engagements(id) ON DELETE CASCADE,
+backfill via the source_aux_booking_id mapping, repoint code, DROP old aux column.
+- travel_engagement_aux_passengers (51 rows) — aux_booking_id → node_id
+- travel_aux_driver_details (2 rows) — aux_booking_id → node_id
+- travel_tasks (3 linked rows) — aux_booking_id → node_id (nullable; most tasks aren't element-linked)
+- travel_journey_day_entries (0 linked) — source_aux_id column dropped (cosmetic)
+- travel_engagements.source_aux_booking_id (the mapping itself) — dropped LAST, after all backfills
+Backfills all proven clean pre-migration (every linked row mapped to exactly one node, no
+multi-node, no orphans).
+
+**The aux_booking_id → node_id API-contract sweep (payload-key honesty, tsc-blind — grep the
+callers):** switched the expander + driver-editor + passenger-editor contract from passing the
+aux id to passing the node id (which the callers already had as `a.id` / `activity.id` — the flat
+rows and calendar activities carry the node id). Touched: CalendarTab (activity_detail body →
+node_id; canExpand → activity.is_element; type field source_aux_booking_id → is_element),
+queriesAdminJourney (3 mode payloads), both EF handlers (handleActivityDetail /
+handleAuxDriverDetails take node id directly, no source_aux_booking_id resolve). The EF calendar
+projection now emits `is_element: !a.source_booking_id` (the durable "expandable" flag) instead of
+carrying the dropped column.
+
+**Element-selection predicate swap (the one late change to eyeball):** `fetchElementsFlat` filtered
+elements by `.not('source_aux_booking_id', 'is', null)`. Column dropped → filter switched to
+`.eq('iteration_label', 'element')`. Verified equivalent: all 25 element nodes carry
+iteration_label='element' (the create_element/populate contract); the lone non-element child (label
+'B') correctly excluded.
+
+**Parity gate (banked, held throughout):** nodes=25, transport=15, dining=5, bare=5, passengers=51,
+drivers=2, tasks=3. Tree = source before the drop.
+
+### [PROCESS / LESSONS]
+- Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
+  verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
+  `\echo` are psql meta-commands, fail in the editor.
+- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
+- Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
+  current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
+  are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
+- The rendered page is the verification, not tsc/grep (the journey-vs-engagement calendar filter was
+  tsc-green while every trip showed "No itinerary").
+
+### STILL OPEN (scoped, non-blocking)
+- Type-field honesty (Category Z): TripAuxPassenger/TripAuxDriverDetail `.aux_booking_id` type fields
+  + `auxBookingId` variable/prop names still say "aux" but hold node ids — values correct, names stale.
+- fetchElementsFlat/fetchOneElementFlat/enrichElements flat-read is a BRIDGE (flattens tree→aux shape
+  for cutover); delete when consumers read engagement shape directly.
+- engagement.ts:425 — one stale comment still mentions source_aux_booking_id.
+- Calendar "Stays" metric (S53I debt, re-confirmed on HRH AMF): flat distinct-hotel count conflates
+  properties / principal's stays / room footprint — needs a design decision + EF room-count carry.
+- typesImmerse 8→9 shape reconcile (L's border): frontend slug→shape map is 8 shapes; Doc #4 canon is
+  9 (Concierge Service split from Arrangement). EF-first.
+- Passenger party-primitive migration (passenger_label free-text → global_people) — logged follow-on,
+  independent of the retire.
+
+### [ARC][DB+FE] THE NINE — modeled, enforced, rendered (S53Q, same session)
+
+Doc #4 canonizes nine engagement shapes. Verified complete across all three layers:
+
+**Modeled (DB, verified):** `travel_engagement_types` holds exactly 9 `level='shape'` rows —
+acquisition, arrangement, concierge_service, dining, experience, journey, reservation, stay,
+transport — + 13 `level='element'` rows. Concierge Service is split from Arrangement (both
+level='shape'); Doc #4's brokered-vs-ours distinction is real in the registry.
+
+**Spine clean (the retype L scoped — done as a Stage-7 side effect):** L's feared conflation
+("20 element-typed top-level engagements") is RESOLVED. Verified live: 14 top-level engagements
+(parent_engagement_id IS NULL), ALL 14 are level='shape', 0 element-typed, 0 null-level. The
+elements became child nodes when Stage 7 reparented them. The "spine retype" handed to M/Stage 7
+is complete — the reparenting did it.
+
+**Enforced (trigger, proven both directions):** `trg_enforce_top_level_shape` (fn
+`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per no-else standard).
+Rule: top-level engagements (parent_engagement_id IS NULL) MUST reference a level='shape' type;
+children may be any level (an element, or a shape nested in a journey — 6 shape-typed children
+exist legitimately). CHECK can't hold the subquery, so it's a trigger (L's scoped design choice).
+PROVEN in rolled-back txns: inserting a top-level flight → RAISES 'must be a shape (THE NINE);
+got level=element'; inserting a top-level journey → succeeds. NOTE FOR L: this was L's owned
+integrity lock; fired this session under D's direct instruction after verifying 0 violators
+(Stage 7 cleared them). L: it's live, proven — review the guard form / add any RLS-comment per
+your standing convention.
+
+**Rendered (frontend, tsc-verified):** typesImmerse.ts was at 8 shapes; added concierge_service
+to the EngagementShape union, ENGAGEMENT_SHAPES array, and SLUG_TO_SHAPE map. Now 9. tsc green —
+the Record<EngagementShape,SectionType[]> completeness check passed, so SECTION_REGISTRY handles
+the new shape without a gap. (Supersedes the earlier "typesImmerse 8→9 reconcile pending" note.)
+
+**Left deliberately (needs D's call):** SLUG_TO_SHAPE maps `other → arrangement`. `other` is
+ambiguous between brokered (arrangement) and ours (concierge_service); left at arrangement as the
+safe default, not reclassified without direction.
+
+SUPERSEDES the pre-Stage-7 board items: "THE NINE modeled+enforced (pending)", "spine retype
+(handed to M)", "typesImmerse 8→9 reconcile", "enforcement constraint BLOCKED until violators
+clear" — all now DONE.
+
+### [SCOPING][honest correction] The flat-read shim — built S53Q, retire WITHIN surface consolidation (NOT standalone)
+
+Correction to my own framing. `fetchElementsFlat` / `fetchOneElementFlat` / `enrichElements`-flatten
+were built THIS session (S53Q) as a compatibility shim during the aux-reader cutover: they read the
+new node+detail tree and reshape it into the OLD flat aux shape so existing consumers didn't have to
+change mid-migration. I flagged it as a "bridge to delete" as if it were external arc work — it is my
+own deferred scaffolding, not a discovered legacy violation.
+
+**Is it a violation?** No — not a correctness one. It reads the ONE source (the tree); it is not a
+parallel source of truth and is not drift-prone the way the aux TABLE was. It IS a cleanliness debt:
+it's shaped as the retired aux contract (booking_type, aux-flavoured fields) rather than a clean
+consumer-shaped type — a shim wearing the dead table's clothes. Cleanliness, not correctness.
+
+**Do NOT retire it standalone.** Its heaviest consumer is buildTimeline (_shared/timeline.ts) — the
+guest programme's core builder — which is woven through the flat aux vocabulary: `booking_type` is the
+type discriminator (hotel/flight/transfer branching, flight detection at line ~390), plus cabin_class /
+aircraft_type / origin / destination / passengers / name. The other consumers are the confirmation
+`auxBookings` render and the admin dossier/AuxBookingsEditor. ALL of these are inside the
+one-engagement-surface consolidation's (Collapse A) blast radius — that campaign rewrites buildTimeline
++ the confirmation render + the section registry to render by stage × shape from the tree.
+
+Retiring the shim now = rewrite buildTimeline to read node+detail, THEN rewrite it again during
+consolidation = TWO passes over the guest programme's spine. That is the bandaid the Standards forbid.
+The clean move is ONE pass: surface consolidation defines the canonical EngagementElement / timeline-item
+shape once, buildTimeline is rewritten once to consume it, and the shim is deleted as part of that work.
+
+**Board reclassification:** "delete flat-read bridge" is NOT independent arc work. It is: retire the
+S53Q flat shim WITHIN the one-engagement-surface consolidation (Collapse A), same consumers, one pass.
+Do not migrate buildTimeline / confirmation / dossier off the flat shape standalone — you'd touch the
+guest surfaces twice.
+
+### [NAMING][arc] "trip must disappear" — guest-facing labels retired (S53Q, same session)
+
+The unified engagement surface (ImmerseEngagementSurface, registry-driven, stage × shape)
+was found ALREADY BUILT this session — A3/S53O collapsed ImmerseEngagementPage +
+ImmerseDeliveryPage into one surface. So Collapse A (the "one client surface" North Star
+piece) is substantially DONE. Remaining arc work is naming discipline ("trip" is a leftover
+travel-shaped label that must disappear) + the contained flat shim. Progress this run,
+guest-facing labels first (highest visibility):
+
+**Guest EFs renamed (commit 46d30a7):**
+- `travel-get-trip-programme` → `travel-get-engagement-programme`
+- `travel-get-trip-confirmation` → `travel-get-engagement-confirmation`
+Sequence (never a broken state): cp folder to new name → deploy new → repoint the 3 callers
+(queriesImmerseDelivery CONFIRMATION_FN/PROGRAMME_FN, ItineraryEditorPage PROGRAMME_FN) →
+tsc → deploy → VERIFY LIVE (Alps kF4nP8wRm2x guest programme rendered full: Emirates/flydubai
+flights, all passengers + seats + confs, Rosewood Schloss Fuschl rooms) → delete old folders +
+delete from Supabase dashboard. Shared-module header comments (engagement.ts/visibility.ts/
+names.ts) + the typesImmerse.ts:860 wire comment updated to new names.
+
+**Guest "Trip Brief" → "Engagement Brief" (commit 57231eb):** the last trip-label a guest READS
+on the delivery surface. 3 guest-facing sites: tab label (ImmerseDeliveryTabShell brief:),
+PDF docType + PDF filename (pdfImmerseBrief). Internal comment refs left for the broader sweep.
+
+**Dead Dest re-export shim removed (commits f56f884, 3153385):** ImmerseDestinationComponents.tsx
+was a 15-line re-export shim over the real 415-line ImmerseDestComponents.tsx — NOT a parallel-ship
+(no duplication/drift), just a redundant indirection with ZERO real importers (SectionRenderers
+already imported the real file; the only ImmerseDestinationComponents refs were comments). Deleted
+the shim; fixed stale comment refs in ImmerseEngagementComponents, ImmerseCarouselNav, index.css,
+ImmerseDestComponents. tsc green.
+
+**Architecture re-verified this session (live schema, not memory — earlier board was 2 sessions
+stale):** the surface consolidation is BUILT — ImmerseEngagementSurface computes (stage, shape),
+calls resolveSectionSet, renders proposal=scroll / delivery=tabs, content from SECTION_RENDERERS
+(single source). queriesImmerseEngagement is the one orchestrator; queriesImmerseDelivery is its
+delivery-half sub-fetch (healthy layering, not parallel-ship). The two old EFs it calls are the
+last home of the flat shim (fetchElementsFlat feeds buildTimeline + the confirmation payload) —
+shim retires when those EF internals are rewritten, contained to that layer, NOT spread.
+
+**STILL OPEN (naming/cleanliness, none guest-visible):**
+- Types still carry trip: TripContact / TripGuides / DeliveryData.
+- `Dest` abbreviation (Dest → Destination) if full word wanted — note "destination" is itself
+  journey-vocabulary (a destination-within-a-journey).
+- Long tail: ~76 structural trip refs, 659 files touching "trip" (much comments/incidental).
+- Flat shim: retire within the old programme/confirmation EF internals (contained).
+
+### [DECISION][next campaign] booking_type — element_type honesty + retire vestigial bookings column (decided S53Q, D-ratified, execute next)
+
+Investigated the booking_type field (was slated as a rename slice; turned out to be a modeling
+question). LIVE DATA settled it: travel_bookings.booking_type is a text column where ALL 16 rows =
+'Hotel' — a frozen constant, not a real discriminator. It is NOT a legitimate parallel use of the
+name; it's vestigial. The element type field (flight/dining/transfer, from travel_engagement_types
+slug, surfaced via the shim as booking_type) is the ONLY place the field does real discriminating
+work.
+
+DECIDED DIRECTION (mission-aligned: name things by what they are; every column earns its place;
+no parallel-ship):
+1. Elements get an honest type field name: element_type (or category) — NOT booking_type.
+2. Retire the vestigial travel_bookings.booking_type column (constant 'Hotel'). "Is this a hotel
+   booking" becomes STRUCTURAL (a travel_bookings row with rooms IS a hotel booking), not a
+   redundant string check.
+3. The 6 discriminators (isHotelElement / isFlightElement / … in typesElements.ts) get rewritten:
+   the element ones key on element_type; the isHotelElement-on-bookings checks become structural
+   (it's a booking → it's a hotel) or are dropped where they only ever returned true.
+
+WHY NOT DONE THIS SESSION: touches travel_bookings — the money/confirmation/pricing layer (the
+confirmation EF selects booking_type, timeline.ts:249/279 filters b.booking_type==='Hotel',
+typesBookingFinancial + expenses.ts read it). ~70 booking_type sites across 18 files. A rename of a
+live booking-layer column is a staged campaign requiring live-verification of confirmation + pricing
+surfaces — deliberately NOT an end-of-session sed. Sequenced as the next dedicated campaign.
+
+UNBLOCKS: the flat-shim retirement (fetchElementsFlat consumers key on booking_type — once the
+field is honestly element_type and consumers move, the shim's aux-costume output can be replaced
+with a clean EngagementElement shape and fetchElementsFlat/fetchOneElementFlat/enrichElements-flatten
+deleted). Do the field decision FIRST, then the shim retires cleanly in the same campaign.
+
+NOTE the two are one campaign: element_type rename + vestigial column retire + shim retirement all
+turn on the same field. Do them together, staged, money-layer-verified. NOT piecemeal.
+
+### [ARC][element_type honesty — Stage 1b SHIPPED + timeline structural, Stage 2 column-drop deferred] (S53Q)
+
+Executed the element_type-honesty half of the decided booking_type campaign. Additive-first,
+money-layer-safe, verified live. Commits d91d4ef (label fix) / fb7d8d3 (timeline structural),
+element migration in dbc089a.
+
+**Stage 1a — shim emits both (additive, non-breaking):** _shared/engagement.ts now emits
+element_type alongside booking_type at all 3 output sites (same etObj.slug value). Deployed; nothing
+broke.
+
+**Stage 1b — all ELEMENT consumers migrated booking_type → element_type:** timeline buildAuxItems
+(AuxLike type + the 390/411/412 reads), typesImmerse ImmerseTripAuxBooking (element type),
+queriesAdminJourney TripAuxBooking (+ element_type added to the type, populated from shim),
+BriefEditorPage mergedAux, ImmerseConfirmedSections (~10 is*Element(aux.element_type) sites +
+groupElementsBySection generic constraint in typesElements.ts — the constraint was the keystone: it
+narrowed T to {booking_type,...} and cascaded ~20 errors until renamed), both PDF exporters
+(pdfImmerseBrief, pdfImmerseConfirmation). tsc-followed to green — each error mapped the next element
+consumer. BOOKING booking_type deliberately UNTOUCHED (that's the vestigial-column half, Stage 2).
+VERIFIED LIVE: HRH AMF confirmation + programme, Alps programme — flights (QR/EK/BA/Emirates), dining,
+transfers, meet&greet, all rooms render. Deployed both engagement EFs.
+
+**Regression caught + fixed (d91d4ef):** programme flight label rendered lowercase "flight" (raw slug)
+because buildAuxItems categoryLabel read a.element_type_label which the shim never emits (only the
+type-slug field was renamed, NOT the label — label stays booking_type_label). Reverted the AuxLike
+label field + the 411 read to booking_type_label (matches shim). "Flight" capitalized again. LESSON:
+when renaming a field, the sibling *_label field is a SEPARATE emission — don't rename it unless the
+shim emits the new name.
+
+**Timeline hotel test → structural (fb7d8d3, the one behavioral change):** timeline.ts 249/279
+filtered hotels by b.booking_type==='Hotel'. Since travel_bookings.booking_type is the vestigial
+constant ('Hotel' × all 16 rows), rewrote to structural: a booking with rooms IS a hotel
+(_rooms.length > 0). 249 → .filter(b => (b._rooms?.length ?? 0) > 0); 279 → if (!hasRooms) continue.
+VERIFIED LIVE: Rosewood/Waldorf/Berkeley hotels still render on Alps + HRH programme. This removes the
+timeline's dependency on the vestigial column.
+
+**Stage 2 (column DROP) DEFERRED — own money-focused pass:** travel_bookings.booking_type column
+still read by: OutlookTab:384 (isHotelElement(b.booking_type) — LIVE MONEY tab), the dissolving
+TripDossierSection (566/580/581/785/812/842), and 4 EF selects (confirmation:53, journey-admin:134/569,
+expenses:26) + journey-admin:730 output + typesBookingFinancial:45 + TripBooking type. To drop: rewrite
+OutlookTab's hotel check structural, drop from selects/types, verify Outlook/Studio/pricing NUMBERS,
+then DROP COLUMN. Entangled with a live money surface + a dissolving admin surface — deliberately NOT
+end-of-session. Timeline (the guest read) is already off it; the remaining readers are admin/money.
+
+**Also still element-side, low-priority:** BriefEditorPage 372/918 + TripDossierSection element reads
+still say booking_type (should be element_type). TripDossierSection is the dissolving HouseTab surface
+— resolves on its dissolution. BriefEditorPage is live but non-guest-visible.
+
+### [ARC][Stage 2 COMPLETE — vestigial booking_type column DROPPED] (S53Q, commit 04ce31c)
+
+The full booking_type campaign is done: element_type honesty (Stage 1b) + this — retiring the
+vestigial travel_bookings.booking_type column (constant 'Hotel' × 16 rows).
+
+**Structural hotel checks (replaced booking_type==='Hotel' everywhere):**
+- timeline.ts buildHotelItems: the item-builder gate → `!!b.accom_hotel_id || hasRooms` (a booking
+  linked to a hotel OR carrying rooms IS a hotel stay). The re-check-in pre-pass filter likewise.
+  NOTE: the original `booking_type==='Hotel' || _rooms.length>0` carried real load — some hotel
+  bookings have empty _rooms at timeline time — so the structural test MUST include accom_hotel_id,
+  not just rooms. (First cut used rooms-only and dropped hotels; accom_hotel_id is the honest signal.)
+- OutlookTab isHotel → (b.rooms?.length ?? 0) > 0. pdfImmerseBrief + ImmerseConfirmedSections hotel
+  filters → structural. isHotelElement import removed where now unused.
+
+**Column removed from every EF select + type:** confirmation EF, programme EF (line 92 — the one that
+bit us), journey-admin (2 selects), expenses shared select; typesBookingFinancial, ImmerseTripBooking,
+TripBooking, journey-admin inline type. Then ALTER TABLE travel_bookings DROP COLUMN booking_type.
+
+**VERIFIED LIVE across guest + money:** programme hotels render (HRH Berkeley + Alps Rosewood),
+StudioDashboard (pipeline $302,420, commission, margins), OutlookTab (4 HRH bookings, $19,217
+commission, rooms, financials), travel-read-expenses 500 cleared. Deployed all EFs importing the
+changed shared modules (timeline/engagement/expenses): confirmation, programme, journey-admin,
+write-journey, read-expenses.
+
+**CRITICAL LESSON (this stage nearly shipped broken):** the DROP ran while the programme EF select
+STILL listed booking_type. A deployed Postgres EF selecting a dropped column does not error loudly —
+the whole query returns empty. Result: bookings:[] silently, hotels vanished from the programme with
+NO error surfaced in the UI. Diagnosed only by inspecting the raw EF response (no category:'stay',
+bookings:[]) → traced to the stale select. RULE FOR COLUMN DROPS: scrub the column from EVERY EF
+select AND redeploy ALL importing EFs (incl. shared-module importers) BEFORE running the DROP — never
+after. A select of a dropped column empties the query silently. Verify the rendered surface, not just
+tsc/deploy — tsc can't see a Postgres select string, and the deploy succeeds fine; only the live
+response reveals the empty query.
+
+booking_type→element_type ARC COMPLETE. The field is honestly named on elements; the vestigial
+booking column is gone; hotel identity is structural. Mission: name things by what they are, every
+column earns its place — satisfied.
+
+### [ARC][trip vocabulary campaign — the code layer catches up to the spine] (S53Q, commits dbc089a…5011de0)
+
+The DB spine was already mission-clean (travel_engagements, THE NINE, no trips/aux/overlay tables).
+This campaign brought the CODE layer's vocabulary into line — retiring the 'trip' costume wherever it
+masked the real entity (engagement/journey). Additive-first where guest-facing, tsc-gated throughout,
+rendered-page verified per surface.
+
+**THE AUX CONCEPT — eliminated top to bottom (the retired table's vocabulary is gone):**
+- element read path de-costumed: fetchElementsFlat→fetchEngagementElements, fetchOneElementFlat→
+  fetchEngagementElement, ImmerseTripAuxBooking→EngagementElement, AuxLike→EngagementElementLike
+  (timeline+pdf), buildAuxItems→buildElementItems, booking_type_label→element_type_label
+- admin element types: TripAuxBooking→AdminEngagementElement, TripAuxPassenger→ElementPassenger,
+  TripAuxDriverDetail→ElementDriverDetail (+Patch variants) — distinct from frontend EngagementElement
+  to avoid collision
+- delivery payload field: auxBookings→elements (13 files, EF emits + DeliveryData + all reads)
+- dead double-emit removed: the shim's Stage-1a booking_type emit (zero readers) deleted at source
+
+**THE 'trip' COSTUME — renamed wherever it masked the entity:**
+- TripBooking/ImmerseTripBooking → EngagementBooking
+- EngagementCore.trip → .journey (holds travel_journey record); DeliveryData.trip → .journey
+  (the payload contract — components destructure {journey: trip}); EF emit trip:→journey: on
+  confirmation; queriesImmerseDelivery reads confPayload.journey
+- DossierTrip/ImmerseDossierTrip → DossierJourney/ImmerseDossierJourney
+- TripDay/TripDayEntry → JourneyDay/JourneyDayEntry (+ ImmerseTripDay* frontend, fetch/upsert fns)
+- TripBrief family → EngagementBrief (type/Patch/Tab/PdfData/Immerse* + export/handleDownload/upsert)
+  — matches the guest-facing 'Engagement Brief' label set earlier this session
+- TripWelcomeLetter → EngagementWelcomeLetter (type/Patch/fetch/upsert/delete)
+- structural cluster → Engagement*: TripPricingRow, TripDestination, TripHouse, TripPartner,
+  TripDossierData, TripOption, TripGroup, TripPrimaryClient, ImmerseTrip{PricingRow,Destination,House}
+- fns/components: fetchTripById→fetchEngagementById, TripCreate/UpdatePayload→Engagement*,
+  createTrip→createEngagementLegacy (COLLISION: a modern createEngagement already existed — createTrip
+  was a DISTINCT legacy trip-code path, renamed to *Legacy not merged; caller EngagementCreateModal
+  routed to it), TripTypeahead→EngagementTypeahead, NewTripDropZone→NewEngagementDropZone,
+  handleTripUpdate/SetTripClient→handleEngagement*
+
+**DELIBERATELY LEFT — legitimate, not costume (recorded so it's not re-flagged):**
+- TripDossierSection/TripActionPanel/TripBlock — the DISSOLVING HouseTab surface; renaming polishes
+  code slated for deletion. Dies with the surface.
+- CalendarTrip/TripPanel (CalendarTab) — the admin CALENDAR's own concept, separate from delivery.
+- TripType/TripStatus/TripState/DestinationTripType — SEMANTIC enums (a journey's kind/state); the
+  values are DB data, "trip type" is domain meaning not leftover label.
+- trip_code / TripCode / TripUrlId / isTripUrlId — real DB column (trip_code) + URL routing.
+- TouristTripSchema — Schema.org vocabulary (TouristTrip is their external term).
+- TripPage (ProgrammePage.tsx) — the programme-page component (programme concept, separate path).
+- TripRow / TripDestRow — inline DB-row-shaped types wrapping trip_code/trip_type columns.
+
+**TWO GENUINE REMAINDERS (real work, each its own future campaign — NOT vocabulary):**
+1. Legacy create path: createEngagementLegacy still calls the write EF with mode:'create_trip' and
+   requires trip_code. Migrating this is a WRITE-EF + DB-column change (create_trip mode → create_
+   engagement, trip_code semantics), not a rename. Deeper.
+2. TripDossierSection / HouseTab dissolution — EngagementDetail replaced it; the old surface should be
+   deleted (grep-zero gate), at which point its Trip* internals vanish with it.
+
+**GUEST-SURFACE FIXES caught during this campaign (rendered-page verification, not tsc):**
+- lowercase 'flight' label regression (element_type_label read; shim emits booking_type_label) — fixed
+- hotel check-in sort: item start_time now falls back to earliest room check_in_time when booking-level
+  is null (Berkeley check-in was floating below evening dining while Abdalla's room showed 08:00) — fixed
+- the whole element_type migration + auxBookings→elements verified live on HRH AMF + Alps
+  programme/confirmation before each commit
+
+**HONEST STATE:** the CONCEPT is complete — every 'trip' costume over the real entity is renamed; the
+spine is single-source; aux is eliminated; guest surfaces say Engagement/Journey; payload contracts,
+type families, and the read path are honest. "Zero trip strings" is neither achievable nor correct
+(DB columns, semantic enums, Schema.org, routing legitimately carry it). The mission's actual bar —
+no leftover travel-shaped label masking the entity — is met. Two real remainders (legacy create_trip
+write path; HouseTab dissolution) are logged as their own campaigns.
+
+### [ARC][trip vocabulary — CONCEPT COMPLETE, verified end-to-end] (S53Q close, commits …d904dcf)
+
+Final stretch after the main campaign: cleared the last guest-visible + live-code trip stragglers,
+verified the whole system end to end.
+
+- Guest-facing PDF labels: 'Trip Confirmation' → 'Engagement Confirmation' (docType + filename +
+  comments). Programme PDF already 'Daily Programme'. Brief already 'Engagement Brief'. → NO guest-
+  visible 'trip' on any downloadable surface or web tab.
+- Last live-code prop names: onTripUpdate→onEngagementUpdate, onSetTripClient→onSetEngagementClient.
+- VERIFIED END TO END this session: guest programme + confirmation + brief (web), Confirmation PDF
+  export (10pp, all hotels/rooms/confs/images/pagination correct), StudioDashboard, OutlookTab money,
+  full tsc clean.
+
+**CARRIES 'trip' LEGITIMATELY (deliberate, precise list — do NOT re-flag):**
+- DB columns: trip_code/journey_code, trip_id (Layer-5 FK holding the ENGAGEMENT id — documented
+  legacy name), + suggestTripCode/tripCode UI vars naming the trip_code input
+- Semantic enums: TripType/TripStatus/TripState (journey kind/state — DB values, domain meaning)
+- Dissolving surface: TripDossierSection/TripActionPanel/TripBlock/HouseTab (dies with ClientsTab P5)
+- Admin calendar: CalendarTrip/TripPanel (separate concept)
+- External: TouristTripSchema (Schema.org term)
+- Programme component: TripPage (ProgrammePage.tsx render path)
+- Historical comments
+
+**TWO LOGGED REMAINDERS (own future campaigns, NOT renames):**
+1. create_trip write-EF mode → create_engagement. The EF ALREADY writes journey_code (line 412
+   journey_code: trip_code) — so it's the mode string + input param name + createEngagementLegacy,
+   a clean-ish write-path change, not a DB migration. Small but a live write.
+2. HouseTab/TripDossierSection dissolution — BLOCKED on ClientsTab (Phase 5). HouseTab is currently
+   the live Clients-surface stand-in (AmbienceAdmin:194 + :251 route to it). Cannot delete until
+   ClientsTab is built. Renaming its internals now = polishing code slated for deletion.
+
+**HONEST FINAL STATE:** the trip COSTUME is eliminated — every 'trip' that masked the real entity is
+renamed (types, fns, props, payload contracts, read path, guest labels web+PDF). Guest sees no 'trip'.
+Spine single-source; aux eliminated; booking_type→element_type + column dropped; concepts honest top to
+bottom. What remains carries 'trip' correctly (DB/semantic/external/dissolving-on-schedule). "Zero trip
+strings" is neither achievable nor correct. The mission's bar — no leftover travel-shaped label masking
+the entity — is MET and VERIFIED. Two real remainders logged as their own campaigns.
+
+### [FOUNDATION AUDIT — text-FK hazard remediation] (S53Q, DB-core arc)
+
+D pushed: "prove the foundation/core/roots are best-in-the-world grade" — specifically flagged the
+class "text where a UUID FK belongs; names change → things break if not FK'd to UUID." Ran a live
+DB audit (information_schema + pg_catalog, via CSV-export channel).
+
+**VERDICT (evidence-based):**
+- The FK spine is GENUINELY STRONG / mission-grade. Nearly everything keys to UUID with proper
+  ON DELETE: house→a_houses, people→global_people, bookings→journey→engagements, rooms→hotels,
+  dests→global_destinations. Rename-proof core. D's demand for proof met on the spine.
+- D was ALSO RIGHT to doubt — real text-should-be-FK hazards found (the exact class named):
+
+**HAZARD 1 — trip_ref — CLOSED (built the feature, not dropped):**
+- a_house_destinations.trip_ref + a_house_dininghistory.trip_ref were text meant to hold a journey
+  code, never FK'd. Audit: 0/10 dest + 0/39 dining populated = DEAD (unwired feature, not drift).
+- D's call (mission): best-in-world captures client history maximally, wired properly → BUILD the FK,
+  don't drop. Linking a dining/destination memory to the journey it happened on is real CRM value.
+- Fix: ADD journey_id uuid REFERENCES travel_journey(id) ON DELETE SET NULL on both; scrubbed all
+  app refs (queriesAdminHouse types+selects+create params tripRef→journeyId; a-write-house-records
+  EF allowlists; HouseTab drafts/handleAdd/reset); TEXT INPUT → JOURNEY PICKER (populated from
+  data.dossier.engagements, stores journey_id, display resolves journey_code); DROPPED trip_ref.
+  Committed 0e22038. EF redeploy + picker-works verification pending at time of entry.
+- PATTERN ESTABLISHED: a dead text-FK hazard, if the feature has value, is closed by BUILDING the
+  UUID FK (easiest when empty — no backfill), not dropping. Mission-led default for the rest.
+
+**HAZARD 2 — destination_url_slug — IN PROGRESS (populated, higher stakes):**
+- 3 overlay tables (content_card_selections 30 rows, destination_rows 6, rooms 9). Text slug that
+  should FK to travel_destinations(id). POPULATED = live proposal content, not dead.
+- Audit found an ALREADY-DANGLING ORPHAN: destination_url_slug='salzburg2' on dest_rows has NO
+  matching travel_destinations.url_slug — the exact silent-orphan the missing FK allowed. Context:
+  engagement af7e652d (kF4nP8wRm2y), subpage_status=hidden, public_view=false = a correctly-hidden
+  Alps non-winner clone (low stakes — orphan on a dead row, not a live guest surface).
+- salzburg2 confirmed NOT a region either (travel_destination_regions: no rows) and no travel_
+  destinations LIKE 'salzburg%' — it is a stale slug on a dead clone, references nothing.
+- All other slugs map cleanly to travel_destinations by url_slug (alkhobar/grossarl2/newyork2/
+  sharmelsheikh/sharmelsheikh2 all resolve).
+- FIX SHAPE (mission-right, same pattern): destination_url_slug text → destination_id uuid FK to
+  travel_destinations. Populated, so: ADD column → backfill by slug-match → RESOLVE salzburg2 orphan
+  (delete stale hidden-clone row, or confirm) → verify all mapped → DROP text → scrub app code.
+  Cannot ADD the FK until salzburg2 resolved (constraint would reject the violating row).
+  NEXT STEP when resumed: resolve salzburg2, then the 3-table FK migration.
+
+**REMAINING HAZARDS (queued, same evidence-first method — populated? maps? authoritative _id twin?):**
+- element_status_events.element_type (text) → should be engagement_type_id FK (same class as the
+  retired booking_type).
+- Redundant text-with-_id-twin: travel_bookings.rate_type (text) alongside rate_type_id FK;
+  travel_accom_rooms.category_slug alongside category_id FK; various _type/_status text columns.
+  These are drift-prone (two sources for one fact) — confirm the _id twin is authoritative, drop text.
+- Legit-as-text (audited, NO FK needed): member_ref, data_key, zip_code, dress_code, *_transaction_ref,
+  receipt_ref, bedding_type, stripe_customer_id, secure_id, bet_display_id, names. Not hazards.
+
+**SEPARATELY SURFACED (logged as defined debt, NOT this arc — real design decisions, live data):**
+- Non-hotel commercial model gap (found via transfer + flight seeding): element nodes carry NO
+  price/cost/commission columns. Priced transfers + commission have no modeled home (travel_bookings
+  is hotel-shaped; travel_engagement_expenses is operator-cost not revenue). travel_suppliers IS the
+  intended commercial layer (airline_supplier_id FK + supplier_type='airline' exist, unpopulated).
+  Flight data is half-structured/half-prose (airline in title text; flight_number inconsistent;
+  airline_supplier_id NULL on all 9 flights across Alps + HRH). FIX has 2 design decisions inside
+  (flight title-vs-structured display model + frontend render; codeshare handling for single-valued
+  structured fields) → deliberate debt, decided WITH the frontend, NOT improvised. Airlines (Emirates/
+  flydubai/Qatar/BA) being seeded as travel_suppliers separately (unambiguous first step). Consider
+  scoping "non-hotel commercial model" (transport suppliers + money) as one coherent foundation piece.
+
+### [HAZARD 2 RE-SCOPED — destination_url_slug is 3 tables in 3 states, deliberate debt]
+
+Inspection (not inference) revealed destination_url_slug is NOT one uniform hazard — the 3 tables
+differ, and dest_rows has THREE overlapping destination columns. This is a real migration with an
+authority question inside; scoped as deliberate debt, NOT improvised at session end on live data.
+
+Column reality (information_schema):
+- travel_overlay_engagement_destination_rows: has destination_id + global_destination_id +
+  destination_url_slug (THREE). The salzburg2 "orphan" row: destination_id=NULL,
+  global_destination_id=4bd5e72c… (POPULATED, real link), destination_url_slug='salzburg2' (stale
+  redundant text). So salzburg2 is NOT broken — the UUID link works via global_destination_id;
+  the slug is vestigial. False alarm on the orphan; real finding is column redundancy/authority.
+- travel_overlay_engagement_content_card_selections: ONLY destination_url_slug — NO uuid FK. The
+  genuine hazard (text is the sole link). 30 rows, live proposal content.
+- travel_overlay_rooms: ONLY destination_url_slug — NO uuid FK. Same. 9 rows.
+
+DEFINED DEBT — destination_url_slug remediation (own focused session, live-guest gate):
+1. Resolve dest_rows column authority: destination_id vs global_destination_id vs destination_url_slug
+   — evidence which is populated across ALL rows, consolidate to ONE uuid FK, drop the other two.
+   (global_destination_id appears authoritative from the salzburg2 row; verify across all rows.)
+2. card_sel + rooms: ADD global_destination_id uuid FK → travel_destinations, backfill from slug-match
+   (all non-salzburg slugs verified to map cleanly), verify 100%, scrub app readers (live proposal
+   RENDER path = wide surface), drop text.
+3. LIVE-RENDER GATE: verify real proposals (Sharm 89aee7e3, NY/Yazeed, Alps) render destination
+   subpages correctly after — this drives guest-facing content, so rendered-page verification is
+   mandatory, not tsc-only.
+WHY NOT NOW: 3 tables × 3 states + unresolved dest_rows authority + live guest data at the deep end
+of a huge session = high drift risk if rushed. Same discipline as the flight-seeding refusal. Do it
+deliberately.
+
+**AUDIT OUTCOME (honest):** SUCCEEDED. Proved spine strong (evidence, not assertion) AND surfaced
+real hazards with precision: trip_ref CLOSED (built as journey_id FK); destination_url_slug SCOPED
+(3-table deliberate debt); element_type + rate_type/category_slug/_status-with-_id-twin redundancies
+QUEUED (evidence-first each); non-hotel commercial model (transport suppliers + money) logged. D's
+doubt was correct — hazards were real; the spine was also genuinely sound. Both true.
+
+### [HAZARD 2 — CORRECTED: destination_url_slug is NOT a hazard, it's a routing key]
+
+Inspection of the actual app code (travel-get-immerse-proposal EF) CORRECTED the earlier
+classification. destination_url_slug is NOT "text where a FK belongs" — it is a legitimate
+per-engagement SUBPAGE ROUTING / disambiguation slug. Evidence from the EF itself:
+- L29: "engagement_id + global_destination_id ONLY — no destination_url_slug filter"
+- L199: "the url_slug on dest_rows is for routing, not [the destination link]"
+- L278/279: .eq('destination_url_slug', urlSlug) vs .is(...,null) — filters WHICH dest_row variant
+  to render within an engagement
+- L515/661: same slug-based row disambiguation
+So global_destination_id (populated 37/37 on dest_rows) is the destination FK and it is present +
+authoritative. destination_url_slug does a DIFFERENT job: it routes to a subpage variant (salzburg2
+= Salzburg option 2; sb = the St Barths sub-route on Yazeed v3 e14b273f). salzburg2/sb were NEVER
+meant to match travel_destinations.url_slug — they are route slugs, correctly text (like a URL path
+segment), NOT a foreign key.
+
+CONCLUSION: hazard 2 dismissed. Forcing this routing slug into a FK would BREAK proposal routing
+(L278/515/661 filter on it) and the render. Do NOT migrate. The assistant MISCLASSIFIED it from the
+column name/pattern; the code proved it legitimate. Recorded as a lesson: name-pattern (_slug) is a
+SIGNAL to inspect, not proof of hazard — verify against actual usage before proposing a migration.
+App surface confirmed only 2 files (queriesImmerseProposal, travel-get-immerse-proposal) and both
+use it as a routing filter, not a broken reference.
+
+POSSIBLE (minor, unverified) real finding underneath: dest_rows.destination_id is populated on only
+3/37 rows while global_destination_id is 37/37 — destination_id MAY be the vestigial/stale column
+(the real drop candidate), IF grep-confirmed unused. Separate, small, not the slug. Queue behind the
+element_type + rate_type/_status-twin hazards, evidence-first.
+
+AUDIT INTEGRITY NOTE: this correction is the audit working as intended — inspect, don't infer; the
+code overrides the pattern-guess. Better to dismiss a false hazard than migrate a routing key into a
+FK and break live proposals.
+
+### [dest_rows.destination_id — QUEUED not dropped; audit closed honestly]
+
+grep showed destination_id is a LEGITIMATE, heavily-used UUID FK across many tables (travel_journey_
+destinations, guides hotels/geo, expenses, library — all → global_destinations.id; LibraryHotelsTab
+comment confirms). Only the overlay table's destination_id (3/37 populated vs global_destination_id
+37/37 authoritative) is a possible-vestigial candidate — but proving THAT specific column unused needs
+tracing many destination_id refs to see which touch the overlay table, on LIVE proposal data. Low
+value (one nullable stale column) vs high risk if wrong (breaks proposal render). NOT worth a rushed
+drop. QUEUED for careful code-first tracing, not actioned.
+
+**FOUNDATION AUDIT — FINAL HONEST VERDICT (answer to D's "prove it's best-in-world grade"):**
+- Spine is mission-grade, UUID-FK'd where it counts — PROVEN IN CODE not asserted: the proposal EF
+  joins destination rows on global_destination_id (UUID); expenses/guides/journeys key destination_id
+  → global_destinations by UUID. D's "FK to UUID not slug" principle is already the operating norm.
+- trip_ref: real hazard, CLOSED (built as journey_id FK — client history now wired via UUID).
+- destination_url_slug: NOT a hazard — it's a subpage ROUTING slug (correctly text, like a URL path
+  segment); the destination is already UUID-FK'd via global_destination_id. Assistant misclassified
+  it from the name pattern TWICE before the code corrected it. Lesson: _slug/_id/_ref name patterns
+  are a SIGNAL TO INSPECT THE CODE, never proof of hazard.
+- dest_rows.destination_id: possibly vestigial, QUEUED (low value, live data, needs tracing).
+- element_type (→ engagement_type_id) + rate_type/category_slug/_status-with-_id-twins: QUEUED,
+  genuine candidates, each needs code-first inspection.
+- non-hotel commercial model (transport suppliers + money): logged design debt.
+
+D's doubt was WORTH ACTING ON: it found the real trip_ref hazard and forced the proof. The proof:
+the foundation largely holds — UUID FKs are the norm, evidenced in code. The audit's discipline
+(inspect the actual code before migrating) prevented a wrong migration of a routing slug into a FK
+that would have broken live proposals. Best-in-world foundation is not "zero imperfections" — it is
+"sound core + honest, evidence-based remediation of real hazards, one at a time, never rushed on live
+data." That standard is being met.
