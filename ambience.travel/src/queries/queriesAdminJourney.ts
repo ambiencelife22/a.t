@@ -178,7 +178,7 @@ export type AdminEngagementElement = {
   } | null
   brief_show:          boolean
   sort_order:          number
-  airline_supplier_id: string | null
+  supplier_id: string | null
   airline_name:        string | null
   flight_number:       string | null
   depart_airport:      string | null
@@ -270,7 +270,10 @@ export type EngagementBooking = {
   total_rate:                number | null
   taxes_and_fees:            number | null
   currency:                  string | null
-  rate_type:                 string | null
+  board_basis:               { display_name: string } | null
+  payment_terms:             { display_name: string } | null
+  pricing_basis:             { display_name: string } | null
+  rate_label:                { display_name: string; client_visible: boolean } | null
   inclusions:                string | null
   inclusions_override:       unknown[] | null
   price:                     number | null
@@ -723,6 +726,28 @@ export async function fetchEngagementTypes(): Promise<EngagementTypeOption[]> {
   )
 }
 
+export type BoardBasisOption  = { id: string; slug: string; display_name: string }
+export type PaymentTermOption = { id: string; slug: string; display_name: string }
+export type PricingBasisOption = { id: string; slug: string; display_name: string }
+export type RateLabelOption   = { id: string; slug: string; display_name: string; client_visible: boolean }
+export type RateReference = {
+  board_bases:   BoardBasisOption[]
+  payment_terms: PaymentTermOption[]
+  pricing_bases: PricingBasisOption[]
+  rate_labels:   RateLabelOption[]
+}
+export async function fetchRateReference(): Promise<RateReference> {
+  const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', {
+    body: { mode: 'rate_reference' },
+  })
+  if (error) throw new Error(error.message)
+  return {
+    board_bases:   data?.board_bases   ?? [],
+    payment_terms: data?.payment_terms ?? [],
+    pricing_bases: data?.pricing_bases ?? [],
+    rate_labels:   data?.rate_labels   ?? [],
+  }
+}
 // ── House ID for trip ──────────────────────────────────────────────────────────
 // Resolves house_id from the first booking on a trip. Used by BriefEditorPage
 // to bootstrap the dossier load from a journey_id URL param.

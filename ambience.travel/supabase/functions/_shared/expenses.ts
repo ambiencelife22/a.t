@@ -40,7 +40,7 @@ export const BOOKING_FINANCIAL_SELECT = `
   deposit_amount, deposit_due_date, deposit_paid_at,
   balance_amount, balance_due_date, balance_paid_at,
   payment_exception_override,
-  invoice_number, rate_type, sort_order,
+  invoice_number, board_basis_id, payment_terms_id, pricing_basis_id, rate_label_id, sort_order,
   cancellation_policy, notes,
   selling_price, selling_price_usd,
   rate_type_id,
@@ -51,6 +51,10 @@ export const BOOKING_FINANCIAL_SELECT = `
   early_checkin_approved_time,
   late_checkout_approved_time,
   travel_rate_types!rate_type_id(slug, label),
+  travel_board_bases!board_basis_id(display_name),
+  travel_payment_terms!payment_terms_id(display_name),
+  travel_pricing_bases!pricing_basis_id(display_name),
+  travel_rate_labels!rate_label_id(display_name, client_visible),
   travel_payment_platforms!commission_payment_platform_id(slug, label, default_fee_pct),
   travel_partners!commission_remitting_partner_id(id, name, partner_type),
   travel_accom_hotels!accom_hotel_id(
@@ -117,7 +121,6 @@ function sumDownstream(splits: CommissionSplit[]): number {
 // package: treated as commissionable unless selling_price set.
 export function computeNetRevenue(b: Record<string, unknown>): number {
   const rateType = (b.travel_rate_types as { slug: string } | null)?.slug
-    ?? (b.rate_type as string | null)
     ?? 'commissionable'
 
   if (rateType === 'complimentary' || rateType === 'staff_rate' || rateType === 'fam_rate') {

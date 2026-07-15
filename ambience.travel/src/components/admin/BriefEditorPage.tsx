@@ -124,7 +124,7 @@ type AuxDraft = {
   booked_by:           string
   notes:               string
   // Flight-specific (rendered only when isFlightType(booking_type))
-  airline_supplier_id: string
+  supplier_id: string
   airline_name:        string
   flight_number:       string
   depart_airport:      string
@@ -237,13 +237,13 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
         {/* Airline supplier picker — shared with the dossier AuxForm */}
         <div style={{ gridColumn: '1 / -1' }}>
           <AirlinePicker
-            supplierId={draft.airline_supplier_id}
+            supplierId={draft.supplier_id}
             airlineNameFallback={draft.airline_name}
             bookingType={bookingTypeLabel}
             variant='field'
             onChange={value => {
-              patch(aux.id, aux, 'airline_supplier_id', value)
-              save(aux.id, 'airline_supplier_id', value)
+              patch(aux.id, aux, 'supplier_id', value)
+              save(aux.id, 'supplier_id', value)
               // Clear free-text override when a supplier is picked.
               if (value && draft.airline_name) {
                 patch(aux.id, aux, 'airline_name', '')
@@ -378,7 +378,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
       end_time:            aux.end_time?.slice(0, 5) ?? '',
       booked_by:           aux.booked_by           ?? '',
       notes:               aux.notes               ?? '',
-      airline_supplier_id: aux.airline_supplier_id ?? '',
+      supplier_id: aux.supplier_id ?? '',
       airline_name:        aux.airline_name        ?? '',
       flight_number:       aux.flight_number       ?? '',
       depart_airport:      aux.depart_airport      ?? '',
@@ -924,7 +924,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
         end_time:            d.end_time            || aux.end_time,
         booked_by:           d.booked_by           || aux.booked_by,
         notes:               d.notes               || aux.notes,
-        airline_supplier_id: d.airline_supplier_id || aux.airline_supplier_id,
+        supplier_id: d.supplier_id || aux.supplier_id,
         airline_name:        d.airline_name        || aux.airline_name,
         flight_number:       d.flight_number       || aux.flight_number,
         depart_airport:      d.depart_airport      || aux.depart_airport,

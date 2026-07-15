@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
         _hotel_image_src: hotel?.hero_image_src ?? null,
         _rooms:           enrichedRooms,
         _invoices:        invoicesByBooking[b.id] ?? [],
-        engagement_id:    null, total_rate: null, currency: null, rate_type: null,
+        engagement_id:    null, total_rate: null, currency: null,
         price:            null, deposit_amount: null, deposit_due_date: null,
         // S43 Add 2: deposit_paid_at + balance_paid_at passed through from DB (not nulled)
         balance_amount:   null, balance_due_date: null,

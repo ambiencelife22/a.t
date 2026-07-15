@@ -43,6 +43,7 @@ type ReadMode =
   | 'engagement_statuses'
   | 'itinerary_statuses'
   | 'engagement_types'
+  | 'rate_reference'
   | 'suppliers'
   | 'people'
   | 'houses'
@@ -389,9 +390,28 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to fetch welcome letter' }, 500)
       }
 
-      return json({ row: data ?? null })
+      return json({ rows: data ?? [] })
     }
-
+    
+    if (mode === 'rate_reference') {
+      const [board, payment, pricing, labels] = await Promise.all([
+        serviceClient.from('travel_board_bases').select('id, slug, display_name, sort_order').order('sort_order'),
+        serviceClient.from('travel_payment_terms').select('id, slug, display_name, sort_order').order('sort_order'),
+        serviceClient.from('travel_pricing_bases').select('id, slug, display_name, sort_order').order('sort_order'),
+        serviceClient.from('travel_rate_labels').select('id, slug, display_name, client_visible, sort_order').order('sort_order'),
+      ])
+      const anyErr = board.error || payment.error || pricing.error || labels.error
+      if (anyErr) {
+        console.error('rate_reference error:', anyErr)
+        return json({ error: 'Failed to fetch rate reference' }, 500)
+      }
+      return json({
+        board_bases:   board.data ?? [],
+        payment_terms: payment.data ?? [],
+        pricing_bases: pricing.data ?? [],
+        rate_labels:   labels.data ?? [],
+      })
+    }
     if (mode === 'suppliers') {
       const types = body?.supplier_types as string[] | undefined
       let q = serviceClient

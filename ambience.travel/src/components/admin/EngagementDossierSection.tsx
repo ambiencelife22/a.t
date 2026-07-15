@@ -25,7 +25,7 @@ import type {
 import { getEventStatusMeta } from '../../types/typesEventStatus'
 import { updateBookingBriefFields, createBooking, fetchAdminEngagementElements, createAdminEngagementElement, updateAdminEngagementElement, deleteAdminEngagementElement } from '../../queries/queriesAdminJourney'
 import type { AdminEngagementElement, AdminEngagementElementPatch, EngagementTypeOption } from '../../queries/queriesAdminJourney'
-import { fetchEngagementTypes } from '../../queries/queriesAdminJourney'
+import { fetchEngagementTypes, fetchRateReference, type RateReference } from '../../queries/queriesAdminJourney'
 import { isFlightElement, isHotelElement, isGroundTransportElement } from '../../types/typesElements'
 import { useDossierClientPdf } from '../../hooks/useDossierClientPdf'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
@@ -58,7 +58,7 @@ function mapBookingToDossier(b: EngagementBooking, house: HouseProfile | null): 
     dateRange,
     roomName:           b.name ?? hotelName,
     checkIn, checkOut, duration,
-    rateType:           b.rate_type            ?? '--',
+    rateType:           b.rate_label?.display_name ?? '--',
     inclusions:         b.inclusions           ?? undefined,
     confirmationNumber: b.confirmation_number  ?? undefined,
     primaryContactName: b.primary_contact_name ?? undefined,
@@ -218,7 +218,7 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── AuxBookingsEditor ─────────────────────────────────────────────────────────
 // Trip-level flights / transfers / car services. Sibling to RoomsEditor.
-// Writes every editable column on travel_engagement_aux_bookings (airline_supplier_id
+// Writes every editable column on travel_engagement_aux_bookings (supplier_id
 // deferred — needs a supplier picker, airline_name covers display).
 
 type AuxDraft = {
@@ -231,7 +231,7 @@ type AuxDraft = {
   end_time:            string
   origin:              string
   destination:         string
-  airline_supplier_id: string
+  supplier_id: string
   airline_name:        string
   flight_number:       string
   depart_airport:      string
@@ -248,7 +248,7 @@ function emptyAuxDraft(sortOrder: number, defaultTypeId = '', defaultSlug = 'fli
   return {
     engagementTypeId: defaultTypeId, bookingTypeSlug: defaultSlug, name: '',
     start_date: '', start_time: '', end_date: '', end_time: '',
-    origin: '', destination: '', airline_supplier_id: '', airline_name: '', flight_number: '',
+    origin: '', destination: '', supplier_id: '', airline_name: '', flight_number: '',
     depart_airport: '', arrive_airport: '', cabin_class: '',
     aircraft_type: '', booked_by: '', notes: '',
     brief_show: true, sort_order: sortOrder,
@@ -266,7 +266,7 @@ function auxToDraft(a: AdminEngagementElement): AuxDraft {
     end_time:            a.end_time            ?? '',
     origin:              a.origin              ?? '',
     destination:         a.destination         ?? '',
-    airline_supplier_id: a.airline_supplier_id ?? '',
+    supplier_id: a.supplier_id ?? '',
     airline_name:        a.airline_name        ?? '',
     flight_number:       a.flight_number       ?? '',
     depart_airport:      a.depart_airport      ?? '',
@@ -292,7 +292,7 @@ function draftToPatch(d: AuxDraft): AdminEngagementElementPatch {
     end_time:            orNull(d.end_time),
     origin:              orNull(d.origin),
     destination:         orNull(d.destination),
-    airline_supplier_id: orNull(d.airline_supplier_id),
+    supplier_id: orNull(d.supplier_id),
     airline_name:        orNull(d.airline_name),
     flight_number:       orNull(d.flight_number),
     depart_airport:      orNull(d.depart_airport),
@@ -358,13 +358,13 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagem
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Flight Detail</div>
           <div style={{ gridColumn: '1 / -1', marginBottom: 8 }}>
             <AirlinePicker
-              supplierId={draft.airline_supplier_id}
+              supplierId={draft.supplier_id}
               airlineNameFallback={draft.airline_name}
               bookingType={engagementTypes.find(t => t.id === draft.engagementTypeId)?.label ?? ''}
               variant='boxed'
               onChange={value => {
                 // Pick a supplier; clear the free-text override so the supplier wins.
-                setDraft({ ...draft, airline_supplier_id: value, airline_name: value ? '' : draft.airline_name })
+                setDraft({ ...draft, supplier_id: value, airline_name: value ? '' : draft.airline_name })
               }}
             />
           </div>
@@ -605,7 +605,7 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 3 }}>Comm. Rate{b.nights && b.nights > 1 ? '/N' : ''}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.commissionable_rate, currency)}</div>
-                  {b.rate_type && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.rate_type}</div>}
+                  {b.rate_label?.display_name && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.rate_label.display_name}</div>}
                 </div>
               )}
               {commTotal != null && b.nights != null && b.nights > 1 && (
@@ -750,7 +750,10 @@ type BookingDraft = {
   commissionable_rate: string
   total_rate:          string
   taxes_and_fees:      string
-  rate_type:           string
+  board_basis_id:      string
+  payment_terms_id:    string
+  pricing_basis_id:    string
+  rate_label_id:       string
   booked_by:           string
   brief_category:      string
   cancellation_policy: string
@@ -763,7 +766,7 @@ function emptyBookingDraft(): BookingDraft {
     element_type: 'Hotel', name: '', status: 'confirmed', confirmation_number: '',
     accom_hotel_id: '', start_date: '', end_date: '', nights: '',
     currency: 'EUR', commissionable_rate: '', total_rate: '', taxes_and_fees: '',
-    rate_type: '', booked_by: 'ambience', brief_category: '', cancellation_policy: '',
+    board_basis_id: '', payment_terms_id: '', pricing_basis_id: '', rate_label_id: '', booked_by: 'ambience', brief_category: '', cancellation_policy: '',
     inclusions: '', notes: '',
   }
 }
@@ -789,7 +792,10 @@ function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
     commissionable_rate: numOrNull(d.commissionable_rate),
     total_rate:          numOrNull(d.total_rate),
     taxes_and_fees:      numOrNull(d.taxes_and_fees),
-    rate_type:           orNull(d.rate_type),
+    board_basis_id:      orNull(d.board_basis_id),
+    payment_terms_id:    orNull(d.payment_terms_id),
+    pricing_basis_id:    orNull(d.pricing_basis_id),
+    rate_label_id:       orNull(d.rate_label_id),
     booked_by:           orNull(d.booked_by),
     brief_category:      orNull(d.brief_category),
     cancellation_policy: orNull(d.cancellation_policy),
@@ -805,6 +811,8 @@ function BookingCreator({ journeyId, onCreated }: {
   const [open,   setOpen]   = useState(false)
   const [draft,  setDraft]  = useState<BookingDraft>(emptyBookingDraft())
   const [saving, setSaving] = useState(false)
+  const [rateRef, setRateRef] = useState<RateReference>({ board_bases: [], payment_terms: [], pricing_bases: [], rate_labels: [] })
+  useEffect(() => { fetchRateReference().then(setRateRef).catch(() => {}) }, [])
   const { success, error } = useAdminToast()
 
   const set = <K extends keyof BookingDraft>(k: K, v: BookingDraft[K]) => setDraft({ ...draft, [k]: v })
@@ -872,7 +880,10 @@ function BookingCreator({ journeyId, onCreated }: {
           <div><label style={labelStyle}>Commissionable Rate / night</label><input style={inputStyle} type='number' value={draft.commissionable_rate} onChange={e => set('commissionable_rate', e.target.value)} placeholder='1305.00' /></div>
           <div><label style={labelStyle}>Total Rate / night</label><input style={inputStyle} type='number' value={draft.total_rate} onChange={e => set('total_rate', e.target.value)} placeholder='' /></div>
           <div><label style={labelStyle}>Taxes & Fees %</label><input style={inputStyle} type='number' value={draft.taxes_and_fees} onChange={e => set('taxes_and_fees', e.target.value)} placeholder='' /></div>
-          <div><label style={labelStyle}>Rate Type</label><input style={inputStyle} value={draft.rate_type} onChange={e => set('rate_type', e.target.value)} placeholder='Per night, per room' /></div>
+          <div><label style={labelStyle}>Board Basis</label><select style={inputStyle} value={draft.board_basis_id} onChange={e => set('board_basis_id', e.target.value)}><option value=''>—</option>{rateRef.board_bases.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}</select></div>
+          <div><label style={labelStyle}>Payment Terms</label><select style={inputStyle} value={draft.payment_terms_id} onChange={e => set('payment_terms_id', e.target.value)}><option value=''>—</option>{rateRef.payment_terms.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}</select></div>
+          <div><label style={labelStyle}>Pricing Basis</label><select style={inputStyle} value={draft.pricing_basis_id} onChange={e => set('pricing_basis_id', e.target.value)}><option value=''>—</option>{rateRef.pricing_bases.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}</select></div>
+          <div><label style={labelStyle}>Rate Label</label><select style={inputStyle} value={draft.rate_label_id} onChange={e => set('rate_label_id', e.target.value)}><option value=''>—</option>{rateRef.rate_labels.map(o => <option key={o.id} value={o.id}>{o.display_name}{o.client_visible ? '' : ' (internal)'}</option>)}</select></div>
         </div>
       </div>
 

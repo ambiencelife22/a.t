@@ -56,7 +56,10 @@ export type BookingFinancial = {
   commissionable_rate:    number | null
   total_rate:             number | null
   taxes_and_fees:         number | null
-  rate_type:              string | null
+  board_basis:            { display_name: string } | null
+  payment_terms:          { display_name: string } | null
+  pricing_basis:          { display_name: string } | null
+  rate_label:             { display_name: string; client_visible: boolean } | null
   price:                  number | null
   // USD-normalised derivations (OutlookTab reads these; computed by travel-read-expenses)
   // not). Optional: absent means "not computed by this producer", never zero.

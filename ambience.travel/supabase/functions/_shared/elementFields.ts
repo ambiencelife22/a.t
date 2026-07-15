@@ -25,7 +25,7 @@ export const NODE_FIELD_MAP: Record<string, string> = {
 // travel_engagement_transport_detail columns (flight). Flat name == column name.
 export const TRANSPORT_FIELDS = [
   'depart_airport_id', 'arrive_airport_id', 'aircraft_type_id', 'cabin_class_id',
-  'airline_supplier_id', 'airline_name', 'flight_number', 'origin', 'destination',
+  'supplier_id', 'airline_name', 'flight_number', 'origin', 'destination',
   'notes', 'booked_by',
 ] as const
 

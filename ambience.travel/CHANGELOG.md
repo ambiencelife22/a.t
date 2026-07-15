@@ -4946,3 +4946,87 @@ the foundation largely holds — UUID FKs are the norm, evidenced in code. The a
 that would have broken live proposals. Best-in-world foundation is not "zero imperfections" — it is
 "sound core + honest, evidence-based remediation of real hazards, one at a time, never rushed on live
 data." That standard is being met.
+
+# CHANGELOG — S53N — 14 Jul 2026
+
+> Append to the canonical CHANGELOG. Every entry is a live schema change verified against `information_schema`/`pg_catalog` this session. Supabase `rjobcbpnhymuczjhqzmh`.
+
+---
+
+## SUPPLIER-AS-ACCOUNT MODEL (commercial layer)
+
+**Decision (founder-ruled):** commission grain is PER-PROPERTY. `travel_suppliers` is the CRM-style Account (single identity source) for every commercial entity — accommodation, airline, ground_transport, etc. Content tables (e.g. `travel_accom_hotels`) link TO the Account.
+
+- `travel_suppliers.name` → **NOT NULL** (single identity source; was briefly nullable during churn, restored).
+- `travel_suppliers.default_commission_pct numeric` **ADDED**. Standing per-property rate; realized per-stay commission stays on `travel_bookings.commission_pct`.
+- `travel_suppliers.contact_whatsapp text` **ADDED** (+ column comment). WhatsApp is a first-class channel.
+- `travel_suppliers.accom_hotel_id` — **ADDED then DROPPED** (wrong FK direction; reverse of below).
+- `travel_accom_hotels.supplier_id uuid` **ADDED**, FK → `travel_suppliers(id)` ON DELETE SET NULL (+ comment). Correct direction: content → Account.
+- `supplier_identity_ck` CHECK (accom_hotel_id OR name NOT NULL) — **ADDED then DROPPED** (obsolete once name went NOT NULL).
+- **Table comment** added to `travel_suppliers` (commercial layer, distinct from content tables; FK-naming note).
+- **NEW TABLE `travel_supplier_details`** — extensible aux attributes (aux phones, IATA codes, account refs, portal URLs) as typed key/value (`detail_type`, `label`, `value`, sort_order, is_active). FK CASCADE, CHECK `detail_type ~ '^[a-z0-9_]+$'`, RLS on + `supplier_details_admin` policy.
+
+**Backfill:** 591 hotels each got a 1:1 accommodation Account (name+city, default 10%). All linked, 0 unlinked, no shared Accounts. Verified. Blocked on unique constraint `travel_suppliers_name_city_uniq`, which surfaced 6 duplicate canon hotels — see below.
+
+**Supplier IDs seeded:** Be Special Tours `43f89ae7` (ground_transport, commission 10, phone/whatsapp structured). Airlines commission=0: Emirates `362c4ad4`, flydubai `ba3b5c06`, Qatar `17927b5a`, BA `c838d872`. Rosewood Schloss Fuschl Account `def5b781` (name set, FK hotel `98f034de`, 10%). Amanwana Account `62c710f1` (10%).
+
+---
+
+## DATA-INTEGRITY — duplicate canon hotels DELETED
+
+6 canon hotels duplicated this session (Japan seeded Jul without checking Apr canon existed). The 6 Apr stubs (0-reference) DELETED, researched Jul rows kept:
+- FS Osaka `bacd726b`, FS Tokyo Otemachi `04a78a3a`, Mandapa `de80689f`, Mandarin Tokyo `75f861eb`, PH Kyoto `8ab0cd72`, PH Niseko `778cc1cc`.
+- Full platform dup audit after = zero remaining. Verified.
+
+---
+
+## FLIGHT STRUCTURED FIELDS
+
+9 flights (Alps parent `5857d344`, HRH AMF parent `6711b0f3`) populated: `airline_name`, `flight_number`, `supplier_id` set + FK'd to airline Accounts. Codeshares (EK/FZ) → operating carrier (Emirates) as primary; flydubai number remains in title pending codeshare-schema decision (frontend/deferred).
+
+---
+
+## `airline_supplier_id` → `supplier_id` RENAME (transport_detail) — COMPLETE, zero-downtime
+
+`travel_engagement_transport_detail.airline_supplier_id` was a general supplier FK (misnamed). Full cutover, live-verified:
+- Compatibility phase: `supplier_id` added + backfilled, sync trigger `tg_sync_transport_supplier` (both directions).
+- Code repointed: `_shared/engagement.ts` (3), `_shared/elementFields.ts`, `typesImmerse.ts`, `queriesAdminJourney.ts`, `EngagementDossierSection.tsx`, `BriefEditorPage.tsx`. Grep-empty verified.
+- EFs redeployed: `travel-get-engagement-confirmation`, `travel-get-engagement-programme`, `travel-read-journey-admin`, `travel-write-journey`.
+- pg functions `create_element` + `update_element` → CREATE OR REPLACE writing `supplier_id`.
+- Guest transport render verified live (HRH AMF programme).
+- FINAL: dropped trigger + function + `airline_supplier_id` column. Only `supplier_id` remains. Verified.
+
+---
+
+## CONTACTS / IDENTITY
+
+- `global_people` **ADDED**: `business_phone`, `business_whatsapp`, `personal_phone`, `personal_whatsapp` (+ comments; business surfaces on delivery, personal never — privacy-first). Deron `bb9f6de1` business = `+1 561 288-1381`.
+- `travel_journey_briefs.advisor_person_id uuid` **ADDED**, FK → `global_people(id)` (+ comment). Mohammed's brief `c3e01181` → Deron. Free-text `advisor_phone` interim-corrected to `+1 561 288-1381` (was stale 786; render source until frontend reads FK).
+- `travel_journey_briefs.contact_supplier_contact_ids uuid[]` **ADDED** (default '{}', + comment). Mirrors `contact_person_ids` for supplier contacts. Mohammed's brief → concierge `0246d5cd`.
+- `travel_accom_hotels` **ADDED**: `concierge_phone`, `concierge_whatsapp` (+ comments; mirror existing role-emails). Rosewood `98f034de` concierge_whatsapp = `+43 6229 39980`.
+- Rosewood concierge → `travel_supplier_contacts` row `0246d5cd` (full_name, role Concierge, whatsapp), FK'd to Rosewood Account. Booking `5e46cd3a` supplier_id set; loose-text booking contact fields cleared.
+
+---
+
+## SAQER — Moyo / Amanwana / Amandira
+
+- **NEW** `global_destinations` Moyo Island `8c0b96bd` (slug moyo-island, Indonesia `e0000001…088`); `travel_destinations` `191d87dd`. Amanwana `f42e8c53` destination_id → Moyo global.
+- Frame B (`862e3a1d`) restructured: Destination 3 now Bali (Option 1) + Moyo Island (Option 2, row `44d57480`). Amanwana attached Highlighted (`3ed5425f`) to Moyo.
+- **Amandira** = `yacht_charter` element `e7e0f985` on Frame B. Direct insert (NOT create_element, which forces confirmed) at parent proposal status (requested `931d052b` / draft `bab90f63`). Bare node.
+
+---
+
+## PHONE NORMALIZATION
+
+- **NEW TABLE `global_country_codes`** — iso2, country_name, dial_code, national_format, example, sort_order, is_active. CHECKs (iso2, dial_code), UNIQUE iso2. RLS on: `country_codes_read` (SELECT all authenticated) + `country_codes_admin`. **67 countries** seeded (12 core with national_format patterns; 55 more dial_code-only).
+- **Corruption repair (catalog-wide):** ~49 corrupted phone values fixed across `travel_accom_hotels.phone` — float-cast artifacts (`.0`, no `+`) restored to `+CC national`; parenthesized codes (`+(…)`) normalized; missing country codes inferred. 2 junk values nulled (`+966 xxx` advisor placeholder; malformed freephone). ~525 readable numbers left untouched. Verified zero `.0`/`+(`/`xxx` remaining.
+
+---
+
+## STILL OPEN (deliberate / frontend — NOT actioned)
+
+- **Phone FK-model conversion** — clean text → `country_code_id` FK + `national_number` (or polymorphic `global_phones` table). Data now clean; this is structural, touches every phone reader. + national_format patterns for the 55 dial-code-only countries.
+- **Flight title/codeshare display** — frontend: compose from structured fields; codeshare schema for second flight number.
+- **Delivery-page Contacts tab** — render advisor (via advisor_person_id → business_phone) + supplier contacts (via contact_supplier_contact_ids). Guest EF selects new columns. Then retire free-text `advisor_name`/`advisor_phone`, drop dead `global_people.phone` (0 rows).
+- **Content blemishes** (guest render): "Booked by Deron" operator-voice leak on check-in; check-in time appears flight-derived not real.
+- **Saqer:** menu "Option X" label + Frame B overview routing (frontend); new-hotel images (attachment image_src, public-URL convention).

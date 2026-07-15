@@ -757,7 +757,7 @@ export type EngagementElement = {
   } | null
   brief_show:          boolean
   sort_order:          number
-  airline_supplier_id: string | null
+  supplier_id: string | null
   airline_name:        string | null
   flight_number:       string | null
   depart_airport:      string | null
@@ -834,7 +834,6 @@ export type ImmerseEngagementBooking = {
   total_rate:          number | null
   taxes_and_fees:      number | null
   currency:            string | null
-  rate_type:           string | null
   inclusions:            string | null
   inclusions_override:   unknown[] | null
   cancellation_policy:   string | null

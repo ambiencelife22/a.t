@@ -205,7 +205,7 @@ export const AUX_BOOKING_SELECT = [
   'dining_status', 'cancellation_penalty_applied', 'cancellation_note', 'show_cancellation',
   'brief_show', 'sort_order', 'created_at', 'updated_at',
   'flight_number', 'airline_name', 'cabin_class', 'aircraft_type',
-  'depart_airport', 'arrive_airport', 'airline_supplier_id', 'dining_venue_id',
+  'depart_airport', 'arrive_airport', 'supplier_id', 'dining_venue_id',
 ].join(', ')
 
 // Flatten the embedded travel_engagement_types join onto an aux booking row.
@@ -252,7 +252,7 @@ export async function fetchEngagementElements(
   const ids = nodeRows.map(n => n.id as string)
   const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail')
-      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, airline_supplier_id, airline_name, flight_number, origin, destination, notes, booked_by')
+      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by')
       .in('node_id', ids),
     db.from('travel_engagement_dining_detail')
       .select('node_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
@@ -489,7 +489,7 @@ export async function fetchEngagementElement(
   const n = nodes as Record<string, unknown>
 
   const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
-    db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, airline_supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_engagement_dining_detail').select('node_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
