@@ -55,14 +55,24 @@ export function beddingLabel(slug: string | null | undefined): string | null {
   if (!slug) return null
   return BEDDING_LABELS[slug] ?? slug
 }
+
 export function beddingConfigurationsLabel(slugs: string[] | null | undefined): string | null {
   if (!slugs || slugs.length === 0) return null
   return slugs.map(s => BEDDING_LABELS[s] ?? s).join(' or ')
 }
+
   export function toTelHref(phone: string | null | undefined): string | null {
   if (!phone) return null
   const normalised = phone.replace(/[\s\-().]/g, '')
   return `tel:${normalised}`
+}
+
+// Single source for all wa.me href construction. Strips to digits only
+// (WhatsApp requires bare international digits, no +/spaces/punctuation).
+export function toWhatsAppHref(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  const digits = phone.replace(/[^0-9]/g, '')
+  return digits ? `https://wa.me/${digits}` : null
 }
 
 // ── Category accent colours — single source ───────────────────────────────────

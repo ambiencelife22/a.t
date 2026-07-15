@@ -117,7 +117,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     }))
     const roomLinesWithCheckIn = (it.rooms ?? []).map((r, i) => {
       const base = roomLines[i]
-      return r.check_in_time ? `${base}  \u00b7  Check-in ${fmtTime(r.check_in_time)}` : base
+      return base
     })
 
     // S53G: passenger names separated for pill rendering

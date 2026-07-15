@@ -13,12 +13,11 @@
 // sorts by that time among the day's items (e.g. a 09:00 check-in slots in the
 // morning); an untimed check-in falls to the bottom.
 //
-// Check-in time resolution order (S53G derived check-in feature):
-//   1. Derived: if a same-day arrival aux item exists AND booking.transfer_minutes
-//      is set → expected_checkin_time = aux.end_time + transfer_minutes.
-//      Self-correcting: flight time changes → check-in time updates automatically.
-//   2. Fallback: hotel.standard_checkin_time (published policy).
-//   3. Null: if neither is known.
+// Check-in / arrival model (S53N, three distinct fields):
+//   standard_checkin_time - hotel published policy (always shown).
+//   approved_checkin_time - negotiated early check-in (shown if set).
+//   expected_arrival_time - when the guest physically arrives (shown if set),
+//     distinct from check-in. Set explicitly on the booking, not derived.
 //
 // Early check-in / late check-out approved times surface as check_in_note /
 // check_out_note on the TimelineItem when set — guest-facing context, never
@@ -39,7 +38,6 @@ export type TimelineRoom = {
   party_composition:   string | null
   confirmation_number: string | null
   notes:               string | null
-  check_in_time:       string | null
   bedding_type:        string | null
 }
 
@@ -70,7 +68,9 @@ export type TimelineItem = {
   status:              string | null
   check_in_note:                string | null
   check_out_note:               string | null
-  checkin_time_is_estimate:     boolean
+  standard_checkin_time:        string | null
+  approved_checkin_time:        string | null
+  expected_arrival_time:        string | null
   contact_name:                 string | null
   contact_phone:                string | null
   guest_name:                   string | null
@@ -115,9 +115,9 @@ type BookingLike = {
   _rooms?:                        Record<string, unknown>[]
   // Derived check-in fields (S53G)
   transfer_minutes?:              number | null  // offset in minutes from preceding arrival
-  early_checkin_approved_time?:   string | null  // HH:MM, only when confirmed with hotel
-  late_checkout_approved_time?:   string | null  // HH:MM, only when confirmed with hotel
-  checkin_time_is_estimate?:      boolean        // true = render "Estimated", false = exact
+  early_checkin_approved_time?:   string | null  // HH:MM, approved early check-in (distinct field)
+  late_checkout_approved_time?:   string | null  // HH:MM, approved late check-out
+  expected_arrival_time?:         string | null  // HH:MM, when guest physically arrives (distinct from check-in)
   // Hotel policy (joined from travel_accom_hotels)
   _standard_checkin_time?:        string | null  // HH:MM, hotel's published check-in time
   _standard_checkout_time?:       string | null  // HH:MM, hotel's published check-out time
@@ -163,61 +163,26 @@ type EntryLike = {
   [k: string]:          unknown
 }
 
-// ── Derived check-in time helper ──────────────────────────────────────────────
+// ── Check-in / arrival model (three distinct fields) ──────────────────────────
 //
-// Resolves the expected check-in time for a hotel booking in this order:
-//   1. Derived: aux item arriving on the same day as check-in + booking.transfer_minutes
-//      → isDerived: true (rendering surface shows "Estimated" qualifier unless
-//        booking.checkin_time_is_estimate is explicitly false)
-//   2. Fallback: hotel's standard_checkin_time (published policy)
-//      → isDerived: false (no qualifier — this is a stated policy time)
-//   3. null
+// Each hotel_checkin item carries three separate, independently-nullable times.
+// The render shows each on its own line and hides nulls; none is labeled the
+// other's name:
+//   standard_checkin_time  - hotel published policy (from _standard_checkin_time). Always.
+//   approved_checkin_time  - negotiated early check-in (early_checkin_approved_time). If set.
+//   expected_arrival_time  - when the guest physically arrives. If set. NOT a check-in.
 //
-// The aux item must have an end_time (arrival time) and its end_date must match
-// the hotel's check-in day. Any aux kind qualifies — flight, transfer, train,
-// car service — the derivation is transport-mode agnostic.
-//
-// If multiple same-day arrival aux items exist, the one with the latest end_time
-// is used — the guest arrives when the last leg completes.
-
-function deriveCheckinTime(
-  checkInDay: string,
-  transferMinutes: number | null | undefined,
-  standardCheckinTime: string | null | undefined,
-  aux: EngagementElementLike[],
-): { time: string | null; isDerived: boolean } {
-  if (transferMinutes != null && transferMinutes >= 0) {
-    const arrivals = aux.filter(
-      a => a.brief_show !== false && a.end_date === checkInDay && a.end_time != null
-    )
-
-    if (arrivals.length > 0) {
-      const latest = arrivals.reduce((best, a) =>
-        (a.end_time ?? '') > (best.end_time ?? '') ? a : best
-      )
-
-      const endTime = latest.end_time!
-      const [h, m] = endTime.split(':').map(Number)
-      const totalMinutes = h * 60 + m + transferMinutes
-      const derivedH = Math.floor(totalMinutes / 60) % 24
-      const derivedM = totalMinutes % 60
-      const time = `${String(derivedH).padStart(2, '0')}:${String(derivedM).padStart(2, '0')}`
-      return { time, isDerived: true }
-    }
-  }
-
-  return {
-    time:      standardCheckinTime ?? null,
-    isDerived: false,
-  }
-}
+// deriveCheckinTime() retired S53N: it derived an arrival time (flight + transfer)
+// and mislabeled it "check-in". Arrival now lives in its own field
+// (travel_bookings.expected_arrival_time); the three concepts are no longer conflated.
+// (travel_bookings.expected_arrival_time), so the three concepts are distinct:
+// standard check-in (hotel policy), approved early check-in, expected arrival.
 
 // ── Builders ───────────────────────────────────────────────────────────────────
 
 // Hotel check-in (with rooms) + check-out (bare) from each shown booking.
 // resolved_guest_name is set by the caller (names.ts) before this runs.
-// aux is passed through so deriveCheckinTime() can match same-day arrivals.
-export function buildHotelItems(bookings: BookingLike[], aux: EngagementElementLike[]): TimelineItem[] {
+export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
 
   // Pre-pass: detect re-check-ins (split stays). A re-check-in is the SAME PARTY
@@ -285,29 +250,14 @@ export function buildHotelItems(bookings: BookingLike[], aux: EngagementElementL
     const checkInDay    = (b.check_in_date as string | null) ?? b.start_date
 
     if (checkInDay) {
-      // ── Resolve expected check-in time ──────────────────────────────────────
-      const { time: resolvedCheckinTime, isDerived } = deriveCheckinTime(
-        checkInDay,
-        b.transfer_minutes as number | null,
-        b._standard_checkin_time as string | null,
-        aux,
-      )
-
-      // checkin_time_is_estimate: true when derived AND the booking hasn't
-      // explicitly marked it as exact (checkin_time_is_estimate === false).
-      // false when: not derived (standard policy or null), or designer set exact.
-      const isEstimate = isDerived && (b.checkin_time_is_estimate !== false)
-
-      // ── Build check-in note ─────────────────────────────────────────────────
-      // Early check-in approved time surfaces as a guest-facing note.
-      // Combines with any existing check_in_note from the booking.
-      const earlyCheckinNote = b.early_checkin_approved_time
-        ? `Early check-in approved at ${b.early_checkin_approved_time.slice(0, 5)}`
-        : null
-      const checkInNote = [
-        b.check_in_note ?? null,
-        earlyCheckinNote,
-      ].filter(Boolean).join(' · ') || null
+      // ── Three distinct check-in concepts (no longer conflated) ──────────────
+      // Standard: hotel published policy (always). Approved: negotiated early
+      // check-in (if set). Expected arrival: when the guest physically arrives
+      // (if set) — NOT a check-in. Each renders on its own line, nulls hidden.
+      const standardCheckin = (b._standard_checkin_time as string | null) ?? null
+      const approvedCheckin = (b.early_checkin_approved_time as string | null) ?? null
+      const expectedArrival = (b.expected_arrival_time as string | null) ?? null
+      const checkInNote = (b.check_in_note as string | null) ?? null
 
       const rooms: TimelineRoom[] = (b._rooms ?? [])
         .slice()
@@ -320,16 +270,14 @@ export function buildHotelItems(bookings: BookingLike[], aux: EngagementElementL
           party_composition:   (r.party_composition as string | null) ?? null,
           confirmation_number: (r.confirmation_number as string | null) ?? null,
           notes:               (r.notes as string | null) ?? null,
-          // Room-level check_in_time takes precedence over booking-level derivation
-          check_in_time:       (r.check_in_time as string | null) ?? resolvedCheckinTime,
           bedding_type:        (r.bedding_type as string | null) ?? null,
         }))
-      const roomCheckinTimes = rooms.map(r => r.check_in_time).filter((t): t is string => !!t).sort()
-      const effectiveCheckinTime = resolvedCheckinTime ?? roomCheckinTimes[0] ?? null
-
+      // Timeline sort position: expected arrival if known (that's when they're
+      // physically present), else standard check-in.
+      const sortTime = expectedArrival ?? standardCheckin
       out.push({
         id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: checkInDay,
-        start_time: effectiveCheckinTime,
+        start_time: sortTime,
         end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `${checkinLabel} \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
@@ -338,7 +286,9 @@ export function buildHotelItems(bookings: BookingLike[], aux: EngagementElementL
         status: (b.status as string | null) ?? null,
         check_in_note: checkInNote,
         check_out_note: null,
-        checkin_time_is_estimate: isEstimate,
+        standard_checkin_time: standardCheckin,
+        approved_checkin_time: approvedCheckin,
+        expected_arrival_time: expectedArrival,
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
@@ -371,7 +321,9 @@ export function buildHotelItems(bookings: BookingLike[], aux: EngagementElementL
         status: (b.status as string | null) ?? null,
         check_in_note: null,
         check_out_note: checkOutNote,
-        checkin_time_is_estimate: false,
+        standard_checkin_time: null,
+        approved_checkin_time: null,
+        expected_arrival_time: null,
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
@@ -416,7 +368,9 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
       check_in_note: null, check_out_note: null,
-      checkin_time_is_estimate: false,
+      standard_checkin_time: null,
+      approved_checkin_time: null,
+      expected_arrival_time: null,
       contact_name: (a.contact_name as string | null) ?? null,
       contact_phone: (a.contact_phone as string | null) ?? null,
       guest_name: (a.guest_name as string | null) ?? null,
@@ -451,7 +405,9 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       confirmation_number: (e.confirmation_number as string | null) ?? null,
       guest_label: (e.guest_label as string | null) ?? null, status: null,
       check_in_note: null, check_out_note: null,
-      checkin_time_is_estimate: false,
+      standard_checkin_time: null,
+      approved_checkin_time: null,
+      expected_arrival_time: null,
       contact_name: null, contact_phone: null,
       guest_name: null, guest_count: null, dining_status: null,
       cancellation_penalty_applied: null, cancellation_note: null,
@@ -494,14 +450,13 @@ export function timelineComparator(a: TimelineItem, b: TimelineItem): number {
 }
 
 // The single producer. Merge hotels + aux + standalone entries, ordered.
-// aux is now passed to buildHotelItems for same-day arrival derivation.
 export function buildTimeline(
   bookings: BookingLike[],
   aux:      EngagementElementLike[],
   entries:  EntryLike[],
 ): TimelineItem[] {
   return [
-    ...buildHotelItems(bookings, aux),
+    ...buildHotelItems(bookings),
     ...buildElementItems(aux),
     ...buildEntryItems(entries),
   ].sort(timelineComparator)

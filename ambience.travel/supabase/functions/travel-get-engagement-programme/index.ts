@@ -20,11 +20,10 @@
 //     - standalone stored entries (dining/experience/notes — no source_booking_id)
 //   The programme tab + PDF render this stream as-is. No client-side derivation.
 //
-//   Check-in time resolution (S53G derived check-in feature):
-//     1. Derived: same-day arrival aux item end_time + booking.transfer_minutes
-//     2. Fallback: hotel standard_checkin_time (joined from travel_accom_hotels)
-//     3. null
-//   Early/late approved times surface as check_in_note/check_out_note.
+//   Check-in / arrival model (S53N, three distinct fields on each hotel item):
+//     standard_checkin_time - hotel policy (always). approved_checkin_time -
+//     negotiated early check-in (if set). expected_arrival_time - when the guest
+//     arrives (if set), distinct from check-in. Each renders on its own line.
 //
 //   Image resolution (canon-default, override-first), applied per item:
 //     hotel item → room override → canon room image → booking override → hotel hero
@@ -35,10 +34,10 @@
 // S53G+ : migrated to _shared/ (http + names + timeline). Hotel check-in/out moved
 //   from stored entries to derived timeline items. Resolver drift fixed (was the
 //   ''-returning inline copy; now _shared/names.ts returns string|null).
-// S53G v3: derived check-in time — bookings SELECT extended with transfer_minutes,
-//   early_checkin_approved_time, late_checkout_approved_time, and hotel policy
-//   join (standard_checkin_time, standard_checkout_time). enrichBookingWithHotelPolicy
-//   applied before buildTimeline call.
+// S53N: check-in/arrival three-field model. bookings SELECT carries
+//   early_checkin_approved_time, late_checkout_approved_time, expected_arrival_time,
+//   + hotel policy join (standard_checkin_time, standard_checkout_time).
+//   deriveCheckinTime() retired; arrival is an explicit field, not derived.
 
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
@@ -86,17 +85,16 @@ Deno.serve(async (req: Request) => {
 
       // Bookings — programme column set + derived check-in columns (S53G v3).
       // travel_accom_hotels join brings standard_checkin/checkout_time for the
-      // hotel policy fallback in deriveCheckinTime() inside timeline.ts.
+      // hotel policy (standard_checkin_time) flows to the three-field model in timeline.ts.
       db.from('travel_bookings')
         .select(`
           id, journey_id, house_id, name, status, confirmation_number,
           start_date, check_in_date, start_time, check_in_note, check_out_note,
           end_date, nights, party_composition, brief_show, brief_image_src,
           booked_by, accom_hotel_id, sort_order,
-          transfer_minutes,
           early_checkin_approved_time,
           late_checkout_approved_time,
-          checkin_time_is_estimate,
+          expected_arrival_time,
           travel_accom_hotels!accom_hotel_id(
             standard_checkin_time,
             standard_checkout_time
@@ -203,10 +201,10 @@ Deno.serve(async (req: Request) => {
     const enrichedEntries = entries.map(e => ({ ...e, image_src: entryImage(e) }))
 
     // ── 11. Build the single-source timeline ──────────────────────────────────
-    // enrichedBookings now carry _standard_checkin_time / _standard_checkout_time
-    // (from enrichBookingWithHotelPolicy) and transfer_minutes / approved time
-    // columns from the DB. buildTimeline passes aux through buildHotelItems so
-    // deriveCheckinTime() can match same-day arrivals.
+    // enrichedBookings carry _standard_checkin_time / _standard_checkout_time
+    // (from enrichBookingWithHotelPolicy) plus early_checkin_approved_time and
+    // expected_arrival_time from the DB. buildTimeline emits the three distinct
+    // check-in/arrival fields per hotel item.
     const timeline = buildTimeline(enrichedBookings, elementsWithImg, enrichedEntries)
 
     // ── 12. Destinations + return ─────────────────────────────────────────────

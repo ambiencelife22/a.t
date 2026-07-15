@@ -30,7 +30,7 @@ import type {
 import type { TimelineItem } from '../../types/typesTimeline'
 import { groupElementsBySection, isFlightElement, isTransferElement, isGroundTransportElement, isDiningElement, isMeetGreetElement } from '../../types/typesElements'
 import { getEventStatusMeta }            from '../../types/typesEventStatus'
-import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, beddingLabel } from '../../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, toWhatsAppHref, beddingLabel } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
 import { useWindowWidth } from '../../hooks/useWindowWidth'
@@ -221,7 +221,9 @@ const auxSections = groupElementsBySection(elements)
                       {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted }}>{dateRange}</div>}
                       {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
                       {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
-                      {booking.start_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-In: ${fmtTime(booking.start_time)}`}</div>}
+                      {booking.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(booking.standard_checkin_time)}`}</div>}
+{booking.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(booking.approved_checkin_time)}`}</div>}
+{booking.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(booking.expected_arrival_time)}`}</div>}
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.party_composition}</div>}
                       </div>
                     <div style={{ marginTop: 12 }}>
@@ -316,7 +318,6 @@ const auxSections = groupElementsBySection(elements)
                             {room.room_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{room.room_name}</div>}
                             {guests && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{guests}</div>}
                             {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
-                            {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.ink, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                           </div>
                           {room.confirmation_number && (
                             <div style={{
@@ -514,7 +515,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     seatNumbers:       string | null
     cabinClass:        string | null
     passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-    rooms:             { id: string; guest: string | null; additional_guests: string[]; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; check_in_time: string | null; bedding_type: string | null }[]
+    rooms:             { id: string; guest: string | null; additional_guests: string[]; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; bedding_type: string | null }[]
+    standard_checkin_time: string | null; approved_checkin_time: string | null; expected_arrival_time: string | null
     driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
   }
 
@@ -551,6 +553,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             status:              e.status,
             checkInNote:         e.check_in_note ?? null,
             checkOutNote:        e.check_out_note ?? null,
+            standard_checkin_time: e.standard_checkin_time ?? null,
+            approved_checkin_time: e.approved_checkin_time ?? null,
+            expected_arrival_time: e.expected_arrival_time ?? null,
             description:         null,
             bookingType:         e.category,
             contactName:         e.contact_name ?? null,
@@ -584,7 +589,6 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               party_composition:   r.party_composition,
               confirmation_number: r.confirmation_number,
               notes:               r.notes,
-              check_in_time:       r.check_in_time,
               bedding_type:        r.bedding_type ?? null,
             })),
             driverDetails:       (e.driver_details ?? []).map(d => ({
@@ -760,7 +764,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3 }}>{item.title}</div>
                               {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
-                              {item.start_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-In: ${fmtTime(item.start_time)}`}</div>}
+                              {item.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(item.standard_checkin_time)}`}</div>}
+{item.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(item.approved_checkin_time)}`}</div>}
+{item.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(item.expected_arrival_time)}`}</div>}
                             </div>
                             {bookedByLabel(item.booked_by) && (
                               <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontStyle: 'italic', color: c.faint, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
@@ -781,7 +787,6 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   {rd.roomName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{rd.roomName}</div>}
                                   {rd.guestLine && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{rd.guestLine}</div>}
                                   {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
-                                  {room.check_in_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.ink, marginTop: 2 }}>{`Check-In: ${fmtTime(room.check_in_time)}`}</div>}
                                   {room.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>
                                 {room.confirmation_number && (
@@ -1504,7 +1509,7 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
         <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 8, fontFamily: TYPE.sans }}>{role}</div>
         <div style={{ fontSize: 18, fontFamily: TYPE.serif, color: c.ink, marginBottom: 8 }}>{name}</div>
         {phone && <a href={toTelHref(phone) ?? '#'} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 13, color: c.gold, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>{phone}</a>}
-        {whatsapp && <a href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}`} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>WhatsApp {whatsapp}</a>}
+        {whatsapp && toWhatsAppHref(whatsapp) && <a href={toWhatsAppHref(whatsapp)!} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>WhatsApp {whatsapp}</a>}
         {email && <a href={`mailto:${email}`} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, wordBreak: 'break-all' }}>{email}</a>}
       </div>
     )

@@ -14,7 +14,6 @@ export type TimelineRoom = {
   party_composition:   string | null
   confirmation_number: string | null
   notes:               string | null
-  check_in_time:  string | null
   bedding_type:   string | null
 }
 
@@ -55,6 +54,9 @@ export type TimelineItem = {
   status:              string | null
   check_in_note:                string | null
   check_out_note:               string | null
+  standard_checkin_time:        string | null
+  approved_checkin_time:        string | null
+  expected_arrival_time:        string | null
   contact_name:                 string | null
   contact_phone:                string | null
   guest_name:                   string | null
