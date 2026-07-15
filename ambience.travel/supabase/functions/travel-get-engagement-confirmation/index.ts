@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
 
       // confirmation needs financial-adjacent columns (deposit/balance paid, taxes)
       db.from('travel_bookings')
-        .select('id, journey_id, house_id, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, inclusions_override, cancellation_policy, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override, created_at, updated_at')
+        .select('id, journey_id, house_id, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, early_checkin_approved_time, expected_arrival_time, end_date, nights, commissionable_rate, taxes_and_fees, inclusions, inclusions_override, cancellation_policy, party_composition, brief_show, brief_image_src, booked_by, accom_hotel_id, sort_order, deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override, created_at, updated_at')
         .eq('house_id', houseId)
         .eq('journey_id', journeyId)
         .order('start_date', { ascending: true, nullsFirst: false })
@@ -176,6 +176,9 @@ Deno.serve(async (req: Request) => {
         ...b,
         _hotel_name:      hotel?.name ?? null,
         _hotel_image_src: hotel?.hero_image_src ?? null,
+        standard_checkin_time: hotel?.standard_checkin_time ?? null,
+        approved_checkin_time: b.early_checkin_approved_time ?? null,
+        expected_arrival_time: b.expected_arrival_time ?? null,
         _rooms:           enrichedRooms,
         _invoices:        invoicesByBooking[b.id] ?? [],
         engagement_id:    null, total_rate: null, currency: null,

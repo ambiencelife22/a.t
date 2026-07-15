@@ -187,7 +187,7 @@ export interface EngagementBookingsData {
   bookings:       Array<Record<string, unknown>>
   roomsByBooking: Record<string, Array<Record<string, unknown>>>
   canonRoomById:  Record<string, { image_src: string | null; image_alt: string | null }>
-  hotelById:      Record<string, { name: string; hero_image_src: string | null }>
+  hotelById:      Record<string, { name: string; hero_image_src: string | null; standard_checkin_time: string | null }>
 }
 
 // ── Aux booking select — single source ────────────────────────────────────────

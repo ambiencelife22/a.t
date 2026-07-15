@@ -16,17 +16,18 @@ import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 export async function fetchHotelsByIds(
   db: SupabaseClient,
   hotelIds: string[],
-): Promise<Record<string, { name: string; hero_image_src: string | null }>> {
-  const out: Record<string, { name: string; hero_image_src: string | null }> = {}
+): Promise<Record<string, { name: string; hero_image_src: string | null; standard_checkin_time: string | null }>> {
+  const out: Record<string, { name: string; hero_image_src: string | null; standard_checkin_time: string | null }> = {}
   if (hotelIds.length === 0) return out
   const { data } = await db
     .from('travel_accom_hotels')
-    .select('id, name, hero_image_src')
+    .select('id, name, hero_image_src, standard_checkin_time')
     .in('id', hotelIds)
   for (const h of (data ?? []) as Array<Record<string, unknown>>) {
     out[h.id as string] = {
       name:           (h.name as string) ?? '',
       hero_image_src: (h.hero_image_src as string | null) ?? null,
+      standard_checkin_time: (h.standard_checkin_time as string | null) ?? null,
     }
   }
   return out
