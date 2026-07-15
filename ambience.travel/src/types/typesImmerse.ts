@@ -829,9 +829,9 @@ export type ImmerseEngagementBooking = {
   start_time:          string | null
   check_in_note:       string | null
   check_out_note:      string | null
-  standard_checkin_time: string | null
-  approved_checkin_time: string | null
-  expected_arrival_time: string | null
+  standard_checkin_time?: string | null
+  approved_checkin_time?: string | null
+  expected_arrival_time?: string | null
   end_date:            string | null
   nights:              number | null
   total_rate:          number | null

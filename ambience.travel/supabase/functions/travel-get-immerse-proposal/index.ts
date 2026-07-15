@@ -281,7 +281,7 @@ async function buildDestinationPayload(
 
   if (!destRow) return null
 
-  const tripDestinationRowId = destRow.id as string
+  const destinationRowId = destRow.id as string
   const destinationId        = destTemplate!.id as string
   const effectiveUrlSlug     = (destRow.destination_url_slug as string | null) ?? null
 
@@ -296,7 +296,7 @@ async function buildDestinationPayload(
   const [hotelsPayload, cardsPayload, pricingRows] = await Promise.all([
     fetchHotels(db, engagementId, destinationId, effectiveUrlSlug),
     fetchCards(db, engagementId, globalDestinationId, effectiveUrlSlug),
-    fetchPricingRows(db, tripDestinationRowId),
+    fetchPricingRows(db, destinationRowId),
   ])
 
   return {
@@ -305,7 +305,7 @@ async function buildDestinationPayload(
     globalHero:          globalHero ?? null,
     destinationId,
     globalDestinationId,
-    tripDestinationRowId,
+    destinationRowId,
     destinationUrlSlug:  effectiveUrlSlug,
     isVariant,
     hotels:              hotelsPayload,
@@ -776,12 +776,12 @@ async function fetchCards(
 
 async function fetchPricingRows(
   db:                   SupabaseClient,
-  tripDestinationRowId: string,
+  destinationRowId: string,
 ) {
   const { data } = await db
     .from('travel_overlay_destination_pricing_rows')
     .select('id, item, basis, stay, indicative_range, sort_order')
-    .eq('trip_destination_row_id', tripDestinationRowId)
+    .eq('destination_row_id', destinationRowId)
     .order('sort_order')
   return (data ?? []).map(r => ({
     id:              r.id,

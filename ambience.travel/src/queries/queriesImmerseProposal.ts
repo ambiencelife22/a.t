@@ -250,7 +250,7 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
   if (!dest || !ov) return null
 
   const destinationId = payload.destinationId        as string
-  const engagementId  = payload.tripDestinationRowId as string  // journeyId in shape
+  const engagementId  = payload.destinationRowId as string  // journeyId in shape
 
   // Hero image resolver: override → template → global canon
   const heroSrc = rewriteImageUrl(
