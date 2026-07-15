@@ -104,39 +104,32 @@ Deno.serve(async (req: Request) => {
     // ── Contacts: resolve brief.contact_person_ids → house people (S54) ───────
     const contacts: Array<{
       id: string; name: string; role: string | null
-      email: string | null; phone: string | null
+      email: string | null; phone: string | null; whatsapp: string | null
     }> = []
-
     const selectedIds = (brief?.contact_person_ids ?? []) as string[]
     const nameFormat  = (brief?.contact_name_format ?? 'first') as 'first' | 'full'
-
     if (selectedIds.length > 0) {
-      const { data: hp } = await db
-        .from('a_house_people')
-        .select('person_id, role, member_ref, global_people(first_name, last_name, nickname, last_initial, email, phone, is_public_display)')
-        .eq('house_id', houseId)
-        .in('person_id', selectedIds)
-
+      // Protected identity tables (a_house_people + global_people) are read ONLY via
+      // the SECURITY DEFINER projection, which returns delivery-safe fields (name, role,
+      // email, business_phone, business_whatsapp) and never personal_* or raw identity.
+      // This client EF does not query the protected tables directly.
+      const { data: gc } = await db.rpc('get_engagement_guest_contacts', {
+        p_house_id:    houseId,
+        p_person_ids:  selectedIds,
+        p_name_format: nameFormat,
+      })
       const byId: Record<string, any> = {}
-      for (const row of (hp ?? [])) byId[row.person_id] = row
-
+      for (const c of (gc ?? [])) byId[c.id] = c
       for (const pid of selectedIds) {
-        const row = byId[pid]
-        if (!row) continue
-        const gp = Array.isArray(row.global_people) ? row.global_people[0] : row.global_people
-        const first = gp?.first_name ?? row.member_ref ?? ''
-        const last  = gp?.last_name ?? ''
-        const li    = gp?.last_initial ? `${gp.last_initial}.` : ''
-        const name =
-          nameFormat === 'full'
-            ? [first, last].filter(Boolean).join(' ').trim()
-            : (gp?.nickname?.trim() || [first, last ? li : ''].filter(Boolean).join(' ').trim() || first)
+        const c = byId[pid]
+        if (!c) continue
         contacts.push({
-          id:    row.person_id,
-          name:  name || 'Guest',
-          role:  row.role ?? null,
-          email: gp?.email ?? null,
-          phone: gp?.phone ?? null,
+          id:       c.id,
+          name:     c.name ?? 'Guest',
+          role:     c.role ?? null,
+          email:    c.email ?? null,
+          phone:    c.phone ?? null,
+          whatsapp: c.whatsapp ?? null,
         })
       }
     }

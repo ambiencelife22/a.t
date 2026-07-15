@@ -350,9 +350,7 @@ export async function fetchEngagementBookings(
   const roomPeopleById: Record<string, Record<string, unknown>> = {}
   if (roomPersonIds.length > 0) {
     const { data: rp } = await db
-      .from('global_people')
-      .select('id, first_name, last_name, nickname')
-      .in('id', roomPersonIds)
+      .rpc('get_people_display_names', { p_person_ids: roomPersonIds })
     for (const g of (rp ?? []) as Array<Record<string, unknown>>) roomPeopleById[g.id as string] = g
   }
 
@@ -364,19 +362,10 @@ export async function fetchEngagementBookings(
   // holding the principal sorts to the top regardless of who shares it.
   const roleRankByPerson: Record<string, number> = {}
   if (roomPersonIds.length > 0) {
-    const { data: roles } = await db.from('a_house_roles').select('slug, sort_order')
-    const rankBySlug: Record<string, number> = {}
-    for (const r of (roles ?? []) as Array<Record<string, unknown>>) {
-      rankBySlug[r.slug as string] = r.sort_order as number
-    }
-    const { data: hpRows } = await db
-      .from('a_house_people')
-      .select('person_id, role')
-      .eq('house_id', houseId)
-      .in('person_id', roomPersonIds)
-    for (const hp of (hpRows ?? []) as Array<Record<string, unknown>>) {
-      const rank = rankBySlug[hp.role as string]
-      if (rank != null) roleRankByPerson[hp.person_id as string] = rank
+    const { data: hpRanks } = await db
+      .rpc('get_house_people_role_ranks', { p_house_id: houseId, p_person_ids: roomPersonIds })
+    for (const hp of (hpRanks ?? []) as Array<Record<string, unknown>>) {
+      if (hp.role_rank != null) roleRankByPerson[hp.person_id as string] = hp.role_rank as number
     }
   }
   const roomRank = (r: Record<string, unknown>): number => {

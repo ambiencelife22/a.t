@@ -114,9 +114,7 @@ export async function attachPassengers(
   const peopleById: Record<string, Record<string, unknown>> = {}
   if (personIds.length > 0) {
     const { data: gp } = await db
-      .from('global_people')
-      .select('id, first_name, last_name, nickname')
-      .in('id', personIds)
+      .rpc('get_people_display_names', { p_person_ids: personIds })
     for (const g of (gp ?? []) as Record<string, unknown>[]) peopleById[g.id as string] = g
   }
 
