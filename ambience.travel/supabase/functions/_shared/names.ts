@@ -105,7 +105,7 @@ export async function attachPassengers(
   if (aux.length === 0) return aux
   const ids = aux.map(a => a.id as string)
   const { data: pax } = await db
-    .from('travel_engagement_aux_passengers')
+    .from('travel_engagement_passengers')
     .select('id, node_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
     .in('node_id', ids)
     .order('sort_order', { ascending: true })
@@ -144,7 +144,7 @@ export async function attachDriverDetails(
   if (aux.length === 0) return aux
   const ids = aux.map(a => a.id as string)
   const { data: veh } = await db
-    .from('travel_aux_driver_details')
+    .from('travel_engagement_driver_details')
     .select('id, node_id, driver_name, driver_phone, car_model, plate, vehicle_role, sort_order')
     .in('node_id', ids)
     .order('sort_order', { ascending: true })

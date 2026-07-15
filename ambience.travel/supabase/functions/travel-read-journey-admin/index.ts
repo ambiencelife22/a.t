@@ -252,7 +252,7 @@ async function handleRooms(db: SupabaseClient, bookingId: string): Promise<Respo
 async function handleAuxDriverDetails(db: SupabaseClient, nodeId: string): Promise<Response> {
   // nodeId is the element node id (frontend sends it directly; Stage 7 Phase 2 retire).
   const { data, error } = await db
-    .from('travel_aux_driver_details')
+    .from('travel_engagement_driver_details')
     .select('id, node_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
     .eq('node_id', nodeId)
     .order('sort_order', { ascending: true })
@@ -418,7 +418,7 @@ async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise
   // Passengers key on node_id; flat rows carry id = node id (Stage 7 Phase 2 retire).
   const nodeIds = aux.map(a => a.id as string).filter(Boolean)
   const { data: pax } = await db
-    .from('travel_engagement_aux_passengers')
+    .from('travel_engagement_passengers')
     .select('id, node_id, person_id, passenger_label, confirmation_number, seat_numbers, sort_order')
     .in('node_id', nodeIds)
     .order('sort_order', { ascending: true })
@@ -848,7 +848,7 @@ async function handleActivityDetail(
 
     if (isGroundCar) {
       const { data: vehData, error: vehErr } = await db
-        .from('travel_aux_driver_details')
+        .from('travel_engagement_driver_details')
         .select('id, node_id, driver_name, driver_phone, car_model, plate, company, vehicle_role, sort_order')
         .eq('node_id', auxBookingId)
         .order('sort_order', { ascending: true })
@@ -867,7 +867,7 @@ async function handleActivityDetail(
       : { data: null }
     const partyLabel = await partyLabelForTrip(db, (jrow?.id as string | null) ?? null)
     const { data: paxData, error: paxErr } = await db
-      .from('travel_engagement_aux_passengers')
+      .from('travel_engagement_passengers')
       .select('id, node_id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
       .eq('node_id', auxBookingId)
       .order('sort_order', { ascending: true })

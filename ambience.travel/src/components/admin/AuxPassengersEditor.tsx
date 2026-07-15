@@ -4,7 +4,7 @@
  * AuxBookingsEditor and BriefEditorPage's BriefAuxEditor edit passengers
  * from a single source.
  *
- * Each passenger: label + conf + seats, on travel_engagement_aux_passengers.
+ * Each passenger: label + conf + seats, on travel_engagement_passengers.
  * Seats and confirmation numbers are per-passenger here — the parent
  * travel_engagement_aux_bookings row no longer carries them (S54b cleanup).
  * person_id wiring deferred to a picker; passenger_label is the

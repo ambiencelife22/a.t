@@ -8,7 +8,7 @@
  * labels which car. company is operator-internal; the client confirmation/programme
  * pages omit it (the client EFs never select it).
  *
- * Rows live on travel_aux_driver_details. Loads its own initial set on mount
+ * Rows live on travel_engagement_driver_details. Loads its own initial set on mount
  * (the aux booking row doesn't carry them).
  */
 

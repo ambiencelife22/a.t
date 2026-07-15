@@ -252,7 +252,7 @@ async function handleCreateAuxPassenger(
 ): Promise<Response> {
   // auxBookingId is the element node id (frontend sends it directly; Stage 7 Phase 2 retire).
   const { data, error } = await db
-    .from('travel_engagement_aux_passengers')
+    .from('travel_engagement_passengers')
     .insert({ node_id: auxBookingId, ...patch })
     .select()
     .single()
@@ -266,7 +266,7 @@ async function handleUpdateAuxPassenger(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_engagement_aux_passengers')
+    .from('travel_engagement_passengers')
     .update(patch)
     .eq('id', id)
     .select()
@@ -277,7 +277,7 @@ async function handleUpdateAuxPassenger(
 
 async function handleDeleteAuxPassenger(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_engagement_aux_passengers')
+    .from('travel_engagement_passengers')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete aux passenger' }, 500)
@@ -291,7 +291,7 @@ async function handleCreateAuxDriverDetail(
 ): Promise<Response> {
   // auxBookingId is the element node id (frontend sends it directly; Stage 7 Phase 2 retire).
   const { data, error } = await db
-    .from('travel_aux_driver_details')
+    .from('travel_engagement_driver_details')
     .insert({ node_id: auxBookingId, ...patch })
     .select()
     .single()
@@ -305,7 +305,7 @@ async function handleUpdateAuxDriverDetail(
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
-    .from('travel_aux_driver_details')
+    .from('travel_engagement_driver_details')
     .update(patch)
     .eq('id', id)
     .select()
@@ -316,7 +316,7 @@ async function handleUpdateAuxDriverDetail(
 
 async function handleDeleteAuxDriverDetail(db: SupabaseClient, id: string): Promise<Response> {
   const { error } = await db
-    .from('travel_aux_driver_details')
+    .from('travel_engagement_driver_details')
     .delete()
     .eq('id', id)
   if (error) return json({ error: 'Failed to delete driver detail' }, 500)

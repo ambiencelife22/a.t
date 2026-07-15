@@ -3032,3 +3032,198 @@ Current state: drawFrostedLogoCard already supports variant 'alfaone'/'unbranded
 brief.logo_variant exists and is admin-set in BriefEditorPage. But it is Model A
 (stored on brief, read by guest EFs) — wrong for admin-only. Rebuild as engagement-
 scoped, export-time, guest-isolated.
+
+# CHANGELOG - S53N - 14 Jul 2026
+
+> Append to the canonical CHANGELOG. Every entry is a live schema change verified against `information_schema`/`pg_catalog` this session. Supabase `rjobcbpnhymuczjhqzmh`.
+
+---
+
+## SUPPLIER-AS-ACCOUNT MODEL (commercial layer)
+
+**Decision (founder-ruled):** commission grain is PER-PROPERTY. `travel_suppliers` is the CRM-style Account (single identity source) for every commercial entity, accommodation, airline, ground_transport, etc. Content tables (e.g. `travel_accom_hotels`) link TO the Account.
+
+- `travel_suppliers.name` -> **NOT NULL** (single identity source; was briefly nullable during churn, restored).
+- `travel_suppliers.default_commission_pct numeric` **ADDED**. Standing per-property rate; realized per-stay commission stays on `travel_bookings.commission_pct`.
+- `travel_suppliers.contact_whatsapp text` **ADDED** (+ column comment). WhatsApp is a first-class channel.
+- `travel_suppliers.accom_hotel_id`, **ADDED then DROPPED** (wrong FK direction; reverse of below).
+- `travel_accom_hotels.supplier_id uuid` **ADDED**, FK -> `travel_suppliers(id)` ON DELETE SET NULL (+ comment). Correct direction: content -> Account.
+- `supplier_identity_ck` CHECK (accom_hotel_id OR name NOT NULL), **ADDED then DROPPED** (obsolete once name went NOT NULL).
+- **Table comment** added to `travel_suppliers` (commercial layer, distinct from content tables; FK-naming note).
+- **NEW TABLE `travel_supplier_details`**, extensible aux attributes (aux phones, IATA codes, account refs, portal URLs) as typed key/value (`detail_type`, `label`, `value`, sort_order, is_active). FK CASCADE, CHECK `detail_type ~ '^[a-z0-9_]+$'`, RLS on + `supplier_details_admin` policy.
+
+**Backfill:** 591 hotels each got a 1:1 accommodation Account (name+city, default 10%). All linked, 0 unlinked, no shared Accounts. Verified. Blocked on unique constraint `travel_suppliers_name_city_uniq`, which surfaced 6 duplicate canon hotels, see below.
+
+**Supplier IDs seeded:** Be Special Tours `43f89ae7` (ground_transport, commission 10, phone/whatsapp structured). Airlines commission=0: Emirates `362c4ad4`, flydubai `ba3b5c06`, Qatar `17927b5a`, BA `c838d872`. Rosewood Schloss Fuschl Account `def5b781` (name set, FK hotel `98f034de`, 10%). Amanwana Account `62c710f1` (10%).
+
+---
+
+## DATA-INTEGRITY, duplicate canon hotels DELETED
+
+6 canon hotels duplicated this session (Japan seeded Jul without checking Apr canon existed). The 6 Apr stubs (0-reference) DELETED, researched Jul rows kept:
+- FS Osaka `bacd726b`, FS Tokyo Otemachi `04a78a3a`, Mandapa `de80689f`, Mandarin Tokyo `75f861eb`, PH Kyoto `8ab0cd72`, PH Niseko `778cc1cc`.
+- Full platform dup audit after = zero remaining. Verified.
+
+---
+
+## FLIGHT STRUCTURED FIELDS
+
+9 flights (Alps parent `5857d344`, HRH AMF parent `6711b0f3`) populated: `airline_name`, `flight_number`, `supplier_id` set + FK'd to airline Accounts. Codeshares (EK/FZ) -> operating carrier (Emirates) as primary; flydubai number remains in title pending codeshare-schema decision (frontend/deferred).
+
+---
+
+## `airline_supplier_id` -> `supplier_id` RENAME (transport_detail), COMPLETE, zero-downtime
+
+`travel_engagement_transport_detail.airline_supplier_id` was a general supplier FK (misnamed). Full cutover, live-verified:
+- Compatibility phase: `supplier_id` added + backfilled, sync trigger `tg_sync_transport_supplier` (both directions).
+- Code repointed: `_shared/engagement.ts` (3), `_shared/elementFields.ts`, `typesImmerse.ts`, `queriesAdminJourney.ts`, `EngagementDossierSection.tsx`, `BriefEditorPage.tsx`. Grep-empty verified.
+- EFs redeployed: `travel-get-engagement-confirmation`, `travel-get-engagement-programme`, `travel-read-journey-admin`, `travel-write-journey`.
+- pg functions `create_element` + `update_element` -> CREATE OR REPLACE writing `supplier_id`.
+- Guest transport render verified live (HRH AMF programme).
+- FINAL: dropped trigger + function + `airline_supplier_id` column. Only `supplier_id` remains. Verified.
+
+---
+
+## CONTACTS / IDENTITY
+
+- `global_people` **ADDED**: `business_phone`, `business_whatsapp`, `personal_phone`, `personal_whatsapp` (+ comments; business surfaces on delivery, personal never, privacy-first). Deron `bb9f6de1` business = `+1 561 288-1381`.
+- `travel_journey_briefs.advisor_person_id uuid` **ADDED**, FK -> `global_people(id)` (+ comment). Mohammed's brief `c3e01181` -> Deron. Free-text `advisor_phone` interim-corrected to `+1 561 288-1381` (was stale 786; render source until frontend reads FK).
+- `travel_journey_briefs.contact_supplier_contact_ids uuid[]` **ADDED** (default '{}', + comment). Mirrors `contact_person_ids` for supplier contacts. Mohammed's brief -> concierge `0246d5cd`.
+- `travel_accom_hotels` **ADDED**: `concierge_phone`, `concierge_whatsapp` (+ comments; mirror existing role-emails). Rosewood `98f034de` concierge_whatsapp = `+43 6229 39980`.
+- Rosewood concierge -> `travel_supplier_contacts` row `0246d5cd` (full_name, role Concierge, whatsapp), FK'd to Rosewood Account. Booking `5e46cd3a` supplier_id set; loose-text booking contact fields cleared.
+
+---
+
+## SAQER, Moyo / Amanwana / Amandira
+
+- **NEW** `global_destinations` Moyo Island `8c0b96bd` (slug moyo-island, Indonesia `e0000001...088`); `travel_destinations` `191d87dd`. Amanwana `f42e8c53` destination_id -> Moyo global.
+- Frame B (`862e3a1d`) restructured: Destination 3 now Bali (Option 1) + Moyo Island (Option 2, row `44d57480`). Amanwana attached Highlighted (`3ed5425f`) to Moyo.
+- **Amandira** = `yacht_charter` element `e7e0f985` on Frame B. Direct insert (NOT create_element, which forces confirmed) at parent proposal status (requested `931d052b` / draft `bab90f63`). Bare node.
+
+---
+
+## PHONE NORMALIZATION
+
+- **NEW TABLE `global_country_codes`**, iso2, country_name, dial_code, national_format, example, sort_order, is_active. CHECKs (iso2, dial_code), UNIQUE iso2. RLS on: `country_codes_read` (SELECT all authenticated) + `country_codes_admin`. **67 countries** seeded (12 core with national_format patterns; 55 more dial_code-only).
+- **Corruption repair (catalog-wide):** ~49 corrupted phone values fixed across `travel_accom_hotels.phone`, float-cast artifacts (`.0`, no `+`) restored to `+CC national`; parenthesized codes (`+(...)`) normalized; missing country codes inferred. 2 junk values nulled (`+966 xxx` advisor placeholder; malformed freephone). ~525 readable numbers left untouched. Verified zero `.0`/`+(`/`xxx` remaining.
+
+---
+
+## STILL OPEN (deliberate / frontend, NOT actioned)
+
+> NOTE: the phone FK-model + display grammar were COMPLETED later this session (see PHONE FK MODEL + PHONE DISPLAY GRAMMAR sections below). Only the code-repoint (point readers at global_phones, drop old text columns) remains for phones.
+
+- **Phone code-repoint (cutover finish)**: repoint every phone reader/writer to `global_phones`, deploy, verify render, then drop the ~24 legacy text columns with a grep-empty gate. Same graceful sequence as the supplier_id rename. The model + data + display grammar are done; this is the code cutover.
+- **Flight title/codeshare display**, frontend: compose from structured fields; codeshare schema for second flight number.
+- **Delivery-page Contacts tab**, render advisor (via advisor_person_id -> business_phone) + supplier contacts (via contact_supplier_contact_ids). Guest EF selects new columns. Then retire free-text `advisor_name`/`advisor_phone`, drop dead `global_people.phone` (0 rows).
+- **Check-in render**: three fields separately (standard always; approved + expected arrival only when non-null); stop labeling arrival as "Check-In". (Data model + HRH data DONE, see CHECK-IN section.)
+- **Saqer:** menu "Option X" label + Frame B overview routing (frontend); new-hotel images (see image-template file + image-convention debt).
+
+> "Booked by Deron" on the guest programme is VALID guest content (D-ruled, locked), NOT a leak, NOT a debt. Never flag it.
+
+---
+
+## CHECK-IN / ARRIVAL MODEL (three distinct concepts, previously conflated)
+
+**Decision (D):** three separate fields, previously collapsed into one "check-in" render:
+1. **Standard Check-In Time**, hotel policy, canon (`travel_accom_hotels.standard_checkin_time` / `standard_checkout_time`, both already existed). Always shown.
+2. **Approved Check-In Time**, per-booking negotiated early check-in (`travel_bookings.early_checkin_approved_time`, already existed). Nullable, hidden if null.
+3. **Expected Arrival Time**, when the guest arrives (flight-derived + transfer), DISTINCT from check-in. Nullable, hidden if null.
+
+**Schema:**
+- `travel_bookings.expected_arrival_time time` **ADDED** (+ comment: arrival is when they show up, check-in is when the room is ready; do NOT store arrival in check-in fields).
+
+**The bug (fixed):** arrival time was being stored in `travel_booking_rooms.check_in_time` with `checkin_time_is_estimate=true`, rendering as "Check-In". HRH AMF Berkeley booking `17cf4964` showed "Check-In: 08:00" which was really the flight-derived arrival.
+
+**Data corrections:**
+- ALL 591 hotels: `standard_checkin_time`/`standard_checkout_time` set to NULL (clean slate, no assumed policy).
+- The Berkeley re-seeded 15:00/12:00 (the ONLY researched property). PRINCIPLE (D, locked): standard check-in is per-property researched truth, NEVER defaulted. 590 hotels correctly null until researched.
+- HRH Berkeley `17cf4964`: arrival 08:00 moved to `expected_arrival_time`; `checkin_time_is_estimate` cleared.
+- All 14 orphaned `checkin_time_is_estimate=true` flags (no arrival value behind them) reset to false.
+- The single residual `travel_booking_rooms.check_in_time` (HRH) nulled, arrival safely on the booking.
+
+**Now provably unused (droppable, future cleanup):** `travel_booking_rooms.check_in_time` + `travel_bookings.checkin_time_is_estimate`, 0 rows use them post-sweep.
+
+**Frontend (logged, NOT done):** render the three fields separately, standard always, approved + expected arrival only when non-null; stop labeling arrival as "Check-In". Guest sees "Room ready from 15:00" + "Expected arrival ~08:00" as distinct lines. Also: sweep any future arrival-in-check-in conflation to `expected_arrival_time`.
+
+---
+
+## PHONE FK MODEL - COMPLETE (structured storage, single polymorphic entity)
+
+Directed by D (MISSION: structured data, not "good shape" free text). Every phone platform-wide is now a structured entity, not free text.
+
+**NEW TABLE `global_phones`** - the single polymorphic phone entity:
+- id, owner_type (text), owner_id (uuid), phone_role (text), country_code_id (FK -> global_country_codes, ON DELETE RESTRICT), national_number (text, digits only), is_whatsapp, is_primary, sort_order, is_active, timestamps.
+- CHECKs: national_number `^[0-9]+$` (structured, no free text), owner_type + phone_role `^[a-z_]+$`. Index on (owner_type, owner_id). RLS on: `phones_read` (SELECT authenticated) + `phones_admin`.
+- Display composed: dial_code + formatted national per country national_format. Never stored as text.
+
+**NEW FUNCTION `parse_phone(text)`** - the single canonical parser. Longest dial-code prefix match against global_country_codes; strips (0) trunk + non-digits; first-of slash pair; no row for junk/unmatched. STABLE. national_number guaranteed to satisfy phone_national_ck.
+
+**Migration (in-SQL, INSERT...SELECT via parse_phone, 24 source columns across 12 tables):**
+- 589 phones migrated. Reconciled exact: hotels 537/537 main, 22/22 reservations, zero dropped.
+- Distribution: hotel 560, brand 15, dining_venue 4, person 2, hosted_property 2, driver 2, supplier 2, journey_brief 1, supplier_contact 1.
+- WhatsApp channels: 4 (Deron business, supplier contact_whatsapp, supplier_contact, concierge).
+- Caught two columns the earlier inventory missed: global_travel_clients.phone, travel_bookings.supplier_contact_whatsapp.
+
+**Cutover state:** old free-text phone columns remain as legacy compat layer (readable). Drop AFTER code repoints readers/writers to global_phones (graceful sequence, same as the supplier_id rename: repoint + deploy, verify render, then drop old with grep-empty gate). NOT yet done - code repoint is the next phone step.
+
+**Remaining (small, unblocked):** national_format grouping patterns for the 55 dial-code-only countries (12 core have them). Pure data. Payoff: composed display renders grouped (+1 561 288-1381) not digit-block (+1 5612881381). This is the last piece for best-in-world display.
+
+---
+
+## PHONE DISPLAY GRAMMAR + EM-DASH SWEEP
+
+**national_format completion:** all 67 global_country_codes now carry a national_format grouping pattern (was 12). The 55 dial-code-only countries got real per-country grouping (Japan ##-####-####, India ##### #####, China ### #### ####, etc.). Phone composed display now renders grouped for every country in the data, not digit-block. Phone model complete end to end: structured storage (global_phones) + full display grammar.
+
+**Em-dash sweep (DB object comments):** scanned all table/column/function comments for em-dash, en-dash, curly quotes, ellipsis (unicode-escape regex, no straight-quote false positive). Rewrote 9 function comments + 21 table/column comments ASCII-clean; scan returns zero. Stale references corrected in passing: travel_engagements.journey_id comment (was travel_trips -> travel_journey), travel_suppliers (airline_supplier_id -> supplier_id), travel_engagement_types (dropped-table ref generalized to element nodes). RULE (D): zero em-dashes anywhere in DB objects (comments, constraints, stored text), except inline -- SQL code comments.
+
+---
+
+## IMAGE STORAGE CONVENTION - DEBT (surfaced, not actioned)
+
+Investigating this-session hotel/supplier image URLs revealed the storage paths are NOT deterministic and carry drift. Examples from live data:
+- Aman NYC: immerse/na/usa/ny/nyc/accom/amannyc/amannyc1.webp (continent/country/state/city, no hyphen before number)
+- Rosewood St Barth: immerse/na/stbarths/accom/rosewoodsb/rosewoodsb-1.webp (shallower path, HYPHEN before number)
+- Same property as an attachment: immerse/ca/fwi/stb/st-barths/accom/rosewood/rosewood2.webp (DIFFERENT continent code ca vs na, different depth, path slug != hotel short_slug)
+- Rosewood Schloss Fuschl: immerse/eu/austria/schlossfuschl/schlossfuschl-hero-1.webp (hero-N pattern)
+
+CONSEQUENCE: image URLs CANNOT be generated programmatically from DB columns - the path is hand-authored per upload, not derivable. So setting hero_image_src / attachment image_src / supplier photos requires the ACTUAL uploaded path each time (a guessed path = dead link).
+
+TARGET (D, mission - same class as phone/date/currency globalization): a DETERMINISTIC, HYPHEN-FREE storage convention. One derivable rule (continent/country/destination/slug + sequential number, no hyphens anywhere) so image URLs COMPOSE from the data, not hand-authored. Remove all hyphens from image paths/filenames. Then images generate consistently like phones compose from country_code+national_number. Requires: (1) convention decision (exact path grammar), (2) bucket file rename/reorganize (storage op, not SQL), (3) a compose helper (imageUrl(hotel) deriving the path), (4) backfill existing rows to the new deterministic paths. Large, deliberate, storage-side + code. NOT a session-tail SQL task.
+
+INTERIM: image_src / hero_image_src / photos are set per-upload with the actual path (only the uploader knows it until the convention is deterministic). Template UPDATEs keyed by id with a URL placeholder are the current mechanism.
+
+photos column note: travel_suppliers.photos is text[] (not jsonb). Set as ARRAY['url1','url2'].
+
+---
+
+## DESTINATION ASSIGNMENT - fixed 4, surfaced 230 (DEBT)
+
+Four this-session hotels were parked on the 'zz-not-yet-listed' placeholder destination (d0000001-...-138). Reassigned to their real, already-existing destinations:
+- Four Seasons Safari Lodge Serengeti -> serengeti (TZ)
+- Four Seasons Resort Mauritius at Anahita -> mauritius (MU)
+- Four Seasons Resort Seychelles at Desroches -> seychelles (SC)
+- Waldorf Astoria Seychelles Platte Island -> seychelles (SC)
+
+DEBT (surfaced): 230 hotels platform-wide still sit on the zz-not-yet-listed placeholder (~40% of the 591 catalog). The placeholder is a holding pen; permanent residence means those hotels cannot route, display under a destination, or carry correct image paths. Fix requires per-hotel location research + match to real destination (seed missing ones like Moyo). Deliberate data-hygiene project, not a mechanical update. Best-in-world catalog target: zero hotels in 'not yet listed' limbo.
+
+---
+
+## GRAMMAR-LAW RENAME - aux tables (COMPLETE, zero-downtime, live-verified)
+
+Two Grammar-Law violations (Ref Guide v6 par.0) corrected. Both are element-detail tables keyed by node_id to travel_engagements; aux was dead vocab from the dropped aux-bookings table.
+
+- travel_aux_driver_details -> travel_engagement_driver_details
+- travel_engagement_aux_passengers -> travel_engagement_passengers
+
+Cutover (compatibility-view technique, zero-downtime):
+- Renamed tables + all constraints (pkey, node_id_fkey, person_id_fkey) to new stems; recreated RLS policies clean (travel_engagement_driver_details_admin, travel_engagement_passengers_admin); added table comments.
+- Created compat VIEWs at old names (security_invoker) so deployed code kept reading during cutover.
+- Repointed code: _shared/names.ts (guest-path bundler), travel-read-journey-admin, travel-write-journey, global-read-people, + 2 admin editor comments. Grep-empty verified.
+- Redeployed 4 EFs (the 3 _shared/names importers incl guest travel-get-engagement-programme, + global-read-people).
+- Guest render verified live (HRH AMF programme: passenger names show).
+- Dropped both compat views. Final verify: old names return zero rows (gone as table AND view).
+
+Data intact through rename: 2 drivers, 51 passengers.
+
+Note (bonus confirmation on this render): check-in/arrival three-field fix is live - HRH Berkeley now shows "Check-In: 15:00" (real standard) not the old "08:00" (which was the flight arrival, now correctly in expected_arrival_time).
