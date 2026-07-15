@@ -134,6 +134,29 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── Supplier contacts: resolve brief.contact_supplier_contact_ids via the
+    // SECURITY DEFINER projection (delivery-safe fields only, excludes archived).
+    // Same protected-read discipline as guest contacts above.
+    const supplierContacts: Array<{
+      id: string; name: string; role: string | null
+      email: string | null; phone: string | null; whatsapp: string | null
+    }> = []
+    const supplierIds = (brief?.contact_supplier_contact_ids ?? []) as string[]
+    if (supplierIds.length > 0) {
+      const { data: sc } = await db.rpc('get_engagement_supplier_contacts', {
+        p_contact_ids: supplierIds,
+      })
+      const sById: Record<string, any> = {}
+      for (const c of (sc ?? [])) sById[c.id] = c
+      for (const sid of supplierIds) {
+        const c = sById[sid]
+        if (!c) continue
+        supplierContacts.push({
+          id: c.id, name: c.name ?? 'Contact', role: c.role ?? null,
+          email: c.email ?? null, phone: c.phone ?? null, whatsapp: c.whatsapp ?? null,
+        })
+      }
+    }
     const todayUTC = new Date().toISOString().slice(0, 10)
 
     const fullBookings = bookings.map((b: any) => {
@@ -184,6 +207,7 @@ Deno.serve(async (req: Request) => {
       brief,
       house,
       contacts,
+      supplierContacts,
       guestDisplayName,
       destinationName: destinations[0]?.name ?? '',
       elements: await enrichElements(

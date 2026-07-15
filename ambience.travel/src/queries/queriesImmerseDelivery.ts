@@ -54,6 +54,7 @@ export async function fetchDeliveryBundle(urlId: string): Promise<DeliveryBundle
       brief:            confPayload.brief,
       house:            confPayload.house,
       contacts:         confPayload.contacts ?? [],
+      supplierContacts: confPayload.supplierContacts ?? [],
       guestDisplayName: confPayload.guestDisplayName ?? null,
       destinationName:  confPayload.destinationName,
       elements:      confPayload.elements ?? [],

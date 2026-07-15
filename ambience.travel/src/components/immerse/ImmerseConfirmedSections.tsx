@@ -1496,15 +1496,16 @@ export function EngagementBriefTab({ clientData }: {
 // house.display_name when no people are selected.
 
 export function ContactsTab({ clientData }: { clientData: DeliveryData }){
-  const { brief, house, contacts } = clientData
+  const { brief, house, contacts, supplierContacts } = clientData
 
-  function ContactCard({ name, role, email, phone }: { name: string; role: string; email?: string | null; phone?: string | null }) {
+  function ContactCard({ name, role, email, phone, whatsapp }: { name: string; role: string; email?: string | null; phone?: string | null; whatsapp?: string | null }) {
     return (
       <div style={{ padding: '20px 24px', borderRadius: 12, border: `0.5px solid ${c.lineStrong}`, background: '#fff', boxSizing: 'border-box' }}>
         <div style={{ fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 8, fontFamily: TYPE.sans }}>{role}</div>
         <div style={{ fontSize: 18, fontFamily: TYPE.serif, color: c.ink, marginBottom: 8 }}>{name}</div>
-        {phone && <a href={toTelHref(phone) ?? '#'} style={{ display: 'block', fontSize: 13, color: c.gold, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>{phone}</a>}
-        {email && <a href={`mailto:${email}`} style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, wordBreak: 'break-all' }}>{email}</a>}
+        {phone && <a href={toTelHref(phone) ?? '#'} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 13, color: c.gold, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>{phone}</a>}
+        {whatsapp && <a href={`https://wa.me/${whatsapp.replace(/[^0-9]/g, '')}`} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, marginBottom: 3 }}>WhatsApp {whatsapp}</a>}
+        {email && <a href={`mailto:${email}`} target='_blank' rel='noopener noreferrer' style={{ display: 'block', fontSize: 12, color: c.muted, textDecoration: 'none', fontFamily: TYPE.sans, wordBreak: 'break-all' }}>{email}</a>}
       </div>
     )
   }
@@ -1551,12 +1552,25 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
         </div>
       )}
 
+      {/* Supplier contacts (hotel concierge, DMC, etc.) — above guests */}
+      {(supplierContacts ?? []).length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
+            {supplierContacts.length === 1 ? 'On-Site Contact' : 'On-Site Contacts'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            {supplierContacts.map(sc => (
+              <ContactCard key={sc.id} name={sc.name} role={sc.role ?? 'Contact'} email={sc.email} phone={sc.phone} whatsapp={sc.whatsapp} />
+            ))}
+          </div>
+        </div>
+      )}
       {/* Guests */}
       <ContactBlock label={guests.length === 1 ? 'Guest' : 'Guests'} people={guests} />
 
       {/* Staff (only if any selected) */}
       <ContactBlock label={staff.length === 1 ? 'Staff' : 'Staff'} people={staff} />
-
+      
       {/* Fallback: no people selected -> house display name */}
       {!hasAny && house?.display_name && (
         <div>

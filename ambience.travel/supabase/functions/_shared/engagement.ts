@@ -95,7 +95,7 @@ export async function fetchEngagementCore(
         programme_notes, programme_show_images, welcome_letter,
         show_tab_confirmation, show_tab_programme, show_tab_brief,
         show_tab_contacts, show_tab_welcome,
-        contact_person_ids, contact_name_format,
+        contact_person_ids, contact_name_format, contact_supplier_contact_ids,
         created_at, updated_at
       `)
       .eq('journey_id', journeyId)

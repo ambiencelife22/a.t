@@ -50,6 +50,7 @@ export type EngagementContact = {
   role:  string | null
   email: string | null
   phone: string | null
+  whatsapp?: string | null
 }
 
 export type EngagementLinkContent = {
@@ -78,6 +79,7 @@ export type DeliveryData = {
   elements:      EngagementElement[]
   guides:           EngagementGuides
   contacts:         EngagementContact[]
+  supplierContacts: EngagementContact[]
   links:            EngagementLink[]
   urlId:            string
   guestDisplayName: string | null
