@@ -94,7 +94,7 @@ function deliveryHero(ctx: Extract<EngagementClientData, { stage: 'delivery' }>)
   const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
   const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
   const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
-  const guestName    = clientData.guestDisplayName ?? brief?.prepared_for ?? ''
+  const guestName    = clientData.guestDisplayName ?? ''
   const dateLabel    = formatDateRange(trip.start_date, trip.end_date) || undefined
   return (
     <ImmerseHero

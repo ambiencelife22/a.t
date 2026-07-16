@@ -1183,7 +1183,7 @@ export function EngagementBriefTab({ clientData }: {
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <BriefSection title='Overview'>
-        <BriefRow label='Guest'        value={house?.display_name ?? trip.destinations[0]?.name ?? ''} />
+        <BriefRow label='Guest'        value={clientData.guestDisplayName ?? ''} />
         <BriefRow label='Trip'         value={clientData.brief?.brief_title ?? trip.destinations[0]?.name ?? ''} />
         {trip.start_date      && <BriefRow label='Departure'    value={formatDate(trip.start_date)} />}
         {trip.end_date        && <BriefRow label='Return'       value={formatDate(trip.end_date)} />}

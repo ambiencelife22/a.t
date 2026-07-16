@@ -27,7 +27,7 @@
 //   is imported by confirmation + programme; the proposal EF reads engagements directly).
 
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { resolvePartyName, formatPersonName } from './names.ts'
+import { resolvePartyName, resolvePublicGuestLabel, formatPersonName } from './names.ts'
 import { NODE_FIELD_MAP } from './elementFields.ts'
 import { fetchHotelsByIds } from './bookings.ts'
 
@@ -102,7 +102,7 @@ export async function fetchEngagementCore(
       .maybeSingle(),
 
     db.from('a_houses')
-      .select('id, display_name, salutation_rule, travel_style_notes, avoid_notes, service_notes')
+      .select('id, display_name, public_name, salutation_rule, travel_style_notes, avoid_notes, service_notes')
       .eq('id', houseId)
       .single(),
 
@@ -141,7 +141,7 @@ export async function fetchEngagementCore(
   if (confirmedEngId) {
     const [engRes, displayRes] = await Promise.all([
       db.from('travel_engagements')
-        .select('hero_image_src, title')
+        .select('hero_image_src, title, guest_display_name_override, person_id')
         .eq('id', confirmedEngId)
         .maybeSingle(),
       db.from('travel_overlay_engagement_display')
@@ -153,7 +153,25 @@ export async function fetchEngagementCore(
     if (displayRes.error) console.error('[fetchEngagementCore] engagement_display fetch error:', JSON.stringify(displayRes.error))
     engHeroSrc         = (engRes.data?.hero_image_src as string | null) ?? null
     engTitle           = (engRes.data?.title          as string | null) ?? null
-    resolvedGuestLabel = (displayRes.data?.house_display_name as string | null) ?? null
+    const gOverride    = (engRes.data?.guest_display_name_override as string | null) ?? null
+    const personId     = (engRes.data?.person_id as string | null) ?? null
+    let personNick: string | null = null
+    let personFirst: string | null = null
+    if (personId) {
+      const { data: gp } = await db.rpc('get_people_display_names', { p_person_ids: [personId] })
+      const person = (gp ?? [])[0] as Record<string, unknown> | undefined
+      personNick  = (person?.nickname as string | null) ?? null
+      personFirst = (person?.first_name as string | null) ?? null
+    }
+    // Single source: the canonical HPGL resolver (override → label → person/house).
+    resolvedGuestLabel = resolvePublicGuestLabel(
+      gOverride,
+      (displayRes.data?.house_display_name as string | null) ?? null,
+      !!personId,
+      personNick,
+      personFirst,
+      (houseResult.data?.public_name as string | null) ?? null,
+    )
   }
 
   const brief = briefResult.data as Record<string, unknown> | null
