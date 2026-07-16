@@ -358,7 +358,19 @@ const auxSections = groupElementsBySection(elements)
                 display: 'flex', alignItems: 'flex-start', gap: 16,
                 boxSizing: 'border-box',
               }}>
-                <div style={{ fontSize: 22, color: c.gold, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
+                {aux.image_src ? (
+                  <div
+                    style={{
+                      width: 72, height: 72, flexShrink: 0, borderRadius: 8, overflow: 'hidden',
+                      background: c.surfaceSunken, position: 'relative', cursor: 'zoom-in',
+                    }}
+                    onClick={() => setLightbox({ src: aux.image_src!, alt: aux.name ?? '' })}
+                  >
+                    <img src={aux.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 22, color: c.gold, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.dining_status === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}

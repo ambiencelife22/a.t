@@ -47,16 +47,25 @@ export async function resolvejourneyIds(
     .single()
   if (engErr || !eng?.journey_id) return null
   const journeyId = eng.journey_id as string
-
-  const { data: booking, error: bookErr } = await db
+  // House resolves from the brief (authoritative single source) — a deliverable
+  // need not have a hotel booking (dining / reservation / experience engagements).
+  const { data: brief } = await db
+    .from('travel_journey_briefs')
+    .select('house_id')
+    .eq('journey_id', journeyId)
+    .not('house_id', 'is', null)
+    .limit(1)
+    .single()
+  if (brief?.house_id) return { journeyId, houseId: brief.house_id as string }
+  // Fallback: legacy journeys without a brief house_id — derive from a booking.
+  const { data: booking } = await db
     .from('travel_bookings')
     .select('house_id')
     .eq('journey_id', journeyId)
     .not('house_id', 'is', null)
     .limit(1)
     .single()
-  if (bookErr || !booking?.house_id) return null
-
+  if (!booking?.house_id) return null
   return { journeyId, houseId: booking.house_id as string }
 }
 
@@ -273,7 +282,7 @@ export async function fetchEngagementElements(
       .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by')
       .in('node_id', ids),
     db.from('travel_engagement_dining_detail')
-      .select('node_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
+      .select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
       .in('node_id', ids),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
@@ -448,20 +457,22 @@ export async function enrichElements(
     await attachPassengers(db, elements, partyLabel),
   ) as Array<Record<string, unknown>>
 
-  const venueIds = [...new Set(
-    withPax.map(a => a.dining_venue_id).filter(Boolean),
+  // Venue content resolves from guide canon via supplier_id — the single content
+  // home for any venue type (dining, experience, hotel). travel_venue_content unions
+  // the three guide tables; travel_suppliers carries no content (commerce only).
+  const supplierIds = [...new Set(
+    withPax.map(a => a.supplier_id).filter(Boolean),
   )] as string[]
-
-  const venueById: Record<string, Record<string, unknown>> = {}
-  if (venueIds.length > 0) {
-    const { data: venues } = await db.from('travel_dining_venues')
-      .select('id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
-      .in('id', venueIds)
-    for (const d of (venues ?? []) as Array<Record<string, unknown>>) venueById[d.id as string] = d
+  const venueBySupplier: Record<string, Record<string, unknown>> = {}
+  if (supplierIds.length > 0) {
+    const { data: venues } = await db.from('travel_venue_content')
+      .select('supplier_id, image_src, address, maps_url, phone, dress_code, children_policy, table_hold_note, booking_terms')
+      .in('supplier_id', supplierIds)
+    for (const d of (venues ?? []) as Array<Record<string, unknown>>) venueBySupplier[d.supplier_id as string] = d
   }
 
   return withPax.map(a => {
-    const v = a.dining_venue_id ? venueById[a.dining_venue_id as string] : null
+    const v = a.supplier_id ? venueBySupplier[a.supplier_id as string] : null
     return {
       ...a,
       image_src: (v?.image_src as string | null) ?? null,
@@ -497,7 +508,7 @@ export async function fetchEngagementElement(
 
   const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
-    db.from('travel_engagement_dining_detail').select('node_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_engagement_dining_detail').select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
     db.from('travel_airports').select('id, iata'),

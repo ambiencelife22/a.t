@@ -48,7 +48,7 @@ import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import type { TimelineItem } from '../../types/typesTimeline'
 
-const PROGRAMME_FN      = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-engagement-programme`
+const DELIVERY_FN       = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-engagement-delivery`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -536,7 +536,7 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(PROGRAMME_FN, {
+        const res = await fetch(DELIVERY_FN, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
           body:    JSON.stringify({ url_id: urlId }),

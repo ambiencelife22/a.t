@@ -1,31 +1,32 @@
 // queriesImmerseDelivery.ts — Data layer for the client-facing delivery surface.
 //
 // What it owns:
-//   - fetchDeliveryBundle: calls BOTH delivery Edge Functions
-//     (travel-get-engagement-confirmation + travel-get-engagement-programme) and merges
-//     them into the DeliveryBundle the delivery surface renders. Single entry
-//     point — the surface never fetches raw.
+//   - fetchDeliveryBundle: calls the SINGLE delivery Edge Function
+//     (travel-get-engagement-delivery) and returns the DeliveryBundle the delivery
+//     surface renders. One fetch, one bundle. The Confirmation / Programme / Brief /
+//     Contacts tabs are VIEWS over this one payload — no second EF, no client-side
+//     stitching of two payloads, no parallel timeline source.
 //
 // Security model:
-//   - Public endpoints — url_id is the access token
-//   - All DB reads happen server-side via service role in the Edge Functions
+//   - Public endpoint — url_id is the access token
+//   - All DB reads happen server-side via service role in the Edge Function
 //   - No sensitive financial or commission data is returned
 //
 // Types live in typesImmerseDelivery.ts. This file owns the fetch only.
 //
-// Last updated: S53M — fetchDeliveryData → fetchDeliveryBundle: absorbs the
-//   programme EF and the payload-assembly the delivery surface previously did
-//   inline; removes the raw fetch() from the component (layer-law compliance).
-// Prior: S48 — added apikey + Authorization headers required by the Supabase
-//   Edge Function gateway even for public endpoints.
+// Last updated: S53Q — consolidated the two delivery EFs (confirmation + programme)
+//   into one (travel-get-engagement-delivery). fetchDeliveryBundle now makes ONE
+//   request and reads one bundle; the former two-payload merge (and its divergence)
+//   is gone. entries + days + fullBookings + elements all come from the single source.
+// Prior: S53M — absorbed the programme EF + inline payload-assembly (layer-law).
+// Prior: S48 — apikey + Authorization headers required by the Supabase EF gateway.
 
 import type { DeliveryData, DeliveryBundle } from '../types/typesImmerseDelivery'
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-const CONFIRMATION_FN = `${SUPABASE_URL}/functions/v1/travel-get-engagement-confirmation`
-const PROGRAMME_FN    = `${SUPABASE_URL}/functions/v1/travel-get-engagement-programme`
+const DELIVERY_FN = `${SUPABASE_URL}/functions/v1/travel-get-engagement-delivery`
 
 const EF_HEADERS = {
   'Content-Type':  'application/json',
@@ -35,34 +36,33 @@ const EF_HEADERS = {
 
 export async function fetchDeliveryBundle(urlId: string): Promise<DeliveryBundle | null> {
   try {
-    const [confRes, progRes] = await Promise.all([
-      fetch(CONFIRMATION_FN, { method: 'POST', headers: EF_HEADERS, body: JSON.stringify({ url_id: urlId }) }),
-      fetch(PROGRAMME_FN,    { method: 'POST', headers: EF_HEADERS, body: JSON.stringify({ url_id: urlId }) }),
-    ])
+    const res = await fetch(DELIVERY_FN, {
+      method: 'POST',
+      headers: EF_HEADERS,
+      body: JSON.stringify({ url_id: urlId }),
+    })
 
-    if (!confRes.ok) {
-      console.error('get-trip-confirmation failed:', confRes.status, await confRes.text())
+    if (!res.ok) {
+      console.error('travel-get-engagement-delivery failed:', res.status, await res.text())
       return null
     }
-    const confPayload = await confRes.json()
-    if (confPayload.error || !confPayload.journey) return null
-
-    const progPayload = progRes.ok ? await progRes.json() : null
+    const payload = await res.json()
+    if (payload.error || !payload.journey) return null
 
     const clientData: DeliveryData = {
-      journey:          confPayload.journey,
-      brief:            confPayload.brief,
-      house:            confPayload.house,
-      contacts:         confPayload.contacts ?? [],
-      supplierContacts: confPayload.supplierContacts ?? [],
-      guestDisplayName: confPayload.guestDisplayName ?? null,
-      destinationName:  confPayload.destinationName,
-      elements:      confPayload.elements ?? [],
+      journey:          payload.journey,
+      brief:            payload.brief,
+      house:            payload.house,
+      contacts:         payload.contacts ?? [],
+      supplierContacts: payload.supplierContacts ?? [],
+      guestDisplayName: payload.guestDisplayName ?? null,
+      destinationName:  payload.destinationName,
+      elements:         payload.elements ?? [],
       guides:           { hasDining: false, hasExperiences: false, destinationSlug: null },
-      links:            confPayload.links ?? [],
+      links:            payload.links ?? [],
       urlId,
-      days:    progPayload?.days ?? [],
-      entries: progPayload?.entries ?? [],
+      days:             payload.days ?? [],
+      entries:          payload.entries ?? [],
     } as DeliveryData
     return clientData
   } catch (err) {

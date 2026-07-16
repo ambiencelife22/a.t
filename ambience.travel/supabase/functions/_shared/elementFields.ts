@@ -31,7 +31,7 @@ export const TRANSPORT_FIELDS = [
 
 // travel_engagement_dining_detail columns. Flat name == column name.
 export const DINING_FIELDS = [
-  'dining_venue_id', 'guest_name', 'guest_count', 'dining_status', 'contact_name',
+  'supplier_id', 'dining_venue_id', 'guest_name', 'guest_count', 'dining_status', 'contact_name',
   'contact_phone', 'cancellation_note', 'booking_terms_override', 'notes', 'booked_by',
 ] as const
 
@@ -50,6 +50,7 @@ export const DROPPED_FIELDS = ['seat_type'] as const
 // Detail table for an element type. null = bare node (no detail row).
 export function detailTableForType(slug: string | null): string | null {
   if (slug === 'flight') return 'travel_engagement_transport_detail'
-  if (slug === 'dining') return 'travel_engagement_dining_detail'
+  // dining + reservation share one detail shape: a canonical supplier + party/time/terms.
+  if (slug === 'dining' || slug === 'reservation') return 'travel_engagement_dining_detail'
   return null
 }
