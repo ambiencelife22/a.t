@@ -153,12 +153,12 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     })
 
     const diningDetail: string[] = []
-    if (isDining && it.venue) {
+    if (it.venue || it.guest_name || it.guest_count) {
       const v = it.venue
       const guestLine = [it.guest_name, it.guest_count ? `${it.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
       if (guestLine) diningDetail.push(guestLine)
-      if (v.address) diningDetail.push(v.address)
-      const contact = [v.phone, v.dress_code].filter(Boolean).join('  \u00b7  ')
+      if (v?.address) diningDetail.push(v.address)
+      const contact = [v?.phone, v?.dress_code].filter(Boolean).join('  \u00b7  ')
       if (contact) diningDetail.push(contact)
     }
 

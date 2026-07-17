@@ -436,7 +436,7 @@ const auxSections = groupElementsBySection(elements)
                       {aux.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
                     </div>
                   )}
-                  {isDiningElement(aux.element_type) && (() => {
+                  {(aux.venue || aux.guest_name || aux.guest_count) && (() => {
                     const v = aux.venue
                     const guestLine = [aux.guest_name, aux.guest_count ? `${aux.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const rows: { label: string; value: string }[] = []
@@ -841,8 +841,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                     )
                   }
 
-                  // Dining — essentials inline + pill + collapsible reservation details.
-                  if (item.bookingType === 'dining') {
+                  // Venue reservation (dining, reservation, or any shape with a venue/party)
+                  // — essentials inline + pill + collapsible reservation details.
+                  if (item.venue || item.guestName || item.guestCount) {
                     const pill = diningPillModel({
                       showCancellation: item.showCancellation,
                       diningStatus:     item.diningStatus,
@@ -884,7 +885,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           <DiningPillBox model={pill} />
                           {hasDetails && (
                             <details style={{ marginTop: 10 }}>
-                              <summary style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, cursor: 'pointer', listStyle: 'none' }}>Reservation details</summary>
+                              <summary style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, cursor: 'pointer', listStyle: 'none' }}>Venue Details</summary>
                               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {v?.address && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

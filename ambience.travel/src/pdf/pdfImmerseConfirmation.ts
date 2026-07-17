@@ -581,7 +581,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         y += drawGreeterCard(doc, aux, y) + 4
         continue
       }
-      if (isDiningElement(aux.element_type)) {
+      if (aux.venue || aux.guest_name || aux.guest_count) {
         const v = aux.venue
         const rowN = [v?.address, v?.phone, v?.dress_code, v?.children_policy, v?.table_hold_note].filter(Boolean).length
         const gl = (aux.guest_name || aux.guest_count) ? 1 : 0
