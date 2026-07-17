@@ -315,7 +315,6 @@ export interface AdminExperienceVenue {
   id:                    string
   global_destination_id: string
   name:                  string
-  experience_category:   string | null
   kicker:                string | null
   tagline:               string | null
   body:                  string | null

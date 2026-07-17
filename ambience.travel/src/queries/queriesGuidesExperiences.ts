@@ -74,17 +74,20 @@ export async function getExperienceVenuesByDestination(
       kicker, tagline, body, bullets_heading, bullets,
       address, maps_url,
       image_src, image_alt, image_credit, image_credit_url, image_license,
-      sort_order, experience_category,
+      sort_order,
+      experience_category:travel_experience_categories(label),
       public_preview_rank
     `)
     .eq('global_destination_id', dest.id)
     .eq('is_active', true)
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
+    .order('name', { ascending: true })
 
   if (error) {
     throw new Error(`Failed to fetch experiences: ${error.message}`)
   }
 
-  return (data ?? []) as ExperienceVenue[]
+  return (data ?? []).map((r: any) => ({
+    ...r,
+    experience_category: r.experience_category?.label ?? null,
+  })) as ExperienceVenue[]
 }

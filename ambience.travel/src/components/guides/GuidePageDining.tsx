@@ -35,6 +35,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../../providers/ToastContext'
+
 import {
   getDiningVenuesByDestination,
   type DiningVenue,
@@ -62,6 +63,7 @@ import {
 } from '../../types/typesGuides'
 import {
   filterVisibleItems,
+  sortByName,
   shouldShowAdvisorExtras,
   shouldShowEditorialPrompt,
 } from '../../utils/utilsGuideGating'
@@ -236,9 +238,9 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
 
     const visible = filterVisibleItems(venues, hasFullAccess)
 
-    const primary:       DiningVenue[] = []
-    const supplementary: DiningVenue[] = []
-    const closed:        DiningVenue[] = []
+    let primary:       DiningVenue[] = []
+    let supplementary: DiningVenue[] = []
+    let closed:        DiningVenue[] = []
 
     for (const v of visible) {
       if (!passesFilters(v)) continue
@@ -257,10 +259,9 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
       primary.push(v)
     }
 
-    const byName = (a: DiningVenue, b: DiningVenue) => a.name.localeCompare(b.name)
-    primary.sort(byName)
-    supplementary.sort(byName)
-    closed.sort(byName)
+    primary = sortByName(primary)
+    supplementary = sortByName(supplementary)
+    closed = sortByName(closed)
 
     return {
       primaryVenues:        primary,

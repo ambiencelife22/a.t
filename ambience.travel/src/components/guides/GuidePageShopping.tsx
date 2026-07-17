@@ -34,6 +34,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '../../providers/ToastContext'
+
 import {
   fetchShoppingForDestination,
   type Shop,
@@ -61,6 +62,7 @@ import {
   filterVisibleItems,
   shouldShowAdvisorExtras,
   shouldShowEditorialPrompt,
+sortByName,
 } from '../../utils/utilsGuideGating'
 import {
   resolveGuideYear,
@@ -81,6 +83,7 @@ import {
   emptyStateStyle,
   emptyStateTextStyle,
 } from '../../styles/stylesGuidePage'
+
 
 const VARIANT = 'shopping' as const
 
@@ -173,7 +176,7 @@ export default function GuidePageShopping({
   }, [shops])
 
   const visibleShops = useMemo(() => {
-    const base = filterVisibleItems(shops, hasFullAccess)
+    const base = sortByName(filterVisibleItems(shops, hasFullAccess))
     if (!activeShopType) return base
     return base.filter(s => s.shop_type === activeShopType)
   }, [shops, hasFullAccess, activeShopType])

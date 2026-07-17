@@ -65,6 +65,7 @@ import {
   filterVisibleItems,
   shouldShowAdvisorExtras,
   shouldShowEditorialPrompt,
+sortByName,
 } from '../../utils/utilsGuideGating'
 import {
   resolveGuideYear,
@@ -177,7 +178,7 @@ export default function GuidePageExperiences({
   }, [venues])
 
   const visibleVenues = useMemo(() => {
-    const base = filterVisibleItems(venues, hasFullAccess)
+    const base = sortByName(filterVisibleItems(venues, hasFullAccess))
     if (!activeCategory) return base
     return base.filter(v => v.experience_category === activeCategory)
   }, [venues, hasFullAccess, activeCategory])

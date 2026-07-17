@@ -67,6 +67,7 @@ import {
   filterVisibleItems,
   shouldShowAdvisorExtras,
   shouldShowEditorialPrompt,
+sortByName,
 } from '../../utils/utilsGuideGating'
 import {
   resolveGuideYear,
@@ -201,7 +202,7 @@ export default function GuidePageHotels({
   )
 
   const filteredHotels = useMemo(() => {
-    const base = filterVisibleItems(hotels, hasFullAccess)
+    const base = sortByName(filterVisibleItems(hotels, hasFullAccess))
     return base.filter(h => {
       if (filterState.minStars && (h.stars === null || h.stars < filterState.minStars)) return false
       if (filterState.forbesOnly && h.forbes_rating === null) return false

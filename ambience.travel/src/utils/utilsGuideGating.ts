@@ -80,7 +80,15 @@ export function filterVisibleItems<T extends Gateable>(
  * Full body when either: the viewer has full access, or the item is
  * publicly previewable.
  */
-export function cardBodyMode(item: Gateable, hasFullAccess: boolean): CardBodyMode {
+// Canonical guide venue sort: alphabetical by name, accent-aware (localeCompare
+// handles accents like e-acute and i-diaeresis). The ONE sort authority for every
+// guide venue list - dining, experiences, shopping, hotels. public_preview_rank is
+// gating only and never influences order. Never re-implement inline.
+export function sortByName<T extends { name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export function cardBodyMode(item: Gateable, hasFullAccess: boolean): CardBodyMode{
   if (hasFullAccess)               return 'full'
   if (isPubliclyPreviewable(item)) return 'full'
   return 'teaser'
