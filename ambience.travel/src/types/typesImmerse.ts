@@ -764,6 +764,14 @@ export type EngagementElement = {
   arrive_airport:      string | null
   cabin_class:         string | null
   aircraft_type:       string | null
+  tail_number:         string | null   // S53Q — private aviation: aircraft registration
+  depart_fbo_name:     string | null   // S53Q — FBO (fixed-base operator) per leg
+  depart_fbo_address:  string | null
+  depart_fbo_phone:    string | null
+  arrive_fbo_name:     string | null
+  arrive_fbo_address:  string | null
+  arrive_fbo_phone:    string | null
+  crew?:               { name: string; role: string }[]   // S53Q — private aviation crew
   dining_venue_id?:    string | null
   image_src?:          string | null
   passengers?:         ImmerseElementPassenger[]

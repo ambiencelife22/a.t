@@ -376,9 +376,40 @@ const auxSections = groupElementsBySection(elements)
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
                   {timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>}
-                  {[aux.cabin_class, aux.aircraft_type].filter(Boolean).length > 0 && (
+                  {[aux.cabin_class, aux.aircraft_type, aux.tail_number].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>
-                      {[aux.cabin_class, aux.aircraft_type].filter(Boolean).join(' \u00b7 ')}
+                      {[aux.cabin_class, aux.aircraft_type, aux.tail_number].filter(Boolean).join(' \u00b7 ')}
+                    </div>
+                  )}
+                  {aux.crew && aux.crew.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 4 }}>Crew</div>
+                      {aux.crew.map((m, i) => (
+                        <div key={i} style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink, marginTop: i ? 2 : 0 }}>
+                          <span style={{ fontWeight: 600 }}>{m.name}</span>
+                          <span style={{ color: c.muted }}>{`  \u00b7  ${m.role}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(aux.depart_fbo_name || aux.arrive_fbo_name) && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {aux.depart_fbo_name && (
+                        <div>
+                          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 2 }}>Departure FBO</div>
+                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{aux.depart_fbo_name}</div>
+                          {aux.depart_fbo_address && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>{aux.depart_fbo_address}</div>}
+                          {aux.depart_fbo_phone && <a href={toTelHref(aux.depart_fbo_phone) ?? '#'} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 1, display: 'inline-block' }}>{aux.depart_fbo_phone}</a>}
+                        </div>
+                      )}
+                      {aux.arrive_fbo_name && (
+                        <div>
+                          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 2 }}>Arrival FBO</div>
+                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{aux.arrive_fbo_name}</div>
+                          {aux.arrive_fbo_address && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>{aux.arrive_fbo_address}</div>}
+                          {aux.arrive_fbo_phone && <a href={toTelHref(aux.arrive_fbo_phone) ?? '#'} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 1, display: 'inline-block' }}>{aux.arrive_fbo_phone}</a>}
+                        </div>
+                      )}
                     </div>
                   )}
                   {ownArr && (

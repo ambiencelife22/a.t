@@ -279,7 +279,7 @@ export async function fetchEngagementElements(
   const ids = nodeRows.map(n => n.id as string)
   const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail')
-      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by')
+      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone')
       .in('node_id', ids),
     db.from('travel_engagement_dining_detail')
       .select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
@@ -471,10 +471,23 @@ export async function enrichElements(
     for (const d of (venues ?? []) as Array<Record<string, unknown>>) venueBySupplier[d.supplier_id as string] = d
   }
 
+  // Crew (private aviation) — per flight element, ordered by sort_order.
+  const nodeIds = withPax.map(a => a.id).filter(Boolean) as string[]
+  const crewByNode: Record<string, Array<{ name: string; role: string }>> = {}
+  if (nodeIds.length > 0) {
+    const { data: crew } = await db.from('travel_engagement_crew')
+      .select('node_id, name, role, sort_order')
+      .in('node_id', nodeIds)
+      .order('sort_order', { ascending: true })
+    for (const c of (crew ?? []) as Array<Record<string, unknown>>) {
+      (crewByNode[c.node_id as string] ??= []).push({ name: c.name as string, role: c.role as string })
+    }
+  }
   return withPax.map(a => {
     const v = a.supplier_id ? venueBySupplier[a.supplier_id as string] : null
     return {
       ...a,
+      crew: crewByNode[a.id as string] ?? [],
       image_src: (v?.image_src as string | null) ?? null,
       venue: v ? {
         address:         (v.address as string | null) ?? null,

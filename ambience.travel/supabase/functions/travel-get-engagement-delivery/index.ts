@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
           id, journey_id, house_id, name, status, confirmation_number,
           start_date, check_in_date, start_time, check_in_note, check_out_note,
           early_checkin_approved_time, late_checkout_approved_time, expected_arrival_time,
-          end_date, nights, commissionable_rate, taxes_and_fees, inclusions,
+          end_date, nights, commissionable_rate, total_rate, taxes_and_fees, cost_visible_to_guest, inclusions,
           inclusions_override, cancellation_policy, party_composition, brief_show,
           brief_image_src, booked_by, accom_hotel_id, sort_order,
           deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override,
@@ -290,7 +290,12 @@ Deno.serve(async (req: Request) => {
         expected_arrival_time: b.expected_arrival_time ?? null,
         _rooms:           enrichedRooms,
         _invoices:        invoicesByBooking[b.id as string] ?? [],
-        engagement_id:    null, total_rate: null, currency: null,
+        engagement_id:    null, currency: null,
+        // Client price (total_rate + commissionable_rate) is exposed to the guest
+        // ONLY when the designer opts in per booking (cost_visible_to_guest).
+        // Commission is never guest-visible regardless. Default false.
+        total_rate:          b.cost_visible_to_guest ? (b.total_rate ?? null) : null,
+        commissionable_rate: b.cost_visible_to_guest ? (b.commissionable_rate ?? null) : null,
         price:            null, deposit_amount: null, deposit_due_date: null,
         balance_amount:   null, balance_due_date: null,
         payment_exception: derivePaymentException(

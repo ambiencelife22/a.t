@@ -31,7 +31,7 @@
 // Prior: S44 — initial ship.
 
 import { supabase } from '../lib/supabase'
-import { computeEngagementStage, type EngagementStage, type BookingInvoice } from '../types/typesImmerse'
+import { computeEngagementStage, type EngagementStage, type EngagementStatusSlug, type BookingInvoice } from '../types/typesImmerse'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -185,6 +185,14 @@ export type AdminEngagementElement = {
   arrive_airport:      string | null
   cabin_class:         string | null
   aircraft_type:       string | null
+  tail_number:         string | null   // S53Q — private aviation: aircraft registration
+  depart_fbo_name:     string | null   // S53Q — FBO (fixed-base operator) per leg
+  depart_fbo_address:  string | null
+  depart_fbo_phone:    string | null
+  arrive_fbo_name:     string | null
+  arrive_fbo_address:  string | null
+  arrive_fbo_phone:    string | null
+  crew?:               { name: string; role: string }[]   // S53Q — private aviation crew
   dining_venue_id?:    string | null
   image_src?:          string | null
   passengers?:         ElementPassenger[]
@@ -346,7 +354,7 @@ export type EngagementDossierData = {
 
 // ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
-type TripRow     = { id: string; journey_code: string; derived_status_slug: string | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
+type TripRow     = { id: string; journey_code: string; derived_status_slug: EngagementStatusSlug | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
 type BookingRow  = Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
 type HotelEntry  = { name: string; hero_image_src: string | null }
 type BriefRow    = EngagementBrief
@@ -440,7 +448,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
     id:                   t.id,
     journey_code:            t.journey_code,
     stage:                t.derived_status_slug
-                            ? computeEngagementStage({ statusSlug: t.derived_status_slug as any })
+                            ? computeEngagementStage({ statusSlug: t.derived_status_slug })
                             : null,
     start_date:           t.start_date,
     end_date:             t.end_date,
