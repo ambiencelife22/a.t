@@ -279,7 +279,7 @@ export async function fetchEngagementElements(
   const ids = nodeRows.map(n => n.id as string)
   const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail')
-      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone')
+      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, flight_time, distance_nm, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone')
       .in('node_id', ids),
     db.from('travel_engagement_dining_detail')
       .select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')

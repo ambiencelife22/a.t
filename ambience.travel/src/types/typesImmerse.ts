@@ -742,6 +742,8 @@ export type EngagementElement = {
   guest_count:         number | null   // S53F — party size / covers
   contact_name:        string | null   // S53F — service-contact (e.g. greeter)
   contact_phone:       string | null   // S53F — service-contact phone
+  flight_time?:        string | null   // S53Q — time in air, operator-stated
+  distance_nm?:        number | null   // S53Q — nautical miles
   dining_status:                string | null
   cancellation_penalty_applied: boolean | null
   cancellation_note:            string | null
@@ -764,13 +766,13 @@ export type EngagementElement = {
   arrive_airport:      string | null
   cabin_class:         string | null
   aircraft_type:       string | null
-  tail_number:         string | null   // S53Q — private aviation: aircraft registration
-  depart_fbo_name:     string | null   // S53Q — FBO (fixed-base operator) per leg
-  depart_fbo_address:  string | null
-  depart_fbo_phone:    string | null
-  arrive_fbo_name:     string | null
-  arrive_fbo_address:  string | null
-  arrive_fbo_phone:    string | null
+  tail_number?:        string | null   // S53Q — private aviation: aircraft registration
+  depart_fbo_name?:    string | null   // S53Q — FBO (fixed-base operator) per leg
+  depart_fbo_address?: string | null
+  depart_fbo_phone?:   string | null
+  arrive_fbo_name?:    string | null
+  arrive_fbo_address?: string | null
+  arrive_fbo_phone?:   string | null
   crew?:               { name: string; role: string }[]   // S53Q — private aviation crew
   dining_venue_id?:    string | null
   image_src?:          string | null

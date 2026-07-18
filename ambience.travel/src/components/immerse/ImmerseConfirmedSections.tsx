@@ -376,9 +376,9 @@ const auxSections = groupElementsBySection(elements)
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
                   {timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>}
-                  {[aux.cabin_class, aux.aircraft_type, aux.tail_number].filter(Boolean).length > 0 && (
+                  {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>
-                      {[aux.cabin_class, aux.aircraft_type, aux.tail_number].filter(Boolean).join(' \u00b7 ')}
+                      {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).join(' \u00b7 ')}
                     </div>
                   )}
                   {aux.crew && aux.crew.length > 0 && (
