@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 // S30D: /img dev proxy mirrors the Vercel rewrite in vercel.json so dev and
 // prod share the same image-URL surface. rewriteImageUrl in src/lib/imageUrl.ts
@@ -8,6 +9,11 @@ import react from '@vitejs/plugin-react'
 // them via Vercel edge-side rewrite.
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@shared': path.resolve(__dirname, 'supabase/functions/_shared'),
+    },
+  },
   server: {
     proxy: {
       '/img': {

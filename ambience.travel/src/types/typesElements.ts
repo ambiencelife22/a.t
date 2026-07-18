@@ -56,7 +56,7 @@ export interface ElementTypeMeta {
 // within-section item order and section order (min sort_order in a section wins).
 const ELEMENT_TYPE_META: Record<string, ElementTypeMeta> = {
   acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sort_order: 1,  section: 'acquisition' },
-  airport_transfer: { label: 'AIRPORT TRANSFERS', icon: '\uD83D\uDE97', sort_order: 2,  section: 'airport' },
+  airport_transfer: { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sort_order: 5,  section: 'ground_car' },
   meet_greet:       { label: 'AIRPORT MEET & GREET', icon: '\uD83E\uDEAA', sort_order: 2.5, section: 'airport' },
   arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sort_order: 3,  section: 'arrangement' },
   car_rental:       { label: 'CAR RENTAL',        icon: '\uD83D\uDE99', sort_order: 4,  section: 'car_rental' },

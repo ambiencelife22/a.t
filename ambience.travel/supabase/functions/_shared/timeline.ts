@@ -30,71 +30,8 @@
 
 // ── Public item shape ─────────────────────────────────────────────────────────
 
-export type TimelineRoom = {
-  id:                  string
-  guest:               string | null
-  additional_guests:   string[]
-  room_name:           string | null
-  party_composition:   string | null
-  confirmation_number: string | null
-  notes:               string | null
-  bedding_type:        string | null
-}
-
-export type TimelinePassenger = {
-  id:                       string
-  passenger_label:          string | null
-  resolved_passenger_label: string | null
-  confirmation_number:      string | null
-  seat_numbers:             string | null
-  sort_order:               number
-}
-
-export type TimelineItem = {
-  id:                  string
-  kind:                'hotel_checkin' | 'hotel_checkout' | 'aux' | 'entry'
-  entry_date:          string
-  start_time:          string | null
-  end_time:            string | null
-  category:            string | null
-  categoryLabel:       string | null
-  title:               string
-  subtitle:            string | null
-  notes:               string | null
-  confirmation_number: string | null
-  booked_by:           string | null
-  image_src:           string | null
-  guest_label:         string | null
-  status:              string | null
-  check_in_note:                string | null
-  check_out_note:               string | null
-  standard_checkin_time:        string | null
-  approved_checkin_time:        string | null
-  expected_arrival_time:        string | null
-  contact_name:                 string | null
-  contact_phone:                string | null
-  guest_name:                   string | null
-  guest_count:                  number | null
-  dining_status:                string | null
-  cancellation_penalty_applied: boolean | null
-  cancellation_note:            string | null
-  show_cancellation:            boolean | null
-  schedule_status:              string | null
-  venue: {
-    address:         string | null
-    maps_url:        string | null
-    phone:           string | null
-    dress_code:      string | null
-    children_policy: string | null
-    table_hold_note: string | null
-    booking_terms:   string | null
-  } | null
-  rooms:               TimelineRoom[]
-  passengers:          TimelinePassenger[]
-  source_booking_id:   string | null
-  source_aux_id:       string | null
-  brief_show:          boolean
-}
+import type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem } from './timelineTypes.ts'
+export type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem }
 
 // ── Input shapes (loose — these are already-fetched DB rows) ───────────────────
 
@@ -294,7 +231,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
         show_cancellation: null, schedule_status: null, venue: null,
-        rooms, passengers: [], source_booking_id: b.id as string, source_aux_id: null,
+        rooms, passengers: [], driver_details: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
     }
@@ -329,7 +266,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
         show_cancellation: null, schedule_status: null, venue: null,
-        rooms: [], passengers: [], source_booking_id: b.id as string, source_aux_id: null,
+        rooms: [], passengers: [], driver_details: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
     }
@@ -361,6 +298,18 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
         sort_order:               (p.sort_order as number) ?? 0,
       }))
 
+    const driver_details: TimelineDriverDetail[] = ((a.driver_details as Record<string, unknown>[] | undefined) ?? [])
+      .slice()
+      .sort((x, y) => ((x.sort_order as number) ?? 0) - ((y.sort_order as number) ?? 0))
+      .map(d => ({
+        id:           d.id as string,
+        driver_name:  (d.driver_name as string | null) ?? null,
+        driver_phone: (d.driver_phone as string | null) ?? null,
+        car_model:    (d.car_model as string | null) ?? null,
+        plate:        (d.plate as string | null) ?? null,
+        vehicle_role: (d.vehicle_role as string | null) ?? null,
+        sort_order:   (d.sort_order as number) ?? 0,
+      }))
     out.push({
       id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
       start_time: a.start_time ?? null, end_time: a.end_time ?? null,
@@ -382,7 +331,7 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       show_cancellation: (a.show_cancellation as boolean | null) ?? null,
       schedule_status: (a.schedule_status as string | null) ?? null,
       venue: (a.venue as TimelineItem['venue']) ?? null,
-      rooms: [], passengers,
+      rooms: [], passengers, driver_details,
       source_booking_id: null, source_aux_id: a.id as string, brief_show: true,
     })
   }
@@ -414,7 +363,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       guest_name: null, guest_count: null, dining_status: null,
       cancellation_penalty_applied: null, cancellation_note: null,
       show_cancellation: null, schedule_status: null, venue: null,
-      rooms: [], passengers: [],
+      rooms: [], passengers: [], driver_details: [],
       source_booking_id: null,
       source_aux_id: (e.source_aux_id as string | null) ?? null,
       brief_show: true,
