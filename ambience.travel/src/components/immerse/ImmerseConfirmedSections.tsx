@@ -561,6 +561,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     cancellationPenaltyApplied: boolean | null
     cancellationNote: string | null
     showCancellation: boolean | null
+    scheduleStatus: string | null
     venue: { address: string | null; maps_url: string | null; phone: string | null; dress_code: string | null; children_policy: string | null; table_hold_note: string | null; booking_terms: string | null } | null
     flightOrigin:      string | null
     flightDestination: string | null
@@ -620,6 +621,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             cancellationPenaltyApplied: e.cancellation_penalty_applied ?? null,
             cancellationNote:    e.cancellation_note ?? null,
             showCancellation:    e.show_cancellation ?? null,
+            scheduleStatus:      e.schedule_status ?? null,
             venue:               e.venue ?? null,
             flightOrigin,
             flightDestination,
@@ -1015,6 +1017,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           {item.title}
                         </div>
 
+                        {item.scheduleStatus === 'tentative' && (
+                          <div style={{ marginTop: 4 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
+                        )}
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
