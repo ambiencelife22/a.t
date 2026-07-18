@@ -32,6 +32,8 @@
 
 import { supabase } from '../lib/supabase'
 import { computeEngagementStage, type EngagementStage, type EngagementStatusSlug, type BookingInvoice } from '../types/typesImmerse'
+import type { ElementBase, ElementPassenger } from '../types/typesElements'
+export type { ElementPassenger } from '../types/typesElements'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -142,75 +144,9 @@ export type JourneyDayEntry = {
 export type JourneyDayPatch      = Partial<Omit<JourneyDay,      'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 export type JourneyDayEntryPatch = Partial<Omit<JourneyDayEntry, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
 
-export type AdminEngagementElement = {
-  id:                  string
-  journey_id:             string
-  engagement_type_id:  string | null
-  booking_type:        string | null  // slug from travel_engagement_types — canonical type field
-  element_type:        string | null  // slug from travel_engagement_types — the honest name (booking_type retiring)
-  element_type_label:  string | null  // display label from travel_engagement_types
-  name:                string | null
-  start_date:          string | null
-  start_time:          string | null
-  end_date:            string | null
-  end_time:            string | null
-  origin:              string | null
-  destination:         string | null
-  notes:               string | null
-  confirmation_number: string | null
-  booked_by:           string | null
-  guest_name:          string | null   // S53F — reservation-holder name (free text)
-  guest_count:         number | null   // S53F — party size / covers
-  contact_name:        string | null   // S53F — service-contact (e.g. greeter)
-  contact_phone:       string | null   // S53F — service-contact phone
-  dining_status:                string | null   // S53F — active | cancelled
-  cancellation_penalty_applied: boolean | null  // S53F — cancelled WITH penalty (red pill)
-  cancellation_note:            string | null   // S53F — penalty/cancellation note
-  show_cancellation:            boolean | null  // S53F — display toggle
-  venue?: {                                     // S53F — EF-composed canonical venue facts
-    address:         string | null
-    maps_url:        string | null
-    phone:           string | null
-    dress_code:      string | null
-    children_policy: string | null
-    table_hold_note: string | null
-    booking_terms:   string | null
-  } | null
-  brief_show:          boolean
-  sort_order:          number
-  supplier_id: string | null
-  airline_name:        string | null
-  flight_number:       string | null
-  depart_airport:      string | null
-  arrive_airport:      string | null
-  cabin_class:         string | null
-  aircraft_type:       string | null
-  tail_number:         string | null   // S53Q — private aviation: aircraft registration
-  depart_fbo_name:     string | null   // S53Q — FBO (fixed-base operator) per leg
-  depart_fbo_address:  string | null
-  depart_fbo_phone:    string | null
-  arrive_fbo_name:     string | null
-  arrive_fbo_address:  string | null
-  arrive_fbo_phone:    string | null
-  crew?:               { name: string; role: string }[]   // S53Q — private aviation crew
-  dining_venue_id?:    string | null
-  image_src?:          string | null
-  passengers?:         ElementPassenger[]
-  driver_details?:     ElementDriverDetail[]
-  created_at:          string
-  updated_at:          string
-}
-
-export type ElementPassenger = {
-  id:                       string
-  aux_booking_id:           string
-  person_id:                string | null
-  passenger_label:          string | null
-  confirmation_number:      string | null
-  seat_numbers:             string | null
-  sort_order:               number
-  // EF-resolved (S53G single-source): person → override → prepared_for
-  resolved_passenger_label?: string | null
+export type AdminEngagementElement = ElementBase & {
+  booking_type:    string | null                  // admin-only: canonical type slug
+  driver_details?: ElementDriverDetail[]          // admin driver type — includes `company`
 }
 
 export type AdminEngagementElementPatch = Partial<Omit<AdminEngagementElement, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>

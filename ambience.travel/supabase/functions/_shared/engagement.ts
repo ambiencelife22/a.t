@@ -268,7 +268,7 @@ export async function fetchEngagementElements(
 
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('parent_engagement_id', parentEngId)
     .eq('iteration_label', 'element')
     .order('activity_date', { ascending: true, nullsFirst: false })
@@ -513,7 +513,7 @@ export async function fetchEngagementElement(
 ): Promise<Record<string, unknown> | null> {
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('id', nodeId)
     .maybeSingle()
   if (!nodes) return null

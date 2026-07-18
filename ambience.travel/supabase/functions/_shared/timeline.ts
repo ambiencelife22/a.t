@@ -79,6 +79,7 @@ export type TimelineItem = {
   cancellation_penalty_applied: boolean | null
   cancellation_note:            string | null
   show_cancellation:            boolean | null
+  schedule_status:              string | null
   venue: {
     address:         string | null
     maps_url:        string | null
@@ -292,7 +293,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
-        show_cancellation: null, venue: null,
+        show_cancellation: null, schedule_status: null, venue: null,
         rooms, passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -327,7 +328,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
-        show_cancellation: null, venue: null,
+        show_cancellation: null, schedule_status: null, venue: null,
         rooms: [], passengers: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -379,6 +380,7 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       cancellation_penalty_applied: (a.cancellation_penalty_applied as boolean | null) ?? null,
       cancellation_note: (a.cancellation_note as string | null) ?? null,
       show_cancellation: (a.show_cancellation as boolean | null) ?? null,
+      schedule_status: (a.schedule_status as string | null) ?? null,
       venue: (a.venue as TimelineItem['venue']) ?? null,
       rooms: [], passengers,
       source_booking_id: null, source_aux_id: a.id as string, brief_show: true,
@@ -411,7 +413,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       contact_name: null, contact_phone: null,
       guest_name: null, guest_count: null, dining_status: null,
       cancellation_penalty_applied: null, cancellation_note: null,
-      show_cancellation: null, venue: null,
+      show_cancellation: null, schedule_status: null, venue: null,
       rooms: [], passengers: [],
       source_booking_id: null,
       source_aux_id: (e.source_aux_id as string | null) ?? null,

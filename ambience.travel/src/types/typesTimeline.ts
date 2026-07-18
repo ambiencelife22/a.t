@@ -65,6 +65,7 @@ export type TimelineItem = {
   cancellation_penalty_applied: boolean | null
   cancellation_note:            string | null
   show_cancellation:            boolean | null
+  schedule_status:              string | null
   venue: {
     address:         string | null
     maps_url:        string | null

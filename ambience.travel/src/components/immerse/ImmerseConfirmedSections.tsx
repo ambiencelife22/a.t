@@ -40,8 +40,23 @@ import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 const c = AMBIENCE.light
 const SIDEBAR_W = 220
 
-// ── Status pill ───────────────────────────────────────────────────────────────
+// ── Alert pill ────────────────────────────────────────────────────────────────
+// One alert primitive for client-facing element/booking alerts (payment
+// outstanding, tentatively scheduled, ...). Tone sets the colour; the mechanism
+// is shared so alerts never drift into parallel one-off pills.
+function AlertPill({ label, tone }: { label: string; tone: 'danger' | 'caution' }) {
+  const color = tone === 'danger' ? '#B4321F' : '#B07D2A'
+  return (
+    <div style={{
+      display: 'inline-block', marginBottom: 6, padding: '3px 10px',
+      border: `1px solid ${color}`, borderRadius: 5, background: `${color}0F`,
+    }}>
+      <span style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color }}>{label}</span>
+    </div>
+  )
+}
 
+// ── Status pill ───────────────────────────────────────────────────────────────
 function StatusPill({ status }: { status: string | null }) {
   const meta = getEventStatusMeta(status ?? 'recommended')
   return (
@@ -227,14 +242,7 @@ const auxSections = groupElementsBySection(elements)
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.party_composition}</div>}
                       </div>
                     <div style={{ marginTop: 12 }}>
-                      {booking.payment_exception && (
-                        <div style={{
-                          display: 'inline-block', marginBottom: 6, padding: '3px 10px',
-                          border: '1px solid #B4321F', borderRadius: 5, background: '#B4321F0F',
-                        }}>
-                          <span style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B4321F' }}>Payment Outstanding</span>
-                        </div>
-                      )}
+                      {booking.payment_exception && <AlertPill label="Payment Outstanding" tone="danger" />}
                       {rooms.length === 0 && booking.confirmation_number && (
                         <div style={{
                           display: 'inline-flex', alignItems: 'center',
@@ -411,6 +419,9 @@ const auxSections = groupElementsBySection(elements)
                         </div>
                       )}
                     </div>
+                  )}
+                  {aux.schedule_status === 'tentative' && (
+                    <div style={{ marginTop: 8 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
                   )}
                   {ownArr && (
                     <span style={{

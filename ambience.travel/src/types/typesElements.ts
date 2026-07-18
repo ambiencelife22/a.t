@@ -366,3 +366,82 @@ export function isDiningElement(bookingType: string | null | undefined): boolean
 export function isMeetGreetElement(bookingType: string | null | undefined): boolean {
   return toSlug(bookingType ?? '') === 'meet_greet'
 }
+
+// ── Canonical element shape ───────────────────────────────────────────────────
+// ONE source for the element field block shared by the client (EngagementElement)
+// and admin (AdminEngagementElement) surfaces. Each composes this base and adds
+// only what is genuinely surface-specific: admin adds booking_type + the with-
+// `company` driver type; the client uses the no-`company` driver type (a deliberate
+// boundary — operator-internal fields never reach the guest). Passenger is shared.
+// schedule_status lives here so it is defined ONCE, not copied per surface.
+export type ElementPassenger = {
+  id:                        string
+  aux_booking_id:            string
+  person_id:                 string | null
+  passenger_label:           string | null
+  confirmation_number:       string | null
+  seat_numbers:              string | null
+  sort_order:                number
+  resolved_passenger_label?: string | null
+}
+export type ElementPassengerPatch = Partial<Omit<ElementPassenger, 'id' | 'aux_booking_id'>>
+
+export type ElementBase = {
+  id:                  string
+  journey_id:          string
+  engagement_type_id:  string | null
+  element_type:        string | null
+  element_type_label:  string | null
+  name:                string | null
+  start_date:          string | null
+  start_time:          string | null
+  end_date:            string | null
+  end_time:            string | null
+  origin:              string | null
+  destination:         string | null
+  notes:               string | null
+  confirmation_number: string | null
+  booked_by:           string | null
+  guest_name:          string | null
+  guest_count:         number | null
+  contact_name:        string | null
+  contact_phone:       string | null
+  dining_status:                string | null
+  cancellation_penalty_applied: boolean | null
+  cancellation_note:            string | null
+  show_cancellation:            boolean | null
+  schedule_status?:             string | null
+  venue?: {
+    address:         string | null
+    maps_url:        string | null
+    phone:           string | null
+    dress_code:      string | null
+    children_policy: string | null
+    table_hold_note: string | null
+    booking_terms:   string | null
+  } | null
+  brief_show:          boolean
+  sort_order:          number
+  supplier_id:         string | null
+  airline_name:        string | null
+  flight_number:       string | null
+  depart_airport:      string | null
+  arrive_airport:      string | null
+  cabin_class:         string | null
+  aircraft_type:       string | null
+  tail_number?:        string | null
+  flight_time?:        string | null
+  distance_nm?:        number | null
+  depart_fbo_name?:    string | null
+  depart_fbo_address?: string | null
+  depart_fbo_phone?:   string | null
+  arrive_fbo_name?:    string | null
+  arrive_fbo_address?: string | null
+  arrive_fbo_phone?:   string | null
+  crew?:               { name: string; role: string }[]
+  dining_venue_id?:    string | null
+  image_src?:          string | null
+  passengers?:         ElementPassenger[]
+  created_at:          string
+  updated_at:          string
+}
