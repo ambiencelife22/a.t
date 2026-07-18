@@ -47,29 +47,47 @@ export interface ElementTypeMeta {
   label:      string
   icon:       string
   sort_order: number
+  section:    string   // guest-facing grouping key — slugs sharing a section fold together
 }
 
+// section: the guest-facing grouping. Slugs that are the same guest concept share
+// a section so they render under ONE heading (a resort-to-resort chauffeured car
+// is the same whether typed 'transfer' or 'car_service'). sort_order drives BOTH
+// within-section item order and section order (min sort_order in a section wins).
 const ELEMENT_TYPE_META: Record<string, ElementTypeMeta> = {
-  acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sort_order: 1 },
-  airport_transfer: { label: 'AIRPORT TRANSFERS', icon: '\uD83D\uDE97', sort_order: 2 },
-  arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sort_order: 3 },
-  car_rental:       { label: 'CAR RENTAL',        icon: '\uD83D\uDE99', sort_order: 4 },
-  car_service:      { label: 'CHAUFFEUR & CAR SERVICE', icon: '\uD83D\uDE98', sort_order: 5 },
-  cruise:           { label: 'CRUISE',            icon: '\uD83D\uDEA2', sort_order: 6 },
-  dining:           { label: 'DINING',            icon: '\uD83C\uDF7D', sort_order: 7 },
-  experience:       { label: 'EXPERIENCES',       icon: '\u2728',       sort_order: 8 },
-  flight:           { label: 'FLIGHTS',           icon: '\u2708',       sort_order: 9 },
-  heli_transfer:    { label: 'HELICOPTER',        icon: '\uD83D\uDE81', sort_order: 10 },
-  journey:          { label: 'JOURNEY',           icon: '\uD83E\uDDED', sort_order: 11 },
-  meet_greet:       { label: 'AIRPORT MEET & GREET', icon: '\uD83E\uDEAA', sort_order: 9.5 },
-  private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sort_order: 12 },
-  public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sort_order: 13 },
-  reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sort_order: 14 },
-  stay:             { label: 'STAYS',             icon: '\uD83C\uDFE8', sort_order: 15 },
-  tour:             { label: 'TOURS',             icon: '\uD83D\uDDFA', sort_order: 16 },
-  transfer:         { label: 'TRANSFERS',         icon: '\uD83D\uDE97', sort_order: 17 },
-  yacht_charter:    { label: 'YACHT CHARTER',     icon: '\u26F5',       sort_order: 18 },
-  other:            { label: 'OTHER',             icon: '\u00b7',       sort_order: 99 },
+  acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sort_order: 1,  section: 'acquisition' },
+  airport_transfer: { label: 'AIRPORT TRANSFERS', icon: '\uD83D\uDE97', sort_order: 2,  section: 'airport' },
+  meet_greet:       { label: 'AIRPORT MEET & GREET', icon: '\uD83E\uDEAA', sort_order: 2.5, section: 'airport' },
+  arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sort_order: 3,  section: 'arrangement' },
+  car_rental:       { label: 'CAR RENTAL',        icon: '\uD83D\uDE99', sort_order: 4,  section: 'car_rental' },
+  car_service:      { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sort_order: 5, section: 'ground_car' },
+  transfer:         { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sort_order: 5, section: 'ground_car' },
+  cruise:           { label: 'CRUISE',            icon: '\uD83D\uDEA2', sort_order: 6,  section: 'cruise' },
+  dining:           { label: 'DINING',            icon: '\uD83C\uDF7D', sort_order: 7,  section: 'dining' },
+  experience:       { label: 'EXPERIENCES',       icon: '\u2728',       sort_order: 8,  section: 'experience' },
+  flight:           { label: 'FLIGHTS',           icon: '\u2708',       sort_order: 9,  section: 'flight' },
+  heli_transfer:    { label: 'HELICOPTER',        icon: '\uD83D\uDE81', sort_order: 10, section: 'heli' },
+  journey:          { label: 'JOURNEY',           icon: '\uD83E\uDDED', sort_order: 11, section: 'journey' },
+  private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sort_order: 12, section: 'private_jet' },
+  public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sort_order: 13, section: 'rail' },
+  reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sort_order: 14, section: 'reservation' },
+  stay:             { label: 'STAYS',             icon: '\uD83C\uDFE8', sort_order: 15, section: 'stay' },
+  tour:             { label: 'TOURS',             icon: '\uD83D\uDDFA', sort_order: 16, section: 'tour' },
+  yacht_charter:    { label: 'YACHT CHARTER',     icon: '\u26F5',       sort_order: 18, section: 'yacht' },
+  other:            { label: 'OTHER',             icon: '\u00b7',       sort_order: 99, section: 'other' },
+}
+
+// Client-facing section grouping. Admin tracks every slug separately (a pre-booked
+// transfer vs a daily chauffeur are different logistics). The GUEST sees a car
+// point-to-point as one thing, so transfer + car_service collapse to one section
+// client-side. Every other slug is its own section (falls through to its meta).
+const CLIENT_SECTION_SLUG: Record<string, string> = {
+  transfer:    'car_service',
+  car_service: 'car_service',
+}
+export function clientSectionKey(slug: string | null | undefined): string {
+  const s = slug ?? 'other'
+  return CLIENT_SECTION_SLUG[s] ?? s
 }
 
 // Normalize a slug OR a Title Case label to a registry slug. Accepts both so
@@ -86,7 +104,7 @@ export function getElementTypeMeta(bookingType: string | null | undefined): Elem
   if (known) return known
   // Unknown type: derive a display label, no icon, sort last.
   const label = bookingType.toUpperCase() + (bookingType.endsWith('s') ? '' : 'S')
-  return { label, icon: '\u00b7', sort_order: 99 }
+  return { label, icon: '\u00b7', sort_order: 99, section: 'other' }
 }
 
 // ── Section grouping — single source ──────────────────────────────────────────
@@ -121,14 +139,13 @@ export function groupElementsBySection<T extends { element_type: string | null; 
 
   const sections: ElementSection<T>[] = []
   for (const aux of sorted) {
-    const slug = aux.element_type ?? 'other'
-    const meta = getElementTypeMeta(slug)
+    const meta = getElementTypeMeta(aux.element_type ?? 'other')
     const last = sections[sections.length - 1]
-    if (last && last.type === slug) {
+    if (last && last.type === meta.section) {
       last.items.push(aux)
       continue
     }
-    sections.push({ type: slug, label: meta.label, icon: meta.icon, items: [aux] })
+    sections.push({ type: meta.section, label: meta.label, icon: meta.icon, items: [aux] })
   }
   return sections
 }
