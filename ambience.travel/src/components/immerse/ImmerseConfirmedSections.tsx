@@ -239,6 +239,14 @@ const auxSections = groupElementsBySection(elements)
                       {booking.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(booking.standard_checkin_time)}`}</div>}
 {booking.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(booking.approved_checkin_time)}`}</div>}
 {booking.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(booking.expected_arrival_time)}`}</div>}
+                      {booking.late_checkout_approved_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout approved: ${fmtTime(booking.late_checkout_approved_time)}`}</div>}
+                      {booking.requested_checkout_time && !booking.late_checkout_approved_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout requested: ${fmtTime(booking.requested_checkout_time)}`}</div>}
+                      {(booking.extras ?? []).map((x, xi) => (
+                        <div key={xi} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>
+                          {`${x.label}: ${moneyDec(x.amount, x.currency)}${x.charge_to === 'room' ? ' (charged to room)' : ''}`}
+                          {x.note ? <span style={{ color: c.faint }}>{`  ·  ${x.note}`}</span> : null}
+                        </div>
+                      ))}
                       {booking.party_composition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.party_composition}</div>}
                       </div>
                     <div style={{ marginTop: 12 }}>

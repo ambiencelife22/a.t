@@ -79,6 +79,7 @@ Deno.serve(async (req: Request) => {
           id, journey_id, house_id, name, status, confirmation_number,
           start_date, check_in_date, start_time, check_in_note, check_out_note,
           early_checkin_approved_time, late_checkout_approved_time, expected_arrival_time,
+          requested_checkin_time, requested_checkout_time, extras,
           end_date, nights, commissionable_rate, total_rate, taxes_and_fees, cost_visible_to_guest, inclusions,
           inclusions_override, cancellation_policy, party_composition, brief_show,
           brief_image_src, booked_by, accom_hotel_id, sort_order,

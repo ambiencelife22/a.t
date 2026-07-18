@@ -780,6 +780,10 @@ export type ImmerseEngagementBooking = {
   standard_checkin_time?: string | null
   approved_checkin_time?: string | null
   expected_arrival_time?: string | null
+  late_checkout_approved_time?: string | null
+  requested_checkin_time?: string | null
+  requested_checkout_time?: string | null
+  extras?: { label: string; amount: number; currency: string; note?: string; charge_to?: string }[]
   end_date:            string | null
   nights:              number | null
   total_rate:          number | null
