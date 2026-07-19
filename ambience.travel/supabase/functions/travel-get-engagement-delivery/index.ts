@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
         .eq('journey_id', journeyId),
 
       db.from('travel_journey_day_entries')
-        .select('id, engagement_id:journey_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_aux_id, source_dining_id, source_experience_id')
+        .select('id, journey_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_dining_id, source_experience_id')
         .eq('journey_id', journeyId)
         .eq('brief_show', true)
         .order('entry_date', { ascending: true })
