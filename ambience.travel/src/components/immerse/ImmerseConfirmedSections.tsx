@@ -368,6 +368,7 @@ const auxSections = groupElementsBySection(elements)
           {section.items.map(aux => {
             const ownArr    = isOwnArrangements(aux.booked_by)
             const pillColor = ownArr ? c.faint : c.gold
+            const isDelayed  = aux.schedule_status === 'delayed'
             const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' - ')
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
@@ -395,7 +396,12 @@ const auxSections = groupElementsBySection(elements)
                   {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.dining_status === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
-                  {timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>}
+                  {aux.schedule_status === 'delayed' ? (
+                    <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>
+                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(aux.original_start_time)}</span> {fmtTime(aux.start_time)}
+                      {aux.end_time && <> - <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(aux.original_end_time)}</span> {fmtTime(aux.end_time)}</>}
+                    </div>
+                  ) : (timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>)}
                   {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>
                       {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).join(' \u00b7 ')}
@@ -434,6 +440,9 @@ const auxSections = groupElementsBySection(elements)
                   )}
                   {aux.schedule_status === 'tentative' && (
                     <div style={{ marginTop: 8 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
+                  )}
+                  {aux.schedule_status === 'delayed' && (
+                    <div style={{ marginTop: 8 }}><AlertPill label="Delayed" tone="danger" /></div>
                   )}
                   {ownArr && (
                     <span style={{
@@ -588,6 +597,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     cancellationNote: string | null
     showCancellation: boolean | null
     scheduleStatus: string | null
+    originalStartTime: string | null
+    originalEndTime: string | null
     venue: { address: string | null; maps_url: string | null; phone: string | null; dress_code: string | null; children_policy: string | null; table_hold_note: string | null; booking_terms: string | null } | null
     flightOrigin:      string | null
     flightDestination: string | null
@@ -651,6 +662,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             cancellationNote:    e.cancellation_note ?? null,
             showCancellation:    e.show_cancellation ?? null,
             scheduleStatus:      e.schedule_status ?? null,
+            originalStartTime:   e.original_start_time ?? null,
+            originalEndTime:     e.original_end_time ?? null,
             venue:               e.venue ?? null,
             flightOrigin,
             flightDestination,
@@ -1088,6 +1101,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             borderRadius: 6,
                             display: 'flex', flexDirection: 'column', gap: 6,
                           }}>
+                            {item.scheduleStatus === 'delayed' && (
+                              <div><AlertPill label="Delayed" tone="danger" /></div>
+                            )}
                             {item.flightOrigin && (
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
@@ -1103,6 +1119,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 </div>
                                 {item.flightDepartTime && (
                                   <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink, flexShrink: 0 }}>
+                                    {item.scheduleStatus === 'delayed' && item.originalStartTime && (
+                                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(item.originalStartTime)}</span>
+                                    )}
                                     {fmtTime(item.flightDepartTime)}
                                   </div>
                                 )}
@@ -1123,6 +1142,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 </div>
                                 {item.flightArriveTime && (
                                   <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink, flexShrink: 0 }}>
+                                    {item.scheduleStatus === 'delayed' && item.originalEndTime && (
+                                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(item.originalEndTime)}</span>
+                                    )}
                                     {fmtTime(item.flightArriveTime)}
                                   </div>
                                 )}

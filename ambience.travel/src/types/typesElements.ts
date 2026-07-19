@@ -428,6 +428,8 @@ export type ElementBase = {
   cancellation_note:            string | null
   show_cancellation:            boolean | null
   schedule_status?:             string | null
+  original_start_time?:         string | null
+  original_end_time?:           string | null
   venue?: {
     address:         string | null
     maps_url:        string | null
