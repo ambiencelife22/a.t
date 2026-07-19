@@ -196,6 +196,8 @@ export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
 
 const auxSections = groupElementsBySection(elements)
 
+  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.brief_show !== false)
+
   return (
     <div>
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
@@ -241,7 +243,7 @@ const auxSections = groupElementsBySection(elements)
 {booking.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(booking.expected_arrival_time)}`}</div>}
                       {booking.late_checkout_approved_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout approved: ${fmtTime(booking.late_checkout_approved_time)}`}</div>}
                       {booking.requested_checkout_time && !booking.late_checkout_approved_time && (
-                        <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Requested · ${fmtTime(booking.requested_checkout_time)}`} tone="caution" /></div>
+                        <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Time Requested · ${fmtTime(booking.requested_checkout_time)}`} tone="caution" /></div>
                       )}
                       {(booking.extras ?? []).map((x, xi) => (
                         <div key={xi} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>
@@ -520,6 +522,17 @@ const auxSections = groupElementsBySection(elements)
           })}
         </TabSection>
       ))}
+      {experiences.length > 0 && (
+        <TabSection label='EXPERIENCES'>
+          {experiences.map(x => (
+            <div key={x.id} style={{ background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12, overflow: 'hidden', padding: '16px 20px' }}>
+              <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint }}>{formatDate(x.entry_date)}</div>
+              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, marginTop: 2 }}>{x.title}</div>
+              {x.notes && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>{x.notes}</div>}
+            </div>
+          ))}
+        </TabSection>
+      )}
     </div>
   )
 }
@@ -837,7 +850,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
                               {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
-                              {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Requested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
+                              {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out TimeRequested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
                               {item.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(item.standard_checkin_time)}`}</div>}
 {item.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(item.approved_checkin_time)}`}</div>}
 {item.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(item.expected_arrival_time)}`}</div>}
@@ -1039,7 +1052,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           <div style={{ marginTop: 4 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
                         )}
                         {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
-                        {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Requested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
+                        {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Time Requested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {

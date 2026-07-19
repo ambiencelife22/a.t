@@ -181,7 +181,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     const alertLines = [
       ...(it.schedule_status === 'tentative' ? ['Tentatively Scheduled'] : []),
       ...(it.late_checkout_approved_time ? [`Late Checkout Approved: ${fmtTimeOnly(it.late_checkout_approved_time)}`] : []),
-      ...(it.requested_checkout_time && !it.late_checkout_approved_time ? [`Check-Out Requested · ${fmtTimeOnly(it.requested_checkout_time)}`] : []),
+      ...(it.requested_checkout_time && !it.late_checkout_approved_time ? [`Check-Out TimeRequested · ${fmtTimeOnly(it.requested_checkout_time)}`] : []),
     ]
 
     return {
