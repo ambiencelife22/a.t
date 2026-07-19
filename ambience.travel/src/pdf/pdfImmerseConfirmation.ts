@@ -58,6 +58,7 @@ export interface ConfirmationBriefData {
   elements:      AdminEngagementElement[]
   guestDisplayName: string | null
   contacts?:        ConfirmationContact[]
+  experiences?:     { entry_date: string | null; title: string; notes: string | null }[]
 }
 
 // ── Hotel card — measure / draw split for row-level pagination ─────────────────
@@ -603,7 +604,24 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
       y += drawFlightCard(doc, aux, y) + 4
     }
   }
-
+  // ── Experiences ───────────────────────────────────────────────────────────
+  const experiences = d.experiences ?? []
+  if (experiences.length > 0) {
+    y = addCreamPage(doc)
+    drawRule(doc, P.margin, y, CW); y += 8
+    sans(doc, 'bold', 7)
+    doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
+    doc.text('EXPERIENCES', P.margin, y, { charSpace: 0.5 }); y += 7
+    for (const xp of experiences) {
+      const h = 24
+      if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
+      serif(doc, 'normal', 10); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+      doc.text(xp.title, P.margin, y); y += 5
+      if (xp.entry_date) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(fmtDate(xp.entry_date), P.margin, y); y += 5 }
+      if (xp.notes) { sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); for (const wl of doc.splitTextToSize(xp.notes, CW)) { doc.text(wl, P.margin, y); y += 4.5 } }
+      y += 4
+    }
+  }
   // ── Contacts ──────────────────────────────────────────────────────────────
 
   const allContacts = d.contacts ?? []

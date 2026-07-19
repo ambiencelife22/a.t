@@ -111,7 +111,7 @@ export function ImmerseDeliveryTabShell({
       handleDownloadEngagementBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, branding)
       return
     }
-    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName }, branding)
+    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName, experiences: (clientData.entries ?? []).filter(e => e.category === 'experience' && e.brief_show !== false).map(e => ({ entry_date: e.entry_date, title: e.title, notes: e.notes })) }, branding)
   }
 
   function downloadProgramme() {

@@ -61,6 +61,7 @@ export interface EngagementBriefPdfData {
   elements:      AdminEngagementElement[]
   links:            PdfEngagementLink[]
   guestDisplayName: string | null
+  experiences?:     { entry_date: string | null; title: string; notes: string | null }[]
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -387,6 +388,26 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
         doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
         doc.text(sub, P.margin + LABEL_W, y); y += 6
       }
+    }
+    y += 10
+  }
+
+  // ── Experiences ───────────────────────────────────────────────────────────
+  const experiences = d.experiences ?? []
+  if (experiences.length > 0) {
+    y = drawSectionHeader(doc, 'Experiences', y)
+    for (const xp of experiences) {
+      y = checkOverflow(doc, y, 20)
+      y += drawDataRow(doc, {
+        date:        xp.entry_date ? fmtDate(xp.entry_date) : '\u2014',
+        name:        xp.title,
+        sub:         xp.notes ?? null,
+        subIsLink:   null,
+        bookedBy:    null,
+        bookedByRaw: null,
+        cancelled:   false,
+        cancelNote:  null,
+      }, y)
     }
     y += 10
   }
