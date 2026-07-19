@@ -240,7 +240,9 @@ const auxSections = groupElementsBySection(elements)
 {booking.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(booking.approved_checkin_time)}`}</div>}
 {booking.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(booking.expected_arrival_time)}`}</div>}
                       {booking.late_checkout_approved_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout approved: ${fmtTime(booking.late_checkout_approved_time)}`}</div>}
-                      {booking.requested_checkout_time && !booking.late_checkout_approved_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout requested: ${fmtTime(booking.requested_checkout_time)}`}</div>}
+                      {booking.requested_checkout_time && !booking.late_checkout_approved_time && (
+                        <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Requested · ${fmtTime(booking.requested_checkout_time)}`} tone="caution" /></div>
+                      )}
                       {(booking.extras ?? []).map((x, xi) => (
                         <div key={xi} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>
                           {`${x.label}: ${moneyDec(x.amount, x.currency)}${x.charge_to === 'room' ? ' (charged to room)' : ''}`}
@@ -559,6 +561,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     image_src: string | null; status: string | null
     checkInNote:  string | null
     checkOutNote: string | null
+    kind: string
+    requestedCheckoutTime: string | null
+    lateCheckoutApprovedTime: string | null
     description: string | null
     bookingType:   string | null
     contactName:   string | null
@@ -616,6 +621,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             status:              e.status,
             checkInNote:         e.check_in_note ?? null,
             checkOutNote:        e.check_out_note ?? null,
+            kind:                  e.kind,
+            requestedCheckoutTime: e.requested_checkout_time ?? null,
+            lateCheckoutApprovedTime: (e as any).late_checkout_approved_time ?? null,
             standard_checkin_time: e.standard_checkin_time ?? null,
             approved_checkin_time: e.approved_checkin_time ?? null,
             expected_arrival_time: e.expected_arrival_time ?? null,
@@ -823,11 +831,13 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.muted }}>
                                   {item.categoryLabel ?? 'Hotel'}
                                 </span>
-                                {item.status && <StatusPill status={item.status} />}
+                                {item.status && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
                               </div>
                               <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3 }}>{item.title}</div>
                               {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
+                              {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
+                              {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Requested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
                               {item.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(item.standard_checkin_time)}`}</div>}
 {item.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(item.approved_checkin_time)}`}</div>}
 {item.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(item.expected_arrival_time)}`}</div>}
@@ -1016,7 +1026,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            {item.status && <StatusPill status={item.status} />}
+                            {item.status && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
                             {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink }}>{timeStr}</span>}
                           </div>
                         </div>

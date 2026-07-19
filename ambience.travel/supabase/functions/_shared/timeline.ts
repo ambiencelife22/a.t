@@ -30,7 +30,7 @@
 
 // ── Public item shape ─────────────────────────────────────────────────────────
 
-import type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem } from './timelineTypes.ts'
+import type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem } from './typesTimeline.ts'
 export type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem }
 
 // ── Input shapes (loose — these are already-fetched DB rows) ───────────────────
@@ -230,7 +230,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
-        show_cancellation: null, schedule_status: null, venue: null,
+        show_cancellation: null, schedule_status: null, requested_checkout_time: null, late_checkout_approved_time: null, venue: null,
         rooms, passengers: [], driver_details: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -238,20 +238,19 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
 
     if (b.end_date) {
       // ── Build check-out note ────────────────────────────────────────────────
-      const lateCheckoutNote = b.late_checkout_approved_time
-        ? `Late check-out approved until ${b.late_checkout_approved_time.slice(0, 5)}`
-        : null
-      const checkOutNote = [
-        b.check_out_note ?? null,
-        lateCheckoutNote,
-      ].filter(Boolean).join(' · ') || null
+      const checkOutNote = (b.check_out_note as string | null) ?? null
 
-      // Resolve standard checkout time for the checkout item
-      const checkoutTime = b._standard_checkout_time ?? null
+      // Checkout slots at the requested time when a late checkout is requested/
+      // approved (so it sorts into that afternoon slot), else the standard time.
+      const requestedCheckout = (b.requested_checkout_time as string | null) ?? null
+      const checkoutTime = (b.late_checkout_approved_time as string | null)
+        ?? requestedCheckout ?? (b._standard_checkout_time as string | null) ?? null
 
       out.push({
         id: `checkout-${b.id}`, kind: 'hotel_checkout', entry_date: b.end_date,
         start_time: checkoutTime,
+        requested_checkout_time: requestedCheckout,
+        late_checkout_approved_time: (b.late_checkout_approved_time as string | null) ?? null,
         end_time: null, category: 'stay', categoryLabel: 'Hotel',
         title: `Check-out \u00b7 ${hotelName}`, subtitle: null, notes: null,
         booked_by: b.booked_by ?? null, image_src: img,
@@ -330,6 +329,7 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       cancellation_note: (a.cancellation_note as string | null) ?? null,
       show_cancellation: (a.show_cancellation as boolean | null) ?? null,
       schedule_status: (a.schedule_status as string | null) ?? null,
+      requested_checkout_time: null, late_checkout_approved_time: null,
       venue: (a.venue as TimelineItem['venue']) ?? null,
       rooms: [], passengers, driver_details,
       source_booking_id: null, source_aux_id: a.id as string, brief_show: true,
@@ -362,7 +362,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       contact_name: null, contact_phone: null,
       guest_name: null, guest_count: null, dining_status: null,
       cancellation_penalty_applied: null, cancellation_note: null,
-      show_cancellation: null, schedule_status: null, venue: null,
+      show_cancellation: null, schedule_status: null, requested_checkout_time: null, late_checkout_approved_time: null, venue: null,
       rooms: [], passengers: [], driver_details: [],
       source_booking_id: null,
       source_aux_id: (e.source_aux_id as string | null) ?? null,
@@ -385,7 +385,9 @@ function timeRank(t: string | null): number {
 // its resolved time when one is set (derived or standard policy); an untimed
 // check-in falls to the bottom (afternoon arrival, the legacy default).
 function dayPosition(item: TimelineItem): number {
-  if (item.kind === 'hotel_checkout') return -1
+  if (item.kind === 'hotel_checkout') {
+    return item.requested_checkout_time ? timeRank(item.requested_checkout_time) : -1
+  }
   if (item.kind === 'hotel_checkin') {
     return item.start_time ? timeRank(item.start_time) : 100000
   }

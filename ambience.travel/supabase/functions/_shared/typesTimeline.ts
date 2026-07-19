@@ -1,4 +1,4 @@
-// supabase/functions/_shared/timelineTypes.ts
+// supabase/functions/_shared/typesTimeline.ts
 // ONE source for the trip-timeline shapes. Imported by BOTH the server producer
 // (_shared/timeline.ts) and the frontend (src/types/typesTimeline.ts via the
 // @shared Vite alias). Types-only, zero runtime imports, so it crosses the
@@ -66,6 +66,8 @@ export type TimelineItem = {
   cancellation_note:            string | null
   show_cancellation:            boolean | null
   schedule_status:              string | null
+  requested_checkout_time:      string | null
+  late_checkout_approved_time:  string | null
   venue: {
     address:         string | null
     maps_url:        string | null
