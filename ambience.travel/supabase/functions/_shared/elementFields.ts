@@ -15,6 +15,8 @@ export const NODE_FIELD_MAP: Record<string, string> = {
   end_date:                     'activity_end_date',
   start_time:                   'activity_start_time',
   end_time:                     'activity_end_time',
+  original_start_time:          'original_start_time',
+  original_end_time:            'original_end_time',
   confirmation_number:          'confirmation_number',
   brief_show:                   'brief_show',
   cancellation_penalty_applied: 'cancellation_penalty_applied',

@@ -231,6 +231,7 @@ export const AUX_BOOKING_SELECT = [
   'contact_name', 'contact_phone',
   'dining_status', 'cancellation_penalty_applied', 'cancellation_note', 'show_cancellation',
   'brief_show', 'sort_order', 'created_at', 'updated_at',
+  'schedule_status', 'original_start_time', 'original_end_time',
   'flight_number', 'airline_name', 'cabin_class', 'aircraft_type',
   'depart_airport', 'arrive_airport', 'supplier_id', 'dining_venue_id',
 ].join(', ')
@@ -268,7 +269,7 @@ export async function fetchEngagementElements(
 
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, original_start_time, original_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('parent_engagement_id', parentEngId)
     .eq('iteration_label', 'element')
     .order('activity_date', { ascending: true, nullsFirst: false })
@@ -513,7 +514,7 @@ export async function fetchEngagementElement(
 ): Promise<Record<string, unknown> | null> {
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, original_start_time, original_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('id', nodeId)
     .maybeSingle()
   if (!nodes) return null
