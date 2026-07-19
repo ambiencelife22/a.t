@@ -87,6 +87,9 @@ function measureHotel(doc: any, booking: EngagementBooking): HotelMeasure {
     + (buildDateRange(booking.check_in_date ?? booking.start_date, booking.end_date) ? 5 : 0)
     + (booking.check_in_note ? 4.5 : 0)
     + (booking.check_out_note ? 4.5 : 0)
+    + (booking.expected_arrival_time ? 5 : 0)
+    + (booking.late_checkout_approved_time ? 5 : 0)
+    + (booking.requested_checkout_time && !booking.late_checkout_approved_time ? 4.5 : 0)
     + (booking.start_time ? 5 : 0)
     + (booking.party_composition ? 5 : 0)
     + (hasException ? 6 : 0)
@@ -151,6 +154,9 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
   if (dateRange) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(dateRange, tx, ty); ty += 5 }
   if (booking.check_in_note) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.check_in_note, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
   if (booking.check_out_note) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.check_out_note, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
+  if (booking.expected_arrival_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Expected arrival ${fmtTime(booking.expected_arrival_time)}`, tx, ty); ty += 5 }
+  if (booking.late_checkout_approved_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Late checkout approved ${fmtTime(booking.late_checkout_approved_time)}`, tx, ty); ty += 5 }
+  if (booking.requested_checkout_time && !booking.late_checkout_approved_time) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text(`Check-Out Requested · ${fmtTime(booking.requested_checkout_time)}`, tx, ty); ty += 4.5 }
   if (booking.start_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Check-in ${fmtTime(booking.start_time)}`, tx, ty); ty += 5 }
   if (booking.party_composition) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text((doc.splitTextToSize(booking.party_composition, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 5 }
 

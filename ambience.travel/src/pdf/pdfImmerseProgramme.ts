@@ -64,6 +64,7 @@ type ProgrammeEntry = {
   image_src:           string | null
   detailLines:         string[]
   noteLines:           string[]   // S55-P2: gold-italic concierge notes, own treatment
+  alertLines:          string[]   // S53Q: caution alerts (tentative, checkout-requested)
   passengerLines:      string[]   // S53G: separated for pill rendering
   diningCancelled:     boolean
   diningPill:          { label: string; tone: [number, number, number] } | null
@@ -177,6 +178,11 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       ...(it.check_in_note ? [it.check_in_note] : []),
       ...(it.check_out_note ? [it.check_out_note] : []),
     ]
+    const alertLines = [
+      ...(it.schedule_status === 'tentative' ? ['Tentatively Scheduled'] : []),
+      ...(it.late_checkout_approved_time ? [`Late Checkout Approved: ${fmtTimeOnly(it.late_checkout_approved_time)}`] : []),
+      ...(it.requested_checkout_time && !it.late_checkout_approved_time ? [`Check-Out Requested · ${fmtTimeOnly(it.requested_checkout_time)}`] : []),
+    ]
 
     return {
       id:                  it.id,
@@ -194,6 +200,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       image_src:           it.image_src,
       detailLines,
       noteLines,
+      alertLines,
       passengerLines:      paxLines,
       diningCancelled,
       diningPill,
@@ -220,6 +227,7 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
 
   if (entry.subtitle)              h += PROG.lineH + 1
   h += entry.noteLines.length     * (PROG.lineH + 0.5)
+  h += entry.alertLines.length    * (PROG.lineH + 0.5)
   // Detail lines may wrap (venue policy terms); count wrapped rows so the row
   // height matches what drawEntryRow actually renders.
   {
@@ -332,6 +340,17 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     }
   }
   if (entry.noteLines.length > 0) ty += 0.5
+  // S53Q: caution alerts (tentative, checkout-requested) — amber, bold, distinct
+  // from the gold-italic concierge notes above.
+  for (const line of entry.alertLines) {
+    sans(doc, 'bold', 7.5)
+    doc.setTextColor(0xB0, 0x7D, 0x2A)
+    for (const wl of doc.splitTextToSize(line, contentW - 2)) {
+      doc.text(wl, contentX, ty + 4)
+      ty += PROG.lineH
+    }
+  }
+  if (entry.alertLines.length > 0) ty += 0.5
   // Detail lines (rooms, vehicles, greeters, dining). Long lines (venue policy
   // terms) wrap fully — never truncated. The PDF may be the only surface a guest
   // sees; it must carry the complete terms, not a fragment.

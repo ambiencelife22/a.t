@@ -1038,6 +1038,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.scheduleStatus === 'tentative' && (
                           <div style={{ marginTop: 4 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
                         )}
+                        {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
+                        {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Requested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
