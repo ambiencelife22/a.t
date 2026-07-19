@@ -1231,6 +1231,7 @@ export function EngagementBriefTab({ clientData }: {
   const flights   = elements.filter(a => isFlightElement(a.element_type))
   const transfers = elements.filter(a => isTransferElement(a.element_type))
   const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
+  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.brief_show !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -1478,6 +1479,13 @@ export function EngagementBriefTab({ clientData }: {
         ) : null
       })()}
 
+      {experiences.length > 0 && (
+        <BriefSection title='Experiences'>
+          {experiences.map(x => (
+              <BriefRow key={x.id} label={formatDate(x.entry_date)} value={x.title} sub={x.notes ?? undefined} />
+            ))}
+        </BriefSection>
+      )}
       {clientData.brief?.important_notes && (clientData.brief.important_notes as string[]).length > 0 && (
         <BriefSection title='Important Notes'>
           {(clientData.brief.important_notes as string[]).map((note, i) => (
