@@ -84,6 +84,7 @@ Deno.serve(async (req: Request) => {
           inclusions_override, cancellation_policy, party_composition, brief_show,
           brief_image_src, booked_by, accom_hotel_id, sort_order,
           deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override,
+          status_note,
           created_at, updated_at,
           travel_accom_hotels!accom_hotel_id(
             standard_checkin_time,

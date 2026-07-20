@@ -70,6 +70,7 @@ export type TimelineItem = {
   late_checkout_approved_time:  string | null
   original_start_time:          string | null
   original_end_time:            string | null
+  schedule_note:                string | null
   venue: {
     address:         string | null
     maps_url:        string | null

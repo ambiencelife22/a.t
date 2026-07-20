@@ -202,6 +202,7 @@ export type EngagementBooking = {
   engagement_id:             string | null
   name:                      string | null
   status:                    string | null
+  status_note:               string | null
   confirmation_number:       string | null
   start_date:          string | null
   start_time:          string | null

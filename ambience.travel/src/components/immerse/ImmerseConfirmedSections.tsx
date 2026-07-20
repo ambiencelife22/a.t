@@ -21,9 +21,10 @@
 
 import { useEffect, useState } from 'react'
 import type { DeliveryData, EngagementContact } from '../../queries/queriesImmerseEngagement'
-import type { BookingInvoice } from '../../types/typesImmerse'
 import { moneyDec } from '../../utils/utilsCurrency'
 import type {
+  BookingInvoice,
+  CardItem,
   EngagementElement as AdminEngagementElement,
   ImmerseJourneyDay as JourneyDay,
 } from '../../types/typesImmerse'
@@ -234,8 +235,13 @@ const auxSections = groupElementsBySection(elements)
                   </div>
                   <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, marginBottom: 4, lineHeight: 1.3 }}>{hotelName}</div>
-                      {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted }}>{dateRange}</div>}
+                      <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: booking.status === 'cancelled' ? c.faint : c.ink, marginBottom: 4, lineHeight: 1.3, textDecoration: booking.status === 'cancelled' ? 'line-through' : 'none' }}>{hotelName}</div>
+                      {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, textDecoration: booking.status === 'cancelled' ? 'line-through' : 'none' }}>{dateRange}</div>}
+                      {booking.status === 'cancelled' && (
+                        <div style={{ marginTop: 6 }}>
+                          <AlertPill label={booking.status_note ? `Cancelled \u00b7 ${booking.status_note}` : 'Cancelled'} tone="danger" />
+                        </div>
+                      )}
                       {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
                       {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
                       {booking.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(booking.standard_checkin_time)}`}</div>}
@@ -401,6 +407,8 @@ const auxSections = groupElementsBySection(elements)
                       <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(aux.original_start_time)}</span> {fmtTime(aux.start_time)}
                       {aux.end_time && <> - <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(aux.original_end_time)}</span> {fmtTime(aux.end_time)}</>}
                     </div>
+                  ) : aux.schedule_status === 'cancelled' ? (
+                    <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 400, color: c.faint, textDecoration: 'line-through', marginTop: 4 }}>{timeStr}</div>
                   ) : (timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>)}
                   {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>
@@ -440,6 +448,11 @@ const auxSections = groupElementsBySection(elements)
                   )}
                   {aux.schedule_status === 'tentative' && (
                     <div style={{ marginTop: 8 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
+                  )}
+                  {aux.schedule_status === 'cancelled' && (
+                    <div style={{ marginTop: 8 }}>
+                      <AlertPill label={aux.schedule_note ? `Cancelled \u00b7 ${aux.schedule_note}` : 'Cancelled'} tone="danger" />
+                    </div>
                   )}
                   {aux.schedule_status === 'delayed' && (
                     <div style={{ marginTop: 8 }}><AlertPill label="Delayed" tone="danger" /></div>
@@ -575,43 +588,6 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     onActiveDayChange(combined, () => setSidebarOpen(true))
   }, [activeDate, onActiveDayChange])
 
-  type CardItem = {
-    id: string; category: string | null; categoryLabel: string | null; start_time: string | null
-    end_time: string | null; title: string; subtitle: string | null
-    notes: string | null; confirmation_number: string | null
-    guest_label: string | null; booked_by: string | null
-    image_src: string | null; status: string | null
-    checkInNote:  string | null
-    checkOutNote: string | null
-    kind: string
-    requestedCheckoutTime: string | null
-    lateCheckoutApprovedTime: string | null
-    description: string | null
-    bookingType:   string | null
-    contactName:   string | null
-    contactPhone:  string | null
-    guestName:     string | null
-    guestCount:    number | null
-    diningStatus:  string | null
-    cancellationPenaltyApplied: boolean | null
-    cancellationNote: string | null
-    showCancellation: boolean | null
-    scheduleStatus: string | null
-    originalStartTime: string | null
-    originalEndTime: string | null
-    venue: { address: string | null; maps_url: string | null; phone: string | null; dress_code: string | null; children_policy: string | null; table_hold_note: string | null; booking_terms: string | null } | null
-    flightOrigin:      string | null
-    flightDestination: string | null
-    flightDepartTime:  string | null
-    flightArriveTime:  string | null
-    seatNumbers:       string | null
-    cabinClass:        string | null
-    passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-    rooms:             { id: string; guest: string | null; additional_guests: string[]; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; bedding_type: string | null }[]
-    standard_checkin_time: string | null; approved_checkin_time: string | null; expected_arrival_time: string | null
-    driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
-  }
-
 // The EF (_shared/timeline.ts) already merged + ordered the stream. Filter by
   // active day and map each TimelineItem to the card shape. No client derivation.
   const cards: CardItem[] = activeDay
@@ -662,6 +638,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             cancellationNote:    e.cancellation_note ?? null,
             showCancellation:    e.show_cancellation ?? null,
             scheduleStatus:      e.schedule_status ?? null,
+            scheduleNote:        e.schedule_note ?? null,
             originalStartTime:   e.original_start_time ?? null,
             originalEndTime:     e.original_end_time ?? null,
             venue:               e.venue ?? null,

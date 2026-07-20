@@ -329,6 +329,7 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       cancellation_note: (a.cancellation_note as string | null) ?? null,
       show_cancellation: (a.show_cancellation as boolean | null) ?? null,
       schedule_status: (a.schedule_status as string | null) ?? null,
+      schedule_note: (a.schedule_note as string | null) ?? null,
       original_start_time: (a.original_start_time as string | null) ?? null,
       original_end_time: (a.original_end_time as string | null) ?? null,
       requested_checkout_time: null, late_checkout_approved_time: null,

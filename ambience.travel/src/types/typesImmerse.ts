@@ -771,6 +771,7 @@ export type ImmerseEngagementBooking = {
   engagement_id:       string | null
   name:                string | null
   status:              string | null
+  status_note:         string | null
   confirmation_number: string | null
   start_date:          string | null
   check_in_date:       string | null
@@ -835,4 +836,43 @@ export type ImmerseDossierJourney = {
   bookings:             ImmerseEngagementBooking[]
   brief:                ImmerseEngagementBrief | null
   url_id:               string | null
+}
+
+export type CardItem = {
+  id: string; category: string | null; categoryLabel: string | null; start_time: string | null
+  end_time: string | null; title: string; subtitle: string | null
+  notes: string | null; confirmation_number: string | null
+  guest_label: string | null; booked_by: string | null
+  image_src: string | null
+  status: string | null
+  checkInNote:  string | null
+  checkOutNote: string | null
+  kind: string
+  requestedCheckoutTime: string | null
+  lateCheckoutApprovedTime: string | null
+  description: string | null
+  bookingType:   string | null
+  contactName:   string | null
+  contactPhone:  string | null
+  guestName:     string | null
+  guestCount:    number | null
+  diningStatus:  string | null
+  cancellationPenaltyApplied: boolean | null
+  cancellationNote: string | null
+  showCancellation: boolean | null
+  scheduleStatus: string | null
+  scheduleNote: string | null
+  originalStartTime: string | null
+  originalEndTime: string | null
+  venue: { address: string | null; maps_url: string | null; phone: string | null; dress_code: string | null; children_policy: string | null; table_hold_note: string | null; booking_terms: string | null } | null
+  flightOrigin:      string | null
+  flightDestination: string | null
+  flightDepartTime:  string | null
+  flightArriveTime:  string | null
+  seatNumbers:       string | null
+  cabinClass:        string | null
+  passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
+  rooms:             { id: string; guest: string | null; additional_guests: string[]; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; bedding_type: string | null }[]
+  standard_checkin_time: string | null; approved_checkin_time: string | null; expected_arrival_time: string | null
+  driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
 }

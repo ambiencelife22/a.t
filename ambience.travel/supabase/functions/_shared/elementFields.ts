@@ -22,6 +22,7 @@ export const NODE_FIELD_MAP: Record<string, string> = {
   cancellation_penalty_applied: 'cancellation_penalty_applied',
   show_cancellation:            'show_cancellation',
   schedule_status:              'schedule_status',
+  schedule_note:                'schedule_note',
   sort_order:                   'sort_order',
 }
 
