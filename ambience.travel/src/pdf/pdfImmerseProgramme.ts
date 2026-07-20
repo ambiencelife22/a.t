@@ -20,10 +20,11 @@ import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRul
 import {
   T, P, CW, ASSETS,
   fmtTime, buildDateRange, formatDateWeekday, drawPdfHero, stampPageChrome, addCreamPage,
-  roomLine, driverDetailLines, drawOwnArrangementsChip,
+  roomLine, driverDetailLines, drawOwnArrangementsChip, drawAlertPill, drawStrikeText,
   diningPdfStatus, isDiningCancelled, greeterLines,
   type PdfEngagementLink,
 } from './pdfShared'
+import { scheduleAlert } from '../utils/utilsScheduleAlert'
 import type {
   ImmerseJourneyDay as JourneyDay,
   ImmerseDossierJourney as DossierJourney,
@@ -64,7 +65,10 @@ type ProgrammeEntry = {
   image_src:           string | null
   detailLines:         string[]
   noteLines:           string[]   // S55-P2: gold-italic concierge notes, own treatment
-  alertLines:          string[]   // S53Q: caution alerts (tentative, checkout-requested)
+  schedPillLabel:      string | null   // S53Q: schedule alert via scheduleAlert (one source)
+  schedTone:           'danger' | 'caution' | null
+  schedStruck:         boolean
+  checkoutLines:       string[]        // late-checkout-approved / checkout-requested (not schedule state)
   passengerLines:      string[]   // S53G: separated for pill rendering
   diningCancelled:     boolean
   diningPill:          { label: string; tone: [number, number, number] } | null
@@ -178,10 +182,10 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       ...(it.check_in_note ? [it.check_in_note] : []),
       ...(it.check_out_note ? [it.check_out_note] : []),
     ]
-    const alertLines = [
-      ...(it.schedule_status === 'tentative' ? ['Tentatively Scheduled'] : []),
+    const sched = scheduleAlert(it)
+    const checkoutLines = [
       ...(it.late_checkout_approved_time ? [`Late Checkout Approved: ${fmtTimeOnly(it.late_checkout_approved_time)}`] : []),
-      ...(it.requested_checkout_time && !it.late_checkout_approved_time ? [`Check-Out TimeRequested · ${fmtTimeOnly(it.requested_checkout_time)}`] : []),
+      ...(it.requested_checkout_time && !it.late_checkout_approved_time ? [`Check-Out Time Requested \u00b7 ${fmtTimeOnly(it.requested_checkout_time)}`] : []),
     ]
 
     return {
@@ -200,7 +204,10 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
       image_src:           it.image_src,
       detailLines,
       noteLines,
-      alertLines,
+      schedPillLabel:      sched.pillLabel,
+      schedTone:           sched.tone,
+      schedStruck:         sched.struck,
+      checkoutLines,
       passengerLines:      paxLines,
       diningCancelled,
       diningPill,
@@ -227,7 +234,8 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
 
   if (entry.subtitle)              h += PROG.lineH + 1
   h += entry.noteLines.length     * (PROG.lineH + 0.5)
-  h += entry.alertLines.length    * (PROG.lineH + 0.5)
+  h += entry.checkoutLines.length * (PROG.lineH + 0.5)
+  h += entry.schedPillLabel ? (2.6 * 2 + Math.ceil(entry.schedPillLabel.length / 42) * 4 + 2) : 0
   // Detail lines may wrap (venue policy terms); count wrapped rows so the row
   // height matches what drawEntryRow actually renders.
   {
@@ -266,7 +274,12 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   drawRule(doc, contentX, y + rowH, contentW, T.rule, 0.15)
 
   // S53G: time only, no am/pm
-  if (entry.start_time) {
+  if (entry.start_time && entry.schedStruck) {
+    sans(doc, 'bold', 7.5)
+    doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
+    drawStrikeText(doc, fmtTimeOnly(entry.start_time), P.margin, y + PROG.entryPadV + 5, 'left')
+  }
+  if (entry.start_time && !entry.schedStruck) {
     sans(doc, 'bold', 7.5)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
     doc.text(fmtTimeOnly(entry.start_time), P.margin, y + PROG.entryPadV + 5)
@@ -295,14 +308,15 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   // Title
   serif(doc, 'normal', 10.5)
   const titleLines = doc.splitTextToSize(entry.title, contentW - 2)
+  const struck = entry.diningCancelled || entry.schedStruck
   doc.setTextColor(
-    entry.diningCancelled ? T.faint[0] : T.ink[0],
-    entry.diningCancelled ? T.faint[1] : T.ink[1],
-    entry.diningCancelled ? T.faint[2] : T.ink[2],
+    struck ? T.faint[0] : T.ink[0],
+    struck ? T.faint[1] : T.ink[1],
+    struck ? T.faint[2] : T.ink[2],
   )
   for (const line of titleLines) {
     doc.text(line, contentX, ty + PROG.titleLineH)
-    if (entry.diningCancelled) {
+    if (struck) {
       const lw = doc.getTextWidth(line)
       doc.setDrawColor(T.faint[0], T.faint[1], T.faint[2]); doc.setLineWidth(0.4)
       doc.line(contentX, ty + PROG.titleLineH - 1.4, contentX + lw, ty + PROG.titleLineH - 1.4)
@@ -340,9 +354,13 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     }
   }
   if (entry.noteLines.length > 0) ty += 0.5
-  // S53Q: caution alerts (tentative, checkout-requested) — amber, bold, distinct
-  // from the gold-italic concierge notes above.
-  for (const line of entry.alertLines) {
+  // S53Q: schedule alert pill (delayed/cancelled=danger, tentative=caution) via
+  // scheduleAlert — one source across all four surfaces.
+  if (entry.schedPillLabel) {
+    ty += drawAlertPill(doc, contentX, ty, entry.schedPillLabel, entry.schedTone ?? 'danger', contentW - 2) + 1.5
+  }
+  // Checkout info lines (approved/requested) — amber, bold; not schedule state.
+  for (const line of entry.checkoutLines) {
     sans(doc, 'bold', 7.5)
     doc.setTextColor(0xB0, 0x7D, 0x2A)
     for (const wl of doc.splitTextToSize(line, contentW - 2)) {
@@ -350,7 +368,7 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
       ty += PROG.lineH
     }
   }
-  if (entry.alertLines.length > 0) ty += 0.5
+  if (entry.checkoutLines.length > 0) ty += 0.5
   // Detail lines (rooms, vehicles, greeters, dining). Long lines (venue policy
   // terms) wrap fully — never truncated. The PDF may be the only surface a guest
   // sees; it must carry the complete terms, not a fragment.
