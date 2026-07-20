@@ -1,22 +1,22 @@
-// pdfImmerseConfirmation.ts — Engagement Confirmation PDF export
+// pdfImmerseConfirmation.ts - Engagement Confirmation PDF export
 //
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
-//   - Hotel cards — image-left header (hotel name, dates, party, booking-level
+//   - Hotel cards - image-left header (hotel name, dates, party, booking-level
 //     conf when roomless, booked_by), nested room rows beneath (room name,
 //     guests, per-room conf pill). Section: "ACCOMMODATION".
-//   - Flight cards — icon, route, times, conf# pill. Section: "FLIGHTS".
-//   - Contact cards — advisor + selected house guests/staff. S54.
+//   - Flight cards - icon, route, times, conf# pill. Section: "FLIGHTS".
+//   - Contact cards - advisor + selected house guests/staff. S54.
 //
 // What it does not own:
 //   - Hero, footer, theme, date helpers, page helpers → pdfShared.ts
 //   - Image loading, SVG rasterisation, cover crop, font helpers → pdfUtils.ts
 //   - Font loading / registration → pdfFonts.ts
 //
-// Last updated: S43 Add 2C — hero, footer, theme, helpers extracted to
+// Last updated: S43 Add 2C - hero, footer, theme, helpers extracted to
 //   pdfShared.ts. drawPdfHero() is now canonical across all three PDFs.
-// Prior: S54 — Contacts section.
-// Prior: S50 — bookedByLabel() canonical.
+// Prior: S54 - Contacts section.
+// Prior: S50 - bookedByLabel() canonical.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, makeCoverCropAsync, serif, sans, drawRule } from './pdfUtils'
@@ -62,7 +62,7 @@ export interface ConfirmationBriefData {
   experiences?:     { entry_date: string | null; title: string; notes: string | null }[]
 }
 
-// ── Hotel card — measure / draw split for row-level pagination ─────────────────
+// ── Hotel card - measure / draw split for row-level pagination ─────────────────
 // Single measurement source (measureHotel) feeds both pagination and drawing, so
 // estimates can never drift. Tall cards (many rooms) split across pages: header +
 // rooms that fit, then remaining rooms continue under a slim continuation header.
@@ -129,7 +129,7 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
     ? `Conf #:  ${booking.confirmation_number}` : null
   const headerH = m.headerH
 
-  // Image — fixed 16:9 landscape, rounded, high-res (matches programme image standard).
+  // Image - fixed 16:9 landscape, rounded, high-res (matches programme image standard).
   const imgX = P.margin + HOTEL_PADH
   const imgY = y + (headerH - HOTEL_IMG_H) / 2   // vertically centre in the header
   let croppedImg: { data: string; format: 'PNG' | 'JPEG' } | null = null
@@ -263,7 +263,7 @@ async function drawHotelSplit(doc: any, booking: EngagementBooking, y: number, f
   const pageBottom = P.h - footerMargin
 
   // Header must fit with at least one room (or alone if roomless). If it doesn't
-  // fit in remaining space, start fresh — but only if we're not already at top.
+  // fit in remaining space, start fresh - but only if we're not already at top.
   const firstRoomH = m.rooms[0]?.h ?? 0
   const headerNeed = m.headerH + firstRoomH
   const atTop = y <= (P.margin + 12)
@@ -468,11 +468,11 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.text(timeStr, rightX, y + padV + 5, { align: 'right' })
   }
 
-  // Schedule alert pill (delayed / tentative / cancelled) — one source via scheduleAlert.
+  // Schedule alert pill (delayed / tentative / cancelled) - one source via scheduleAlert.
   if (alert.pillLabel) {
     py += drawAlertPill(doc, centreX, py, alert.pillLabel, alert.tone ?? 'danger', CW * 0.62) + 2.5
   }
-  // Booked-by / own-arrangements — flows after detail lines with a clean gap,
+  // Booked-by / own-arrangements - flows after detail lines with a clean gap,
   // not pinned to the card bottom (consistent spacing regardless of line count).
   const footerY = py + 1
   if (ownArr) {
@@ -593,7 +593,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     }
   }
 
-  // ── Aux sections — grouped by registry section (flights, transfers, greeters,
+  // ── Aux sections - grouped by registry section (flights, transfers, greeters,
   //    dining, etc), mirroring the web confirmation. ────────────────────────────
 
   const visibleAux = d.elements.filter(a => a.brief_show !== false)
