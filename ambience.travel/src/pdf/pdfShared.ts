@@ -1,27 +1,27 @@
-// pdfShared.ts — Shared primitives for ambience.TRAVEL PDF exports
+// pdfShared.ts - Shared primitives for ambience.TRAVEL PDF exports
 //
 // What it owns:
-//   - Theme (T) — single colour palette for all PDFs
-//   - Layout constants (P) — page dimensions + margins
-//   - Date / time helpers — fmtDate, fmtTime, buildDateRange
-//   - Asset paths — ASSETS constant
-//   - drawPdfHero() — canonical hero for all three PDFs:
+//   - Theme (T) - single colour palette for all PDFs
+//   - Layout constants (P) - page dimensions + margins
+//   - Date / time helpers - fmtDate, fmtTime, buildDateRange
+//   - Asset paths - ASSETS constant
+//   - drawPdfHero() - canonical hero for all three PDFs:
 //       Full-bleed image + dark overlay, frosted logo card top-left,
 //       title centred serif, eyebrow centred Cormorant (not caps),
 //       prepared-for centred italic. One source of truth.
-//   - drawFrostedLogoCard() — top-left pill (used inside drawPdfHero)
-//   - stampPageChrome() — footer rule + tagline + page count (all PDFs)
-//   - addCreamPage() — new page with cream background
+//   - drawFrostedLogoCard() - top-left pill (used inside drawPdfHero)
+//   - stampPageChrome() - footer rule + tagline + page count (all PDFs)
+//   - addCreamPage() - new page with cream background
 //
 // What it does not own:
 //   - Section renderers (rooms, entries, flights, overview rows)
 //   - jsPDF lifecycle (each PDF file owns its own doc + save)
 //   - Font loading / registration (pdfFonts.ts)
 //
-// Last updated: S53G — hero metadata spacing pass. Gold rule thicker (0.5pt),
-//   all metadata steps loosened (6–8pt), charSpace on date range (0.3),
+// Last updated: S53G - hero metadata spacing pass. Gold rule thicker (0.5pt),
+//   all metadata steps loosened (6-8pt), charSpace on date range (0.3),
 //   subtitle larger (11pt), eyebrow charSpace wider (0.6), titleY nudged up.
-// Prior: S43 Add 2C — extracted from pdfImmerseConfirmation,
+// Prior: S43 Add 2C - extracted from pdfImmerseConfirmation,
 //   pdfImmerseBrief, pdfImmerseProgramme. Single source of truth.
 //   Hero: programme-style overlay + brief-style logo card + Cormorant eyebrow.
 
@@ -31,7 +31,7 @@ import type { EngagementBrief } from '../queries/queriesAdminJourney'
 import { roomGuestName, passengerName } from '../utils/utilsRoomDisplay'
 import { beddingLabel } from '../utils/utilsBooking'
 
-// ── Theme — single palette for all PDFs ──────────────────────────────────────
+// ── Theme - single palette for all PDFs ──────────────────────────────────────
 
 export const T: Record<string, RGB> = {
   cream:   [250, 247, 242],
@@ -83,10 +83,10 @@ export function addCreamPage(doc: any): number {
   return P.margin + 10
 }
 
-// ── Frosted logo card — top-left pill ─────────────────────────────────────────
+// ── Frosted logo card - top-left pill ─────────────────────────────────────────
 // ── Export branding ───────────────────────────────────────────────────────────
 // Single source for all PDF exporters. Guest surface must never pass 'alfaone'
-// (security property — no per-surface picker, engagement-scoped control only).
+// (security property - no per-surface picker, engagement-scoped control only).
 export type ExportBranding = 'ambience' | 'alfaone' | 'unbranded'
 
 export type PdfEngagementLink = {
@@ -141,7 +141,7 @@ export function drawFrostedLogoCard(
   }
 }
 
-// ── Canonical hero — one source of truth for all PDFs ─────────────────────────
+// ── Canonical hero - one source of truth for all PDFs ─────────────────────────
 //
 // Layout:
 //   IN OVERLAY: full-bleed image + dark overlay + frosted logo card top-left
@@ -154,10 +154,10 @@ export function drawFrostedLogoCard(
 
 export interface HeroParams {
   title:          string
-  subtitle?:      string | null  // brief_subtitle — renders below title
+  subtitle?:      string | null  // brief_subtitle - renders below title
   docType:        string        // e.g. "Engagement Confirmation" / "Daily Programme" / "Engagement Brief"
   preparedFor:    string | null
-  dateRange?:     string | null // optional — confirmation + brief show dates in hero
+  dateRange?:     string | null // optional - confirmation + brief show dates in hero
   heroImageData:  string | null
   emblem:         Img | null
   logo:           Img | null
@@ -195,7 +195,7 @@ export async function drawPdfHero(doc: any, params: HeroParams): Promise<number>
   doc.setFillColor(T.cream[0], T.cream[1], T.cream[2])
   doc.rect(0, P.heroH, P.w, P.h - P.heroH, 'F')
 
-  // Frosted logo card — top-left
+  // Frosted logo card - top-left
   drawFrostedLogoCard(doc, emblem, logo, logoVariant, P.margin, 7)
 
   // ── Title centred in overlay ────────────────────────────────────────────
@@ -252,7 +252,7 @@ export async function drawPdfHero(doc: any, params: HeroParams): Promise<number>
   return y + 6
 }
 
-// ── Footer chrome — one source of truth for all PDFs ─────────────────────────
+// ── Footer chrome - one source of truth for all PDFs ─────────────────────────
 //
 // Renders on every page: rule + tagline + page n of N.
 // brief?.footer_tagline overrides the default when set.
@@ -289,7 +289,7 @@ export function stampPageChrome(doc: any, brief: EngagementBrief | null): void {
   }
 }
 
-// ── Passenger formatting — shared across all trip PDFs ────────────────────────
+// ── Passenger formatting - shared across all trip PDFs ────────────────────────
 // An aux flight may carry N passengers, each with own conf + seats.
 // Returns one display line per passenger: "Label · Conf X · Seats Y".
 
@@ -337,7 +337,7 @@ export function passengerLines(aux: EngagementElementLike): string[] {
   ].filter(Boolean).join('  \u00b7  '))
 }
 
-// ── Room display composition — shared across all trip PDFs ─────────────────────
+// ── Room display composition - shared across all trip PDFs ─────────────────────
 // One source for what a room's text content is. Layout stays per-surface
 // (confirmation = structured card rows, programme = flat joined string), but the
 // FIELDS and their composition live here. Mirror of passengerLines for rooms.
@@ -391,7 +391,7 @@ export function roomLine(room: RoomLike): string {
   ].filter(Boolean).join('  \u00b7  ')
 }
 
-// ── Dining status — shared cancellation/terms model for PDFs ──────────────────
+// ── Dining status - shared cancellation/terms model for PDFs ──────────────────
 // Mirrors diningPillModel in ImmerseConfirmedSections. Returns the label + an RGB tone.
 export interface DiningStatusLike {
   show_cancellation?:            boolean | null
@@ -416,11 +416,14 @@ export function isDiningCancelled(d: DiningStatusLike): boolean {
   return d.dining_status === 'cancelled' && d.show_cancellation !== false
 }
 
-// ── Greeter line — meet_greet contact composition for PDFs ────────────────────
+// ── Greeter line - meet_greet contact composition for PDFs ────────────────────
 export interface GreeterLike {
   contact_name?:  string | null
   contact_phone?: string | null
   notes?:         string | null
+}
+export function guestLine(x: { guest_name: string | null; guest_count: number | null }): string {
+  return [x.guest_name, x.guest_count ? `${x.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
 }
 export function greeterLines(g: GreeterLike): string[] {
   const out: string[] = []
@@ -430,9 +433,9 @@ export function greeterLines(g: GreeterLike): string[] {
   return out
 }
 
-// ── Conf pill — confirmation number pill, shared across all PDFs ──────────────
+// ── Conf pill - confirmation number pill, shared across all PDFs ──────────────
 // Draws a rounded-rect pill with label text. tone='gold' (ambience bookings) or
-// 'faint' (own arrangements). Returns nothing — caller already knows pillH.
+// 'faint' (own arrangements). Returns nothing - caller already knows pillH.
 // Standard pill metrics: ppx=5 padding, pillH=6, radius=1.5.
 
 export type ConfPillTone = 'gold' | 'faint'
@@ -503,10 +506,10 @@ export function drawStrikeText(doc: any, text: string, x: number, y: number, ali
 
 // ── Own Arrangements chip ───────────────────────────────────────────────────
 // The subtle, elegant client-facing indicator for booked_by='self' (client
-// self-booked). Single source — all three PDFs draw the SAME chip via this helper,
+// self-booked). Single source - all three PDFs draw the SAME chip via this helper,
 // matching the web confirmation chip (outlined, transparent, letter-spaced muted
 // text). Returns the vertical space consumed so callers advance y. ambience/Deron
-// bookings do NOT call this — they keep the plain italic bookedByLabel text.
+// bookings do NOT call this - they keep the plain italic bookedByLabel text.
 export function drawOwnArrangementsChip(doc: any, x: number, y: number): number {
   const label = 'Own Arrangements'
   const charSpace = 0.5

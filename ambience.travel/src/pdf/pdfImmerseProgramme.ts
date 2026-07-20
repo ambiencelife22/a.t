@@ -1,14 +1,14 @@
-// pdfImmerseProgramme.ts — Daily Programme PDF export for ambience.TRAVEL
+// pdfImmerseProgramme.ts - Daily Programme PDF export for ambience.TRAVEL
 //
 // Pagination model (S53F): SINGLE measurement source (measureEntryRow). First day
 //   flows under the hero on page 1 (no blank page 1); each subsequent day begins
 //   on a fresh page. Day header never orphans; rows never split across pages.
 //   Image: fixed 3:2 box, rounded, high-res.
 //
-// Last updated: S53G — elegance pass.
+// Last updated: S53G - elegance pass.
 //   - Empty days collapse onto shared pages (no full-page blank days)
 //   - Passenger names rendered in card-bg pill rows (hierarchy, not grocery list)
-//   - Time column: am/pm suffix dropped — time only, cleaner
+//   - Time column: am/pm suffix dropped - time only, cleaner
 //   - Entry inter-row gap: +2 → +5
 //   - entryPadV: 3.5 → 5 (more air above title)
 //   - booked_by italic: more breathing room before detail lines
@@ -21,7 +21,7 @@ import {
   T, P, CW, ASSETS,
   fmtTime, buildDateRange, formatDateWeekday, drawPdfHero, stampPageChrome, addCreamPage,
   roomLine, driverDetailLines, drawOwnArrangementsChip, drawAlertPill, drawStrikeText,
-  diningPdfStatus, isDiningCancelled, greeterLines,
+  guestLine, diningPdfStatus, isDiningCancelled, greeterLines,
   type PdfEngagementLink,
 } from './pdfShared'
 import { scheduleAlert } from '../utils/utilsScheduleAlert'
@@ -137,7 +137,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
 
     const vehLines = driverDetailLines(it)
 
-    // category is now a slug — isMeetGreetElement + isDiningElement accept slugs
+    // category is now a slug - isMeetGreetElement + isDiningElement accept slugs
     const greetLines = isMeetGreetElement(it.category)
       ? greeterLines({ contact_name: it.contact_name, contact_phone: it.contact_phone, notes: null })
       : []
@@ -160,8 +160,8 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     const diningDetail: string[] = []
     if (it.venue || it.guest_name || it.guest_count) {
       const v = it.venue
-      const guestLine = [it.guest_name, it.guest_count ? `${it.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
-      if (guestLine) diningDetail.push(guestLine)
+      const gLine = guestLine(it)
+      if (gLine) diningDetail.push(gLine)
       if (v?.address) diningDetail.push(v.address)
       const contact = [v?.phone, v?.dress_code].filter(Boolean).join('  \u00b7  ')
       if (contact) diningDetail.push(contact)
@@ -215,7 +215,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
   })
 }
 
-// ── Entry row — single measurement source ─────────────────────────────────────
+// ── Entry row - single measurement source ─────────────────────────────────────
 
 function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
   const hasImage  = !!entry.image_src
@@ -343,7 +343,7 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     doc.text(entry.subtitle, contentX, ty + 4); ty += PROG.lineH + 1
   }
 
-   // S55-P2: concierge check-in/out notes — gold italic, the intention voice,
+   // S55-P2: concierge check-in/out notes - gold italic, the intention voice,
   // parity with Confirmation + Brief surfaces (was plain ink in detailLines).
   for (const line of entry.noteLines) {
     sans(doc, 'italic', 7.5)
@@ -355,11 +355,11 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   }
   if (entry.noteLines.length > 0) ty += 0.5
   // S53Q: schedule alert pill (delayed/cancelled=danger, tentative=caution) via
-  // scheduleAlert — one source across all four surfaces.
+  // scheduleAlert - one source across all four surfaces.
   if (entry.schedPillLabel) {
     ty += drawAlertPill(doc, contentX, ty, entry.schedPillLabel, entry.schedTone ?? 'danger', contentW - 2) + 1.5
   }
-  // Checkout info lines (approved/requested) — amber, bold; not schedule state.
+  // Checkout info lines (approved/requested) - amber, bold; not schedule state.
   for (const line of entry.checkoutLines) {
     sans(doc, 'bold', 7.5)
     doc.setTextColor(0xB0, 0x7D, 0x2A)
@@ -370,7 +370,7 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   }
   if (entry.checkoutLines.length > 0) ty += 0.5
   // Detail lines (rooms, vehicles, greeters, dining). Long lines (venue policy
-  // terms) wrap fully — never truncated. The PDF may be the only surface a guest
+  // terms) wrap fully - never truncated. The PDF may be the only surface a guest
   // sees; it must carry the complete terms, not a fragment.
   for (const line of entry.detailLines) {
     sans(doc, 'normal', 8)
@@ -394,7 +394,7 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     }
   }
 
-  // Dining pill — wraps fully (cancellation/booking terms); never truncated.
+  // Dining pill - wraps fully (cancellation/booking terms); never truncated.
   if (entry.diningPill) {
     sans(doc, 'normal', 7.5)
     doc.setTextColor(entry.diningPill.tone[0], entry.diningPill.tone[1], entry.diningPill.tone[2])
@@ -447,7 +447,7 @@ function drawContinuedHeader(doc: any, day: JourneyDay, dayIdx: number, y: numbe
   return y + 6
 }
 
-// ── Day section — active (has entries) ───────────────────────────────────────
+// ── Day section - active (has entries) ───────────────────────────────────────
 
 async function renderActiveDay(
   doc:     any,
@@ -484,7 +484,7 @@ async function renderActiveDay(
   return y + 6
 }
 
-// ── Empty day block — compact, inline ────────────────────────────────────────
+// ── Empty day block - compact, inline ────────────────────────────────────────
 // S53G: empty days no longer get their own page. Rendered compactly in-flow.
 // Returns height consumed so caller can decide whether to paginate.
 
@@ -568,14 +568,14 @@ export async function exportDailyProgrammePdf(
     const hasContent = entries.some(e => e.brief_show)
 
     if (hasContent) {
-      // Active day — always on its own page (except the very first)
+      // Active day - always on its own page (except the very first)
       if (firstDone) y = addCreamPage(doc)
       emptyPageOpen = false
       firstDone     = true
       y = await renderActiveDay(doc, day, entries, idx, y)
       continue
     }
-    // Empty day — collapse onto shared page
+    // Empty day - collapse onto shared page
     if (!firstDone) {
       firstDone = true
       y += drawEmptyDay(doc, day, idx, y)
