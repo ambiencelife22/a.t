@@ -22,6 +22,7 @@
 import { useEffect, useState } from 'react'
 import type { DeliveryData, EngagementContact } from '../../queries/queriesImmerseEngagement'
 import { moneyDec } from '../../utils/utilsCurrency'
+import { scheduleAlert } from '../../utils/utilsScheduleAlert'
 import type {
   BookingInvoice,
   CardItem,
@@ -212,6 +213,7 @@ const auxSections = groupElementsBySection(elements)
             const pillColor    = ownArr ? c.faint : c.gold
             const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
             const dateRange    = formatDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
+            const stayAlert    = scheduleAlert(booking)
             const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
             const rooms        = booking._rooms ?? []
 
@@ -235,11 +237,11 @@ const auxSections = groupElementsBySection(elements)
                   </div>
                   <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: booking.status === 'cancelled' ? c.faint : c.ink, marginBottom: 4, lineHeight: 1.3, textDecoration: booking.status === 'cancelled' ? 'line-through' : 'none' }}>{hotelName}</div>
-                      {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, textDecoration: booking.status === 'cancelled' ? 'line-through' : 'none' }}>{dateRange}</div>}
-                      {booking.status === 'cancelled' && (
+                      <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: stayAlert.struck ? c.faint : c.ink, marginBottom: 4, lineHeight: 1.3, textDecoration: stayAlert.struck ? 'line-through' : 'none' }}>{hotelName}</div>
+                      {dateRange && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, textDecoration: stayAlert.struck ? 'line-through' : 'none' }}>{dateRange}</div>}
+                      {stayAlert.pillLabel && (
                         <div style={{ marginTop: 6 }}>
-                          <AlertPill label={booking.status_note ? `Cancelled \u00b7 ${booking.status_note}` : 'Cancelled'} tone="danger" />
+                          <AlertPill label={stayAlert.pillLabel} tone={stayAlert.tone ?? 'danger'} />
                         </div>
                       )}
                       {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
@@ -374,7 +376,7 @@ const auxSections = groupElementsBySection(elements)
           {section.items.map(aux => {
             const ownArr    = isOwnArrangements(aux.booked_by)
             const pillColor = ownArr ? c.faint : c.gold
-            const isDelayed  = aux.schedule_status === 'delayed'
+            const alert      = scheduleAlert(aux)
             const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' - ')
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
@@ -402,12 +404,12 @@ const auxSections = groupElementsBySection(elements)
                   {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.dining_status === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
                   {aux.start_date && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
-                  {aux.schedule_status === 'delayed' ? (
+                  {alert.originalStart || alert.originalEnd ? (
                     <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>
-                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(aux.original_start_time)}</span> {fmtTime(aux.start_time)}
-                      {aux.end_time && <> - <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(aux.original_end_time)}</span> {fmtTime(aux.end_time)}</>}
+                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(alert.originalStart)}</span> {fmtTime(aux.start_time)}
+                      {aux.end_time && <> - <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(alert.originalEnd)}</span> {fmtTime(aux.end_time)}</>}
                     </div>
-                  ) : aux.schedule_status === 'cancelled' ? (
+                  ) : alert.struck ? (
                     <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 400, color: c.faint, textDecoration: 'line-through', marginTop: 4 }}>{timeStr}</div>
                   ) : (timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>)}
                   {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).length > 0 && (
@@ -446,16 +448,8 @@ const auxSections = groupElementsBySection(elements)
                       )}
                     </div>
                   )}
-                  {aux.schedule_status === 'tentative' && (
-                    <div style={{ marginTop: 8 }}><AlertPill label="Tentatively Scheduled" tone="caution" /></div>
-                  )}
-                  {aux.schedule_status === 'cancelled' && (
-                    <div style={{ marginTop: 8 }}>
-                      <AlertPill label={aux.schedule_note ? `Cancelled \u00b7 ${aux.schedule_note}` : 'Cancelled'} tone="danger" />
-                    </div>
-                  )}
-                  {aux.schedule_status === 'delayed' && (
-                    <div style={{ marginTop: 8 }}><AlertPill label="Delayed" tone="danger" /></div>
+                  {alert.pillLabel && (
+                    <div style={{ marginTop: 8 }}><AlertPill label={alert.pillLabel} tone={alert.tone ?? 'caution'} /></div>
                   )}
                   {ownArr && (
                     <span style={{
@@ -809,6 +803,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   // Hotel stays render in the Confirmation card style (concise image
                   // header + clean nested rooms), not the generic programme card.
                   const isHotelStay = item.category === 'stay' && item.rooms.length > 0
+                  const alert = scheduleAlert({ schedule_status: item.scheduleStatus, schedule_note: item.scheduleNote, status: item.status, status_note: null, original_start_time: item.originalStartTime, original_end_time: item.originalEndTime })
                   if (isHotelStay) {
                     return (
                       <div key={item.id} style={{
@@ -836,8 +831,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 </span>
                                 {item.status && item.status !== 'cancelled' && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
                               </div>
-                              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: item.status === 'cancelled' ? c.faint : c.ink, lineHeight: 1.3, textDecoration: item.status === 'cancelled' ? 'line-through' : 'none' }}>{item.title}</div>
-                              {item.status === 'cancelled' && <div style={{ marginTop: 6 }}><AlertPill label={item.scheduleNote ? `Cancelled \u00b7 ${item.scheduleNote}` : 'Cancelled'} tone="danger" /></div>}
+                              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: alert.struck ? c.faint : c.ink, lineHeight: 1.3, textDecoration: alert.struck ? 'line-through' : 'none' }}>{item.title}</div>
+                              {alert.pillLabel && <div style={{ marginTop: 6 }}><AlertPill label={alert.pillLabel} tone={alert.tone ?? 'danger'} /></div>}
                               {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
                               {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
@@ -1079,11 +1074,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             borderRadius: 6,
                             display: 'flex', flexDirection: 'column', gap: 6,
                           }}>
-                            {item.scheduleStatus === 'delayed' && (
-                              <div><AlertPill label="Delayed" tone="danger" /></div>
-                            )}
-                            {item.scheduleStatus === 'cancelled' && (
-                              <div><AlertPill label={item.scheduleNote ? `Cancelled \u00b7 ${item.scheduleNote}` : 'Cancelled'} tone="danger" /></div>
+                            {alert.pillLabel && (
+                              <div><AlertPill label={alert.pillLabel} tone={alert.tone ?? 'danger'} /></div>
                             )}
                             {item.flightOrigin && (
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -1099,9 +1091,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   {item.flightOrigin}
                                 </div>
                                 {item.flightDepartTime && (
-                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: item.scheduleStatus === 'cancelled' ? 400 : 700, color: item.scheduleStatus === 'cancelled' ? c.faint : c.ink, textDecoration: item.scheduleStatus === 'cancelled' ? 'line-through' : 'none', flexShrink: 0 }}>
-                                    {item.scheduleStatus === 'delayed' && item.originalStartTime && (
-                                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(item.originalStartTime)}</span>
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: alert.struck ? 400 : 700, color: alert.struck ? c.faint : c.ink, textDecoration: alert.struck ? 'line-through' : 'none', flexShrink: 0 }}>
+                                    {alert.originalStart && (
+                                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(alert.originalStart)}</span>
                                     )}
                                     {fmtTime(item.flightDepartTime)}
                                   </div>
@@ -1122,9 +1114,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   {item.flightDestination}
                                 </div>
                                 {item.flightArriveTime && (
-                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: item.scheduleStatus === 'cancelled' ? 400 : 700, color: item.scheduleStatus === 'cancelled' ? c.faint : c.ink, textDecoration: item.scheduleStatus === 'cancelled' ? 'line-through' : 'none', flexShrink: 0 }}>
-                                    {item.scheduleStatus === 'delayed' && item.originalEndTime && (
-                                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(item.originalEndTime)}</span>
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: alert.struck ? 400 : 700, color: alert.struck ? c.faint : c.ink, textDecoration: alert.struck ? 'line-through' : 'none', flexShrink: 0 }}>
+                                    {alert.originalEnd && (
+                                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(alert.originalEnd)}</span>
                                     )}
                                     {fmtTime(item.flightArriveTime)}
                                   </div>

@@ -460,6 +460,47 @@ export function drawConfPill(
   return pillW
 }
 
+// ── Alert pill (schedule state: delayed / tentative / cancelled) ─────────────
+// Single source for the PDF schedule-alert pill, mirroring the web AlertPill.
+// Danger (red) for delayed/cancelled, caution (amber) for tentative. Wraps long
+// labels ("Cancelled · reason") across lines within the card width. Returns the
+// vertical space consumed so callers advance y.
+export function drawAlertPill(
+  doc:   any,
+  x:     number,
+  y:     number,
+  label: string,
+  tone:  'danger' | 'caution',
+  maxW:  number,
+): number {
+  const ppx = 5; const ppv = 2.6; const radius = 1.5; const lineH = 4
+  const color: [number, number, number] = tone === 'danger' ? [180, 50, 31] : [176, 125, 42]
+  const bg:    [number, number, number] = tone === 'danger' ? [250, 240, 238] : [250, 245, 236]
+  sans(doc, 'bold', 7)
+  const lines: string[] = doc.splitTextToSize(label, maxW - ppx * 2)
+  const pillW = Math.min(maxW, Math.max(...lines.map((l: string) => doc.getTextWidth(l))) + ppx * 2)
+  const pillH = ppv * 2 + lines.length * lineH
+  doc.setFillColor(bg[0], bg[1], bg[2])
+  doc.setDrawColor(color[0], color[1], color[2])
+  doc.setLineWidth(0.4)
+  doc.roundedRect(x, y, pillW, pillH, radius, radius, 'FD')
+  doc.setTextColor(color[0], color[1], color[2])
+  let ly = y + ppv + 3
+  for (const l of lines) { doc.text(l, x + ppx, ly); ly += lineH }
+  return pillH
+}
+
+// ── Strikethrough text (cancelled/superseded times) ──────────────────────────
+// jsPDF has no text-decoration; single source draws text then a hairline across
+// it. align 'right' strikes leftward from x. Colour/size set by caller beforehand.
+export function drawStrikeText(doc: any, text: string, x: number, y: number, align: 'left' | 'right' = 'left'): void {
+  doc.text(text, x, y, { align })
+  const w = doc.getTextWidth(text)
+  const x1 = align === 'right' ? x - w : x
+  doc.setLineWidth(0.3)
+  doc.line(x1, y - 1.1, x1 + w, y - 1.1)
+}
+
 // ── Own Arrangements chip ───────────────────────────────────────────────────
 // The subtle, elegant client-facing indicator for booked_by='self' (client
 // self-booked). Single source — all three PDFs draw the SAME chip via this helper,

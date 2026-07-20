@@ -24,10 +24,11 @@ import type { Img } from './pdfUtils'
 import {
   T, P, CW, ASSETS,
   fmtDate, fmtTime, buildDateRange, passengerLines, driverDetailLines, roomDisplay,
-  drawOwnArrangementsChip, drawConfPill, greeterLines, diningPdfStatus, isDiningCancelled,
+  drawOwnArrangementsChip, drawConfPill, drawAlertPill, drawStrikeText, greeterLines, diningPdfStatus, isDiningCancelled,
   drawPdfHero, stampPageChrome, addCreamPage,
   type ExportBranding,
 } from './pdfShared'
+import { scheduleAlert } from '../utils/utilsScheduleAlert'
 import type {
   ImmerseEngagementBrief as EngagementBrief,
   ImmerseEngagementBooking as EngagementBooking,
@@ -97,7 +98,9 @@ function measureHotel(doc: any, booking: EngagementBooking): HotelMeasure {
     + (booking.cancellation_policy ? (doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
     + ((booking._invoices ?? []).length > 0 ? (booking._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]).length * 12 + 8 : 0)
     + (booking.inclusions_override ? (booking.inclusions_override as {heading:string;bullets:string[]}[]).reduce((acc, g) => acc + 6 + g.bullets.length * 4.5, 0) : 0)
-    + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)
+    + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)+ (hasException ? 6 : 0)
+    + (() => { const a = scheduleAlert(booking); return a.pillLabel ? (2.6 * 2 + doc.splitTextToSize(a.pillLabel, contentW - HOTEL_PADH * 2 - 10).length * 4 + 3) : 0 })()
+    + (booking.cancellation_policy ? (doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
     + HOTEL_PADV
   const headerH = Math.max(36, headerContentH, HOTEL_IMG_H + HOTEL_PADV * 2)
 
@@ -148,9 +151,24 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
   doc.roundedRect(P.margin, y, CW, headerH, 2, 2, 'D')
 
   const tx = contentX + HOTEL_PADH; let ty = y + HOTEL_PADV
+  const stayAlert = scheduleAlert(booking)
   serif(doc, 'normal', 11)
-  doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-  for (const line of m.nameLines) { doc.text(continuation ? `${line} (continued)` : line, tx, ty); ty += 5.5 }
+  doc.setTextColor(stayAlert.struck ? T.faint[0] : T.ink[0], stayAlert.struck ? T.faint[1] : T.ink[1], stayAlert.struck ? T.faint[2] : T.ink[2])
+  for (const line of m.nameLines) {
+    const txt = continuation ? `${line} (continued)` : line
+    if (stayAlert.struck) drawStrikeText(doc, txt, tx, ty, 'left')
+    else doc.text(txt, tx, ty)
+    ty += 5.5
+  }
+  if (dateRange) {
+    sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    if (stayAlert.struck) drawStrikeText(doc, dateRange, tx, ty, 'left')
+    else doc.text(dateRange, tx, ty)
+    ty += 5
+  }
+  if (stayAlert.pillLabel) {
+    ty += drawAlertPill(doc, tx, ty, stayAlert.pillLabel, stayAlert.tone ?? 'danger', contentW - HOTEL_PADH * 2) + 2.5
+  }
 
   if (dateRange) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(dateRange, tx, ty); ty += 5 }
   if (booking.check_in_note) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.check_in_note, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
@@ -379,6 +397,7 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
 // ── Flight card ───────────────────────────────────────────────────────────────
 
 function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): number {
+  const alert = scheduleAlert(aux)
   const padV = 7; const padH = 10
   const bookedByText = bookedByLabel(aux.booked_by)
   const ownArr       = isOwnArrangements(aux.booked_by)
@@ -391,7 +410,9 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
   const headerBlockH = 23
   const detailH      = detailLines.length * 5
   const footerH      = 5 + (ownArr ? 5.4 : 4.5)
-  const cardH        = Math.max(34, padV + headerBlockH + detailH + footerH + padV - 4)
+  const alertPre     = scheduleAlert(aux)
+  const alertH       = alertPre.pillLabel ? (2.6 * 2 + (doc.splitTextToSize(alertPre.pillLabel, CW * 0.62 - 10).length * 4)) + 3 : 0
+  const cardH        = Math.max(34, padV + headerBlockH + detailH + alertH + footerH + padV - 4)
 
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
@@ -447,6 +468,10 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.text(timeStr, rightX, y + padV + 5, { align: 'right' })
   }
 
+  // Schedule alert pill (delayed / tentative / cancelled) — one source via scheduleAlert.
+  if (alert.pillLabel) {
+    py += drawAlertPill(doc, centreX, py, alert.pillLabel, alert.tone ?? 'danger', CW * 0.62) + 2.5
+  }
   // Booked-by / own-arrangements — flows after detail lines with a clean gap,
   // not pinned to the card bottom (consistent spacing regardless of line count).
   const footerY = py + 1
