@@ -834,9 +834,10 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <span style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.muted }}>
                                   {item.categoryLabel ?? 'Hotel'}
                                 </span>
-                                {item.status && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
+                                {item.status && item.status !== 'cancelled' && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
                               </div>
-                              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.3 }}>{item.title}</div>
+                              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: item.status === 'cancelled' ? c.faint : c.ink, lineHeight: 1.3, textDecoration: item.status === 'cancelled' ? 'line-through' : 'none' }}>{item.title}</div>
+                              {item.status === 'cancelled' && <div style={{ marginTop: 6 }}><AlertPill label={item.scheduleNote ? `Cancelled \u00b7 ${item.scheduleNote}` : 'Cancelled'} tone="danger" /></div>}
                               {item.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkInNote}</div>}
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
                               {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
@@ -1029,7 +1030,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            {item.status && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
+                            {item.status && item.status !== 'cancelled' && item.kind !== 'hotel_checkout' && <StatusPill status={item.status} />}
                             {timeStr && <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink }}>{timeStr}</span>}
                           </div>
                         </div>
@@ -1081,6 +1082,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             {item.scheduleStatus === 'delayed' && (
                               <div><AlertPill label="Delayed" tone="danger" /></div>
                             )}
+                            {item.scheduleStatus === 'cancelled' && (
+                              <div><AlertPill label={item.scheduleNote ? `Cancelled \u00b7 ${item.scheduleNote}` : 'Cancelled'} tone="danger" /></div>
+                            )}
                             {item.flightOrigin && (
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
@@ -1095,7 +1099,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   {item.flightOrigin}
                                 </div>
                                 {item.flightDepartTime && (
-                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink, flexShrink: 0 }}>
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: item.scheduleStatus === 'cancelled' ? 400 : 700, color: item.scheduleStatus === 'cancelled' ? c.faint : c.ink, textDecoration: item.scheduleStatus === 'cancelled' ? 'line-through' : 'none', flexShrink: 0 }}>
                                     {item.scheduleStatus === 'delayed' && item.originalStartTime && (
                                       <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(item.originalStartTime)}</span>
                                     )}
@@ -1118,7 +1122,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   {item.flightDestination}
                                 </div>
                                 {item.flightArriveTime && (
-                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: c.ink, flexShrink: 0 }}>
+                                  <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: item.scheduleStatus === 'cancelled' ? 400 : 700, color: item.scheduleStatus === 'cancelled' ? c.faint : c.ink, textDecoration: item.scheduleStatus === 'cancelled' ? 'line-through' : 'none', flexShrink: 0 }}>
                                     {item.scheduleStatus === 'delayed' && item.originalEndTime && (
                                       <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400, marginRight: 5 }}>{fmtTime(item.originalEndTime)}</span>
                                     )}

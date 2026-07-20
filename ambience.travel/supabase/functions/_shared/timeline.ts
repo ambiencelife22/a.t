@@ -230,7 +230,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
-        show_cancellation: null, schedule_status: null, requested_checkout_time: null, late_checkout_approved_time: null, original_start_time: null, original_end_time: null, venue: null,
+        show_cancellation: null, schedule_status: null, schedule_note: (b.status_note as string | null) ?? null, requested_checkout_time: null, late_checkout_approved_time: null, original_start_time: null, original_end_time: null, venue: null,
         rooms, passengers: [], driver_details: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -264,7 +264,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
         cancellation_penalty_applied: null, cancellation_note: null,
-        show_cancellation: null, schedule_status: null, original_start_time: null, original_end_time: null, venue: null,
+        show_cancellation: null, schedule_status: null, schedule_note: (b.status_note as string | null) ?? null, original_start_time: null, original_end_time: null, venue: null,
         rooms: [], passengers: [], driver_details: [], source_booking_id: b.id as string, source_aux_id: null,
         brief_show: true,
       })
@@ -365,7 +365,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       contact_name: null, contact_phone: null,
       guest_name: null, guest_count: null, dining_status: null,
       cancellation_penalty_applied: null, cancellation_note: null,
-      show_cancellation: null, schedule_status: null, requested_checkout_time: null, late_checkout_approved_time: null, original_start_time: null, original_end_time: null, venue: null,
+      show_cancellation: null, schedule_status: null, schedule_note: null, requested_checkout_time: null, late_checkout_approved_time: null, original_start_time: null, original_end_time: null, venue: null,
       rooms: [], passengers: [], driver_details: [],
       source_booking_id: null,
       source_aux_id: (e.source_aux_id as string | null) ?? null,
