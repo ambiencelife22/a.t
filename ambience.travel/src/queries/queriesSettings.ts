@@ -17,33 +17,21 @@
 
 import { supabase } from '../lib/supabase'
 import { camelizeKeys } from '@shared/camelize'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface PlatformSettings {
-  maintenanceMode: boolean
-  updatedAt:       string | null
-  updatedBy:       string | null
-}
-
-// ── Guest path - direct anon query ────────────────────────────────────────────
-
-/**
+import type { PlatformSettings } from '../types/typesImmerse'
+/*
  * Lightweight read for the guest gate in ImmerseEngagementRoute.
  * No EF - anon client reads a_platform_settings directly via RLS public policy.
  * Returns false on any error (fail open - never block a guest on a read failure).
  */
+
+
 export async function fetchMaintenanceMode(): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('a_platform_settings')
-    .select('maintenance_mode')
-    .limit(1)
-    .maybeSingle()
-
-  if (error || !data) return false
-  return (data as { maintenance_mode: boolean }).maintenance_mode
+  const { data, error } = await supabase.functions.invoke('travel-write-settings', {
+    body: { mode: 'maintenance_mode' },
+  })
+  if (error) return false
+  return Boolean(data?.maintenanceMode)
 }
-
 // ── Admin path - EF ───────────────────────────────────────────────────────────
 
 /**
@@ -51,14 +39,12 @@ export async function fetchMaintenanceMode(): Promise<boolean> {
  * Via travel-read-settings EF (JWT required).
  */
 export async function fetchSettings(): Promise<PlatformSettings> {
-  const { data, error } = await supabase
-    .from('a_platform_settings')
-    .select('maintenance_mode, updated_at, updated_by')
-    .limit(1)
-    .maybeSingle()
-  if (error) throw error
-  if (!data) return { maintenanceMode: false, updatedAt: null, updatedBy: null }
-  return camelizeKeys<PlatformSettings>(data)
+  const { data, error } = await supabase.functions.invoke('travel-write-settings', {
+    body: { mode: 'settings' },
+  })
+  if (error) throw new Error(`settings: ${error.message}`)
+  if (!data?.settings) return { maintenanceMode: false, updatedAt: null, updatedBy: null }
+  return camelizeKeys<PlatformSettings>(data.settings)
 }
 
 /**

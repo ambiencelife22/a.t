@@ -14,7 +14,8 @@
 import { useState, useEffect } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { AdminSection, useAdminToast } from './_adminPrimitives'
-import { fetchSettings, setMaintenanceMode, type PlatformSettings } from '../../queries/queriesSettings'
+import { fetchSettings, setMaintenanceMode } from '../../queries/queriesSettings'
+import type { PlatformSettings } from '../../types/typesImmerse'
 import { formatDateShort } from '../../utils/utilsDates'
 
 const EASE = 'cubic-bezier(0.16,1,0.3,1)'

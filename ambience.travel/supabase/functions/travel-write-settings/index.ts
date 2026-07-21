@@ -66,5 +66,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }, 200)
   }
 
+  if (body.mode === 'settings') {
+    const { data, error } = await db
+      .from('a_platform_settings')
+      .select('maintenance_mode, updated_at, updated_by')
+      .limit(1).maybeSingle()
+    if (error) return json({ error: 'Failed to fetch settings' }, 500)
+    return json({ settings: data ?? null })
+  }
+  if (body.mode === 'maintenance_mode') {
+    const { data, error } = await db
+      .from('a_platform_settings')
+      .select('maintenance_mode')
+      .limit(1).maybeSingle()
+    if (error) return json({ error: 'Failed to fetch maintenance mode' }, 500)
+    return json({ maintenanceMode: (data as { maintenance_mode: boolean } | null)?.maintenance_mode ?? false })
+  }
   return json({ error: 'Invalid request' }, 400)
 })

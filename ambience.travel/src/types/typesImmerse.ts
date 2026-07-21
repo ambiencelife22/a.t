@@ -55,6 +55,12 @@ export interface EngagementStatusRow {
 }
 export type ItineraryStatusRow = EngagementStatusRow
 
+export interface PlatformSettings {
+  maintenanceMode: boolean
+  updatedAt: string | null
+  updatedBy: string | null
+}
+
 export interface ItineraryStatus {
   id:        string
   slug:      string
