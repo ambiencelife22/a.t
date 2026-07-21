@@ -33,7 +33,7 @@ export const TRANSPORT_FIELDS = [
   'notes', 'booked_by',
 ] as const
 
-// travel_engagement_dining_detail columns. Flat name == column name.
+// travel_engagement_reservation_detail columns. Flat name == column name.
 export const DINING_FIELDS = [
   'supplier_id', 'dining_venue_id', 'guest_name', 'guest_count', 'dining_status', 'contact_name',
   'contact_phone', 'cancellation_note', 'booking_terms_override', 'notes', 'booked_by',
@@ -61,7 +61,7 @@ export const DROPPED_FIELDS = ['seat_type'] as const
 export function detailTableForType(slug: string | null): string | null {
   if (slug === 'flight') return 'travel_engagement_transport_detail'
   // dining + reservation share one detail shape: a canonical supplier + party/time/terms.
-  if (slug === 'dining' || slug === 'reservation') return 'travel_engagement_dining_detail'
+  if (slug === 'dining' || slug === 'reservation') return 'travel_engagement_reservation_detail'
   if (slug === 'spa_wellness' || slug === 'tour' || slug === 'experience') return 'travel_engagement_experience_detail'
   return null
 }
