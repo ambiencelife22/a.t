@@ -233,7 +233,7 @@ export const AUX_BOOKING_SELECT = [
   'brief_show', 'sort_order', 'created_at', 'updated_at',
   'schedule_status', 'original_start_time', 'original_end_time',
   'flight_number', 'airline_name', 'cabin_class', 'aircraft_type',
-  'depart_airport', 'arrive_airport', 'supplier_id', 'dining_venue_id',
+  'depart_airport', 'arrive_airport', 'supplier_id',
 ].join(', ')
 
 // Flatten the embedded travel_engagement_types join onto an aux booking row.
@@ -283,7 +283,7 @@ export async function fetchEngagementElements(
       .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, flight_time, distance_nm, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone')
       .in('node_id', ids),
     db.from('travel_engagement_reservation_detail')
-      .select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
+      .select('node_id, supplier_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
       .in('node_id', ids),
     db.from('travel_engagement_experience_detail')
       .select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, schedule, notes')
@@ -544,7 +544,7 @@ export async function fetchEngagementElement(
 
   const [tRes, dRes, xRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
-    db.from('travel_engagement_reservation_detail').select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_engagement_reservation_detail').select('node_id, supplier_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_engagement_experience_detail').select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, schedule, notes').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),

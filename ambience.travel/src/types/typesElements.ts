@@ -467,7 +467,7 @@ export type ElementBase = {
   arriveFboAddress?: string | null
   arriveFboPhone?:   string | null
   crew?:               { name: string; role: string }[]
-  diningVenueId?:    string | null
+  
   imageSrc?:          string | null
   passengers?:         ElementPassenger[]
   createdAt:          string
