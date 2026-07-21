@@ -30,6 +30,12 @@ import { camelizeKeys } from '@shared/camelize'
 
 import { supabase } from '../lib/supabase'
 
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
+
 export interface HotelVenue {
   id:                   string
   slug:                 string
@@ -68,45 +74,8 @@ export interface HotelVenue {
 export async function getHotelsByDestination(
   destinationSlug: string,
 ): Promise<HotelVenue[]> {
-  const { data: dest, error: destError } = await supabase
-    .from('global_destinations')
-    .select('id')
-    .eq('slug', destinationSlug)
-    .single()
-
-  if (destError) {
-    throw new Error(
-      `Failed to resolve destination "${destinationSlug}": ${destError.message}`,
-    )
-  }
-  if (!dest) {
-    throw new Error(`Destination "${destinationSlug}" not found`)
-  }
-
-  const { data, error } = await supabase
-    .from('travel_accom_hotels')
-    .select(`
-      id, slug, short_slug, name,
-      description,
-      address, city, zip_code, latitude, longitude,
-      google_maps_url, website,
-      hero_image_src, hero_image_alt,
-      image_credit, image_credit_url, image_license,
-      bullets,
-      stars, michelin_keys, forbes_rating,
-      is_preferred_partner, is_supplementary,
-      brand_id, brand2_id,
-      sort_order,
-      public_preview_rank
-    `)
-    .eq('destination_id', dest.id)
-    .eq('is_active', true)
-    .order('is_supplementary', { ascending: true })
-    .order('name',             { ascending: true })
-
-  if (error) {
-    throw new Error(`Failed to fetch hotels: ${error.message}`)
-  }
-
-  return camelizeKeys<HotelVenue[]>(data ?? [])
+  const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
+    mode: 'hotels_by_destination', destination_slug: destinationSlug,
+  })
+  return camelizeKeys<HotelVenue[]>(rows ?? [])
 }

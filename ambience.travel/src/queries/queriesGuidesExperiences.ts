@@ -28,6 +28,13 @@
 // Prior: S41 - initial build.
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
+
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
 
 export interface ExperienceVenue {
   id:                  string
@@ -52,41 +59,10 @@ export interface ExperienceVenue {
 export async function getExperienceVenuesByDestination(
   destinationSlug: string,
 ): Promise<ExperienceVenue[]> {
-  const { data: dest, error: destError } = await supabase
-    .from('global_destinations')
-    .select('id')
-    .eq('slug', destinationSlug)
-    .single()
-
-  if (destError) {
-    throw new Error(
-      `Failed to resolve destination "${destinationSlug}": ${destError.message}`,
-    )
-  }
-  if (!dest) {
-    throw new Error(`Destination "${destinationSlug}" not found`)
-  }
-
-  const { data, error } = await supabase
-    .from('travel_experiences')
-    .select(`
-      id, name,
-      kicker, tagline, body, bullets_heading, bullets,
-      address, maps_url,
-      image_src, image_alt, image_credit, image_credit_url, image_license,
-      sort_order,
-      experienceCategory:travel_experience_categories(label),
-      public_preview_rank
-    `)
-    .eq('global_destination_id', dest.id)
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-
-  if (error) {
-    throw new Error(`Failed to fetch experiences: ${error.message}`)
-  }
-
-  return (data ?? []).map((r: any) => ({
+  const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
+    mode: 'experiences_by_destination', destination_slug: destinationSlug,
+  })
+  return camelizeKeys<any[]>(rows ?? []).map((r) => ({
     ...r,
     experienceCategory: r.experienceCategory?.label ?? null,
   })) as ExperienceVenue[]

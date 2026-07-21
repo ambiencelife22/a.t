@@ -37,6 +37,12 @@ import { camelizeKeys } from '@shared/camelize'
 // Prior: S52 - initial ship.
 
 import { supabase } from '../lib/supabase'
+
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
 import type { ShopType } from '../types/typesShopping'
 
 export interface Shop {
@@ -71,13 +77,8 @@ export interface Shop {
 export async function fetchShoppingForDestination(
   globalDestinationId: string,
 ): Promise<Shop[]> {
-  const { data, error } = await supabase
-    .from('travel_shopping')
-    .select('id, global_destination_id, name, brand, shop_type, tagline, body, bullets, address, maps_url, by_appointment, image_src, image_alt, image_credit, image_credit_url, image_license, is_active, sort_order, public_preview_rank, created_at, updated_at')
-    .eq('global_destination_id', globalDestinationId)
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
-
-  if (error) throw new Error(`Failed to fetch shopping: ${error.message}`)
-  return camelizeKeys<Shop[]>(data ?? [])
+  const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
+    mode: 'shopping_by_destination', global_destination_id: globalDestinationId,
+  })
+  return camelizeKeys<Shop[]>(rows ?? [])
 }

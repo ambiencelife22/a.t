@@ -40,6 +40,12 @@ import { camelizeKeys } from '@shared/camelize'
 //   happening.
 
 import { supabase } from '../lib/supabase'
+
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
 import type { HappeningCategory, HappeningSurface } from '../types/typesHappenings'
 
 // ── Type ─────────────────────────────────────────────────────────────────────
@@ -90,48 +96,21 @@ export async function fetchActiveHappeningsForDestination(
   globalDestinationId: string,
   opts: { surface?: HappeningSurface; startDate?: string; endDate?: string } = {},
 ): Promise<Happening[]> {
-  let query = supabase
-    .from('travel_happenings')
-    .select('id, global_destination_id, name, category, tagline, body, bullets, start_date, end_date, venue_name, address, maps_url, website, image_src, image_alt, image_credit, image_credit_url, image_license, is_active, sort_order, public_preview_rank, surfaces, created_at, updated_at')
-    .eq('global_destination_id', globalDestinationId)
-
-  if (opts.surface) {
-    query = query.contains('surfaces', [opts.surface])
-  }
-
-  const hasWindow = !!(opts.startDate || opts.endDate)
-
-  if (hasWindow) {
-    // Window-overlap: happening.startDate <= window.end AND happening.endDate >= window.start
-    if (opts.endDate)   query = query.lte('start_date', opts.endDate)
-    if (opts.startDate) query = query.gte('end_date',   opts.startDate)
-  }
-  if (!hasWindow) {
-    // Default: not yet past
-    const today = new Date().toISOString().slice(0, 10)
-    query = query.gte('end_date', today)
-  }
-
-  const { data, error } = await query
-    .order('start_date', { ascending: true })
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
-
-  if (error) throw new Error(`Failed to fetch happenings: ${error.message}`)
-  return camelizeKeys<Happening[]>(data ?? [])
+  const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
+    mode: 'happenings_by_destination',
+    global_destination_id: globalDestinationId,
+    surface: opts.surface ?? null,
+    start_date: opts.startDate ?? null,
+    end_date: opts.endDate ?? null,
+  })
+  return camelizeKeys<Happening[]>(rows ?? [])
+}
+export async function fetchHappeningById(id: string): Promise<Happening | null> {
+  const { row } = await invokeReadGuides<{ row: unknown }>({ mode: 'happening_by_id', id })
+  return row ? camelizeKeys<Happening>(row) : null
 }
 
 /**
  * Fetch a single happening by id. Used by admin detail surfaces and PDF
  * exports that need the full record by reference.
  */
-export async function fetchHappeningById(id: string): Promise<Happening | null> {
-  const { data, error } = await supabase
-    .from('travel_happenings')
-    .select('id, global_destination_id, name, category, tagline, body, bullets, start_date, end_date, venue_name, address, maps_url, website, image_src, image_alt, image_credit, image_credit_url, image_license, is_active, sort_order, public_preview_rank, surfaces, created_at, updated_at')
-    .eq('id', id)
-    .maybeSingle()
-
-  if (error) throw new Error(`Failed to fetch happening: ${error.message}`)
-  return data as Happening | null
-}

@@ -33,6 +33,12 @@ import { camelizeKeys } from '@shared/camelize'
 
 import { supabase } from '../lib/supabase'
 
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
+
 export type VenueStatus =
   | 'operational'
   | 'temporarily_closed'
@@ -78,43 +84,8 @@ export interface DiningVenue {
 export async function getDiningVenuesByDestination(
   destinationSlug: string,
 ): Promise<DiningVenue[]> {
-  const { data: dest, error: destError } = await supabase
-    .from('global_destinations')
-    .select('id')
-    .eq('slug', destinationSlug)
-    .single()
-
-  if (destError) {
-    throw new Error(
-      `Failed to resolve destination "${destinationSlug}": ${destError.message}`,
-    )
-  }
-  if (!dest) {
-    throw new Error(`Destination "${destinationSlug}" not found`)
-  }
-
-  const { data, error } = await supabase
-    .from('travel_dining_venues')
-    .select(`
-      id, name, cuisine_subcategory,
-      kicker, tagline, body, bullets_heading, bullets,
-      michelin_award, michelin_stars, michelin_green_star,
-      worlds_50_best,
-      address, maps_url, website,
-      neighborhood, price_band, public_preview_rank, tags,
-      image_src, image_alt, image_credit, image_credit_url, image_license,
-      image_2_src, image_2_alt,
-      sort_order, is_supplementary, is_highlighted, venue_status,
-      closed_visible_until
-    `)
-    .eq('global_destination_id', dest.id)
-    .eq('is_active', true)
-    .order('is_supplementary', { ascending: true })
-    .order('name',             { ascending: true })
-
-  if (error) {
-    throw new Error(`Failed to fetch dining venues: ${error.message}`)
-  }
-
-  return camelizeKeys<DiningVenue[]>(data ?? [])
+  const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
+    mode: 'dining_by_destination', destination_slug: destinationSlug,
+  })
+  return camelizeKeys<DiningVenue[]>(rows ?? [])
 }

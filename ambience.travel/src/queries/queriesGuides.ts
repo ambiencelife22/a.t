@@ -21,30 +21,20 @@
 // Last updated: S53 - initial build.
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
+
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
 import {
-  GUIDE_TABLE_NAMES,
-  GUIDE_GRANT_VIEW_NAMES,
   type GuideDestination,
   type GuideOverlay,
   type GuideVariant,
   type GrantStatus,
 } from '../types/typesGuides'
 
-const OVERLAY_FIELDS = `
-  hero_image_src,
-  hero_image_alt,
-  eyebrow_override,
-  headline_override,
-  intro_override,
-  is_active,
-  accuracy_date,
-  at_a_glance_bullets,
-  guide_year,
-  guide_version,
-  plan_your_visit_heading,
-  plan_your_visit_intro,
-  plan_your_visit_bullets
-`.trim()
 
 // ── getGuideDestination ─────────────────────────────────────────────────────
 //
@@ -56,40 +46,15 @@ export async function getGuideDestination(
   variant: GuideVariant,
   destinationSlug: string,
 ): Promise<GuideDestination | null> {
-  const overlayTable = GUIDE_TABLE_NAMES[variant]
-
-  const { data, error } = await supabase
-    .from('global_destinations')
-    .select(`
-      id, slug, name,
-      hero_image_src,
-      hero_image_alt,
-      overlay:${overlayTable}(${OVERLAY_FIELDS})
-    `)
-    .eq('slug', destinationSlug)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(`Failed to fetch destination "${destinationSlug}" (${variant}): ${error.message}`)
-  }
-  if (!data) return null
-
-  const raw = (data as unknown as {
-    overlay: GuideOverlay | GuideOverlay[] | null
-  }).overlay
+  const { row } = await invokeReadGuides<{ row: unknown }>({
+    mode: 'destination', variant, destination_slug: destinationSlug,
+  })
+  if (!row) return null
+  const d = camelizeKeys<any>(row)
+  const raw = d.overlay as GuideOverlay | GuideOverlay[] | null
   const overlay: GuideOverlay | null = Array.isArray(raw)
     ? (raw.length > 0 ? raw[0] : null)
     : (raw ?? null)
-
-  const d = data as unknown as {
-    id:             string
-    slug:           string
-    name:           string
-    heroImageSrc: string | null
-    heroImageAlt: string | null
-  }
-
   return {
     id:           d.id,
     slug:         d.slug,
@@ -106,19 +71,8 @@ export async function checkGuideGrant(
   variant: GuideVariant,
   destinationSlug: string,
 ): Promise<GrantStatus> {
-  const viewName = GUIDE_GRANT_VIEW_NAMES[variant]
-  if (!viewName) return { status: 'ungated' }
-
-  const { data: sessionData } = await supabase.auth.getSession()
-  if (!sessionData.session) return { status: 'no_session' }
-
-  const { data, error } = await supabase
-    .from(viewName)
-    .select('global_destination_id')
-    .eq('destination_slug', destinationSlug)
-    .maybeSingle()
-
-  if (error) throw new Error(`Grant check failed (${variant}): ${error.message}`)
-  if (!data) return { status: 'no_grant' }
-  return { status: 'granted' }
+  const { status } = await invokeReadGuides<{ status: GrantStatus['status'] }>({
+    mode: 'grant', variant, destination_slug: destinationSlug,
+  })
+  return { status }
 }
