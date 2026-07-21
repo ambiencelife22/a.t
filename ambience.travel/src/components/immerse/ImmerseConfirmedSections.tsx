@@ -554,6 +554,7 @@ const auxSections = groupElementsBySection(elements)
                             )}
                             </details>
                             )}
+                            {aux.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', lineHeight: 1.5, marginTop: 6 }}>{aux.notes}</div>}
                           </div>
                         )}
                         {rows.map((r, i) => (
