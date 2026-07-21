@@ -302,7 +302,7 @@ const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
   experience:       'experience',
   acquisition:      'acquisition',
   arrangement:       'arrangement',
-  conciergeService: 'concierge_service',
+  concierge_service: 'concierge_service',
   flight:           'transport',
   private_jet:      'transport',
   airport_transfer: 'transport',
