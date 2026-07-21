@@ -508,7 +508,7 @@ const auxSections = groupElementsBySection(elements)
                   )}
                   {(aux.venue || aux.guestName || aux.guestCount) && (() => {
                     const v = aux.venue
-                    const guestLine = [aux.guestName, aux.guestCount ? `${aux.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
+                    const guestLine = [aux.resolvedGuestName ?? aux.guestName, aux.guestCount ? `${aux.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const rows: { label: string; value: string }[] = []
                     if (v?.address)         rows.push({ label: 'Address',  value: v.address })
                     if (v?.phone)           rows.push({ label: 'Phone',    value: v.phone })
@@ -1476,7 +1476,7 @@ export function EngagementBriefTab({ clientData }: {
                 value={d.name ?? 'Dining'}
                 sub={[
                   d.startTime ? fmtTime(d.startTime) : null,
-                  d.guestName ?? null,
+                  d.resolvedGuestName ?? d.guestName ?? null,
                   d.guestCount ? `${d.guestCount} guests` : null,
                   d.confirmationNumber ? `Ref: ${d.confirmationNumber}` : null,
                 ].filter(Boolean).join('  \u00b7  ')}

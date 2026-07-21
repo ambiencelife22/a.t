@@ -269,7 +269,7 @@ export async function fetchEngagementElements(
 
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, original_start_time, original_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, schedule_note, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, person_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, original_start_time, original_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, schedule_note, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('parent_engagement_id', parentEngId)
     .eq('iteration_label', 'element')
     .order('activity_date', { ascending: true, nullsFirst: false })
@@ -311,6 +311,7 @@ export async function fetchEngagementElements(
       engagement_id:      n.parent_engagement_id,
       element_type:       etObj?.slug  ?? null,
       element_type_label: etObj?.label ?? null,
+      person_id:          n.person_id ?? null,
       created_at:            n.created_at,
       updated_at:            n.updated_at,
     }
@@ -462,6 +463,22 @@ export async function enrichElements(
     db,
     await attachPassengers(db, elements, partyLabel),
   ) as Array<Record<string, unknown>>
+  // Resolve each element's guest name from its person_id (canon single source),
+  // with the free-text guest_name as override/fallback - mirrors the room path
+  // (resolvePartyName). guest_name stays as the override slot; the person FK wins.
+  const elementPersonIds = [...new Set(withPax.map(a => a.person_id).filter(Boolean))] as string[]
+  const elementPeopleById: Record<string, Record<string, unknown>> = {}
+  if (elementPersonIds.length > 0) {
+    const { data: ep } = await db.rpc('get_people_display_names', { p_person_ids: elementPersonIds })
+    for (const p of (ep ?? []) as Array<Record<string, unknown>>) elementPeopleById[p.person_id as string] = p
+  }
+  for (const a of withPax) {
+    a.resolved_guest_name = resolvePartyName(
+      a.person_id ? elementPeopleById[a.person_id as string] : null,
+      a.guest_name as string | null,
+      partyLabel,
+    )
+  }
 
   // Venue content resolves from guide canon via supplier_id - the single content
   // home for any venue type (dining, experience, hotel). travel_venue_content unions
@@ -519,7 +536,7 @@ export async function fetchEngagementElement(
 ): Promise<Record<string, unknown> | null> {
   const { data: nodes } = await db
     .from('travel_engagements')
-    .select('id, parent_engagement_id, engagement_type_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, original_start_time, original_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, schedule_note, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
+    .select('id, parent_engagement_id, engagement_type_id, person_id, title, activity_date, activity_end_date, activity_start_time, activity_end_time, original_start_time, original_end_time, confirmation_number, brief_show, cancellation_penalty_applied, show_cancellation, schedule_status, schedule_note, sort_order, created_at, updated_at, travel_engagement_types(slug, label)')
     .eq('id', nodeId)
     .maybeSingle()
   if (!nodes) return null

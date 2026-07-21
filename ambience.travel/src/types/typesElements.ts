@@ -422,6 +422,7 @@ export type ElementBase = {
   confirmationNumber: string | null
   bookedBy:           string | null
   guestName:          string | null
+  resolvedGuestName:  string | null
   guestCount:         number | null
   contactName:        string | null
   contactPhone:       string | null

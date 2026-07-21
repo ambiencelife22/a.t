@@ -331,7 +331,7 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
   if (v?.dressCode)      rows.push({ label: 'Dress',    value: v.dressCode })
   if (v?.childrenPolicy) rows.push({ label: 'Children', value: v.childrenPolicy })
   if (v?.tableHoldNote) rows.push({ label: 'Table',    value: v.tableHoldNote })
-  const gLine = guestLine({ guestName: aux.guestName, guestCount: aux.guestCount })
+  const gLine = guestLine({ guestName: (aux as any).resolvedGuestName ?? aux.guestName, guestCount: aux.guestCount })
   const pill = diningPdfStatus(aux)
 
   const pkgN = (aux.packageName || aux.pricePerPerson ? 1 : 0)

@@ -324,7 +324,7 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       expected_arrival_time: null,
       contact_name: (a.contact_name as string | null) ?? null,
       contact_phone: (a.contact_phone as string | null) ?? null,
-      guest_name: (a.guest_name as string | null) ?? null,
+      guest_name: (a.resolved_guest_name as string | null) ?? (a.guest_name as string | null) ?? null,
       guest_count: (a.guest_count as number | null) ?? null,
       dining_status: (a.dining_status as string | null) ?? null,
       package_name: (a.package_name as string | null) ?? null,
