@@ -518,6 +518,32 @@ const auxSections = groupElementsBySection(elements)
                     return (
                       <div style={{ marginTop: 8 }}>
                         {guestLine && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginBottom: rows.length ? 8 : 0 }}>{guestLine}</div>}
+                        {(aux.packageName || aux.pricePerPerson || (aux.packageInclusions?.length ?? 0) > 0 || (aux.menu?.length ?? 0) > 0) && (
+                          <div style={{ marginBottom: rows.length ? 8 : 0, paddingBottom: 8, borderBottom: rows.length ? `0.5px solid ${c.lineStrong}` : 'none' }}>
+                            {(aux.packageName || aux.pricePerPerson) && (
+                              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: (aux.packageInclusions?.length || aux.menu?.length) ? 8 : 0 }}>
+                                {aux.packageName && <span style={{ fontSize: 13, fontFamily: TYPE.serif, color: c.ink }}>{aux.packageName}</span>}
+                                {aux.pricePerPerson != null && <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: c.muted }}>{`${moneyDec(aux.pricePerPerson, aux.currency ?? 'EUR')} per person`}</span>}
+                              </div>
+                            )}
+                            {(aux.packageInclusions?.length ?? 0) > 0 && (
+                              <div style={{ marginBottom: (aux.menu?.length ?? 0) > 0 ? 8 : 0 }}>
+                                <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 4 }}>Includes</div>
+                                {aux.packageInclusions!.map((line, i) => (
+                                  <div key={i} style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.6 }}>{line}</div>
+                                ))}
+                              </div>
+                            )}
+                            {(aux.menu?.length ?? 0) > 0 && (
+                              <div>
+                                <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 4 }}>Menu</div>
+                                {aux.menu!.map((line, i) => (
+                                  <div key={i} style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.6 }}>{line}</div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {rows.map((r, i) => (
                           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginTop: i ? 4 : 0, flexWrap: 'wrap' }}>
                             <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>{r.label}</div>

@@ -424,6 +424,11 @@ export type ElementBase = {
   contactName:        string | null
   contactPhone:       string | null
   diningStatus:                string | null
+  packageName:                 string | null
+  pricePerPerson:              number | null
+  currency:                    string | null
+  packageInclusions:           string[] | null
+  menu:                        string[] | null
   cancellationPenaltyApplied: boolean | null
   cancellationNote:            string | null
   showCancellation:            boolean | null
