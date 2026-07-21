@@ -60,8 +60,6 @@ type Mode =
   | 'aux_driver_details'
   | 'requests'
   | 'house_id_for_trip'
-  | 'programme_guests'
-  | 'programme_guest_search'
 
 // ── Response helpers (local sugar over the shared json) ───────────────────────
 // ok/err keep their existing call signatures across all handlers; they now route
@@ -273,112 +271,6 @@ async function handleAuxDriverDetails(db: SupabaseClient, nodeId: string): Promi
   return ok({ driverDetails: data ?? [] })
 }
 
-// ── Programme guests (admin link surface) ─────────────────────────────────────
-// Lists guests linked to a programme. Guest identity is a global_people person
-// reached via global_profiles: travel_programme_guests.profile_id holds the guest's
-// global_profiles.id (the auth user id the guest-facing RLS compares to auth.uid()).
-// Admin-side via service role, we resolve that profile back to its person for a
-// canonical name, falling back to the stored display_name.
-async function handleProgrammeGuests(db: SupabaseClient, programmeId: string): Promise<Response> {
-  const { data: guests, error } = await db
-    .from('travel_programme_guests')
-    .select('id, programme_id, display_name, profile_id, is_lead, sort_order')
-    .eq('programme_id', programmeId)
-    .order('sort_order', { ascending: true })
-  if (error) return err('Failed to fetch programme guests', 500)
-
-  const rows = (guests ?? []) as Array<Record<string, unknown>>
-
-  // Resolve each linked profile -> person -> canonical name. One batch.
-  const profileIds = [...new Set(rows.map(r => r.profile_id).filter(Boolean))] as string[]
-  const personNameByProfileId: Record<string, string> = {}
-  if (profileIds.length > 0) {
-    const { data: profiles } = await db
-      .from('global_profiles')
-      .select('id, person_id')
-      .in('id', profileIds)
-    const profilePersonId: Record<string, string> = {}
-    for (const p of (profiles ?? []) as Array<Record<string, unknown>>) {
-      if (p.person_id) profilePersonId[p.id as string] = p.person_id as string
-    }
-    const personIds = [...new Set(Object.values(profilePersonId))]
-    if (personIds.length > 0) {
-      const { data: people } = await db
-        .from('global_people')
-        .select('id, first_name, last_name, nickname')
-        .in('id', personIds)
-      const nameByPerson: Record<string, string> = {}
-      for (const g of (people ?? []) as Array<Record<string, unknown>>) {
-        nameByPerson[g.id as string] = formatPersonName(g)
-      }
-      for (const [profileId, personId] of Object.entries(profilePersonId)) {
-        const n = nameByPerson[personId]
-        if (n) personNameByProfileId[profileId] = n
-      }
-    }
-  }
-
-  const guestsOut = rows.map(r => ({
-    id:           r.id,
-    programme_id: r.programme_id,
-    display_name: r.display_name,
-    profile_id:   r.profile_id,
-    is_lead:      r.is_lead,
-    sort_order:   r.sort_order,
-    resolved_name: r.profile_id ? (personNameByProfileId[r.profile_id as string] ?? null) : null,
-  }))
-
-  return ok({ guests: guestsOut })
-}
-
-// Search people to link as a programme guest. Source is global_people (the one
-// canonical picker - NOT the dropped travel_clients table). Each result carries the
-// resolved global_profiles.id (or null) so the UI shows whether the person is linkable
-// (has a login account) before the operator commits. A person with no profile is shown
-// but not linkable - surfaced honestly, never written as a dead link.
-async function handleProgrammeGuestSearch(db: SupabaseClient, query: string): Promise<Response> {
-  const trimmed = (query ?? '').trim()
-  if (trimmed.length < 2) return ok({ results: [] })
-
-  const { data: people, error } = await db
-    .from('global_people')
-    .select('id, first_name, last_name, nickname')
-    .or(`first_name.ilike.%${trimmed}%,last_name.ilike.%${trimmed}%,nickname.ilike.%${trimmed}%`)
-    .order('first_name', { ascending: true })
-    .limit(10)
-  if (error) return err('Failed to search people', 500)
-
-  const peopleRows = (people ?? []) as Array<Record<string, unknown>>
-  const personIds = peopleRows.map(p => p.id as string)
-
-  // Resolve each person -> their single global_profiles.id (cardinality verified
-  // one-person-one-profile). Person with no profile -> not linkable.
-  const profileIdByPerson: Record<string, string> = {}
-  if (personIds.length > 0) {
-    const { data: profiles } = await db
-      .from('global_profiles')
-      .select('id, person_id')
-      .in('person_id', personIds)
-    for (const p of (profiles ?? []) as Array<Record<string, unknown>>) {
-      const pid = p.person_id as string
-      if (!profileIdByPerson[pid]) profileIdByPerson[pid] = p.id as string
-    }
-  }
-
-  const results = peopleRows.map(p => {
-    const personId  = p.id as string
-    const profileId = profileIdByPerson[personId] ?? null
-    return {
-      person_id:    personId,
-      profile_id:   profileId,
-      display_name: formatPersonName(p),
-      nickname:     (p.nickname as string | null) ?? null,
-      linkable:     profileId != null,
-    }
-  })
-
-  return ok({ results })
-}
 
 async function handleDays(db: SupabaseClient, journeyId: string): Promise<Response> {
   // Days are DERIVED from trip span; travel_journey_days is overlay-only.
@@ -991,13 +883,6 @@ Deno.serve(async (req: Request) => {
         return ok({ houseId: (data as { house_id: string } | null)?.house_id ?? null })
       }
 
-      case 'programme_guests': {
-        if (!programme_id) return err('programme_id is required for programme_guests mode', 400)
-        return handleProgrammeGuests(serviceClient, programme_id)
-      }
-
-      case 'programme_guest_search':
-        return handleProgrammeGuestSearch(serviceClient, query ?? '')
 
       case 'requests': {
         if (!house_id) return err('house_id is required for requests mode', 400)

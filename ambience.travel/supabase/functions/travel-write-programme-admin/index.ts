@@ -4,36 +4,38 @@
 // Writes programme admin data across five tables.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true
-//   - requireAdmin gate (_shared/auth.ts) — service role via createServiceClient
+//   - JWT REQUIRED - verify_jwt = true
+//   - requireAdmin gate (_shared/auth.ts) - service role via createServiceClient
 //   - All writes bypass RLS via service role.
 //
 // Modes:
-//   update_programme         — update travel_programme_master by id
-//   create_programme         — insert into travel_programme_master
-//   delete_programme         — delete travel_programme_master by id
-//   toggle_programme_field   — update a single boolean field on travel_programme_master
-//   update_welcome_letter    — update welcome_letter on travel_programme_master
-//   update_property          — update travel_programme_properties by id
-//   delete_property          — delete travel_programme_properties by id
-//   toggle_property_active   — toggle active on travel_programme_properties
-//   create_listing           — insert into travel_programme_property_listings
-//   update_listing           — update travel_programme_property_listings by id
-//   delete_listing           — delete travel_programme_property_listings by id
-//   upsert_programme_section — insert or update travel_programme_sections
-//   delete_programme_section — delete travel_programme_sections by id
-//   update_section_content   — update content on travel_programme_property_sections by id
-//   reorder_property_sections — swap sort_order between two travel_programme_property_sections rows
-//   update_section_meta      — update title + icon on travel_programme_property_sections by id
+//   update_programme         - update travel_programme_master by id
+//   create_programme         - insert into travel_programme_master
+//   delete_programme         - delete travel_programme_master by id
+//   toggle_programme_field   - update a single boolean field on travel_programme_master
+//   update_welcome_letter    - update welcome_letter on travel_programme_master
+//   update_property          - update travel_programme_properties by id
+//   delete_property          - delete travel_programme_properties by id
+//   toggle_property_active   - toggle active on travel_programme_properties
+//   create_listing           - insert into travel_programme_property_listings
+//   update_listing           - update travel_programme_property_listings by id
+//   delete_listing           - delete travel_programme_property_listings by id
+//   upsert_programme_section - insert or update travel_programme_sections
+//   delete_programme_section - delete travel_programme_sections by id
+//   update_section_content   - update content on travel_programme_property_sections by id
+//   reorder_property_sections - swap sort_order between two travel_programme_property_sections rows
+//   update_section_meta      - update title + icon on travel_programme_property_sections by id
 //
 // Request body: { mode: string, ...modeParams }
 // Response:     { ok: true } | { error: string }
 //
-// Last updated: S53G — initial build. Migrates 29 direct supabase.from() calls
+// Last updated: S53G - initial build. Migrates 29 direct supabase.from() calls
 //   out of ProgrammeAdmin.tsx.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
+import { formatPersonName } from '../_shared/names.ts'
+import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 type WriteMode =
   | 'update_programme'
@@ -52,6 +54,85 @@ type WriteMode =
   | 'update_section_content'
   | 'reorder_property_sections'
   | 'update_section_meta'
+  | 'link_programme_guest'
+  | 'unlink_programme_guest'
+  | 'remove_programme_guest'
+
+async function handleLinkProgrammeGuest(
+  db: SupabaseClient,
+  programmeId: string,
+  personId: string,
+): Promise<Response> {
+  const { data: profile, error: profErr } = await db
+    .from('global_profiles')
+    .select('id')
+    .eq('person_id', personId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (profErr) return json({ error: 'Failed to resolve profile' }, 500)
+  if (!profile?.id) {
+    return json({ error: 'no_profile', message: 'This person has no login account yet and cannot be linked.' }, 409)
+  }
+  const profileId = profile.id as string
+  const { data: existing } = await db
+    .from('travel_programme_guests')
+    .select('id')
+    .eq('programme_id', programmeId)
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  if (existing?.id) {
+    return json({ error: 'already_linked', message: 'This person is already a guest on this programme.' }, 409)
+  }
+  const { data: person } = await db
+    .from('global_people')
+    .select('id, first_name, last_name, nickname')
+    .eq('id', personId)
+    .maybeSingle()
+  const displayName = formatPersonName(person ?? null)
+  if (!displayName) return json({ error: 'no_name', message: 'This person has no usable name to display.' }, 400)
+  const { count } = await db
+    .from('travel_programme_guests')
+    .select('id', { count: 'exact', head: true })
+    .eq('programme_id', programmeId)
+  const guestCount = count ?? 0
+  const { data: inserted, error: insErr } = await db
+    .from('travel_programme_guests')
+    .insert({
+      programme_id: programmeId,
+      profile_id:   profileId,
+      display_name: displayName,
+      is_lead:      guestCount === 0,
+      sort_order:   guestCount,
+    })
+    .select('id, programme_id, display_name, profile_id, is_lead, sort_order')
+    .single()
+  if (insErr) return json({ error: 'Failed to link guest' }, 500)
+  return json({ guest: inserted })
+}
+
+async function handleUnlinkProgrammeGuest(db: SupabaseClient, guestId: string): Promise<Response> {
+  const { error } = await db
+    .from('travel_programme_guests')
+    .update({ profile_id: null })
+    .eq('id', guestId)
+  if (error) return json({ error: 'Failed to unlink guest' }, 500)
+  return json({ success: true })
+}
+
+async function handleRemoveProgrammeGuest(db: SupabaseClient, guestId: string): Promise<Response> {
+  const { data: snapshot } = await db
+    .from('travel_programme_guests')
+    .select('*')
+    .eq('id', guestId)
+    .maybeSingle()
+  const { error } = await db
+    .from('travel_programme_guests')
+    .delete()
+    .eq('id', guestId)
+  if (error) return json({ error: 'Failed to remove guest' }, 500)
+  return json({ success: true, removed: snapshot ?? null })
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
@@ -371,6 +452,24 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true }, 200)
     }
 
+    // ── link_programme_guest ───────────────────────────────────────────────
+    if (mode === 'link_programme_guest') {
+      const { programme_id, person_id } = body as { programme_id?: string; person_id?: string }
+      if (!programme_id || !person_id) return json({ error: 'programme_id, person_id required' }, 400)
+      return handleLinkProgrammeGuest(db, programme_id, person_id)
+    }
+    // ── unlink_programme_guest ─────────────────────────────────────────────
+    if (mode === 'unlink_programme_guest') {
+      const { guest_id } = body as { guest_id?: string }
+      if (!guest_id) return json({ error: 'guest_id required' }, 400)
+      return handleUnlinkProgrammeGuest(db, guest_id)
+    }
+    // ── remove_programme_guest ─────────────────────────────────────────────
+    if (mode === 'remove_programme_guest') {
+      const { guest_id } = body as { guest_id?: string }
+      if (!guest_id) return json({ error: 'guest_id required' }, 400)
+      return handleRemoveProgrammeGuest(db, guest_id)
+    }
     return json({ error: `Unknown mode: ${mode}` }, 400)
 
   } catch (err) {
