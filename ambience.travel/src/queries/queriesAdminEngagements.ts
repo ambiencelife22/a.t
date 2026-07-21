@@ -572,7 +572,7 @@ export async function reassignEngagementJourney(
   newjourneyId:    string | null,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke('travel-write-engagement', {
-    body: { mode: 'reassign_trip', id: engagementId, journeyId: newjourneyId },
+    body: { mode: 'reassign_trip', id: engagementId, journey_id: newjourneyId },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)

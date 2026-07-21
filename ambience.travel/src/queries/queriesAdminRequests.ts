@@ -34,7 +34,7 @@ export const REQUEST_CHANNELS: RequestChannel[] = ['WhatsApp', 'Email', 'Phone',
 
 export async function fetchRequestsForHouse(houseId: string): Promise<TravelRequest[]> {
   const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', {
-    body: { mode: 'requests', houseId: houseId },
+    body: { mode: 'requests', house_id: houseId },
   })
   if (error) throw new Error(`Failed to fetch requests: ${error.message}`)
   return (data?.requests ?? []) as TravelRequest[]
@@ -53,7 +53,7 @@ export async function createRequest(
   const { error } = await supabase.functions.invoke('travel-write-journey', {
     body: {
       mode: 'create_request',
-      houseId: houseId, request_body: requestBody,
+      house_id: houseId, request_body: requestBody,
       channel, receivedAt: receivedAt,
       journeyId: journeyId, engagementId: engagementId,
       handledBy: handledBy, notes,

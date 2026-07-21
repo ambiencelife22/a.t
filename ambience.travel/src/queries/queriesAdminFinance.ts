@@ -141,7 +141,7 @@ export async function fetchPipeline(): Promise<PipelineTrip[]> {
 
 export async function fetchEngagementFull(engagementId: string): Promise<EngagementFull> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'by_engagement_full', engagementId: engagementId },
+    body: { mode: 'by_engagement_full', engagement_id: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -178,7 +178,7 @@ export async function deleteExpense(id: string): Promise<void> {
 
 export async function markBilled(expenseId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'mark_billed', expenseId: expenseId },
+    body: { mode: 'mark_billed', expense_id: expenseId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -187,7 +187,7 @@ export async function markBilled(expenseId: string): Promise<Expense> {
 
 export async function markPaid(expenseId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'mark_paid', expenseId: expenseId },
+    body: { mode: 'mark_paid', expense_id: expenseId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -196,7 +196,7 @@ export async function markPaid(expenseId: string): Promise<Expense> {
 
 export async function writeOff(expenseId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'write_off', expenseId: expenseId },
+    body: { mode: 'write_off', expense_id: expenseId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -205,7 +205,7 @@ export async function writeOff(expenseId: string): Promise<Expense> {
 
 export async function linkEngagement(expenseId: string, engagementId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'link_engagement', expenseId: expenseId, engagementId: engagementId },
+    body: { mode: 'link_engagement', expense_id: expenseId, engagement_id: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -281,7 +281,7 @@ export async function markCommissionReceived(payload: {
 
 export async function updateBookingFinancial(bookingId: string, patch: Record<string, unknown>): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_booking_financial', bookingId: bookingId, patch },
+    body: { mode: 'update_booking_financial', booking_id: bookingId, patch },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -289,7 +289,7 @@ export async function updateBookingFinancial(bookingId: string, patch: Record<st
 
 export async function setHotelPlatform(hotelId: string, platformId: string | null): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'set_hotel_platform', hotelId: hotelId, platformId: platformId },
+    body: { mode: 'set_hotel_platform', hotel_id: hotelId, platform_id: platformId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)

@@ -105,7 +105,7 @@ export async function upsertOverride(args: {
     return args.overrideId
   }
   const { id } = await invokeWrite<{ id: string }>({
-    mode: 'card_override_insert', engagementId: args.engagementId, kind: args.kind, cardId: args.cardId,
+    mode: 'card_override_insert', engagement_id: args.engagementId, kind: args.kind, card_id: args.cardId,
   })
   if (Object.keys(args.fields).length > 0) {
     await invokeWrite({ mode: 'card_override_update', id, fields: args.fields })

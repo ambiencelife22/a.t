@@ -181,7 +181,7 @@ export async function fetchProgrammePropertyStubs(): Promise<{ id: string; name:
 
 export async function fetchListings(propertyId: string): Promise<ListingRow[]> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'listings', propertyId: propertyId },
+    body: { mode: 'listings', property_id: propertyId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -190,7 +190,7 @@ export async function fetchListings(propertyId: string): Promise<ListingRow[]> {
 
 export async function fetchPropertySections(propertyId: string): Promise<PropertySectionRow[]> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'property_sections', propertyId: propertyId },
+    body: { mode: 'property_sections', property_id: propertyId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -199,7 +199,7 @@ export async function fetchPropertySections(propertyId: string): Promise<Propert
 
 export async function fetchPropertySectionsMeta(propertyId: string): Promise<PropertySectionMeta[]> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'property_sections_meta', propertyId: propertyId },
+    body: { mode: 'property_sections_meta', property_id: propertyId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -251,7 +251,7 @@ export async function toggleProgrammeField(id: string, field: TogglableField, va
 
 export async function updateWelcomeLetter(id: string, welcomeLetter: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_welcome_letter', id, welcomeLetter: welcomeLetter },
+    body: { mode: 'update_welcome_letter', id, welcome_letter: welcomeLetter },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -411,7 +411,7 @@ export async function searchProgrammeGuestCandidates(query: string): Promise<Gue
 
 export async function linkProgrammeGuest(programmeId: string, personId: string): Promise<ProgrammeGuest> {
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
-    body: { mode: 'link_programme_guest', programme_id: programmeId, personId: personId },
+    body: { mode: 'link_programme_guest', programme_id: programmeId, person_id: personId },
   })
   if (error) throw await toLinkError(error)
   return mapGuest((data?.guest ?? {}) as Record<string, unknown>)

@@ -202,7 +202,7 @@ export async function updatePassword(newPassword: string): Promise<void> {
 // has already redacted secrets on the gated path.
 export async function getStayByUrlId(urlId: string): Promise<StayResult> {
   const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
-    body: { mode: 'resolve', urlId: urlId },
+    body: { mode: 'resolve', url_id: urlId },
   })
  
   if (error) return { ok: false, reason: 'load-failed' }

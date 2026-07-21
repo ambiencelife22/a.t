@@ -268,7 +268,7 @@ export function orderHouseholdMembers(
 
 export async function createPerson(houseId: string, memberRef: string, role: string, notes: string | null, personId: string | null = null): Promise<void> {
   const { error } = await supabase.functions.invoke('a-write-house-people', {
-    body: { mode: 'create', houseId: houseId, memberRef: memberRef, role, notes, personId: personId },
+    body: { mode: 'create', house_id: houseId, member_ref: memberRef, role, notes, person_id: personId },
   })
   if (error) throw new Error(`Failed to create person: ${error.message}`)
 }
@@ -317,7 +317,7 @@ export async function fetchLabelsForHouse(houseId: string): Promise<HouseLabel[]
 
 export async function createLabel(houseId: string, key: HouseLabelKey, displayName: string, sortOrder = 0): Promise<void> {
   const { error } = await supabase.functions.invoke('a-write-house-labels', {
-    body: { mode: 'create', houseId: houseId, key, displayName: displayName, sortOrder: sortOrder },
+    body: { mode: 'create', house_id: houseId, key, display_name: displayName, sort_order: sortOrder },
   })
   if (error) throw new Error(`Failed to create label: ${error.message}`)
 }
@@ -510,7 +510,7 @@ export async function createContact(
 ): Promise<string> {
   const { data, error } = await supabase.functions.invoke('a-write-house-contacts', {
     body: {
-      mode: 'create', houseId: houseId, contactType: contactType, name, role,
+      mode: 'create', house_id: houseId, contact_type: contactType, name, role,
       company, isPrimary: isPrimary, notes, personId: personId,
     },
   })
