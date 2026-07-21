@@ -71,6 +71,7 @@ const ELEMENT_TYPE_META: Record<string, ElementTypeMeta> = {
   private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sortOrder: 1, section: 'private_jet' },
   public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sortOrder: 99, section: 'rail' },
   reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sortOrder: 19, section: 'reservation' },
+  spa_wellness:     { label: 'SPA & WELLNESS',    icon: '\uD83E\uDDD6', sortOrder: 20, section: 'spa_wellness' },
   stay:             { label: 'STAYS',             icon: '\uD83C\uDFE8', sortOrder: 10, section: 'stay' },
   tour:             { label: 'TOURS',             icon: '\uD83D\uDDFA', sortOrder: 48, section: 'tour' },
   yacht_charter:    { label: 'YACHT CHARTER',     icon: '\u26F5',       sortOrder: 22, section: 'yacht' },
@@ -338,6 +339,7 @@ export const CATEGORY_ACCENT: Record<string, string> = {
   tour:             '#C4B5FD',
   acquisition:      '#FDE68A',
   reservation:      '#B4AFA5',
+  spa_wellness:     '#C4B5FD',
   arrangement:      '#B4AFA5',
   journey:          '#B4AFA5',
   meet_greet:       '#A3E635',
@@ -428,7 +430,7 @@ export type ElementBase = {
   pricePerPerson:              number | null
   currency:                    string | null
   packageInclusions:           string[] | null
-  menu:                        string[] | null
+  schedule:                    Array<{ time: string | null; title: string | null; detail: string[] | null }> | null
   cancellationPenaltyApplied: boolean | null
   cancellationNote:            string | null
   showCancellation:            boolean | null

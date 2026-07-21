@@ -286,7 +286,7 @@ export async function fetchEngagementElements(
       .select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
       .in('node_id', ids),
     db.from('travel_engagement_experience_detail')
-      .select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, menu, notes')
+      .select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, schedule, notes')
       .in('node_id', ids),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
@@ -528,7 +528,7 @@ export async function fetchEngagementElement(
   const [tRes, dRes, xRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_engagement_dining_detail').select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
-    db.from('travel_engagement_experience_detail').select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, menu, notes').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_engagement_experience_detail').select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, schedule, notes').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
     db.from('travel_airports').select('id, iata'),

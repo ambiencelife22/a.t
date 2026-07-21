@@ -66,7 +66,7 @@ export type TimelineItem = {
   price_per_person:             number | null
   currency:                     string | null
   package_inclusions:           string[] | null
-  menu:                         string[] | null
+  schedule:                     Array<{ time: string | null; title: string | null; detail: string[] | null }> | null
   cancellation_penalty_applied: boolean | null
   cancellation_note:            string | null
   show_cancellation:            boolean | null
