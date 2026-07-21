@@ -556,9 +556,9 @@ export async function fetchPPDForHouse(
       'Authorization': `Bearer ${session.access_token}`,
     },
     body: JSON.stringify({
-      houseId:   houseId,
-      personId:  opts.personId,
-      contactId: opts.contactId,
+      house_id:   houseId,
+      person_id:  opts.personId,
+      contact_id: opts.contactId,
     }),
   })
 
@@ -598,7 +598,7 @@ async function writePpd<T extends WritePpdBody>(body: T): Promise<unknown> {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, payload: snakeizeKeys(body.payload) }),
   })
 
   if (!res.ok) {
