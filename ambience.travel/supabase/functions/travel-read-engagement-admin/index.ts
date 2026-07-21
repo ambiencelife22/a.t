@@ -65,6 +65,9 @@ type ReadMode =
   | 'geo_destinations'
   | 'geo_hotels_by_destination'
   | 'geo_hotels_search'
+  | 'destination_rows'
+  | 'destination_search'
+  | 'destination_max_sort_order'
 
 const childCountTables = [
   'travel_overlay_engagement_destination_rows',
@@ -578,6 +581,42 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await q
       if (error) return json({ error: 'Failed to search hotels' }, 500)
       return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'destination_rows') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_engagement_destination_rows')
+        .select('*, global_destination:global_destinations!global_destination_id(slug, name)')
+        .eq('engagement_id', body.engagement_id)
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch destination rows' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'destination_search') {
+      let q = serviceClient
+        .from('global_destinations')
+        .select('id, slug, name, storage_path')
+        .eq('kind', 'place')
+        .order('name', { ascending: true })
+        .limit(30)
+      const trimmed = String(body.query ?? '').trim()
+      if (trimmed) q = q.or(`name.ilike.%${trimmed}%,slug.ilike.%${trimmed}%`)
+      const { data, error } = await q
+      if (error) return json({ error: 'Failed to search destinations' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'destination_max_sort_order') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_engagement_destination_rows')
+        .select('sort_order')
+        .eq('engagement_id', body.engagement_id)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) return json({ error: 'Failed to fetch max sort order' }, 500)
+      return json({ maxSortOrder: (data?.sort_order ?? 0) as number })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

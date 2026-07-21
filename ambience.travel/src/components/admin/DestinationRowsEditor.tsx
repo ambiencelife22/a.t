@@ -39,9 +39,8 @@ import {
   reorderDestinationRows,
   searchDestinations,
   fetchMaxDestinationSortOrder,
-  type DestinationRow,
-  type DestinationOption,
 } from '../../queries/queriesAdminDestinationRows'
+import type { DestinationRow, DestinationOption } from '../../types/typesDestinationRows'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../tokens/tokensAdmin'
 
@@ -477,10 +476,10 @@ function AddDestinationModal({
       const sortOrder = await fetchMaxDestinationSortOrder(engagementId)
       await insertDestinationRow({
         engagementId:               engagementId,
-        global_destination_id: option.id,
+        globalDestinationId: option.id,
         title:                 option.name,
         sortOrder:            sortOrder,
-        subpage_status:        'preview',
+        subpageStatus: 'preview',
       })
       showToast(`Added ${option.name}.`, 'success')
       onAdded()

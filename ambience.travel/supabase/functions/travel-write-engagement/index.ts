@@ -58,6 +58,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'
+import { snakeizeKeys } from '../_shared/camelize.ts'
 
 
 type WriteMode =
@@ -88,6 +89,10 @@ type WriteMode =
   | 'selection_insert'
   | 'selection_delete'
   | 'selections_reorder'
+  | 'destination_row_update'
+  | 'destination_row_insert'
+  | 'destination_row_delete'
+  | 'destination_rows_reorder'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -758,6 +763,51 @@ Deno.serve(async (req: Request) => {
         .delete()
         .eq('id', id)
       if (error) return json({ error: 'Failed to delete card override' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'destination_row_update') {
+      const patch = snakeizeKeys<Record<string, unknown>>(body.patch ?? {})
+      delete patch.id; delete patch.engagement_id; delete patch.created_at
+      delete patch.updated_at; delete patch.destination_slug; delete patch.destination_name
+      const { error } = await serviceClient
+        .from('travel_overlay_engagement_destination_rows')
+        .update(patch).eq('id', body.id)
+      if (error) return json({ error: 'Failed to update destination row' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'destination_row_insert') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_engagement_destination_rows')
+        .insert({
+          engagement_id:         body.engagement_id,
+          global_destination_id: body.global_destination_id,
+          title:                 body.title,
+          sort_order:            body.sort_order,
+          subpage_status:        body.subpage_status ?? 'preview',
+        })
+        .select('id').single()
+      if (error) return json({ error: 'Failed to insert destination row' }, 500)
+      return json({ id: data.id })
+    }
+
+    if (mode === 'destination_row_delete') {
+      const { error } = await serviceClient
+        .from('travel_overlay_engagement_destination_rows')
+        .delete().eq('id', body.id)
+      if (error) return json({ error: 'Failed to delete destination row' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'destination_rows_reorder') {
+      const ids = (body.ordered_ids ?? []) as string[]
+      for (let i = 0; i < ids.length; i++) {
+        const { error } = await serviceClient
+          .from('travel_overlay_engagement_destination_rows')
+          .update({ sort_order: i + 1 }).eq('id', ids[i])
+        if (error) return json({ error: 'Failed to reorder destination rows' }, 500)
+      }
       return json({ success: true })
     }
 
