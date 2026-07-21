@@ -93,6 +93,10 @@ type WriteMode =
   | 'destination_row_insert'
   | 'destination_row_delete'
   | 'destination_rows_reorder'
+  | 'route_stop_update'
+  | 'route_stop_insert'
+  | 'route_stop_delete'
+  | 'route_stops_reorder'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -811,7 +815,54 @@ Deno.serve(async (req: Request) => {
       return json({ success: true })
     }
 
+    if (mode === 'route_stop_update') {
+      const patch = snakeizeKeys<Record<string, unknown>>(body.patch ?? {})
+      delete patch.id; delete patch.engagement_id; delete patch.created_at; delete patch.updated_at
+      const { error } = await serviceClient
+        .from('travel_overlay_route_stops')
+        .update(patch).eq('id', body.id)
+      if (error) return json({ error: 'Failed to update route stop' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'route_stop_insert') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_route_stops')
+        .insert({
+          engagement_id: body.engagement_id,
+          sort_order:    body.sort_order,
+          title:         body.title      ?? null,
+          stay_label:    body.stay_label ?? null,
+          note:          body.note       ?? null,
+          image_src:     body.image_src  ?? null,
+          image_alt:     body.image_alt  ?? null,
+        })
+        .select('id').single()
+      if (error) return json({ error: 'Failed to insert route stop' }, 500)
+      return json({ id: data.id })
+    }
+
+    if (mode === 'route_stop_delete') {
+      const { error } = await serviceClient
+        .from('travel_overlay_route_stops')
+        .delete().eq('id', body.id)
+      if (error) return json({ error: 'Failed to delete route stop' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'route_stops_reorder') {
+      const ids = (body.ordered_ids ?? []) as string[]
+      for (let i = 0; i < ids.length; i++) {
+        const { error } = await serviceClient
+          .from('travel_overlay_route_stops')
+          .update({ sort_order: i }).eq('id', ids[i])
+        if (error) return json({ error: 'Failed to reorder route stops' }, 500)
+      }
+      return json({ success: true })
+    }
+
     return json({ error: `Unknown mode: ${mode}` }, 400)
+
   } catch (err) {
     console.error('travel-write-engagement unexpected error:', err)
     return json({ error: 'Internal server error' }, 500)

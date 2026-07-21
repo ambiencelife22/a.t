@@ -68,6 +68,8 @@ type ReadMode =
   | 'destination_rows'
   | 'destination_search'
   | 'destination_max_sort_order'
+  | 'route_stops'
+  | 'route_stop_max_sort'
 
 const childCountTables = [
   'travel_overlay_engagement_destination_rows',
@@ -617,6 +619,28 @@ Deno.serve(async (req: Request) => {
         .maybeSingle()
       if (error) return json({ error: 'Failed to fetch max sort order' }, 500)
       return json({ maxSortOrder: (data?.sort_order ?? 0) as number })
+    }
+
+    if (mode === 'route_stops') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_route_stops')
+        .select('id, engagement_id, title, stay_label, note, image_src, image_alt, sort_order, destination_row_id, nights, created_at, updated_at')
+        .eq('engagement_id', body.engagement_id)
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch route stops' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'route_stop_max_sort') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_route_stops')
+        .select('sort_order')
+        .eq('engagement_id', body.engagement_id)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) return json({ error: 'Failed to fetch max route stop sort' }, 500)
+      return json({ maxSortOrder: (data?.sort_order ?? -1) as number })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

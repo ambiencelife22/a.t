@@ -37,8 +37,8 @@ import {
   deleteRouteStop,
   reorderRouteStops,
   fetchMaxRouteStopSortOrder,
-  type RouteStop,
 } from '../../queries/queriesAdminRouteStops'
+import type { RouteStop } from '../../types/typesRouteStops'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../tokens/tokensAdmin'
 
