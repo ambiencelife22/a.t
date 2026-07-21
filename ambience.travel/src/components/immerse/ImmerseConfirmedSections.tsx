@@ -1542,7 +1542,6 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
   const all      = contacts ?? []
   const guests   = all.filter(c => c.role !== 'staff')
   const staff    = all.filter(c => c.role === 'staff')
-  const hasAny   = all.length > 0
 
   function ContactBlock({ label, people }: { label: string; people: EngagementContact[] }) {
     if (people.length === 0) return null
@@ -1598,18 +1597,6 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
       {/* Staff (only if any selected) */}
       <ContactBlock label={staff.length === 1 ? 'Staff' : 'Staff'} people={staff} />
       
-      {/* Fallback: no people selected -> house display name */}
-      {!hasAny && house?.displayName && (
-        <div>
-          <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
-            Guest
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-            <ContactCard name={house.displayName} role='Guest' />
-          </div>
-        </div>
-      )}
-
       {brief?.hotelContactNote && (
         <div style={{ marginTop: 28, padding: '16px 20px', borderRadius: 10, background: `${c.gold}08`, border: `1px solid ${c.gold}25` }}>
           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: c.gold, marginBottom: 8 }}>Hotel Contact Note</div>
