@@ -57,11 +57,17 @@ export const TRANSPORT_TEXT_TO_FK: Record<string, { table: string; match: string
 
 export const DROPPED_FIELDS = ['seat_type'] as const
 
-// Detail table for an element type. null = bare node (no detail row).
+// Detail table for a shape/element type. null = bare node (no detail row).
+// Single-source shape->table resolver. NOTE: read paths (fetchEngagementElements)
+// + write RPCs (create_element/update_element) still use hardcoded joins/blocks;
+// wiring them to consume THIS resolver is the queued detail-wiring slice.
 export function detailTableForType(slug: string | null): string | null {
   if (slug === 'flight') return 'travel_engagement_transport_detail'
   // dining + reservation share one detail shape: a canonical supplier + party/time/terms.
   if (slug === 'dining' || slug === 'reservation') return 'travel_engagement_reservation_detail'
   if (slug === 'spa_wellness' || slug === 'tour' || slug === 'experience') return 'travel_engagement_experience_detail'
+  if (slug === 'acquisition') return 'travel_engagement_acquisition_detail'
+  if (slug === 'arrangement') return 'travel_engagement_arrangement_detail'
+  if (slug === 'concierge_service') return 'travel_engagement_concierge_detail'
   return null
 }
