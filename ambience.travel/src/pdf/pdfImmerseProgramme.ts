@@ -25,6 +25,7 @@ import {
   type PdfEngagementLink,
 } from './pdfShared'
 import { scheduleAlert } from '../utils/utilsScheduleAlert'
+import { moneyDec } from '../utils/utilsCurrency'
 import type {
   ImmerseJourneyDay as JourneyDay,
   ImmerseDossierJourney as DossierJourney,
@@ -165,6 +166,19 @@ function timelineToRows(items: TimelineItemView[]): ProgrammeEntry[] {
       if (v?.address) diningDetail.push(v.address)
       const contact = [v?.phone, v?.dressCode].filter(Boolean).join('  \u00b7  ')
       if (contact) diningDetail.push(contact)
+    }
+    if (it.packageName || it.pricePerPerson) {
+      diningDetail.push([it.packageName, it.pricePerPerson != null ? `${moneyDec(it.pricePerPerson, it.currency ?? 'EUR')} per person` : null].filter(Boolean).join('  \u00b7  '))
+    }
+    if ((it.packageInclusions?.length ?? 0) > 0) {
+      diningDetail.push('Includes:')
+      for (const line of it.packageInclusions!) diningDetail.push(`  ${line}`)
+    }
+    if ((it.schedule?.length ?? 0) > 0) {
+      for (const ev of it.schedule!) {
+        diningDetail.push([ev.time ? fmtTime(ev.time) : null, ev.title].filter(Boolean).join('  '))
+        if ((ev.detail?.length ?? 0) > 0) for (const line of ev.detail!) diningDetail.push(`  ${line}`)
+      }
     }
 
     // Check-in/out notes lead the detail lines (concierge intention, e.g. early

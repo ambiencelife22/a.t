@@ -29,6 +29,7 @@ import {
   type ExportBranding,
 } from './pdfShared'
 import { scheduleAlert } from '../utils/utilsScheduleAlert'
+import { moneyDec } from '../utils/utilsCurrency'
 import type {
   ImmerseEngagementBrief as EngagementBrief,
   ImmerseEngagementBooking as EngagementBooking,
@@ -333,8 +334,12 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
   const gLine = guestLine({ guestName: aux.guestName, guestCount: aux.guestCount })
   const pill = diningPdfStatus(aux)
 
+  const pkgN = (aux.packageName || aux.pricePerPerson ? 1 : 0)
+    + ((aux.packageInclusions?.length ?? 0) > 0 ? 1 + aux.packageInclusions!.length : 0)
+    + ((aux.schedule?.length ?? 0) > 0 ? aux.schedule!.reduce((n, ev) => n + 1 + (ev.detail?.length ?? 0), 0) : 0)
+    + (aux.notes ? 1 : 0)
   const cardH = Math.max(28,
-    padV + 6 + 5 + (gLine ? 5 : 0) + rows.length * 5 + (pill ? 7 : 0) + padV)
+    padV + 6 + 5 + (gLine ? 5 : 0) + rows.length * 5 + pkgN * 4.5 + (pill ? 7 : 0) + padV)
 
   doc.setFillColor(T.white[0], T.white[1], T.white[2])
   doc.setDrawColor(T.rule[0], T.rule[1], T.rule[2])
@@ -384,6 +389,30 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
     doc.text(valStr, tx + 20, ty)
     ty += 5
+  }
+  const pkgLines: string[] = []
+  if (aux.packageName || aux.pricePerPerson) {
+    pkgLines.push([aux.packageName, aux.pricePerPerson != null ? `${moneyDec(aux.pricePerPerson, aux.currency ?? 'EUR')} per person` : null].filter(Boolean).join('  \u00b7  '))
+  }
+  if ((aux.packageInclusions?.length ?? 0) > 0) {
+    pkgLines.push('Includes:')
+    for (const line of aux.packageInclusions!) pkgLines.push(`  ${line}`)
+  }
+  if ((aux.schedule?.length ?? 0) > 0) {
+    for (const ev of aux.schedule!) {
+      pkgLines.push([ev.time ? fmtTime(ev.time) : null, ev.title].filter(Boolean).join('  '))
+      if ((ev.detail?.length ?? 0) > 0) for (const line of ev.detail!) pkgLines.push(`  ${line}`)
+    }
+  }
+  for (const pl of pkgLines) {
+    sans(doc, 'normal', 7.5)
+    doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
+    for (const wl of doc.splitTextToSize(pl, CW - padH * 2)) { doc.text(wl, tx, ty); ty += 4.5 }
+  }
+  if (aux.notes) {
+    sans(doc, 'normal', 7.5)
+    doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
+    for (const wl of doc.splitTextToSize(aux.notes, CW - padH * 2)) { doc.text(wl, tx, ty); ty += 4.5 }
   }
   if (pill) {
     sans(doc, 'normal', 7.5)
@@ -618,7 +647,11 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
         const rowN = [v?.address, v?.phone, v?.dressCode, v?.childrenPolicy, v?.tableHoldNote].filter(Boolean).length
         const gl = (aux.guestName || aux.guestCount) ? 1 : 0
         const pillN = diningPdfStatus(aux) ? 1 : 0
-        const h = Math.max(28, 6 + 6 + 5 + gl * 5 + rowN * 5 + pillN * 7 + 6)
+        const pkgN2 = (aux.packageName || aux.pricePerPerson ? 1 : 0)
+          + ((aux.packageInclusions?.length ?? 0) > 0 ? 1 + aux.packageInclusions!.length : 0)
+          + ((aux.schedule?.length ?? 0) > 0 ? aux.schedule!.reduce((n, ev) => n + 1 + (ev.detail?.length ?? 0), 0) : 0)
+          + (aux.notes ? 1 : 0)
+        const h = Math.max(28, 6 + 6 + 5 + gl * 5 + rowN * 5 + pkgN2 * 4.5 + pillN * 7 + 6)
         if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
         y += drawDiningCard(doc, aux, y) + 4
         continue
