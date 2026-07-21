@@ -4,13 +4,13 @@
 // Read path for ambience.HOUSE reference data.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - Reads execute via service role to bypass RLS uniformly
 //   - Auth via shared requireAdmin gate; SERVICE_ROLE_KEY lives in _shared/client.ts
 //
 // Modes:
-//   roles — returns all active house roles ordered by sort_order → { roles }
+//   roles - returns all active house roles ordered by sort_order → { roles }
 //
 // Deployed at: /functions/v1/a-read-house
 
@@ -40,6 +40,98 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'Failed to fetch roles' }, 500)
       }
       return json({ roles: data ?? [] }, 200)
+    }
+
+    if (mode === 'houses') {
+      const { data, error } = await serviceClient
+        .from('a_houses')
+        .select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at')
+        .order('display_name', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch houses' }, 500)
+      return json({ rows: data ?? [] }, 200)
+    }
+
+    if (mode === 'house_by_id') {
+      const { data, error } = await serviceClient
+        .from('a_houses')
+        .select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at')
+        .eq('id', body.id).maybeSingle()
+      if (error) return json({ error: 'Failed to fetch house' }, 500)
+      return json({ row: data ?? null }, 200)
+    }
+
+    if (mode === 'house_by_house_id') {
+      const { data, error } = await serviceClient
+        .from('a_houses')
+        .select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at')
+        .eq('a_house_id', body.a_house_id).maybeSingle()
+      if (error) return json({ error: 'Failed to fetch house' }, 500)
+      return json({ row: data ?? null }, 200)
+    }
+
+    if (mode === 'people') {
+      const { data, error } = await serviceClient
+        .from('a_house_people')
+        .select('id, house_id, person_id, member_ref, role, notes, sort_order, created_at, updated_at')
+        .eq('house_id', body.house_id)
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch people' }, 500)
+      return json({ rows: data ?? [] }, 200)
+    }
+
+    if (mode === 'labels') {
+      const { data, error } = await serviceClient
+        .from('a_house_public_labels')
+        .select('*')
+        .eq('house_id', body.house_id)
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch labels' }, 500)
+      return json({ rows: data ?? [] }, 200)
+    }
+
+    if (mode === 'profile_for_person') {
+      const { data, error } = await serviceClient
+        .from('global_profiles')
+        .select('id, display_name')
+        .eq('person_id', body.person_id).maybeSingle()
+      if (error) return json({ error: 'Failed to fetch profile' }, 500)
+      return json({ row: data ?? null }, 200)
+    }
+
+    if (mode === 'preferences') {
+      const { data, error } = await serviceClient
+        .from('a_house_preferences')
+        .select('id, house_id, person_id, category, pref_key, pref_value, notes, source, confidence, created_at, updated_at')
+        .eq('house_id', body.house_id)
+      if (error) return json({ error: 'Failed to fetch preferences' }, 500)
+      return json({ rows: data ?? [] }, 200)
+    }
+
+    if (mode === 'dining_history') {
+      const { data, error } = await serviceClient
+        .from('a_house_dininghistory')
+        .select('id, house_id, restaurant_name, city, country, status, visit_date, journey_id, venue_id, notes, created_at, updated_at')
+        .eq('house_id', body.house_id)
+      if (error) return json({ error: 'Failed to fetch dining history' }, 500)
+      return json({ rows: data ?? [] }, 200)
+    }
+
+    if (mode === 'destinations') {
+      const { data, error } = await serviceClient
+        .from('a_house_destinations')
+        .select('id, house_id, destination_name, country, city, trip_type, status, visit_date, journey_id, notes, created_at, updated_at')
+        .eq('house_id', body.house_id)
+      if (error) return json({ error: 'Failed to fetch destinations' }, 500)
+      return json({ rows: data ?? [] }, 200)
+    }
+
+    if (mode === 'contacts') {
+      const { data, error } = await serviceClient
+        .from('a_house_contacts')
+        .select('id, house_id, person_id, contact_type, name, role, company, is_primary, notes, created_at, updated_at')
+        .eq('house_id', body.house_id)
+      if (error) return json({ error: 'Failed to fetch contacts' }, 500)
+      return json({ rows: data ?? [] }, 200)
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

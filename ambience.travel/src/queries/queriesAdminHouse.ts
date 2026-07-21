@@ -29,6 +29,13 @@ import { supabase } from '../lib/supabase'
 import { camelizeKeys, snakeizeKeys } from '@shared/camelize'
 import type { PpdPeopleKey, PpdContactKey } from '../types/typesPpd'
 
+async function invokeReadHouse<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('a-read-house', { body })
+  if (error) throw new Error(`house read (${body.mode}): ${error.message}`)
+  if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)
+  return data as T
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type HouseStatus      = 'active' | 'inactive' | 'archived'
@@ -188,24 +195,18 @@ export type HousePatch = Partial<Omit<House, 'id' | 'aHouseId' | 'createdAt' | '
 // ── House reads/writes ────────────────────────────────────────────────────────
 
 export async function fetchHouses(): Promise<House[]> {
-  const { data, error } = await supabase
-    .from('a_houses').select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at').order('display_name', { ascending: true })
-  if (error) throw new Error(`Failed to fetch houses: ${error.message}`)
-  return camelizeKeys<House[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'houses' })
+  return camelizeKeys<House[]>(rows ?? [])
 }
 
 export async function fetchHouseById(id: string): Promise<House | null> {
-  const { data, error } = await supabase
-    .from('a_houses').select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at').eq('id', id).maybeSingle()
-  if (error) throw new Error(`Failed to fetch house: ${error.message}`)
-  return data as House | null
+  const { row } = await invokeReadHouse<{ row: unknown }>({ mode: 'house_by_id', id })
+  return row ? camelizeKeys<House>(row) : null
 }
 
 export async function fetchHouseByHouseId(aHouseId: string): Promise<House | null> {
-  const { data, error } = await supabase
-    .from('a_houses').select('id, a_house_id, display_name, designation, status, summary, service_style_notes, travel_style_notes, avoid_notes, service_notes, missing_info_notes, salutation_rule, brief_language, public_name, created_at, updated_at').eq('a_house_id', aHouseId).maybeSingle()
-  if (error) throw new Error(`Failed to fetch house: ${error.message}`)
-  return data as House | null
+  const { row } = await invokeReadHouse<{ row: unknown }>({ mode: 'house_by_house_id', a_house_id: aHouseId })
+  return row ? camelizeKeys<House>(row) : null
 }
 
 export async function updateHouse(id: string, patch: HousePatch): Promise<void> {
@@ -239,12 +240,8 @@ export async function fetchHouseRoles(): Promise<HouseRole_Registry[]> {
 // ── People reads/writes ───────────────────────────────────────────────────────
 
 export async function fetchPeopleForHouse(houseId: string): Promise<HousePerson[]> {
-  const { data, error } = await supabase
-    .from('a_house_people').select('id, house_id, person_id, member_ref, role, notes, sort_order, created_at, updated_at').eq('house_id', houseId)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true })
-  if (error) throw new Error(`Failed to fetch people: ${error.message}`)
-  return camelizeKeys<HousePerson[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'people', house_id: houseId })
+  return camelizeKeys<HousePerson[]>(rows ?? [])
 }
 
 // Household rank - the SINGLE SOURCE composition: role tier (from the roles registry
@@ -306,13 +303,8 @@ export async function deletePerson(id: string): Promise<void> {
 // one-default-per-house partial unique index is enforced EF-side (clear-then-set).
 
 export async function fetchLabelsForHouse(houseId: string): Promise<HouseLabel[]> {
-  const { data, error } = await supabase
-    .from('a_house_public_labels')
-    .select('id, house_id, key, display_name, is_default, sort_order, created_at, updated_at')
-    .eq('house_id', houseId)
-    .order('sort_order', { ascending: true })
-  if (error) throw new Error(`Failed to fetch labels: ${error.message}`)
-  return camelizeKeys<HouseLabel[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'labels', house_id: houseId })
+  return camelizeKeys<HouseLabel[]>(rows ?? [])
 }
 
 export async function createLabel(houseId: string, key: HouseLabelKey, displayName: string, sortOrder = 0): Promise<void> {
@@ -355,21 +347,15 @@ export async function deleteLabel(id: string): Promise<void> {
 }
 
 export async function fetchProfileForPerson(personId: string): Promise<HousePersonProfile | null> {
-  const { data, error } = await supabase
-    .from('global_profiles').select('id, display_name')
-    .eq('person_id', personId).maybeSingle()
-  if (error) throw new Error(`Failed to fetch profile: ${error.message}`)
-  return data as HousePersonProfile | null
+  const { row } = await invokeReadHouse<{ row: unknown }>({ mode: 'profile_for_person', person_id: personId })
+  return row ? camelizeKeys<HousePersonProfile>(row) : null
 }
 
 // ── Preferences reads/writes ──────────────────────────────────────────────────
 
 export async function fetchPreferencesForHouse(houseId: string): Promise<HousePreference[]> {
-  const { data, error } = await supabase
-    .from('a_house_preferences').select('id, house_id, person_id, category, pref_key, pref_value, notes, source, confidence, created_at, updated_at').eq('house_id', houseId)
-    .order('category', { ascending: true }).order('pref_key', { ascending: true })
-  if (error) throw new Error(`Failed to fetch preferences: ${error.message}`)
-  return camelizeKeys<HousePreference[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'preferences', house_id: houseId })
+  return camelizeKeys<HousePreference[]>(rows ?? [])
 }
 
 export async function createPreference(
@@ -380,7 +366,7 @@ export async function createPreference(
   const { error } = await supabase.functions.invoke('a-write-house-records', {
     body: {
       mode: 'create', table: 'preferences',
-      houseId: houseId, personId: personId, category, prefKey: prefKey,
+      house_id: houseId, person_id: personId, category, pref_key: prefKey,
       prefValue: prefValue, notes, source, confidence,
     },
   })
@@ -414,11 +400,8 @@ export async function deletePreference(id: string): Promise<void> {
 // ── Dining history reads/writes ───────────────────────────────────────────────
 
 export async function fetchDiningHistoryForHouse(houseId: string): Promise<HouseDiningEntry[]> {
-  const { data, error } = await supabase
-    .from('a_house_dininghistory').select('id, house_id, restaurant_name, city, country, status, visit_date, journey_id, venue_id, notes, created_at, updated_at').eq('house_id', houseId)
-    .order('status', { ascending: true }).order('restaurant_name', { ascending: true })
-  if (error) throw new Error(`Failed to fetch dining history: ${error.message}`)
-  return camelizeKeys<HouseDiningEntry[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'dining_history', house_id: houseId })
+  return camelizeKeys<HouseDiningEntry[]>(rows ?? [])
 }
 
 export async function createDiningEntry(
@@ -429,8 +412,8 @@ export async function createDiningEntry(
   const { error } = await supabase.functions.invoke('a-write-house-records', {
     body: {
       mode: 'create', table: 'dining',
-      houseId: houseId, restaurant_name: restaurantName, city, country,
-      status, visitDate: visitDate, journeyId: journeyId, venue_id: venueId, notes,
+      house_id: houseId, restaurant_name: restaurantName, city, country,
+      status, visit_date: visitDate, journey_id: journeyId, venue_id: venueId, notes,
     },
   })
   if (error) throw new Error(`Failed to create dining entry: ${error.message}`)
@@ -453,12 +436,8 @@ export async function deleteDiningEntry(id: string): Promise<void> {
 // ── Destinations reads/writes ─────────────────────────────────────────────────
 
 export async function fetchDestinationsForHouse(houseId: string): Promise<HouseDestination[]> {
-  const { data, error } = await supabase
-    .from('a_house_destinations').select('id, house_id, destination_name, country, city, trip_type, status, visit_date, journey_id, notes, created_at, updated_at').eq('house_id', houseId)
-    .order('status', { ascending: true })
-    .order('destination_name', { ascending: true })
-  if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-  return camelizeKeys<HouseDestination[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'destinations', house_id: houseId })
+  return camelizeKeys<HouseDestination[]>(rows ?? [])
 }
 
 export async function createDestination(
@@ -470,8 +449,8 @@ export async function createDestination(
   const { error } = await supabase.functions.invoke('a-write-house-records', {
     body: {
       mode: 'create', table: 'destinations',
-      houseId: houseId, destinationName: destinationName, country, city,
-      tripType: tripType, status, visitDate: visitDate, journeyId: journeyId, notes,
+      house_id: houseId, destination_name: destinationName, country, city,
+      trip_type: tripType, status, visit_date: visitDate, journey_id: journeyId, notes,
     },
   })
   if (error) throw new Error(`Failed to create destination: ${error.message}`)
@@ -494,15 +473,9 @@ export async function deleteDestination(id: string): Promise<void> {
 // ── Contacts reads/writes ─────────────────────────────────────────────────────
 
 export async function fetchContactsForHouse(houseId: string): Promise<HouseContact[]> {
-  const { data, error } = await supabase
-    .from('a_house_contacts').select('id, house_id, person_id, contact_type, name, role, company, is_primary, notes, created_at, updated_at').eq('house_id', houseId)
-    .order('is_primary', { ascending: false })
-    .order('contact_type', { ascending: true })
-    .order('name', { ascending: true })
-  if (error) throw new Error(`Failed to fetch contacts: ${error.message}`)
-  return camelizeKeys<HouseContact[]>(data ?? [])
+  const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'contacts', house_id: houseId })
+  return camelizeKeys<HouseContact[]>(rows ?? [])
 }
-
 export async function createContact(
   houseId: string, contactType: ContactType, name: string,
   role: string | null, company: string | null,
@@ -511,7 +484,7 @@ export async function createContact(
   const { data, error } = await supabase.functions.invoke('a-write-house-contacts', {
     body: {
       mode: 'create', house_id: houseId, contact_type: contactType, name, role,
-      company, isPrimary: isPrimary, notes, personId: personId,
+      company, is_primary: isPrimary, notes, person_id: personId,
     },
   })
   if (error) throw new Error(`Failed to create contact: ${error.message}`)
