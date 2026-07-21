@@ -31,7 +31,7 @@ import type {
   ImmerseEngagementHouse as HouseProfile,
   ImmerseEngagementBrief as EngagementBrief,
 } from '../types/typesImmerse'
-import type { TimelineItem } from '../types/typesTimeline'
+import type { TimelineItemView } from '../types/typesImmerseDelivery'
 import { bookedByLabel, isOwnArrangements, categoryAccentRgb } from '../utils/utilsBooking'
 import { isMeetGreetElement, isDiningElement } from '../types/typesElements'
 
@@ -42,7 +42,7 @@ export interface DailyProgrammeData {
   brief:            EngagementBrief | null
   house:            HouseProfile | null
   days:             JourneyDay[]
-  entriesByDate:    Record<string, TimelineItem[]>
+  entriesByDate:    Record<string, TimelineItemView[]>
   links:            PdfEngagementLink[]
   guestDisplayName: string | null
 }
@@ -53,16 +53,16 @@ type ProgrammeEntry = {
   id:                  string
   category:            string | null
   bookingType:         string | null
-  start_time:          string | null
-  end_time:            string | null
+  startTime:          string | null
+  endTime:            string | null
   title:               string
   subtitle:            string | null
   guest_label:         string | null
-  confirmation_number: string | null
+  confirmationNumber: string | null
   notes:               string | null
-  booked_by:           string | null
-  brief_show:          boolean
-  image_src:           string | null
+  bookedBy:           string | null
+  briefShow:          boolean
+  imageSrc:           string | null
   detailLines:         string[]
   noteLines:           string[]   // S55-P2: gold-italic concierge notes, own treatment
   schedPillLabel:      string | null   // S53Q: schedule alert via scheduleAlert (one source)
@@ -111,14 +111,14 @@ function buildFilename(trip: DossierJourney): string {
 
 // ── Map timeline items → render rows ─────────────────────────────────────────
 
-function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
+function timelineToRows(items: TimelineItemView[]): ProgrammeEntry[] {
   return items.map(it => {
     const roomLines = (it.rooms ?? []).map(r => roomLine({
-      guest_name:          r.guest,
-      room_name:           r.room_name,
-      party_composition:   r.party_composition,
+      guestName:          r.guest,
+      roomName:           r.roomName,
+      partyComposition:   r.partyComposition,
       notes:               r.notes,
-      confirmation_number: r.confirmation_number,
+      confirmationNumber: r.confirmationNumber,
     }))
     const roomLinesWithCheckIn = (it.rooms ?? []).map((r, i) => {
       const base = roomLines[i]
@@ -127,43 +127,43 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
 
     // S53G: passenger names separated for pill rendering
     const paxLines = (it.passengers ?? []).map(p => {
-      const name = p.resolved_passenger_label ?? p.passenger_label ?? 'Guest'
+      const name = p.resolvedPassengerLabel ?? p.passengerLabel ?? 'Guest'
       const detail = [
-        p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
-        p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+        p.confirmationNumber ? `Conf ${p.confirmationNumber}` : null,
+        p.seatNumbers ? `Seats ${p.seatNumbers}` : null,
       ].filter(Boolean).join('  \u00b7  ')
       return detail ? `${name}  \u00b7  ${detail}` : name
     })
 
-    const vehLines = driverDetailLines(it)
+    const vehLines = driverDetailLines({ driverDetails: it.driverDetails })
 
     // category is now a slug - isMeetGreetElement + isDiningElement accept slugs
     const greetLines = isMeetGreetElement(it.category)
-      ? greeterLines({ contact_name: it.contact_name, contact_phone: it.contact_phone, notes: null })
+      ? greeterLines({ contactName: it.contactName, contactPhone: it.contactPhone, notes: null })
       : []
 
     const isDining = isDiningElement(it.category)
     const diningPill = isDining
       ? diningPdfStatus({
-          show_cancellation:            it.show_cancellation,
-          dining_status:                it.dining_status,
-          cancellation_penalty_applied: it.cancellation_penalty_applied,
-          cancellation_note:            it.cancellation_note,
-          venue:                        it.venue ? { booking_terms: it.venue.booking_terms } : null,
+          showCancellation:            it.showCancellation,
+          diningStatus:                it.diningStatus,
+          cancellationPenaltyApplied: it.cancellationPenaltyApplied,
+          cancellationNote:            it.cancellationNote,
+          venue:                        it.venue ? { bookingTerms: it.venue.bookingTerms } : null,
         })
       : null
     const diningCancelled = isDining && isDiningCancelled({
-      show_cancellation: it.show_cancellation,
-      dining_status:     it.dining_status,
+      showCancellation: it.showCancellation,
+      diningStatus:     it.diningStatus,
     })
 
     const diningDetail: string[] = []
-    if (it.venue || it.guest_name || it.guest_count) {
+    if (it.venue || it.guestName || it.guestCount) {
       const v = it.venue
-      const gLine = guestLine(it)
+      const gLine = guestLine({ guestName: it.guestName, guestCount: it.guestCount })
       if (gLine) diningDetail.push(gLine)
       if (v?.address) diningDetail.push(v.address)
-      const contact = [v?.phone, v?.dress_code].filter(Boolean).join('  \u00b7  ')
+      const contact = [v?.phone, v?.dressCode].filter(Boolean).join('  \u00b7  ')
       if (contact) diningDetail.push(contact)
     }
 
@@ -179,29 +179,29 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
     // S55-P2: concierge check-in/out notes carried separately for gold-italic
     // treatment (parity with Confirmation + Brief); was plain ink in detailLines.
     const noteLines = [
-      ...(it.check_in_note ? [it.check_in_note] : []),
-      ...(it.check_out_note ? [it.check_out_note] : []),
+      ...(it.checkInNote ? [it.checkInNote] : []),
+      ...(it.checkOutNote ? [it.checkOutNote] : []),
     ]
     const sched = scheduleAlert(it)
     const checkoutLines = [
-      ...(it.late_checkout_approved_time ? [`Late Checkout Approved: ${fmtTimeOnly(it.late_checkout_approved_time)}`] : []),
-      ...(it.requested_checkout_time && !it.late_checkout_approved_time ? [`Check-Out Time Requested \u00b7 ${fmtTimeOnly(it.requested_checkout_time)}`] : []),
+      ...(it.lateCheckoutApprovedTime ? [`Late Checkout Approved: ${fmtTimeOnly(it.lateCheckoutApprovedTime)}`] : []),
+      ...(it.requestedCheckoutTime && !it.lateCheckoutApprovedTime ? [`Check-Out Time Requested \u00b7 ${fmtTimeOnly(it.requestedCheckoutTime)}`] : []),
     ]
 
     return {
       id:                  it.id,
       category:            it.category,
       bookingType:         it.category,
-      start_time:          it.start_time,
-      end_time:            it.end_time,
+      startTime:          it.startTime,
+      endTime:            it.endTime,
       title:               it.title,
       subtitle:            it.subtitle,
-      guest_label:         it.guest_label,
-      confirmation_number: it.confirmation_number,
+      guest_label:         it.guestLabel,
+      confirmationNumber: it.confirmationNumber,
       notes:               it.notes,
-      booked_by:           it.booked_by,
-      brief_show:          it.brief_show,
-      image_src:           it.image_src,
+      bookedBy:           it.bookedBy,
+      briefShow:          it.briefShow,
+      imageSrc:           it.imageSrc,
       detailLines,
       noteLines,
       schedPillLabel:      sched.pillLabel,
@@ -218,7 +218,7 @@ function timelineToRows(items: TimelineItem[]): ProgrammeEntry[] {
 // ── Entry row - single measurement source ─────────────────────────────────────
 
 function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
-  const hasImage  = !!entry.image_src
+  const hasImage  = !!entry.imageSrc
   const imageColW = hasImage ? PROG.imgW + 3 : 0
   const contentW  = CW - PROG.timeColW - PROG.barW - PROG.barGap - imageColW
 
@@ -228,9 +228,9 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
   let h = PROG.entryPadV + titleLines.length * PROG.titleLineH
 
   // booked_by gap
-  const bookedLabel = bookedByLabel(entry.booked_by)
-  if (isOwnArrangements(entry.booked_by)) h += 7
-  if (!isOwnArrangements(entry.booked_by) && bookedLabel) h += 6
+  const bookedLabel = bookedByLabel(entry.bookedBy)
+  if (isOwnArrangements(entry.bookedBy)) h += 7
+  if (!isOwnArrangements(entry.bookedBy) && bookedLabel) h += 6
 
   if (entry.subtitle)              h += PROG.lineH + 1
   h += entry.noteLines.length     * (PROG.lineH + 0.5)
@@ -255,7 +255,7 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
     h += doc.splitTextToSize(entry.diningPill.label, contentW3 - 2).length * PROG.lineH + 1
   }
   if (entry.guest_label)           h += 5
-  if (entry.confirmation_number)   h += 5
+  if (entry.confirmationNumber)   h += 5
   h += PROG.entryPadV
 
   return Math.max(h, hasImage ? PROG.imgH + PROG.entryPadV * 2 : 12)
@@ -263,8 +263,8 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
 
 async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: number): Promise<void> {
   const accent      = categoryAccentRgb(entry.category)
-  const bookedLabel = bookedByLabel(entry.booked_by)
-  const hasImage    = !!entry.image_src
+  const bookedLabel = bookedByLabel(entry.bookedBy)
+  const hasImage    = !!entry.imageSrc
 
   const imageColW = hasImage ? PROG.imgW + 3 : 0
   const accentX   = P.margin + PROG.timeColW
@@ -274,15 +274,15 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   drawRule(doc, contentX, y + rowH, contentW, T.rule, 0.15)
 
   // S53G: time only, no am/pm
-  if (entry.start_time && entry.schedStruck) {
+  if (entry.startTime && entry.schedStruck) {
     sans(doc, 'bold', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    drawStrikeText(doc, fmtTimeOnly(entry.start_time), P.margin, y + PROG.entryPadV + 5, 'left')
+    drawStrikeText(doc, fmtTimeOnly(entry.startTime), P.margin, y + PROG.entryPadV + 5, 'left')
   }
-  if (entry.start_time && !entry.schedStruck) {
+  if (entry.startTime && !entry.schedStruck) {
     sans(doc, 'bold', 7.5)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-    doc.text(fmtTimeOnly(entry.start_time), P.margin, y + PROG.entryPadV + 5)
+    doc.text(fmtTimeOnly(entry.startTime), P.margin, y + PROG.entryPadV + 5)
   }
 
   doc.setFillColor(accent[0], accent[1], accent[2])
@@ -292,7 +292,7 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     const imgX = accentX + PROG.barW + PROG.barGap
     const imgY = y + (rowH - PROG.imgH) / 2
     try {
-      const raw = await loadImg(entry.image_src!)
+      const raw = await loadImg(entry.imageSrc!)
       if (raw) {
         const cropped = await makeCoverCropAsync(raw.data, raw.format, raw.nw, raw.nh, PROG.imgW, PROG.imgH, 12, PROG.imgRadius)
         doc.addImage(cropped.data, cropped.format, imgX, imgY, PROG.imgW, PROG.imgH, undefined, 'SLOW')
@@ -327,10 +327,10 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
   ty += 1.5   // S53G: small air between title and booked_by
 
   // Booked by
-  if (isOwnArrangements(entry.booked_by)) {
+  if (isOwnArrangements(entry.bookedBy)) {
     drawOwnArrangementsChip(doc, contentX, ty + 0.5); ty += 6.5
   }
-  if (!isOwnArrangements(entry.booked_by) && bookedLabel) {
+  if (!isOwnArrangements(entry.bookedBy) && bookedLabel) {
     sans(doc, 'italic', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(bookedLabel, contentX, ty + 4); ty += 5.5
@@ -411,10 +411,10 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     doc.text(entry.guest_label, contentX, ty + 4); ty += 5
   }
 
-  if (entry.confirmation_number) {
+  if (entry.confirmationNumber) {
     sans(doc, 'normal', 7.5)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
-    doc.text(`#${entry.confirmation_number}`, contentX, ty + 4)
+    doc.text(`#${entry.confirmationNumber}`, contentX, ty + 4)
   }
 }
 
@@ -428,7 +428,7 @@ function drawDayHeader(doc: any, day: JourneyDay, dayIdx: number, y: number): nu
 
   serif(doc, 'normal', 15)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-  doc.text(day.day_label || formatDateWeekday(day.entry_date), P.margin + PROG.timeColW, y + 6)
+  doc.text(day.dayLabel || formatDateWeekday(day.entryDate), P.margin + PROG.timeColW, y + 6)
 
   y += 10
   drawRule(doc, P.margin, y, CW, T.rule, 0.35)
@@ -441,7 +441,7 @@ function drawContinuedHeader(doc: any, day: JourneyDay, dayIdx: number, y: numbe
   doc.text(`DAY ${dayIdx + 1} (CONTINUED)`, P.margin, y + 5, { charSpace: 0.6 })
   serif(doc, 'normal', 11)
   doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-  doc.text(day.day_label || formatDateWeekday(day.entry_date), P.margin + PROG.timeColW + 22, y + 5)
+  doc.text(day.dayLabel || formatDateWeekday(day.entryDate), P.margin + PROG.timeColW + 22, y + 5)
   y += 8
   drawRule(doc, P.margin, y, CW, T.rule, 0.25)
   return y + 6
@@ -458,12 +458,12 @@ async function renderActiveDay(
 ): Promise<number> {
   let y = drawDayHeader(doc, day, dayIdx, yIn)
 
-  const visibleEntries = entries.filter(e => e.brief_show)
+  const visibleEntries = entries.filter(e => e.briefShow)
 
-  if (day.day_note) {
+  if (day.dayNote) {
     sans(doc, 'italic', 8.5)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-    const noteLines = doc.splitTextToSize(day.day_note, CW)
+    const noteLines = doc.splitTextToSize(day.dayNote, CW)
     for (const line of noteLines) {
       if (y + 5 > FOOTER_GUARD) { y = addCreamPage(doc); y = drawContinuedHeader(doc, day, dayIdx, y) }
       doc.text(line, P.margin, y + 3.5); y += 5
@@ -498,7 +498,7 @@ function drawEmptyDay(doc: any, day: JourneyDay, dayIdx: number, y: number): num
 
   serif(doc, 'normal', 11)
   doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-  doc.text(day.day_label || formatDateWeekday(day.entry_date), P.margin + PROG.timeColW, y + 5)
+  doc.text(day.dayLabel || formatDateWeekday(day.entryDate), P.margin + PROG.timeColW, y + 5)
 
   sans(doc, 'italic', 8)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
@@ -528,7 +528,7 @@ export async function exportDailyProgrammePdf(
   ])
 
   let heroImageData: string | null = null
-  const heroSrc = data.brief?.hero_image_src ?? data.journey.destinations[0]?.hero_image_src ?? null
+  const heroSrc = data.brief?.heroImageSrc ?? data.journey.destinations[0]?.heroImageSrc ?? null
   if (heroSrc) {
     try {
       const blob = await fetch(heroSrc).then(r => r.blob())
@@ -538,15 +538,15 @@ export async function exportDailyProgrammePdf(
     } catch { /* silent */ }
   }
 
-  const preparedFor = data.guestDisplayName ?? data.brief?.prepared_for ?? null
-  const title       = data.brief?.brief_title ?? data.journey.destinations[0]?.name ?? ''
+  const preparedFor = data.guestDisplayName ?? data.brief?.preparedFor ?? null
+  const title       = data.brief?.briefTitle ?? data.journey.destinations[0]?.name ?? ''
 
   let y = await drawPdfHero(doc, {
     title,
     docType:       'Daily Programme',
-    subtitle:      data.brief?.brief_subtitle ?? null,
+    subtitle:      data.brief?.briefSubtitle ?? null,
     preparedFor,
-    dateRange:     buildDateRange(data.journey.start_date, data.journey.end_date),
+    dateRange:     buildDateRange(data.journey.startDate, data.journey.endDate),
     heroImageData,
     emblem,
     logo,
@@ -564,8 +564,8 @@ export async function exportDailyProgrammePdf(
 
   for (let idx = 0; idx < visibleDays.length; idx++) {
     const day     = visibleDays[idx]
-    const entries = timelineToRows(data.entriesByDate[day.entry_date] ?? [])
-    const hasContent = entries.some(e => e.brief_show)
+    const entries = timelineToRows(data.entriesByDate[day.entryDate] ?? [])
+    const hasContent = entries.some(e => e.briefShow)
 
     if (hasContent) {
       // Active day - always on its own page (except the very first)
@@ -591,14 +591,14 @@ export async function exportDailyProgrammePdf(
     y += drawEmptyDay(doc, day, idx, y)
   }
 
-  if (data.brief?.programme_notes?.trim()) {
+  if (data.brief?.programmeNotes?.trim()) {
     let notesY = addCreamPage(doc)
     drawRule(doc, P.margin, notesY, CW, T.rule, 0.3); notesY += 7
     sans(doc, 'bold', 7)
     doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
     doc.text('NOTES', P.margin, notesY, { charSpace: 0.8 }); notesY += 9
 
-    const lines = doc.splitTextToSize(data.brief.programme_notes, CW)
+    const lines = doc.splitTextToSize(data.brief.programmeNotes, CW)
     sans(doc, 'normal', 9)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     for (const line of lines) {
@@ -615,9 +615,9 @@ export async function exportDailyProgrammePdf(
     doc.text('LINKS', P.margin, linksY, { charSpace: 0.8 }); linksY += 9
     for (const link of data.links) {
       if (linksY + 13 > FOOTER_GUARD) linksY = addCreamPage(doc)
-      doc.setFillColor(link.is_highlighted ? T.cardBg[0] : T.white[0], link.is_highlighted ? T.cardBg[1] : T.white[1], link.is_highlighted ? T.cardBg[2] : T.white[2])
-      doc.setDrawColor(link.is_highlighted ? T.gold[0] : T.rule[0], link.is_highlighted ? T.gold[1] : T.rule[1], link.is_highlighted ? T.gold[2] : T.rule[2])
-      doc.setLineWidth(link.is_highlighted ? 0.5 : 0.3)
+      doc.setFillColor(link.isHighlighted ? T.cardBg[0] : T.white[0], link.isHighlighted ? T.cardBg[1] : T.white[1], link.isHighlighted ? T.cardBg[2] : T.white[2])
+      doc.setDrawColor(link.isHighlighted ? T.gold[0] : T.rule[0], link.isHighlighted ? T.gold[1] : T.rule[1], link.isHighlighted ? T.gold[2] : T.rule[2])
+      doc.setLineWidth(link.isHighlighted ? 0.5 : 0.3)
       doc.roundedRect(P.margin, linksY, CW, 13, 2, 2, 'FD')
       serif(doc, 'normal', 10)
       doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])

@@ -1,4 +1,4 @@
-// adminDestinationRowQueries.ts — Supabase reads/writes for the destination
+// adminDestinationRowQueries.ts - Supabase reads/writes for the destination
 // rows editor on engagement detail.
 // Owns: list / update / insert / delete / reorder rows on
 //       travel_overlay_engagement_destination_rows. Search canonical destinations
@@ -12,66 +12,67 @@
 // Last updated: S33C
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type DestinationRow = {
   id:                   string
-  engagement_id:              string
-  destination_id:       string | null
-  global_destination_id: string
+  engagementId:              string
+  destinationId:       string | null
+  globalDestinationId: string
 
   // Joined display fields
-  destination_slug:     string | null
-  destination_name:     string | null
+  destinationSlug:     string | null
+  destinationName:     string | null
 
   // Card
-  number_label:         string | null
+  numberLabel:         string | null
   title:                string | null
   mood:                 string | null
   summary:              string | null
-  stay_label:           string | null
-  image_src:            string | null
-  image_alt:            string | null
-  sort_order:           number
-  subpage_status:       'live' | 'preview'
+  stayLabel:           string | null
+  imageSrc:            string | null
+  imageAlt:            string | null
+  sortOrder:           number
+  subpageStatus:       'live' | 'preview'
 
   // Subpage hero overrides
-  hero_image_src_override:   string | null
-  hero_image_alt_override:   string | null
-  hero_image_src_2_override: string | null
-  hero_image_alt_2_override: string | null
-  hero_title_2_override:     string | null
-  hero_subtitle_2_override:  string | null
+  heroImageSrcOverride:   string | null
+  heroImageAltOverride:   string | null
+  heroImageSrc2Override: string | null
+  heroImageAlt2Override: string | null
+  heroTitle2Override:     string | null
+  heroSubtitle2Override:  string | null
 
   // Subpage intro overrides
-  intro_title_override: string | null
-  intro_body_override:  string | null
+  introTitleOverride: string | null
+  introBodyOverride:  string | null
 
   // Pricing overrides
-  pricing_body_override:                    string | null
-  pricing_notes_heading_override:           string | null
-  pricing_notes_title_override:             string | null
-  pricing_notes_override:                   unknown   // jsonb
-  pricing_closer_item_override:             string | null
-  pricing_closer_basis_override:            string | null
-  pricing_closer_stay_override:             string | null
-  pricing_closer_indicative_range_override: string | null
+  pricingBodyOverride:                    string | null
+  pricingNotesHeadingOverride:           string | null
+  pricingNotesTitleOverride:             string | null
+  pricingNotesOverride:                   unknown   // jsonb
+  pricingCloserItemOverride:             string | null
+  pricingCloserBasisOverride:            string | null
+  pricingCloserStayOverride:             string | null
+  pricingCloserIndicativeRangeOverride: string | null
 
   // Dining overrides
-  dining_eyebrow_override: string | null
-  dining_title_override:   string | null
-  dining_body_override:    string | null
+  diningEyebrowOverride: string | null
+  diningTitleOverride:   string | null
+  diningBodyOverride:    string | null
 
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type DestinationOption = {
   id:           string
   slug:         string
   name:         string
-  storage_path: string | null
+  storagePath: string | null
 }
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -92,10 +93,11 @@ export async function fetchDestinationRows(
 
   if (error) throw error
 
-  return (data ?? []).map((r: any) => ({
+  const rows = camelizeKeys<any[]>(data ?? [])
+  return rows.map((r: any) => ({
     ...r,
-    destination_slug: r.global_destination?.slug ?? null,
-    destination_name: r.global_destination?.name ?? null,
+    destinationSlug: r.global_destination?.slug ?? null,
+    destinationName: r.global_destination?.name ?? null,
   })) as DestinationRow[]
 }
 
@@ -105,14 +107,16 @@ export async function updateDestinationRow(
   id:      string,
   payload: Partial<DestinationRow>,
 ): Promise<void> {
-  // Strip joined display fields and immutable identity fields before sending
-  const clean: Record<string, unknown> = { ...payload }
-  delete clean.id
-  delete clean.engagement_id
-  delete clean.created_at
-  delete clean.updated_at
-  delete clean.destination_slug
-  delete clean.destination_name
+  // Map camel payload -> snake DB columns; strip joined/immutable fields.
+  const colMap: Record<string, string> = {
+    title: 'title', sortOrder: 'sort_order', subpageStatus: 'subpage_status',
+    globalDestinationId: 'global_destination_id', nights: 'nights', note: 'note',
+  }
+  const clean: Record<string, unknown> = {}
+  for (const k of Object.keys(payload)) {
+    const col = colMap[k]
+    if (col) clean[col] = (payload as Record<string, unknown>)[k]
+  }
 
   const { error } = await supabase
     .from('travel_overlay_engagement_destination_rows')
@@ -124,10 +128,10 @@ export async function updateDestinationRow(
 // ── Insert (add destination flow) ─────────────────────────────────────────────
 
 export type AddDestinationPayload = {
-  engagement_id:               string
+  engagementId:               string
   global_destination_id: string
   title:                 string                  // pre-filled with destination name
-  sort_order:            number                  // caller computes max + 1
+  sortOrder:            number                  // caller computes max + 1
   subpage_status?:       'live' | 'preview'
 }
 
@@ -137,10 +141,10 @@ export async function insertDestinationRow(
   const { data, error } = await supabase
     .from('travel_overlay_engagement_destination_rows')
     .insert({
-      engagement_id:               payload.engagement_id,
+      engagementId:               payload.engagementId,
       global_destination_id: payload.global_destination_id,
       title:                 payload.title,
-      sort_order:            payload.sort_order,
+      sortOrder:            payload.sortOrder,
       subpage_status:        payload.subpage_status ?? 'preview',
     })
     .select('id')
@@ -164,17 +168,17 @@ export async function deleteDestinationRow(id: string): Promise<void> {
 /**
  * Reassign sort_order on a list of row IDs. Callers should pass the full list
  * of destination row IDs in the new desired order; sort_order is reset to
- * 1..N to match. One UPDATE per row — Postgres has no native multi-row update
+ * 1..N to match. One UPDATE per row - Postgres has no native multi-row update
  * by id with different values per row that matches our shape.
  */
 export async function reorderDestinationRows(
   orderedIds: string[],
 ): Promise<void> {
-  // Run sequentially to keep error messages clean; volume is small (typically 5–8)
+  // Run sequentially to keep error messages clean; volume is small (typically 5-8)
   for (let i = 0; i < orderedIds.length; i++) {
     const { error } = await supabase
       .from('travel_overlay_engagement_destination_rows')
-      .update({ sort_order: i + 1 })
+      .update({ sortOrder: i + 1 })
       .eq('id', orderedIds[i])
     if (error) throw error
   }
@@ -204,7 +208,7 @@ export async function searchDestinations(
 
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as DestinationOption[]
+  return camelizeKeys<DestinationOption[]>(data ?? [])
 }
 
 // ── Max sort_order (for add defaults) ─────────────────────────────────────────

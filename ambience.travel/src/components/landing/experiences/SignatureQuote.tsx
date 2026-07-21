@@ -1,4 +1,4 @@
-// SignatureQuote.tsx — guest reflection section for signature experience pages
+// SignatureQuote.tsx - guest reflection section for signature experience pages
 // Owns the quote + left editorial copy only.
 // Last updated: S9
 

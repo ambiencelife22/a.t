@@ -1,11 +1,11 @@
-// typesPpd.ts — Canonical PPD (personally protected data) key registries.
+// typesPpd.ts - Canonical PPD (personally protected data) key registries.
 //
 // What it owns:
-//   - PPD_PEOPLE_KEYS: canonical list of data_key values for a_ppd_people.
+//   - PPD_PEOPLE_KEYS: canonical list of dataKey values for a_ppd_people.
 //     Covers identity, travel documents, loyalty programmes, emergency
 //     contacts, dietary/medical notes.
-//   - PPD_CONTACT_KEYS: canonical list of data_key values for a_ppd_contacts.
-//     Mirrors the DB CHECK constraint on a_ppd_contacts.data_key.
+//   - PPD_CONTACT_KEYS: canonical list of dataKey values for a_ppd_contacts.
+//     Mirrors the DB CHECK constraint on a_ppd_contacts.dataKey.
 //   - PPD_PEOPLE_KEY_GROUPS: grouped registry for the admin UI dropdown
 //     (Identity / Travel Documents / Loyalty / Contact / Medical).
 //   - Validators (isValidPpdPeopleKey, isValidPpdContactKey) used by the
@@ -16,18 +16,18 @@
 //   - UI rendering
 //
 // Source of truth for:
-//   - a_ppd_people.data_key allowed values (no DB CHECK \u2014 enforced in code)
-//   - a_ppd_contacts.data_key allowed values (also enforced by DB CHECK)
+//   - a_ppd_people.dataKey allowed values (no DB CHECK - enforced in code)
+//   - a_ppd_contacts.dataKey allowed values (also enforced by DB CHECK)
 //   - Admin UI dropdown options for adding new PPD entries
 //
 // To add a new PPD key:
 //   1. Add to PPD_PEOPLE_KEYS (preserves dropdown order)
 //   2. Add to the appropriate group in PPD_PEOPLE_KEY_GROUPS
-//   3. No DB migration required \u2014 a_ppd_people has no CHECK constraint
+//   3. No DB migration required - a_ppd_people has no CHECK constraint
 //   4. For contact keys: DB CHECK constraint must be updated first via migration,
 //      then add to PPD_CONTACT_KEYS array
 //
-// Last updated: S52 \u2014 initial extraction. Constants previously hardcoded inline
+// Last updated: S52 - initial extraction. Constants previously hardcoded inline
 //   in HouseTab.tsx (violation of single-source rule). Moved here as canonical
 //   registry for the a-write-ppd Edge Function validation + admin UI consumption.
 
@@ -68,8 +68,8 @@ export const PPD_PEOPLE_KEYS = [
 export type PpdPeopleKey = typeof PPD_PEOPLE_KEYS[number]
 
 // ── Contact PPD keys ──────────────────────────────────────────────────────────
-// Mirrors a_ppd_contacts.data_key CHECK constraint exactly.
-// DB CHECK enforces this list \u2014 update the migration before changing here.
+// Mirrors a_ppd_contacts.dataKey CHECK constraint exactly.
+// DB CHECK enforces this list - update the migration before changing here.
 
 export const PPD_CONTACT_KEYS = [
   'Phone',
@@ -132,7 +132,7 @@ export const PPD_PEOPLE_KEY_GROUPS: PpdKeyGroup[] = [
 ]
 
 // ── Validators ────────────────────────────────────────────────────────────────
-// Used by a-write-ppd Edge Function. Reject INSERT if data_key not in registry.
+// Used by a-write-ppd Edge Function. Reject INSERT if dataKey not in registry.
 
 export function isValidPpdPeopleKey(value: string | null | undefined): value is PpdPeopleKey {
   if (!value) return false

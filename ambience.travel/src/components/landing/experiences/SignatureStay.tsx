@@ -1,4 +1,4 @@
-// SignatureStay.tsx — accommodation section for signature experience pages
+// SignatureStay.tsx - accommodation section for signature experience pages
 // Owns the stay image + copy + bullet grid only.
 // Last updated: S9
 
@@ -58,7 +58,7 @@ export default function SignatureStay({
           </p>
         </div>
 
-        {/* Split grid — stacks on mobile */}
+        {/* Split grid - stacks on mobile */}
         <div
           style={{
             display:             'grid',

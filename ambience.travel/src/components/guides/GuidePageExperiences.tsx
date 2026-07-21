@@ -1,4 +1,4 @@
-/* GuidePageExperiences.tsx — public experiences guide for a destination.
+/* GuidePageExperiences.tsx - public experiences guide for a destination.
  *
  * Mirrors GuidePageDining / GuidePageShopping / GuidePageHotels structure.
  * All shared behaviour lives in shared helpers.
@@ -26,14 +26,14 @@
  *   - PDF year/version resolution (utilsGuidePdf)
  *   - Style objects (stylesGuidePage)
  *
- * Last updated: S53 — Guard clauses only.
- * Prior: S53 — Nine-file guide-layer extraction. Every shared piece
+ * Last updated: S53 - Guard clauses only.
+ * Prior: S53 - Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
- * Prior: S53 — Universal eyebrow/headline pattern via GUIDE_COPY.experiences.
+ * Prior: S53 - Universal eyebrow/headline pattern via GUIDE_COPY.experiences.
  *   Venues bugfix, duplicated happenings handler removed.
- * Prior: S52 — Selected shopping section removed. ComingUp swapped to
+ * Prior: S52 - Selected shopping section removed. ComingUp swapped to
  *   shared component. Happenings fetch passes surface='experiences'.
- * Prior: S41 — initial build.
+ * Prior: S41 - initial build.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -115,7 +115,7 @@ export default function GuidePageExperiences({
   const overlay = destination.overlay
 
   const atAGlanceBullets = useMemo(
-    () => overlay?.at_a_glance_bullets ?? [],
+    () => overlay?.atAGlanceBullets ?? [],
     [overlay],
   )
 
@@ -169,9 +169,9 @@ export default function GuidePageExperiences({
     const seen    = new Set<string>()
     const ordered: string[] = []
     for (const v of venues) {
-      if (v.experience_category && !seen.has(v.experience_category)) {
-        seen.add(v.experience_category)
-        ordered.push(v.experience_category)
+      if (v.experienceCategory && !seen.has(v.experienceCategory)) {
+        seen.add(v.experienceCategory)
+        ordered.push(v.experienceCategory)
       }
     }
     return ordered
@@ -180,7 +180,7 @@ export default function GuidePageExperiences({
   const visibleVenues = useMemo(() => {
     const base = sortByName(filterVisibleItems(venues, hasFullAccess))
     if (!activeCategory) return base
-    return base.filter(v => v.experience_category === activeCategory)
+    return base.filter(v => v.experienceCategory === activeCategory)
   }, [venues, hasFullAccess, activeCategory])
 
   return (
@@ -221,9 +221,9 @@ export default function GuidePageExperiences({
                     happenings,
                     copy:         { eyebrow: hero.eyebrow, headline: hero.headline, intro: hero.intro },
                     heroImageSrc: hero.imageSrc,
-                    guideYear:    resolveGuideYear(overlay?.guide_year),
-                    guideVersion: resolveGuideVersion(overlay?.guide_version),
-                    accuracyDate: overlay?.accuracy_date ?? null,
+                    guideYear:    resolveGuideYear(overlay?.guideYear),
+                    guideVersion: resolveGuideVersion(overlay?.guideVersion),
+                    accuracyDate: overlay?.accuracyDate ?? null,
                   })}
                   disabled={!pdfReady || pdfDownloading || venues.length === 0}
                   style={{
@@ -273,8 +273,8 @@ export default function GuidePageExperiences({
               <GuidePlanYourVisit overlay={overlay} variant={VARIANT} />
             )}
 
-            {overlay?.accuracy_date && (
-              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracy_date} />
+            {overlay?.accuracyDate && (
+              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracyDate} />
             )}
           </>
         )}

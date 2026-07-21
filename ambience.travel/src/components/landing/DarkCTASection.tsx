@@ -1,8 +1,8 @@
 /* DarkCTASection.tsx
- * Final CTA — dark card on light section bg.
- * Ambient: slow gradient shift on the card background — 12s cycle,
+ * Final CTA - dark card on light section bg.
+ * Ambient: slow gradient shift on the card background - 12s cycle,
  * warm gold-tinted radial drifts from corner to corner.
- * Understated — visible only if you're watching.
+ * Understated - visible only if you're watching.
  */
 
 import { C, DARK } from '../../types/typesLanding'

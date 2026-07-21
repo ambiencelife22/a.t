@@ -1,11 +1,11 @@
-// structuredImageData.ts — schema.org JSON-LD builder for /immerse/ destination pages
+// structuredImageData.ts - schema.org JSON-LD builder for /immerse/ destination pages
 // Owns: buildImageObjects, buildWebPageSchema, buildDestinationSchema
-// Does not own rendering, routing, or injection — that belongs to ImmerseStructuredData.tsx
-// Last updated: S21 — flattenHotels() normalizes the new ImmerseDestinationHotelsShape
+// Does not own rendering, routing, or injection - that belongs to ImmerseStructuredData.tsx
+// Last updated: S21 - flattenHotels() normalizes the new ImmerseDestinationHotelsShape
 //   discriminated union into a flat ImmerseHotelOption[] before iteration.
 //   Regioned destinations (Nordic Winter, Europe Finale) emit the union of all
 //   region hotels; flat destinations (NYC, St-Barths) emit the hotels array as-is.
-// Prior: S12 — initial schema builder.
+// Prior: S12 - initial schema builder.
 //
 // Known debt (flagged for S22):
 //   - WebPage + TouristTrip @id values are hardcoded to /immerse/honeymoon/new-york.
@@ -83,7 +83,7 @@ function collectHotelImages(hotel: ImmerseHotelOption): Record<string, unknown>[
   images.push(makeImageObject(
     hotel.imageSrc,
     hotel.imageAlt,
-    `${hotel.name} — exterior`,
+    `${hotel.name} - exterior`,
     hotel.imageCredit,
     hotel.imageCreditUrl,
     hotel.imageLicense,
@@ -94,8 +94,8 @@ function collectHotelImages(hotel: ImmerseHotelOption): Record<string, unknown>[
     hotel.gallery.forEach((src, i) => {
       images.push(makeImageObject(
         src,
-        `${hotel.name} — gallery image ${i + 1}`,
-        `${hotel.name} — gallery ${i + 1}`,
+        `${hotel.name} - gallery image ${i + 1}`,
+        `${hotel.name} - gallery ${i + 1}`,
         hotel.imageCredit,
         hotel.imageCreditUrl,
         hotel.imageLicense,
@@ -108,7 +108,7 @@ function collectHotelImages(hotel: ImmerseHotelOption): Record<string, unknown>[
     images.push(makeImageObject(
       room.roomImageSrc,
       room.roomImageAlt,
-      `${hotel.name} — ${room.roomBasis}`,
+      `${hotel.name} - ${room.roomBasis}`,
       hotel.imageCredit,
       hotel.imageCreditUrl,
       hotel.imageLicense,
@@ -123,7 +123,7 @@ function collectContentCardImages(cards: ImmerseContentCard[], context: string):
     makeImageObject(
       card.imageSrc,
       card.imageAlt,
-      `${context} — ${card.name}`,
+      `${context} - ${card.name}`,
       card.imageCredit,
       card.imageCreditUrl,
       card.imageLicense,
@@ -159,7 +159,7 @@ function buildTouristTripSchema(
   return {
     '@type':       'TouristTrip',
     '@id':         `https://ambience.travel/immerse/honeymoon/new-york#trip`,
-    'name':        `${data.title} — Honeymoon Proposal`,
+    'name':        `${data.title} - Honeymoon Proposal`,
     'description': data.introBody,
     'touristType':  'Honeymoon',
     'itinerary': {
@@ -190,7 +190,7 @@ export function buildDestinationStructuredData(data: ImmerseDestinationData): st
   allImages.push(makeImageObject(
     data.heroImageSrc,
     data.heroImageAlt,
-    `${data.title} — hero`,
+    `${data.title} - hero`,
     undefined,
     undefined,
     undefined,

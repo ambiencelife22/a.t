@@ -13,7 +13,7 @@
  * Identity model: a guest links a global_people PERSON to the programme via that
  * person's global_profiles.id. Search resolves person -> profile and reports
  * `linkable` (has a login account). A person with no account is shown but cannot be
- * linked — surfaced plainly, never written as a dead link.
+ * linked - surfaced plainly, never written as a dead link.
  *
  * S53H: migrated to EF-only via queriesAdminProgramme (zero direct supabase.from()).
  *   Search source moved from the dropped travel_clients table to global_people.
@@ -336,7 +336,7 @@ export default function GuestLinker({ programmeId }: { programmeId: string }) {
                       {/* Honest direction: a person with no login account can't be linked. */}
                       {!candidate.linkable && !linked && (
                         <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                          No login account yet — can&apos;t be linked
+                          No login account yet - can&apos;t be linked
                         </div>
                       )}
                     </button>

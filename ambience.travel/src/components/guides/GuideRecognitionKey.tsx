@@ -1,4 +1,4 @@
-/* GuideRecognitionKey.tsx — recognition marks for the guide layer.
+/* GuideRecognitionKey.tsx - recognition marks for the guide layer.
  *
  * Single source of truth for what each recognition mark means:
  *   {'\u25C6'} Highlighted
@@ -9,9 +9,9 @@
  *   Michelin Keys
  *
  * What it owns:
- *   - GuideRecognitionKeyStrip — page-top legend
- *   - GuideRecognitionMark — single-mark pill with hover tooltip
- *   - deriveRecognitionKindsFromVenues — dining-specific helper
+ *   - GuideRecognitionKeyStrip - page-top legend
+ *   - GuideRecognitionMark - single-mark pill with hover tooltip
+ *   - deriveRecognitionKindsFromVenues - dining-specific helper
  *
  * What it does not own:
  *   - The card that renders a mark (GuideCardDining, GuideCardHotels)
@@ -21,13 +21,13 @@
  * use keys. deriveRecognitionKindsFromVenues is dining-only for now; a
  * hotels equivalent will land when the strip appears on the hotels page.
  *
- * Last updated: S53 — Renamed to convention (was RecognitionKey). Exports
+ * Last updated: S53 - Renamed to convention (was RecognitionKey). Exports
  *   renamed to GuideRecognitionMark, GuideRecognitionKeyStrip. Behaviour
  *   unchanged.
- * Prior: S53C — Added 'keys' kind. Michelin Keys (hotel distinction, 1-3)
+ * Prior: S53C - Added 'keys' kind. Michelin Keys (hotel distinction, 1-3)
  *   render as N gold key glyphs, matching the stars idiom.
- * Prior: S40B — Added 'highlighted' kind.
- * Prior: S37 — initial.
+ * Prior: S40B - Added 'highlighted' kind.
+ * Prior: S37 - initial.
  */
 
 import React from 'react'
@@ -191,11 +191,11 @@ export function GuideRecognitionKeyStrip({ presentKinds }: GuideRecognitionKeySt
 export function deriveRecognitionKindsFromVenues(venues: DiningVenue[]): Set<RecognitionKind> {
   const set = new Set<RecognitionKind>()
   for (const v of venues) {
-    if (v.is_highlighted)                                set.add('highlighted')
-    if (v.michelin_award === 'star' && v.michelin_stars) set.add('stars')
-    if (v.michelin_award === 'bib_gourmand')             set.add('bib')
-    if (v.michelin_green_star)                           set.add('green')
-    if (v.worlds_50_best)                                set.add('fifty_best')
+    if (v.isHighlighted)                                set.add('highlighted')
+    if (v.michelinAward === 'star' && v.michelinStars) set.add('stars')
+    if (v.michelinAward === 'bib_gourmand')             set.add('bib')
+    if (v.michelinGreenStar)                           set.add('green')
+    if (v.worlds50Best)                                set.add('fifty_best')
   }
   return set
 }

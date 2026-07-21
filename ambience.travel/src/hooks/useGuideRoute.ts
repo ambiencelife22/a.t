@@ -1,35 +1,35 @@
-// useGuideRoute.ts — shared route logic for all four guide variants.
+// useGuideRoute.ts - shared route logic for all four guide variants.
 //
 // What it owns:
 //   - Path parsing (extract destinationSlug from window.location)
 //   - Destination + overlay fetch (via queriesGuides.getGuideDestination)
-//   - Overlay gate — destinations without an overlay for the requested
-//     variant resolve to notPublic (distinct from notFound — the destination
+//   - Overlay gate - destinations without an overlay for the requested
+//     variant resolve to notPublic (distinct from notFound - the destination
 //     exists but the guide for this variant is not publicly visible)
 //   - Grant check + hasFullAccess resolution
 //   - Error handling
 //   - Loading / ready / notPublic / notFound state machine
 //
 // What it does not own:
-//   - The actual page component — route files render the variant-specific
+//   - The actual page component - route files render the variant-specific
 //     page after the hook returns 'ready'
 //   - GuideLayout chrome
 //
 // Phase semantics:
-//   loading   — fetch in flight
-//   ready     — destination + overlay found, hasFullAccess resolved
-//   notPublic — destination found, overlay missing for this variant.
+//   loading   - fetch in flight
+//   ready     - destination + overlay found, hasFullAccess resolved
+//   notPublic - destination found, overlay missing for this variant.
 //               The guide exists but is not publicly visible. Route renders
 //               the variant-specific GuideGate* screen inside GuideLayout.
-//   notFound  — destination slug unresolvable, destination not in DB, or
+//   notFound  - destination slug unresolvable, destination not in DB, or
 //               unexpected error. Route renders NotFoundPage (dark, full page).
 //
-// Last updated: S53 — Added notPublic phase. Overlay gate previously resolved
-//   to notFound with message "This guide isn't available yet." — indistinguishable
+// Last updated: S53 - Added notPublic phase. Overlay gate previously resolved
+//   to notFound with message "This guide isn't available yet." - indistinguishable
 //   from a genuine 404 and showing a dark full-page error for a deliberate
 //   visibility decision. notPublic now routes to the variant-specific
 //   GuideGate* inline screen inside GuideLayout.
-// Prior: S53 — initial build. Consolidated four near-identical route files
+// Prior: S53 - initial build. Consolidated four near-identical route files
 //   into one hook + four thin wrappers. Added overlay gate.
 
 import { useEffect, useRef, useState } from 'react'
@@ -110,7 +110,7 @@ export function useGuideRoute(variant: GuideVariant): GuideRouteState {
           return
         }
 
-        // Overlay gate — destination exists but no guide overlay for this
+        // Overlay gate - destination exists but no guide overlay for this
         // variant. This is a deliberate visibility decision, not a 404.
         // Route renders the variant-specific GuideGate* screen inline inside
         // GuideLayout so the guest still sees destination context.

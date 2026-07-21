@@ -1,17 +1,17 @@
-// AssetUploader.tsx — modal for uploading images (webp) and floorplan PDFs
+// AssetUploader.tsx - modal for uploading images (webp) and floorplan PDFs
 // to the ambience-assets bucket. Composed of GeoCascade folder picker +
 // filename editor + upload pipeline.
 //
 // Modes:
-//   - 'image'     — converts to webp via canvas, quality 0.85
-//   - 'floorplan' — PDF passthrough, no conversion
+//   - 'image'     - converts to webp via canvas, quality 0.85
+//   - 'floorplan' - PDF passthrough, no conversion
 //
 // presetPath mode (S36):
 //   When presetPath is provided, GeoCascade is hidden and uploads go
 //   directly to that path. Used by destination-scoped flows (Library /
 //   Dining for a specific destination).
 //
-// Last updated: S36 — Added presetPath prop. When set, GeoCascade is
+// Last updated: S36 - Added presetPath prop. When set, GeoCascade is
 //   hidden and the resolved path is used directly.
 // Prior: S33B
 
@@ -174,7 +174,7 @@ export default function AssetUploader({ mode, onClose, onUploaded, presetPath }:
       if (mode === 'floorplan') {
         result = await uploadPdf(file, resolvedPath, filename.trim(), { upsert: opts.upsert })
       }
-      // @ts-expect-error — one of the branches always assigns
+      // @ts-expect-error - one of the branches always assigns
       onUploaded(result)
       showToast('Uploaded.', 'success')
       setTimeout(onClose, 600)

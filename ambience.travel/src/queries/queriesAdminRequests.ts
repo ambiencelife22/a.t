@@ -1,11 +1,11 @@
 // queriesAdminRequests.ts
 // Read + write layer for travel_requests.
-// All access via Edge Functions — no direct supabase.from() calls.
+// All access via Edge Functions - no direct supabase.from() calls.
 //
 // Read:  travel-read-journey-admin  (mode: requests)
 // Write: travel-write-journey       (mode: create_request | update_request | delete_request)
 //
-// Last updated: S53G — migrated from direct DB to EF.
+// Last updated: S53G - migrated from direct DB to EF.
 
 import { supabase } from '../lib/supabase'
 
@@ -14,17 +14,17 @@ export type RequestChannel = 'WhatsApp' | 'Email' | 'Phone' | 'PA' | 'Other'
 
 export interface TravelRequest {
   id:            string
-  house_id:      string
-  journey_id:       string | null
-  engagement_id: string | null
+  houseId:      string
+  journeyId:       string | null
+  engagementId: string | null
   channel:       RequestChannel | null
-  received_at:   string
+  receivedAt:   string
   request_body:  string
   status:        RequestStatus
-  handled_by:    string | null
+  handledBy:    string | null
   notes:         string | null
-  created_at:    string
-  updated_at:    string
+  createdAt:    string
+  updatedAt:    string
 }
 
 export type RequestPatch = Partial<Omit<TravelRequest, 'id' | 'house_id' | 'created_at' | 'updated_at'>>
@@ -34,7 +34,7 @@ export const REQUEST_CHANNELS: RequestChannel[] = ['WhatsApp', 'Email', 'Phone',
 
 export async function fetchRequestsForHouse(houseId: string): Promise<TravelRequest[]> {
   const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', {
-    body: { mode: 'requests', house_id: houseId },
+    body: { mode: 'requests', houseId: houseId },
   })
   if (error) throw new Error(`Failed to fetch requests: ${error.message}`)
   return (data?.requests ?? []) as TravelRequest[]
@@ -53,10 +53,10 @@ export async function createRequest(
   const { error } = await supabase.functions.invoke('travel-write-journey', {
     body: {
       mode: 'create_request',
-      house_id: houseId, request_body: requestBody,
-      channel, received_at: receivedAt,
-      journey_id: journeyId, engagement_id: engagementId,
-      handled_by: handledBy, notes,
+      houseId: houseId, request_body: requestBody,
+      channel, receivedAt: receivedAt,
+      journeyId: journeyId, engagementId: engagementId,
+      handledBy: handledBy, notes,
     },
   })
   if (error) throw new Error(`Failed to create request: ${error.message}`)

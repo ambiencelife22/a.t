@@ -1,4 +1,4 @@
-/* GuideAccessTab.tsx — canonical access management for guide variants that
+/* GuideAccessTab.tsx - canonical access management for guide variants that
  * support per-user grants (currently dining + experiences).
  *
  * Replaces the two near-identical AccessTab components that used to live
@@ -18,10 +18,10 @@
  *   - Variant fetch wiring (caller injects fetchGrants, createGrant,
  *     deleteGrant scoped to the right table)
  *
- * Variant-discriminated via callbacks rather than a switch — keeps this
+ * Variant-discriminated via callbacks rather than a switch - keeps this
  * file unaware of which underlying table backs the grants.
  *
- * Last updated: S52 — initial build.
+ * Last updated: S52 - initial build.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -35,19 +35,19 @@ import {
 import { fetchProfileByPersonId } from '../../../queries/queriesAdminGuides'
 import { fetchPeople, type GlobalPersonResolved } from '../../../queries/queriesGlobalPeople'
 
-// ── Minimal grant shape — both AdminGrant + AdminExperiencesGrant satisfy ─────
+// ── Minimal grant shape - both AdminGrant + AdminExperiencesGrant satisfy ─────
 
 export interface MinimalGrant {
   id:         string
-  user_id:    string
-  granted_at: string
+  userId:    string
+  grantedAt: string
   person:     GlobalPersonResolved | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function personDisplayName(person: GlobalPersonResolved): string {
-  const parts = [person.first_name, person.last_name].filter(Boolean)
+  const parts = [person.firstName, person.lastName].filter(Boolean)
   if (parts.length > 0) return parts.join(' ')
   return person.nickname ?? person.email ?? '(unnamed)'
 }
@@ -96,7 +96,7 @@ export default function GuideAccessTab({
 
   useEffect(() => { load() }, [globalDestinationId])
 
-  const grantedUserIds   = useMemo(() => new Set(grants.map(g => g.user_id)), [grants])
+  const grantedUserIds   = useMemo(() => new Set(grants.map(g => g.userId)), [grants])
   const grantedPersonIds = useMemo(
     () => new Set(grants.map(g => g.person?.id).filter(Boolean)),
     [grants],
@@ -194,7 +194,7 @@ export default function GuideAccessTab({
                     </div>
                   )}
                   <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2 }}>
-                    Granted {formatDateShort(g.granted_at.slice(0, 10))}
+                    Granted {formatDateShort(g.grantedAt.slice(0, 10))}
                   </div>
                 </div>
                 <button

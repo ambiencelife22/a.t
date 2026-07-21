@@ -1,4 +1,4 @@
-// useDossierDownload.ts — jsPDF loader + download handler for Client Dossier PDFs.
+// useDossierDownload.ts - jsPDF loader + download handler for Client Dossier PDFs.
 // Mirrors usePdfDownload pattern exactly. Kept separate so guide PDF state
 // does not bleed into admin dossier state.
 //
@@ -6,7 +6,7 @@
 //   const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierDownload()
 //   <button onClick={() => handleDownloadDossier(data)} disabled={!pdfReady || pdfDownloading} />
 //
-// Last updated: S45 — initial ship.
+// Last updated: S45 - initial ship.
 
 import { useEffect, useRef, useState } from 'react'
 import { exportClientDossierPdf, type ClientDossierData } from '../pdf/pdfDossierClient'

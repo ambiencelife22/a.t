@@ -7,7 +7,7 @@
  *   - Built for travel professionals + interns. No coder vocabulary visible.
  *     No "override / null / jsonb / canonical / is_active" anywhere in UI.
  *   - Each field has 3 states: Use default · Customise · Hide on this proposal.
- *   - Canonical values shown as preview when in "default" state — user can
+ *   - Canonical values shown as preview when in "default" state - user can
  *     see what flows through without opening anything.
  *   - Bullets edited as a real list (+/- buttons), never JSON.
  *   - Drag-to-reorder works within Dining and within Experiences (independent
@@ -48,13 +48,11 @@ import {
   upsertOverride,
   deleteOverride,
   searchCanonicalCards,
+  nextSortOrder,
   resolveText,
   resolveBullets,
-  nextSortOrder,
-  type CardSelection,
-  type CardCanonicalOption,
-  type CardKind,
 } from '../../queries/queriesAdminCardSelections'
+import type { CardSelection, CardCanonicalOption, CardKind } from '../../types/typesCards'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../tokens/tokensAdmin'
 
@@ -242,7 +240,7 @@ function ImageOverrideField({
   value:        string | null
   onChange:     (next: string | null) => void
 }) {
-  // For images, "" hides not super useful — but we keep three states to be
+  // For images, "" hides not super useful - but we keep three states to be
   // consistent. Default = canonical image. Customised = override path. Hidden
   // = empty string (renders no image).
   const { state } = resolveText(value, canonical)
@@ -460,21 +458,21 @@ function SortableCardRow({
     = useSortable({ id: card.id })
 
   // Resolve display values (override or canonical fallback)
-  const displayName  = resolveText(card.name_override,  card.canonical_name).rendered
-  const displayImage = thumbSrc(card.image_src_override ?? card.canonical_image_src)
+  const displayName  = resolveText(card.nameOverride,  card.canonicalName).rendered
+  const displayImage = thumbSrc(card.imageSrcOverride ?? card.canonicalImageSrc)
   const customisedCount = [
-    card.kicker_override, card.name_override, card.tagline_override,
-    card.body_override, card.bullets_heading_override,
-    card.image_src_override, card.image_alt_override,
-    card.image_credit_override, card.image_credit_url_override,
-    card.image_license_override,
+    card.kickerOverride, card.nameOverride, card.taglineOverride,
+    card.bodyOverride, card.bulletsHeadingOverride,
+    card.imageSrcOverride, card.imageAltOverride,
+    card.imageCreditOverride, card.imageCreditUrlOverride,
+    card.imageLicenseOverride,
   ].filter(v => v !== null).length
-    + (card.bullets_override !== null ? 1 : 0)
+    + (card.bulletsOverride !== null ? 1 : 0)
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity:    isDragging ? 0.6 : (card.is_active ? 1 : 0.55),
+    opacity:    isDragging ? 0.6 : (card.isActive ? 1 : 0.55),
     background: A.bgInput,
     border:     `1px solid ${isDragging ? A.borderGold : A.border}`,
     borderRadius: 12,
@@ -520,13 +518,13 @@ function SortableCardRow({
           {displayName || <span style={{ color: A.faint, fontStyle: 'italic' }}>(unnamed)</span>}
         </div>
         <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-          {card.canonical_global_dest_slug ?? '—'}
+          {card.canonicalGlobalDestSlug ?? '-'}
           {customisedCount > 0 && (
             <span style={{ color: A.gold, marginLeft: 8 }}>
               · {customisedCount} customised
             </span>
           )}
-          {!card.is_active && (
+          {!card.isActive && (
             <span style={{ color: A.danger, marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               hidden
             </span>
@@ -536,7 +534,7 @@ function SortableCardRow({
 
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
         <button onClick={() => onToggleVisibility(card)} style={btnGhost}>
-          {card.is_active ? 'Hide' : 'Show'}
+          {card.isActive ? 'Hide' : 'Show'}
         </button>
         <button onClick={() => onEdit(card)} style={btnGhost}>Customise</button>
         <button onClick={() => onRemove(card)} style={btnDanger}>Remove</button>
@@ -548,32 +546,32 @@ function SortableCardRow({
 // ── Edit modal ────────────────────────────────────────────────────────────────
 
 interface OverrideDraft {
-  kicker_override:             string | null
-  name_override:               string | null
-  tagline_override:            string | null
-  body_override:               string | null
-  bullets_heading_override:    string | null
-  bullets_override:            string[] | null
-  image_src_override:          string | null
-  image_alt_override:          string | null
-  image_credit_override:       string | null
-  image_credit_url_override:   string | null
-  image_license_override:      string | null
+  kickerOverride:             string | null
+  nameOverride:               string | null
+  taglineOverride:            string | null
+  bodyOverride:               string | null
+  bulletsHeadingOverride:    string | null
+  bulletsOverride:            string[] | null
+  imageSrcOverride:          string | null
+  imageAltOverride:          string | null
+  imageCreditOverride:       string | null
+  imageCreditUrlOverride:   string | null
+  imageLicenseOverride:      string | null
 }
 
 function selectionToDraft(card: CardSelection): OverrideDraft {
   return {
-    kicker_override:             card.kicker_override,
-    name_override:               card.name_override,
-    tagline_override:            card.tagline_override,
-    body_override:               card.body_override,
-    bullets_heading_override:    card.bullets_heading_override,
-    bullets_override:            card.bullets_override,
-    image_src_override:          card.image_src_override,
-    image_alt_override:          card.image_alt_override,
-    image_credit_override:       card.image_credit_override,
-    image_credit_url_override:   card.image_credit_url_override,
-    image_license_override:      card.image_license_override,
+    kickerOverride:             card.kickerOverride,
+    nameOverride:               card.nameOverride,
+    taglineOverride:            card.taglineOverride,
+    bodyOverride:               card.bodyOverride,
+    bulletsHeadingOverride:    card.bulletsHeadingOverride,
+    bulletsOverride:            card.bulletsOverride,
+    imageSrcOverride:          card.imageSrcOverride,
+    imageAltOverride:          card.imageAltOverride,
+    imageCreditOverride:       card.imageCreditOverride,
+    imageCreditUrlOverride:   card.imageCreditUrlOverride,
+    imageLicenseOverride:      card.imageLicenseOverride,
   }
 }
 
@@ -616,20 +614,20 @@ function EditModal({
       const allDefault = (Object.keys(draft) as (keyof OverrideDraft)[])
         .every(k => draft[k] === null)
 
-      if (allDefault && card.override_id) {
-        await deleteOverride(card.override_id)
+      if (allDefault && card.overrideId) {
+        await deleteOverride(card.overrideId)
         showToast('Reset to defaults.', 'success')
         onSaved()
         setSaving(false)
         return
       }
 
-      const cardId = (card.kind === 'dining' ? card.dining_venue_id : card.experience_id) ?? ''
+      const cardId = (card.kind === 'dining' ? card.diningVenueId : card.experienceId) ?? ''
       await upsertOverride({
-        engagement_id: card.engagement_id,
+        engagementId: card.engagementId,
         kind:        card.kind,
-        card_id:     cardId,
-        override_id: card.override_id,
+        cardId:     cardId,
+        overrideId: card.overrideId,
         fields,
       })
       showToast(`Saved ${Object.keys(fields).length} change${Object.keys(fields).length === 1 ? '' : 's'}.`, 'success')
@@ -650,8 +648,8 @@ function EditModal({
 
     setSaving(true)
     try {
-      if (card.override_id) {
-        await deleteOverride(card.override_id)
+      if (card.overrideId) {
+        await deleteOverride(card.overrideId)
       }
       showToast('Reset to defaults.', 'success')
       onSaved()
@@ -662,7 +660,7 @@ function EditModal({
     setSaving(false)
   }
 
-  const hasOverride = card.override_id !== null
+  const hasOverride = card.overrideId !== null
 
   return (
     <div style={{
@@ -679,13 +677,13 @@ function EditModal({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
-              Customise — {card.kind === 'dining' ? 'Dining' : 'Experience'}
+              Customise - {card.kind === 'dining' ? 'Dining' : 'Experience'}
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>
-              {card.canonical_name ?? '(unnamed)'}
+              {card.canonicalName ?? '(unnamed)'}
             </div>
             <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-              {card.canonical_global_dest_slug ?? '—'}
+              {card.canonicalGlobalDestSlug ?? '-'}
             </div>
           </div>
           <button
@@ -711,87 +709,87 @@ function EditModal({
         <TextOverrideField
           label='Kicker'
           description='Small label above the card name (e.g. "Dining", "Experience").'
-          canonical={card.canonical_kicker}
-          value={draft.kicker_override}
-          onChange={v => patch('kicker_override', v)}
+          canonical={card.canonicalKicker}
+          value={draft.kickerOverride}
+          onChange={v => patch('kickerOverride', v)}
         />
 
         <TextOverrideField
           label='Name'
-          canonical={card.canonical_name}
-          value={draft.name_override}
-          onChange={v => patch('name_override', v)}
+          canonical={card.canonicalName}
+          value={draft.nameOverride}
+          onChange={v => patch('nameOverride', v)}
         />
 
         <TextOverrideField
           label='Tagline'
           description='One-line summary shown under the name.'
-          canonical={card.canonical_tagline}
-          value={draft.tagline_override}
-          onChange={v => patch('tagline_override', v)}
+          canonical={card.canonicalTagline}
+          value={draft.taglineOverride}
+          onChange={v => patch('taglineOverride', v)}
         />
 
         <TextOverrideField
           label='Body'
           description='Main descriptive paragraph.'
-          canonical={card.canonical_body}
-          value={draft.body_override}
-          onChange={v => patch('body_override', v)}
+          canonical={card.canonicalBody}
+          value={draft.bodyOverride}
+          onChange={v => patch('bodyOverride', v)}
           multiline
         />
 
         <TextOverrideField
           label='Bullets heading'
           description='Optional heading shown above the bullet list (e.g. "Highlights").'
-          canonical={card.canonical_bullets_heading}
-          value={draft.bullets_heading_override}
-          onChange={v => patch('bullets_heading_override', v)}
+          canonical={card.canonicalBulletsHeading}
+          value={draft.bulletsHeadingOverride}
+          onChange={v => patch('bulletsHeadingOverride', v)}
         />
 
         <BulletsOverrideField
           label='Bullets'
           description='Short list of highlights or details.'
-          canonical={card.canonical_bullets}
-          value={draft.bullets_override}
-          onChange={v => patch('bullets_override', v)}
+          canonical={card.canonicalBullets}
+          value={draft.bulletsOverride}
+          onChange={v => patch('bulletsOverride', v)}
         />
 
         {/* Image fields */}
         <ImageOverrideField
           label='Image'
-          canonical={card.canonical_image_src}
-          value={draft.image_src_override}
-          onChange={v => patch('image_src_override', v)}
+          canonical={card.canonicalImageSrc}
+          value={draft.imageSrcOverride}
+          onChange={v => patch('imageSrcOverride', v)}
         />
 
         <TextOverrideField
           label='Image alt text'
           description='Description of the image for accessibility.'
-          canonical={card.canonical_image_alt}
-          value={draft.image_alt_override}
-          onChange={v => patch('image_alt_override', v)}
+          canonical={card.canonicalImageAlt}
+          value={draft.imageAltOverride}
+          onChange={v => patch('imageAltOverride', v)}
         />
 
         <TextOverrideField
           label='Image credit'
           description='Photographer or source credit.'
-          canonical={card.canonical_image_credit}
-          value={draft.image_credit_override}
-          onChange={v => patch('image_credit_override', v)}
+          canonical={card.canonicalImageCredit}
+          value={draft.imageCreditOverride}
+          onChange={v => patch('imageCreditOverride', v)}
         />
 
         <TextOverrideField
           label='Image credit URL'
-          canonical={card.canonical_image_credit_url}
-          value={draft.image_credit_url_override}
-          onChange={v => patch('image_credit_url_override', v)}
+          canonical={card.canonicalImageCreditUrl}
+          value={draft.imageCreditUrlOverride}
+          onChange={v => patch('imageCreditUrlOverride', v)}
         />
 
         <TextOverrideField
           label='Image license'
-          canonical={card.canonical_image_license}
-          value={draft.image_license_override}
-          onChange={v => patch('image_license_override', v)}
+          canonical={card.canonicalImageLicense}
+          value={draft.imageLicenseOverride}
+          onChange={v => patch('imageLicenseOverride', v)}
         />
 
         {/* Action bar */}
@@ -857,10 +855,10 @@ function AddCardModal({
     try {
       const sortOrder = nextSortOrder(selections, option.kind)
       await insertSelection({
-        engagement_id: engagementId,
+        engagementId: engagementId,
         kind:       option.kind,
-        card_id:    option.id,
-        sort_order: sortOrder,
+        cardId:    option.id,
+        sortOrder: sortOrder,
       })
       showToast(`Added ${option.name}.`, 'success')
       onAdded()
@@ -916,7 +914,7 @@ function AddCardModal({
             </div>
           )}
           {filtered.map(c => {
-            const thumb = thumbSrc(c.image_src)
+            const thumb = thumbSrc(c.imageSrc)
             return (
               <button
                 key={`${c.kind}:${c.id}`}
@@ -950,7 +948,7 @@ function AddCardModal({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: A.text }}>{c.name}</span>
                   <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                    {c.global_destination_slug ?? '—'}
+                    {c.globalDestinationSlug ?? '-'}
                   </span>
                 </div>
                 <span style={{
@@ -1010,19 +1008,19 @@ export default function CardsEditor({
   const existingKeys = useMemo(() => {
     const s = new Set<string>()
     cards.forEach(c => {
-      if (c.dining_venue_id) s.add(`dining:${c.dining_venue_id}`)
-      if (c.experience_id)   s.add(`experience:${c.experience_id}`)
+      if (c.diningVenueId) s.add(`dining:${c.diningVenueId}`)
+      if (c.experienceId)   s.add(`experience:${c.experienceId}`)
     })
     return s
   }, [cards])
 
   // Split + sort by sort_order within each kind
   const dining     = useMemo(
-    () => cards.filter(c => c.kind === 'dining').sort((a, b) => a.sort_order - b.sort_order),
+    () => cards.filter(c => c.kind === 'dining').sort((a, b) => a.sortOrder - b.sortOrder),
     [cards],
   )
   const experience = useMemo(
-    () => cards.filter(c => c.kind === 'experience').sort((a, b) => a.sort_order - b.sort_order),
+    () => cards.filter(c => c.kind === 'experience').sort((a, b) => a.sortOrder - b.sortOrder),
     [cards],
   )
 
@@ -1040,7 +1038,7 @@ export default function CardsEditor({
     // Optimistic local update
     const reorderedIds = new Set(reordered.map(r => r.id))
     const otherCards = cards.filter(c => !reorderedIds.has(c.id))
-    const reorderedWithSort = reordered.map((c, i) => ({ ...c, sort_order: i + 1 }))
+    const reorderedWithSort = reordered.map((c, i) => ({ ...c, sortOrder: i + 1 }))
     setCards([...otherCards, ...reorderedWithSort])
 
     try {
@@ -1054,7 +1052,7 @@ export default function CardsEditor({
   }
 
   async function handleRemove(card: CardSelection) {
-    const displayName = card.name_override ?? card.canonical_name ?? '(unnamed)'
+    const displayName = card.nameOverride ?? card.canonicalName ?? '(unnamed)'
     const confirmed = window.confirm(
       `Remove "${displayName}" from this proposal?\n\n` +
       `This removes the card from this proposal only. The card itself stays available for other proposals.\n\n` +
@@ -1064,8 +1062,8 @@ export default function CardsEditor({
 
     try {
       // If override row exists, delete it first to avoid orphans
-      if (card.override_id) {
-        await deleteOverride(card.override_id)
+      if (card.overrideId) {
+        await deleteOverride(card.overrideId)
       }
       await deleteSelection(card.id)
       showToast('Card removed.', 'success')
@@ -1078,8 +1076,8 @@ export default function CardsEditor({
 
   async function handleToggleVisibility(card: CardSelection) {
     try {
-      await updateSelection(card.id, { is_active: !card.is_active })
-      showToast(card.is_active ? 'Hidden on this proposal.' : 'Shown on this proposal.', 'success')
+      await updateSelection(card.id, { isActive: !card.isActive })
+      showToast(card.isActive ? 'Hidden on this proposal.' : 'Shown on this proposal.', 'success')
       load()
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'

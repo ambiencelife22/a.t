@@ -1,4 +1,4 @@
-/* adminUi.tsx — Shared admin UI primitives for AmbienceAdmin tabs.
+/* adminUi.tsx - Shared admin UI primitives for AmbienceAdmin tabs.
  *
  * What it owns:
  *   Field          -- label + children wrapper (used in every edit form)
@@ -10,8 +10,8 @@
  * Import from here; never define these locally in a tab component.
  * Toast system: use useAdminToast() from adminPrimitives directly.
  *
- * Last updated: S43 — Phase 5: PillToggle + SectionDivider added.
- * Prior: S40D — extracted from HouseTab.
+ * Last updated: S43 - Phase 5: PillToggle + SectionDivider added.
+ * Prior: S40D - extracted from HouseTab.
  */
 
 import { useState } from 'react'
@@ -86,8 +86,8 @@ export function CopyButton({ value }: { value: string }) {
 //
 // Usage:
 //   <PillToggle
-//     value={draft.is_public}
-//     onChange={v => setDraft(d => ({ ...d, is_public: v }))}
+//     value={draft.isPublic}
+//     onChange={v => setDraft(d => ({ ...d, isPublic: v }))}
 //     labelTrue='Public'
 //     labelFalse='Private'
 //   />

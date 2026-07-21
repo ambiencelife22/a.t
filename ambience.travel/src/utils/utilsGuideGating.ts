@@ -1,4 +1,4 @@
-/* utilsGuideGating.ts — canonical guide gating rules.
+/* utilsGuideGating.ts - canonical guide gating rules.
  *
  * Single source of truth for how any guide surface (dining, shopping,
  * experiences, hotels, and any future variant) decides:
@@ -25,7 +25,7 @@
  * source of truth, uniform across every guide surface.
  *
  * ── What it owns ───────────────────────────────────────────────────────────
- *   - Gateable — the structural contract every guide item satisfies
+ *   - Gateable - the structural contract every guide item satisfies
  *   - isPubliclyPreviewable(item)
  *   - filterVisibleItems(items, hasFullAccess)
  *   - cardBodyMode(item, hasFullAccess)
@@ -40,17 +40,17 @@
  * ── Current state ──────────────────────────────────────────────────────────
  * Every guide item across every destination carries a non-null rank
  * post-S53. All items visible to all viewers. When auth-gating returns,
- * null out preview_rank on the items to be gated — nothing here changes.
+ * null out preview_rank on the items to be gated - nothing here changes.
  */
 
 export type CardBodyMode = 'full' | 'teaser'
 
 /**
  * The gating contract every guide item satisfies.
- * Required, nullable — every item declares this field; null means gated.
+ * Required, nullable - every item declares this field; null means gated.
  */
 export interface Gateable {
-  public_preview_rank: number | null
+  publicPreviewRank: number | null
 }
 
 /**
@@ -59,7 +59,7 @@ export interface Gateable {
  * to a boolean is_public column) doesn't require a repo-wide sweep.
  */
 export function isPubliclyPreviewable(item: Gateable): boolean {
-  return item.public_preview_rank !== null
+  return item.publicPreviewRank !== null
 }
 
 /**

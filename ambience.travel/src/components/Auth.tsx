@@ -1,21 +1,21 @@
 /* Auth.tsx
  * Authentication screen for ambience.travel programme product.
  * Mirrors ambience.SPORTS Auth.tsx in layout and behaviour.
- * Dark theme — matches Layout and the programme product aesthetic.
+ * Dark theme - matches Layout and the programme product aesthetic.
  * Uses C (landingTypes) and DARK tokens throughout. No light tokens.
  *
  * Modes:
- *   login  — default, shown to all users hitting a gated route
- *   signup — hidden, reachable only via ?signup=1 query param (not linked in UI)
+ *   login  - default, shown to all users hitting a gated route
+ *   signup - hidden, reachable only via ?signup=1 query param (not linked in UI)
  *
  * Sign-up fields:
- *   first_name — required
- *   last_name  — optional
- *   nickname   — optional
- *   email      — required
- *   password   — required, min 11 chars
+ *   first_name - required
+ *   last_name  - optional
+ *   nickname   - optional
+ *   email      - required
+ *   password   - required, min 11 chars
  *
- * Sign-up is admin-controlled — not advertised publicly.
+ * Sign-up is admin-controlled - not advertised publicly.
  */
 
 import { useState } from 'react'

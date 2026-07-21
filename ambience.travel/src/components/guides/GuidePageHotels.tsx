@@ -1,4 +1,4 @@
-/* GuidePageHotels.tsx — public hotels guide for a destination.
+/* GuidePageHotels.tsx - public hotels guide for a destination.
  *
  * Mirrors GuidePageDining / GuidePageShopping / GuidePageExperiences
  * structure. All shared behaviour lives in shared helpers.
@@ -26,16 +26,16 @@
  *   - PDF year/version resolution (utilsGuidePdf)
  *   - Style objects (stylesGuidePage)
  *
- * Filter shape simpler than dining — no cuisine taxonomy on hotels.
+ * Filter shape simpler than dining - no cuisine taxonomy on hotels.
  * Active filters: stars threshold, forbes-rated-only, preferred-partners-only.
  *
- * Last updated: S53 — Guard clauses only.
- * Prior: S53 — Nine-file guide-layer extraction. Every shared piece
+ * Last updated: S53 - Guard clauses only.
+ * Prior: S53 - Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
- * Prior: S53 — Brought to feature parity with dining/experiences/shopping.
+ * Prior: S53 - Brought to feature parity with dining/experiences/shopping.
  *   Added hasFullAccess prop, happenings fetch, PDF download, at-a-glance,
  *   ComingUp, GuidePlanYourVisit, accuracy disclaimer, editorial prompt.
- * Prior: S37 — initial.
+ * Prior: S37 - initial.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -138,7 +138,7 @@ export default function GuidePageHotels({
   const overlay = destination.overlay
 
   const atAGlanceBullets = useMemo(
-    () => overlay?.at_a_glance_bullets ?? [],
+    () => overlay?.atAGlanceBullets ?? [],
     [overlay],
   )
 
@@ -193,11 +193,11 @@ export default function GuidePageHotels({
   // ── Derived filter inputs ────────────────────────────────────────────────
 
   const hasForbes = useMemo(
-    () => hotels.some(h => h.forbes_rating !== null),
+    () => hotels.some(h => h.forbesRating !== null),
     [hotels],
   )
   const hasPartners = useMemo(
-    () => hotels.some(h => h.is_preferred_partner),
+    () => hotels.some(h => h.isPreferredPartner),
     [hotels],
   )
 
@@ -205,8 +205,8 @@ export default function GuidePageHotels({
     const base = sortByName(filterVisibleItems(hotels, hasFullAccess))
     return base.filter(h => {
       if (filterState.minStars && (h.stars === null || h.stars < filterState.minStars)) return false
-      if (filterState.forbesOnly && h.forbes_rating === null) return false
-      if (filterState.partnersOnly && !h.is_preferred_partner) return false
+      if (filterState.forbesOnly && h.forbesRating === null) return false
+      if (filterState.partnersOnly && !h.isPreferredPartner) return false
       return true
     })
   }, [hotels, filterState, hasFullAccess])
@@ -249,9 +249,9 @@ export default function GuidePageHotels({
                     happenings,
                     copy:         { eyebrow: hero.eyebrow, headline: hero.headline, intro: hero.intro },
                     heroImageSrc: hero.imageSrc,
-                    guideYear:    resolveGuideYear(overlay?.guide_year),
-                    guideVersion: resolveGuideVersion(overlay?.guide_version),
-                    accuracyDate: overlay?.accuracy_date ?? null,
+                    guideYear:    resolveGuideYear(overlay?.guideYear),
+                    guideVersion: resolveGuideVersion(overlay?.guideVersion),
+                    accuracyDate: overlay?.accuracyDate ?? null,
                   })}
                   disabled={!pdfReady || pdfDownloading || hotels.length === 0}
                   style={{
@@ -301,8 +301,8 @@ export default function GuidePageHotels({
               <GuidePlanYourVisit overlay={overlay} variant={VARIANT} />
             )}
 
-            {overlay?.accuracy_date && (
-              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracy_date} />
+            {overlay?.accuracyDate && (
+              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracyDate} />
             )}
           </>
         )}

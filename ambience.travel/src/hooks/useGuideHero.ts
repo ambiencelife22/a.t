@@ -1,11 +1,11 @@
-/* useGuideHero.ts — shared hero copy + image resolution.
+/* useGuideHero.ts - shared hero copy + image resolution.
  *
  * Every guide page resolves its hero the same way:
- *   eyebrow  ← overlay.eyebrow_override  ?? destination.name
- *   headline ← overlay.headline_override ?? GUIDE_COPY[variant].defaultHeadline
- *   intro    ← overlay.intro_override    ?? resolveDefaultIntro(variant, ...)
- *   image    ← overlay.hero_image_src    ?? destination.heroImageSrc ?? null
- *   alt      ← overlay.hero_image_alt    ?? destination.heroImageAlt ?? null
+ *   eyebrow  ← overlay.eyebrowOverride  ?? destination.name
+ *   headline ← overlay.headlineOverride ?? GUIDE_COPY[variant].defaultHeadline
+ *   intro    ← overlay.introOverride    ?? resolveDefaultIntro(variant, ...)
+ *   image    ← overlay.heroImageSrc    ?? destination.heroImageSrc ?? null
+ *   alt      ← overlay.heroImageAlt    ?? destination.heroImageAlt ?? null
  *
  * Extracted from the four page files that shipped an identical copy of
  * this resolution in each. One implementation now.
@@ -41,11 +41,11 @@ export function useGuideHero(
   return useMemo(() => {
     const overlay = destination.overlay
     return {
-      eyebrow:  overlay?.eyebrow_override  ?? destination.name,
-      headline: overlay?.headline_override ?? GUIDE_COPY[variant].defaultHeadline,
-      intro:    overlay?.intro_override    ?? resolveDefaultIntro(variant, destination.name),
-      imageSrc: overlay?.hero_image_src    ?? destination.heroImageSrc ?? null,
-      imageAlt: overlay?.hero_image_alt    ?? destination.heroImageAlt ?? null,
+      eyebrow:  overlay?.eyebrowOverride  ?? destination.name,
+      headline: overlay?.headlineOverride ?? GUIDE_COPY[variant].defaultHeadline,
+      intro:    overlay?.introOverride    ?? resolveDefaultIntro(variant, destination.name),
+      imageSrc: overlay?.heroImageSrc    ?? destination.heroImageSrc ?? null,
+      imageAlt: overlay?.heroImageAlt    ?? destination.heroImageAlt ?? null,
     }
   }, [destination, variant])
 }

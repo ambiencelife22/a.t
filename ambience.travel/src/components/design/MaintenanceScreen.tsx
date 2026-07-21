@@ -1,15 +1,15 @@
-// MaintenanceScreen.tsx — platform-wide maintenance gate.
+// MaintenanceScreen.tsx - platform-wide maintenance gate.
 //
 // Shown when a_platform_settings.maintenance_mode = true.
-// Renders before any engagement fetch — ImmerseEngagementRoute short-circuits
+// Renders before any engagement fetch - ImmerseEngagementRoute short-circuits
 // to this component if the flag is on.
 //
 // Theme: dark surface (ID tokens), matching the immerse layer. Distinct from
 // the cream soft-gate screens (ImmerseNotPublicFallback,
-// ImmerseProposalArchivedFallback) — maintenance is a platform-level signal,
+// ImmerseProposalArchivedFallback) - maintenance is a platform-level signal,
 // not an engagement-level one. Dark feels more deliberate and appropriate.
 //
-// No brand chrome beyond /emblem.png and the wordmark — no invented taglines,
+// No brand chrome beyond /emblem.png and the wordmark - no invented taglines,
 // no contact copy that may be wrong. Copy is lighthearted but precise.
 //
 // Admin bypass: ImmerseEngagementRoute passes ?preview in the URL to skip

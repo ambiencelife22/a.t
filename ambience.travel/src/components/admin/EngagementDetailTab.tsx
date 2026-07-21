@@ -7,26 +7,26 @@
  *
  * Out of scope (read-only summary only): pricing rows, rooms, hotels.
  *
- * Last updated: S54 — All writes migrated to travel-write-engagement EF.
+ * Last updated: S54 - All writes migrated to travel-write-engagement EF.
  *   Status changes routed through setEngagementStatus/setItineraryStatus
  *   (two independent axes). Added reversible Archive section; Delete now
  *   EF-backed and refuses when bookings/time_entries/requests exist
  *   (Retention Spec v1). is_public / is_public_template made read-only
- *   (template-library concern, not live visibility — deferred to a future
+ *   (template-library concern, not live visibility - deferred to a future
  *   template surface). public_view is the live gate (set_visibility).
- * Prior: S334 — Replace window.confirm-based handleDelete with
+ * Prior: S334 - Replace window.confirm-based handleDelete with
  *   DeleteEngagementModal (4-step destructive confirmation, mirrors SPORTS
  *   DeleteSystemSection pattern). Engagement title type-to-confirm gate.
- * Prior: S334 — Replace CardOverridesEditor with CardsEditor.
+ * Prior: S334 - Replace CardOverridesEditor with CardsEditor.
  *   Selections-primary architecture: CardsEditor mounts the curation table
  *   (which cards render, sort_order per kind, is_active visibility) with
  *   override-on-demand inside each card's Customise modal. Drop both
  *   card_selections and card_overrides from ChildCountsSummary.
- * Prior: S334 — Mount RouteStopsEditor under Route Section. Drop route_stops
+ * Prior: S334 - Mount RouteStopsEditor under Route Section. Drop route_stops
  *   from ChildCountsSummary.
- * Prior: S33C — Mount DestinationRowsEditor between Destination Section
+ * Prior: S33C - Mount DestinationRowsEditor between Destination Section
  *   and Pricing Section. Remove destination_rows from ChildCountsSummary.
- * Prior: S33B (re-ship 04 May) — ImageFieldWithUploader for hero image
+ * Prior: S33B (re-ship 04 May) - ImageFieldWithUploader for hero image
  *   src fields.
  */
 
@@ -211,7 +211,7 @@ function PersonTypeahead({
   }, [query, open])
 
   function displayName(p: PersonOption): string {
-    return p.nickname ?? p.first_name ?? '(unnamed)'
+    return p.nickname ?? p.firstName ?? '(unnamed)'
   }
 
   if (selected && !open) {
@@ -223,7 +223,7 @@ function PersonTypeahead({
           fontSize: 13, color: A.text, fontFamily: A.font,
         }}>
           {displayName(selected)}
-          {selected.last_name && <span style={{ color: A.faint, marginLeft: 6 }}>{selected.last_name}</span>}
+          {selected.lastName && <span style={{ color: A.faint, marginLeft: 6 }}>{selected.lastName}</span>}
         </div>
         <button onClick={() => { setOpen(true); setQuery('') }} style={btnGhost}>Change</button>
         <button onClick={() => onChange(null)} style={btnGhost}>Clear</button>
@@ -258,7 +258,7 @@ function PersonTypeahead({
               }}
             >
               {displayName(p)}
-              {p.last_name && <span style={{ color: A.faint, marginLeft: 6 }}>{p.last_name}</span>}
+              {p.lastName && <span style={{ color: A.faint, marginLeft: 6 }}>{p.lastName}</span>}
             </div>
           ))}
         </div>
@@ -303,7 +303,7 @@ function HouseTypeahead({ onPick }: { onPick: (houseId: string) => void }) {
                 borderBottom: `1px solid ${A.border}`,
               }}
             >
-              {h.display_name}
+              {h.displayName}
               {h.public_name && <span style={{ color: A.faint, marginLeft: 6 }}>{h.public_name}</span>}
             </div>
           ))}
@@ -346,8 +346,8 @@ function EngagementTypeahead({
           background: A.bgInput, border: `1px solid ${A.border}`,
           fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace',
         }}>
-          {selected.journey_code}
-          {selected.start_date && <span style={{ color: A.faint, marginLeft: 8, fontSize: 11 }}>{selected.start_date}</span>}
+          {selected.journeyCode}
+          {selected.startDate && <span style={{ color: A.faint, marginLeft: 8, fontSize: 11 }}>{selected.startDate}</span>}
         </div>
         <button onClick={() => { setOpen(true); setQuery('') }} style={btnGhost}>Change</button>
         <button onClick={() => onChange(null)} style={btnGhost}>Clear</button>
@@ -381,8 +381,8 @@ function EngagementTypeahead({
                 borderBottom: `1px solid ${A.border}`,
               }}
             >
-              {t.journey_code}
-              {t.start_date && <span style={{ color: A.faint, marginLeft: 8 }}>{t.start_date}</span>}
+              {t.journeyCode}
+              {t.startDate && <span style={{ color: A.faint, marginLeft: 8 }}>{t.startDate}</span>}
             </div>
           ))}
         </div>
@@ -444,7 +444,7 @@ function ChipInput({
   )
 }
 
-// ── JSON editor (raw textarea — v0) ──────────────────────────────────────────
+// ── JSON editor (raw textarea - v0) ──────────────────────────────────────────
 
 function JsonField({
   value,
@@ -513,7 +513,7 @@ function WelcomeOverrideField({
             fontStyle: 'italic',
           }}>
             <span style={{ color: A.faint, fontStyle: 'normal', fontSize: 10, marginRight: 6 }}>canonical:</span>
-            {canonical ?? <span style={{ color: A.faint }}>—</span>}
+            {canonical ?? <span style={{ color: A.faint }}>-</span>}
           </div>
           <button onClick={() => onChange('')} style={{ ...btnGhost, alignSelf: 'flex-start', fontSize: 11 }}>+ Override</button>
         </div>
@@ -539,16 +539,16 @@ function WelcomeOverrideField({
 }
 
 // ── Child counts summary ─────────────────────────────────────────────────────
-// S33C: destination_rows removed — now editable inline via DestinationRowsEditor.
-// S334: route_stops removed — now editable inline via RouteStopsEditor.
-// S334: card_selections + card_overrides removed — now both editable inline via
+// S33C: destination_rows removed - now editable inline via DestinationRowsEditor.
+// S334: route_stops removed - now editable inline via RouteStopsEditor.
+// S334: card_selections + card_overrides removed - now both editable inline via
 //       CardsEditor (selections-primary, override-on-demand).
 
 function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; urlId: string }) {
   if (!counts) return null
 
   const items = [
-    { label: 'Pricing rows',          n: counts.pricing_rows },
+    { label: 'Pricing rows',          n: counts.pricingRows },
     { label: 'Destination hotels',    n: counts.destination_hotels },
     { label: 'Region hotels',         n: counts.region_hotels },
     { label: 'Rooms (overlay)',       n: counts.rooms },
@@ -647,9 +647,9 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
     if (!row || !draft) return
     setSaving(true)
     try {
-      // Columns handled by dedicated EF modes — excluded from the scalar patch.
+      // Columns handled by dedicated EF modes - excluded from the scalar patch.
       const STATUS_KEYS = new Set<keyof EngagementDetailRow>([
-        'engagement_status_id', 'itinerary_status_id',
+        'engagementStatusId', 'itineraryStatusId',
       ])
 
       const patch: Record<string, unknown> = {}
@@ -665,12 +665,12 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
 
       // Resolve status ids -> slugs for the status modes (two independent axes).
       async function applyStatusChanges() {
-        if (draft!.engagement_status_id !== row!.engagement_status_id) {
-          const slug = engagementStatuses.find(s => s.id === draft!.engagement_status_id)?.slug
+        if (draft!.engagementStatusId !== row!.engagementStatusId) {
+          const slug = engagementStatuses.find(s => s.id === draft!.engagementStatusId)?.slug
           if (slug) await setEngagementStatus(row!.id, slug as any)
         }
-        if (draft!.itinerary_status_id !== row!.itinerary_status_id) {
-          const slug = itineraryStatuses.find(s => s.id === draft!.itinerary_status_id)?.slug
+        if (draft!.itineraryStatusId !== row!.itineraryStatusId) {
+          const slug = itineraryStatuses.find(s => s.id === draft!.itineraryStatusId)?.slug
           if (slug) await setItineraryStatus(row!.id, slug as any)
         }
       }
@@ -701,21 +701,21 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
     // Success: modal shows success state; handleDeleteClose navigates away.
   }
 
-  // AXIS-2 — toggle proposal_visibility (active|archived). Orthogonal to
+  // AXIS-2 - toggle proposal_visibility (active|archived). Orthogonal to
   // archive/status: this controls what the CLIENT sees on a still-resolving
   // proposal URL (proposal content vs the "ask your travel designer" fallback),
   // not the engagement's lifecycle. Optimistic, inline-save.
   const [visSaving, setVisSaving] = useState(false)
   async function handleToggleProposalVisibility() {
     if (!row || !draft) return
-    const next = draft.proposal_visibility === 'archived' ? 'active' : 'archived'
+    const next = draft.proposalVisibility === 'archived' ? 'active' : 'archived'
     setVisSaving(true)
-    patch('proposal_visibility', next)  // optimistic
+    patch('proposalVisibility', next)  // optimistic
     try {
       await setEngagementProposalVisibility(row.id, next)
-      setRow(prev => prev ? { ...prev, proposal_visibility: next } : prev)
+      setRow(prev => prev ? { ...prev, proposalVisibility: next } : prev)
     } catch (e: any) {
-      patch('proposal_visibility', draft.proposal_visibility)  // revert
+      patch('proposalVisibility', draft.proposalVisibility)  // revert
       showToast(`Failed: ${e.message ?? 'unknown error'}`, 'error')
     }
     setVisSaving(false)
@@ -781,16 +781,16 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
             {row.title || <span style={{ color: A.faint, fontStyle: 'italic' }}>(untitled)</span>}
           </div>
           <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 4 }}>
-            {row.url_id}
-            {row.iteration_label && row.iteration_label.length > 0 && (
-              <span style={{ color: A.muted, fontFamily: A.font }}> · {row.iteration_label}</span>
+            {row.urlId}
+            {row.iterationLabel && row.iterationLabel.length > 0 && (
+              <span style={{ color: A.muted, fontFamily: A.font }}> · {row.iterationLabel}</span>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {row.url_id && (
+          {row.urlId && (
             <a
-              href={buildEngagementUrl(row.url_id)}
+              href={buildEngagementUrl(row.urlId)}
               target='_blank'
               rel='noopener noreferrer'
               style={{ ...btnGhost, color: A.gold, borderColor: A.borderGold }}
@@ -808,7 +808,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       <Section title='Identity'>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='url_id (immutable)'>
-            <input style={{ ...inputStyle, fontFamily: 'DM Mono, monospace', opacity: 0.6 }} value={draft.url_id ?? ''} disabled />
+            <input style={{ ...inputStyle, fontFamily: 'DM Mono, monospace', opacity: 0.6 }} value={draft.urlId ?? ''} disabled />
           </Field>
           <Field label='Title'>
             <input style={inputStyle} value={draft.title ?? ''} onChange={e => patch('title', e.target.value)} />
@@ -816,17 +816,17 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <Field label='Iteration Label'>
             <input
               style={inputStyle}
-              value={draft.iteration_label}
-              onChange={e => patch('iteration_label', e.target.value)}
-              placeholder='Optional — e.g. Saudi VVIP, Refresh, Pre-Saudi'
+              value={draft.iterationLabel}
+              onChange={e => patch('iterationLabel', e.target.value)}
+              placeholder='Optional - e.g. Saudi VVIP, Refresh, Pre-Saudi'
             />
           </Field>
           <Field label='Sort Order'>
             <input
               style={inputStyle}
               type='number'
-              value={draft.sort_order}
-              onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)}
+              value={draft.sortOrder}
+              onChange={e => patch('sortOrder', parseInt(e.target.value, 10) || 0)}
             />
           </Field>
           <Field label='Audience'>
@@ -838,14 +838,14 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <Field label='Public Template? (read-only)'>
             <input
               style={{ ...inputStyle, opacity: 0.6 }}
-              value={draft.is_public_template ? 'Yes' : 'No'}
+              value={draft.isPublicTemplate ? 'Yes' : 'No'}
               disabled
             />
           </Field>
           <Field label='is_public (read-only)'>
             <input
               style={{ ...inputStyle, opacity: 0.6 }}
-              value={String(draft.is_public)}
+              value={String(draft.isPublic)}
               disabled
             />
           </Field>
@@ -854,10 +854,10 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         <Field label='Engagement Type'>
           <select
             style={inputStyle}
-            value={draft.engagement_type_id ?? ''}
-            onChange={e => patch('engagement_type_id', e.target.value || null)}
+            value={draft.engagementTypeId ?? ''}
+            onChange={e => patch('engagementTypeId', e.target.value || null)}
           >
-            <option value=''>— Not set —</option>
+            <option value=''>- Not set -</option>
             {engagementTypes.map(t => (
               <option key={t.id} value={t.id}>{t.label}</option>
             ))}
@@ -865,7 +865,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </Field>
 
         <Field label='Journey Types'>
-          <ChipInput values={draft.journey_types ?? []} onChange={v => patch('journey_types', v)} />
+          <ChipInput values={draft.journeyTypes ?? []} onChange={v => patch('journeyTypes', v)} />
         </Field>
 
         <div>
@@ -885,14 +885,14 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       {/* Linkage */}
       <Section title='Linkage'>
         <Field label='Person'>
-          <PersonTypeahead value={draft.person_id} onChange={v => patch('person_id', v)} />
+          <PersonTypeahead value={draft.personId} onChange={v => patch('personId', v)} />
         </Field>
         <Field label='Trip (canonical)'>
-          <EngagementTypeahead value={draft.journey_id} onChange={v => patch('journey_id', v)} />
+          <EngagementTypeahead value={draft.journeyId} onChange={v => patch('journeyId', v)} />
         </Field>
       </Section>
 
-      {/* Guest Label — Step 11 Part B. The public guest name is resolved from
+      {/* Guest Label - Step 11 Part B. The public guest name is resolved from
           this engagement's linked houses + selected label + override, projected
           across the privacy wall by resolve_and_project_guest_label. House must
           be linked BEFORE a label can be selected (the cross-house guard); the
@@ -900,7 +900,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           house is linked, so an invalid choice is structurally impossible. */}
       <Section title='Guest Label'>
         <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
-          The public guest name. Link a house, then select one of its labels — or set an override. Absent authorship shows no name (blank-until-authored), never a raw identity.
+          The public guest name. Link a house, then select one of its labels - or set an override. Absent authorship shows no name (blank-until-authored), never a raw identity.
         </div>
 
         <Field label='Linked Houses'>
@@ -914,16 +914,16 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
               <div key={h.id} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 padding: '8px 12px', borderRadius: 10,
-                background: A.bgInput, border: `1px solid ${h.is_primary ? A.borderGold : A.border}`,
+                background: A.bgInput, border: `1px solid ${h.isPrimary ? A.borderGold : A.border}`,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, color: A.text, fontFamily: A.font }}>
-                    {h.a_houses?.display_name ?? h.house_id}
+                    {h.a_houses?.displayName ?? h.houseId}
                   </span>
-                  {h.is_primary && <span style={{ fontSize: 9, fontWeight: 700, color: A.gold, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Primary</span>}
+                  {h.isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: A.gold, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Primary</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  {!h.is_primary && (
+                  {!h.isPrimary && (
                     <button
                       onClick={async () => { await setPrimaryHouse(h.id); await load() }}
                       style={{ ...btnGhost, fontSize: 10, padding: '3px 8px' }}
@@ -947,19 +947,19 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         <Field label='Selected Label'>
           <select
             style={{ ...inputStyle, opacity: houses.length === 0 ? 0.5 : 1 }}
-            value={draft.public_label_id ?? ''}
+            value={draft.publicLabelId ?? ''}
             disabled={houses.length === 0}
             onChange={async e => {
               const val = e.target.value || null
-              patch('public_label_id', val)
-              try { await setLabel(row.id, val, draft.guest_display_name_override); await load() }
+              patch('publicLabelId', val)
+              try { await setLabel(row.id, val, draft.guestDisplayNameOverride); await load() }
               catch (err: any) { showToast(err.message ?? 'Failed to set label', 'error'); await load() }
             }}
           >
-            <option value=''>— none (fall through to house default / override) —</option>
+            <option value=''>- none (fall through to house default / override) -</option>
             {candidateLabels.map(l => (
               <option key={l.id} value={l.id}>
-                {l.display_name} · {l.key}{l.is_default ? ' (house default)' : ''}
+                {l.displayName} · {l.key}{l.isDefault ? ' (house default)' : ''}
               </option>
             ))}
           </select>
@@ -968,12 +968,12 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         <Field label='Name Override'>
           <input
             style={inputStyle}
-            value={draft.guest_display_name_override ?? ''}
-            placeholder='e.g. AMF & KMF Families — overrides the label above when set'
-            onChange={e => patch('guest_display_name_override', e.target.value || null)}
+            value={draft.guestDisplayNameOverride ?? ''}
+            placeholder='e.g. AMF & KMF Families - overrides the label above when set'
+            onChange={e => patch('guestDisplayNameOverride', e.target.value || null)}
             onBlur={async e => {
               const val = e.target.value.trim() || null
-              try { await setLabel(row.id, draft.public_label_id, val); await load() }
+              try { await setLabel(row.id, draft.publicLabelId, val); await load() }
               catch (err: any) { showToast(err.message ?? 'Failed to set override', 'error'); await load() }
             }}
           />
@@ -986,8 +986,8 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <Field label='Engagement Status'>
             <select
               style={inputStyle}
-              value={draft.engagement_status_id}
-              onChange={e => patch('engagement_status_id', e.target.value)}
+              value={draft.engagementStatusId}
+              onChange={e => patch('engagementStatusId', e.target.value)}
             >
               {engagementStatuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
@@ -995,19 +995,19 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
           <Field label='Itinerary Status'>
             <select
               style={inputStyle}
-              value={draft.itinerary_status_id}
-              onChange={e => patch('itinerary_status_id', e.target.value)}
+              value={draft.itineraryStatusId}
+              onChange={e => patch('itineraryStatusId', e.target.value)}
             >
               {itineraryStatuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </Field>
         </div>
         <Field label='status_label (legacy free-text)'>
-          <input style={inputStyle} value={draft.status_label ?? ''} onChange={e => patch('status_label', e.target.value || null)} />
+          <input style={inputStyle} value={draft.statusLabel ?? ''} onChange={e => patch('statusLabel', e.target.value || null)} />
         </Field>
-        {/* Close Won — one-action revenue signal */}
+        {/* Close Won - one-action revenue signal */}
         {(() => {
-          const currentSlug = engagementStatuses.find(s => s.id === draft.engagement_status_id)?.slug
+          const currentSlug = engagementStatuses.find(s => s.id === draft.engagementStatusId)?.slug
           const isClosedWon = currentSlug === 'closed_won'
           const closedWonId = engagementStatuses.find(s => s.slug === 'closed_won')?.id
           if (!closedWonId) return null
@@ -1015,7 +1015,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
               {!isClosedWon ? (
                 <button
-                  onClick={() => patch('engagement_status_id', closedWonId)}
+                  onClick={() => patch('engagementStatusId', closedWonId)}
                   style={{
                     fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 7,
                     background: '#4ade8015', color: '#4ade80',
@@ -1042,13 +1042,13 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       </Section>
 
       {/* Hero primary */}
-      <Section title='Hero — Primary'>
+      <Section title='Hero - Primary'>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Eyebrow'>
             <input style={inputStyle} value={draft.eyebrow ?? ''} onChange={e => patch('eyebrow', e.target.value || null)} />
           </Field>
           <Field label='Hero Tagline'>
-            <input style={inputStyle} value={draft.hero_tagline ?? ''} onChange={e => patch('hero_tagline', e.target.value || null)} />
+            <input style={inputStyle} value={draft.heroTagline ?? ''} onChange={e => patch('heroTagline', e.target.value || null)} />
           </Field>
           <Field label='Subtitle'>
             <input style={inputStyle} value={draft.subtitle ?? ''} onChange={e => patch('subtitle', e.target.value || null)} />
@@ -1058,51 +1058,51 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
 
         <Field label='Hero Image Src'>
           <ImageFieldWithUploader
-            value={draft.hero_image_src}
-            onChange={v => patch('hero_image_src', v)}
+            value={draft.heroImageSrc}
+            onChange={v => patch('heroImageSrc', v)}
           />
         </Field>
         <Field label='Hero Image Alt'>
-          <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
+          <input style={inputStyle} value={draft.heroImageAlt ?? ''} onChange={e => patch('heroImageAlt', e.target.value || null)} />
         </Field>
 
         <Field label='Hero Pills (jsonb)'>
-          <JsonField value={draft.hero_pills} onChange={v => patch('hero_pills', v)} />
+          <JsonField value={draft.heroPills} onChange={v => patch('heroPills', v)} />
         </Field>
       </Section>
 
       {/* Hero secondary */}
-      <Section title='Hero — Secondary'>
+      <Section title='Hero - Secondary'>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Title 2'>
-            <input style={inputStyle} value={draft.hero_title_2 ?? ''} onChange={e => patch('hero_title_2', e.target.value || null)} />
+            <input style={inputStyle} value={draft.heroTitle2 ?? ''} onChange={e => patch('heroTitle2', e.target.value || null)} />
           </Field>
           <Field label='Subtitle 2'>
-            <input style={inputStyle} value={draft.hero_subtitle_2 ?? ''} onChange={e => patch('hero_subtitle_2', e.target.value || null)} />
+            <input style={inputStyle} value={draft.heroSubtitle2 ?? ''} onChange={e => patch('heroSubtitle2', e.target.value || null)} />
           </Field>
         </div>
 
         <Field label='Image Src 2'>
           <ImageFieldWithUploader
-            value={draft.hero_image_src_2}
-            onChange={v => patch('hero_image_src_2', v)}
+            value={draft.heroImageSrc2}
+            onChange={v => patch('heroImageSrc2', v)}
           />
         </Field>
         <Field label='Image Alt 2'>
-          <input style={inputStyle} value={draft.hero_image_alt_2 ?? ''} onChange={e => patch('hero_image_alt_2', e.target.value || null)} />
+          <input style={inputStyle} value={draft.heroImageAlt2 ?? ''} onChange={e => patch('heroImageAlt2', e.target.value || null)} />
         </Field>
       </Section>
 
-      {/* Route — engagement-level copy */}
+      {/* Route - engagement-level copy */}
       <Section title='Route Section'>
         <Field label='Route Eyebrow'>
-          <input style={inputStyle} value={draft.route_eyebrow ?? ''} onChange={e => patch('route_eyebrow', e.target.value || null)} />
+          <input style={inputStyle} value={draft.routeEyebrow ?? ''} onChange={e => patch('routeEyebrow', e.target.value || null)} />
         </Field>
         <Field label='Route Heading'>
-          <input style={inputStyle} value={draft.route_heading ?? ''} onChange={e => patch('route_heading', e.target.value || null)} />
+          <input style={inputStyle} value={draft.routeHeading ?? ''} onChange={e => patch('routeHeading', e.target.value || null)} />
         </Field>
         <Field label='Route Body'>
-          <textarea style={textareaStyle} value={draft.route_body ?? ''} onChange={e => patch('route_body', e.target.value || null)} />
+          <textarea style={textareaStyle} value={draft.routeBody ?? ''} onChange={e => patch('routeBody', e.target.value || null)} />
         </Field>
       </Section>
 
@@ -1114,13 +1114,13 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       {/* Destination Section copy (engagement-level intro to destinations) */}
       <Section title='Destination Section'>
         <Field label='Destination Heading'>
-          <input style={inputStyle} value={draft.destination_heading ?? ''} onChange={e => patch('destination_heading', e.target.value || null)} />
+          <input style={inputStyle} value={draft.destinationHeading ?? ''} onChange={e => patch('destinationHeading', e.target.value || null)} />
         </Field>
         <Field label='Destination Subtitle'>
-          <input style={inputStyle} value={draft.destination_subtitle ?? ''} onChange={e => patch('destination_subtitle', e.target.value || null)} />
+          <input style={inputStyle} value={draft.destinationSubtitle ?? ''} onChange={e => patch('destinationSubtitle', e.target.value || null)} />
         </Field>
         <Field label='Destination Body'>
-          <textarea style={textareaStyle} value={draft.destination_body ?? ''} onChange={e => patch('destination_body', e.target.value || null)} />
+          <textarea style={textareaStyle} value={draft.destinationBody ?? ''} onChange={e => patch('destinationBody', e.target.value || null)} />
         </Field>
       </Section>
 
@@ -1142,71 +1142,71 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       <Section title='Pricing Section'>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Heading'>
-            <input style={inputStyle} value={draft.pricing_heading ?? ''} onChange={e => patch('pricing_heading', e.target.value || null)} />
+            <input style={inputStyle} value={draft.pricingHeading ?? ''} onChange={e => patch('pricingHeading', e.target.value || null)} />
           </Field>
           <Field label='Title'>
-            <input style={inputStyle} value={draft.pricing_title ?? ''} onChange={e => patch('pricing_title', e.target.value || null)} />
+            <input style={inputStyle} value={draft.pricingTitle ?? ''} onChange={e => patch('pricingTitle', e.target.value || null)} />
           </Field>
           <Field label='Total Label'>
-            <input style={inputStyle} value={draft.pricing_total_label ?? ''} onChange={e => patch('pricing_total_label', e.target.value || null)} />
+            <input style={inputStyle} value={draft.pricingTotalLabel ?? ''} onChange={e => patch('pricingTotalLabel', e.target.value || null)} />
           </Field>
           <Field label='Total Value'>
-            <input style={inputStyle} value={draft.pricing_total_value ?? ''} onChange={e => patch('pricing_total_value', e.target.value || null)} />
+            <input style={inputStyle} value={draft.pricingTotalValue ?? ''} onChange={e => patch('pricingTotalValue', e.target.value || null)} />
           </Field>
           <Field label='Notes Heading'>
-            <input style={inputStyle} value={draft.pricing_notes_heading ?? ''} onChange={e => patch('pricing_notes_heading', e.target.value || null)} />
+            <input style={inputStyle} value={draft.pricingNotesHeading ?? ''} onChange={e => patch('pricingNotesHeading', e.target.value || null)} />
           </Field>
           <Field label='Notes Title'>
-            <input style={inputStyle} value={draft.pricing_notes_title ?? ''} onChange={e => patch('pricing_notes_title', e.target.value || null)} />
+            <input style={inputStyle} value={draft.pricingNotesTitle ?? ''} onChange={e => patch('pricingNotesTitle', e.target.value || null)} />
           </Field>
         </div>
         <Field label='Body'>
-          <textarea style={textareaStyle} value={draft.pricing_body ?? ''} onChange={e => patch('pricing_body', e.target.value || null)} />
+          <textarea style={textareaStyle} value={draft.pricingBody ?? ''} onChange={e => patch('pricingBody', e.target.value || null)} />
         </Field>
         <Field label='Notes (jsonb)'>
-          <JsonField value={draft.pricing_notes} onChange={v => patch('pricing_notes', v)} />
+          <JsonField value={draft.pricingNotes} onChange={v => patch('pricingNotes', v)} />
         </Field>
       </Section>
 
       {/* Welcome overrides */}
-      <Section title='Welcome Letter — Per-Engagement Overrides'>
+      <Section title='Welcome Letter - Per-Engagement Overrides'>
         <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
           NULL = canonical singleton flows through. Empty string = hide field. Non-empty = override.
         </div>
         <WelcomeOverrideField
           label='Eyebrow'
           canonical={welcomeCanon?.eyebrow ?? null}
-          value={draft.welcome_eyebrow_override}
-          onChange={v => patch('welcome_eyebrow_override', v)}
+          value={draft.welcomeEyebrowOverride}
+          onChange={v => patch('welcomeEyebrowOverride', v)}
         />
         <WelcomeOverrideField
           label='Title'
           canonical={welcomeCanon?.title ?? null}
-          value={draft.welcome_title_override}
-          onChange={v => patch('welcome_title_override', v)}
+          value={draft.welcomeTitleOverride}
+          onChange={v => patch('welcomeTitleOverride', v)}
         />
         <WelcomeOverrideField
           label='Body'
           canonical={welcomeCanon?.body ?? null}
-          value={draft.welcome_body_override}
-          onChange={v => patch('welcome_body_override', v)}
+          value={draft.welcomeBodyOverride}
+          onChange={v => patch('welcomeBodyOverride', v)}
         />
         <WelcomeOverrideField
           label='Signoff Body'
           canonical={welcomeCanon?.signoff_body ?? null}
-          value={draft.welcome_signoff_body_override}
-          onChange={v => patch('welcome_signoff_body_override', v)}
+          value={draft.welcomeSignoffBodyOverride}
+          onChange={v => patch('welcomeSignoffBodyOverride', v)}
         />
         <WelcomeOverrideField
           label='Signoff Name'
           canonical={welcomeCanon?.signoff_name ?? null}
-          value={draft.welcome_signoff_name_override}
-          onChange={v => patch('welcome_signoff_name_override', v)}
+          value={draft.welcomeSignoffNameOverride}
+          onChange={v => patch('welcomeSignoffNameOverride', v)}
         />
       </Section>
 
       {/* Child counts (without destination_rows, route_stops, card_selections, or card_overrides) */}
-      {row.url_id && <ChildCountsSummary counts={counts} urlId={row.url_id} />}
+      {row.urlId && <ChildCountsSummary counts={counts} urlId={row.urlId} />}
 
       {/* Save bar (sticky bottom) */}
       <div style={{
@@ -1223,7 +1223,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </span>
       </div>
 
-      {/* Client Visibility — AXIS-2 proposal_visibility */}
+      {/* Client Visibility - AXIS-2 proposal_visibility */}
       <Section title='Client Visibility'>
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
           Controls what the client sees on this proposal's link. <strong style={{ color: A.text }}>Active</strong> shows
@@ -1236,33 +1236,33 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
             disabled={visSaving}
             style={{
               width: 38, height: 20, borderRadius: 999,
-              border: `1px solid ${draft.proposal_visibility === 'archived' ? A.gold : A.border}`,
-              background: draft.proposal_visibility === 'archived' ? A.gold : 'transparent',
+              border: `1px solid ${draft.proposalVisibility === 'archived' ? A.gold : A.border}`,
+              background: draft.proposalVisibility === 'archived' ? A.gold : 'transparent',
               cursor: visSaving ? 'wait' : 'pointer',
               position: 'relative', flexShrink: 0, transition: 'all 150ms ease', padding: 0,
             }}
           >
             <div style={{
               width: 14, height: 14, borderRadius: '50%',
-              background: draft.proposal_visibility === 'archived' ? '#0F1110' : A.faint,
+              background: draft.proposalVisibility === 'archived' ? '#0F1110' : A.faint,
               position: 'absolute', top: 2,
-              left: draft.proposal_visibility === 'archived' ? 20 : 2,
+              left: draft.proposalVisibility === 'archived' ? 20 : 2,
               transition: 'left 150ms ease',
             }} />
           </button>
-          <div style={{ fontSize: 12, color: draft.proposal_visibility === 'archived' ? A.gold : A.muted, fontFamily: A.font, fontWeight: 600 }}>
-            {draft.proposal_visibility === 'archived'
+          <div style={{ fontSize: 12, color: draft.proposalVisibility === 'archived' ? A.gold : A.muted, fontFamily: A.font, fontWeight: 600 }}>
+            {draft.proposalVisibility === 'archived'
               ? 'Archived: client sees the "ask your travel designer" notice'
               : 'Active: client sees the full proposal'}
           </div>
         </div>
       </Section>
 
-      {/* Archive — reversible, calm */}
+      {/* Archive - reversible, calm */}
       <Section title='Archive'>
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
           Archiving sets this engagement to Cancelled and its itinerary to Archived.
-          Nothing is deleted — all content is preserved and it can be reactivated
+          Nothing is deleted - all content is preserved and it can be reactivated
           later by changing its status.
         </div>
         <button onClick={handleArchive} disabled={archiving} style={{ ...btnGhost, opacity: archiving ? 0.5 : 1 }}>
@@ -1270,12 +1270,12 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         </button>
       </Section>
 
-      {/* Danger Zone — irreversible delete */}
+      {/* Danger Zone - irreversible delete */}
       <Section title='Danger Zone'>
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
           Deletion permanently removes this engagement and cascades through its
           content tables. There is no undo. Engagements with bookings, time
-          entries, or requests cannot be deleted — archive them instead.
+          entries, or requests cannot be deleted - archive them instead.
           You will be asked to confirm in several steps before anything is deleted.
         </div>
         <button onClick={() => setDeleteOpen(true)} style={btnDanger}>Delete Engagement</button>
@@ -1284,8 +1284,8 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       {/* S334: 4-step delete confirmation modal */}
       {deleteOpen && row && (
         <DeleteEngagementModal
-          title={row.title ?? row.url_id ?? '(untitled)'}
-          urlId={row.url_id ?? ''}
+          title={row.title ?? row.urlId ?? '(untitled)'}
+          urlId={row.urlId ?? ''}
           onClose={handleDeleteClose}
           onConfirm={handleDeleteConfirm}
         />

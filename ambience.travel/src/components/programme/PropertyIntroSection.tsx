@@ -1,12 +1,12 @@
 /* PropertyIntroSection.tsx
  * Full-viewport dark intro for the trip guide page.
  * Mirrors IntroSection.tsx from the landing exactly:
- * — same dark background, grid texture, float positions, timing
- * — same fade-in/hold/fade-out cycle (4.4s total)
- * — same alternating left/right anchor positions
+ * - same dark background, grid texture, float positions, timing
+ * - same fade-in/hold/fade-out cycle (4.4s total)
+ * - same alternating left/right anchor positions
  * Instead of TravelCard widgets, cycles through property photos.
  *
- * Last updated: S23 (post-audit) — Date rendering now routes through the
+ * Last updated: S23 (post-audit) - Date rendering now routes through the
  *   shared formatDateOnly helper in lib/dates.ts. The local helper defined
  *   here in the initial S23 fix has been hoisted to lib/dates.ts so all
  *   travel components share a single implementation.
@@ -18,7 +18,7 @@ import { DARK } from '../../types/typesLanding'
 import { WIDGET } from '../../tokens/tokensLanding'
 import { formatDate } from '../../utils/utilsDates'
 
-// ── Float positions — 8 anchors, alternating left/right ──────────────────────
+// ── Float positions - 8 anchors, alternating left/right ──────────────────────
 // Identical to IntroSection.tsx ALL_POSITIONS
 
 const ALL_POSITIONS = [
@@ -32,12 +32,12 @@ const ALL_POSITIONS = [
   { top: '28%', left: 'calc(100% - clamp(16px, 3vw, 48px))', tx: '-100%', ty: '-50%' }, // right upper-mid
 ]
 
-// ── Timing — identical to IntroSection ───────────────────────────────────────
+// ── Timing - identical to IntroSection ───────────────────────────────────────
 const FADE_IN_MS  = 500
 const FADE_OUT_MS = 4000
 const NEXT_MS     = 4400
 
-// ── Floating photo — one image at a time, alternates sides ───────────────────
+// ── Floating photo - one image at a time, alternates sides ───────────────────
 
 function FloatingPhoto({ photos, isMobile }: { photos: { src: string; caption: string; subCaption: string }[]; isMobile: boolean }) {
   const [index,  setIndex]  = useState(0)
@@ -191,7 +191,7 @@ export default function PropertyIntroSection({
         borderBottom:   `1px solid ${WIDGET.borderMid}`,
       }}
     >
-      {/* Grid texture — identical to IntroSection */}
+      {/* Grid texture - identical to IntroSection */}
       <div
         style={{
           position:        'absolute',
@@ -243,7 +243,7 @@ export default function PropertyIntroSection({
           <AmbienceLogo isDark={true} product='travel' height='clamp(88px,4vw,88px)' />
         </div>
 
-        {/* Property name + location — mirrors dual tagline pattern */}
+        {/* Property name + location - mirrors dual tagline pattern */}
         <div style={{ ...fade(220), marginBottom: 28 }}>
           <p
             style={{
@@ -284,7 +284,7 @@ export default function PropertyIntroSection({
           {tagline}
         </p>
 
-        {/* Date pills — always shown, TBA fallback when no dates */}
+        {/* Date pills - always shown, TBA fallback when no dates */}
         <div style={{
           ...fade(350),
           display:        'flex',
@@ -321,7 +321,7 @@ export default function PropertyIntroSection({
           </div>
         </div>
 
-        {/* Scroll indicator — identical to IntroSection */}
+        {/* Scroll indicator - identical to IntroSection */}
         <div style={{ ...fade(400), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: WIDGET.textFaint }}>
             scroll

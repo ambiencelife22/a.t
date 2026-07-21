@@ -1,4 +1,4 @@
-/* GuideComingUpSection.tsx — "Coming up in {destination}" section.
+/* GuideComingUpSection.tsx - "Coming up in {destination}" section.
  *
  * Rendered inside every guide page (dining, experiences, shopping, hotels)
  * to surface time-bound content (pop-ups, chef residencies, capsule
@@ -10,9 +10,9 @@
  *
  * Renders silently when the happenings array is empty.
  *
- * Last updated: S53 — Renamed to convention (was ComingUpSection). Imports
+ * Last updated: S53 - Renamed to convention (was ComingUpSection). Imports
  *   GuideCardHappening. Behaviour unchanged.
- * Prior: S52 — extracted for shared use across variants.
+ * Prior: S52 - extracted for shared use across variants.
  */
 
 import React from 'react'

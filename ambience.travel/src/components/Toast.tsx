@@ -1,16 +1,16 @@
 /* Toast.tsx
- * ToastProvider  — wraps the app, manages toast state
- * ToastContainer — fixed overlay that renders the toast stack
+ * ToastProvider  - wraps the app, manages toast state
+ * ToastContainer - fixed overlay that renders the toast stack
  *
  * Cross-product: this toast system is used by both ambience.SPORTS and
- * ambience.TRAVEL. In TRAVEL, mounted at the root in main.tsx — wraps the
+ * ambience.TRAVEL. In TRAVEL, mounted at the root in main.tsx - wraps the
  * entire app including the immerse routes. useToast() works inside any
  * component beneath that.
  *
  * Keyframes live in animations.ts (injected once via injectAppStyles).
- * Palette colours read from C.* — dark/light reactive.
+ * Palette colours read from C.* - dark/light reactive.
  *
- * Last updated: S20 — header note added re: cross-product use.
+ * Last updated: S20 - header note added re: cross-product use.
  */
 
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
@@ -23,7 +23,7 @@ import { ThemeContext } from '../context/contextTheme'
 
 const DEFAULTS: Record<ToastVariant, number> = {
   success: 3500,
-  error:   6000,   // errors stay longer — user needs time to read
+  error:   6000,   // errors stay longer - user needs time to read
   warning: 5000,
   info:    4000,
 }
@@ -37,7 +37,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const dismiss = useCallback((id: string) => {
-    // Mark as exiting — triggers exit animation
+    // Mark as exiting - triggers exit animation
     setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t))
     // Remove after animation completes
     timers.current[id] = setTimeout(() => {
@@ -52,7 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const newToast: Toast = { id, variant, message, duration: dur, exiting: false }
 
     setToasts(prev => {
-      // Cap queue at 5 — dismiss oldest if needed
+      // Cap queue at 5 - dismiss oldest if needed
       const capped = prev.length >= 5 ? prev.slice(1) : prev
       return [...capped, newToast]
     })
@@ -198,7 +198,7 @@ function ToastItem({ toast: t, isDark, onDismiss }: ToastItemProps) {
         ✕
       </button>
 
-      {/* Progress bar — only for auto-dismissing toasts */}
+      {/* Progress bar - only for auto-dismissing toasts */}
       {t.duration > 0 && (
         <div style={{
           position:     'absolute',

@@ -1,18 +1,18 @@
-// ImmerseHero.tsx — hero section for all /immerse/ proposal pages
+// ImmerseHero.tsx - hero section for all /immerse/ proposal pages
 // Owns the full-bleed glass-card hero. Used by both journey overview and destination subpages.
-// Hero image is the first element — no brand strip above it.
+// Hero image is the first element - no brand strip above it.
 //
-// Last updated: S53B Closing+1 — ImmerseHeroProps lifted to typesImmerse.ts
+// Last updated: S53B Closing+1 - ImmerseHeroProps lifted to typesImmerse.ts
 //   per standing rule: renderers render, types files own data and types.
 //   This file now only owns layout config + render. No inline type decls.
-// Prior: S32F — Token + style extraction. All hardcoded rgba/hex literals
+// Prior: S32F - Token + style extraction. All hardcoded rgba/hex literals
 //   lifted to IMMERSE_HERO + FONTS tokens in landingColors.ts per Dev
 //   Standards §II. Layout-shape constants consolidated into HERO_LAYOUT
 //   config block at top of file.
-// Prior: S32E (Add 1 perf fix) — Path A refactor: hero image now renders as
+// Prior: S32E (Add 1 perf fix) - Path A refactor: hero image now renders as
 //   real <img> with fetchpriority="high" instead of CSS background-image stack.
 //   Parallax preserved via JS transform on the <img>.
-// Prior: S32 (Add 1) — Optional itinerary status line. Renders below
+// Prior: S32 (Add 1) - Optional itinerary status line. Renders below
 //   the date+nights label as small italic dim text.
 
 import { useEffect, useRef, useState } from 'react'
@@ -22,12 +22,12 @@ import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../
 import type { ImmerseHeroProps } from '../../types/typesImmerse'
 
 // ─── Layout config ───────────────────────────────────────────────────────────
-// Hero shape/motion constants — local to this renderer, not a data type.
+// Hero shape/motion constants - local to this renderer, not a data type.
 // Visual chrome (colors, gradients, borders) lives in IMMERSE_HERO tokens.
 // Typography fontFamily is FONTS.serif.
 
 const HERO_LAYOUT = {
-  // Section minimum height — desktop is taller for cinematic effect.
+  // Section minimum height - desktop is taller for cinematic effect.
   minHeightMobile:   640,
   minHeightDesktop:  820,
 
@@ -39,7 +39,7 @@ const HERO_LAYOUT = {
   imageTopDesktop:    '-10%',
   imageTopMobile:     0,
 
-  // Card opacity fade — progress is 0..1 over (height * fadeWindow) of scroll.
+  // Card opacity fade - progress is 0..1 over (height * fadeWindow) of scroll.
   // fadeMax = 0.82 means card fades from 1.0 to 0.18 across the scroll window.
   cardFadeWindow: 0.7,
   cardFadeMax:    0.82,
@@ -69,7 +69,7 @@ export default function ImmerseHero({
   const imgRef           = useRef<HTMLImageElement>(null)
   const [cardOpacity, setCardOpacity] = useState(1)
 
-  // Single rAF-throttled scroll listener — drives both parallax and card fade.
+  // Single rAF-throttled scroll listener - drives both parallax and card fade.
   // Mobile skips parallax (matches prior backgroundAttachment: 'scroll' behavior).
   useEffect(() => {
     let rafId = 0
@@ -83,11 +83,11 @@ export default function ImmerseHero({
       }
       const { top, height } = el.getBoundingClientRect()
 
-      // Card opacity fade — unchanged from prior shape
+      // Card opacity fade - unchanged from prior shape
       const progress = Math.max(0, Math.min(1, (-top) / (height * HERO_LAYOUT.cardFadeWindow)))
       setCardOpacity(1 - progress * HERO_LAYOUT.cardFadeMax)
 
-      // Parallax — desktop only. Translate <img> against scroll direction.
+      // Parallax - desktop only. Translate <img> against scroll direction.
       // top is positive when section is below viewport, negative when scrolled past.
       if (!isMobile && imgRef.current) {
         const translateY = -top * HERO_LAYOUT.parallaxMagnitude
@@ -127,7 +127,7 @@ export default function ImmerseHero({
           alignItems: 'center',
         }}
       >
-        {/* Hero image — real <img> for LCP prioritization. */}
+        {/* Hero image - real <img> for LCP prioritization. */}
         {/* Overscanned so parallax translation never reveals edges. */}
         <img
           ref={imgRef}
@@ -148,7 +148,7 @@ export default function ImmerseHero({
           }}
         />
 
-        {/* Overlay layer 1 — radial vignette */}
+        {/* Overlay layer 1 - radial vignette */}
         <div
           aria-hidden
           style={{
@@ -160,7 +160,7 @@ export default function ImmerseHero({
           }}
         />
 
-        {/* Overlay layer 2 — vertical gradient */}
+        {/* Overlay layer 2 - vertical gradient */}
         <div
           aria-hidden
           style={{
@@ -172,7 +172,7 @@ export default function ImmerseHero({
           }}
         />
 
-        {/* Overlay layer 3 — side gradient (left-biased darken) */}
+        {/* Overlay layer 3 - side gradient (left-biased darken) */}
         <div
           aria-hidden
           style={{
@@ -184,7 +184,7 @@ export default function ImmerseHero({
           }}
         />
 
-        {/* Content layer — glass card */}
+        {/* Content layer - glass card */}
         <div
           style={{
             position:  'relative',
@@ -209,7 +209,7 @@ export default function ImmerseHero({
               transition:           'opacity 0.05s linear',
             }}
           >
-            {/* Guest name — larger than standard eyebrow */}
+            {/* Guest name - larger than standard eyebrow */}
             <div
               style={{
                 color:         ID.gold,
@@ -224,7 +224,7 @@ export default function ImmerseHero({
               {guestName}
             </div>
 
-            {/* titlePrefix — Cormorant Garamond italic */}
+            {/* titlePrefix - Cormorant Garamond italic */}
             {titlePrefix && (
               <div
                 style={{
@@ -242,7 +242,7 @@ export default function ImmerseHero({
               </div>
             )}
 
-            {/* Main title — Cormorant Garamond, word stagger */}
+            {/* Main title - Cormorant Garamond, word stagger */}
             <div
               style={{
                 fontSize:      isMobile ? 52 : 'clamp(60px,7.5vw,108px)',
@@ -292,7 +292,7 @@ export default function ImmerseHero({
               </div>
             )}
 
-            {/* Itinerary stage indicator — italic, dim, subtle */}
+            {/* Itinerary stage indicator - italic, dim, subtle */}
             {itineraryStage && (
               <div
                 style={{
@@ -323,7 +323,7 @@ export default function ImmerseHero({
               {subtitle}
             </p>
 
-            {/* CTAs — gold primary, ghost dining, ghost secondary */}
+            {/* CTAs - gold primary, ghost dining, ghost secondary */}
             <div
               style={{
                 display:       'flex',

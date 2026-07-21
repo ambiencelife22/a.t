@@ -3,19 +3,19 @@
  * Single source of truth for DB reads and writes.
  *
  * Organised by domain:
- *   — Profile: getProfile, updateDisplayName, updateEmail, updatePassword
- *   — Programmes: getGuestProgrammes
- *   — Support tickets: createTicket, getUserTickets, getTicketMessages,
+ *   - Profile: getProfile, updateDisplayName, updateEmail, updatePassword
+ *   - Programmes: getGuestProgrammes
+ *   - Support tickets: createTicket, getUserTickets, getTicketMessages,
  *     addTicketMessage, closeTicket
- *   — Login events: insertLoginEvent, getRecentLogins
- *   — User data: backupUserData, deleteAllUserData, deleteAccount
+ *   - Login events: insertLoginEvent, getRecentLogins
+ *   - User data: backupUserData, deleteAllUserData, deleteAccount
  *
- * DO NOT import supabase directly in components — always go through this file.
+ * DO NOT import supabase directly in components - always go through this file.
  *
-* Last updated: S53 — GuestProgramme.programmeType narrowed to 'stay' only.
+* Last updated: S53 - GuestProgramme.programmeType narrowed to 'stay' only.
  *   Journey programme surface retired (superseded by ImmerseTripPage +
  *   Programme tab). S23 entry preserved below.
- * Prior: S23 — Renamed programme_guests → travel_programme_guests and
+ * Prior: S23 - Renamed programme_guests → travel_programme_guests and
  *   programmes → travel_programme_master with nested properties:travel_programme_properties
  *   alias to align with S17 table convention. support_tickets unchanged
  *   (cross-product table, not migrated).
@@ -202,7 +202,7 @@ export async function updatePassword(newPassword: string): Promise<void> {
 // has already redacted secrets on the gated path.
 export async function getStayByUrlId(urlId: string): Promise<StayResult> {
   const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
-    body: { mode: 'resolve', url_id: urlId },
+    body: { mode: 'resolve', urlId: urlId },
   })
  
   if (error) return { ok: false, reason: 'load-failed' }
@@ -222,19 +222,19 @@ export async function getStayByUrlId(urlId: string): Promise<StayResult> {
 // S53N: the guest's own linked stays, for the "your other stays" fallback in
 // the portal. Thin wrapper over the my_stays EF mode returning the raw list
 // (url_id, sub_path, guest_names) the fallback needs.
-export async function getMyStaysRaw(): Promise<{ url_id: string; sub_path: string; guest_names: string }[]> {
+export async function getMyStaysRaw(): Promise<{ urlId: string; sub_path: string; guestNames: string }[]> {
   const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
     body: { mode: 'my_stays' },
   })
   if (error) return []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data as any)?.stays ?? []) as { url_id: string; sub_path: string; guest_names: string }[]
+  return ((data as any)?.stays ?? []) as { urlId: string; sub_path: string; guestNames: string }[]
 }
 
 // ── Programmes ─────────────────────────────────────────────────────────────
  
 // S53N: routed through the travel-get-stay EF (my_stays mode). The direct
-// supabase.from('travel_programme_guests') read is removed — all DB access
+// supabase.from('travel_programme_guests') read is removed - all DB access
 // goes through the EF wall. The EF returns the caller's linked, active stays.
 export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
   const { data: { user } } = await supabase.auth.getUser()
@@ -257,13 +257,13 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
  
       return {
         id:            p.id,
-        urlId:         p.url_id,
+        urlId:         p.urlId,
         programmeType: p.programme_type as 'stay',
         subPath:       p.sub_path,
         status:        p.status,
-        guestNames:    p.guest_names,
-        checkIn:       p.check_in  ?? null,
-        checkOut:      p.check_out ?? null,
+        guestNames:    p.guestNames,
+        checkIn:       p.checkIn  ?? null,
+        checkOut:      p.checkOut ?? null,
         title:         p.title     ?? null,
         active:        p.active,
         property: {
@@ -272,10 +272,10 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
           city:         pr?.city          ?? null,
           country:      pr?.country       ?? null,
           heroImage:    pr?.hero_image    ?? null,
-          ownerName:    pr?.owner_name    ?? null,
-          ownerPhone:   pr?.owner_phone   ?? null,
-          managerName:  pr?.manager_name  ?? null,
-          managerPhone: pr?.manager_phone ?? null,
+          ownerName:    pr?.ownerName    ?? null,
+          ownerPhone:   pr?.ownerPhone   ?? null,
+          managerName:  pr?.managerName  ?? null,
+          managerPhone: pr?.managerPhone ?? null,
         },
       } satisfies GuestProgramme
     })
@@ -295,7 +295,7 @@ export async function createTicket(fields: {
   const { data, error } = await supabase
     .from('global_support_tickets')
     .insert({
-      user_id:  user.id,
+      userId:  user.id,
       category: fields.category,
       subject:  fields.subject,
       body:     fields.body,
@@ -331,10 +331,10 @@ export async function getTicketMessages(ticketId: string): Promise<TicketMessage
   return (data ?? []).map((r: any) => ({
     id:           r.id,
     ticketId:     r.ticket_id,
-    authorId:     r.author_id,
+    authorId:     r.authorId,
     body:         r.body,
-    isAdminReply: r.is_admin_reply ?? false,
-    createdAt:    r.created_at,
+    isAdminReply: r.isAdminReply ?? false,
+    createdAt:    r.createdAt,
   }))
 }
 
@@ -346,9 +346,9 @@ export async function addTicketMessage(ticketId: string, body: string): Promise<
     .from('global_ticket_messages')
     .insert({
       ticket_id:      ticketId,
-      author_id:      user.id,
+      authorId:      user.id,
       body,
-      is_admin_reply: false,
+      isAdminReply: false,
     })
 
   if (error) throw error
@@ -372,12 +372,12 @@ export async function insertLoginEvent(): Promise<void> {
   const { error } = await supabase
     .from('global_login_events')
     .insert({
-      user_id:    user.id,
-      ip_address: null,
+      userId:    user.id,
+      ipAddress: null,
       user_agent: navigator.userAgent,
     })
 
-  // Non-fatal — table may not yet exist in travel
+  // Non-fatal - table may not yet exist in travel
   if (error) console.warn('insertLoginEvent:', error.message)
 }
 
@@ -396,8 +396,8 @@ export async function getRecentLogins(): Promise<RecentLogin[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data ?? []).map((r: any) => ({
     id:        r.id,
-    createdAt: r.created_at,
-    ipAddress: r.ip_address ?? null,
+    createdAt: r.createdAt,
+    ipAddress: r.ipAddress ?? null,
     userAgent: r.user_agent ?? null,
     city:      r.city       ?? null,
     country:   r.country    ?? null,
@@ -434,7 +434,7 @@ export async function deleteAllUserData(): Promise<void> {
 }
 
 export async function deleteAccount(): Promise<void> {
-  // Requires server-side Edge Function — request via support ticket
+  // Requires server-side Edge Function - request via support ticket
   throw new Error('Please contact your travel adviser to delete your account.')
 }
 
@@ -449,7 +449,7 @@ function rowToTicket(r: any): SupportTicket {
     body:      r.body,
     status:    r.status,
     priority:  r.priority,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   }
 }

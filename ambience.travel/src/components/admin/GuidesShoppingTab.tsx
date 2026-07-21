@@ -1,14 +1,14 @@
 /* GuidesShoppingTab.tsx
  * Per-destination shopping guide list view + create action.
  * The actual editor (overlay + download) lives in the shared
- * GuideEditModal — this file is purely list management.
+ * GuideEditModal - this file is purely list management.
  *
- * No Access tab — no shopping_guide_grants table yet (P1 carry).
+ * No Access tab - no shopping_guide_grants table yet (P1 carry).
  *
- * Last updated: S52 — refactored to use shared GuideEditModal. Inline
+ * Last updated: S52 - refactored to use shared GuideEditModal. Inline
  *   EditGuideModal / DownloadTab components removed.
  *   Drift between four guide variants closed.
- * Prior: S51 — initial build.
+ * Prior: S51 - initial build.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -146,21 +146,21 @@ export default function GuidesShoppingTab() {
                       <div style={{
                         fontSize: 12, color: A.muted, fontFamily: A.font, fontStyle: 'italic',
                       }}>
-                        {g.headline_override ?? <span style={{ color: A.faint, fontStyle: 'normal' }}>(default headline)</span>}
+                        {g.headlineOverride ?? <span style={{ color: A.faint, fontStyle: 'normal' }}>(default headline)</span>}
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
                         {shopCount} {shopCount === 1 ? 'shop' : 'shops'}
                       </div>
                       <div style={{
-                        fontSize: 11, color: g.accuracy_date ? A.gold : A.faint, fontFamily: A.font,
+                        fontSize: 11, color: g.accuracyDate ? A.gold : A.faint, fontFamily: A.font,
                       }}>
-                        {g.accuracy_date ? formatDateShortUpper(g.accuracy_date) : 'No date set'}
+                        {g.accuracyDate ? formatDateShortUpper(g.accuracyDate) : 'No date set'}
                       </div>
                       <div style={{
-                        fontSize: 11, color: g.is_active ? A.positive : A.faint,
+                        fontSize: 11, color: g.isActive ? A.positive : A.faint,
                         fontFamily: A.font, fontWeight: 600,
                       }}>
-                        {g.is_active ? 'Active' : 'Hidden'}
+                        {g.isActive ? 'Active' : 'Hidden'}
                       </div>
                     </div>
                   )

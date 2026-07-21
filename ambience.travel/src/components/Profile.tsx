@@ -1,11 +1,11 @@
 /* Profile.tsx
  * Tabbed account management page for ambience.travel programme product.
  * Two tabs:
- *   — Account:  display name, email change, password change, recent logins
- *   — Support:  submit tickets, view thread history, real-time admin replies
+ *   - Account:  display name, email change, password change, recent logins
+ *   - Support:  submit tickets, view thread history, real-time admin replies
  *
- * No subscription tab — travel is invitation/admin-provisioned.
- * No self-serve delete — records belong to the operator. Account closure
+ * No subscription tab - travel is invitation/admin-provisioned.
+ * No self-serve delete - records belong to the operator. Account closure
  * is handled via a support ticket or direct contact.
  * Data export available at the bottom of the Account tab.
  */
@@ -67,7 +67,7 @@ function parseUserAgent(ua: string | null): string {
   return 'Browser'
 }
 
-// ── Shared style factories — reactive to C.* on each render ──────────────────
+// ── Shared style factories - reactive to C.* on each render ──────────────────
 function card():       React.CSSProperties { return { background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: '28px 28px' } }
 function btnPrimary(): React.CSSProperties { return { padding: '9px 22px', fontSize: 13, fontWeight: 700, background: C.positive, border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" } }
 function btnCancel():  React.CSSProperties { return { padding: '9px 18px', fontSize: 13, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" } }
@@ -153,7 +153,7 @@ function SupportTab({ userId, displayName }: { userId: string; displayName: stri
       .channel(`travel-messages-${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ticket_messages' }, payload => {
         const msg = payload.new as any
-        if (msg.author_id === userId) return
+        if (msg.authorId === userId) return
         if (!ticketsRef.current.some(t => t.id === msg.ticket_id)) return
         setMessages(prev => {
           if (prev.find(m => m.id === msg.id)) return prev
@@ -347,7 +347,7 @@ export default function Profile() {
     if (activeBtn) setUnderline({ left: activeBtn.offsetLeft, width: activeBtn.offsetWidth })
   }, [tab])
 
-  const displayName = profile?.displayName ?? profile?.email?.split('@')[0] ?? '—'
+  const displayName = profile?.displayName ?? profile?.email?.split('@')[0] ?? '-'
 
   // ── Email change ──────────────────────────────────────────────────────────
   const [editEmail, setEditEmail] = useState(false)

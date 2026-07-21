@@ -1,4 +1,4 @@
-// useWindowWidth — reactive viewport width, SSR-safe.
+// useWindowWidth - reactive viewport width, SSR-safe.
 // Canonical home (Collapse A · A5). Returns the current window width in px,
 // updating on resize; SSR guard returns 1200 when window is undefined.
 // For a boolean "is mobile" check on immerse surfaces, prefer useImmerseMobile

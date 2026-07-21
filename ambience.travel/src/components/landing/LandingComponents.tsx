@@ -32,7 +32,7 @@ export function fadeUp(visible: boolean, delay = 0): React.CSSProperties {
   }
 }
 
-// Subtle parallax — returns a translateY offset based on element scroll position.
+// Subtle parallax - returns a translateY offset based on element scroll position.
 // strength: 0.08 = image moves at 8% of scroll delta (very subtle).
 export function useScrollParallax(strength = 0.08) {
   const ref = useRef<HTMLDivElement>(null)
@@ -56,7 +56,7 @@ export function useScrollParallax(strength = 0.08) {
 
   return { ref, offset }
 }
-// Scroll progress — returns 0→1 as element scrolls from entering viewport bottom
+// Scroll progress - returns 0→1 as element scrolls from entering viewport bottom
 // to reaching the centre. Use to drive scroll-linked animations.
 export function useScrollProgress() {
   const ref = useRef<HTMLDivElement>(null)

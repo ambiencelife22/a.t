@@ -2,18 +2,18 @@
  * Searchable picker over the global hotel catalog (travel_accom_hotels) for
  * linking a booking to its canon hotel (accom_hotel_id). Used by the
  * booking-create form in the dossier so a Hotel booking gets its catalog link
- * in-UI — closing the SQL-only booking-creation gap (the canon hotel id was
+ * in-UI - closing the SQL-only booking-creation gap (the canon hotel id was
  * previously resolved by hand in SQL).
  *
- * Catalog data, read directly via fetchHotels — consistent with the other
+ * Catalog data, read directly via fetchHotels - consistent with the other
  * direct travel_accom_hotels reads (queriesGuidesHotels, queriesAdminGeo).
  * Not client-private, so no EF indirection.
  *
  * Debounced server-side search (the catalog is large; unlike AirlinePicker
  * which loads its whole short list once). Resolves the selected hotel to a
- * "Name — City" confirmation label.
+ * "Name - City" confirmation label.
  *
- * Last updated: S54c — initial ship (booking-create coverage).
+ * Last updated: S54c - initial ship (booking-create coverage).
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -85,7 +85,7 @@ export function HotelPicker({
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
-  const label = (h: HotelPick): string => h.city ? `${h.name} \u2014 ${h.city}` : h.name
+  const label = (h: HotelPick): string => h.city ? `${h.name} - ${h.city}` : h.name
 
   function pick(h: HotelPick) {
     setSelected(h)
@@ -122,7 +122,7 @@ export function HotelPicker({
         <input
           style={boxedStyle}
           value={query}
-          placeholder='Search hotels by name\u2026'
+          placeholder='Search hotels by name...'
           onFocus={() => setOpen(true)}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
         />
@@ -135,7 +135,7 @@ export function HotelPicker({
           borderRadius: 6, maxHeight: 240, overflowY: 'auto',
           boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
         }}>
-          {loading && <div style={{ padding: '8px 10px', fontSize: 11, color: A.faint, fontFamily: A.font }}>Searching\u2026</div>}
+          {loading && <div style={{ padding: '8px 10px', fontSize: 11, color: A.faint, fontFamily: A.font }}>Searching...</div>}
           {!loading && results.length === 0 && (
             <div style={{ padding: '8px 10px', fontSize: 11, color: A.faint, fontFamily: A.font }}>
               {query.trim() ? 'No hotels found' : 'Type to search'}

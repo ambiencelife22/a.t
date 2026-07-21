@@ -1,4 +1,4 @@
-/* GuideOverlayEditor.tsx — canonical overlay editor for all four guide variants.
+/* GuideOverlayEditor.tsx - canonical overlay editor for all four guide variants.
  *
  * One editor authors every overlay field that affects the rendered guide.
  * Replaces the four near-identical Overlay tab bodies that used to live
@@ -11,14 +11,14 @@
  *     plan_your_visit_*, is_active)
  *   - Save / delete dispatch via injected callbacks
  *   - Bullets fields: newline-separated textarea ↔ string[] | null
- *   - Optimistic save semantics — toast on success, toast on no-op
+ *   - Optimistic save semantics - toast on success, toast on no-op
  *
  * What it does not own:
  *   - The modal shell (GuideEditModal)
  *   - Variant-specific copy defaults (typesGuides.ts)
  *   - Persistence (caller injects onSave + onDelete)
  *
- * Last updated: S52 — initial build.
+ * Last updated: S52 - initial build.
  */
 
 import { useState } from 'react'
@@ -37,7 +37,7 @@ import {
   GUIDE_COPY,
 } from '../../../types/typesGuides'
 
-// ── BulletsField — shared newline-stringify pattern ───────────────────────────
+// ── BulletsField - shared newline-stringify pattern ───────────────────────────
 
 function BulletsField({
   label,
@@ -101,11 +101,11 @@ export default function GuideOverlayEditor({
     try {
       const payload: GuideOverlayPatch = {}
       const fields: (keyof GuideOverlayDraft)[] = [
-        'hero_image_src', 'hero_image_alt',
-        'eyebrow_override', 'headline_override', 'intro_override',
-        'is_active', 'accuracy_date',
-        'at_a_glance_bullets', 'guide_year', 'guide_version',
-        'plan_your_visit_heading', 'plan_your_visit_intro', 'plan_your_visit_bullets',
+        'heroImageSrc', 'heroImageAlt',
+        'eyebrowOverride', 'headlineOverride', 'introOverride',
+        'isActive', 'accuracyDate',
+        'atAGlanceBullets', 'guideYear', 'guideVersion',
+        'planYourVisitHeading', 'planYourVisitIntro', 'planYourVisitBullets',
       ]
       for (const f of fields) {
         if (JSON.stringify(draft[f]) !== JSON.stringify(guide[f])) {
@@ -142,15 +142,15 @@ export default function GuideOverlayEditor({
       {/* Hero */}
       <Field label='Hero Image Src'>
         <ImageFieldWithUploader
-          value={draft.hero_image_src}
-          onChange={v => patch('hero_image_src', v)}
+          value={draft.heroImageSrc}
+          onChange={v => patch('heroImageSrc', v)}
         />
       </Field>
       <Field label='Hero Image Alt'>
         <input
           style={inputStyle}
-          value={draft.hero_image_alt ?? ''}
-          onChange={e => patch('hero_image_alt', e.target.value || null)}
+          value={draft.heroImageAlt ?? ''}
+          onChange={e => patch('heroImageAlt', e.target.value || null)}
         />
       </Field>
 
@@ -158,30 +158,30 @@ export default function GuideOverlayEditor({
       <Field label={`Eyebrow override (NULL = "${destinationName}" default)`}>
         <input
           style={inputStyle}
-          value={draft.eyebrow_override ?? ''}
-          onChange={e => patch('eyebrow_override', e.target.value || null)}
+          value={draft.eyebrowOverride ?? ''}
+          onChange={e => patch('eyebrowOverride', e.target.value || null)}
         />
       </Field>
       <Field label={`Headline override (NULL = "${copy.defaultHeadline}" default)`}>
         <input
           style={inputStyle}
-          value={draft.headline_override ?? ''}
-          onChange={e => patch('headline_override', e.target.value || null)}
+          value={draft.headlineOverride ?? ''}
+          onChange={e => patch('headlineOverride', e.target.value || null)}
         />
       </Field>
       <Field label='Intro override (NULL = default intro paragraph)'>
         <textarea
           style={textareaStyle}
-          value={draft.intro_override ?? ''}
-          onChange={e => patch('intro_override', e.target.value || null)}
+          value={draft.introOverride ?? ''}
+          onChange={e => patch('introOverride', e.target.value || null)}
         />
       </Field>
 
       {/* At a Glance */}
       <BulletsField
-        label='At a Glance bullets (one per line — leave empty to hide block)'
-        value={draft.at_a_glance_bullets}
-        onChange={v => patch('at_a_glance_bullets', v)}
+        label='At a Glance bullets (one per line - leave empty to hide block)'
+        value={draft.atAGlanceBullets}
+        onChange={v => patch('atAGlanceBullets', v)}
         placeholder={'First bullet\nSecond bullet\nThird bullet'}
       />
 
@@ -198,22 +198,22 @@ export default function GuideOverlayEditor({
         <Field label='Heading (NULL = "Plan Your Visit" default)'>
           <input
             style={inputStyle}
-            value={draft.plan_your_visit_heading ?? ''}
-            onChange={e => patch('plan_your_visit_heading', e.target.value || null)}
+            value={draft.planYourVisitHeading ?? ''}
+            onChange={e => patch('planYourVisitHeading', e.target.value || null)}
             placeholder='Plan Your Visit'
           />
         </Field>
         <Field label='Intro paragraph (leave empty to hide)'>
           <textarea
             style={textareaStyle}
-            value={draft.plan_your_visit_intro ?? ''}
-            onChange={e => patch('plan_your_visit_intro', e.target.value || null)}
+            value={draft.planYourVisitIntro ?? ''}
+            onChange={e => patch('planYourVisitIntro', e.target.value || null)}
           />
         </Field>
         <BulletsField
-          label='Bullets (one per line — leave empty to hide block)'
-          value={draft.plan_your_visit_bullets}
-          onChange={v => patch('plan_your_visit_bullets', v)}
+          label='Bullets (one per line - leave empty to hide block)'
+          value={draft.planYourVisitBullets}
+          onChange={v => patch('planYourVisitBullets', v)}
           placeholder={'Reservation guidance\nDress code\nGetting there'}
         />
       </div>
@@ -232,10 +232,10 @@ export default function GuideOverlayEditor({
           <input
             style={inputStyle}
             type='number'
-            value={draft.guide_year ?? ''}
+            value={draft.guideYear ?? ''}
             onChange={e => {
               const n = e.target.value.trim()
-              patch('guide_year', n.length > 0 ? parseInt(n, 10) : null)
+              patch('guideYear', n.length > 0 ? parseInt(n, 10) : null)
             }}
             placeholder={String(new Date().getFullYear())}
           />
@@ -243,16 +243,16 @@ export default function GuideOverlayEditor({
         <Field label='Guide Version (NULL = "1" default)'>
           <input
             style={inputStyle}
-            value={draft.guide_version ?? ''}
-            onChange={e => patch('guide_version', e.target.value || null)}
+            value={draft.guideVersion ?? ''}
+            onChange={e => patch('guideVersion', e.target.value || null)}
             placeholder='1'
           />
         </Field>
-        <Field label='Accuracy Date (e.g. "May 2026" — leave empty to hide disclaimer)'>
+        <Field label='Accuracy Date (e.g. "May 2026" - leave empty to hide disclaimer)'>
           <input
             style={inputStyle}
-            value={draft.accuracy_date ?? ''}
-            onChange={e => patch('accuracy_date', e.target.value || null)}
+            value={draft.accuracyDate ?? ''}
+            onChange={e => patch('accuracyDate', e.target.value || null)}
             placeholder='e.g. May 2026'
           />
         </Field>
@@ -262,8 +262,8 @@ export default function GuideOverlayEditor({
       <Field label='Active'>
         <select
           style={inputStyle}
-          value={String(draft.is_active)}
-          onChange={e => patch('is_active', e.target.value === 'true')}
+          value={String(draft.isActive)}
+          onChange={e => patch('isActive', e.target.value === 'true')}
         >
           <option value='true'>Yes</option>
           <option value='false'>No</option>

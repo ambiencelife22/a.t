@@ -1,4 +1,4 @@
-// GeoCascade.tsx — reusable cascading dropdown for geography + storage path
+// GeoCascade.tsx - reusable cascading dropdown for geography + storage path
 // Owns: subcontinent → country → (state) → destination → category → (hotel)
 //       cascade UI. Custom-path toggle/free-text fallback.
 // Not owned: queries (see adminGeoQueries.ts), upload pipeline
@@ -28,9 +28,9 @@ import { A } from '../../tokens/tokensAdmin'
 // ── Selection emitted by the cascade ──────────────────────────────────────────
 
 export type GeoCascadeValue = {
-  // Free-text mode — user typed a path manually
+  // Free-text mode - user typed a path manually
   customPath?: string
-  // Cascade mode — fully resolved
+  // Cascade mode - fully resolved
   destination?: GeoDestination
   category?:    AssetCategory
   hotel?:       GeoHotel | null
@@ -173,7 +173,7 @@ export default function GeoCascade({
       : undefined
 
     const resolved = resolveStoragePath({
-      destinationStoragePath: dest.storage_path,
+      destinationStoragePath: dest.storagePath,
       category,
       hotelStorageSlug,
     })
@@ -192,12 +192,12 @@ export default function GeoCascade({
   const showHotelField = category === 'accom' && destinationId.length > 0
 
   // Status indicator beneath the cascade
-  const noStoragePath = !customMode && selectedDest && !selectedDest.storage_path
+  const noStoragePath = !customMode && selectedDest && !selectedDest.storagePath
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-      {/* Cascade body — hidden when custom mode is on */}
+      {/* Cascade body - hidden when custom mode is on */}
       {!customMode && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: fieldGap }}>
           <div>
@@ -219,7 +219,7 @@ export default function GeoCascade({
               onChange={e => setCountryId(e.target.value)}
               disabled={!subId || countries.length === 0}
             >
-              <option value=''>{subId ? 'Select country…' : '—'}</option>
+              <option value=''>{subId ? 'Select country…' : '-'}</option>
               {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
@@ -247,10 +247,10 @@ export default function GeoCascade({
               onChange={e => setDestinationId(e.target.value)}
               disabled={destinations.length === 0}
             >
-              <option value=''>{countryId ? 'Select destination…' : '—'}</option>
+              <option value=''>{countryId ? 'Select destination…' : '-'}</option>
               {destinations.map(d => (
                 <option key={d.id} value={d.id}>
-                  {d.name}{!d.storage_path && '  (no path)'}
+                  {d.name}{!d.storagePath && '  (no path)'}
                 </option>
               ))}
             </select>
@@ -328,7 +328,7 @@ export default function GeoCascade({
         </button>
         {noStoragePath && (
           <span style={{ fontSize: 11, color: A.danger, fontFamily: A.font }}>
-            This destination has no canonical path — switch to custom path.
+            This destination has no canonical path - switch to custom path.
           </span>
         )}
       </div>

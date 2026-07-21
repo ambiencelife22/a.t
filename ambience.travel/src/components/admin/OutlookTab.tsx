@@ -1,7 +1,7 @@
-// OutlookTab.tsx — Financial outlook for a trip engagement.
+// OutlookTab.tsx - Financial outlook for a trip engagement.
 //
 // Redesigned S53H: state-first, action-oriented. The surface tells the story
-// of where money stands and what needs action — zero ambiguity.
+// of where money stands and what needs action - zero ambiguity.
 //
 // Architecture:
 //   - Margin banner: net margin dominant, commission state, no guest deposit noise
@@ -14,7 +14,7 @@
 //   - All financial writes via travel-write-expenses
 //   - Supplier reference data via travel-read-suppliers
 //
-// Last updated: S53H — full redesign. Commission receipt captures platform,
+// Last updated: S53H - full redesign. Commission receipt captures platform,
 //   transaction ref, remitting partner, gross, fee, net, date.
 
 import { useEffect, useState } from 'react'
@@ -107,14 +107,14 @@ function StatusPill({ status }: { status: BillingStatus }) {
 // ── Room line ─────────────────────────────────────────────────────────────────
 
 function RoomLine({ room }: { room: BookingFinancialRoom }) {
-  const roomTotal = room.total ?? (room.rate && room.nights ? room.rate * room.nights * (1 + (room.tax_pct ?? 0) / 100) : null)
+  const roomTotal = room.total ?? (room.rate && room.nights ? room.rate * room.nights * (1 + (room.taxPct ?? 0) / 100) : null)
   const roomBase  = room.rate && room.nights ? room.rate * room.nights : null
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px 20px', padding: '10px 18px', borderTop: `1px solid ${A.border}`, alignItems: 'start' }}>
       <div>
-        {room.guest_name   && <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{room.guest_name}</div>}
-        {room.room_name    && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{room.room_name}</div>}
-        {room.confirmation_number && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{room.confirmation_number}</div>}
+        {room.guestName   && <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{room.guestName}</div>}
+        {room.roomName    && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{room.roomName}</div>}
+        {room.confirmationNumber && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{room.confirmationNumber}</div>}
       </div>
       <div style={{ textAlign: 'right' }}>
         {room.rate != null && <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{usdDec(room.rate)}/night{room.nights ? ` x ${room.nights}` : ''}</div>}
@@ -122,7 +122,7 @@ function RoomLine({ room }: { room: BookingFinancialRoom }) {
       </div>
       <div style={{ textAlign: 'right' }}>
         {roomTotal != null && <div style={{ fontSize: 14, fontWeight: 700, color: A.text, fontFamily: A.font }}>{usdDec(roomTotal)}</div>}
-        {room.tax_pct != null && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>incl. {room.tax_pct.toFixed(2)}% tax</div>}
+        {room.taxPct != null && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>incl. {room.taxPct.toFixed(2)}% tax</div>}
       </div>
     </div>
   )
@@ -146,18 +146,18 @@ function CommissionReceipt({
   partners:  SupplierPartner[]
   onDone:    () => void
 }) {
-  const received = !!b.commission_paid_at
+  const received = !!b.commissionPaidAt
   const [open,   setOpen]   = useState(false)
   const [saving, setSaving] = useState(false)
   const toast = useAdminToast()
 
-  const defaultGross = b.commission_amount_usd ?? b.commission_amount ?? 0
-  const [platformId,   setPlatformId]   = useState<string>(b.commission_payment_platform_id ?? '')
+  const defaultGross = b.commissionAmountUsd ?? b.commissionAmount ?? 0
+  const [platformId,   setPlatformId]   = useState<string>(b.commissionPaymentPlatformId ?? '')
   const [gross,        setGross]        = useState(defaultGross ? defaultGross.toString() : '')
-  const [feePct,       setFeePct]       = useState(b.commission_payment_fee_pct?.toString() ?? '')
+  const [feePct,       setFeePct]       = useState(b.commissionPaymentFeePct?.toString() ?? '')
   const [feeFlat,      setFeeFlat]      = useState('')
-  const [txRef,        setTxRef]        = useState(b.commission_transaction_ref ?? '')
-  const [partnerId,    setPartnerId]    = useState<string>(b.commission_remitting_partner_id ?? '')
+  const [txRef,        setTxRef]        = useState(b.commissionTransactionRef ?? '')
+  const [partnerId,    setPartnerId]    = useState<string>(b.commissionRemittingPartnerId ?? '')
 
   const currency = b.currency ?? 'USD'
 
@@ -165,8 +165,8 @@ function CommissionReceipt({
     setPlatformId(id)
     const p = platforms.find(x => x.id === id)
     if (!p) return
-    setFeePct(p.default_fee_pct ? p.default_fee_pct.toString() : '')
-    setFeeFlat(p.default_fee_flat != null ? p.default_fee_flat.toString() : '')
+    setFeePct(p.defaultFeePct ? p.defaultFeePct.toString() : '')
+    setFeeFlat(p.defaultFeeFlat != null ? p.defaultFeeFlat.toString() : '')
   }
 
   const grossN = parseFloat(gross)
@@ -180,13 +180,13 @@ function CommissionReceipt({
     setSaving(true)
     try {
       await markCommissionReceived({
-        booking_id:            b.id,
-        platform_id:           platformId || undefined,
-        received_amount:       Math.round(grossN * 100) / 100,
-        fee_pct:               pctN,
-        fee_amt:               Math.round(feeAmt * 100) / 100,
-        transaction_ref:       txRef.trim() || undefined,
-        remitting_partner_id:  partnerId || undefined,
+        bookingId:            b.id,
+        platformId:           platformId || undefined,
+        receivedAmount:       Math.round(grossN * 100) / 100,
+        feePct:               pctN,
+        feeAmt:               Math.round(feeAmt * 100) / 100,
+        transactionRef:       txRef.trim() || undefined,
+        remittingPartnerId:  partnerId || undefined,
       })
       await onDone()
       toast.success('Commission receipt recorded')
@@ -202,14 +202,14 @@ function CommissionReceipt({
     setSaving(true)
     try {
       await updateBookingFinancial(b.id, {
-        commission_paid_at:              null,
-        commission_received_amount:      null,
-        commission_payment_fee_pct:      null,
-        commission_payment_fee_amt:      null,
-        commission_net_received:         null,
-        commission_payment_platform_id:  null,
-        commission_transaction_ref:      null,
-        commission_remitting_partner_id: null,
+        commissionPaidAt:              null,
+        commissionReceivedAmount:      null,
+        commission_payment_feePct:      null,
+        commission_payment_feeAmt:      null,
+        commissionNetReceived:         null,
+        commission_payment_platformId:  null,
+        commission_transactionRef:      null,
+        commission_remittingPartnerId: null,
       })
       await onDone()
       toast.success('Receipt cleared')
@@ -220,16 +220,16 @@ function CommissionReceipt({
     }
   }
 
-  // ── Received state — show full transaction record ──────────────────────────
+  // ── Received state - show full transaction record ──────────────────────────
   if (received && !open) {
-    const platform = b.travel_payment_platforms
-    const partner  = b.travel_partners
+    const platform = b.travelPaymentPlatforms
+    const partner  = b.travelPartners
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {/* Status badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4ade80', fontFamily: A.font, border: '1px solid #4ade8040', background: '#4ade8020', borderRadius: 100, padding: '4px 12px' }}>
-            Received {formatDateShort(b.commission_paid_at)}
+            Received {formatDateShort(b.commissionPaidAt)}
           </span>
           <button onClick={clearReceipt} disabled={saving} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Clear</button>
           <button onClick={() => setOpen(true)} style={{ ...btnG, fontSize: 10, padding: '3px 10px' }}>Edit</button>
@@ -249,33 +249,33 @@ function CommissionReceipt({
                 <div style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{partner.name}</div>
               </div>
             )}
-            {b.commission_transaction_ref && (
+            {b.commissionTransactionRef && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Ref</div>
-                <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.text }}>{b.commission_transaction_ref}</div>
+                <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: A.text }}>{b.commissionTransactionRef}</div>
               </div>
             )}
           </div>
           <div style={{ display: 'flex', gap: 24, marginTop: 6, flexWrap: 'wrap' }}>
-            {b.commission_received_amount != null && (
+            {b.commissionReceivedAmount != null && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Gross</div>
-                <div style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>{usdDec(b.commission_received_amount)}</div>
+                <div style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>{usdDec(b.commissionReceivedAmount)}</div>
               </div>
             )}
-            {b.commission_payment_fee_amt != null && b.commission_payment_fee_amt > 0 && (
+            {b.commissionPaymentFeeAmt != null && b.commissionPaymentFeeAmt > 0 && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Fee</div>
                 <div style={{ fontSize: 12, color: '#ef4444', fontFamily: A.font }}>
-                  -{usdDec(b.commission_payment_fee_amt)}
-                  {b.commission_payment_fee_pct ? ` (${b.commission_payment_fee_pct}%)` : ''}
+                  -{usdDec(b.commissionPaymentFeeAmt)}
+                  {b.commissionPaymentFeePct ? ` (${b.commissionPaymentFeePct}%)` : ''}
                 </div>
               </div>
             )}
-            {b.commission_net_received != null && (
+            {b.commissionNetReceived != null && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Net to ambience</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.commission_net_received)}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.commissionNetReceived)}</div>
               </div>
             )}
           </div>
@@ -303,13 +303,13 @@ function CommissionReceipt({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label='Platform'>
           <select value={platformId} onChange={e => selectPlatform(e.target.value)} style={{ ...inputS, fontSize: 12 }}>
-            <option value=''>— select —</option>
+            <option value=''>- select -</option>
             {platforms.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
           </select>
         </Field>
         <Field label='Remitted by (partner)'>
           <select value={partnerId} onChange={e => setPartnerId(e.target.value)} style={{ ...inputS, fontSize: 12 }}>
-            <option value=''>— direct —</option>
+            <option value=''>- direct -</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </Field>
@@ -367,34 +367,34 @@ function BookingRow({
   const [expanded,     setExpanded]     = useState(false)
   const [editOpen,     setEditOpen]     = useState(false)
   const [saving,       setSaving]       = useState<string | null>(null)
-  const [commPct,      setCommPct]      = useState(b.commission_pct?.toString() ?? '')
-  const [commAmt,      setCommAmt]      = useState(b.commission_amount?.toString() ?? '')
-  const [invoiceNo,    setInvoiceNo]    = useState(b.invoice_number ?? '')
+  const [commPct,      setCommPct]      = useState(b.commissionPct?.toString() ?? '')
+  const [commAmt,      setCommAmt]      = useState(b.commissionAmount?.toString() ?? '')
+  const [invoiceNo,    setInvoiceNo]    = useState(b.invoiceNumber ?? '')
   const [amenities,    setAmenities]    = useState(b.cost?.toString() ?? '')
 
-  useEffect(() => { setCommPct(b.commission_pct?.toString() ?? '') },    [b.commission_pct])
-  useEffect(() => { setCommAmt(b.commission_amount?.toString() ?? '') }, [b.commission_amount])
-  useEffect(() => { setInvoiceNo(b.invoice_number ?? '') },              [b.invoice_number])
+  useEffect(() => { setCommPct(b.commissionPct?.toString() ?? '') },    [b.commissionPct])
+  useEffect(() => { setCommAmt(b.commissionAmount?.toString() ?? '') }, [b.commissionAmount])
+  useEffect(() => { setInvoiceNo(b.invoiceNumber ?? '') },              [b.invoiceNumber])
   useEffect(() => { setAmenities(b.cost?.toString() ?? '') },            [b.cost])
 
   const toast = useAdminToast()
 
   const currency     = b.currency ?? 'USD'
   const isHotel      = (b.rooms?.length ?? 0) > 0
-  const commAmt_     = b.commission_amount_usd ?? b.commission_amount ?? 0
-  const totalRate    = b.total_rate_usd ?? b.total_rate ?? 0
-  const commBase     = b.commissionable_rate_usd ?? b.commissionable_rate ?? 0
-  const taxes        = b.taxes_and_fees_usd ?? b.taxes_and_fees ?? 0
-  const commReceived = !!b.commission_paid_at
+  const commAmt_     = b.commissionAmountUsd ?? b.commissionAmount ?? 0
+  const totalRate    = b.totalRateUsd ?? b.totalRate ?? 0
+  const commBase     = b.commissionableRateUsd ?? b.commissionableRate ?? 0
+  const taxes        = b.taxesAndFeesUsd ?? b.taxesAndFees ?? 0
+  const commReceived = !!b.commissionPaidAt
   const isFx         = b.currency && b.currency !== 'USD'
   const hasRooms     = (b.rooms?.length ?? 0) > 0
-  const hasShares    = !!(b.referral_share_amt || b.iata_share_amt || b.individual_share_amt)
+  const hasShares    = !!(b.referralShareAmt || b.iataShareAmt || b.individualShareAmt)
   const displayName  = b._hotel_name ?? b.name ?? 'Booking'
 
-  const depositPaid   = !!b.deposit_paid_at
-  const balancePaid   = !!b.balance_paid_at
-  const depositOverdue = !depositPaid && isOverdue(b.deposit_due_date ?? null)
-  const balanceOverdue = !balancePaid && isOverdue(b.balance_due_date ?? null)
+  const depositPaid   = !!b.depositPaidAt
+  const balancePaid   = !!b.balancePaidAt
+  const depositOverdue = !depositPaid && isOverdue(b.depositDueDate ?? null)
+  const balanceOverdue = !balancePaid && isOverdue(b.balanceDueDate ?? null)
 
   async function patch(label: string, fields: Record<string, unknown>) {
     setSaving(label)
@@ -409,19 +409,19 @@ function BookingRow({
     }
   }
 
-  async function toggleDepositPaid()  { await patch('Deposit',        { deposit_paid_at: b.deposit_paid_at   ? null : new Date().toISOString() }) }
-  async function toggleBalancePaid()  { await patch('Balance',        { balance_paid_at: b.balance_paid_at   ? null : new Date().toISOString() }) }
-  async function togglePaymentSignal() { await patch('Payment signal', { payment_exception_override: b.payment_exception_override ? null : true }) }
+  async function toggleDepositPaid()  { await patch('Deposit',        { depositPaidAt: b.depositPaidAt   ? null : new Date().toISOString() }) }
+  async function toggleBalancePaid()  { await patch('Balance',        { balancePaidAt: b.balancePaidAt   ? null : new Date().toISOString() }) }
+  async function togglePaymentSignal() { await patch('Payment signal', { payment_exception_override: b.paymentExceptionOverride ? null : true }) }
 
   async function saveCommission() {
     const p = parseFloat(commPct), a = parseFloat(commAmt)
     if (isNaN(p) && isNaN(a)) return
     const fields: Record<string, unknown> = {}
-    if (!isNaN(p)) fields.commission_pct    = p
-    if (!isNaN(a)) fields.commission_amount = a
+    if (!isNaN(p)) fields.commissionPct    = p
+    if (!isNaN(a)) fields.commissionAmount = a
     await patch('Commission', fields)
   }
-  async function saveInvoice()   { await patch('Invoice',    { invoice_number: invoiceNo.trim() || null }) }
+  async function saveInvoice()   { await patch('Invoice',    { invoiceNumber: invoiceNo.trim() || null }) }
   async function saveAmenities() {
     const v = parseFloat(amenities)
     await patch('Amenities', { cost: isNaN(v) ? null : v })
@@ -445,25 +445,25 @@ function BookingRow({
 
           {/* Dates + nights */}
           <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginBottom: 8 }}>
-            {formatDateShortRange(b.start_date, b.end_date)}{b.nights ? ` · ${b.nights} nights` : ''}{isFx ? ` · ${b.currency}` : ''}
+            {formatDateShortRange(b.startDate, b.endDate)}{b.nights ? ` · ${b.nights} nights` : ''}{isFx ? ` · ${b.currency}` : ''}
           </div>
 
           {/* Deposit / Balance status lines */}
-          {(b.deposit_amount || b.balance_amount) && (
+          {(b.depositAmount || b.balanceAmount) && (
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {b.deposit_amount != null && (
+              {b.depositAmount != null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Deposit {usdDec(b.deposit_amount)}</span>
+                  <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Deposit {usdDec(b.depositAmount)}</span>
                   <span style={{ fontSize: 10, fontWeight: 700, color: depositPaid ? '#4ade80' : depositOverdue ? '#ef4444' : '#FBBF24', fontFamily: A.font }}>
-                    {depositPaid ? `Paid ${formatDateShort(b.deposit_paid_at)}` : depositOverdue ? `Overdue ${formatDateShort(b.deposit_due_date)}` : `Due ${formatDateShort(b.deposit_due_date)}`}
+                    {depositPaid ? `Paid ${formatDateShort(b.depositPaidAt)}` : depositOverdue ? `Overdue ${formatDateShort(b.depositDueDate)}` : `Due ${formatDateShort(b.depositDueDate)}`}
                   </span>
                 </div>
               )}
-              {b.balance_amount != null && (
+              {b.balanceAmount != null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Balance {usdDec(b.balance_amount)}</span>
+                  <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Balance {usdDec(b.balanceAmount)}</span>
                   <span style={{ fontSize: 10, fontWeight: 700, color: balancePaid ? '#4ade80' : balanceOverdue ? '#ef4444' : '#FBBF24', fontFamily: A.font }}>
-                    {balancePaid ? `Paid ${formatDateShort(b.balance_paid_at)}` : balanceOverdue ? `Overdue ${formatDateShort(b.balance_due_date)}` : `Due ${formatDateShort(b.balance_due_date)}`}
+                    {balancePaid ? `Paid ${formatDateShort(b.balancePaidAt)}` : balanceOverdue ? `Overdue ${formatDateShort(b.balanceDueDate)}` : `Due ${formatDateShort(b.balanceDueDate)}`}
                   </span>
                 </div>
               )}
@@ -477,19 +477,19 @@ function BookingRow({
           <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Base {usdDec(commBase)} + tax {usdDec(taxes)}</div>
           {commAmt_ > 0 && (
             <div style={{ fontSize: 13, fontWeight: 600, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>
-              {usdDec(commAmt_)} comm{pct(b.commission_pct)}
+              {usdDec(commAmt_)} comm{pct(b.commissionPct)}
             </div>
           )}
           {hasShares && (
             <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, textAlign: 'right' }}>
-              Net {usdDec(b.net_revenue_usd ?? 0)}
-              {b.iata_share_amt      ? ` · IATA ${usdDec(b.iata_share_amt)}`          : ''}
-              {b.referral_share_amt  ? ` · ref ${usdDec(b.referral_share_amt)}`        : ''}
-              {b.individual_share_amt ? ` · indiv ${usdDec(b.individual_share_amt)}`   : ''}
+              Net {usdDec(b.netRevenueUsd ?? 0)}
+              {b.iataShareAmt      ? ` · IATA ${usdDec(b.iataShareAmt)}`          : ''}
+              {b.referralShareAmt  ? ` · ref ${usdDec(b.referralShareAmt)}`        : ''}
+              {b.individualShareAmt ? ` · indiv ${usdDec(b.individualShareAmt)}`   : ''}
             </div>
           )}
           {b.cost && b.cost > 0 && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{usdDec(b.cost)} amenity</div>}
-          {b.invoice_number && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>Inv. {b.invoice_number}</div>}
+          {b.invoiceNumber && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>Inv. {b.invoiceNumber}</div>}
         </div>
       </div>
 
@@ -545,29 +545,29 @@ function BookingRow({
             </div>
 
             {/* Deposit + Balance toggles */}
-            {(b.deposit_amount != null || b.balance_amount != null) && (
+            {(b.depositAmount != null || b.balanceAmount != null) && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {b.deposit_amount != null && (
+                {b.depositAmount != null && (
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Deposit · {usdDec(b.deposit_amount)}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Deposit · {usdDec(b.depositAmount)}</div>
                     <button
                       onClick={toggleDepositPaid}
                       disabled={saving === 'Deposit'}
                       style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: depositPaid ? '#4ade8015' : undefined, color: depositPaid ? '#4ade80' : undefined, border: depositPaid ? '1px solid #4ade8030' : undefined }}
                     >
-                      {depositPaid ? `Paid ${formatDateShort(b.deposit_paid_at)}` : 'Mark Paid'}
+                      {depositPaid ? `Paid ${formatDateShort(b.depositPaidAt)}` : 'Mark Paid'}
                     </button>
                   </div>
                 )}
-                {b.balance_amount != null && (
+                {b.balanceAmount != null && (
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Balance · {usdDec(b.balance_amount)}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Balance · {usdDec(b.balanceAmount)}</div>
                     <button
                       onClick={toggleBalancePaid}
                       disabled={saving === 'Balance'}
                       style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: balancePaid ? '#4ade8015' : undefined, color: balancePaid ? '#4ade80' : undefined, border: balancePaid ? '1px solid #4ade8030' : undefined }}
                     >
-                      {balancePaid ? `Paid ${formatDateShort(b.balance_paid_at)}` : 'Mark Paid'}
+                      {balancePaid ? `Paid ${formatDateShort(b.balancePaidAt)}` : 'Mark Paid'}
                     </button>
                   </div>
                 )}
@@ -578,16 +578,16 @@ function BookingRow({
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>
                 Guest Payment Signal
-                {!b.payment_exception_override && b.balance_due_date && !b.balance_paid_at && isOverdue(b.balance_due_date) && (
+                {!b.paymentExceptionOverride && b.balanceDueDate && !b.balancePaidAt && isOverdue(b.balanceDueDate) && (
                   <span style={{ color: '#f87171', fontWeight: 400, marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>auto-showing</span>
                 )}
               </div>
               <button
                 onClick={togglePaymentSignal}
                 disabled={saving === 'Payment signal'}
-                style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: b.payment_exception_override ? '#f8717115' : undefined, color: b.payment_exception_override ? '#f87171' : undefined, border: b.payment_exception_override ? '1px solid #f8717130' : undefined }}
+                style={{ ...btnG, fontSize: 11, padding: '5px 12px', background: b.paymentExceptionOverride ? '#f8717115' : undefined, color: b.paymentExceptionOverride ? '#f87171' : undefined, border: b.paymentExceptionOverride ? '1px solid #f8717130' : undefined }}
               >
-                {b.payment_exception_override ? 'Forced ON · clear' : 'Force "Payment Outstanding"'}
+                {b.paymentExceptionOverride ? 'Forced ON · clear' : 'Force "Payment Outstanding"'}
               </button>
             </div>
 
@@ -614,7 +614,7 @@ function BookingRow({
 const EXPENSE_TYPES = ['Amenity','Dining','Entertainment','Gifting','Ground Transport','Hospitality','Research','Telephone','Travel','Other']
 
 function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ expense_type: 'Other', description: '', total_amount: '', currency: 'USD', billing_status: 'absorbed' as BillingStatus, notes: '' })
+  const [form, setForm] = useState({ expenseType: 'Other', description: '', total_amount: '', currency: 'USD', billingStatus: 'absorbed' as BillingStatus, notes: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -624,7 +624,7 @@ function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: s
     if (isNaN(amt) || amt < 0) { setErr('Valid amount is required.'); return }
     setSaving(true); setErr(null)
     try {
-      await createExpense({ engagement_id: engagementId, expense_type: form.expense_type, description: form.description.trim(), total_amount: amt, currency: form.currency.trim().toUpperCase() || 'USD', billing_status: form.billing_status, notes: form.notes.trim() || null } as CreateExpensePayload)
+      await createExpense({ engagementId: engagementId, expenseType: form.expenseType, description: form.description.trim(), total_amount: amt, currency: form.currency.trim().toUpperCase() || 'USD', billingStatus: form.billingStatus, notes: form.notes.trim() || null } as CreateExpensePayload)
       onCreated()
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -641,8 +641,8 @@ function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: s
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>x</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <Field label='Type'><select style={inputS} value={form.expense_type} onChange={e => setForm(f => ({ ...f, expense_type: e.target.value }))}>{EXPENSE_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
-          <Field label='Billing Status'><select style={inputS} value={form.billing_status} onChange={e => setForm(f => ({ ...f, billing_status: e.target.value as BillingStatus }))}><option value='absorbed'>Absorbed</option><option value='billable'>Billable</option></select></Field>
+          <Field label='Type'><select style={inputS} value={form.expenseType} onChange={e => setForm(f => ({ ...f, expenseType: e.target.value }))}>{EXPENSE_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
+          <Field label='Billing Status'><select style={inputS} value={form.billingStatus} onChange={e => setForm(f => ({ ...f, billingStatus: e.target.value as BillingStatus }))}><option value='absorbed'>Absorbed</option><option value='billable'>Billable</option></select></Field>
           <Field label='Amount'><input style={inputS} type='number' min='0' step='0.01' value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder='0.00' /></Field>
           <Field label='Currency'><input style={inputS} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} placeholder='USD' /></Field>
         </div>
@@ -680,15 +680,15 @@ function ExpenseRow({ expense, onAction }: { expense: Expense; onAction: () => v
     setActing(false)
   }
 
-  const canDelete = expense.billing_status !== 'billed'
+  const canDelete = expense.billingStatus !== 'billed'
 
   return (
     <div style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 12, overflow: 'hidden' }}>
       <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>{expense.expense_type}</span>
-            <StatusPill status={expense.billing_status} />
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>{expense.expenseType}</span>
+            <StatusPill status={expense.billingStatus} />
           </div>
           <div style={{ fontSize: 14, fontWeight: 600, color: A.text, fontFamily: A.font, marginBottom: 3 }}>{expense.description}</div>
           {expense.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, fontStyle: 'italic' }}>{expense.notes}</div>}
@@ -701,20 +701,20 @@ function ExpenseRow({ expense, onAction }: { expense: Expense; onAction: () => v
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(expense.total_amount)}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {expense.billing_status === 'billable'  && <button disabled={acting} onClick={() => lifecycle(() => markBilled(expense.id), 'Marked as billed')} style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)' }}>Mark Billed</button>}
-            {expense.billing_status === 'billed'    && <button disabled={acting} onClick={() => lifecycle(() => markPaid(expense.id),   'Marked as paid')}   style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>Mark Paid</button>}
-            {(expense.billing_status === 'billable' || expense.billing_status === 'billed') && <button disabled={acting} onClick={() => lifecycle(() => writeOff(expense.id), 'Written off')} style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}>Write Off</button>}
+            {expense.billingStatus === 'billable'  && <button disabled={acting} onClick={() => lifecycle(() => markBilled(expense.id), 'Marked as billed')} style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)' }}>Mark Billed</button>}
+            {expense.billingStatus === 'billed'    && <button disabled={acting} onClick={() => lifecycle(() => markPaid(expense.id),   'Marked as paid')}   style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>Mark Paid</button>}
+            {(expense.billingStatus === 'billable' || expense.billingStatus === 'billed') && <button disabled={acting} onClick={() => lifecycle(() => writeOff(expense.id), 'Written off')} style={{ ...btnG, fontSize: 11, padding: '5px 10px' }}>Write Off</button>}
             {canDelete && <button disabled={acting} onClick={handleDelete} style={{ ...btnD, padding: '5px 10px' }}>Delete</button>}
           </div>
         </div>
       </div>
       {expanded && expense.items.length > 0 && (
         <div style={{ borderTop: `1px solid ${A.border}` }}>
-          {expense.items.slice().sort((a, b) => a.sort_order - b.sort_order).map((item, i) => (
+          {expense.items.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((item, i) => (
             <div key={item.id} style={{ padding: '10px 18px 10px 34px', borderTop: i > 0 ? `1px solid ${A.border}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{item.description}</div>
-                <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{item.item_type}</div>
+                <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{item.itemType}</div>
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{usdDec(item.amount)}</div>
             </div>
@@ -776,7 +776,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
     : false
 
   const grouped: Record<BillingStatus, Expense[]> = { absorbed: [], billable: [], billed: [], paid: [], written_off: [] }
-  for (const exp of expenses) { grouped[exp.billing_status]?.push(exp) }
+  for (const exp of expenses) { grouped[exp.billingStatus]?.push(exp) }
   const ORDER: BillingStatus[] = ['billable', 'billed', 'absorbed', 'paid', 'written_off']
 
   return (
@@ -810,7 +810,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
             padding: '24px 28px',
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
-              {/* Net margin — dominant */}
+              {/* Net margin - dominant */}
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Net Margin</div>
                 <div style={{ fontSize: 40, fontWeight: 700, color: marginColor(margin), fontFamily: A.font, letterSpacing: '-0.03em', lineHeight: 1 }}>
@@ -821,7 +821,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
 
               {/* Metrics grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, flex: 1, minWidth: 300 }}>
-                <Metric label='Trip Value'    value={usdDec(summary.total_rate)} />
+                <Metric label='Trip Value'    value={usdDec(summary.totalRate)} />
                 <Metric
                   label='Commission'
                   value={usdDec(summary.total_commission)}
@@ -829,7 +829,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
                 />
                 <Metric
                   label='Received'
-                  value={usdDec(summary.commission_received)}
+                  value={usdDec(summary.commissionReceived)}
                   color='#4ade80'
                 />
                 {summary.commission_outstanding > 0

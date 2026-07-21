@@ -1,5 +1,5 @@
 /* LibraryHotelsTab.tsx
- * Canonical hotel library — list + filter + edit modal.
+ * Canonical hotel library - list + filter + edit modal.
  *
  * Library = canonical travel_accom_hotels pool. Edits here flow to every
  * surface that reads hotel data. The per-destination guide overlay lives
@@ -14,10 +14,10 @@
  * The column is named destination_id on the DB but carried as
  * global_destination_id on AdminHotel for consistency with other types.
  *
- * No JSON ingest — hotels are seeded individually.
- * No recognition pill — stars/michelin_keys/forbes_rating shown in modal.
+ * No JSON ingest - hotels are seeded individually.
+ * No recognition pill - stars/michelin_keys/forbes_rating shown in modal.
  *
- * Last updated: S41 — initial build.
+ * Last updated: S41 - initial build.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -39,6 +39,7 @@ import {
   type HotelPatch,
 } from '../../queries/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { matchesQuery } from '../../utils/utilsSearch'
 
@@ -47,8 +48,8 @@ import { matchesQuery } from '../../utils/utilsSearch'
 function recognitionLabel(h: AdminHotel): string {
   const parts: string[] = []
   if (h.stars)         parts.push(`${h.stars}★`)
-  if (h.michelin_keys) parts.push(`${h.michelin_keys} Key${h.michelin_keys > 1 ? 's' : ''}`)
-  if (h.forbes_rating) parts.push(`Forbes ${h.forbes_rating}★`)
+  if (h.michelinKeys) parts.push(`${h.michelinKeys} Key${h.michelinKeys > 1 ? 's' : ''}`)
+  if (h.forbesRating) parts.push(`Forbes ${h.forbesRating}★`)
   return parts.join(' · ')
 }
 
@@ -87,16 +88,16 @@ function EditHotelModal({
 
       const payload: HotelPatch = {}
       const scalarFields: (keyof HotelPatch)[] = [
-        'name', 'short_slug',
-        'hero_image_src', 'hero_image_alt',
-        'image_credit', 'image_credit_url', 'image_license',
-        'is_active', 'is_preferred_partner', 'is_supplementary',
-        'sort_order', 'stars', 'michelin_keys', 'forbes_rating',
-        'description', 'internal_notes',
-        'address', 'city', 'zip_code', 'latitude', 'longitude',
-        'google_maps_url', 'website', 'phone', 'reservations_phone',
-        'main_email', 'reservations_email', 'sales_email',
-        'concierge_email', 'guest_relations_email', 'front_office_email',
+        'name', 'shortSlug',
+        'heroImageSrc', 'heroImageAlt',
+        'imageCredit', 'imageCreditUrl', 'imageLicense',
+        'isActive', 'isPreferredPartner', 'isSupplementary',
+        'sortOrder', 'stars', 'michelinKeys', 'forbesRating',
+        'description', 'internalNotes',
+        'address', 'city', 'zipCode', 'latitude', 'longitude',
+        'googleMapsUrl', 'website', 'phone', 'reservationsPhone',
+        'mainEmail', 'reservationsEmail', 'salesEmail',
+        'conciergeEmail', 'guestRelationsEmail', 'frontOfficeEmail',
       ]
       for (const f of scalarFields) {
         if (JSON.stringify(draft[f]) !== JSON.stringify(hotel[f])) {
@@ -141,7 +142,7 @@ function EditHotelModal({
               Edit Hotel · {destinationName}
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>{hotel.name}</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 3 }}>{hotel.short_slug}</div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 3 }}>{hotel.shortSlug}</div>
           </div>
           <button onClick={onClose} style={btnGhost}>Close</button>
         </div>
@@ -152,7 +153,7 @@ function EditHotelModal({
             <input style={inputStyle} value={draft.name} onChange={e => patch('name', e.target.value)} />
           </Field>
           <Field label='Short Slug'>
-            <input style={inputStyle} value={draft.short_slug} onChange={e => patch('short_slug', e.target.value)} />
+            <input style={inputStyle} value={draft.shortSlug} onChange={e => patch('shortSlug', e.target.value)} />
           </Field>
         </div>
 
@@ -169,19 +170,19 @@ function EditHotelModal({
           </Field>
           <Field label='Michelin Keys'>
             <input style={inputStyle} type='number' min={1} max={3}
-              value={draft.michelin_keys ?? ''}
+              value={draft.michelinKeys ?? ''}
               onChange={e => {
                 const v = e.target.value
-                patch('michelin_keys', v === '' ? null : parseInt(v, 10) || null)
+                patch('michelinKeys', v === '' ? null : parseInt(v, 10) || null)
               }}
             />
           </Field>
           <Field label='Forbes Rating (stars)'>
             <input style={inputStyle} type='number' min={1} max={5}
-              value={draft.forbes_rating ?? ''}
+              value={draft.forbesRating ?? ''}
               onChange={e => {
                 const v = e.target.value
-                patch('forbes_rating', v === '' ? null : parseInt(v, 10) || null)
+                patch('forbesRating', v === '' ? null : parseInt(v, 10) || null)
               }}
             />
           </Field>
@@ -200,7 +201,7 @@ function EditHotelModal({
           />
         </Field>
         <Field label='Internal Notes'>
-          <textarea style={textareaStyle} value={draft.internal_notes ?? ''} onChange={e => patch('internal_notes', e.target.value || null)} />
+          <textarea style={textareaStyle} value={draft.internalNotes ?? ''} onChange={e => patch('internalNotes', e.target.value || null)} />
         </Field>
 
         {/* Location */}
@@ -212,10 +213,10 @@ function EditHotelModal({
             <input style={inputStyle} value={draft.city ?? ''} onChange={e => patch('city', e.target.value || null)} />
           </Field>
           <Field label='Zip Code'>
-            <input style={inputStyle} value={draft.zip_code ?? ''} onChange={e => patch('zip_code', e.target.value || null)} />
+            <input style={inputStyle} value={draft.zipCode ?? ''} onChange={e => patch('zipCode', e.target.value || null)} />
           </Field>
           <Field label='Google Maps URL'>
-            <input style={inputStyle} value={draft.google_maps_url ?? ''} onChange={e => patch('google_maps_url', e.target.value || null)} />
+            <input style={inputStyle} value={draft.googleMapsUrl ?? ''} onChange={e => patch('googleMapsUrl', e.target.value || null)} />
           </Field>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -240,67 +241,67 @@ function EditHotelModal({
             <input style={inputStyle} value={draft.phone ?? ''} onChange={e => patch('phone', e.target.value || null)} />
           </Field>
           <Field label='Reservations Phone'>
-            <input style={inputStyle} value={draft.reservations_phone ?? ''} onChange={e => patch('reservations_phone', e.target.value || null)} />
+            <input style={inputStyle} value={draft.reservationsPhone ?? ''} onChange={e => patch('reservationsPhone', e.target.value || null)} />
           </Field>
           <Field label='Main Email'>
-            <input style={inputStyle} value={draft.main_email ?? ''} onChange={e => patch('main_email', e.target.value || null)} />
+            <input style={inputStyle} value={draft.mainEmail ?? ''} onChange={e => patch('mainEmail', e.target.value || null)} />
           </Field>
           <Field label='Reservations Email'>
-            <input style={inputStyle} value={draft.reservations_email ?? ''} onChange={e => patch('reservations_email', e.target.value || null)} />
+            <input style={inputStyle} value={draft.reservationsEmail ?? ''} onChange={e => patch('reservationsEmail', e.target.value || null)} />
           </Field>
           <Field label='Sales Email'>
-            <input style={inputStyle} value={draft.sales_email ?? ''} onChange={e => patch('sales_email', e.target.value || null)} />
+            <input style={inputStyle} value={draft.salesEmail ?? ''} onChange={e => patch('salesEmail', e.target.value || null)} />
           </Field>
           <Field label='Concierge Email'>
-            <input style={inputStyle} value={draft.concierge_email ?? ''} onChange={e => patch('concierge_email', e.target.value || null)} />
+            <input style={inputStyle} value={draft.conciergeEmail ?? ''} onChange={e => patch('conciergeEmail', e.target.value || null)} />
           </Field>
           <Field label='Guest Relations Email'>
-            <input style={inputStyle} value={draft.guest_relations_email ?? ''} onChange={e => patch('guest_relations_email', e.target.value || null)} />
+            <input style={inputStyle} value={draft.guestRelationsEmail ?? ''} onChange={e => patch('guestRelationsEmail', e.target.value || null)} />
           </Field>
           <Field label='Front Office Email'>
-            <input style={inputStyle} value={draft.front_office_email ?? ''} onChange={e => patch('front_office_email', e.target.value || null)} />
+            <input style={inputStyle} value={draft.frontOfficeEmail ?? ''} onChange={e => patch('frontOfficeEmail', e.target.value || null)} />
           </Field>
         </div>
 
         {/* Image */}
         <Field label='Hero Image Src'>
-          <ImageFieldWithUploader value={draft.hero_image_src} onChange={v => patch('hero_image_src', v)} />
+          <ImageFieldWithUploader value={draft.heroImageSrc} onChange={v => patch('heroImageSrc', v)} />
         </Field>
         <Field label='Hero Image Alt'>
-          <input style={inputStyle} value={draft.hero_image_alt ?? ''} onChange={e => patch('hero_image_alt', e.target.value || null)} />
+          <input style={inputStyle} value={draft.heroImageAlt ?? ''} onChange={e => patch('heroImageAlt', e.target.value || null)} />
         </Field>
         <Field label='Image Credit'>
-          <input style={inputStyle} value={draft.image_credit ?? ''} onChange={e => patch('image_credit', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageCredit ?? ''} onChange={e => patch('imageCredit', e.target.value || null)} />
         </Field>
         <Field label='Image Credit URL'>
-          <input style={inputStyle} value={draft.image_credit_url ?? ''} onChange={e => patch('image_credit_url', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageCreditUrl ?? ''} onChange={e => patch('imageCreditUrl', e.target.value || null)} />
         </Field>
         <Field label='Image License'>
-          <input style={inputStyle} value={draft.image_license ?? ''} onChange={e => patch('image_license', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageLicense ?? ''} onChange={e => patch('imageLicense', e.target.value || null)} />
         </Field>
 
         {/* Admin */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14 }}>
           <Field label='Active'>
-            <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
+            <select style={inputStyle} value={String(draft.isActive)} onChange={e => patch('isActive', e.target.value === 'true')}>
               <option value='true'>Yes</option>
               <option value='false'>No</option>
             </select>
           </Field>
           <Field label='Preferred Partner'>
-            <select style={inputStyle} value={String(draft.is_preferred_partner)} onChange={e => patch('is_preferred_partner', e.target.value === 'true')}>
+            <select style={inputStyle} value={String(draft.isPreferredPartner)} onChange={e => patch('isPreferredPartner', e.target.value === 'true')}>
               <option value='false'>No</option>
               <option value='true'>Yes</option>
             </select>
           </Field>
           <Field label='Supplementary'>
-            <select style={inputStyle} value={String(draft.is_supplementary)} onChange={e => patch('is_supplementary', e.target.value === 'true')}>
+            <select style={inputStyle} value={String(draft.isSupplementary)} onChange={e => patch('isSupplementary', e.target.value === 'true')}>
               <option value='false'>No</option>
               <option value='true'>Yes</option>
             </select>
           </Field>
           <Field label='Sort Order'>
-            <input style={inputStyle} type='number' value={draft.sort_order} onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)} />
+            <input style={inputStyle} type='number' value={draft.sortOrder} onChange={e => patch('sortOrder', parseInt(e.target.value, 10) || 0)} />
           </Field>
         </div>
 
@@ -322,7 +323,7 @@ interface LibraryHotelsTabProps {
 }
 
 interface DestinationFull extends DestinationOption {
-  storage_path: string | null
+  storagePath: string | null
 }
 
 export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProps) {
@@ -349,7 +350,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
       .select('id, slug, name, storage_path')
       .order('name', { ascending: true })
     if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-    setDestinations((data ?? []) as DestinationFull[])
+    setDestinations(camelizeKeys<DestinationFull[]>(data ?? []))
   }
 
   async function load() {
@@ -372,7 +373,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
     const q = search.trim().toLowerCase()
     if (!q) return hotels
     return hotels.filter(h =>
-      matchesQuery(q, h.name, h.short_slug, h.city)
+      matchesQuery(q, h.name, h.shortSlug, h.city)
     )
   }, [hotels, search])
 
@@ -388,7 +389,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
             {scopedDest
               ? `Editing ${scopedDest.name} hotels only.`
-              : 'Canonical pool — edits flow to every surface that reads hotel data.'}
+              : 'Canonical pool - edits flow to every surface that reads hotel data.'}
           </div>
           {scopedDest && (
             <a
@@ -431,7 +432,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {filtered.map(h => {
-            const dest  = destinationsById.get(h.global_destination_id)
+            const dest  = destinationsById.get(h.globalDestinationId)
             const recog = recognitionLabel(h)
             return (
               <div
@@ -446,13 +447,13 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
               >
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{h.name}</div>
-                  <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>{h.short_slug}</div>
+                  <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>{h.shortSlug}</div>
                 </div>
                 <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{dest?.name ?? <span style={{ color: A.faint }}>(unknown)</span>}</div>
-                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{h.city ?? <span style={{ color: A.faint }}>—</span>}</div>
+                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{h.city ?? <span style={{ color: A.faint }}>-</span>}</div>
                 <div style={{ fontSize: 11, color: recog ? A.gold : A.faint, fontFamily: A.font, fontWeight: 600 }}>{recog || ''}</div>
-                <div style={{ fontSize: 11, color: h.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
-                  {h.is_active ? 'Active' : 'Hidden'}
+                <div style={{ fontSize: 11, color: h.isActive ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
+                  {h.isActive ? 'Active' : 'Hidden'}
                 </div>
               </div>
             )
@@ -463,7 +464,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
       {editingHotel && (
         <EditHotelModal
           hotel={editingHotel}
-          destinationName={destinationsById.get(editingHotel.global_destination_id)?.name ?? '(unknown)'}
+          destinationName={destinationsById.get(editingHotel.globalDestinationId)?.name ?? '(unknown)'}
           onClose={() => setEditingHotel(null)}
           onSaved={load}
         />

@@ -1,4 +1,4 @@
-// SignatureEnquiryCTA.tsx — enquiry CTA section for signature experience pages
+// SignatureEnquiryCTA.tsx - enquiry CTA section for signature experience pages
 // Owns the bottom call-to-action only.
 // Last updated: S9
 

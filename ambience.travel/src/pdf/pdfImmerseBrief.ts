@@ -1,4 +1,4 @@
-// pdfImmerseBrief.ts — Trip Brief PDF export for ambience.TRAVEL
+// pdfImmerseBrief.ts - Trip Brief PDF export for ambience.TRAVEL
 //
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
@@ -15,20 +15,20 @@
 //
 // Pagination (S53F): every row checks the footer guard before drawing; sections
 //   keep their header with at least one row (no orphan). Estimates removed in
-//   favour of per-row guard checks — simpler and drift-free for a text doc.
+//   favour of per-row guard checks - simpler and drift-free for a text doc.
 //
-// Last updated: S53O — brief scope reduction. Accommodation stripped to
+// Last updated: S53O - brief scope reduction. Accommodation stripped to
 //   index shape (hotel, dates, nights, party composition, room categories +
 //   per-room conf, booked-by). Cancellation policy, invoices, inclusions,
-//   check-in note removed — those live on Programme + Confirmation only.
-// Prior: S53G — spacing + elegance pass. Tighter date column (LABEL_W 38),
+//   check-in note removed - those live on Programme + Confirmation only.
+// Prior: S53G - spacing + elegance pass. Tighter date column (LABEL_W 38),
 //   more air above section headers, wider eyebrow tracking, larger inter-section
 //   gaps (10pt), improved inter-row gaps (10pt), passenger lines rendered in
 //   card-bg pill rows for hierarchy. Hero metadata looser steps.
-// Prior: S53F — Airport Meet & Greet + Dining sections (with cancellation
+// Prior: S53F - Airport Meet & Greet + Dining sections (with cancellation
 //   indicator + clickable maps address), aligned to web Brief + Confirmation.
-// Prior: S50 — booked_by added to Accommodation, Flights, Transfers.
-// Prior: S49 — initial ship.
+// Prior: S50 - booked_by added to Accommodation, Flights, Transfers.
+// Prior: S49 - initial ship.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, serif, sans, drawRule } from './pdfUtils'
@@ -128,7 +128,7 @@ interface DataRowOpts {
   bookedByRaw?: string | null
   cancelled?:  boolean
   cancelNote?: string | null
-  subIsLink?:  string | null   // maps_url — renders sub as gold clickable link
+  subIsLink?:  string | null   // maps_url - renders sub as gold clickable link
 }
 
 function drawDataRow(doc: any, o: DataRowOpts, y: number): number {
@@ -196,15 +196,15 @@ function drawDataRow(doc: any, o: DataRowOpts, y: number): number {
 async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null, logo: Img | null, branding: ExportBranding = 'ambience') {
   const { trip, brief, house } = d
 
-  const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
-  const preparedFor = d.guestDisplayName ?? brief?.prepared_for ?? null
+  const title       = brief?.briefTitle ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
+  const preparedFor = d.guestDisplayName ?? brief?.preparedFor ?? null
 
   let y = await drawPdfHero(doc, {
     title,
     docType:       'Engagement Brief',
-    subtitle:      brief?.brief_subtitle ?? null,
+    subtitle:      brief?.briefSubtitle ?? null,
     preparedFor,
-    dateRange:     buildDateRange(trip.start_date, trip.end_date),
+    dateRange:     buildDateRange(trip.startDate, trip.endDate),
     heroImageData: d.heroImageData,
     emblem,
     logo,
@@ -217,11 +217,11 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
   y = drawSectionHeader(doc, 'Overview', y)
 
   const overviewRows: { label: string; value: string }[] = []
-  overviewRows.push({ label: 'Guest', value: house?.display_name ?? trip.destinations[0]?.name ?? '' })
-  overviewRows.push({ label: 'Trip',  value: brief?.brief_title ?? trip.destinations[0]?.name ?? '' })
-  if (trip.start_date)      overviewRows.push({ label: 'Departure',    value: fmtDate(trip.start_date) })
-  if (trip.end_date)        overviewRows.push({ label: 'Return',       value: fmtDate(trip.end_date) })
-  if (trip.duration_nights) overviewRows.push({ label: 'Duration',     value: `${trip.duration_nights} nights` })
+  overviewRows.push({ label: 'Guest', value: house?.displayName ?? trip.destinations[0]?.name ?? '' })
+  overviewRows.push({ label: 'Trip',  value: brief?.briefTitle ?? trip.destinations[0]?.name ?? '' })
+  if (trip.startDate)      overviewRows.push({ label: 'Departure',    value: fmtDate(trip.startDate) })
+  if (trip.endDate)        overviewRows.push({ label: 'Return',       value: fmtDate(trip.endDate) })
+  if (trip.durationNights) overviewRows.push({ label: 'Duration',     value: `${trip.durationNights} nights` })
   if (trip.destinations.length > 0) {
     overviewRows.push({ label: 'Destinations', value: trip.destinations.map((dest: any) => dest.name).join(', ') })
   }
@@ -235,7 +235,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
   // ── Accommodation ─────────────────────────────────────────────────────────
 
-  const hotels = trip.bookings.filter((b: EngagementBooking) => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
+  const hotels = trip.bookings.filter((b: EngagementBooking) => (b._rooms?.length ?? 0) > 0 && b.briefShow !== false)
   if (hotels.length > 0) {
     y = drawSectionHeader(doc, 'Accommodation', y)
     for (const h of hotels) {
@@ -243,10 +243,10 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
       const rooms    = h._rooms ?? []
       // Category + count + per-room conf. Names omitted (Confirmation owns names).
       const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, r: any) => {
-        const nm = r.room_name ?? 'Room'
+        const nm = r.roomName ?? 'Room'
         if (!acc[nm]) acc[nm] = { count: 0, confs: [] }
         acc[nm].count += 1
-        if (r.confirmation_number) acc[nm].confs.push(r.confirmation_number)
+        if (r.confirmationNumber) acc[nm].confs.push(r.confirmationNumber)
         return acc
       }, {})
       const catLines = Object.entries(catGroups).map(([nm, g]) => {
@@ -255,14 +255,14 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
       })
       const subParts = [
         h.nights ? `${h.nights} nights` : null,
-        h.party_composition ?? null,
+        h.partyComposition ?? null,
       ].filter(Boolean)
       y += drawDataRow(doc, {
-        date:        buildDateRange(h.check_in_date ?? h.start_date, h.end_date) || '\u2014',
+        date:        buildDateRange(h.checkInDate ?? h.startDate, h.endDate) || '-',
         name:        h._hotel_name ?? h.name ?? 'Hotel',
         sub:         subParts.join('  \u00b7  ') || null,
-        bookedBy:    bookedByLabel(h.booked_by),
-        bookedByRaw: h.booked_by,
+        bookedBy:    bookedByLabel(h.bookedBy),
+        bookedByRaw: h.bookedBy,
       }, y)
       for (const line of catLines) {
         y = checkOverflow(doc, y, 6)
@@ -277,20 +277,20 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
   // ── Flights ───────────────────────────────────────────────────────────────
 
-  const flights = d.elements.filter(a => isFlightElement(a.element_type))
+  const flights = d.elements.filter(a => isFlightElement(a.elementType))
   if (flights.length > 0) {
     y = drawSectionHeader(doc, 'Flights', y)
     for (const f of flights) {
       y = checkOverflow(doc, y, 18)
-      const route    = [f.depart_airport ?? f.origin, f.arrive_airport ?? f.destination].filter(Boolean).join('  \u2192  ')
-      const meta     = [route, f.cabin_class, f.aircraft_type].filter(Boolean).join('   \u00b7   ') || null
+      const route    = [f.departAirport ?? f.origin, f.arriveAirport ?? f.destination].filter(Boolean).join('  \u2192  ')
+      const meta     = [route, f.cabinClass, f.aircraftType].filter(Boolean).join('   \u00b7   ') || null
       const paxLines = passengerLines(f)
       y += drawDataRow(doc, {
-        date:        f.start_date ? fmtDate(f.start_date) : '\u2014',
+        date:        f.startDate ? fmtDate(f.startDate) : '-',
         name:        f.name ?? 'Flight',
         sub:         meta,
-        bookedBy:    bookedByLabel(f.booked_by),
-        bookedByRaw: f.booked_by,
+        bookedBy:    bookedByLabel(f.bookedBy),
+        bookedByRaw: f.bookedBy,
       }, y)
       // S53G: passenger lines rendered in card-bg pill rows for visual hierarchy
       for (const line of paxLines) {
@@ -308,17 +308,17 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
   // ── Transfers ─────────────────────────────────────────────────────────────
 
-  const transfers = d.elements.filter(a => isTransferElement(a.element_type))
+  const transfers = d.elements.filter(a => isTransferElement(a.elementType))
   if (transfers.length > 0) {
     y = drawSectionHeader(doc, 'Transfers', y)
     for (const t of transfers) {
       y = checkOverflow(doc, y, 18)
       y += drawDataRow(doc, {
-        date:        t.start_date ? fmtDate(t.start_date) : '\u2014',
+        date:        t.startDate ? fmtDate(t.startDate) : '-',
         name:        t.name ?? 'Transfer',
         sub:         [t.origin, t.destination].filter(Boolean).join('  \u2192  ') || null,
-        bookedBy:    bookedByLabel(t.booked_by),
-        bookedByRaw: t.booked_by,
+        bookedBy:    bookedByLabel(t.bookedBy),
+        bookedByRaw: t.bookedBy,
       }, y)
       // Driver/vehicle lines in card-bg pill rows (matches flight passenger style).
       const driverLines = driverDetailLines(t)
@@ -337,21 +337,21 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
   // ── Airport Meet & Greet ────────────────────────────────────────────────────
 
-  const greeters = d.elements.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
+  const greeters = d.elements.filter(a => isMeetGreetElement(a.elementType) && a.briefShow !== false)
   if (greeters.length > 0) {
     y = drawSectionHeader(doc, 'Airport Meet & Greet', y)
     for (const g of greeters) {
       y = checkOverflow(doc, y, 18)
       const sub = [
-        g.start_time ? fmtTime(g.start_time) : null,
-        ...greeterLines({ contact_name: g.contact_name, contact_phone: g.contact_phone, notes: g.notes }),
+        g.startTime ? fmtTime(g.startTime) : null,
+        ...greeterLines({ contactName: g.contactName, contactPhone: g.contactPhone, notes: g.notes }),
       ].filter(Boolean).join('  \u00b7  ')
       y += drawDataRow(doc, {
-        date:        g.start_date ? fmtDate(g.start_date) : '\u2014',
+        date:        g.startDate ? fmtDate(g.startDate) : '-',
         name:        g.name ?? 'Airport Meet & Greet',
         sub:         sub || null,
-        bookedBy:    bookedByLabel(g.booked_by),
-        bookedByRaw: g.booked_by,
+        bookedBy:    bookedByLabel(g.bookedBy),
+        bookedByRaw: g.bookedBy,
       }, y)
     }
     y += 10
@@ -359,27 +359,27 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
   // ── Dining ──────────────────────────────────────────────────────────────────
 
-  const dining = d.elements.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
+  const dining = d.elements.filter(a => isDiningElement(a.elementType) && a.briefShow !== false)
   if (dining.length > 0) {
     y = drawSectionHeader(doc, 'Dining', y)
     for (const dd of dining) {
       y = checkOverflow(doc, y, 20)
-      const cancelled = isDiningCancelled({ show_cancellation: dd.show_cancellation, dining_status: dd.dining_status })
+      const cancelled = isDiningCancelled({ showCancellation: dd.showCancellation, diningStatus: dd.diningStatus })
       const v = dd.venue
       const sub = [
-        dd.start_time ? fmtTime(dd.start_time) : null,
-        dd.guest_name ?? null,
-        dd.guest_count ? `${dd.guest_count} guests` : null,
+        dd.startTime ? fmtTime(dd.startTime) : null,
+        dd.guestName ?? null,
+        dd.guestCount ? `${dd.guestCount} guests` : null,
       ].filter(Boolean).join('  \u00b7  ')
       y += drawDataRow(doc, {
-        date:        dd.start_date ? fmtDate(dd.start_date) : '\u2014',
+        date:        dd.startDate ? fmtDate(dd.startDate) : '-',
         name:        dd.name ?? 'Dining',
         sub:         v?.address ?? (sub || null),
-        subIsLink:   v?.address ? (v?.maps_url ?? null) : null,
-        bookedBy:    bookedByLabel(dd.booked_by),
-        bookedByRaw: dd.booked_by,
+        subIsLink:   v?.address ? (v?.mapsUrl ?? null) : null,
+        bookedBy:    bookedByLabel(dd.bookedBy),
+        bookedByRaw: dd.bookedBy,
         cancelled,
-        cancelNote:  dd.cancellation_penalty_applied ? dd.cancellation_note : null,
+        cancelNote:  dd.cancellationPenaltyApplied ? dd.cancellationNote : null,
       }, y)
       // Time/guest line beneath address (when address occupied the sub slot)
       if (v?.address && sub) {
@@ -399,7 +399,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
     for (const xp of experiences) {
       y = checkOverflow(doc, y, 20)
       y += drawDataRow(doc, {
-        date:        xp.entry_date ? fmtDate(xp.entry_date) : '\u2014',
+        date:        xp.entry_date ? fmtDate(xp.entry_date) : '-',
         name:        xp.title,
         sub:         xp.notes ?? null,
         subIsLink:   null,
@@ -414,7 +414,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
   // ── Important Notes ───────────────────────────────────────────────────────
 
-  const notes = brief?.important_notes as string[] | null | undefined
+  const notes = brief?.importantNotes as string[] | null | undefined
   if (notes && notes.length > 0) {
     y = drawSectionHeader(doc, 'Important Notes', y)
     for (const note of notes) {
@@ -457,9 +457,9 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
 
 function buildFilename(d: EngagementBriefPdfData): string {
   const safe        = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const clientName  = d.guestDisplayName ?? d.brief?.prepared_for ?? d.trip.destinations[0]?.name ?? ''
+  const clientName  = d.guestDisplayName ?? d.brief?.preparedFor ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
-  const dateRange   = buildDateRange(d.trip.start_date, d.trip.end_date)
+  const dateRange   = buildDateRange(d.trip.startDate, d.trip.endDate)
   return ['Engagement Brief', safe(clientName), safe(destination), dateRange].filter(Boolean).join(' - ') + '.pdf'
 }
 

@@ -1,9 +1,9 @@
 /* VideoIntroSection.tsx
- * Full-viewport video section — sits between EditorialSection and JourneyMomentsSection.
+ * Full-viewport video section - sits between EditorialSection and JourneyMomentsSection.
  * - autoPlay + muted + playsInline as React props (iOS Safari triad)
- * - Lazy loads via IntersectionObserver — video element only mounts when near viewport
+ * - Lazy loads via IntersectionObserver - video element only mounts when near viewport
  * - Poster/skeleton shown until video is ready
- * - Loop — plays continuously while in view
+ * - Loop - plays continuously while in view
  * - Pause/play toggle bottom-right
  */
 
@@ -19,7 +19,7 @@ export default function VideoIntroSection() {
   const [playing, setPlaying] = useState(true)
   const [visible, setVisible] = useState(false)
 
-  // Lazy load — mount video element only when section is close to viewport
+  // Lazy load - mount video element only when section is close to viewport
   useEffect(() => {
     const el = sectionRef.current
     if (!el) return
@@ -31,7 +31,7 @@ export default function VideoIntroSection() {
     return () => obs.disconnect()
   }, [])
 
-  // Track loaded state — autoPlay handles the actual play call on iOS
+  // Track loaded state - autoPlay handles the actual play call on iOS
   useEffect(() => {
     const vid = videoRef.current
     if (!vid || !visible) return
@@ -76,7 +76,7 @@ export default function VideoIntroSection() {
         flexShrink: 0,
       }}
     >
-      {/* Skeleton shimmer — behind poster while it loads */}
+      {/* Skeleton shimmer - behind poster while it loads */}
       {!loaded && (
         <div
           style={{
@@ -90,7 +90,7 @@ export default function VideoIntroSection() {
         />
       )}
 
-      {/* Poster — crossfades out once video is ready */}
+      {/* Poster - crossfades out once video is ready */}
       <div
         style={{
           position:           'absolute',
@@ -104,7 +104,7 @@ export default function VideoIntroSection() {
         }}
       />
 
-      {/* Video — autoPlay + muted + playsInline is the iOS Safari triad */}
+      {/* Video - autoPlay + muted + playsInline is the iOS Safari triad */}
       {visible && (
         <video
           ref={videoRef}
@@ -128,7 +128,7 @@ export default function VideoIntroSection() {
         />
       )}
 
-      {/* Pause / play — bottom right */}
+      {/* Pause / play - bottom right */}
       <button
         onClick={togglePlay}
         title={playing ? 'Pause' : 'Play'}

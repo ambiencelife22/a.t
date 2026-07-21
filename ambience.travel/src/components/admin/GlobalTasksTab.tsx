@@ -1,17 +1,17 @@
-// GlobalTasksTab.tsx — Fleet-wide to-do inbox.
+// GlobalTasksTab.tsx - Fleet-wide to-do inbox.
 // Reads travel-tasks `all_open` (open, overdue-first) and `all_closed` (done/
-// dismissed, most-recent-first) — engagement title + url_id joined on both.
+// dismissed, most-recent-first) - engagement title + url_id joined on both.
 // A single Open / Closed toggle: open and closed are two states of the same
 // object, one surface. Open is triage-grouped (Overdue / This week / Later /
-// No date via EF-derived is_overdue / is_notifying — never re-derived here);
+// No date via EF-derived is_overdue / is_notifying - never re-derived here);
 // Closed is a recency-flat log with a status pill per row, each reopenable.
 // Resolve inline (complete / dismiss); reopen from the closed log (reopen).
 //
 // Styling mirrors TasksSection (status colours + tints from tokensAdmin, row
-// shape) so the two task surfaces read as one family — the engagement-scoped
+// shape) so the two task surfaces read as one family - the engagement-scoped
 // list and this fleet-wide inbox are the same object at two scopes.
 //
-// S53K — initial ship (Calendar + Tasks arc, Stage B2 + closed log).
+// S53K - initial ship (Calendar + Tasks arc, Stage B2 + closed log).
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -46,7 +46,7 @@ const STATUS_TINT:  Record<TaskStatus, string> = { open: A.statusOpenTint, done:
 
 // Triage buckets, in operational order. Each bucket is a true operational state
 // (already overdue / needs attention this week / scheduled later / undated), not a
-// cosmetic grouping — this is the order the work gets triaged in.
+// cosmetic grouping - this is the order the work gets triaged in.
 type Bucket = 'overdue' | 'week' | 'later' | 'nodate'
 const BUCKET_LABEL: Record<Bucket, string> = {
   overdue: 'Overdue',
@@ -121,7 +121,7 @@ export default function GlobalTasksTab() {
     try {
       await invokeTasks<{ task: Task }>({ mode: next === 'done' ? 'complete' : 'dismiss', id: task.id })
       setOpen(prev => prev.filter(t => t.id !== task.id))
-      setClosed(null)  // invalidate — refetch on next Closed view
+      setClosed(null)  // invalidate - refetch on next Closed view
       success(`Marked ${STATUS_LABEL[next].toLowerCase()}`)
     } catch (e) {
       error(e instanceof Error ? e.message : 'Could not update the task.')
@@ -195,7 +195,7 @@ function ToggleBtn({ label, count, active, onClick }: { label: string; count: nu
   )
 }
 
-// ── Open view — triage buckets ────────────────────────────────────────────────
+// ── Open view - triage buckets ────────────────────────────────────────────────
 
 function OpenView({ tasks, saving, onResolve }: {
   tasks: Task[]
@@ -241,7 +241,7 @@ function OpenView({ tasks, saving, onResolve }: {
   )
 }
 
-// ── Closed view — recency-flat log ────────────────────────────────────────────
+// ── Closed view - recency-flat log ────────────────────────────────────────────
 
 function ClosedView({ tasks, saving, onReopen }: {
   tasks: Task[]

@@ -1,36 +1,37 @@
 // queriesAdminJourney.ts
-// Trip Dossier query layer — reads travel_bookings, travel_journey,
+// Trip Dossier query layer - reads travel_bookings, travel_journey,
 // travel_partners, travel_accom_hotels for the HouseTab Trip Dossier surface.
 // Also owns travel_journey_briefs + travel_booking_rooms + travel_journey_days CRUD.
 //
 // All column names verified against information_schema S44/S45/S46 pre-flight.
 //
-// Join path (S45 fix): travel_bookings.house_id -> a_houses (direct FK).
+// Join path (S45 fix): travel_bookings.houseId -> a_houses (direct FK).
 //
-// S52 — All read and write paths routed through Edge Functions.
+// S52 - All read and write paths routed through Edge Functions.
 //   travel-read-journey-admin: all 7 read paths.
 //   travel-write-journey: journey mutation paths (public_view retired to travel-write-engagement/set_visibility, S53P).
 //   No direct supabase table reads or writes remain in this file.
-//   supabase (session client) used for all EF calls — JWT attached automatically.
+//   supabase (session client) used for all EF calls - JWT attached automatically.
 //
-// Last updated: S53P — set_public_view retired: setEngagementPublicView now routes to
+// Last updated: S53P - set_public_view retired: setEngagementPublicView now routes to
 //   travel-write-engagement/set_visibility (duplicate write eliminated).
 //   File pending rename to queriesAdminJourney (Step 2, engagement/journey split).
 // 
-// Prior: S50 — EngagementBrief gains show_advisor_email. Mirrors migration
+// Prior: S50 - EngagementBrief gains show_advisor_email. Mirrors migration
 //   s50_add_show_advisor_email. Gates advisor_email visibility on public
 //   Contacts tab, alongside the existing show_advisor_phone toggle.
-// Prior: S48 — EngagementBrief gains 5 new columns: programme_show_images,
+// Prior: S48 - EngagementBrief gains 5 new columns: programme_show_images,
 //   welcome_letter, show_tab_confirmation, show_tab_programme, show_tab_brief,
 //   show_tab_contacts. Mirrors migration s48_trip_page_controls.
-// Prior: S48 — url_id added to DossierJourney. Engagement join in fetchJourneyDossierForHouse.
-// Prior: S48 — booked_by text added to AdminEngagementElement. AdminEngagementElementPatch added.
-// Prior: S47 — booked_by_label text added to BookingRoom (migration S47).
-// Prior: S46 — _hotel_image_src added to EngagementBooking.
-// Prior: S45 — BookingRoom type; rooms fetch; room CRUD.
-// Prior: S44 — initial ship.
+// Prior: S48 - url_id added to DossierJourney. Engagement join in fetchJourneyDossierForHouse.
+// Prior: S48 - booked_by text added to AdminEngagementElement. AdminEngagementElementPatch added.
+// Prior: S47 - booked_by_label text added to BookingRoom (migration S47).
+// Prior: S46 - _hotel_image_src added to EngagementBooking.
+// Prior: S45 - BookingRoom type; rooms fetch; room CRUD.
+// Prior: S44 - initial ship.
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 import { computeEngagementStage, type EngagementStage, type EngagementStatusSlug, type BookingInvoice } from '../types/typesImmerse'
 import type { ElementBase, ElementPassenger } from '../types/typesElements'
 export type { ElementPassenger } from '../types/typesElements'
@@ -41,28 +42,28 @@ export type EngagementPartner = {
   id:                string
   name:              string
   partner_type:      string
-  default_share_pct: number | null
+  defaultSharePct: number | null
   currency:          string | null
-  is_active:         boolean
+  isActive:         boolean
 }
 
 export type HouseProfile = {
   id:                 string
-  display_name:       string
-  salutation_rule:    string | null
-  travel_style_notes: string | null
-  avoid_notes:        string | null
-  service_notes:      string | null
+  displayName:       string
+  salutationRule:    string | null
+  travelStyleNotes: string | null
+  avoidNotes:        string | null
+  serviceNotes:      string | null
 }
 
 export type EngagementDestination = {
   id:             string
-  destination_id: string
-  sort_order:     number
+  destinationId: string
+  sortOrder:     number
   slug:           string
   name:           string
-  storage_path:   string | null
-  hero_image_src: string | null
+  storagePath:   string | null
+  heroImageSrc: string | null
 }
 
 export type JourneyStep = {
@@ -73,193 +74,193 @@ export type JourneyStep = {
 
 export type EngagementBrief = {
   id:                    string
-  journey_id:               string
-  house_id:              string | null
-  brief_title:           string | null
-  brief_subtitle:        string | null
-  prepared_for:          string | null
-  hero_image_src:        string | null
-  hero_image_alt:        string | null
-  snapshot_destination:  string | null
-  snapshot_dates:        string | null
-  snapshot_guests:       string | null
-  snapshot_status:       string | null
-  journey_steps:         JourneyStep[]
-  advisor_name:          string | null
-  advisor_email:         string | null
-  advisor_phone:         string | null
-  hotel_contact_note:    string | null
-  important_notes:       string[]
-  footer_tagline:        string | null
-  logo_variant:          string | null
-  programme_show_images: boolean
-  welcome_letter:        string | null
-  show_tab_confirmation: boolean
-  show_tab_programme:    boolean
-  show_tab_brief:        boolean
-  show_tab_contacts:     boolean
-  show_tab_welcome:      boolean
-  show_advisor_phone:    boolean
-  show_advisor_email:    boolean
+  journeyId:               string
+  houseId:              string | null
+  briefTitle:           string | null
+  briefSubtitle:        string | null
+  preparedFor:          string | null
+  heroImageSrc:        string | null
+  heroImageAlt:        string | null
+  snapshotDestination:  string | null
+  snapshotDates:        string | null
+  snapshotGuests:       string | null
+  snapshotStatus:       string | null
+  journeySteps:         JourneyStep[]
+  advisorName:          string | null
+  advisorEmail:         string | null
+  advisorPhone:         string | null
+  hotelContactNote:    string | null
+  importantNotes:       string[]
+  footerTagline:        string | null
+  logoVariant:          string | null
+  programmeShowImages: boolean
+  welcomeLetter:        string | null
+  showTabConfirmation: boolean
+  showTabProgramme:    boolean
+  showTabBrief:        boolean
+  showTabContacts:     boolean
+  showTabWelcome:      boolean
+  showAdvisorPhone:    boolean
+  showAdvisorEmail:    boolean
   links:                 { label: string; url: string }[]
-  programme_notes:       string | null
-  created_at:            string
-  updated_at:            string
+  programmeNotes:       string | null
+  createdAt:            string
+  updatedAt:            string
 }
 
 export type JourneyDay = {
   id:         string | null
-  journey_id:    string
-  entry_date: string
+  journeyId:    string
+  entryDate: string
   show:       boolean
-  day_label:  string | null
-  day_note:   string | null
-  sort_order: number
-  created_at: string
-  updated_at: string
+  dayLabel:  string | null
+  dayNote:   string | null
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
 }
 
 export type JourneyDayEntry = {
   id:                  string
-  journey_id:             string
-  entry_date:          string
-  start_time:          string | null
-  end_time:            string | null
+  journeyId:             string
+  entryDate:          string
+  startTime:          string | null
+  endTime:            string | null
   title:               string
   subtitle:            string | null
   category:            string | null
-  booked_by:           string
-  confirmation_number: string | null
-  guest_label:         string | null
+  bookedBy:           string
+  confirmationNumber: string | null
+  guestLabel:         string | null
   notes:               string | null
-  brief_show:          boolean
-  sort_order:          number
-  is_auto_derived:     boolean
-  source_booking_id:   string | null
-  source_aux_id:       string | null
-  created_at:          string
-  updated_at:          string
+  briefShow:          boolean
+  sortOrder:          number
+  isAutoDerived:     boolean
+  sourceBookingId:   string | null
+  sourceAuxId:       string | null
+  createdAt:          string
+  updatedAt:          string
 }
 
-export type JourneyDayPatch      = Partial<Omit<JourneyDay,      'id' | 'journey_id' | 'created_at' | 'updated_at'>>
-export type JourneyDayEntryPatch = Partial<Omit<JourneyDayEntry, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type JourneyDayPatch      = Partial<Omit<JourneyDay,      'id' | 'journeyId' | 'createdAt' | 'updatedAt'>>
+export type JourneyDayEntryPatch = Partial<Omit<JourneyDayEntry, 'id' | 'journeyId' | 'createdAt' | 'updatedAt'>>
 
 export type AdminEngagementElement = ElementBase & {
   booking_type:    string | null                  // admin-only: canonical type slug
-  driver_details?: ElementDriverDetail[]          // admin driver type — includes `company`
+  driverDetails?: ElementDriverDetail[]          // admin driver type - includes `company`
 }
 
-export type AdminEngagementElementPatch = Partial<Omit<AdminEngagementElement, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type AdminEngagementElementPatch = Partial<Omit<AdminEngagementElement, 'id' | 'journeyId' | 'createdAt' | 'updatedAt'>>
 
 export type ElementDriverDetail = {
   id:            string
-  aux_booking_id: string
-  driver_name:   string | null
-  driver_phone:  string | null
-  car_model:     string | null
+  auxBookingId: string
+  driverName:   string | null
+  driverPhone:  string | null
+  carModel:     string | null
   plate:         string | null
   company:       string | null
-  vehicle_role:  string | null
-  sort_order:    number
+  vehicleRole:  string | null
+  sortOrder:    number
 }
-export type ElementDriverDetailPatch = Partial<Omit<ElementDriverDetail, 'id' | 'aux_booking_id'>>
+export type ElementDriverDetailPatch = Partial<Omit<ElementDriverDetail, 'id' | 'auxBookingId'>>
 
-export type EngagementBriefPatch = Partial<Omit<EngagementBrief, 'id' | 'journey_id' | 'created_at' | 'updated_at'>>
+export type EngagementBriefPatch = Partial<Omit<EngagementBrief, 'id' | 'journeyId' | 'createdAt' | 'updatedAt'>>
 
 export type BookingRoom = {
   id:                  string
-  booking_id:          string
-  room_name:           string | null
-  confirmation_number: string | null
-  guest_name:          string | null
-  party_composition:   string | null
+  bookingId:          string
+  roomName:           string | null
+  confirmationNumber: string | null
+  guestName:          string | null
+  partyComposition:   string | null
   notes:               string | null
   nights:              number | null
   rate:                number | null
-  tax_pct:             number | null
+  taxPct:             number | null
   total:               number | null
-  extra_person_fee:    number | null
-  brief_image_src:     string | null
-  additional_guests:   string[] | null
-  person_id:           string | null
-  check_in_time:       string | null
-  bedding_type:        string | null
-  sort_order:          number
-  created_at:          string
-  updated_at:          string
-  resolved_image_src?:         string | null
-  resolved_image_alt?:         string | null
-  resolved_guest_name?:        string | null
-  resolved_additional_guests?: string[] | null
+  extraPersonFee:    number | null
+  briefImageSrc:     string | null
+  additionalGuests:   string[] | null
+  personId:           string | null
+  checkInTime:       string | null
+  beddingType:        string | null
+  sortOrder:          number
+  createdAt:          string
+  updatedAt:          string
+  resolvedImageSrc?:         string | null
+  resolvedImageAlt?:         string | null
+  resolvedGuestName?:        string | null
+  resolvedAdditionalGuests?: string[] | null
 }
 
 export type BookingRoomPatch = Partial<Omit<BookingRoom, 'id' | 'booking_id' | 'created_at' | 'updated_at'>>
 
 export type EngagementBooking = {
   id:                        string
-  journey_id:                   string
-  house_id:                  string | null
-  engagement_id:             string | null
+  journeyId:                   string
+  houseId:                  string | null
+  engagementId:             string | null
   name:                      string | null
   status:                    string | null
-  status_note:               string | null
-  confirmation_number:       string | null
-  start_date:          string | null
-  start_time:          string | null
-  end_date:            string | null
-  check_in_date:       string | null
-  check_in_note:       string | null
-  check_out_note:      string | null
+  statusNote:               string | null
+  confirmationNumber:       string | null
+  startDate:          string | null
+  startTime:          string | null
+  endDate:            string | null
+  checkInDate:       string | null
+  checkInNote:       string | null
+  checkOutNote:      string | null
   nights:              number | null
-  commissionable_rate:       number | null
-  total_rate:                number | null
-  taxes_and_fees:            number | null
+  commissionableRate:       number | null
+  totalRate:                number | null
+  taxesAndFees:            number | null
   currency:                  string | null
-  board_basis:               { display_name: string } | null
-  payment_terms:             { display_name: string } | null
-  pricing_basis:             { display_name: string } | null
-  rate_label:                { display_name: string; client_visible: boolean } | null
+  boardBasis:               { displayName: string } | null
+  paymentTerms:             { displayName: string } | null
+  pricingBasis:             { displayName: string } | null
+  rateLabel:                { displayName: string; clientVisible: boolean } | null
   inclusions:                string | null
-  inclusions_override:       unknown[] | null
+  inclusionsOverride:       unknown[] | null
   price:                     number | null
-  deposit_amount:            number | null
-  deposit_due_date:          string | null
-  deposit_paid_at:           string | null
-  balance_amount:            number | null
-  balance_due_date:          string | null
-  balance_paid_at:           string | null
-  commission_pct:            number | null
-  commission_amount:         number | null
-  net_revenue:               number | null
-  commission_paid_at:        string | null
-  invoice_number:            string | null
-  iata_partner_id:           string | null
-  iata_share_pct:            number | null
-  iata_share_amt:            number | null
-  referral_partner_id:       string | null
-  referral_share_pct:        number | null
-  referral_share_amt:        number | null
-  individual_id:             string | null
-  individual_share_pct:      number | null
-  individual_share_amt:      number | null
-  accom_hotel_id:            string | null
-  supplier_id:               string | null
-  supplier_name_override:    string | null
-  party_composition:         string | null
-  primary_contact_name:      string | null
-  primary_contact_role:      string | null
-  supplier_contact_name:     string | null
-  supplier_contact_whatsapp: string | null
-  brief_category:            string | null
-  brief_show:                boolean
-  brief_image_src:           string | null
-  booked_by:                 string | null
-  cancellation_policy:       string | null
-  booking_policy:            string | null
+  depositAmount:            number | null
+  depositDueDate:          string | null
+  depositPaidAt:           string | null
+  balanceAmount:            number | null
+  balanceDueDate:          string | null
+  balancePaidAt:           string | null
+  commissionPct:            number | null
+  commissionAmount:         number | null
+  netRevenue:               number | null
+  commissionPaidAt:        string | null
+  invoiceNumber:            string | null
+  iataPartnerId:           string | null
+  iataSharePct:            number | null
+  iataShareAmt:            number | null
+  referralPartnerId:       string | null
+  referralSharePct:        number | null
+  referralShareAmt:        number | null
+  individualId:             string | null
+  individualSharePct:      number | null
+  individualShareAmt:      number | null
+  accomHotelId:            string | null
+  supplierId:               string | null
+  supplierNameOverride:    string | null
+  partyComposition:         string | null
+  primaryContactName:      string | null
+  primaryContactRole:      string | null
+  supplierContactName:     string | null
+  supplierContactWhatsapp: string | null
+  briefCategory:            string | null
+  briefShow:                boolean
+  briefImageSrc:           string | null
+  bookedBy:                 string | null
+  cancellationPolicy:       string | null
+  bookingPolicy:            string | null
   notes:                     string | null
-  sort_order:                number | null
-  created_at:                string | null
-  updated_at:                string | null
+  sortOrder:                number | null
+  createdAt:                string | null
+  updatedAt:                string | null
   // Client-resolved
   _hotel_name:      string | null
   _hotel_image_src: string | null
@@ -269,18 +270,18 @@ export type EngagementBooking = {
 
 export type DossierJourney = {
   id:                   string
-  journey_code:            string
+  journeyCode:            string
   stage:                EngagementStage | null   // S53G+ derived from winning engagement
-  start_date:           string | null
-  end_date:             string | null
-  duration_nights:      number | null
-  trip_type:            string | null
+  startDate:           string | null
+  endDate:             string | null
+  durationNights:      number | null
+  tripType:            string | null
   destinations:         EngagementDestination[]
-  guest_count_adults:   number | null
-  guest_count_children: number | null
+  guestCountAdults:   number | null
+  guestCountChildren: number | null
   bookings:             EngagementBooking[]
   brief:                EngagementBrief | null
-  url_id:               string | null
+  urlId:               string | null
 }
 
 export type EngagementDossierData = {
@@ -291,22 +292,22 @@ export type EngagementDossierData = {
 
 // ── EF response row types (raw DB shapes returned by the EF) ─────────────────
 
-type TripRow     = { id: string; journey_code: string; derived_status_slug: EngagementStatusSlug | null; start_date: string | null; end_date: string | null; duration_nights: number | null; trip_type: string | null; guest_count_adults: number | null; guest_count_children: number | null }
+type TripRow     = { id: string; journeyCode: string; derivedStatusSlug: EngagementStatusSlug | null; startDate: string | null; endDate: string | null; durationNights: number | null; tripType: string | null; guestCountAdults: number | null; guestCountChildren: number | null }
 type BookingRow  = Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms' | '_invoices'>
-type HotelEntry  = { name: string; hero_image_src: string | null }
+type HotelEntry  = { name: string; heroImageSrc: string | null }
 type BriefRow    = EngagementBrief
 type RoomRow     = BookingRoom
-type TripDestRow = { id: string; journey_id: string; destination_id: string; sort_order: number; global_destinations: { slug: string; name: string; storage_path: string | null; hero_image_src: string | null } | { slug: string; name: string; storage_path: string | null; hero_image_src: string | null }[] }
-type EngRow      = { journey_id: string; url_id: string }
+type TripDestRow = { id: string; journeyId: string; destinationId: string; sortOrder: number; globalDestinations: { slug: string; name: string; storagePath: string | null; heroImageSrc: string | null } | { slug: string; name: string; storagePath: string | null; heroImageSrc: string | null }[] }
+type EngRow      = { journeyId: string; urlId: string }
 
 // ── EF invoke helpers ─────────────────────────────────────────────────────────
 // supabase (session client) attaches the JWT automatically on every call.
-// Never use supabaseAnon here — these are admin-only operations.
+// Never use supabaseAnon here - these are admin-only operations.
 
 async function invokeReadJourney<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body })
   if (error) throw new Error(`travel-read-journey-admin [${body.mode}]: ${error.message}`)
-  return data as T
+  return camelizeKeys<T>(data)
 }
 
 async function invokeWriteJourney<T>(body: Record<string, unknown>): Promise<T> {
@@ -328,7 +329,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
     rooms:       RoomRow[]
     dests:       TripDestRow[]
     engagements: EngRow[]
-  }>({ mode: 'dossier', house_id: houseId })
+  }>({ mode: 'dossier', houseId: houseId })
 
   const { tripRows, bookingRows, hotelMap, partners, house, briefs, rooms, dests, engagements } = raw
 
@@ -338,39 +339,39 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
   for (const p of partners) partnerMap[p.id] = p
 
   const briefMap = new Map<string, EngagementBrief>()
-  for (const br of briefs) briefMap.set(br.journey_id, br)
+  for (const br of briefs) briefMap.set(br.journeyId, br)
 
   const roomsByBooking = new Map<string, BookingRoom[]>()
   for (const r of rooms) {
-    if (!roomsByBooking.has(r.booking_id)) roomsByBooking.set(r.booking_id, [])
-    roomsByBooking.get(r.booking_id)!.push(r)
+    if (!roomsByBooking.has(r.bookingId)) roomsByBooking.set(r.bookingId, [])
+    roomsByBooking.get(r.bookingId)!.push(r)
   }
 
   const destsByTrip = new Map<string, EngagementDestination[]>()
   for (const row of dests) {
-    if (!destsByTrip.has(row.journey_id)) destsByTrip.set(row.journey_id, [])
-    const gdRaw = row.global_destinations
+    if (!destsByTrip.has(row.journeyId)) destsByTrip.set(row.journeyId, [])
+    const gdRaw = row.globalDestinations
     const gd = Array.isArray(gdRaw) ? gdRaw[0] : gdRaw
     if (!gd) continue
-    destsByTrip.get(row.journey_id)!.push({
+    destsByTrip.get(row.journeyId)!.push({
       id:             row.id,
-      destination_id: row.destination_id,
-      sort_order:     row.sort_order,
+      destinationId: row.destinationId,
+      sortOrder:     row.sortOrder,
       slug:           gd.slug,
       name:           gd.name,
-      storage_path:   gd.storage_path,
-      hero_image_src: gd.hero_image_src,
+      storagePath:   gd.storagePath,
+      heroImageSrc: gd.heroImageSrc,
     })
   }
 
   const bookingsByTrip = new Map<string, EngagementBooking[]>()
   for (const b of bookingRows) {
-    if (!bookingsByTrip.has(b.journey_id)) bookingsByTrip.set(b.journey_id, [])
-    const hotel = b.accom_hotel_id ? (hotelMap[b.accom_hotel_id] ?? null) : null
-    bookingsByTrip.get(b.journey_id)!.push({
+    if (!bookingsByTrip.has(b.journeyId)) bookingsByTrip.set(b.journeyId, [])
+    const hotel = b.accomHotelId ? (hotelMap[b.accomHotelId] ?? null) : null
+    bookingsByTrip.get(b.journeyId)!.push({
       ...b,
       _hotel_name:      hotel?.name ?? null,
-      _hotel_image_src: hotel?.hero_image_src ?? null,
+      _hotel_image_src: hotel?.heroImageSrc ?? null,
       _rooms:           roomsByBooking.get(b.id) ?? [],
       _invoices:        [],
     })
@@ -378,25 +379,25 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
 
   const urlIdByTrip = new Map<string, string>()
   for (const row of engagements) {
-    if (!urlIdByTrip.has(row.journey_id)) urlIdByTrip.set(row.journey_id, row.url_id)
+    if (!urlIdByTrip.has(row.journeyId)) urlIdByTrip.set(row.journeyId, row.urlId)
   }
 
   const journeys: DossierJourney[] = tripRows.map(t => ({
     id:                   t.id,
-    journey_code:            t.journey_code,
-    stage:                t.derived_status_slug
-                            ? computeEngagementStage({ statusSlug: t.derived_status_slug })
+    journeyCode:            t.journeyCode,
+    stage:                t.derivedStatusSlug
+                            ? computeEngagementStage({ statusSlug: t.derivedStatusSlug })
                             : null,
-    start_date:           t.start_date,
-    end_date:             t.end_date,
-    duration_nights:      t.duration_nights,
-    trip_type:            t.trip_type,
+    startDate:           t.startDate,
+    endDate:             t.endDate,
+    durationNights:      t.durationNights,
+    tripType:            t.tripType,
     destinations:         destsByTrip.get(t.id) ?? [],
-    guest_count_adults:   t.guest_count_adults,
-    guest_count_children: t.guest_count_children,
+    guestCountAdults:   t.guestCountAdults,
+    guestCountChildren: t.guestCountChildren,
     bookings:             bookingsByTrip.get(t.id) ?? [],
     brief:                briefMap.get(t.id) ?? null,
-    url_id:               urlIdByTrip.get(t.id) ?? null,
+    urlId:               urlIdByTrip.get(t.id) ?? null,
   }))
 
   return { engagements: journeys, partners: partnerMap, house }
@@ -406,7 +407,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
 
 export async function fetchJourneyBrief(journeyId: string): Promise<EngagementBrief | null> {
   const { brief } = await invokeReadJourney<{ brief: EngagementBrief | null }>({
-    mode: 'brief', journey_id: journeyId,
+    mode: 'brief', journeyId: journeyId,
   })
   return brief
 }
@@ -415,7 +416,7 @@ export async function fetchJourneyBrief(journeyId: string): Promise<EngagementBr
 
 export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[]> {
   const { rooms } = await invokeReadJourney<{ rooms: BookingRoom[] }>({
-    mode: 'rooms', booking_id: bookingId,
+    mode: 'rooms', bookingId: bookingId,
   })
   return rooms
 }
@@ -424,7 +425,7 @@ export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[
 
 export async function fetchJourneyDays(journeyId: string): Promise<JourneyDay[]> {
   const { days } = await invokeReadJourney<{ days: JourneyDay[] }>({
-    mode: 'days', journey_id: journeyId,
+    mode: 'days', journeyId: journeyId,
   })
   return days
 }
@@ -433,7 +434,7 @@ export async function fetchJourneyDays(journeyId: string): Promise<JourneyDay[]>
 
 export async function fetchJourneyDayEntries(journeyId: string): Promise<JourneyDayEntry[]> {
   const { dayEntries } = await invokeReadJourney<{ dayEntries: JourneyDayEntry[] }>({
-    mode: 'day_entries', journey_id: journeyId,
+    mode: 'day_entries', journeyId: journeyId,
   })
   return dayEntries
 }
@@ -442,7 +443,7 @@ export async function fetchJourneyDayEntries(journeyId: string): Promise<Journey
 
 export async function fetchAdminEngagementElements(journeyId: string): Promise<AdminEngagementElement[]> {
   const { elements } = await invokeReadJourney<{ elements: AdminEngagementElement[] }>({
-    mode: 'aux_bookings', journey_id: journeyId,
+    mode: 'aux_bookings', journeyId: journeyId,
   })
   return elements
 }
@@ -456,26 +457,33 @@ export async function fetchEngagementPublicView(journeyId: string): Promise<bool
   return publicView
 }
 
+export async function resolveHouseIdForJourney(journeyId: string): Promise<string | null> {
+  const { houseId } = await invokeReadJourney<{ houseId: string | null }>({
+    mode: 'house_id_for_journey', journey_id: journeyId,
+  })
+  return houseId ?? null
+}
+
 // ── Brief write ───────────────────────────────────────────────────────────────
 
 export async function upsertEngagementBrief(journeyId: string, houseId: string, patch: EngagementBriefPatch): Promise<EngagementBrief> {
   const { brief } = await invokeWriteJourney<{ brief: EngagementBrief }>({
-    mode: 'upsert_brief', journey_id: journeyId, house_id: houseId, patch,
+    mode: 'upsert_brief', journeyId: journeyId, houseId: houseId, patch,
   })
   return brief
 }
 
 export async function updateBookingBriefFields(
   bookingId: string,
-  patch: { brief_category?: string | null; brief_show?: boolean; brief_image_src?: string | null; booked_by?: string | null },
+  patch: { briefCategory?: string | null; briefShow?: boolean; briefImageSrc?: string | null; bookedBy?: string | null },
 ): Promise<void> {
-  await invokeWriteJourney({ mode: 'update_booking_brief', booking_id: bookingId, patch })
+  await invokeWriteJourney({ mode: 'update_booking_brief', bookingId: bookingId, patch })
 }
 
-// Generic booking-field update — update_booking_brief is generic-patch server-side,
+// Generic booking-field update - update_booking_brief is generic-patch server-side,
 // so this writes any travel_bookings column. Returns nothing (EF returns {success}).
 export async function updateBookingFields(bookingId: string, patch: Partial<EngagementBooking>): Promise<void> {
-  await invokeWriteJourney({ mode: 'update_booking_brief', booking_id: bookingId, patch })
+  await invokeWriteJourney({ mode: 'update_booking_brief', bookingId: bookingId, patch })
 }
 
 // Create a new travel_bookings row on a trip. patch may set any column;
@@ -486,7 +494,7 @@ export async function createBooking(
   patch: Partial<Omit<EngagementBooking, 'id' | 'journey_id' | '_hotel_name' | '_hotel_image_src' | '_rooms'>>,
 ): Promise<Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>> {
   const { booking } = await invokeWriteJourney<{ booking: Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'> }>({
-    mode: 'create_booking', journey_id: journeyId, patch,
+    mode: 'create_booking', journeyId: journeyId, patch,
   })
   return booking
 }
@@ -495,7 +503,7 @@ export async function createBooking(
 
 export async function createBookingRoom(bookingId: string, patch: BookingRoomPatch): Promise<BookingRoom> {
   const { room } = await invokeWriteJourney<{ room: BookingRoom }>({
-    mode: 'create_room', booking_id: bookingId, patch,
+    mode: 'create_room', bookingId: bookingId, patch,
   })
   return room
 }
@@ -515,7 +523,7 @@ export async function deleteBookingRoom(roomId: string): Promise<void> {
 
 export async function createAdminEngagementElement(journeyId: string, patch: AdminEngagementElementPatch): Promise<AdminEngagementElement> {
   const { auxBooking } = await invokeWriteJourney<{ auxBooking: AdminEngagementElement }>({
-    mode: 'create_aux_booking', journey_id: journeyId, patch,
+    mode: 'create_aux_booking', journeyId: journeyId, patch,
   })
   return auxBooking
 }
@@ -585,28 +593,28 @@ export async function deleteAuxDriverDetail(id: string): Promise<void> {
 
 export type EngagementWelcomeLetter = {
   id:         string
-  journey_id:    string
-  booking_id: string
-  room_id:    string | null
-  guest_name: string
+  journeyId:    string
+  bookingId: string
+  roomId:    string | null
+  guestName: string
   body:       string
-  sort_order: number
-  created_at: string
-  updated_at: string
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
 }
 
-export type EngagementWelcomeLetterPatch = Partial<Omit<EngagementWelcomeLetter, 'journey_id' | 'created_at' | 'updated_at'>>
+export type EngagementWelcomeLetterPatch = Partial<Omit<EngagementWelcomeLetter, 'journeyId' | 'createdAt' | 'updatedAt'>>
 
 export async function fetchEngagementWelcomeLetters(journeyId: string): Promise<EngagementWelcomeLetter[]> {
   const { letters } = await invokeReadJourney<{ letters: EngagementWelcomeLetter[] }>({
-    mode: 'welcome_letters', journey_id: journeyId,
+    mode: 'welcome_letters', journeyId: journeyId,
   })
   return letters
 }
 
 export async function upsertEngagementWelcomeLetter(journeyId: string, letter: EngagementWelcomeLetterPatch): Promise<EngagementWelcomeLetter> {
   const { letter: row } = await invokeWriteJourney<{ letter: EngagementWelcomeLetter }>({
-    mode: 'upsert_welcome_letter', journey_id: journeyId, letter,
+    mode: 'upsert_welcome_letter', journeyId: journeyId, letter,
   })
   return row
 }
@@ -619,14 +627,14 @@ export async function deleteEngagementWelcomeLetter(id: string): Promise<void> {
 
 export async function upsertJourneyDay(journeyId: string, date: string, patch: JourneyDayPatch): Promise<JourneyDay> {
   const { day } = await invokeWriteJourney<{ day: JourneyDay }>({
-    mode: 'upsert_day', journey_id: journeyId, entry_date: date, patch,
+    mode: 'upsert_day', journeyId: journeyId, entry_date: date, patch,
   })
   return day
 }
 
-export async function createJourneyDayEntry(journeyId: string, entry: Omit<JourneyDayEntry, 'id' | 'created_at' | 'updated_at'>): Promise<JourneyDayEntry> {
+export async function createJourneyDayEntry(journeyId: string, entry: Omit<JourneyDayEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<JourneyDayEntry> {
   const { dayEntry } = await invokeWriteJourney<{ dayEntry: JourneyDayEntry }>({
-    mode: 'create_day_entry', journey_id: journeyId, entry,
+    mode: 'create_day_entry', journeyId: journeyId, entry,
   })
   return dayEntry
 }
@@ -652,7 +660,7 @@ export async function setEngagementPublicView(engagementId: string, publicView: 
 }
 // ── Engagement types registry ─────────────────────────────────────────────────
 // Single source for all aux booking type dropdowns. Runtime fetch from
-// travel_engagement_types — never hardcode the list in the frontend.
+// travel_engagement_types - never hardcode the list in the frontend.
 // Excludes journey + stay (those are parent/hotel level, not aux bookings).
 
 export type EngagementTypeOption = {
@@ -671,15 +679,15 @@ export async function fetchEngagementTypes(): Promise<EngagementTypeOption[]> {
   )
 }
 
-export type BoardBasisOption  = { id: string; slug: string; display_name: string }
-export type PaymentTermOption = { id: string; slug: string; display_name: string }
-export type PricingBasisOption = { id: string; slug: string; display_name: string }
-export type RateLabelOption   = { id: string; slug: string; display_name: string; client_visible: boolean }
+export type BoardBasisOption  = { id: string; slug: string; displayName: string }
+export type PaymentTermOption = { id: string; slug: string; displayName: string }
+export type PricingBasisOption = { id: string; slug: string; displayName: string }
+export type RateLabelOption   = { id: string; slug: string; displayName: string; clientVisible: boolean }
 export type RateReference = {
-  board_bases:   BoardBasisOption[]
-  payment_terms: PaymentTermOption[]
-  pricing_bases: PricingBasisOption[]
-  rate_labels:   RateLabelOption[]
+  boardBases:   BoardBasisOption[]
+  paymentTerms: PaymentTermOption[]
+  pricingBases: PricingBasisOption[]
+  rateLabels:   RateLabelOption[]
 }
 export async function fetchRateReference(): Promise<RateReference> {
   const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', {
@@ -687,10 +695,10 @@ export async function fetchRateReference(): Promise<RateReference> {
   })
   if (error) throw new Error(error.message)
   return {
-    board_bases:   data?.board_bases   ?? [],
-    payment_terms: data?.payment_terms ?? [],
-    pricing_bases: data?.pricing_bases ?? [],
-    rate_labels:   data?.rate_labels   ?? [],
+    boardBases:   data?.board_bases   ?? [],
+    paymentTerms: data?.paymentTerms ?? [],
+    pricingBases: data?.pricing_bases ?? [],
+    rateLabels:   data?.rate_labels   ?? [],
   }
 }
 // ── House ID for trip ──────────────────────────────────────────────────────────
@@ -699,7 +707,7 @@ export async function fetchRateReference(): Promise<RateReference> {
 
 export async function fetchHouseIdForTrip(journeyId: string): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', {
-    body: { mode: 'house_id_for_trip', journey_id: journeyId },
+    body: { mode: 'house_id_for_trip', journeyId: journeyId },
   })
   if (error) { console.error('[fetchHouseIdForTrip]', error.message); return null }
   return (data?.houseId as string | null) ?? null

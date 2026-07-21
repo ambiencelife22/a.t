@@ -1,12 +1,12 @@
-// ImmerseSectionRenderers.tsx — SECTION_RENDERERS: SectionType -> renderer.
+// ImmerseSectionRenderers.tsx - SECTION_RENDERERS: SectionType -> renderer.
 //
-// A3 Stage 1 (ships dark — nothing consumes this yet). The unified engagement
+// A3 Stage 1 (ships dark - nothing consumes this yet). The unified engagement
 // surface (Stage 2) will call resolveSectionSet(stage, shape) and render each
 // returned SectionType via this map. Existing section components are wrapped
-// UNCHANGED — this is the composition seam, not a rewrite.
+// UNCHANGED - this is the composition seam, not a rewrite.
 //
 // Context: the existing EngagementClientData discriminated union (proposal|delivery).
-//   NOT a new parallel type — that union already IS the render context.
+//   NOT a new parallel type - that union already IS the render context.
 // Shell: surface-owned presentation callbacks (the programme active-day handshake),
 //   kept separate from data so no renderer takes a god-prop.
 //
@@ -91,11 +91,11 @@ function proposalHero(ctx: Extract<EngagementClientData, { stage: 'proposal' }>)
 function deliveryHero(ctx: Extract<EngagementClientData, { stage: 'delivery' }>): ReactNode {
   const clientData = ctx.bundle
   const { journey: trip, brief } = clientData
-  const heroTitle    = brief?.brief_title ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
-  const heroSubtitle = brief?.brief_subtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
-  const heroImage    = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || ''
+  const heroTitle    = brief?.briefTitle ?? clientData.destinationName ?? trip.destinations[0]?.name ?? ''
+  const heroSubtitle = brief?.briefSubtitle ?? trip.destinations.map(d => d.name).join(' \u00b7 ')
+  const heroImage    = brief?.heroImageSrc || trip.destinations[0]?.heroImageSrc || ''
   const guestName    = clientData.guestDisplayName ?? ''
-  const dateLabel    = formatDateRange(trip.start_date, trip.end_date) || undefined
+  const dateLabel    = formatDateRange(trip.startDate, trip.endDate) || undefined
   return (
     <ImmerseHero
       guestName={guestName}
@@ -189,9 +189,9 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
     return <ContactsTab clientData={ctx.bundle} />
   },
 
-  // ── Stay-detail sections (eight-shape Stage A — ship dark) ─────────────────
+  // ── Stay-detail sections (eight-shape Stage A - ship dark) ─────────────────
   // These resolve only for shape 'stay'. The stay payload (ImmerseDestinationData)
-  // is not yet reachable from EngagementClientData — that arm lands in Stage B.
+  // is not yet reachable from EngagementClientData - that arm lands in Stage B.
   // Until then each returns null, keeping SECTION_RENDERERS total over SectionType
   // (tsc exhaustiveness) without fabricating a context field that does not exist.
   // Stage B wiring, verified component + prop:

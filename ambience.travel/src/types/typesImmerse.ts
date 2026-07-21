@@ -1,15 +1,15 @@
-// typesImmerse.ts — shared types for the ambience.travel /immerse/ proposal system
+// typesImmerse.ts - shared types for the ambience.travel /immerse/ proposal system
 // Owns all data contracts for engagement overview and destination subpages.
 // Does not own rendering, routing, or theme tokens.
 //
-// Last updated: S53B Closing+1 — ImmerseHeroProps moved here from inline
+// Last updated: S53B Closing+1 - ImmerseHeroProps moved here from inline
 //   declaration in ImmerseHero.tsx, per standing rule: renderers render,
 //   types files own data and types.
-// Prior: S53B Closing+1 — heroEyebrowOverride added to ImmerseDestinationRow.
-// Prior: S53B Closing — heroEyebrowOverride added to ImmerseEngagementData.
-// Prior: S48 — EngagementStage added as a first-class computed property
+// Prior: S53B Closing+1 - heroEyebrowOverride added to ImmerseDestinationRow.
+// Prior: S53B Closing - heroEyebrowOverride added to ImmerseEngagementData.
+// Prior: S48 - EngagementStage added as a first-class computed property
 //   on ImmerseEngagementData.
-// Prior: S42 Add 3 — resort_map_src added to ImmerseHotelOption.
+// Prior: S42 Add 3 - resort_map_src added to ImmerseHotelOption.
 
 export type EngagementAudience =
   | 'private'
@@ -71,19 +71,19 @@ export type ImmerseRoomOption = {
   taxInclusive?:              boolean
   rateSuffix?:                string
   rateCadence?:               string
-  taxTreatment?:              string   // S53C — resolved tax_treatments.label
-  roomAlert?:                 string   // S53C — per-booking alert message
-  roomAlertLevel?:            string   // S53C — info | warning | pending
-  roomId?:                    string   // S53C — catalog room id (for connection matching)
-  overlayId?:                 string   // S53C — overlay row id (unique per offer; canon room may repeat)
-  connectedOverlayId?:        string   // S53C — overlay id of connecting partner offer (per-offer connection)
-  connectedRoomId?:           string   // S53C — catalog id of connecting partner room
-  connectingNote?:            string   // S53C — connection descriptor (e.g. private entryway)
+  taxTreatment?:              string   // S53C - resolved tax_treatments.label
+  roomAlert?:                 string   // S53C - per-booking alert message
+  roomAlertLevel?:            string   // S53C - info | warning | pending
+  roomId?:                    string   // S53C - catalog room id (for connection matching)
+  overlayId?:                 string   // S53C - overlay row id (unique per offer; canon room may repeat)
+  connectedOverlayId?:        string   // S53C - overlay id of connecting partner offer (per-offer connection)
+  connectedRoomId?:           string   // S53C - catalog id of connecting partner room
+  connectingNote?:            string   // S53C - connection descriptor (e.g. private entryway)
   sqftMin?:                   number
   sqftMax?:                   number
   sqmMin?:                    number
   sqmMax?:                    number
-  beddingConfigurations?:     string[]  // canonical slugs — all available options
+  beddingConfigurations?:     string[]  // canonical slugs - all available options
 }
 
 export type ImmerseHotelOption = {
@@ -102,7 +102,7 @@ export type ImmerseHotelOption = {
   imageCreditUrl?: string
   imageLicense?:  string
   resortMapSrc?:  string
-  michelinKeys?:  number   // S53C — canon travel_accom_hotels.michelin_keys (1-3)
+  michelinKeys?:  number   // S53C - canon travel_accom_hotels.michelinKeys (1-3)
 }
 
 export type ImmerseContentCard = {
@@ -184,7 +184,7 @@ export type ImmerseRouteStop = {
   destinationSlug?: string | null
   anchorId?:        string
   destinationRowId?: string | null
-  nights?:          number   // S53C — explicit night count (stayLabel = date range)
+  nights?:          number   // S53C - explicit night count (stayLabel = date range)
 }
 
 export type ImmerseDestinationRow = {
@@ -196,12 +196,12 @@ export type ImmerseDestinationRow = {
   imageSrc:            string
   imageAlt:            string
   stayLabel:           string
-  nights?:             number   // S53C — explicit night count
+  nights?:             number   // S53C - explicit night count
   destinationSlug?:    string | null
   destinationUrlSlug?: string | null
   anchorId?:           string
   subpageStatus:       ImmerseSubpageStatus
-  heroEyebrowOverride?: string    // S53B Closing+1 — per-destination_row eyebrow
+  heroEyebrowOverride?: string    // S53B Closing+1 - per-destination_row eyebrow
 }
 
 export type ImmerseEngagementPricingRow = {
@@ -215,7 +215,7 @@ export type ImmerseEngagementPricingRow = {
 // ─── Engagement stage ─────────────────────────────────────────────────────────
 // MISSION: stage is a pure function of DECLARED engagement status. No inference
 // from content presence. The status slug is the single source of truth; the
-// operator edits it; the stage follows. (S55 — removed hasProposalContent /
+// operator edits it; the stage follows. (S55 - removed hasProposalContent /
 // hasTripContent inference, which violated single-source and misread completed
 // engagements whose content keyed located in another place.)
 
@@ -256,7 +256,7 @@ export function computeEngagementStage(input: EngagementStageInputs): Engagement
 // ─── Deliverable shape ───────────────────────────────────────────────────────
 // MISSION: shape is the SECOND render axis beside stage. Stage answers "where in
 // the lifecycle"; shape answers "what kind of deliverable". Together they drive
-// resolveSectionSet — which sections the unified surface renders. Single source:
+// resolveSectionSet - which sections the unified surface renders. Single source:
 // the 8 top-level shapes below, and the map from the 20-row travel_engagement_types
 // registry onto them. (Collapse A · A1.)
 
@@ -278,7 +278,7 @@ export const ENGAGEMENT_SHAPES: readonly EngagementShape[] = [
 
 // Every travel_engagement_types slug maps to one of THE NINE shapes.
 // Top-level shapes map to themselves; element/booking sub-types roll up.
-// Null / unknown → 'journey' (the safe superset — renders the full surface).
+// Null / unknown → 'journey' (the safe superset - renders the full surface).
 const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
   journey:          'journey',
   stay:             'stay',
@@ -287,7 +287,7 @@ const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
   experience:       'experience',
   acquisition:      'acquisition',
   arrangement:       'arrangement',
-  concierge_service: 'concierge_service',
+  conciergeService: 'concierge_service',
   flight:           'transport',
   private_jet:      'transport',
   airport_transfer: 'transport',
@@ -311,10 +311,10 @@ export function resolveEngagementShape(slug: string | null | undefined): Engagem
 // ─── Section registry ────────────────────────────────────────────────────────
 // The unified engagement surface renders a set of sections resolved from
 // (stage, shape). This registry is the single source for that mapping. It ships
-// dark in A1 — nothing renders it yet. A2 extracts each render block into a
+// dark in A1 - nothing renders it yet. A2 extracts each render block into a
 // Section component keyed on SectionType; A3 builds the surface that consumes
 // resolveSectionSet. Admin toggles (show_tab_*) subtract from the resolved set
-// at render time — the registry is the structural superset.
+// at render time - the registry is the structural superset.
 
 export type SectionType =
   | 'hero'
@@ -349,7 +349,7 @@ export type Section = {
 // interleave on round numbers without fractions. Within a resolved (stage,shape)
 // set the order is sortOrder-ascending. pricing and detail_pricing share 60 but
 // never co-resolve (mutually exclusive shapes). Keep gaps when inserting; do NOT
-// renumber to consecutive integers — the gaps ARE the interleave contract.
+// renumber to consecutive integers - the gaps ARE the interleave contract.
 export const SECTION_REGISTRY: readonly Section[] = [
   { id: 'hero',             stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                        sortOrder: 0 },
   { id: 'intro',            stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 10 },
@@ -359,7 +359,7 @@ export const SECTION_REGISTRY: readonly Section[] = [
   { id: 'dining_grid',      stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 30 },
   // interstitial: mid-scroll cinematic band (hero-2 fields). journey reads it
   // from ImmerseEngagementData.heroImageSrc2; stay reads it from
-  // ImmerseDestinationData.heroImageSrc2 — same band, both payloads carry it.
+  // ImmerseDestinationData.heroImageSrc2 - same band, both payloads carry it.
   { id: 'interstitial',     stages: ['draft', 'proposal'],                          shapes: ['journey', 'stay'],                                                                      sortOrder: 40 },
   { id: 'experiences_grid', stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 50 },
   { id: 'destinations',     stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 55 },
@@ -372,7 +372,7 @@ export const SECTION_REGISTRY: readonly Section[] = [
 ] as const
 
 // SHAPE_SECTIONS: for each shape, the SectionTypes it can ever include (across
-// all stages). DERIVED from SECTION_REGISTRY — never authored separately.
+// all stages). DERIVED from SECTION_REGISTRY - never authored separately.
 export const SHAPE_SECTIONS: Record<EngagementShape, readonly SectionType[]> =
   ENGAGEMENT_SHAPES.reduce((acc, shape) => {
     acc[shape] = SECTION_REGISTRY
@@ -491,10 +491,10 @@ export type ImmerseDestinationData = {
 export type ImmerseHeroProps = {
   // Personalisation
   guestName:       string
-  titlePrefix?:    string   // renders in Cormorant Garamond italic — e.g. "Honeymoon in"
-  dateLabel?:      string   // renders in gold below title — e.g. "January 2027"
-  nightsLabel?:    string   // appended to dateLabel with · separator — e.g. "5–6 Nights"
-  itineraryStage?: string   // small italic line — e.g. "Refined Proposal"
+  titlePrefix?:    string   // renders in Cormorant Garamond italic - e.g. "Honeymoon in"
+  dateLabel?:      string   // renders in gold below title - e.g. "January 2027"
+  nightsLabel?:    string   // appended to dateLabel with · separator - e.g. "5-6 Nights"
+  itineraryStage?: string   // small italic line - e.g. "Refined Proposal"
 
   // Content
   title:           string
@@ -506,7 +506,7 @@ export type ImmerseHeroProps = {
   // CTAs
   primaryHref?:    string
   primaryLabel?:   string
-  diningHref?:     string   // optional third CTA — "Dining + Experiences"
+  diningHref?:     string   // optional third CTA - "Dining + Experiences"
   diningLabel?:    string
   secondaryHref?:  string
   secondaryLabel?: string
@@ -531,64 +531,64 @@ export type EngagementWriteMode =
 export interface EngagementWritableFields {
   title:                          string | null
   audience:                       EngagementAudience
-  journey_types:                  string[]
-  iteration_label:                string
-  journey_id:                        string | null
-  person_id:                      string | null
+  journeyTypes:                  string[]
+  iterationLabel:                string
+  journeyId:                        string | null
+  personId:                      string | null
   slug:                           string | null
-  status_label:                   string | null
+  statusLabel:                   string | null
   eyebrow:                        string | null
-  hero_tagline:                   string | null
+  heroTagline:                   string | null
   subtitle:                       string | null
-  hero_image_src:                 string | null
-  hero_image_alt:                 string | null
+  heroImageSrc:                 string | null
+  heroImageAlt:                 string | null
   hero_image_src_2:               string | null
   hero_image_alt_2:               string | null
   hero_title_2:                   string | null
   hero_subtitle_2:                string | null
-  hero_pills:                     string[]
-  hero_eyebrow_override:          string | null
-  welcome_eyebrow_override:       string | null
-  welcome_title_override:         string | null
-  welcome_body_override:          string | null
-  welcome_signoff_body_override:  string | null
-  welcome_signoff_name_override:  string | null
-  route_heading:                  string | null
-  route_body:                     string | null
-  route_eyebrow:                  string | null
-  destination_heading:            string | null
-  destination_subtitle:           string | null
-  destination_body:               string | null
-  pricing_heading:                string | null
-  pricing_title:                  string | null
-  pricing_body:                   string | null
-  pricing_total_label:            string | null
-  pricing_total_value:            string | null
-  pricing_notes_heading:          string | null
-  pricing_notes_title:            string | null
-  pricing_notes:                  ImmersePricingNote[]
-  public_journey_slug:            string | null
+  heroPills:                     string[]
+  heroEyebrowOverride:          string | null
+  welcomeEyebrowOverride:       string | null
+  welcomeTitleOverride:         string | null
+  welcomeBodyOverride:          string | null
+  welcomeSignoffBodyOverride:  string | null
+  welcomeSignoffNameOverride:  string | null
+  routeHeading:                  string | null
+  routeBody:                     string | null
+  routeEyebrow:                  string | null
+  destinationHeading:            string | null
+  destinationSubtitle:           string | null
+  destinationBody:               string | null
+  pricingHeading:                string | null
+  pricingTitle:                  string | null
+  pricingBody:                   string | null
+  pricingTotalLabel:            string | null
+  pricingTotalValue:            string | null
+  pricingNotesHeading:          string | null
+  pricingNotesTitle:            string | null
+  pricingNotes:                  ImmersePricingNote[]
+  publicJourneySlug:            string | null
 }
 
 export type EngagementPatch = Partial<EngagementWritableFields>
 
 export interface CreateEngagementInput {
   engagement?:             EngagementPatch
-  engagement_status_slug?: EngagementStatusSlug   // default 'requested'
-  itinerary_status_slug?:  ItineraryStatusSlug    // default 'draft'
+  engagementStatusSlug?: EngagementStatusSlug   // default 'requested'
+  itineraryStatusSlug?:  ItineraryStatusSlug    // default 'draft'
 }
 
 export interface ReorderItem {
   id:         string
-  sort_order: number
+  sortOrder: number
 }
 
 export interface WelcomeLetterPatch {
   eyebrow?:      string
   title?:        string
   body?:         string
-  signoff_body?: string
-  signoff_name?: string
+  signoffBody?: string
+  signoffName?: string
 }
 
 // Terminal engagement status for archive (itinerary always → 'archived').
@@ -597,20 +597,20 @@ export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 
 // ─── Trip client surface (confirmation / programme / brief) ───────────────────
 // Client-owned contracts for the /immerse/ trip pages. ONE-WAY RULE: client files
 // import these; they NEVER import from queriesAdminJourney. These intentionally OMIT
-// ambience's margin (commission_*, net_revenue, commissionable_rate, invoice_number,
-// iata/referral/individual shares) — a client type must not even DESCRIBE the agency's
+// ambience's margin (commission_*, netRevenue, commissionableRate, invoiceNumber,
+// iata/referral/individual shares) - a client type must not even DESCRIBE the agency's
 // profit. The client's-own-bill fields (price, rates, taxes, deposit/balance) ARE kept;
 // each surface decides what it renders. (Phase 1, S53F. Phase 2 will make the admin
 // types extend these as base & margin so there's a single definition.)
 
 export type ImmerseEngagementDestination = {
   id:             string
-  destination_id: string
-  sort_order:     number
+  destinationId: string
+  sortOrder:     number
   slug:           string
   name:           string
-  storage_path:   string | null
-  hero_image_src: string | null
+  storagePath:   string | null
+  heroImageSrc: string | null
 }
 
 export type ImmerseJourneyStep = {
@@ -621,200 +621,201 @@ export type ImmerseJourneyStep = {
 
 export type ImmerseEngagementHouse = {
   id:                 string
-  display_name:       string
-  salutation_rule:    string | null
-  travel_style_notes: string | null
-  avoid_notes:        string | null
-  service_notes:      string | null
+  displayName:       string
+  salutationRule:    string | null
+  travelStyleNotes: string | null
+  avoidNotes:        string | null
+  serviceNotes:      string | null
 }
 
 export type ImmerseEngagementBrief = {
   id:                    string
-  journey_id:               string
-  house_id:              string | null
-  brief_title:           string | null
-  brief_subtitle:        string | null
-  prepared_for:          string | null
-  hero_image_src:        string | null
-  hero_image_alt:        string | null
-  snapshot_destination:  string | null
-  snapshot_dates:        string | null
-  snapshot_guests:       string | null
-  snapshot_status:       string | null
-  journey_steps:         ImmerseJourneyStep[]
-  advisor_name:          string | null
-  advisor_email:         string | null
-  advisor_phone:         string | null
-  hotel_contact_note:    string | null
-  important_notes:       string[]
-  footer_tagline:        string | null
-  logo_variant:          string | null
-  programme_show_images: boolean
-  welcome_letter:        string | null
-  show_tab_confirmation: boolean
-  show_tab_programme:    boolean
-  show_tab_brief:        boolean
-  show_tab_contacts:     boolean
-  show_tab_welcome:      boolean
-  show_advisor_phone:    boolean
-  show_advisor_email:    boolean
+  journeyId:               string
+  houseId:              string | null
+  briefTitle:           string | null
+  briefSubtitle:        string | null
+  preparedFor:          string | null
+  heroImageSrc:        string | null
+  heroImageAlt:        string | null
+  snapshotDestination:  string | null
+  snapshotDates:        string | null
+  snapshotGuests:       string | null
+  snapshotStatus:       string | null
+  journeySteps:         ImmerseJourneyStep[]
+  advisorName:          string | null
+  advisorEmail:         string | null
+  advisorPhone:         string | null
+  hotelContactNote:    string | null
+  importantNotes:       string[]
+  footerTagline:        string | null
+  logoVariant:          string | null
+  programmeShowImages: boolean
+  welcomeLetter:        string | null
+  showTabConfirmation: boolean
+  showTabProgramme:    boolean
+  showTabBrief:        boolean
+  showTabContacts:     boolean
+  showTabWelcome:      boolean
+  showAdvisorPhone:    boolean
+  showAdvisorEmail:    boolean
   links:                 { label: string; url: string }[]
-  programme_notes:       string | null
-  created_at:            string
-  updated_at:            string
+  programmeNotes:       string | null
+  createdAt:            string
+  updatedAt:            string
 }
 
 export type ImmerseJourneyDay = {
   id:         string | null
-  journey_id:    string
-  entry_date: string
+  journeyId:    string
+  entryDate: string
   show:       boolean
-  day_label:  string | null
-  day_note:   string | null
-  sort_order: number
-  created_at: string
-  updated_at: string
+  dayLabel:  string | null
+  dayNote:   string | null
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
 }
 
 export type ImmerseJourneyDayEntry = {
   id:                  string
-  journey_id:             string
-  entry_date:          string
-  start_time:          string | null
-  end_time:            string | null
+  journeyId:             string
+  entryDate:          string
+  startTime:          string | null
+  endTime:            string | null
   title:               string
   subtitle:            string | null
   category:            string | null
-  booked_by:           string
-  confirmation_number: string | null
-  guest_label:         string | null
+  bookedBy:           string
+  confirmationNumber: string | null
+  guestLabel:         string | null
   notes:               string | null
-  brief_show:          boolean
-  sort_order:          number
-  is_auto_derived:     boolean
-  source_booking_id:   string | null
-  source_aux_id:       string | null
-  created_at:          string
-  updated_at:          string
+  briefShow:          boolean
+  sortOrder:          number
+  isAutoDerived:     boolean
+  sourceBookingId:   string | null
+  sourceAuxId:       string | null
+  createdAt:          string
+  updatedAt:          string
 }
 
 // Passenger is canonical in typesElements (ElementPassenger). Alias kept for
 // existing import sites.
 import type { ElementBase, ElementPassenger } from './typesElements'
+import type { TimelineItemView } from './typesImmerseDelivery'
 export type ImmerseElementPassenger = ElementPassenger
 
-// Driver detail: client-safe. `company` (operator-internal) deliberately OMITTED —
+// Driver detail: client-safe. `company` (operator-internal) deliberately OMITTED -
 // matches attachDriverDetails in _shared/names.ts which never sends it client-side.
 export type ImmerseElementDriverDetail = {
   id:             string
-  aux_booking_id: string
-  driver_name:    string | null
-  driver_phone:   string | null
-  car_model:      string | null
+  auxBookingId: string
+  driverName:    string | null
+  driverPhone:   string | null
+  carModel:      string | null
   plate:          string | null
-  vehicle_role:   string | null
-  sort_order:     number
+  vehicleRole:   string | null
+  sortOrder:     number
 }
 
 export type EngagementElement = ElementBase & {
-  driver_details?: ImmerseElementDriverDetail[]   // client driver type — no `company`
+  driverDetails?: ImmerseElementDriverDetail[]   // client driver type - no `company`
 }
 
 // Room: client's-bill fields KEPT (rate/tax_pct/total/extra_person_fee). No margin
 // exists at room level, so nothing stripped here beyond what admin already lacks.
 export type BookingInvoice = {
   id:             string
-  booking_id:     string
-  invoice_number: string
-  invoice_date:   string | null
+  bookingId:     string
+  invoiceNumber: string
+  invoiceDate:   string | null
   amount:         number | null
   currency:       string
   description:    string | null
-  sort_order:     number
+  sortOrder:     number
 }
 
 export type ImmerseBookingRoom = {
   id:                  string
-  booking_id:          string
-  room_name:           string | null
-  confirmation_number: string | null
-  guest_name:          string | null
-  party_composition:   string | null
+  bookingId:          string
+  roomName:           string | null
+  confirmationNumber: string | null
+  guestName:          string | null
+  partyComposition:   string | null
   notes:               string | null
   nights:              number | null
   rate:                number | null
-  tax_pct:             number | null
+  taxPct:             number | null
   total:               number | null
-  extra_person_fee:    number | null
-  brief_image_src:     string | null
-  additional_guests:   string[] | null
-  person_id:           string | null
-  check_in_time:       string | null
-  bedding_type:        string | null   // confirmed configuration slug, null = TBD on arrival
-  sort_order:          number
-  created_at:          string
-  updated_at:          string
-  resolved_image_src?:         string | null
-  resolved_image_alt?:         string | null
-  resolved_guest_name?:        string | null
-  resolved_additional_guests?: string[] | null
+  extraPersonFee:    number | null
+  briefImageSrc:     string | null
+  additionalGuests:   string[] | null
+  personId:           string | null
+  checkInTime:       string | null
+  beddingType:        string | null   // confirmed configuration slug, null = TBD on arrival
+  sortOrder:          number
+  createdAt:          string
+  updatedAt:          string
+  resolvedImageSrc?:         string | null
+  resolvedImageAlt?:         string | null
+  resolvedGuestName?:        string | null
+  resolvedAdditionalGuests?: string[] | null
 }
 
 // Booking: client's-bill KEPT, MARGIN STRIPPED. Omitted vs admin EngagementBooking:
-// commissionable_rate, commission_pct, commission_amount, net_revenue,
-// commission_paid_at, invoice_number, iata_*, referral_*, individual_*,
+// commissionableRate, commissionPct, commissionAmount, netRevenue,
+// commissionPaidAt, invoiceNumber, iata_*, referral_*, individual_*,
 // supplier_*, primary/supplier contact fields, cancellation/booking policy.
 export type ImmerseEngagementBooking = {
   id:                  string
-  journey_id:             string
-  house_id:            string | null
-  engagement_id:       string | null
+  journeyId:             string
+  houseId:            string | null
+  engagementId:       string | null
   name:                string | null
   status:              string | null
-  status_note:         string | null
-  confirmation_number: string | null
-  start_date:          string | null
-  check_in_date:       string | null
-  start_time:          string | null
-  check_in_note:       string | null
-  check_out_note:      string | null
-  standard_checkin_time?: string | null
-  approved_checkin_time?: string | null
-  expected_arrival_time?: string | null
-  late_checkout_approved_time?: string | null
-  requested_checkin_time?: string | null
-  requested_checkout_time?: string | null
+  statusNote:         string | null
+  confirmationNumber: string | null
+  startDate:          string | null
+  checkInDate:       string | null
+  startTime:          string | null
+  checkInNote:       string | null
+  checkOutNote:      string | null
+  standardCheckinTime?: string | null
+  approvedCheckinTime?: string | null
+  expectedArrivalTime?: string | null
+  lateCheckoutApprovedTime?: string | null
+  requestedCheckinTime?: string | null
+  requestedCheckoutTime?: string | null
   extras?: { label: string; amount: number; currency: string; note?: string; charge_to?: string }[]
-  end_date:            string | null
+  endDate:            string | null
   nights:              number | null
-  total_rate:          number | null
-  taxes_and_fees:      number | null
+  totalRate:          number | null
+  taxesAndFees:      number | null
   currency:            string | null
   inclusions:            string | null
-  inclusions_override:   unknown[] | null
-  cancellation_policy:   string | null
+  inclusionsOverride:   unknown[] | null
+  cancellationPolicy:   string | null
   price:               number | null
-  deposit_amount:      number | null
-  deposit_due_date:    string | null
-  deposit_paid_at:     string | null
-  balance_amount:      number | null
-  balance_due_date:    string | null
-  balance_paid_at:     string | null
-  accom_hotel_id:      string | null
-  party_composition:   string | null
-  brief_category:      string | null
-  brief_show:          boolean
-  brief_image_src:     string | null
-  booked_by:           string | null
+  depositAmount:      number | null
+  depositDueDate:    string | null
+  depositPaidAt:     string | null
+  balanceAmount:      number | null
+  balanceDueDate:    string | null
+  balancePaidAt:     string | null
+  accomHotelId:      string | null
+  partyComposition:   string | null
+  briefCategory:      string | null
+  briefShow:          boolean
+  briefImageSrc:     string | null
+  bookedBy:           string | null
   notes:               string | null
-  sort_order:          number | null
-  created_at:          string | null
-  updated_at:          string | null
+  sortOrder:          number | null
+  createdAt:          string | null
+  updatedAt:          string | null
   // Derived on the wire by travel-get-engagement-confirmation only. Optional because
   // admin surfaces construct ImmerseEngagementBooking without computing it; absent
   // reads as "no exception". The raw balance date/override that produce it are
   // never sent to the client.
-  payment_exception?:  boolean
+  paymentException?:  boolean
   // Client-resolved
   _hotel_name:      string | null
   _hotel_image_src: string | null
@@ -824,55 +825,27 @@ export type ImmerseEngagementBooking = {
 
 export type ImmerseDossierJourney = {
   id:                   string
-  journey_code:            string
+  journeyCode:            string
   stage:                EngagementStage | null
-  start_date:           string | null
-  end_date:             string | null
-  duration_nights:      number | null
-  trip_type:            string | null
+  startDate:           string | null
+  endDate:             string | null
+  durationNights:      number | null
+  tripType:            string | null
   destinations:         ImmerseEngagementDestination[]
-  guest_count_adults:   number | null
-  guest_count_children: number | null
+  guestCountAdults:   number | null
+  guestCountChildren: number | null
   bookings:             ImmerseEngagementBooking[]
   brief:                ImmerseEngagementBrief | null
-  url_id:               string | null
+  urlId:               string | null
 }
 
-export type CardItem = {
-  id: string; category: string | null; categoryLabel: string | null; start_time: string | null
-  end_time: string | null; title: string; subtitle: string | null
-  notes: string | null; confirmation_number: string | null
-  guest_label: string | null; booked_by: string | null
-  image_src: string | null
-  status: string | null
-  checkInNote:  string | null
-  checkOutNote: string | null
-  kind: string
-  requestedCheckoutTime: string | null
-  lateCheckoutApprovedTime: string | null
-  description: string | null
-  bookingType:   string | null
-  contactName:   string | null
-  contactPhone:  string | null
-  guestName:     string | null
-  guestCount:    number | null
-  diningStatus:  string | null
-  cancellationPenaltyApplied: boolean | null
-  cancellationNote: string | null
-  showCancellation: boolean | null
-  scheduleStatus: string | null
-  scheduleNote: string | null
-  originalStartTime: string | null
-  originalEndTime: string | null
-  venue: { address: string | null; maps_url: string | null; phone: string | null; dress_code: string | null; children_policy: string | null; table_hold_note: string | null; booking_terms: string | null } | null
+// One element view: the camelCase TimelineItemView the EF emits, plus four
+// frontend-derived flight fields (origin/destination parsed from subtitle,
+// depart/arrive gated on isFlight). Every other field flows from TimelineItemView
+// directly. Replaces the former hand-maintained CardItem mirror (BIG STEP 2).
+export type EngagementElementView = TimelineItemView & {
   flightOrigin:      string | null
   flightDestination: string | null
   flightDepartTime:  string | null
   flightArriveTime:  string | null
-  seatNumbers:       string | null
-  cabinClass:        string | null
-  passengers:        { id: string; passenger_label: string | null; resolved_passenger_label?: string | null; confirmation_number: string | null; seat_numbers: string | null; sort_order: number }[]
-  rooms:             { id: string; guest: string | null; additional_guests: string[]; room_name: string | null; party_composition: string | null; confirmation_number: string | null; notes: string | null; bedding_type: string | null }[]
-  standard_checkin_time: string | null; approved_checkin_time: string | null; expected_arrival_time: string | null
-  driverDetails:     { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; vehicle_role: string | null; sort_order: number }[]
 }

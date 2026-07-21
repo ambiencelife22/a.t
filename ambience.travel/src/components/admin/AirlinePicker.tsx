@@ -4,7 +4,7 @@
  * types) with inline creation of a new airline if it's not yet registered.
  *
  * Extracted from BriefEditorPage's FlightDetailsSubsection so the dossier
- * AuxForm (EngagementDossierSection) and the brief editor share one implementation —
+ * AuxForm (EngagementDossierSection) and the brief editor share one implementation -
  * closing the airline supplier parity gap (dossier previously had free-text
  * airline_name only; brief had the supplier picker).
  *
@@ -12,14 +12,14 @@
  * persistence. Dossier saves on form submit; brief saves inline per field.
  * Neither save path lives here.
  *
- * Last updated: S54c — initial extract.
+ * Last updated: S54c - initial extract.
  */
 
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { fetchSuppliers, createSupplier, type Supplier, type SupplierType } from '../../queries/queriesAdminSuppliers'
 
-// Field-style picker (underline, transparent) — matches the brief editor's
+// Field-style picker (underline, transparent) - matches the brief editor's
 // fieldStyle. Callers that want a boxed style can override via styleVariant.
 const fieldStyle: React.CSSProperties = {
   fontFamily: A.font, fontSize: 11, color: A.text,
@@ -29,7 +29,7 @@ const fieldStyle: React.CSSProperties = {
   boxSizing: 'border-box' as const,
 }
 
-// Boxed style — matches the dossier AuxForm's inputStyle.
+// Boxed style - matches the dossier AuxForm's inputStyle.
 const boxedStyle: React.CSSProperties = {
   fontFamily: A.font, fontSize: 11, color: A.text, background: A.bg,
   border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 8px',
@@ -92,7 +92,7 @@ export function AirlinePicker({
       setNewName('')
       setCreating(false)
     } catch {
-      // Silent — leave create form open for retry.
+      // Silent - leave create form open for retry.
     }
   }
 
@@ -128,9 +128,9 @@ export function AirlinePicker({
           onChange={e => handleChange(e.target.value)}
           disabled={airlinesLoading}
         >
-          <option value=''>{airlinesLoading ? 'Loading\u2026' : '\u2014 Select airline \u2014'}</option>
+          <option value=''>{airlinesLoading ? 'Loading...' : '- Select airline -'}</option>
           {airlines.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          <option value='__create__'>+ Add new airline\u2026</option>
+          <option value='__create__'>+ Add new airline...</option>
         </select>
       )}
       {resolvedName && !creating && (

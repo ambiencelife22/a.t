@@ -159,7 +159,7 @@ export default function PillarsSection() {
           </p>
         </div>
 
-        {/* Pillars grid — subtle parallax as a group */}
+        {/* Pillars grid - subtle parallax as a group */}
         <div
           ref={gridRef}
           style={{
@@ -177,7 +177,7 @@ export default function PillarsSection() {
           ))}
         </div>
 
-        {/* Editorial image — parallax */}
+        {/* Editorial image - parallax */}
         <div
           style={{
             ...fadeUp(visible, 420),
@@ -201,7 +201,7 @@ export default function PillarsSection() {
           >
             <img
               src='/landing/yacht-charter.webp'
-              alt='Private superyacht charter — Mediterranean'
+              alt='Private superyacht charter - Mediterranean'
               style={{
                 width:     '100%',
                 height:    '100%',
@@ -220,7 +220,7 @@ export default function PillarsSection() {
             }}
           />
 
-          {/* Bottom row — pill left, caption card right */}
+          {/* Bottom row - pill left, caption card right */}
           <div
             style={{
               position:       'absolute',

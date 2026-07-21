@@ -1,13 +1,13 @@
-// GuideRouteShopping.tsx — thin route wrapper for the shopping guide.
+// GuideRouteShopping.tsx - thin route wrapper for the shopping guide.
 //
 // Phase dispatch:
 //   loading   → RouteLoading
 //   notPublic → GuideGateShopping inline inside GuideLayout
-//   notFound  → NotFoundPage (dark, full page — genuine 404)
+//   notFound  → NotFoundPage (dark, full page - genuine 404)
 //   ready     → GuidePageShopping inside GuideLayout
 //
-// Last updated: S53 — notPublic phase added.
-// Prior: S53 — collapsed to thin wrapper.
+// Last updated: S53 - notPublic phase added.
+// Prior: S53 - collapsed to thin wrapper.
 
 import GuideLayout from '../layouts/GuideLayout'
 import { GuideGate } from './GuideGate'

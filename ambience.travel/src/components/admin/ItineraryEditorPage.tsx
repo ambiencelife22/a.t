@@ -3,7 +3,7 @@
  * Route: #admin/trips/{journeyId}/itinerary
  *
  * Layout:
- *   - Cream background — matches Brief Editor aesthetic
+ *   - Cream background - matches Brief Editor aesthetic
  *   - Top bar: back button + trip code + Save All + Download PDF
  *   - Left panel (42%): day-by-day accordion editor
  *     - Each day: show/hide toggle, day label override, day note override
@@ -11,16 +11,16 @@
  *     - Add entry per day, delete entry
  *   - Right panel (58%): live HTML preview, debounced 300ms
  *
- * Days: derived from the trip span (start_date..end_date) by the read EF.
+ * Days: derived from the trip span (start_date..endDate) by the read EF.
  *   travel_journey_days is overlay-only (show / day_label / day_note). Editing a
  *   day creates its overlay row on first change (upsert keyed by entry_date).
  *
  * Empty days: always shown with "No plans today" unless day_note overrides.
  *   Admin can hide individual days via show toggle.
  *
- * Last updated: S48 — useProgrammeDownload wired. "Download PDF" button added
+ * Last updated: S48 - useProgrammeDownload wired. "Download PDF" button added
  *   to top bar. Disabled when days.length === 0 (pre-derive state).
- * Prior: S45 — initial ship.
+ * Prior: S45 - initial ship.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -35,6 +35,7 @@ import {
   createJourneyDayEntry,
   updateJourneyDayEntry,
   deleteJourneyDayEntry,
+  resolveHouseIdForJourney,
 } from '../../queries/queriesAdminJourney'
 import type {
   DossierJourney,
@@ -44,9 +45,9 @@ import type {
   JourneyDayPatch,
   JourneyDayEntryPatch,
 } from '../../queries/queriesAdminJourney'
-import { supabase } from '../../lib/supabase'
 import { useImmerseProgrammePdf } from '../../hooks/useImmerseProgrammePdf'
 import type { TimelineItem } from '../../types/typesTimeline'
+import type { TimelineItemView } from '../../types/typesImmerseDelivery'
 
 const DELIVERY_FN       = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/travel-get-engagement-delivery`
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -85,19 +86,6 @@ const btnBase: React.CSSProperties = {
   letterSpacing: '0.04em', borderRadius: 6,
   padding: '5px 14px', cursor: 'pointer',
   transition: 'all 150ms ease', border: 'none',
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-async function resolveHouseIdForTrip(journeyId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('travel_bookings')
-    .select('house_id')
-    .eq('journey_id', journeyId)
-    .not('house_id', 'is', null)
-    .limit(1)
-    .single()
-  return data?.house_id ?? null
 }
 
 function categoryIcon(cat: string | null): string {
@@ -157,18 +145,18 @@ function EntryRow({ entry, onUpdate, onDelete }: {
         style={{ padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <span style={{ fontSize: 12, flexShrink: 0 }}>{categoryIcon(entry.category)}</span>
-        {entry.start_time && (
+        {entry.startTime && (
           <span style={{ fontSize: 9, color: GOLD, fontFamily: 'DM Mono, monospace', fontWeight: 700, flexShrink: 0 }}>
-            {fmtTime(entry.start_time)}
+            {fmtTime(entry.startTime)}
           </span>
         )}
         <span style={{ fontSize: 11, fontWeight: 600, color: INK, fontFamily: A.font, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {entry.title}
         </span>
-        {entry.is_auto_derived && (
+        {entry.isAutoDerived && (
           <span style={{ fontSize: 8, color: FAINT, fontFamily: A.font, flexShrink: 0, background: CARD_BG, padding: '1px 5px', borderRadius: 3 }}>auto</span>
         )}
-        {entry.booked_by === 'self' && (
+        {entry.bookedBy === 'self' && (
           <span style={{ fontSize: 8, color: FAINT, fontFamily: A.font, flexShrink: 0 }}>self</span>
         )}
         <span style={{ fontSize: 10, color: FAINT, flexShrink: 0, transform: expanded ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 150ms' }}>›</span>
@@ -192,43 +180,43 @@ function EntryRow({ entry, onUpdate, onDelete }: {
               />
             )}
             {field('Start Time',
-              <input style={inputStyle} type='time' value={entry.start_time?.slice(0,5) ?? ''}
-                onChange={e => onUpdate(entry.id, { start_time: e.target.value || null })}
-                onBlur={e => updateJourneyDayEntry(entry.id, { start_time: e.target.value || null })}
+              <input style={inputStyle} type='time' value={entry.startTime?.slice(0,5) ?? ''}
+                onChange={e => onUpdate(entry.id, { startTime: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { startTime: e.target.value || null })}
               />
             )}
             {field('End Time',
-              <input style={inputStyle} type='time' value={entry.end_time?.slice(0,5) ?? ''}
-                onChange={e => onUpdate(entry.id, { end_time: e.target.value || null })}
-                onBlur={e => updateJourneyDayEntry(entry.id, { end_time: e.target.value || null })}
+              <input style={inputStyle} type='time' value={entry.endTime?.slice(0,5) ?? ''}
+                onChange={e => onUpdate(entry.id, { endTime: e.target.value || null })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { endTime: e.target.value || null })}
               />
             )}
             {field('Category',
               <select style={inputStyle} value={entry.category ?? ''}
                 onChange={e => { onUpdate(entry.id, { category: e.target.value || null }); updateJourneyDayEntry(entry.id, { category: e.target.value || null }) }}
               >
-                <option value=''>—</option>
+                <option value=''>-</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             )}
             {field('Booked By',
-              <select style={inputStyle} value={entry.booked_by}
-                onChange={e => { onUpdate(entry.id, { booked_by: e.target.value }); updateJourneyDayEntry(entry.id, { booked_by: e.target.value }) }}
+              <select style={inputStyle} value={entry.bookedBy}
+                onChange={e => { onUpdate(entry.id, { bookedBy: e.target.value }); updateJourneyDayEntry(entry.id, { bookedBy: e.target.value }) }}
               >
                 {BOOKED_BY.map(b => <option key={b} value={b}>{b === 'ambience' ? 'Booked by ambience' : b === 'self' ? 'Self-arranged' : 'TBC'}</option>)}
               </select>
             )}
             {field('Guest',
-              <input style={inputStyle} value={entry.guest_label ?? ''}
-                onChange={e => onUpdate(entry.id, { guest_label: e.target.value })}
-                onBlur={e => updateJourneyDayEntry(entry.id, { guest_label: e.target.value || null })}
+              <input style={inputStyle} value={entry.guestLabel ?? ''}
+                onChange={e => onUpdate(entry.id, { guestLabel: e.target.value })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { guestLabel: e.target.value || null })}
                 placeholder='All guests'
               />
             )}
             {field('Confirmation #',
-              <input style={inputStyle} value={entry.confirmation_number ?? ''}
-                onChange={e => onUpdate(entry.id, { confirmation_number: e.target.value })}
-                onBlur={e => updateJourneyDayEntry(entry.id, { confirmation_number: e.target.value || null })}
+              <input style={inputStyle} value={entry.confirmationNumber ?? ''}
+                onChange={e => onUpdate(entry.id, { confirmationNumber: e.target.value })}
+                onBlur={e => updateJourneyDayEntry(entry.id, { confirmationNumber: e.target.value || null })}
               />
             )}
           </div>
@@ -270,29 +258,29 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
   async function handleAddEntry() {
     if (!newTitle.trim()) return
     const entry = await createJourneyDayEntry(journeyId, {
-      entry_date:          day.entry_date,
-      start_time:          null,
-      end_time:            null,
+      entryDate:          day.entryDate,
+      startTime:          null,
+      endTime:            null,
       title:               newTitle.trim(),
       subtitle:            null,
       category:            newCat || null,
-      booked_by:           'ambience',
-      confirmation_number: null,
-      guest_label:         null,
+      bookedBy:           'ambience',
+      confirmationNumber: null,
+      guestLabel:         null,
       notes:               null,
-      brief_show:          true,
-      sort_order:          entries.length * 10,
-      is_auto_derived:     false,
-      source_booking_id:   null,
-      source_aux_id:       null,
-      journey_id:             journeyId,
+      briefShow:          true,
+      sortOrder:          entries.length * 10,
+      isAutoDerived:     false,
+      sourceBookingId:   null,
+      sourceAuxId:       null,
+      journeyId:             journeyId,
     })
     onEntryAdd(entry)
     setNewTitle('')
     setAdding(false)
   }
 
-  const dayLabel = day.day_label || formatDateWeekday(day.entry_date)
+  const dayLabel = day.dayLabel || formatDateWeekday(day.entryDate)
 
   return (
     <div style={{
@@ -305,7 +293,7 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: expanded ? `1px solid ${RULE}` : 'none' }}>
         {/* Show/hide toggle */}
         <button
-          onClick={() => { onDayUpdate(day.entry_date, { show: !day.show }); upsertJourneyDay(journeyId, day.entry_date, { show: !day.show }) }}
+          onClick={() => { onDayUpdate(day.entryDate, { show: !day.show }); upsertJourneyDay(journeyId, day.entryDate, { show: !day.show }) }}
           style={{ fontFamily: A.font, fontSize: 9, color: day.show ? GOLD : FAINT, background: 'transparent', border: `1px solid ${day.show ? GOLD + '50' : RULE}`, borderRadius: 4, padding: '2px 7px', cursor: 'pointer', flexShrink: 0 }}
         >{day.show ? 'Shown' : 'Hidden'}</button>
 
@@ -324,18 +312,18 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
             <div>
               <label style={labelSt}>Day Label Override</label>
               <input
-                style={inputStyle} value={day.day_label ?? ''}
-                onChange={e => onDayUpdate(day.entry_date, { day_label: e.target.value })}
-                onBlur={e => upsertJourneyDay(journeyId, day.entry_date, { day_label: e.target.value || null })}
-                placeholder={formatDateWeekday(day.entry_date)}
+                style={inputStyle} value={day.dayLabel ?? ''}
+                onChange={e => onDayUpdate(day.entryDate, { dayLabel: e.target.value })}
+                onBlur={e => upsertJourneyDay(journeyId, day.entryDate, { dayLabel: e.target.value || null })}
+                placeholder={formatDateWeekday(day.entryDate)}
               />
             </div>
             <div>
               <label style={labelSt}>Empty Day Note</label>
               <input
-                style={inputStyle} value={day.day_note ?? ''}
-                onChange={e => onDayUpdate(day.entry_date, { day_note: e.target.value })}
-                onBlur={e => upsertJourneyDay(journeyId, day.entry_date, { day_note: e.target.value || null })}
+                style={inputStyle} value={day.dayNote ?? ''}
+                onChange={e => onDayUpdate(day.entryDate, { dayNote: e.target.value })}
+                onBlur={e => upsertJourneyDay(journeyId, day.entryDate, { dayNote: e.target.value || null })}
                 placeholder='No plans today'
               />
             </div>
@@ -384,13 +372,13 @@ function DayBlock({ day, entries, onDayUpdate, onEntryUpdate, onEntryDelete, onE
 
 function ItineraryPreview({ days, entriesByDate, trip, house }: {
   days:           JourneyDay[]
-  entriesByDate:  Record<string, TimelineItem[]>
+  entriesByDate:  Record<string, TimelineItemView[]>
   trip:           DossierJourney
   house:          HouseProfile | null
 }) {
   const visibleDays = days.filter(d => d.show)
-  const destName    = trip.destinations[0]?.name ?? trip.journey_code
-  const preparedFor = house?.display_name ?? ''
+  const destName    = trip.destinations[0]?.name ?? trip.journeyCode
+  const preparedFor = house?.displayName ?? ''
 
   return (
     <div style={{ fontFamily: 'Georgia, serif', color: INK, background: CREAM, minHeight: '100%' }}>
@@ -409,11 +397,11 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
       {/* Days */}
       <div style={{ padding: '0 0 32px' }}>
         {visibleDays.map((day, idx) => {
-          const entries = (entriesByDate[day.entry_date] ?? []).filter(e => e.brief_show)
-          const dayLabel = day.day_label || formatDateWeekday(day.entry_date)
+          const entries = (entriesByDate[day.entryDate] ?? []).filter(e => e.briefShow)
+          const dayLabel = day.dayLabel || formatDateWeekday(day.entryDate)
 
           return (
-            <div key={day.entry_date}>
+            <div key={day.entryDate}>
               {/* Day header */}
               <div style={{ padding: '20px 24px 10px', borderBottom: `1px solid ${RULE}` }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -425,20 +413,20 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
               {/* Entries */}
               {entries.length === 0 ? (
                 <div style={{ padding: '14px 24px', fontSize: 11, fontStyle: 'italic', color: FAINT, fontFamily: A.font }}>
-                  {day.day_note || 'No plans today'}
+                  {day.dayNote || 'No plans today'}
                 </div>
               ) : (
                 <div style={{ padding: '8px 0' }}>
                   {entries.map(entry => {
                     const accentColor = categoryColor(entry.category)
-                    const isAmbience  = entry.booked_by === 'ambience'
+                    const isAmbience  = entry.bookedBy === 'ambience'
                     return (
                       <div key={entry.id} style={{ display: 'flex', gap: 0, padding: '6px 24px', alignItems: 'flex-start' }}>
                         {/* Time column */}
                         <div style={{ width: 60, flexShrink: 0, paddingTop: 1 }}>
-                          {entry.start_time && (
+                          {entry.startTime && (
                             <span style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD }}>
-                              {fmtTime(entry.start_time)}
+                              {fmtTime(entry.startTime)}
                             </span>
                           )}
                         </div>
@@ -452,18 +440,18 @@ function ItineraryPreview({ days, entriesByDate, trip, house }: {
                             <span style={{ fontSize: 12, fontWeight: 400, color: INK }}>{entry.title}</span>
                             {!isAmbience && (
                               <span style={{ fontSize: 8, fontFamily: A.font, color: FAINT, flexShrink: 0, background: CARD_BG, padding: '1px 6px', borderRadius: 3 }}>
-                                {entry.booked_by === 'self' ? 'Self-arranged' : 'TBC'}
+                                {entry.bookedBy === 'self' ? 'Self-arranged' : 'TBC'}
                               </span>
                             )}
                           </div>
                           {entry.subtitle && (
                             <div style={{ fontSize: 10, fontFamily: A.font, color: MUTED }}>{entry.subtitle}</div>
                           )}
-                          {entry.guest_label && (
-                            <div style={{ fontSize: 9, fontFamily: A.font, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{entry.guest_label}</div>
+                          {entry.guestLabel && (
+                            <div style={{ fontSize: 9, fontFamily: A.font, color: FAINT, fontStyle: 'italic', marginTop: 2 }}>{entry.guestLabel}</div>
                           )}
-                          {entry.confirmation_number && (
-                            <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: GOLD, marginTop: 2 }}>#{entry.confirmation_number}</div>
+                          {entry.confirmationNumber && (
+                            <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', color: GOLD, marginTop: 2 }}>#{entry.confirmationNumber}</div>
                           )}
                         </div>
                       </div>
@@ -499,17 +487,17 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useImmerseProgrammePdf()
   const [exportBranding, setExportBranding] = useState<'ambience' | 'alfaone' | 'unbranded'>('ambience')
 
-  // Canonical programme timeline — the SAME EF the guest reads (travel-get-trip-
+  // Canonical programme timeline - the SAME EF the guest reads (travel-get-trip-
   // programme via _shared/timeline.ts). The admin must NOT rebuild the programme
   // from stored day-entries (that table holds only standalone overlay rows, not
   // the derived check-ins/flights/dining). One source for "what's in the
   // programme": the EF. Stored day_entries remain for overlay EDITING only.
-  const [timelineEntries, setTimelineEntries] = useState<TimelineItem[]>([])
+  const [timelineEntries, setTimelineEntries] = useState<TimelineItemView[]>([])
   const [timelineDays,    setTimelineDays]    = useState<JourneyDay[] | null>(null)
 
   useEffect(() => {
     async function load() {
-      const houseId = await resolveHouseIdForTrip(journeyId)
+      const houseId = await resolveHouseIdForJourney(journeyId)
       if (!houseId) { setLoadErr('No house linked to this trip.'); return }
 
       const [dossier, daysData, entriesData] = await Promise.all([
@@ -531,7 +519,7 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
 
   // Pull the canonical programme timeline from the guest EF once we know url_id.
   useEffect(() => {
-    const urlId = trip?.url_id
+    const urlId = trip?.urlId
     if (!urlId) return
     let cancelled = false
     ;(async () => {
@@ -539,20 +527,20 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
         const res = await fetch(DELIVERY_FN, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-          body:    JSON.stringify({ url_id: urlId }),
+          body:    JSON.stringify({ urlId: urlId }),
         })
         if (!res.ok) return
         const payload = await res.json()
         if (cancelled) return
-        setTimelineEntries((payload?.entries as TimelineItem[]) ?? [])
+        setTimelineEntries((payload?.entries as TimelineItemView[]) ?? [])
         setTimelineDays((payload?.days as JourneyDay[]) ?? null)
       } catch { /* preview falls back to stored entries */ }
     })()
     return () => { cancelled = true }
-  }, [trip?.url_id])
+  }, [trip?.urlId])
 
   function updateDayLocal(entryDate: string, patch: JourneyDayPatch) {
-    setDays(prev => prev.map(d => d.entry_date === entryDate ? { ...d, ...patch } : d))
+    setDays(prev => prev.map(d => d.entryDate === entryDate ? { ...d, ...patch } : d))
   }
 
   function updateEntryLocal(id: string, patch: JourneyDayEntryPatch) {
@@ -567,20 +555,20 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
     setEntries(prev => [...prev, entry])
   }
 
-  // Overlay entries (stored day_entries) — used ONLY by the left-panel editor
+  // Overlay entries (stored day_entries) - used ONLY by the left-panel editor
   // for standalone-entry CRUD. NOT the programme content source.
   const overlayByDate: Record<string, JourneyDayEntry[]> = {}
   for (const e of entries) {
-    if (!overlayByDate[e.entry_date]) overlayByDate[e.entry_date] = []
-    overlayByDate[e.entry_date].push(e)
+    if (!overlayByDate[e.entryDate]) overlayByDate[e.entryDate] = []
+    overlayByDate[e.entryDate].push(e)
   }
 
-  // Programme content — the canonical EF timeline (same as guest). Preview +
+  // Programme content - the canonical EF timeline (same as guest). Preview +
   // export read this. Empty until the EF fetch resolves.
-  const entriesByDate: Record<string, TimelineItem[]> = {}
+  const entriesByDate: Record<string, TimelineItemView[]> = {}
   for (const e of timelineEntries) {
-    if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
-    entriesByDate[e.entry_date].push(e)
+    if (!entriesByDate[e.entryDate]) entriesByDate[e.entryDate] = []
+    entriesByDate[e.entryDate].push(e)
   }
 
   // Debounced preview
@@ -625,13 +613,13 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
           style={{ ...btnBase, background: 'transparent', color: MUTED, border: `1px solid ${RULE}`, padding: '4px 10px', fontSize: 10 }}
         >Brief</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{trip.journey_code}</span>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: INK }}>{trip.journeyCode}</span>
           <span style={{ fontSize: 10, color: MUTED }}>Daily Programme</span>
         </div>
         <select
           value={exportBranding}
           onChange={e => setExportBranding(e.target.value as 'ambience' | 'alfaone' | 'unbranded')}
-          title='Export branding (admin only — guest always sees ambience)'
+          title='Export branding (admin only - guest always sees ambience)'
           style={{ ...inputStyle, width: 'auto', fontSize: 10, padding: '4px 8px' }}
         >
           <option value='ambience'>ambience</option>
@@ -666,9 +654,9 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
           ) : (
             days.map(day => (
               <DayBlock
-                key={day.entry_date}
+                key={day.entryDate}
                 day={day}
-                entries={(overlayByDate[day.entry_date] ?? []).sort((a, b) => a.sort_order - b.sort_order)}
+                entries={(overlayByDate[day.entryDate] ?? []).sort((a, b) => a.sortOrder - b.sortOrder)}
                 onDayUpdate={updateDayLocal}
                 onEntryUpdate={updateEntryLocal}
                 onEntryDelete={deleteEntryLocal}

@@ -50,12 +50,12 @@ const taStyle: React.CSSProperties = {
 // ── Row identity: a letter targets a specific room of a specific booking ──────
 
 type LetterRow = {
-  booking_id:  string
-  room_id:     string
-  guest_name:  string
-  hotel_name:  string
-  check_in:    string | null   // booking start_date — for the filename
-  letter_id:   string | null
+  bookingId:  string
+  roomId:     string
+  guestName:  string
+  hotelName:  string
+  checkIn:    string | null   // booking start_date - for the filename
+  letterId:   string | null
   body:        string
 }
 
@@ -66,7 +66,7 @@ function roomGuest(r: BookingRoom): string {
 // Bookings that are accommodations (have rooms). Flights/aux have none.
 function buildRows(bookings: EngagementBooking[], letters: EngagementWelcomeLetter[]): LetterRow[] {
   const byRoom = new Map<string, EngagementWelcomeLetter>()
-  for (const l of letters) if (l.room_id) byRoom.set(l.room_id, l)
+  for (const l of letters) if (l.roomId) byRoom.set(l.roomId, l)
 
   const rows: LetterRow[] = []
   for (const b of bookings) {
@@ -74,12 +74,12 @@ function buildRows(bookings: EngagementBooking[], letters: EngagementWelcomeLett
     for (const r of rooms) {
       const existing = byRoom.get(r.id) ?? null
       rows.push({
-        booking_id: b.id,
-        room_id:    r.id,
-        guest_name: roomGuest(r),
-        hotel_name: b._hotel_name ?? b.name ?? 'Accommodation',
-        check_in:   b.start_date ?? null,
-        letter_id:  existing?.id ?? null,
+        bookingId: b.id,
+        roomId:    r.id,
+        guestName: roomGuest(r),
+        hotelName: b._hotel_name ?? b.name ?? 'Accommodation',
+        checkIn:   b.startDate ?? null,
+        letterId:  existing?.id ?? null,
         body:       existing?.body ?? '',
       })
     }
@@ -119,51 +119,51 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
   const saveRow = useCallback(async (row: LetterRow, body: string) => {
     try {
       const saved = await upsertEngagementWelcomeLetter(trip.id, {
-        ...(row.letter_id ? { id: row.letter_id } : {}),
-        booking_id: row.booking_id,
-        room_id:    row.room_id,
-        guest_name: row.guest_name,
+        ...(row.letterId ? { id: row.letterId } : {}),
+        bookingId: row.bookingId,
+        roomId:    row.roomId,
+        guestName: row.guestName,
         body,
       })
-      setRows(prev => prev.map(r => r.room_id === row.room_id ? { ...r, letter_id: saved.id, body } : r))
+      setRows(prev => prev.map(r => r.roomId === row.roomId ? { ...r, letterId: saved.id, body } : r))
     } catch (e) {
       error(e instanceof Error ? e.message : 'Failed to save letter')
     }
   }, [trip.id, error])
 
   function onBody(row: LetterRow, body: string) {
-    setRows(prev => prev.map(r => r.room_id === row.room_id ? { ...r, body } : r))
-    const key = row.room_id
+    setRows(prev => prev.map(r => r.roomId === row.roomId ? { ...r, body } : r))
+    const key = row.roomId
     if (timers.current[key]) clearTimeout(timers.current[key])
     timers.current[key] = setTimeout(() => saveRow({ ...row, body }, body), 600)
   }
 
-  function onName(row: LetterRow, guest_name: string) {
-    setRows(prev => prev.map(r => r.room_id === row.room_id ? { ...r, guest_name } : r))
-    const key = `name:${row.room_id}`
+  function onName(row: LetterRow, guestName: string) {
+    setRows(prev => prev.map(r => r.roomId === row.roomId ? { ...r, guestName } : r))
+    const key = `name:${row.roomId}`
     if (timers.current[key]) clearTimeout(timers.current[key])
-    timers.current[key] = setTimeout(() => saveRow({ ...row, guest_name }, row.body), 600)
+    timers.current[key] = setTimeout(() => saveRow({ ...row, guestName }, row.body), 600)
   }
 
   async function saveGroup(group: LetterRow[]): Promise<void> {
     // Flush pending debounce timers, then persist every row in the group.
     for (const r of group) {
-      const bk = r.room_id
-      const nk = `name:${r.room_id}`
+      const bk = r.roomId
+      const nk = `name:${r.roomId}`
       if (timers.current[bk]) { clearTimeout(timers.current[bk]); delete timers.current[bk] }
       if (timers.current[nk]) { clearTimeout(timers.current[nk]); delete timers.current[nk] }
     }
-    setSaving(group[0].booking_id)
+    setSaving(group[0].bookingId)
     try {
       for (const r of group) {
         const saved = await upsertEngagementWelcomeLetter(trip.id, {
-          ...(r.letter_id ? { id: r.letter_id } : {}),
-          booking_id: r.booking_id,
-          room_id:    r.room_id,
-          guest_name: r.guest_name,
+          ...(r.letterId ? { id: r.letterId } : {}),
+          bookingId: r.bookingId,
+          roomId:    r.roomId,
+          guestName: r.guestName,
           body:       r.body,
         })
-        setRows(prev => prev.map(x => x.room_id === r.room_id ? { ...x, letter_id: saved.id } : x))
+        setRows(prev => prev.map(x => x.roomId === r.roomId ? { ...x, letterId: saved.id } : x))
       }
       success('Letters saved')
     } catch (e) {
@@ -177,17 +177,17 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
     await saveGroup(group)  // flush + persist before generating, so the PDF is never stale
     const recipients = group
       .filter(r => r.body.trim())
-      .map(r => ({ guest_name: r.guest_name, body: r.body }))
+      .map(r => ({ guestName: r.guestName, body: r.body }))
     if (recipients.length === 0) { error('No letters written for this accommodation yet'); return }
-    setDownloading(group[0].booking_id)
+    setDownloading(group[0].bookingId)
     try {
       await exportWelcomeLetterPdf({
         trip,
         brief:       trip.brief ?? null,
         recipients,
-        accomName:   group[0].hotel_name,
-        groupName:   trip.brief?.prepared_for ?? '',
-        checkInDate: group[0].check_in,
+        accomName:   group[0].hotelName,
+        groupName:   trip.brief?.preparedFor ?? '',
+        checkInDate: group[0].checkIn,
       })
     } catch (e) {
       error(e instanceof Error ? e.message : 'Failed to generate PDF')
@@ -203,7 +203,7 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
   if (rows.length === 0) {
     return (
       <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, padding: 16, lineHeight: 1.6 }}>
-        No rooms on this trip yet. Add accommodations and rooms first — each room's
+        No rooms on this trip yet. Add accommodations and rooms first - each room's
         guest becomes a welcome letter here.
       </div>
     )
@@ -212,7 +212,7 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
   // Group rows by accommodation for display.
   const byHotel = new Map<string, LetterRow[]>()
   for (const r of rows) {
-    const k = `${r.booking_id}`
+    const k = `${r.bookingId}`
     if (!byHotel.has(k)) byHotel.set(k, [])
     byHotel.get(k)!.push(r)
   }
@@ -224,38 +224,38 @@ export function WelcomeLettersEditor({ trip }: { trip: DossierJourney }) {
       </div>
 
       {[...byHotel.values()].map(group => (
-        <div key={group[0].booking_id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '12px 14px' }}>
+        <div key={group[0].bookingId} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{group[0].hotel_name}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{group[0].hotelName}</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => saveGroup(group)}
-                disabled={saving === group[0].booking_id}
-                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.text, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: saving === group[0].booking_id ? 'not-allowed' : 'pointer', opacity: saving === group[0].booking_id ? 0.6 : 1 }}
-              >{saving === group[0].booking_id ? 'Saving…' : 'Save'}</button>
+                disabled={saving === group[0].bookingId}
+                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.text, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: saving === group[0].bookingId ? 'not-allowed' : 'pointer', opacity: saving === group[0].bookingId ? 0.6 : 1 }}
+              >{saving === group[0].bookingId ? 'Saving…' : 'Save'}</button>
               <button
                 onClick={() => handleDownloadGroup(group)}
-                disabled={downloading === group[0].booking_id || saving === group[0].booking_id}
-                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: (downloading === group[0].booking_id || saving === group[0].booking_id) ? 'not-allowed' : 'pointer', opacity: (downloading === group[0].booking_id || saving === group[0].booking_id) ? 0.6 : 1 }}
-              >{downloading === group[0].booking_id ? 'Generating…' : 'Download'}</button>
+                disabled={downloading === group[0].bookingId || saving === group[0].bookingId}
+                style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: '#0F1110', background: A.gold, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: (downloading === group[0].bookingId || saving === group[0].bookingId) ? 'not-allowed' : 'pointer', opacity: (downloading === group[0].bookingId || saving === group[0].bookingId) ? 0.6 : 1 }}
+              >{downloading === group[0].bookingId ? 'Generating…' : 'Download'}</button>
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {group.map(row => (
-              <div key={row.room_id}>
-                <label style={labelStyle}>Recipient name (filename only — not the greeting)</label>
+              <div key={row.roomId}>
+                <label style={labelStyle}>Recipient name (filename only - not the greeting)</label>
                 <input
                   style={{ fontFamily: A.font, fontSize: 12, color: A.text, background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '6px 10px', width: '100%', boxSizing: 'border-box', outline: 'none', marginBottom: 6 }}
-                  value={row.guest_name}
+                  value={row.guestName}
                   onChange={e => onName(row, e.target.value)}
                   placeholder='Guest name'
                 />
-                <label style={labelStyle}>Letter — write the full text including the greeting (Dear / Greetings / Welcome…). Use {'{{guest_name}}'} to insert the name.</label>
+                <label style={labelStyle}>Letter - write the full text including the greeting (Dear / Greetings / Welcome…). Use {'{{guest_name}}'} to insert the name.</label>
                 <textarea
                   style={taStyle}
                   value={row.body}
                   onChange={e => onBody(row, e.target.value)}
-                  placeholder={'Dear ' + (row.guest_name || '{{guest_name}}') + ',\n\nWelcome to ' + group[0].hotel_name + '!\n\nI hope you arrived well...\n\nMy best,\nDeron'}
+                  placeholder={'Dear ' + (row.guestName || '{{guest_name}}') + ',\n\nWelcome to ' + group[0].hotelName + '!\n\nI hope you arrived well...\n\nMy best,\nDeron'}
                 />
               </div>
             ))}

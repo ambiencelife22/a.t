@@ -1,4 +1,4 @@
-// SignatureExperiencePage.tsx — page compositor for ambience.travel signature experiences
+// SignatureExperiencePage.tsx - page compositor for ambience.travel signature experiences
 // Resolves slug → data file, composes all sections.
 // Route: ambience.travel/experiences/:slug
 // Last updated: S9
@@ -17,7 +17,7 @@ import SignatureQuote       from './SignatureQuote'
 import SignatureEnquiryCTA  from './SignatureEnquiryCTA'
 import { C } from '../../../types/typesLanding'
 
-// Registry — add new experiences here as data files land
+// Registry - add new experiences here as data files land
 const REGISTRY: Record<string, typeof iceland4e> = {
   'iceland-4e': iceland4e,
 }

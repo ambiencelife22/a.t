@@ -1,6 +1,6 @@
-// SignatureVideo.tsx — full-viewport atmospheric video for signature experience pages
-// Owns the video section only. Props-driven — video src and poster come from data file.
-// Pattern mirrors VideoIntroSection from landing — lazy load, iOS Safari triad, pause toggle.
+// SignatureVideo.tsx - full-viewport atmospheric video for signature experience pages
+// Owns the video section only. Props-driven - video src and poster come from data file.
+// Pattern mirrors VideoIntroSection from landing - lazy load, iOS Safari triad, pause toggle.
 // Last updated: S9
 
 import { useEffect, useRef, useState } from 'react'
@@ -17,7 +17,7 @@ export default function SignatureVideo({ videoSrc, posterSrc }: Props) {
   const [playing, setPlaying] = useState(true)
   const [visible, setVisible] = useState(false)
 
-  // Lazy load — mount video only when near viewport
+  // Lazy load - mount video only when near viewport
   useEffect(() => {
     const el = sectionRef.current
     if (!el) return
@@ -85,7 +85,7 @@ export default function SignatureVideo({ videoSrc, posterSrc }: Props) {
         />
       )}
 
-      {/* Poster — crossfades out once video ready */}
+      {/* Poster - crossfades out once video ready */}
       <div
         style={{
           position:           'absolute',
@@ -99,7 +99,7 @@ export default function SignatureVideo({ videoSrc, posterSrc }: Props) {
         }}
       />
 
-      {/* Video — autoPlay + muted + playsInline iOS Safari triad */}
+      {/* Video - autoPlay + muted + playsInline iOS Safari triad */}
       {visible && (
         <video
           ref={videoRef}

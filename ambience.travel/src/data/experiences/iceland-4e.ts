@@ -1,4 +1,4 @@
-// iceland-4e.ts — content model for Iceland · 4 Elements signature experience
+// iceland-4e.ts - content model for Iceland · 4 Elements signature experience
 // Owns content only. Does not own rendering, layout, or routing.
 // Last updated: S9
 
@@ -9,7 +9,7 @@ export const experience = {
     eyebrow:  'Signature Experience · Iceland',
   },
 
-  // Theme — controls accent colour on blue sections (Elements, Practical, CTA)
+  // Theme - controls accent colour on blue sections (Elements, Practical, CTA)
   // Each experience defines its own palette here
   theme: {
     gradientLayers: [
@@ -28,7 +28,7 @@ export const experience = {
   hero: {
     eyebrow:   'Signature Experience · Iceland',
     title:     'Iceland · 4 Elements',
-    subtitle:  'A composed immersion shaped by geothermal warmth, elemental contrast, movement, and stillness — designed to reconnect you with what matters.',
+    subtitle:  'A composed immersion shaped by geothermal warmth, elemental contrast, movement, and stillness - designed to reconnect you with what matters.',
     pills:     ['Iceland', 'Dates to be advised', 'Small group or private', 'Pricing on request'],
     imageSrc:  '/landing/experiences/iceland-4e/fontana.webp',
     imageAlt:  'Fontana geothermal pools under the northern lights, Iceland',

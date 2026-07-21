@@ -1,6 +1,6 @@
-// ExperiencesLayout.tsx — layout wrapper for ambience.travel signature experience pages
+// ExperiencesLayout.tsx - layout wrapper for ambience.travel signature experience pages
 // Owns the nav, back-to-top, global keyframes, and overflow lock for all /experiences/* routes.
-// Does not own section content — each SignatureExperiencePage composes its own sections.
+// Does not own section content - each SignatureExperiencePage composes its own sections.
 // Last updated: S9
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -27,7 +27,7 @@ export default function ExperiencesLayout({ children }: Props) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Global keyframes — aurora animation used by SignatureHero, any future haze sections
+  // Global keyframes - aurora animation used by SignatureHero, any future haze sections
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = `
@@ -67,7 +67,7 @@ export default function ExperiencesLayout({ children }: Props) {
         overflowX:  'hidden',
       }}
     >
-      {/* Fixed nav — fades in after hero scrolls out */}
+      {/* Fixed nav - fades in after hero scrolls out */}
       {navVisible && (
         <nav
           style={{
@@ -88,7 +88,7 @@ export default function ExperiencesLayout({ children }: Props) {
             transition:     'opacity 0.3s ease',
           }}
         >
-          {/* Logo — links back to landing */}
+          {/* Logo - links back to landing */}
           <a
             href='https://ambience.travel'
             style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}

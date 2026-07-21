@@ -1,4 +1,4 @@
-// guidePdfFonts.ts — Cormorant Garamond + Source Sans 3 TTF registration for jsPDF
+// guidePdfFonts.ts - Cormorant Garamond + Source Sans 3 TTF registration for jsPDF
 // What it owns: fetch + base64 + addFont() for both font families.
 // What it does not own: PDF rendering, font fallback logic.
 //

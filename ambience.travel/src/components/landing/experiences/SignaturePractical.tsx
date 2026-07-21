@@ -1,4 +1,4 @@
-// SignaturePractical.tsx — practical details section for signature experience pages
+// SignaturePractical.tsx - practical details section for signature experience pages
 // Owns the four-card stat grid only.
 // Last updated: S9
 

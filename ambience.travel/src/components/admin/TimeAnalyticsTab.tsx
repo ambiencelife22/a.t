@@ -5,7 +5,7 @@
  * this component only displays. Prop-driven sub-components so BreakdownTable can
  * later embed in EngagementEditorPage.
  *
- * S53C — initial ship.
+ * S53C - initial ship.
  */
 
 import { useEffect, useState, useCallback } from 'react'
@@ -35,10 +35,10 @@ const GROUP_ORDER: AnalyticsGroupBy[] = ['house', 'engagement', 'team', 'activit
 function SummaryTiles({ data }: { data: TimeAnalyticsResult | null }) {
   const s = data?.summary
   const tiles = [
-    { label: 'Hours',        value: s ? s.hours.toLocaleString() : '—' },
-    { label: 'Effort value', value: s ? money(s.effort_value) : '—' },
-    { label: 'Invoiced',     value: s ? money(s.invoiced) : '—' },
-    { label: 'Absorbed',     value: s ? money(s.absorbed) : '—', accent: true },
+    { label: 'Hours',        value: s ? s.hours.toLocaleString() : '-' },
+    { label: 'Effort value', value: s ? money(s.effortValue) : '-' },
+    { label: 'Invoiced',     value: s ? money(s.invoiced) : '-' },
+    { label: 'Absorbed',     value: s ? money(s.absorbed) : '-', accent: true },
   ]
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
@@ -101,7 +101,7 @@ function BreakdownTable({ data, groupBy, onGroupBy }: {
               <tr key={r.key} style={{ fontSize: 13, color: A.text, borderTop: `1px solid ${A.border}` }}>
                 <td style={{ textAlign: 'left',  padding: '8px' }}>{r.label}</td>
                 <td style={{ textAlign: 'right', padding: '8px' }}>{r.hours}</td>
-                <td style={{ textAlign: 'right', padding: '8px' }}>{money(r.effort_value)}</td>
+                <td style={{ textAlign: 'right', padding: '8px' }}>{money(r.effortValue)}</td>
                 <td style={{ textAlign: 'right', padding: '8px' }}>{money(r.invoiced)}</td>
                 <td style={{ textAlign: 'right', padding: '8px', color: A.gold }}>{money(r.absorbed)}</td>
               </tr>
@@ -133,8 +133,8 @@ function EntryList({ data }: { data: TimeAnalyticsResult | null }) {
               {e.house ?? '(no house)'}{e.engagement ? ` · ${e.engagement}` : ''}
             </div>
             <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
-              {e.hours}h · {money(e.effort_value)}
-              {e.is_invoiceable ? ` · invoiced ${money(e.billable_amount)}` : ' · not invoiced'}
+              {e.hours}h · {money(e.effortValue)}
+              {e.isInvoiceable ? ` · invoiced ${money(e.billableAmount)}` : ' · not invoiced'}
             </div>
           </div>
           <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 3 }}>
@@ -173,9 +173,9 @@ export default function TimeAnalyticsTab() {
 
   // House filter -> load its engagements for the engagement dropdown
   useEffect(() => {
-    if (!filters.house_id) { setEngs([]); return }
-    fetchEngagementsForHouse(filters.house_id).then(setEngs).catch(() => setEngs([]))
-  }, [filters.house_id])
+    if (!filters.houseId) { setEngs([]); return }
+    fetchEngagementsForHouse(filters.houseId).then(setEngs).catch(() => setEngs([]))
+  }, [filters.houseId])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -193,7 +193,7 @@ export default function TimeAnalyticsTab() {
       if (v === undefined || v === '' as any) delete next[k]
       if (v !== undefined && v !== ('' as any)) next[k] = v
       // changing house clears engagement
-      if (k === 'house_id') delete next.engagement_id
+      if (k === 'houseId') delete next.engagementId
       return next
     })
   }
@@ -205,43 +205,43 @@ export default function TimeAnalyticsTab() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             From
-            <input type='date' style={inputStyle} value={filters.work_date_from ?? ''} onChange={e => set('work_date_from', e.target.value || undefined)} />
+            <input type='date' style={inputStyle} value={filters.workDateFrom ?? ''} onChange={e => set('workDateFrom', e.target.value || undefined)} />
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             To
-            <input type='date' style={inputStyle} value={filters.work_date_to ?? ''} onChange={e => set('work_date_to', e.target.value || undefined)} />
+            <input type='date' style={inputStyle} value={filters.workDateTo ?? ''} onChange={e => set('workDateTo', e.target.value || undefined)} />
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             House
-            <select style={inputStyle} value={filters.house_id ?? ''} onChange={e => set('house_id', e.target.value || undefined)}>
+            <select style={inputStyle} value={filters.houseId ?? ''} onChange={e => set('houseId', e.target.value || undefined)}>
               <option value=''>All houses</option>
-              {houses.map(h => <option key={h.id} value={h.id}>{h.display_name ?? h.a_house_id}</option>)}
+              {houses.map(h => <option key={h.id} value={h.id}>{h.displayName ?? h.a_house_id}</option>)}
             </select>
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             Engagement
-            <select style={inputStyle} value={filters.engagement_id ?? ''} onChange={e => set('engagement_id', e.target.value || undefined)} disabled={!filters.house_id}>
-              <option value=''>{filters.house_id ? 'All engagements' : 'Pick a house first'}</option>
+            <select style={inputStyle} value={filters.engagementId ?? ''} onChange={e => set('engagementId', e.target.value || undefined)} disabled={!filters.houseId}>
+              <option value=''>{filters.houseId ? 'All engagements' : 'Pick a house first'}</option>
               {engagements.map(en => <option key={en.id} value={en.id}>{en.title}</option>)}
             </select>
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             Team member
-            <select style={inputStyle} value={filters.team_member_id ?? ''} onChange={e => set('team_member_id', e.target.value || undefined)}>
+            <select style={inputStyle} value={filters.teamMemberId ?? ''} onChange={e => set('teamMemberId', e.target.value || undefined)}>
               <option value=''>Everyone</option>
-              {team.map(m => <option key={m.person_id} value={m.person_id}>{m.display_name}</option>)}
+              {team.map(m => <option key={m.personId} value={m.personId}>{m.displayName}</option>)}
             </select>
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             Activity
-            <select style={inputStyle} value={filters.activity_id ?? ''} onChange={e => set('activity_id', e.target.value || undefined)}>
+            <select style={inputStyle} value={filters.activityId ?? ''} onChange={e => set('activityId', e.target.value || undefined)}>
               <option value=''>All activities</option>
               {activities.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
             </select>
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             Type
-            <select style={inputStyle} value={filters.entry_type ?? ''} onChange={e => set('entry_type', (e.target.value || undefined) as any)}>
+            <select style={inputStyle} value={filters.entryType ?? ''} onChange={e => set('entryType', (e.target.value || undefined) as any)}>
               <option value=''>All</option>
               <option value='billable'>Billable</option>
               <option value='proactive'>Proactive</option>
@@ -250,8 +250,8 @@ export default function TimeAnalyticsTab() {
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
             Invoiceable
             <select style={inputStyle}
-              value={filters.is_invoiceable === undefined ? '' : filters.is_invoiceable ? 'yes' : 'no'}
-              onChange={e => set('is_invoiceable', e.target.value === '' ? undefined : e.target.value === 'yes')}>
+              value={filters.isInvoiceable === undefined ? '' : filters.isInvoiceable ? 'yes' : 'no'}
+              onChange={e => set('isInvoiceable', e.target.value === '' ? undefined : e.target.value === 'yes')}>
               <option value=''>All</option>
               <option value='yes'>Invoiceable</option>
               <option value='no'>Not invoiced</option>

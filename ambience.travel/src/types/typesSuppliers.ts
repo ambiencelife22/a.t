@@ -1,4 +1,4 @@
-// typesSuppliers.ts — Canonical supplier identity registry.
+// typesSuppliers.ts - Canonical supplier identity registry.
 //
 // What it owns:
 //   - SUPPLIER_TYPES: ordered list of all supplier categories used across
@@ -16,14 +16,14 @@
 // Source of truth for:
 //   - Display labels + dropdown ordering for supplier categories
 //
-// Last updated: S53N — reconciled to the supplier_category enum (15 slugs);
+// Last updated: S53N - reconciled to the supplier_category enum (15 slugs);
 //   retired the text+CHECK taxonomy. supplier_type is now enum-backed.
-// Prior: S50 — slimmed to single responsibility. Aux booking,
+// Prior: S50 - slimmed to single responsibility. Aux booking,
 //   flight, category accent, and event status concerns extracted to
 //   typesElements.ts and typesEventStatus.ts respectively.
-// Prior: S48 — Economy Extra + SEAT_TYPES added. Renamed from
+// Prior: S48 - Economy Extra + SEAT_TYPES added. Renamed from
 //   supplierTypes.ts to typesSuppliers.ts per types* convention.
-// Prior: S48 — initial ship.
+// Prior: S48 - initial ship.
 
 // ── Supplier categories ───────────────────────────────────────────────────────
 // Keys = supplier_category enum slugs (stored in DB). Values = display labels.

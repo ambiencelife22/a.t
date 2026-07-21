@@ -1,8 +1,8 @@
-// EngagementDetail.tsx — One engagement, one interface.
+// EngagementDetail.tsx - One engagement, one interface.
 // Tab bar: Overview (engagement editor) | Bookings (financial outlook).
 // Contacts + Activity placeholders for Phase 3+.
 //
-// Last updated: S53I — tab bar reinstated after one-scroll approach caused UX issues.
+// Last updated: S53I - tab bar reinstated after one-scroll approach caused UX issues.
 
 import { A } from '../../tokens/tokensAdmin'
 import { buildAdminHash, type EngagementDetailTabId } from '../../utils/utilsAdminPath'
@@ -67,7 +67,7 @@ export default function EngagementDetail({ urlId, activeTab }: {
 function Placeholder({ label }: { label: string }) {
   return (
     <div style={{ padding: '60px 0', textAlign: 'center' }}>
-      <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>{label} — coming soon.</div>
+      <div style={{ fontSize: 13, color: A.faint, fontFamily: A.font }}>{label} - coming soon.</div>
     </div>
   )
 }

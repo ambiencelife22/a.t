@@ -1,4 +1,4 @@
-// pdfGuide.ts — PDF export for guide pages (dining + experiences + shopping + hotels)
+// pdfGuide.ts - PDF export for guide pages (dining + experiences + shopping + hotels)
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Cover page (full-bleed hero image, big title with year + version, emblem)
@@ -9,7 +9,7 @@
 //   - Three-group dining layout: primary → supplementary → recently closed
 //     Each group opens on its own page with editorial section break
 //     (eyebrow + serif heading + descriptor)
-//   - Happenings section (S52 — time-bound destination content)
+//   - Happenings section (S52 - time-bound destination content)
 //   - Closing chrome (logo + restriction notice + copyright per page)
 //   - Accuracy disclaimer block (gated on accuracyDate non-null)
 //   - Filename construction
@@ -17,37 +17,37 @@
 // What it does not own:
 //   - Library loading (usePdfDownload hook owns this)
 //   - Filter state (PDF renders the full venue set, minus permanently_closed
-//     past the visibility window — treated as data hygiene)
+//     past the visibility window - treated as data hygiene)
 //   - Image loading, SVG rasterisation, font helpers, draw helpers (pdfUtils.ts)
-//   - Destination shape — GuideDestination lives in typesGuides as the
+//   - Destination shape - GuideDestination lives in typesGuides as the
 //     single source of truth across all four variants
 //
 // Variants:
-//   dining      — DiningVenue[], recognition marks, cuisine/neighborhood meta.
+//   dining      - DiningVenue[], recognition marks, cuisine/neighborhood meta.
 //                 Three-group layout: primary, supplementary, recently closed.
 //                 Each group on its own page with full editorial section break.
 //                 permanently_closed past closed_visible_until excluded.
-//   experiences — ExperienceVenue[], no recognition marks, kicker in eyebrow slot
-//   shopping    — Shop[], shop_type · by_appointment eyebrow, bullet list
-//   hotels      — HotelVenue[], stars + michelin keys + forbes recognition
-//   All variants accept optional happenings[] — rendered as its own page.
+//   experiences - ExperienceVenue[], no recognition marks, kicker in eyebrow slot
+//   shopping    - Shop[], shop_type · by_appointment eyebrow, bullet list
+//   hotels      - HotelVenue[], stars + michelin keys + forbes recognition
+//   All variants accept optional happenings[] - rendered as its own page.
 //   BaseGuidePdfOptions hoists shared fields off the variant union.
 //
-// Last updated: S53 — Destination type consolidated. All four branches of
+// Last updated: S53 - Destination type consolidated. All four branches of
 //   ExportGuidePdfOptions now use the canonical GuideDestination from
 //   typesGuides. Removed four per-variant destination type imports
 //   (GuideDestination, ExperiencesGuideDestination, ShoppingGuideDestination,
-//   HotelGuideDestination) — they all collapsed to one type during the S53
+//   HotelGuideDestination) - they all collapsed to one type during the S53
 //   globalization refactor.
-// Prior: S52 — Editorial chapter break treatment for dining groups.
-// Prior: S52 — Three-group dining layout introduced with inline dividers.
-// Prior: S52 — SPACE scale established. Role-based vertical spacing.
-// Prior: S51 — logoVariant option ('ambience' | 'alfaone' | 'unbranded')
+// Prior: S52 - Editorial chapter break treatment for dining groups.
+// Prior: S52 - Three-group dining layout introduced with inline dividers.
+// Prior: S52 - SPACE scale established. Role-based vertical spacing.
+// Prior: S51 - logoVariant option ('ambience' | 'alfaone' | 'unbranded')
 //   threaded through.
-// Prior: S51 — hotels variant added.
-// Prior: S52 — shopping variant added; BaseGuidePdfOptions hoist.
-// Prior: S52 — happenings section added.
-// Prior: S48 — refactored to import shared primitives from pdfUtils.ts.
+// Prior: S51 - hotels variant added.
+// Prior: S52 - shopping variant added; BaseGuidePdfOptions hoist.
+// Prior: S52 - happenings section added.
+// Prior: S48 - refactored to import shared primitives from pdfUtils.ts.
 
 import { formatMonthYear } from '../utils/utilsDates'
 import type { DiningVenue } from '../queries/queriesGuidesDining'
@@ -197,17 +197,17 @@ export async function exportGuidePdf(opts: ExportGuidePdfOptions): Promise<void>
 
 function planYourVisitHasContent(overlay: any): boolean {
   if (!overlay) return false
-  return !!(overlay.plan_your_visit_intro?.trim()) || !!(overlay.plan_your_visit_bullets?.length)
+  return !!(overlay.planYourVisitIntro?.trim()) || !!(overlay.planYourVisitBullets?.length)
 }
 
 function filterFutureHappenings(happenings: Happening[]): Happening[] {
   const today = new Date().toISOString().slice(0, 10)
   return happenings
-    .filter(h => h.end_date >= today)
+    .filter(h => h.endDate >= today)
     .slice()
     .sort((a, b) => {
-      if (a.start_date !== b.start_date) return a.start_date < b.start_date ? -1 : 1
-      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+      if (a.startDate !== b.startDate) return a.startDate < b.startDate ? -1 : 1
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
       return a.name.localeCompare(b.name)
     })
 }
@@ -280,7 +280,7 @@ function buildSections(opts: ExportGuidePdfOptions, hasHappenings: boolean): Con
     items.push({ page: -1, title: `Coming up in ${destName}`, blurb: 'Time-bound programme during the season' })
   }
   if (planYourVisitHasContent(overlay)) {
-    const heading = overlay?.plan_your_visit_heading?.trim() || 'Plan Your Visit'
+    const heading = overlay?.planYourVisitHeading?.trim() || 'Plan Your Visit'
     items.push({ page: -1, title: heading, blurb: 'Insider tips for a seamless experience' })
   }
   return items
@@ -326,7 +326,7 @@ async function renderCoverPage(ctx: RenderCtx) {
     }
   }
 
-  // Title block — anchored just above the hero as one tight composition.
+  // Title block - anchored just above the hero as one tight composition.
   // Eyebrow + headline + metadata read as a single editorial unit.
   const eyebrowY = 96
   sans(doc, 'normal', 9)
@@ -338,7 +338,7 @@ async function renderCoverPage(ctx: RenderCtx) {
   doc.setTextColor(...THEME.ink)
   doc.text(copy.headline, PAGE.margin + 4, titleY)
 
-  // Metadata line — year and version inline, restrained
+  // Metadata line - year and version inline, restrained
   sans(doc, 'normal', 9.5)
   doc.setTextColor(...THEME.muted)
   doc.text(
@@ -411,8 +411,8 @@ function renderWelcomePage(ctx: RenderCtx) {
   doc.setTextColor(...THEME.ink)
   doc.text('At a Glance', PAGE.margin + 8, panelTop + 12)
 
-  const atAGlanceBullets: string[] = variant === 'experiences' && overlay?.at_a_glance_bullets?.length
-    ? overlay.at_a_glance_bullets
+  const atAGlanceBullets: string[] = variant === 'experiences' && overlay?.atAGlanceBullets?.length
+    ? overlay.atAGlanceBullets
     : variant === 'experiences'
       ? [
           'A curated selection of standout experiences',
@@ -520,10 +520,10 @@ function renderRecognitionKey(doc: any, venues: DiningVenue[], y: number): numbe
 function derivePresentKinds(venues: DiningVenue[]): Set<string> {
   const set = new Set<string>()
   for (const v of venues) {
-    if (v.michelin_award === 'star' && v.michelin_stars) set.add('stars')
-    if (v.michelin_award === 'bib_gourmand')            set.add('bib')
-    if (v.michelin_green_star)                          set.add('green')
-    if (v.worlds_50_best)                               set.add('fifty_best')
+    if (v.michelinAward === 'star' && v.michelinStars) set.add('stars')
+    if (v.michelinAward === 'bib_gourmand')            set.add('bib')
+    if (v.michelinGreenStar)                          set.add('green')
+    if (v.worlds50Best)                               set.add('fifty_best')
   }
   return set
 }
@@ -557,10 +557,10 @@ function renderContentsBlock(ctx: RenderCtx, startY: number): number {
 
 // ── Dining venue grouping ────────────────────────────────────────────────────
 // Mirrors DiningGuidePage three-group render:
-//   primary           — operational AND NOT is_supplementary
-//   supplementary     — operational AND is_supplementary
-//   recentlyClosed    — permanently_closed AND closed_visible_until >= today
-//   excluded          — permanently_closed AND closed_visible_until < today
+//   primary           - operational AND NOT is_supplementary
+//   supplementary     - operational AND is_supplementary
+//   recentlyClosed    - permanently_closed AND closed_visible_until >= today
+//   excluded          - permanently_closed AND closed_visible_until < today
 
 interface DiningGroups {
   primary:        DiningVenue[]
@@ -582,7 +582,7 @@ function groupDiningVenuesForPdf(venues: DiningVenue[]): DiningGroups {
       }
       continue
     }
-    if (v.is_supplementary) {
+    if (v.isSupplementary) {
       supplementary.push(v)
       continue
     }
@@ -606,7 +606,7 @@ function groupDiningVenuesForPdf(venues: DiningVenue[]): DiningGroups {
 //   - Gold rule below
 // Returns the Y position where venue cards should begin.
 //
-// This is "chapter break" pacing — each section announces itself as its own
+// This is "chapter break" pacing - each section announces itself as its own
 // editorial unit, not a row separator.
 
 function renderGroupSectionBreak(
@@ -621,19 +621,19 @@ function renderGroupSectionBreak(
 
   let y = PAGE.bodyTop + 12
 
-  // Eyebrow — small uppercase gold
+  // Eyebrow - small uppercase gold
   sans(doc, 'normal', 8.5)
   doc.setTextColor(...THEME.gold)
   doc.text(eyebrow.toUpperCase(), PAGE.margin, y, { charSpace: 0.5 })
   y += SPACE.LEAD_IN + 2
 
-  // Heading — large serif, ink
+  // Heading - large serif, ink
   serif(doc, 'normal', 28)
   doc.setTextColor(...THEME.ink)
   doc.text(heading, PAGE.margin, y)
   y += 12
 
-  // Descriptor — italic muted, wrapped to comfortable line length
+  // Descriptor - italic muted, wrapped to comfortable line length
   sans(doc, 'italic', 10.5)
   doc.setTextColor(...THEME.muted)
   const descMaxWidth = Math.min(PAGE.width - PAGE.margin * 2, 140)
@@ -722,7 +722,7 @@ async function renderDiningGroupedCards(ctx: RenderCtx, venues: DiningVenue[], s
     return y
   }
 
-  // Primary group — continues from the main section opening on the current page
+  // Primary group - continues from the main section opening on the current page
   for (const venue of groups.primary) {
     const cardHeight = computeCardHeight(doc, venue, 'dining')
     if (y + cardHeight > PAGE.footerY - 10) {
@@ -735,7 +735,7 @@ async function renderDiningGroupedCards(ctx: RenderCtx, venues: DiningVenue[], s
     y += cardHeight + CARD.rowGap
   }
 
-  // Supplementary group — new page, editorial chapter break
+  // Supplementary group - new page, editorial chapter break
   if (groups.supplementary.length > 0) {
     if (groups.primary.length > 0) {
       y = renderGroupSectionBreak(
@@ -759,7 +759,7 @@ async function renderDiningGroupedCards(ctx: RenderCtx, venues: DiningVenue[], s
     }
   }
 
-  // Recently closed — new page, editorial chapter break
+  // Recently closed - new page, editorial chapter break
   if (groups.recentlyClosed.length > 0) {
     const hasPreceding = groups.primary.length > 0 || groups.supplementary.length > 0
     if (hasPreceding) {
@@ -845,16 +845,16 @@ function computeCardHeight(doc: any, venue: any, variant: 'dining' | 'experience
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight  = 0
 
-  const hasEyebrow = variant === 'dining' ? !!venue.cuisine_subcategory : !!venue.kicker
+  const hasEyebrow = variant === 'dining' ? !!venue.cuisineSubcategory : !!venue.kicker
   if (hasEyebrow) textHeight += SPACE.LEAD_IN
   textHeight += SPACE.IDENTITY_BREATHE
 
   if (variant === 'dining') {
     const hasRecognition =
-      (venue.michelin_award === 'star' && venue.michelin_stars) ||
-      venue.michelin_award === 'bib_gourmand' ||
-      venue.michelin_green_star ||
-      venue.worlds_50_best
+      (venue.michelinAward === 'star' && venue.michelinStars) ||
+      venue.michelinAward === 'bib_gourmand' ||
+      venue.michelinGreenStar ||
+      venue.worlds50Best
     if (hasRecognition)    textHeight += SPACE.CLUSTER_TIGHT
     if (venue.neighborhood) textHeight += SPACE.CLUSTER_TIGHT
   }
@@ -877,9 +877,9 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
 
   const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
   let cardImgDrawn = false
-  if (venue.image_src) {
+  if (venue.imageSrc) {
     try {
-      const imgData = await loadImg(venue.image_src)
+      const imgData = await loadImg(venue.imageSrc)
       if (imgData) {
         doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
         cardImgDrawn = true
@@ -892,7 +892,7 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
   const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  const eyebrow = variant === 'dining' ? venue.cuisine_subcategory : venue.kicker
+  const eyebrow = variant === 'dining' ? venue.cuisineSubcategory : venue.kicker
   if (eyebrow) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrow.toUpperCase(), textX, ty, { charSpace: 0.4 })
@@ -904,17 +904,17 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
   ty += SPACE.IDENTITY_BREATHE
 
   if (variant === 'dining') {
-    const hasStars = venue.michelin_award === 'star' && venue.michelin_stars
-    const hasBib   = venue.michelin_award === 'bib_gourmand'
-    const hasGreen = venue.michelin_green_star
-    const hasFifty = venue.worlds_50_best
+    const hasStars = venue.michelinAward === 'star' && venue.michelinStars
+    const hasBib   = venue.michelinAward === 'bib_gourmand'
+    const hasGreen = venue.michelinGreenStar
+    const hasFifty = venue.worlds50Best
 
     if (hasStars || hasBib || hasGreen || hasFifty) {
       let markX = textX
 
       if (hasStars) {
         const starRadius = 1.7
-        const rowW = drawStarRow(doc, markX, ty - 1.7, venue.michelin_stars!, starRadius, THEME.gold)
+        const rowW = drawStarRow(doc, markX, ty - 1.7, venue.michelinStars!, starRadius, THEME.gold)
         markX += rowW + 6
       }
       if (hasBib) {
@@ -963,10 +963,10 @@ async function renderCard(doc: any, venue: any, top: number, variant: 'dining' |
     const addrLines  = doc.splitTextToSize(venue.address, textWidth)
     const addrStartY = ty
     for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
-    if (venue.maps_url) {
+    if (venue.mapsUrl) {
       const linkH = ty - addrStartY
       const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
-      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: venue.maps_url }) } catch {}
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: venue.mapsUrl }) } catch {}
     }
   }
 }
@@ -985,7 +985,7 @@ function computeShopCardHeight(doc: any, s: Shop): number {
   const textWidth = PAGE.width - PAGE.margin * 2 - CARD.imageWidth - 8
   let textHeight = 0
 
-  const hasEyebrow = !!s.shop_type || !!s.by_appointment
+  const hasEyebrow = !!s.shopType || !!s.byAppointment
   if (hasEyebrow) textHeight += SPACE.LEAD_IN
   textHeight += SPACE.IDENTITY_BREATHE
 
@@ -1019,9 +1019,9 @@ async function renderShopCard(doc: any, s: Shop, top: number) {
 
   const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
   let cardImgDrawn = false
-  if (s.image_src) {
+  if (s.imageSrc) {
     try {
-      const imgData = await loadImg(s.image_src)
+      const imgData = await loadImg(s.imageSrc)
       if (imgData) {
         doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
         cardImgDrawn = true
@@ -1035,8 +1035,8 @@ async function renderShopCard(doc: any, s: Shop, top: number) {
   let ty = top + CARD.rowPadding + 4
 
   const eyebrowParts: string[] = []
-  if (s.shop_type)      eyebrowParts.push(s.shop_type.toUpperCase())
-  if (s.by_appointment) eyebrowParts.push('BY APPOINTMENT')
+  if (s.shopType)      eyebrowParts.push(s.shopType.toUpperCase())
+  if (s.byAppointment) eyebrowParts.push('BY APPOINTMENT')
   if (eyebrowParts.length > 0) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
@@ -1076,10 +1076,10 @@ async function renderShopCard(doc: any, s: Shop, top: number) {
     const addrLines = doc.splitTextToSize(s.address, textWidth)
     const addrStartY = ty
     for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
-    if (s.maps_url) {
+    if (s.mapsUrl) {
       const linkH = ty - addrStartY
       const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
-      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: s.maps_url }) } catch {}
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: s.mapsUrl }) } catch {}
     }
   }
 }
@@ -1109,8 +1109,8 @@ function computeHotelCardHeight(doc: any, h: HotelVenue): number {
 
   const hasRecognition =
     (h.stars && h.stars > 0) ||
-    (h.michelin_keys && h.michelin_keys > 0) ||
-    (h.forbes_rating && h.forbes_rating > 0)
+    (h.michelinKeys && h.michelinKeys > 0) ||
+    (h.forbesRating && h.forbesRating > 0)
   if (hasRecognition) textHeight += SPACE.CLUSTER_TIGHT
 
   if (h.city) textHeight += SPACE.CLUSTER_TIGHT
@@ -1145,9 +1145,9 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
 
   const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
   let cardImgDrawn = false
-  if (h.hero_image_src) {
+  if (h.heroImageSrc) {
     try {
-      const imgData = await loadImg(h.hero_image_src)
+      const imgData = await loadImg(h.heroImageSrc)
       if (imgData) {
         doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
         cardImgDrawn = true
@@ -1161,7 +1161,7 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
   let ty = top + CARD.rowPadding + 4
 
   const eyebrowParts: string[] = []
-  if (h.is_preferred_partner) eyebrowParts.push('PREFERRED PARTNER')
+  if (h.isPreferredPartner) eyebrowParts.push('PREFERRED PARTNER')
   if (eyebrowParts.length > 0) {
     sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
     doc.text(eyebrowParts.join(' \u00b7 '), textX, ty, { charSpace: 0.4 })
@@ -1174,8 +1174,8 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
   ty += SPACE.IDENTITY_BREATHE
 
   const starCount    = h.stars ?? 0
-  const michelinKeys = h.michelin_keys ?? 0
-  const forbesRating = h.forbes_rating ?? 0
+  const michelinKeys = h.michelinKeys ?? 0
+  const forbesRating = h.forbesRating ?? 0
   if (starCount > 0 || michelinKeys > 0 || forbesRating > 0) {
     let markX = textX
 
@@ -1242,10 +1242,10 @@ async function renderHotelCard(doc: any, h: HotelVenue, top: number) {
     const addrLines  = doc.splitTextToSize(h.address, textWidth)
     const addrStartY = ty
     for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
-    if (h.google_maps_url) {
+    if (h.googleMapsUrl) {
       const linkH = ty - addrStartY
       const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
-      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: h.google_maps_url }) } catch {}
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: h.googleMapsUrl }) } catch {}
     }
   }
 }
@@ -1332,9 +1332,9 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
 
   const imgX = PAGE.margin; const imgY = top + CARD.rowPadding
   let cardImgDrawn = false
-  if (h.image_src) {
+  if (h.imageSrc) {
     try {
-      const imgData = await loadImg(h.image_src)
+      const imgData = await loadImg(h.imageSrc)
       if (imgData) {
         doc.addImage(imgData.data, imgData.format, imgX, imgY, CARD.imageWidth, CARD.imageHeight, undefined, 'FAST')
         cardImgDrawn = true
@@ -1347,7 +1347,7 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
   const textWidth = (PAGE.width - PAGE.margin * 2) - CARD.imageWidth - 8
   let ty = top + CARD.rowPadding + 4
 
-  const isSingleDay = h.start_date === h.end_date
+  const isSingleDay = h.startDate === h.endDate
   const tag = isSingleDay ? 'ONE EVENING' : 'LIMITED DATES'
   const eyebrowText = h.category ? `${tag} \u00b7 ${h.category.toUpperCase()}` : tag
   sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.gold)
@@ -1355,7 +1355,7 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
   ty += SPACE.LEAD_IN
 
   serif(doc, 'italic', 11); doc.setTextColor(...THEME.gold)
-  doc.text(formatHappeningDateRange(h.start_date, h.end_date), textX, ty)
+  doc.text(formatHappeningDateRange(h.startDate, h.endDate), textX, ty)
   ty += SPACE.META_TO_NAME
 
   serif(doc, 'normal', 18); doc.setTextColor(...THEME.ink)
@@ -1407,10 +1407,10 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     const addrLines  = doc.splitTextToSize(h.address, textWidth)
     const addrStartY = ty
     for (const line of addrLines) { doc.text(line, textX, ty); ty += 4 }
-    if (h.maps_url) {
+    if (h.mapsUrl) {
       const linkH = ty - addrStartY
       const linkW = Math.min(doc.getTextWidth(addrLines[0], 'Helvetica', 8.5), textWidth)
-      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: h.maps_url }) } catch {}
+      try { doc.link(textX, addrStartY - 3, linkW, linkH + 1, { url: h.mapsUrl }) } catch {}
     }
   }
 }
@@ -1427,12 +1427,12 @@ function formatHappeningDateRange(startISO: string, endISO: string): string {
   const end   = parseISODate(endISO)
   if (startISO === endISO) return formatFullDate(start)
   if (start.year === end.year && start.month === end.month) {
-    return `${start.day}\u2013${end.day} ${MONTHS[start.month]} ${start.year}`
+    return `${start.day}-${end.day} ${MONTHS[start.month]} ${start.year}`
   }
   if (start.year === end.year) {
-    return `${start.day} ${MONTHS[start.month]} \u2013 ${end.day} ${MONTHS[end.month]} ${start.year}`
+    return `${start.day} ${MONTHS[start.month]} - ${end.day} ${MONTHS[end.month]} ${start.year}`
   }
-  return `${formatFullDate(start)} \u2013 ${formatFullDate(end)}`
+  return `${formatFullDate(start)} - ${formatFullDate(end)}`
 }
 
 function parseISODate(iso: string): { year: number; month: number; day: number } {
@@ -1452,9 +1452,9 @@ function renderClosingPage(ctx: RenderCtx) {
   const { doc, destination } = ctx
   const overlay = destination.overlay as any
 
-  const heading = overlay?.plan_your_visit_heading?.trim() || 'Plan Your Visit'
-  const intro   = overlay?.plan_your_visit_intro?.trim() ?? ''
-  const bullets = overlay?.plan_your_visit_bullets ?? []
+  const heading = overlay?.planYourVisitHeading?.trim() || 'Plan Your Visit'
+  const intro   = overlay?.planYourVisitIntro?.trim() ?? ''
+  const bullets = overlay?.planYourVisitBullets ?? []
 
   doc.setFillColor(...THEME.white)
   doc.rect(0, 0, PAGE.width, PAGE.height, 'F')

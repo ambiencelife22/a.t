@@ -1,15 +1,15 @@
 /* ProgrammeAdmin.tsx
  * Admin interface for the ambience.travel programme product.
- * Gated by profiles.is_admin — same column as ambience.SPORTS.
+ * Gated by profiles.is_admin - same column as ambience.SPORTS.
  * Four tabs: Programmes, Welcome Letters, Listings, Property Sections.
- * Dark theme throughout — matches ProgrammeLayout shell.
+ * Dark theme throughout - matches ProgrammeLayout shell.
  *
- * Last updated: S53G — EF compliance pass. All 29 direct supabase.from()
+ * Last updated: S53G - EF compliance pass. All 29 direct supabase.from()
  *   calls across 5 tables migrated to queriesAdminProgramme (EF-backed).
  *   supabase import removed. global_profiles.is_admin check retained as-is
  *   (pre-admin-scopes migration).
- * Prior: S33 — Six tab function declarations gained the `export` keyword.
- * Prior: S23 — Full surgical rename pass to travel_programme_* table convention.
+ * Prior: S33 - Six tab function declarations gained the `export` keyword.
+ * Prior: S23 - Full surgical rename pass to travel_programme_* table convention.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -273,16 +273,16 @@ export function ProgrammesTab() {
   const { toast, showToast }        = useToast()
 
   const emptyForm = {
-    url_id:               '',
+    urlId:               '',
     programme_type:       'stay',
     sub_path:             'stays',
     status:               'confirmed',
-    guest_names:          '',
-    guest_count:          1,
-    check_in:             '',
-    check_out:            '',
-    welcome_letter:       '',
-    property_id:          '',
+    guestNames:          '',
+    guestCount:          1,
+    checkIn:             '',
+    checkOut:            '',
+    welcomeLetter:       '',
+    propertyId:          '',
     alarm_code_provided:  false,
   }
 
@@ -314,16 +314,16 @@ export function ProgrammesTab() {
 
   function openEdit(prog: Programme) {
     setForm({
-      url_id:               prog.url_id,
+      urlId:               prog.urlId,
       programme_type:       prog.programme_type,
       sub_path:             prog.sub_path,
       status:               prog.status,
-      guest_names:          prog.guest_names,
-      guest_count:          prog.guest_count,
-      check_in:             prog.check_in ?? '',
-      check_out:            prog.check_out ?? '',
-      welcome_letter:       prog.welcome_letter,
-      property_id:          prog.property_id ?? '',
+      guestNames:          prog.guestNames,
+      guestCount:          prog.guestCount,
+      checkIn:             prog.checkIn ?? '',
+      checkOut:            prog.checkOut ?? '',
+      welcomeLetter:       prog.welcomeLetter,
+      propertyId:          prog.propertyId ?? '',
       alarm_code_provided:  prog.alarm_code_provided,
     })
     setEditing(prog)
@@ -337,22 +337,22 @@ export function ProgrammesTab() {
   }
 
   async function handleSave() {
-    if (!form.url_id.trim() || !form.guest_names.trim()) {
+    if (!form.urlId.trim() || !form.guestNames.trim()) {
       showToast('URL ID and guest names are required.', 'error')
       return
     }
     setSaving(true)
     const payload = {
-      url_id:              form.url_id.trim(),
+      urlId:              form.urlId.trim(),
       programme_type:      form.programme_type,
       sub_path:            form.sub_path,
       status:              form.status,
-      guest_names:         form.guest_names.trim(),
-      guest_count:         form.guest_count,
-      check_in:            form.check_in || null,
-      check_out:           form.check_out || null,
-      welcome_letter:      form.welcome_letter.trim(),
-      property_id:         form.property_id || null,
+      guestNames:         form.guestNames.trim(),
+      guestCount:         form.guestCount,
+      checkIn:            form.checkIn || null,
+      checkOut:           form.checkOut || null,
+      welcomeLetter:      form.welcomeLetter.trim(),
+      propertyId:         form.propertyId || null,
       alarm_code_provided: form.alarm_code_provided,
     }
     try {
@@ -383,15 +383,16 @@ export function ProgrammesTab() {
 
   async function handleTogglePublic(prog: Programme) {
     try {
-      await toggleProgrammeField(prog.id, 'is_public', !prog.is_public)
-      showToast(prog.is_public ? 'Programme set to private.' : 'Programme is now public.', 'success')
+      await toggleProgrammeField(prog.id, 'is_public', !prog.isPublic)
+      showToast(prog.isPublic ? 'Programme set to private.' : 'Programme is now public.', 'success')
       load()
     } catch (e) { showToast(`Failed: ${errMsg(e)}`, 'error') }
   }
 
   async function handleToggleField(prog: Programme, field: TogglableField) {
     try {
-      await toggleProgrammeField(prog.id, field, !prog[field])
+      const camelField = field.replace(/_([a-z])/g, (_, c) => c.toUpperCase()) as keyof Programme
+      await toggleProgrammeField(prog.id, field, !prog[camelField])
       load()
     } catch (e) { showToast(`Failed to update visibility: ${errMsg(e)}`, 'error') }
   }
@@ -421,25 +422,25 @@ export function ProgrammesTab() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             <Field label='URL ID'>
-              <input style={inputStyle} value={form.url_id} onChange={e => setForm(f => ({ ...f, url_id: e.target.value }))} placeholder='e.g. k5SSks4AUedpBJLO' disabled={!!editing} />
+              <input style={inputStyle} value={form.urlId} onChange={e => setForm(f => ({ ...f, urlId: e.target.value }))} placeholder='e.g. k5SSks4AUedpBJLO' disabled={!!editing} />
             </Field>
             <Field label='Property'>
-              <select style={inputStyle} value={form.property_id} onChange={e => setForm(f => ({ ...f, property_id: e.target.value }))}>
-                <option value=''>— No property —</option>
+              <select style={inputStyle} value={form.propertyId} onChange={e => setForm(f => ({ ...f, propertyId: e.target.value }))}>
+                <option value=''>- No property -</option>
                 {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </Field>
             <Field label='Guest Names'>
-              <input style={inputStyle} value={form.guest_names} onChange={e => setForm(f => ({ ...f, guest_names: e.target.value }))} placeholder='e.g. Ragnar & Gunnar' />
+              <input style={inputStyle} value={form.guestNames} onChange={e => setForm(f => ({ ...f, guestNames: e.target.value }))} placeholder='e.g. Ragnar & Gunnar' />
             </Field>
             <Field label='Guest Count'>
-              <input style={inputStyle} type='number' min={1} value={form.guest_count} onChange={e => setForm(f => ({ ...f, guest_count: parseInt(e.target.value) || 1 }))} />
+              <input style={inputStyle} type='number' min={1} value={form.guestCount} onChange={e => setForm(f => ({ ...f, guestCount: parseInt(e.target.value) || 1 }))} />
             </Field>
             <Field label='Check-in'>
-              <input style={inputStyle} type='date' value={form.check_in} onChange={e => setForm(f => ({ ...f, check_in: e.target.value }))} />
+              <input style={inputStyle} type='date' value={form.checkIn} onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))} />
             </Field>
             <Field label='Check-out'>
-              <input style={inputStyle} type='date' value={form.check_out} onChange={e => setForm(f => ({ ...f, check_out: e.target.value }))} />
+              <input style={inputStyle} type='date' value={form.checkOut} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} />
             </Field>
             <Field label='Type'>
               <select style={inputStyle} value={form.programme_type} onChange={e => setForm(f => ({ ...f, programme_type: e.target.value, sub_path: e.target.value === 'stay' ? 'stays' : e.target.value }))}>
@@ -466,7 +467,7 @@ export function ProgrammesTab() {
           )}
           <div style={{ marginBottom: 20 }}>
             <Field label='Welcome Letter'>
-              <textarea style={{ ...textareaStyle, minHeight: 160 }} value={form.welcome_letter} onChange={e => setForm(f => ({ ...f, welcome_letter: e.target.value }))} placeholder='Write the welcome letter here…' />
+              <textarea style={{ ...textareaStyle, minHeight: 160 }} value={form.welcomeLetter} onChange={e => setForm(f => ({ ...f, welcomeLetter: e.target.value }))} placeholder='Write the welcome letter here…' />
             </Field>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -486,23 +487,23 @@ export function ProgrammesTab() {
               <StatusBadge status={prog.status} />
               {!prog.active && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 100, border: `1px solid ${A.danger}50`, color: A.danger, background: `${A.danger}12`, fontFamily: A.font }}>Inactive</span>}
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 6 }}>{prog.guest_names}</div>
-            <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>{prog.properties?.name ?? '—'}</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", marginBottom: 3, wordBreak: 'break-all' }}>/{prog.sub_path}/{prog.url_id}</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{prog.check_in ? formatDate(prog.check_in) : 'TBA'} → {prog.check_out ? formatDate(prog.check_out) : 'TBA'}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 6 }}>{prog.guestNames}</div>
+            <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>{prog.properties?.name ?? '-'}</div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", marginBottom: 3, wordBreak: 'break-all' }}>/{prog.sub_path}/{prog.urlId}</div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{prog.checkIn ? formatDate(prog.checkIn) : 'TBA'} → {prog.checkOut ? formatDate(prog.checkOut) : 'TBA'}</div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-            <a href={buildGuestUrl(prog.sub_path, prog.url_id)} target='_blank' rel='noopener noreferrer' style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: A.gold, borderColor: A.borderGold, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>View ↗</a>
+            <a href={buildGuestUrl(prog.sub_path, prog.urlId)} target='_blank' rel='noopener noreferrer' style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: A.gold, borderColor: A.borderGold, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>View ↗</a>
             <button onClick={() => openEdit(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px' }}>Edit</button>
-            <button onClick={() => handleTogglePublic(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: prog.is_public ? A.positive : A.muted, borderColor: prog.is_public ? `${A.positive}50` : A.border }}>{prog.is_public ? 'Make Private' : 'Make Public'}</button>
+            <button onClick={() => handleTogglePublic(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: prog.isPublic ? A.positive : A.muted, borderColor: prog.isPublic ? `${A.positive}50` : A.border }}>{prog.isPublic ? 'Make Private' : 'Make Public'}</button>
             <button onClick={() => handleToggleActive(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: prog.active ? A.danger : A.positive, borderColor: prog.active ? `${A.danger}50` : `${A.positive}50` }}>{prog.active ? 'Deactivate' : 'Activate'}</button>
             <button onClick={() => handleDelete(prog.id)} style={{ ...btnDanger, fontSize: 12, padding: '7px 14px' }}>Delete</button>
           </div>
 
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              <button onClick={() => handleToggleField(prog, 'no_alarm')} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog.no_alarm ? A.positive : A.faint, borderColor: prog.no_alarm ? `${A.positive}50` : A.border }}>{prog.no_alarm ? '✓' : '—'} No alarm stay</button>
+              <button onClick={() => handleToggleField(prog, 'no_alarm')} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog.no_alarm ? A.positive : A.faint, borderColor: prog.no_alarm ? `${A.positive}50` : A.border }}>{prog.no_alarm ? '✓' : '-'} No alarm stay</button>
             </div>
           </div>
 
@@ -517,14 +518,14 @@ export function ProgrammesTab() {
                 { field: 'public_manager_phone' as const, label: 'Manager phone' },
               ] as const).map(({ field, label }) => (
                 <button key={field} onClick={() => handleToggleField(prog, field)} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog[field] ? A.positive : A.faint, borderColor: prog[field] ? `${A.positive}50` : A.border }}>
-                  {prog[field] ? '✓' : '—'} {label}
+                  {prog[field] ? '✓' : '-'} {label}
                 </button>
               ))}
             </div>
           </div>
 
           <GuestLinker programmeId={prog.id} />
-          <ProgrammeSectionOverrides programmeId={prog.id} propertyId={prog.property_id ?? ''} />
+          <ProgrammeSectionOverrides programmeId={prog.id} propertyId={prog.propertyId ?? ''} />
         </div>
       ))}
     </div>
@@ -592,7 +593,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
     if (!existing) return
     try {
       await deleteProgrammeSection(existing.id)
-      showToast('Override removed — using property default.', 'success')
+      showToast('Override removed - using property default.', 'success')
       load()
     } catch (e) { showToast(`Failed to remove override: ${errMsg(e)}`, 'error') }
   }
@@ -710,15 +711,15 @@ export function WelcomeLettersTab() {
       .catch(e => { showToast(`Failed to load programmes: ${errMsg(e)}`, 'error'); setLoading(false) })
   }, [])
 
-  function selectProgramme(prog: Programme) { setSelected(prog); setLetter(prog.welcome_letter) }
+  function selectProgramme(prog: Programme) { setSelected(prog); setLetter(prog.welcomeLetter) }
 
   async function handleSave() {
     if (!selected) return
     setSaving(true)
     try {
       await updateWelcomeLetter(selected.id, letter)
-      setProgrammes(prev => prev.map(p => p.id === selected.id ? { ...p, welcome_letter: letter } : p))
-      setSelected(prev => prev ? { ...prev, welcome_letter: letter } : null)
+      setProgrammes(prev => prev.map(p => p.id === selected.id ? { ...p, welcomeLetter: letter } : p))
+      setSelected(prev => prev ? { ...prev, welcomeLetter: letter } : null)
       showToast('Welcome letter saved.', 'success')
     } catch (e) { showToast(`Failed to save: ${errMsg(e)}`, 'error') }
     setSaving(false)
@@ -736,8 +737,8 @@ export function WelcomeLettersTab() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {programmes.map(prog => (
               <button key={prog.id} onClick={() => selectProgramme(prog)} style={{ textAlign: 'left', padding: '12px 16px', borderRadius: 12, border: `1px solid ${selected?.id === prog.id ? A.borderGold : A.border}`, background: selected?.id === prog.id ? 'rgba(201,184,142,0.06)' : A.bgCard, cursor: 'pointer', fontFamily: A.font }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: A.text, marginBottom: 3 }}>{prog.guest_names}</div>
-                <div style={{ fontSize: 11, color: A.faint }}>{prog.properties?.name ?? '—'}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: A.text, marginBottom: 3 }}>{prog.guestNames}</div>
+                <div style={{ fontSize: 11, color: A.faint }}>{prog.properties?.name ?? '-'}</div>
               </button>
             ))}
           </div>
@@ -808,7 +809,7 @@ export function ListingsTab() {
   async function handleSave() {
     if (!form.name.trim() || !form.address.trim()) { showToast('Name and address are required.', 'error'); return }
     setSaving(true)
-    const payload = { name: form.name.trim(), category: form.category, genre: form.genre.trim() || null, address: form.address.trim(), website: form.website.trim() || null, hours: form.hours.trim() || null, note: form.note.trim() || null, favourite: form.favourite, property_id: selectedProp }
+    const payload = { name: form.name.trim(), category: form.category, genre: form.genre.trim() || null, address: form.address.trim(), website: form.website.trim() || null, hours: form.hours.trim() || null, note: form.note.trim() || null, favourite: form.favourite, propertyId: selectedProp }
     try {
       if (editing) { await updateListing(editing.id, payload); showToast('Listing updated.', 'success'); cancelForm(); loadListings(); setSaving(false); return }
       await createListing(payload); showToast('Listing created.', 'success')
@@ -964,11 +965,11 @@ export function PropertySectionsTab() {
     if (direction === 'up' && idx === 0) return
     if (direction === 'down' && idx === sections.length - 1) return
     const swap = sections[direction === 'up' ? idx - 1 : idx + 1]
-    try { await reorderPropertySections(section.id, section.sort_order, swap.id, swap.sort_order); loadSections() } catch (e) { showToast(`Failed to reorder: ${errMsg(e)}`, 'error') }
+    try { await reorderPropertySections(section.id, section.sortOrder, swap.id, swap.sortOrder); loadSections() } catch (e) { showToast(`Failed to reorder: ${errMsg(e)}`, 'error') }
   }
 
   const groupedSections = sections.reduce<Section[]>((acc, section) => {
-    const exists = acc.some(s => s.title === section.title && s.sort_order === section.sort_order)
+    const exists = acc.some(s => s.title === section.title && s.sortOrder === section.sortOrder)
     if (!exists) acc.push(section)
     return acc
   }, [])
@@ -1006,7 +1007,7 @@ export function PropertySectionsTab() {
               <span style={{ fontSize: 18 }}>{section.icon}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: A.text, fontFamily: A.font }}>{section.title}</div>
-                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Sort order: {section.sort_order}</div>
+                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Sort order: {section.sortOrder}</div>
               </div>
               <button onClick={() => openEdit(section)} style={btnGhost}>Edit</button>
               <button onClick={() => openContentEdit(section)} style={{ ...btnGhost, color: A.gold, borderColor: `${A.gold}40` }}>Edit Content</button>
@@ -1098,7 +1099,7 @@ export function PropertiesTab() {
   const [saving, setSaving]         = useState(false)
   const { toast, showToast }        = useToast()
 
-  const emptyForm = { name: '', tagline: '', city: '', country: '', hero_image: '', maps_url: '', maps_embed_url: '', owner_name: '', owner_phone: '', manager_name: '', manager_phone: '', emergency_contacts: [] as { label: string; phone: string }[] }
+  const emptyForm = { name: '', tagline: '', city: '', country: '', hero_image: '', mapsUrl: '', mapsEmbedUrl: '', ownerName: '', ownerPhone: '', managerName: '', managerPhone: '', emergencyContacts: [] as { label: string; phone: string }[] }
   const [form, setForm] = useState(emptyForm)
 
   useEffect(() => { load() }, [])
@@ -1110,19 +1111,19 @@ export function PropertiesTab() {
   }
 
   function openEdit(prop: FullProperty) {
-    setForm({ name: prop.name, tagline: prop.tagline ?? '', city: prop.city ?? '', country: prop.country ?? '', hero_image: prop.hero_image ?? '', maps_url: prop.maps_url ?? '', maps_embed_url: prop.maps_embed_url ?? '', owner_name: prop.owner_name ?? '', owner_phone: prop.owner_phone ?? '', manager_name: prop.manager_name ?? '', manager_phone: prop.manager_phone ?? '', emergency_contacts: prop.emergency_contacts ?? [] })
+    setForm({ name: prop.name, tagline: prop.tagline ?? '', city: prop.city ?? '', country: prop.country ?? '', hero_image: prop.hero_image ?? '', mapsUrl: prop.mapsUrl ?? '', mapsEmbedUrl: prop.mapsEmbedUrl ?? '', ownerName: prop.ownerName ?? '', ownerPhone: prop.ownerPhone ?? '', managerName: prop.managerName ?? '', managerPhone: prop.managerPhone ?? '', emergencyContacts: prop.emergencyContacts ?? [] })
     setEditing(prop)
   }
 
   function cancelEdit() { setEditing(null); setForm(emptyForm) }
-  function addEmergency() { setForm(f => ({ ...f, emergency_contacts: [...f.emergency_contacts, { label: '', phone: '' }] })) }
-  function updateEmergency(idx: number, field: 'label' | 'phone', value: string) { setForm(f => ({ ...f, emergency_contacts: f.emergency_contacts.map((e, i) => i === idx ? { ...e, [field]: value } : e) })) }
-  function removeEmergency(idx: number) { setForm(f => ({ ...f, emergency_contacts: f.emergency_contacts.filter((_, i) => i !== idx) })) }
+  function addEmergency() { setForm(f => ({ ...f, emergencyContacts: [...f.emergencyContacts, { label: '', phone: '' }] })) }
+  function updateEmergency(idx: number, field: 'label' | 'phone', value: string) { setForm(f => ({ ...f, emergencyContacts: f.emergencyContacts.map((e, i) => i === idx ? { ...e, [field]: value } : e) })) }
+  function removeEmergency(idx: number) { setForm(f => ({ ...f, emergencyContacts: f.emergencyContacts.filter((_, i) => i !== idx) })) }
 
   async function handleSave() {
     if (!editing || !form.name.trim()) { showToast('Name is required.', 'error'); return }
     setSaving(true)
-    const payload = { name: form.name.trim(), tagline: form.tagline.trim() || null, city: form.city.trim() || null, country: form.country.trim() || null, hero_image: form.hero_image.trim() || null, maps_url: form.maps_url.trim() || null, maps_embed_url: form.maps_embed_url.trim() || null, owner_name: form.owner_name.trim() || null, owner_phone: form.owner_phone.trim() || null, manager_name: form.manager_name.trim() || null, manager_phone: form.manager_phone.trim() || null, emergency_contacts: form.emergency_contacts.filter(e => e.label.trim() || e.phone.trim()) }
+    const payload = { name: form.name.trim(), tagline: form.tagline.trim() || null, city: form.city.trim() || null, country: form.country.trim() || null, hero_image: form.hero_image.trim() || null, mapsUrl: form.mapsUrl.trim() || null, mapsEmbedUrl: form.mapsEmbedUrl.trim() || null, ownerName: form.ownerName.trim() || null, ownerPhone: form.ownerPhone.trim() || null, managerName: form.managerName.trim() || null, managerPhone: form.managerPhone.trim() || null, emergencyContacts: form.emergencyContacts.filter(e => e.label.trim() || e.phone.trim()) }
     try { await updateProperty(editing.id, payload); showToast('Property saved.', 'success'); cancelEdit(); load() } catch (e) { showToast(`Failed to save property: ${errMsg(e)}`, 'error') }
     setSaving(false)
   }
@@ -1150,15 +1151,15 @@ export function PropertiesTab() {
             <Field label='City'><input style={inputStyle} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder='Valencia' /></Field>
             <Field label='Country'><input style={inputStyle} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} placeholder='Spain' /></Field>
             <Field label='Hero Image Path'><input style={inputStyle} value={form.hero_image} onChange={e => setForm(f => ({ ...f, hero_image: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' /></Field>
-            <Field label='Google Maps URL'><input style={inputStyle} value={form.maps_url} onChange={e => setForm(f => ({ ...f, maps_url: e.target.value }))} placeholder='https://maps.google.com/?q=…' /></Field>
-            <Field label='Google Maps Embed URL'><input style={inputStyle} value={form.maps_embed_url} onChange={e => setForm(f => ({ ...f, maps_embed_url: e.target.value }))} placeholder='https://www.google.com/maps/embed?pb=…' /></Field>
+            <Field label='Google Maps URL'><input style={inputStyle} value={form.mapsUrl} onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} placeholder='https://maps.google.com/?q=…' /></Field>
+            <Field label='Google Maps Embed URL'><input style={inputStyle} value={form.mapsEmbedUrl} onChange={e => setForm(f => ({ ...f, mapsEmbedUrl: e.target.value }))} placeholder='https://www.google.com/maps/embed?pb=…' /></Field>
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 12 }}>Contacts</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-            <Field label='Owner Name'><input style={inputStyle} value={form.owner_name} onChange={e => setForm(f => ({ ...f, owner_name: e.target.value }))} /></Field>
-            <Field label='Owner Phone'><input style={inputStyle} value={form.owner_phone} onChange={e => setForm(f => ({ ...f, owner_phone: e.target.value }))} placeholder='+34 600 000 000' /></Field>
-            <Field label='Manager Name'><input style={inputStyle} value={form.manager_name} onChange={e => setForm(f => ({ ...f, manager_name: e.target.value }))} /></Field>
-            <Field label='Manager Phone'><input style={inputStyle} value={form.manager_phone} onChange={e => setForm(f => ({ ...f, manager_phone: e.target.value }))} placeholder='+34 600 000 000' /></Field>
+            <Field label='Owner Name'><input style={inputStyle} value={form.ownerName} onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))} /></Field>
+            <Field label='Owner Phone'><input style={inputStyle} value={form.ownerPhone} onChange={e => setForm(f => ({ ...f, ownerPhone: e.target.value }))} placeholder='+34 600 000 000' /></Field>
+            <Field label='Manager Name'><input style={inputStyle} value={form.managerName} onChange={e => setForm(f => ({ ...f, managerName: e.target.value }))} /></Field>
+            <Field label='Manager Phone'><input style={inputStyle} value={form.managerPhone} onChange={e => setForm(f => ({ ...f, managerPhone: e.target.value }))} placeholder='+34 600 000 000' /></Field>
           </div>
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -1166,14 +1167,14 @@ export function PropertiesTab() {
               <button onClick={addEmergency} style={{ ...btnGhost, padding: '5px 14px', fontSize: 11 }}>+ Add</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {form.emergency_contacts.map((e, idx) => (
+              {form.emergencyContacts.map((e, idx) => (
                 <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 36px', gap: 10, alignItems: 'center' }}>
                   <input style={inputStyle} value={e.label} onChange={ev => updateEmergency(idx, 'label', ev.target.value)} placeholder='e.g. Police' />
                   <input style={inputStyle} value={e.phone} onChange={ev => updateEmergency(idx, 'phone', ev.target.value)} placeholder='112' />
                   <button onClick={() => removeEmergency(idx)} style={{ ...btnDanger, padding: '8px', fontSize: 13, lineHeight: 1, textAlign: 'center' }}>✕</button>
                 </div>
               ))}
-              {form.emergency_contacts.length === 0 && <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>No emergency contacts added.</div>}
+              {form.emergencyContacts.length === 0 && <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font }}>No emergency contacts added.</div>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -1216,7 +1217,7 @@ export function AccessDeniedPageTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <SectionHeader title='Access Denied Page' />
       <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, lineHeight: 1.7 }}>
-        Live render of <code style={{ color: A.gold, fontSize: 11 }}>ProgrammeAccessDenied.tsx</code> — any copy changes in that file are reflected here automatically.
+        Live render of <code style={{ color: A.gold, fontSize: 11 }}>ProgrammeAccessDenied.tsx</code> - any copy changes in that file are reflected here automatically.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         {[{ label: 'No programmes', value: false }, { label: 'Has other programmes', value: true }].map(opt => (
@@ -1325,7 +1326,7 @@ function AccessDenied() {
   )
 }
 
-// ── ProgrammeAdmin — gated entry point ───────────────────────────────────────
+// ── ProgrammeAdmin - gated entry point ───────────────────────────────────────
 // global_profiles.is_admin check retained as-is (pre-admin-scopes migration).
 
 export default function ProgrammeAdmin() {

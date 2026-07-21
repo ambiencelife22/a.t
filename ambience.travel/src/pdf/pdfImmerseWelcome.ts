@@ -1,4 +1,4 @@
-// pdfImmerseWelcome.ts — Welcome Letter PDF export for ambience.TRAVEL
+// pdfImmerseWelcome.ts - Welcome Letter PDF export for ambience.TRAVEL
 //
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
@@ -6,17 +6,17 @@
 //     ONE PAGE PER GUEST. All guests in one PDF (for the hotel to print).
 //
 // What it does not own:
-//   - The letter bodies or recipient list — passed in by the caller.
+//   - The letter bodies or recipient list - passed in by the caller.
 //   - Footer, theme, helpers → pdfShared.ts
 //   - Font loading / registration → pdfFonts.ts
 //
 // Model: each guest's letter is its OWN authored body (the letters genuinely
-// differ per guest — see the manual example). The salutation "Dear {name},"
+// differ per guest - see the manual example). The salutation "Dear {name},"
 // is rendered automatically; everything otherwise (including the sign-off and signer)
 // is part of the authored body text. {{guest_name}} in a body is substituted
 // with that recipient's name for convenience.
 //
-// No hero by design — this is correspondence, not a brochure.
+// No hero by design - this is correspondence, not a brochure.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, serif } from './pdfUtils'
@@ -27,7 +27,7 @@ import type { EngagementBrief, DossierJourney } from '../queries/queriesAdminJou
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface WelcomeRecipient {
-  guest_name: string         // substituted into "Dear {name}," and any {{guest_name}}
+  guestName: string         // substituted into "Dear {name}," and any {{guest_name}}
   body:       string         // the authored letter for this guest (incl. sign-off)
 }
 
@@ -54,7 +54,7 @@ function personalise(text: string, guestName: string): string {
   return text.replace(/\{\{\s*guest_name\s*\}\}/gi, guestName)
 }
 
-// ── Wordmark (small, top-centre — no hero) ─────────────────────────────────────
+// ── Wordmark (small, top-centre - no hero) ─────────────────────────────────────
 
 function drawWordmark(doc: any, emblem: Img | null, logo: Img | null): void {
   const eS = 7; const gap = 3
@@ -77,11 +77,11 @@ function renderLetter(doc: any, recipient: WelcomeRecipient, emblem: Img | null,
 
   let y = LETTER.bodyTopY
 
-  // Body — authored verbatim, greeting line included. {{guest_name}} substituted.
+  // Body - authored verbatim, greeting line included. {{guest_name}} substituted.
   // The operator controls the full letter from the greeting down (Dear / Greetings /
   // Welcome, etc.) and the sign-off.
   // Paragraphs split on blank lines; single newlines preserved as line breaks.
-  const body = personalise(recipient.body ?? '', recipient.guest_name)
+  const body = personalise(recipient.body ?? '', recipient.guestName)
   const paragraphs = body.split(/\n\s*\n/).map(p => p.replace(/\s+$/g, '')).filter(p => p.trim())
 
   serif(doc, 'normal', 11)
@@ -106,7 +106,7 @@ function renderLetter(doc: any, recipient: WelcomeRecipient, emblem: Img | null,
 
 // ── Filename ──────────────────────────────────────────────────────────────────
 
-// DDMMMYY, e.g. 24MAY26 — uppercase month, no separators.
+// DDMMMYY, e.g. 24MAY26 - uppercase month, no separators.
 function fmtCheckIn(iso: string | null): string {
   if (!iso) return ''
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -141,7 +141,7 @@ export async function exportWelcomeLetterPdf(data: WelcomeLetterData): Promise<v
     loadSvg(ASSETS.logoSvg, 800),
   ])
 
-  const recipients = data.recipients.filter(r => r.guest_name?.trim())
+  const recipients = data.recipients.filter(r => r.guestName?.trim())
   if (recipients.length === 0) return
 
   recipients.forEach((r, i) => {

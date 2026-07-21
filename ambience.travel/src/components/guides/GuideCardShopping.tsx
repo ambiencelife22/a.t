@@ -1,4 +1,4 @@
-/* GuideCardShopping.tsx — single shopping card for the shopping guide.
+/* GuideCardShopping.tsx - single shopping card for the shopping guide.
  *
  * Conceptually distinct from GuideCardExperiences:
  *   Shopping is a reference list (where to buy), not a narrative.
@@ -12,16 +12,16 @@
  *   layout, grid.
  *
  * Body-mode logic:
- *   'full'   — render tagline + body + bullets. Full-access viewers, or
+ *   'full'   - render tagline + body + bullets. Full-access viewers, or
  *              shops marked publicly previewable (public_preview_rank
  *              != null) once that column is added to travel_shopping.
- *   'teaser' — render teaser line only. Public viewers, shops not marked
+ *   'teaser' - render teaser line only. Public viewers, shops not marked
  *              publicly previewable.
  *
- * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ * Last updated: S53 - Renamed to convention. cardBodyMode() replaces inline
  *   isTeaser derivation. Ready for public_preview_rank on
  *   travel_shopping; behaviour is identical until that column ships.
- * Prior: S52 — initial.
+ * Prior: S52 - initial.
  */
 
 import React from 'react'
@@ -59,7 +59,7 @@ export function GuideCardShopping({ shop, hasFullAccess, destinationName }: Guid
 // ── Image block ──────────────────────────────────────────────────────────────
 
 function ImageBlock({ shop, isTeaser }: { shop: Shop; isTeaser: boolean }) {
-  if (!shop.image_src?.trim()) {
+  if (!shop.imageSrc?.trim()) {
     return (
       <div style={{ ...nameFallbackStyle, opacity: isTeaser ? 0.7 : 1 }}>
         <span style={nameFallbackTextStyle}>{shop.brand ?? shop.name}</span>
@@ -69,8 +69,8 @@ function ImageBlock({ shop, isTeaser }: { shop: Shop; isTeaser: boolean }) {
   return (
     <div style={imageWrapStyle}>
       <img
-        src={shop.image_src}
-        alt={shop.image_alt ?? shop.name}
+        src={shop.imageSrc}
+        alt={shop.imageAlt ?? shop.name}
         style={{ ...imageStyle, opacity: isTeaser ? 0.7 : 1 }}
         loading="lazy"
       />
@@ -82,16 +82,16 @@ function ImageBlock({ shop, isTeaser }: { shop: Shop; isTeaser: boolean }) {
 // ── Eyebrow ──────────────────────────────────────────────────────────────────
 
 function Eyebrow({ shop }: { shop: Shop }) {
-  if (!shop.shop_type && !shop.by_appointment) return null
+  if (!shop.shopType && !shop.byAppointment) return null
   return (
     <div style={eyebrowStyle}>
-      {shop.shop_type && (
-        <span style={eyebrowTypeStyle}>{shop.shop_type.toUpperCase()}</span>
+      {shop.shopType && (
+        <span style={eyebrowTypeStyle}>{shop.shopType.toUpperCase()}</span>
       )}
-      {shop.shop_type && shop.by_appointment && (
+      {shop.shopType && shop.byAppointment && (
         <span style={eyebrowDividerStyle}>{'\u00B7'}</span>
       )}
-      {shop.by_appointment && (
+      {shop.byAppointment && (
         <span style={eyebrowAppointmentStyle}>By Appointment</span>
       )}
     </div>
@@ -139,7 +139,7 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
 // ── Address block ────────────────────────────────────────────────────────────
 
 function AddressBlock({ shop }: { shop: Shop }) {
-  const mapsUrl = resolveMapsUrl(shop.maps_url, shop.address)
+  const mapsUrl = resolveMapsUrl(shop.mapsUrl, shop.address)
   if (!shop.address && !mapsUrl) return null
   return (
     <div style={addressStyle}>

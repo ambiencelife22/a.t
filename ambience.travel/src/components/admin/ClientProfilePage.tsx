@@ -253,7 +253,7 @@ const SAMPLE_CLIENT: ClientProfileData = {
       id: 'trip-1',
       programme: 'Summer Mediterranean Sequence',
       propertyOrRoute: 'Amanzoe / One&Only Aesthesis / Four Seasons Athens',
-      dates: '12 Jun 2026 — 22 Jun 2026',
+      dates: '12 Jun 2026 - 22 Jun 2026',
       type: 'Journey',
       status: 'upcoming',
     },
@@ -261,7 +261,7 @@ const SAMPLE_CLIENT: ClientProfileData = {
       id: 'trip-2',
       programme: 'Tokyo Reset',
       propertyOrRoute: 'Aman Tokyo',
-      dates: '06 Nov 2025 — 11 Nov 2025',
+      dates: '06 Nov 2025 - 11 Nov 2025',
       type: 'Stay',
       status: 'completed',
     },
@@ -269,7 +269,7 @@ const SAMPLE_CLIENT: ClientProfileData = {
       id: 'trip-3',
       programme: 'Alpine Winter Check-In',
       propertyOrRoute: 'The Chedi Andermatt',
-      dates: '17 Jan 2025 — 22 Jan 2025',
+      dates: '17 Jan 2025 - 22 Jan 2025',
       type: 'Stay',
       status: 'completed',
     },
@@ -1886,7 +1886,7 @@ function ClientDetail({ client, onBack }: { client: ClientProfileData; onBack: (
         }} />
       </div>
 
-      {/* Content — stacks on mobile, side-by-side on desktop */}
+      {/* Content - stacks on mobile, side-by-side on desktop */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : briefOpen ? 'minmax(0, 1fr) 320px' : '1fr',

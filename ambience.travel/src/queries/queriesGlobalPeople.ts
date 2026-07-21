@@ -1,7 +1,7 @@
 // src/queries/queriesGlobalPeople.ts
 // Canonical client access layer for the person registry (global_people).
 // All access via the global-read-people / global-write-people Edge Functions.
-// No direct table reads/writes (client-data architecture rule — sensitive
+// No direct table reads/writes (client-data architecture rule - sensitive
 // data only through EF).
 //
 // global_people is a cross-product spine: passengers, house-people, grants,
@@ -14,6 +14,7 @@
 // rule and should be migrated onto this layer.
 
 import { supabase } from '../lib/supabase'
+import { snakeizeKeys } from '@shared/camelize'
 
 async function invokeRead<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('global-read-people', { body })
@@ -36,40 +37,40 @@ async function invokeWrite<T>(body: Record<string, unknown>): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-// Resolved person (read/write shape — display_name resolved server-side).
+// Resolved person (read/write shape - display_name resolved server-side).
 export interface GlobalPersonResolved {
   id:                   string
-  first_name:           string | null
-  middle_name:          string | null
-  last_name:            string | null
-  father_name:          string | null
-  grandfather_name:     string | null
-  patronymic_connector: string | null
+  firstName:           string | null
+  middleName:          string | null
+  lastName:            string | null
+  fatherName:          string | null
+  grandfatherName:     string | null
+  patronymicConnector: string | null
   pronouns:             string | null
   nickname:             string | null
   email:                string | null
   phone:                string | null
-  last_initial:         string | null
-  is_public_display:    boolean
+  lastInitial:         string | null
+  isPublicDisplay:    boolean
   over_18_confirmed_at: string | null
-  display_name:         string
+  displayName:         string
 }
 
-// Editable fields for create/update. All optional — create defaults NOT NULLs.
+// Editable fields for create/update. All optional - create defaults NOT NULLs.
 export interface GlobalPersonInput {
-  first_name?:           string | null
-  middle_name?:          string | null
-  last_name?:            string | null
-  father_name?:          string | null
-  grandfather_name?:     string | null
-  patronymic_connector?: string | null
+  firstName?:           string | null
+  middleName?:          string | null
+  lastName?:            string | null
+  fatherName?:          string | null
+  grandfatherName?:     string | null
+  patronymicConnector?: string | null
   pronouns?:             string | null
   nickname?:             string | null
   email?:                string | null
   phone?:                string | null
   notes?:                string | null
-  last_initial?:         string | null
-  is_public_display?:    boolean
+  lastInitial?:         string | null
+  isPublicDisplay?:    boolean
   over_18_confirmed_at?: string | null
 }
 
@@ -96,10 +97,10 @@ export const fetchPeopleByIds = (ids: string[]) =>
 
 // Mint a new global_people row. Returns the resolved person (with its new id).
 export const createPerson = (input: GlobalPersonInput = {}) =>
-  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'create', ...input })
+  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'create', ...snakeizeKeys<Record<string, unknown>>(input) })
     .then(r => r.person)
 
 // Patch an existing global_people row.
 export const updatePerson = (id: string, patch: GlobalPersonInput) =>
-  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'update', id, ...patch })
+  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'update', id, ...snakeizeKeys<Record<string, unknown>>(patch) })
     .then(r => r.person)

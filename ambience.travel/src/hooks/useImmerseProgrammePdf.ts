@@ -1,11 +1,11 @@
-// useProgrammeDownload.ts — jsPDF loader + download handler for Daily Programme PDFs.
+// useProgrammeDownload.ts - jsPDF loader + download handler for Daily Programme PDFs.
 // Mirrors useBriefDownload / useDossierDownload pattern exactly.
 //
 // Usage:
 //   const { pdfReady, pdfDownloading, handleDownloadProgramme } = useProgrammeDownload()
 //   <button onClick={() => handleDownloadProgramme(data)} disabled={!pdfReady || pdfDownloading} />
 //
-// Last updated: S48 — initial ship.
+// Last updated: S48 - initial ship.
 
 import { useEffect, useRef, useState } from 'react'
 import { exportDailyProgrammePdf, type DailyProgrammeData } from '../pdf/pdfImmerseProgramme'

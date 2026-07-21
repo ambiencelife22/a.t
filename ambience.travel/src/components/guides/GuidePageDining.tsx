@@ -1,4 +1,4 @@
-/* GuidePageDining.tsx — public dining guide for a destination.
+/* GuidePageDining.tsx - public dining guide for a destination.
  *
  * What it owns:
  *   - Venue data fetch
@@ -23,14 +23,14 @@
  *   - PDF year/version resolution (utilsGuidePdf)
  *   - Style objects (stylesGuidePage)
  *
- * Last updated: S53 — Nine-file guide-layer extraction. All shared behaviour
+ * Last updated: S53 - Nine-file guide-layer extraction. All shared behaviour
  *   moves to utilsGuideGating, useGuideHero, GuideEditorialPrompt, GuideAtAGlance,
  *   and the extended GUIDE_COPY. Inline editorial prompt, loading state,
  *   empty state, hero resolution, PDF resolvers, and gating math all gone.
- * Prior: S52 — GuideSectionBreak component. Three-group render.
+ * Prior: S52 - GuideSectionBreak component. Three-group render.
  *   Happenings infrastructure.
- * Prior: S41 — usePdfDownload hook extraction.
- * Prior: S40C — hasFullAccess prop added.
+ * Prior: S41 - usePdfDownload hook extraction.
+ * Prior: S40C - hasFullAccess prop added.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -94,7 +94,7 @@ interface GuidePageDiningProps {
   hasFullAccess: boolean
 }
 
-// ── Today as YYYY-MM-DD (local) — for closed_visible_until comparisons ──────
+// ── Today as YYYY-MM-DD (local) - for closed_visible_until comparisons ──────
 
 function todayISO(): string {
   const d = new Date()
@@ -144,11 +144,11 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
   const overlay = destination.overlay
 
   const atAGlanceBullets = useMemo(
-    () => overlay?.at_a_glance_bullets ?? [],
+    () => overlay?.atAGlanceBullets ?? [],
     [overlay],
   )
 
-  const hasHighlightedItems = useMemo(() => venues.some(v => v.is_highlighted), [venues])
+  const hasHighlightedItems = useMemo(() => venues.some(v => v.isHighlighted), [venues])
 
   // ── Venue + happenings fetch ─────────────────────────────────────────────
 
@@ -202,12 +202,12 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
 
   const availableCuisines = useMemo(() => {
     const set = new Set<string>()
-    venues.forEach(v => { if (v.cuisine_subcategory) set.add(v.cuisine_subcategory) })
+    venues.forEach(v => { if (v.cuisineSubcategory) set.add(v.cuisineSubcategory) })
     return Array.from(set).sort()
   }, [venues])
 
   const hasMichelinItems = useMemo(
-    () => venues.some(v => v.michelin_award === 'star' || v.michelin_award === 'bib_gourmand'),
+    () => venues.some(v => v.michelinAward === 'star' || v.michelinAward === 'bib_gourmand'),
     [venues],
   )
 
@@ -223,10 +223,10 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
   const { primaryVenues, supplementaryVenues, recentlyClosedVenues } = useMemo(() => {
     function passesFilters(v: DiningVenue): boolean {
       if (filterState.cuisines.size > 0) {
-        if (!v.cuisine_subcategory || !filterState.cuisines.has(v.cuisine_subcategory)) return false
+        if (!v.cuisineSubcategory || !filterState.cuisines.has(v.cuisineSubcategory)) return false
       }
-      if (filterState.michelinOnly && v.michelin_award !== 'star' && v.michelin_award !== 'bib_gourmand') return false
-      if (filterState.highlightedOnly && !v.is_highlighted) return false
+      if (filterState.michelinOnly && v.michelinAward !== 'star' && v.michelinAward !== 'bib_gourmand') return false
+      if (filterState.highlightedOnly && !v.isHighlighted) return false
       return true
     }
 
@@ -252,7 +252,7 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
 
       if (v.venue_status === 'permanently_closed') continue
 
-      if (v.is_supplementary) {
+      if (v.isSupplementary) {
         supplementary.push(v)
         continue
       }
@@ -315,9 +315,9 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
                   happenings,
                   copy:         { eyebrow: hero.eyebrow, headline: hero.headline, intro: hero.intro },
                   heroImageSrc: hero.imageSrc,
-                  guideYear:    resolveGuideYear(overlay?.guide_year),
-                  guideVersion: resolveGuideVersion(overlay?.guide_version),
-                  accuracyDate: overlay?.accuracy_date ?? null,
+                  guideYear:    resolveGuideYear(overlay?.guideYear),
+                  guideVersion: resolveGuideVersion(overlay?.guideVersion),
+                  accuracyDate: overlay?.accuracyDate ?? null,
                 })}
                 disabled={!pdfReady || pdfDownloading || venues.length === 0}
                 style={{
@@ -397,8 +397,8 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
               <GuidePlanYourVisit overlay={overlay} variant={VARIANT} />
             )}
 
-            {overlay?.accuracy_date && (
-              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracy_date} />
+            {overlay?.accuracyDate && (
+              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracyDate} />
             )}
           </>
         )}

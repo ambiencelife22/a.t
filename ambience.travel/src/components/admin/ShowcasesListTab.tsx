@@ -1,6 +1,6 @@
 /* ShowcasesListTab.tsx
  * Skeleton tab. Currently 0 rows in travel_showcases.
- * Per Seed Reference v8 §19 — content seeding pending.
+ * Per Seed Reference v8 §19 - content seeding pending.
  *
  * Last updated: S33
  */
@@ -30,7 +30,7 @@ export default function ShowcasesListTab() {
           No showcases yet.
         </div>
         <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, lineHeight: 1.7 }}>
-          Schema landed in S32H. Content seeding pending domain spec —<br/>
+          Schema landed in S32H. Content seeding pending domain spec -<br/>
           showcase use case and engagement relationship to be defined.
         </div>
       </div>

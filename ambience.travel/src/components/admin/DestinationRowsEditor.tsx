@@ -91,7 +91,7 @@ function thumbSrc(value: string | null): string | null {
   return `${PUBLIC_URL_PREFIX}${value}`
 }
 
-// ── Field + Section helpers (local — mirror EngagementDetailTab) ─────────────
+// ── Field + Section helpers (local - mirror EngagementDetailTab) ─────────────
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -169,7 +169,7 @@ function SortableRowCard({
     gap:        12,
   }
 
-  const thumb = thumbSrc(row.image_src)
+  const thumb = thumbSrc(row.imageSrc)
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -210,14 +210,14 @@ function SortableRowCard({
           {row.title || <span style={{ color: A.faint, fontStyle: 'italic' }}>(untitled)</span>}
         </div>
         <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-          {row.destination_name ?? row.destination_slug ?? '—'}
-          <span style={{ color: A.faint, marginLeft: 8 }}>· sort {row.sort_order}</span>
+          {row.destinationName ?? row.destinationSlug ?? '-'}
+          <span style={{ color: A.faint, marginLeft: 8 }}>· sort {row.sortOrder}</span>
           <span style={{
             marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
             textTransform: 'uppercase',
-            color: row.subpage_status === 'live' ? A.gold : A.muted,
+            color: row.subpageStatus === 'live' ? A.gold : A.muted,
           }}>
-            {row.subpage_status}
+            {row.subpageStatus}
           </span>
         </div>
       </div>
@@ -293,7 +293,7 @@ function EditModal({
               Destination Row
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>
-              {row.destination_name ?? row.destination_slug ?? '(unknown)'}
+              {row.destinationName ?? row.destinationSlug ?? '(unknown)'}
             </div>
           </div>
           <button
@@ -308,8 +308,8 @@ function EditModal({
         <Field label='Subpage Status'>
           <select
             style={inputStyle}
-            value={draft.subpage_status}
-            onChange={e => patch('subpage_status', e.target.value as 'live' | 'preview')}
+            value={draft.subpageStatus}
+            onChange={e => patch('subpageStatus', e.target.value as 'live' | 'preview')}
           >
             <option value='preview'>preview</option>
             <option value='live'>live</option>
@@ -323,86 +323,86 @@ function EditModal({
               <input style={inputStyle} value={draft.title ?? ''} onChange={e => patch('title', e.target.value || null)} />
             </Field>
             <Field label='Number Label'>
-              <input style={inputStyle} value={draft.number_label ?? ''} onChange={e => patch('number_label', e.target.value || null)} />
+              <input style={inputStyle} value={draft.numberLabel ?? ''} onChange={e => patch('numberLabel', e.target.value || null)} />
             </Field>
             <Field label='Mood'>
               <input style={inputStyle} value={draft.mood ?? ''} onChange={e => patch('mood', e.target.value || null)} />
             </Field>
             <Field label='Stay Label'>
-              <input style={inputStyle} value={draft.stay_label ?? ''} onChange={e => patch('stay_label', e.target.value || null)} />
+              <input style={inputStyle} value={draft.stayLabel ?? ''} onChange={e => patch('stayLabel', e.target.value || null)} />
             </Field>
           </div>
           <Field label='Summary'>
             <textarea style={textareaStyle} value={draft.summary ?? ''} onChange={e => patch('summary', e.target.value || null)} />
           </Field>
           <Field label='Card Image'>
-            <ImageFieldWithUploader value={draft.image_src} onChange={v => patch('image_src', v)} />
+            <ImageFieldWithUploader value={draft.imageSrc} onChange={v => patch('imageSrc', v)} />
           </Field>
           <Field label='Card Image Alt'>
-            <input style={inputStyle} value={draft.image_alt ?? ''} onChange={e => patch('image_alt', e.target.value || null)} />
+            <input style={inputStyle} value={draft.imageAlt ?? ''} onChange={e => patch('imageAlt', e.target.value || null)} />
           </Field>
         </CollapsibleSection>
 
         {/* Subpage Hero overrides */}
         <CollapsibleSection title='Subpage Hero (overrides)' defaultOpen={false}>
           <Field label='Hero Image Src'>
-            <ImageFieldWithUploader value={draft.hero_image_src_override} onChange={v => patch('hero_image_src_override', v)} />
+            <ImageFieldWithUploader value={draft.heroImageSrcOverride} onChange={v => patch('heroImageSrcOverride', v)} />
           </Field>
           <Field label='Hero Image Alt'>
-            <input style={inputStyle} value={draft.hero_image_alt_override ?? ''} onChange={e => patch('hero_image_alt_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.heroImageAltOverride ?? ''} onChange={e => patch('heroImageAltOverride', e.target.value || null)} />
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Field label='Hero Title 2'>
-              <input style={inputStyle} value={draft.hero_title_2_override ?? ''} onChange={e => patch('hero_title_2_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.heroTitle2Override ?? ''} onChange={e => patch('heroTitle2Override', e.target.value || null)} />
             </Field>
             <Field label='Hero Subtitle 2'>
-              <input style={inputStyle} value={draft.hero_subtitle_2_override ?? ''} onChange={e => patch('hero_subtitle_2_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.heroSubtitle2Override ?? ''} onChange={e => patch('heroSubtitle2Override', e.target.value || null)} />
             </Field>
           </div>
           <Field label='Hero Image Src 2'>
-            <ImageFieldWithUploader value={draft.hero_image_src_2_override} onChange={v => patch('hero_image_src_2_override', v)} />
+            <ImageFieldWithUploader value={draft.heroImageSrc2Override} onChange={v => patch('heroImageSrc2Override', v)} />
           </Field>
           <Field label='Hero Image Alt 2'>
-            <input style={inputStyle} value={draft.hero_image_alt_2_override ?? ''} onChange={e => patch('hero_image_alt_2_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.heroImageAlt2Override ?? ''} onChange={e => patch('heroImageAlt2Override', e.target.value || null)} />
           </Field>
         </CollapsibleSection>
 
         {/* Subpage intro / pricing / dining overrides */}
         <CollapsibleSection title='Subpage Overrides' defaultOpen={false}>
           <Field label='Intro Title'>
-            <input style={inputStyle} value={draft.intro_title_override ?? ''} onChange={e => patch('intro_title_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.introTitleOverride ?? ''} onChange={e => patch('introTitleOverride', e.target.value || null)} />
           </Field>
           <Field label='Intro Body'>
-            <textarea style={textareaStyle} value={draft.intro_body_override ?? ''} onChange={e => patch('intro_body_override', e.target.value || null)} />
+            <textarea style={textareaStyle} value={draft.introBodyOverride ?? ''} onChange={e => patch('introBodyOverride', e.target.value || null)} />
           </Field>
 
           <div style={{ height: 1, background: A.border, margin: '4px 0' }} />
 
           <Field label='Pricing Body'>
-            <textarea style={textareaStyle} value={draft.pricing_body_override ?? ''} onChange={e => patch('pricing_body_override', e.target.value || null)} />
+            <textarea style={textareaStyle} value={draft.pricingBodyOverride ?? ''} onChange={e => patch('pricingBodyOverride', e.target.value || null)} />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Field label='Pricing Notes Heading'>
-              <input style={inputStyle} value={draft.pricing_notes_heading_override ?? ''} onChange={e => patch('pricing_notes_heading_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.pricingNotesHeadingOverride ?? ''} onChange={e => patch('pricingNotesHeadingOverride', e.target.value || null)} />
             </Field>
             <Field label='Pricing Notes Title'>
-              <input style={inputStyle} value={draft.pricing_notes_title_override ?? ''} onChange={e => patch('pricing_notes_title_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.pricingNotesTitleOverride ?? ''} onChange={e => patch('pricingNotesTitleOverride', e.target.value || null)} />
             </Field>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Field label='Pricing Closer Item'>
-              <input style={inputStyle} value={draft.pricing_closer_item_override ?? ''} onChange={e => patch('pricing_closer_item_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.pricingCloserItemOverride ?? ''} onChange={e => patch('pricingCloserItemOverride', e.target.value || null)} />
             </Field>
             <Field label='Pricing Closer Basis'>
-              <input style={inputStyle} value={draft.pricing_closer_basis_override ?? ''} onChange={e => patch('pricing_closer_basis_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.pricingCloserBasisOverride ?? ''} onChange={e => patch('pricingCloserBasisOverride', e.target.value || null)} />
             </Field>
             <Field label='Pricing Closer Stay'>
-              <input style={inputStyle} value={draft.pricing_closer_stay_override ?? ''} onChange={e => patch('pricing_closer_stay_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.pricingCloserStayOverride ?? ''} onChange={e => patch('pricingCloserStayOverride', e.target.value || null)} />
             </Field>
             <Field label='Pricing Closer Range'>
-              <input style={inputStyle} value={draft.pricing_closer_indicative_range_override ?? ''} onChange={e => patch('pricing_closer_indicative_range_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.pricingCloserIndicativeRangeOverride ?? ''} onChange={e => patch('pricingCloserIndicativeRangeOverride', e.target.value || null)} />
             </Field>
           </div>
 
@@ -410,14 +410,14 @@ function EditModal({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Field label='Dining Eyebrow'>
-              <input style={inputStyle} value={draft.dining_eyebrow_override ?? ''} onChange={e => patch('dining_eyebrow_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.diningEyebrowOverride ?? ''} onChange={e => patch('diningEyebrowOverride', e.target.value || null)} />
             </Field>
             <Field label='Dining Title'>
-              <input style={inputStyle} value={draft.dining_title_override ?? ''} onChange={e => patch('dining_title_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.diningTitleOverride ?? ''} onChange={e => patch('diningTitleOverride', e.target.value || null)} />
             </Field>
           </div>
           <Field label='Dining Body'>
-            <textarea style={textareaStyle} value={draft.dining_body_override ?? ''} onChange={e => patch('dining_body_override', e.target.value || null)} />
+            <textarea style={textareaStyle} value={draft.diningBodyOverride ?? ''} onChange={e => patch('diningBodyOverride', e.target.value || null)} />
           </Field>
         </CollapsibleSection>
 
@@ -476,10 +476,10 @@ function AddDestinationModal({
     try {
       const sortOrder = await fetchMaxDestinationSortOrder(engagementId)
       await insertDestinationRow({
-        engagement_id:               engagementId,
+        engagementId:               engagementId,
         global_destination_id: option.id,
         title:                 option.name,
-        sort_order:            sortOrder,
+        sortOrder:            sortOrder,
         subpage_status:        'preview',
       })
       showToast(`Added ${option.name}.`, 'success')
@@ -553,10 +553,10 @@ function AddDestinationModal({
               <span style={{
                 fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
                 textTransform: 'uppercase',
-                color: d.storage_path ? A.gold : A.faint,
+                color: d.storagePath ? A.gold : A.faint,
                 whiteSpace: 'nowrap',
               }}>
-                {d.storage_path ? '✓ path' : 'no path'}
+                {d.storagePath ? '✓ path' : 'no path'}
               </span>
             </button>
           ))}
@@ -606,7 +606,7 @@ export default function DestinationRowsEditor({
   useEffect(() => { load() }, [engagementId])
 
   const existingGlobalIds = useMemo(
-    () => new Set(rows.map(r => r.global_destination_id)),
+    () => new Set(rows.map(r => r.globalDestinationId)),
     [rows],
   )
 
@@ -620,7 +620,7 @@ export default function DestinationRowsEditor({
 
     const reordered = arrayMove(rows, oldIndex, newIndex)
     // Optimistic local update with new sort_order assignments
-    const withNewSort = reordered.map((r, i) => ({ ...r, sort_order: i + 1 }))
+    const withNewSort = reordered.map((r, i) => ({ ...r, sortOrder: i + 1 }))
     setRows(withNewSort)
 
     try {
@@ -635,9 +635,9 @@ export default function DestinationRowsEditor({
 
   async function handleDelete(row: DestinationRow) {
     const confirmed = window.confirm(
-      `Remove "${row.title || row.destination_name}" from this engagement?\n\n` +
+      `Remove "${row.title || row.destinationName}" from this engagement?\n\n` +
       `This deletes the destination row only. Pricing rows for this destination ` +
-      `on this engagement remain — clean those up separately if needed.\n\n` +
+      `on this engagement remain - clean those up separately if needed.\n\n` +
       `Cannot be undone.`,
     )
     if (!confirmed) return

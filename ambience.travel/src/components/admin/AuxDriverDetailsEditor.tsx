@@ -1,10 +1,10 @@
 /* AuxDriverDetailsEditor.tsx
  * Per-ground-car-service driver/vehicle editor. Structural twin of
- * AuxPassengersEditor — mounted under Transfer / Airport Transfer / Car Service
+ * AuxPassengersEditor - mounted under Transfer / Airport Transfer / Car Service
  * aux bookings in the dossier AuxBookingsEditor.
  *
  * Each row = one vehicle (driver name/phone, car model, plate, company, role).
- * Some clients run 5 vehicles per service (principal/staff/luggage) — vehicle_role
+ * Some clients run 5 vehicles per service (principal/staff/luggage) - vehicleRole
  * labels which car. company is operator-internal; the client confirmation/programme
  * pages omit it (the client EFs never select it).
  *
@@ -44,34 +44,34 @@ function VehField({ label, value, onChange, placeholder, type = 'text' }: {
 }
 
 type VehDraft = {
-  driver_name: string; driver_phone: string; car_model: string
-  plate: string; company: string; vehicle_role: string; sort_order: number
+  driverName: string; driverPhone: string; carModel: string
+  plate: string; company: string; vehicleRole: string; sortOrder: number
 }
 
 function emptyVehDraft(sortOrder: number): VehDraft {
-  return { driver_name: '', driver_phone: '', car_model: '', plate: '', company: '', vehicle_role: '', sort_order: sortOrder }
+  return { driverName: '', driverPhone: '', carModel: '', plate: '', company: '', vehicleRole: '', sortOrder: sortOrder }
 }
 function vehToDraft(v: ElementDriverDetail): VehDraft {
   return {
-    driver_name:  v.driver_name  ?? '',
-    driver_phone: v.driver_phone ?? '',
-    car_model:    v.car_model    ?? '',
+    driverName:  v.driverName  ?? '',
+    driverPhone: v.driverPhone ?? '',
+    carModel:    v.carModel    ?? '',
     plate:        v.plate        ?? '',
     company:      v.company      ?? '',
-    vehicle_role: v.vehicle_role ?? '',
-    sort_order:   v.sort_order,
+    vehicleRole: v.vehicleRole ?? '',
+    sortOrder:   v.sortOrder,
   }
 }
 function vehDraftToPatch(d: VehDraft): ElementDriverDetailPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
-    driver_name:  orNull(d.driver_name),
-    driver_phone: orNull(d.driver_phone),
-    car_model:    orNull(d.car_model),
+    driverName:  orNull(d.driverName),
+    driverPhone: orNull(d.driverPhone),
+    carModel:    orNull(d.carModel),
     plate:        orNull(d.plate),
     company:      orNull(d.company),
-    vehicle_role: orNull(d.vehicle_role),
-    sort_order:   d.sort_order,
+    vehicleRole: orNull(d.vehicleRole),
+    sortOrder:   d.sortOrder,
   }
 }
 
@@ -85,11 +85,11 @@ export function AuxDriverDetailsEditor({ auxBookingId }: { auxBookingId: string 
 
   useEffect(() => {
     fetchAuxDriverDetails(auxBookingId)
-      .then(rows => setVeh(rows.sort((a, b) => a.sort_order - b.sort_order)))
+      .then(rows => setVeh(rows.sort((a, b) => a.sortOrder - b.sortOrder)))
       .catch(() => setVeh([]))
   }, [auxBookingId])
 
-  const sorted = [...(veh ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+  const sorted = [...(veh ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
 
   function beginAdd() { setEditId(null); setDraft(emptyVehDraft(veh?.length ?? 0)); setAdding(true) }
   function beginEdit(v: ElementDriverDetail) { setAdding(false); setEditId(v.id); setDraft(vehToDraft(v)) }
@@ -126,13 +126,13 @@ export function AuxDriverDetailsEditor({ auxBookingId }: { auxBookingId: string 
   const form = (
     <div style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <VehField label='Driver Name' value={draft.driver_name} onChange={v => setDraft({ ...draft, driver_name: v })} placeholder='Mr. Schmidt' />
-        <VehField label='Driver Phone' value={draft.driver_phone} onChange={v => setDraft({ ...draft, driver_phone: v })} placeholder='+43 ...' />
-        <VehField label='Car Model' value={draft.car_model} onChange={v => setDraft({ ...draft, car_model: v })} placeholder='Mercedes V-Class' />
+        <VehField label='Driver Name' value={draft.driverName} onChange={v => setDraft({ ...draft, driverName: v })} placeholder='Mr. Schmidt' />
+        <VehField label='Driver Phone' value={draft.driverPhone} onChange={v => setDraft({ ...draft, driverPhone: v })} placeholder='+43 ...' />
+        <VehField label='Car Model' value={draft.carModel} onChange={v => setDraft({ ...draft, carModel: v })} placeholder='Mercedes V-Class' />
         <VehField label='Plate' value={draft.plate} onChange={v => setDraft({ ...draft, plate: v })} placeholder='S-AB 1234' />
-        <VehField label='Vehicle Role' value={draft.vehicle_role} onChange={v => setDraft({ ...draft, vehicle_role: v })} placeholder='Principal / Staff / Luggage' />
+        <VehField label='Vehicle Role' value={draft.vehicleRole} onChange={v => setDraft({ ...draft, vehicleRole: v })} placeholder='Principal / Staff / Luggage' />
         <VehField label='Company (internal)' value={draft.company} onChange={v => setDraft({ ...draft, company: v })} placeholder='Operator name' />
-        <VehField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => setDraft({ ...draft, sort_order: parseInt(v, 10) || 0 })} />
+        <VehField label='Sort Order' type='number' value={String(draft.sortOrder)} onChange={v => setDraft({ ...draft, sortOrder: parseInt(v, 10) || 0 })} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button onClick={() => { setAdding(false); setEditId(null) }} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}>
@@ -164,10 +164,10 @@ export function AuxDriverDetailsEditor({ auxBookingId }: { auxBookingId: string 
         ) : (
           <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 0' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{v.driver_name || 'Driver'}</span>
-              {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginLeft: 8 }}>{v.vehicle_role}</span>}
+              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{v.driverName || 'Driver'}</span>
+              {v.vehicleRole && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginLeft: 8 }}>{v.vehicleRole}</span>}
               <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginLeft: 8 }}>
-                {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  ·  ')}
+                {[v.driverPhone, v.carModel, v.plate].filter(Boolean).join('  ·  ')}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>

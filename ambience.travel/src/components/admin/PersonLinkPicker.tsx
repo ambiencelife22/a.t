@@ -2,8 +2,8 @@
  * Shared searchable picker over the canonical person registry (global_people),
  * read via queriesGlobalPeople (EF-mediated). Sets a person_id link, with an
  * unlink-to-null action. Consumed by:
- *   - PersonModal (HouseTab) — link an a_house_people row to global_people
- *   - AuxPassengersEditor    — link a passenger to global_people
+ *   - PersonModal (HouseTab) - link an a_house_people row to global_people
+ *   - AuxPassengersEditor    - link a passenger to global_people
  *
  * Self-contained: own styles, debounced server-side search, resolves the
  * currently-linked person by id on mount so the label shows even before the
@@ -47,7 +47,7 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange, 
     let cancelled = false
     if (!personId) { setLinked(null); return }
     fetchPersonById(personId)
-      .then(p => { if (!cancelled) { setLinked(p); onResolved?.(p?.display_name ?? null) } })
+      .then(p => { if (!cancelled) { setLinked(p); onResolved?.(p?.displayName ?? null) } })
       .catch(() => { if (!cancelled) { setLinked(null); onResolved?.(null) } })
     return () => { cancelled = true }
   }, [personId])
@@ -69,7 +69,7 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange, 
   function select(p: GlobalPersonResolved) {
     onChange(p.id)
     setLinked(p)
-    onResolved?.(p.display_name)
+    onResolved?.(p.displayName)
     setOpen(false)
     setQuery('')
   }
@@ -98,7 +98,7 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange, 
               borderRadius: 6, padding: '5px 8px',
             }}
           >
-            {linked ? linked.display_name : '— Not linked —'}
+            {linked ? linked.displayName : '- Not linked -'}
           </button>
           {linked && (
             <button
@@ -145,7 +145,7 @@ export function PersonLinkPicker({ label = 'Linked Person', personId, onChange, 
                     padding: '6px 10px', cursor: 'pointer',
                   }}
                 >
-                  <span style={{ fontWeight: 600 }}>{p.display_name}</span>
+                  <span style={{ fontWeight: 600 }}>{p.displayName}</span>
                   {p.email && <span style={{ color: A.faint, marginLeft: 8, fontFamily: 'DM Mono, monospace', fontSize: 10 }}>{p.email}</span>}
                 </button>
               ))

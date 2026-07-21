@@ -1,19 +1,19 @@
-// ImmerseNotPublicFallback.tsx — client-facing gate for not-public engagements.
+// ImmerseNotPublicFallback.tsx - client-facing gate for not-public engagements.
 //
 // Shown when fetchEngagementClientData returns type='not-public'. The
-// engagement exists but public_view = false. This is not a 404 — it is a
+// engagement exists but public_view = false. This is not a 404 - it is a
 // deliberate visibility decision by the operator. Degrade toward human
 // contact; never surface an error.
 //
 // Theme: cream surface, mirrors ImmerseProposalArchivedFallback so both soft-gate
 // screens read as native to the client surface. Brand chrome is /emblem.png
-// only — no invented taglines or copy.
+// only - no invented taglines or copy.
 //
 // Distinct from:
-//   NotFoundPage          — dark surface, engagement genuinely does not exist
-//   ImmerseProposalArchivedFallback — cream surface, engagement existed and was archived
+//   NotFoundPage          - dark surface, engagement genuinely does not exist
+//   ImmerseProposalArchivedFallback - cream surface, engagement existed and was archived
 //
-// Created: S53 — P0 gate screen. Replaces NotFoundPage render for not-public
+// Created: S53 - P0 gate screen. Replaces NotFoundPage render for not-public
 //   engagements in ImmerseEngagementRoute.
 
 import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'

@@ -28,46 +28,46 @@ export const fetchTeamMemberById = (id: string) =>
   invokeRead<{ member: TeamMember | null }>({ mode: 'member_by_id', id }).then(r => r.member);
 
 // Used to default "Performed By" to the logged-in admin's own team row.
-export const fetchTeamMemberByPerson = (person_id: string) =>
-  invokeRead<{ member: TeamMember | null }>({ mode: 'member_by_person', person_id }).then(r => r.member);
+export const fetchTeamMemberByPerson = (personId: string) =>
+  invokeRead<{ member: TeamMember | null }>({ mode: 'member_by_person', person_id: personId }).then(r => r.member);
 
 // ---- Writes ----
 export const upsertTeamMember = (input: TeamMemberInput) =>
   invokeWrite<{ member: TeamMemberRow }>({ mode: 'upsert_member', ...input }).then(r => r.member);
 
-export const setTeamMemberActive = (person_id: string, is_active: boolean) =>
-  invokeWrite<{ member: TeamMemberRow }>({ mode: 'set_active', person_id, is_active }).then(r => r.member);
+export const setTeamMemberActive = (personId: string, isActive: boolean) =>
+  invokeWrite<{ member: TeamMemberRow }>({ mode: 'set_active', person_id: personId, is_active: isActive }).then(r => r.member);
 
 // ---- Types ----
 export type TeamRole = 'owner' | 'admin' | 'member';
 
-// Resolved member (read shape — joined to global_people + travel_time_rates).
+// Resolved member (read shape - joined to global_people + travel_time_rates).
 export interface TeamMember {
   id: string;
-  person_id: string;
+  personId: string;
   role: TeamRole;
-  is_active: boolean;
-  default_rate_id: string | null;
-  display_name: string;
-  first_name: string | null;
-  last_name: string | null;
+  isActive: boolean;
+  defaultRateId: string | null;
+  displayName: string;
+  firstName: string | null;
+  lastName: string | null;
   nickname: string | null;
-  rate_label: string | null;
-  hourly_rate: number | null;
+  rateLabel: string | null;
+  hourlyRate: number | null;
   currency: string | null;
 }
 
 // Raw row returned by writes (unjoined).
 export interface TeamMemberRow {
   id: string;
-  person_id: string;
+  personId: string;
   role: TeamRole;
-  is_active: boolean;
-  default_rate_id: string | null;
+  isActive: boolean;
+  defaultRateId: string | null;
 }
 
 export interface TeamMemberInput {
-  person_id: string;                  // required; keyed on this (UNIQUE)
+  personId: string;                  // required; keyed on this (UNIQUE)
   role?: TeamRole;                    // omit to leave unchanged on update
   default_rate_id?: string | null;
   is_active?: boolean;

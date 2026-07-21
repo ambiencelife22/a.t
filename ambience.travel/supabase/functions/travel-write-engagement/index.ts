@@ -1,11 +1,11 @@
 // supabase/functions/travel-write-engagement/index.ts
 //
 // Edge Function: travel-write-engagement
-// Class A — admin-only. Single source for all admin-side engagement WRITES.
+// Class A - admin-only. Single source for all admin-side engagement WRITES.
 // Write mirror of travel-read-engagement-admin (S54).
 //
 // Security model (identical to the read mirror):
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - Writes execute via service role to bypass RLS uniformly
@@ -15,29 +15,32 @@
 //   { mode: WriteMode, ...mode-specific params }
 //
 // Modes:
-//   create_engagement     — insert a proposal-stage engagement      → { row }
-//   update_engagement     — partial scalar update by id             → { row }
-//   set_engagement_status — set engagement_status by slug (absorbs  → { row }
+//   create_engagement     - insert a proposal-stage engagement      → { row }
+//   update_engagement     - partial scalar update by id             → { row }
+//   set_engagement_status - set engagement_status by slug (absorbs  → { row }
 //                           "promote": promotion is just advancing
 //                           this independent axis; no trip side effect)
-//   set_itinerary_status  — set itinerary_status by slug            → { row }
-//   reorder               — batch [{id, sort_order}]                → { updated }
-//   set_visibility        — toggle public_view (the live show/hide  → { row }
+//   set_itinerary_status  - set itinerary_status by slug            → { row }
+//   reorder               - batch [{id, sort_order}]                → { updated }
+//   set_visibility        - toggle public_view (the live show/hide  → { row }
 //                           gate; NOT is_public / is_public_template)
-//   update_welcome_letter — update the singleton welcome letter     → { row }
-//   archive               — REVERSIBLE: engagement_status -> chosen  → { row }
+//   update_welcome_letter - update the singleton welcome letter     → { row }
+//   archive               - REVERSIBLE: engagement_status -> chosen  → { row }
 //                           terminal slug (cancelled|lost), itinerary
 //                           -> archived. Content preserved; reactivatable.
-//   delete_engagement     — HARD delete, financial-guarded. Refuses   → { deleted }
+//   delete_engagement     - HARD delete, financial-guarded. Refuses   → { deleted }
 //                           (409) if any booking / time_entry / request
 //                           exists (Retention Spec v1). 12 travel_immerse_*
 //                           content tables cascade; records are protected.
+//   card_override_update  - camel fields -> snake, update by id       → { success }
+//   card_override_insert  - insert dining/experience card override    → { id }
+//   card_override_delete  - delete card override by id                → { success }
 //
 // Design notes:
 //   - The two status axes are INDEPENDENT. Engagement status (commercial:
 //     requested..closed_won) and itinerary status (content maturity:
 //     draft..confirmed) move on separate clocks; neither gates the other.
-//     So there is no composite "promote" — it is set_engagement_status.
+//     So there is no composite "promote" - it is set_engagement_status.
 //   - Status params are SLUGS (human-readable); the EF resolves slug -> id
 //     against the lookup tables. Callers never pass status uuids.
 //   - url_id is an 11-char access token with a UNIQUE constraint; create
@@ -50,6 +53,8 @@
 //
 // Deployed at: /functions/v1/travel-write-engagement
 // First ship: S54 (this file)
+// S54Q: card_override_update/insert/delete added - queriesAdminCardOverrides EF-routed.
+//   Frontend sends camel keys; card_override_update maps camel -> snake before write.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'
@@ -76,6 +81,13 @@ type WriteMode =
   | 'unlink_house'
   | 'set_primary_house'
   | 'set_label'
+  | 'card_override_update'
+  | 'card_override_insert'
+  | 'card_override_delete'
+  | 'selection_update'
+  | 'selection_insert'
+  | 'selection_delete'
+  | 'selections_reorder'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -107,7 +119,7 @@ const WELCOME_LETTER_FIELDS = [
   'eyebrow', 'title', 'body', 'signoff_body', 'signoff_name',
 ] as const
 
-// No-ambiguous-chars set (excludes I, O, l, 0, 1) — url_ids are client-facing
+// No-ambiguous-chars set (excludes I, O, l, 0, 1) - url_ids are client-facing
 // access tokens, often read aloud or typed from a screenshot. Mirrors the
 // original client generateUrlId alphabet (preserved when generation moved
 // server-side S54).
@@ -429,7 +441,7 @@ Deno.serve(async (req: Request) => {
         }, 409)
       }
 
-      // No financial records — safe to hard delete. The 12 travel_immerse_*
+      // No financial records - safe to hard delete. The 12 travel_immerse_*
       // content tables cascade automatically (verified ON DELETE CASCADE).
       const { error } = await serviceClient
         .from('travel_engagements')
@@ -640,6 +652,113 @@ Deno.serve(async (req: Request) => {
       )
       if (results.some(r => r.error)) return json({ error: 'Failed to reorder links' }, 500)
       return json({ ok: true })
+    }
+
+    if (mode === 'selection_update') {
+      const id = body?.id as string | undefined
+      const fields = (body?.fields as Record<string, unknown>) ?? {}
+      if (!id) return json({ error: 'id is required' }, 400)
+      const map: Record<string, string> = { sortOrder: 'sort_order', isActive: 'is_active' }
+      const dbPayload: Record<string, unknown> = {}
+      for (const k of Object.keys(fields)) { const col = map[k]; if (col) dbPayload[col] = fields[k] }
+      if (Object.keys(dbPayload).length === 0) return json({ success: true })
+      const { error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_selections')
+        .update(dbPayload)
+        .eq('id', id)
+      if (error) return json({ error: 'Failed to update selection' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'selection_insert') {
+      const engagementId = body?.engagementId as string | undefined
+      const kind = body?.kind as string | undefined
+      const cardId = body?.cardId as string | undefined
+      const sortOrder = body?.sortOrder as number | undefined
+      if (!engagementId || !kind || !cardId) return json({ error: 'engagementId, kind, cardId required' }, 400)
+      const row: Record<string, unknown> = { engagement_id: engagementId, sort_order: sortOrder ?? 0, is_active: true }
+      if (kind === 'dining') row.dining_venue_id = cardId
+      if (kind === 'experience') row.experience_id = cardId
+      const { data, error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_selections')
+        .insert(row).select('id').single()
+      if (error) return json({ error: 'Failed to insert selection' }, 500)
+      return json({ id: data.id })
+    }
+
+    if (mode === 'selection_delete') {
+      const id = body?.id as string | undefined
+      if (!id) return json({ error: 'id is required' }, 400)
+      const { error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_selections')
+        .delete().eq('id', id)
+      if (error) return json({ error: 'Failed to delete selection' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'selections_reorder') {
+      const orderedIds = (body?.orderedIds as string[] | undefined) ?? []
+      for (let i = 0; i < orderedIds.length; i++) {
+        const { error } = await serviceClient
+          .from('travel_overlay_engagement_content_card_selections')
+          .update({ sort_order: i + 1 }).eq('id', orderedIds[i])
+        if (error) return json({ error: 'Failed to reorder selections' }, 500)
+      }
+      return json({ success: true })
+    }
+
+    if (mode === 'card_override_update') {
+      const id = body?.id as string | undefined
+      const fields = (body?.fields as Record<string, unknown>) ?? {}
+      if (!id) return json({ error: 'id is required' }, 400)
+      const map: Record<string, string> = {
+        kickerOverride: 'kicker_override', nameOverride: 'name_override',
+        taglineOverride: 'tagline_override', bodyOverride: 'body_override',
+        bulletsHeadingOverride: 'bullets_heading_override', bulletsOverride: 'bullets_override',
+        imageSrcOverride: 'image_src_override', imageAltOverride: 'image_alt_override',
+        imageCreditOverride: 'image_credit_override', imageCreditUrlOverride: 'image_credit_url_override',
+        imageLicenseOverride: 'image_license_override', isActive: 'is_active',
+      }
+      const dbPayload: Record<string, unknown> = {}
+      for (const k of Object.keys(fields)) {
+        const col = map[k]
+        if (col) dbPayload[col] = fields[k]
+      }
+      if (Object.keys(dbPayload).length === 0) return json({ success: true })
+      const { error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_overrides')
+        .update(dbPayload)
+        .eq('id', id)
+      if (error) return json({ error: 'Failed to update card override' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'card_override_insert') {
+      const engagementId = body?.engagementId as string | undefined
+      const kind = body?.kind as string | undefined
+      const cardId = body?.cardId as string | undefined
+      if (!engagementId || !kind || !cardId) return json({ error: 'engagementId, kind, cardId required' }, 400)
+      const row: Record<string, unknown> = { engagement_id: engagementId, is_active: true }
+      if (kind === 'dining') row.dining_venue_id = cardId
+      if (kind === 'experience') row.experience_id = cardId
+      const { data, error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_overrides')
+        .insert(row)
+        .select('id')
+        .single()
+      if (error) return json({ error: 'Failed to insert card override' }, 500)
+      return json({ id: data.id })
+    }
+
+    if (mode === 'card_override_delete') {
+      const id = body?.id as string | undefined
+      if (!id) return json({ error: 'id is required' }, 400)
+      const { error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_overrides')
+        .delete()
+        .eq('id', id)
+      if (error) return json({ error: 'Failed to delete card override' }, 500)
+      return json({ success: true })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

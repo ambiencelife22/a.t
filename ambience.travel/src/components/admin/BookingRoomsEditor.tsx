@@ -1,16 +1,16 @@
 /* BookingRoomsEditor.tsx
  * THE single editor for travel_booking_rooms. One write surface for room
- * identity (person_id link + guest_name override), images, names, rates.
+ * identity (personId link + guestName override), images, names, rates.
  *
- * Replaces two prior editors that both wrote guest_name as free text:
- *   - RoomsEditor      (inline in EngagementDossierSection) — full create/edit/delete
- *   - BriefRoomEditor  (in BriefEditorPage)           — names + images + preview
+ * Replaces two prior editors that both wrote guestName as free text:
+ *   - RoomsEditor      (inline in EngagementDossierSection) - full create/edit/delete
+ *   - BriefRoomEditor  (in BriefEditorPage)           - names + images + preview
  * Two surfaces editing one column was the drift. This is the one place.
  *
- * Name single-source (S53G): a room guest resolves person_id → guest_name
+ * Name single-source (S53G): a room guest resolves personId → guestName
  * override → trip party label (prepared_for), server-side in the EF. This
- * editor links person_id via PersonLinkPicker and frames guest_name as a
- * visible-default OVERRIDE — placeholder shows what it resolves to, typed
+ * editor links personId via PersonLinkPicker and frames guestName as a
+ * visible-default OVERRIDE - placeholder shows what it resolves to, typed
  * only for genuine exceptions (e.g. "Ms. Sayegh" pre-registry).
  *
  * Two mount modes, one component:
@@ -51,45 +51,45 @@ const labelStyle: React.CSSProperties = {
 }
 
 // ── Public controlled-draft shape ───────────────────────────────────────────
-// The brief page lifts this per room (keyed by roomId). guest_name is the
-// override; person_id is the link. image_src is the per-room brief image.
+// The brief page lifts this per room (keyed by roomId). guestName is the
+// override; personId is the link. image_src is the per-room brief image.
 
 export type RoomDraft = {
-  person_id:           string | null
-  guest_name:          string
-  room_name:           string
-  confirmation_number: string
-  party_composition:   string
+  personId:           string | null
+  guestName:          string
+  roomName:           string
+  confirmationNumber: string
+  partyComposition:   string
   notes:               string
   nights:              string
   rate:                string
   total:               string
-  extra_person_fee:    string
-  additional_guests:   string[]
+  extraPersonFee:    string
+  additionalGuests:   string[]
 }
 
 export function roomToDraft(r: BookingRoom): RoomDraft {
   const numStr = (n: number | null): string => (n == null ? '' : String(n))
   return {
-    person_id:           r.person_id            ?? null,
-    guest_name:          r.guest_name           ?? '',
-    room_name:           r.room_name            ?? '',
-    confirmation_number: r.confirmation_number  ?? '',
-    party_composition:   r.party_composition    ?? '',
+    personId:           r.personId            ?? null,
+    guestName:          r.guestName           ?? '',
+    roomName:           r.roomName            ?? '',
+    confirmationNumber: r.confirmationNumber  ?? '',
+    partyComposition:   r.partyComposition    ?? '',
     notes:               r.notes                ?? '',
     nights:              numStr(r.nights),
     rate:                numStr(r.rate),
     total:               numStr(r.total),
-    extra_person_fee:    numStr(r.extra_person_fee),
-    additional_guests:   r.additional_guests    ?? [],
+    extraPersonFee:    numStr(r.extraPersonFee),
+    additionalGuests:   r.additionalGuests    ?? [],
   }
 }
 
 function emptyDraft(): RoomDraft {
   return {
-    person_id: null, guest_name: '', room_name: '', confirmation_number: '',
-    party_composition: '', notes: '', nights: '', rate: '', total: '',
-    extra_person_fee: '', additional_guests: [],
+    personId: null, guestName: '', roomName: '', confirmationNumber: '',
+    partyComposition: '', notes: '', nights: '', rate: '', total: '',
+    extraPersonFee: '', additionalGuests: [],
   }
 }
 
@@ -101,42 +101,42 @@ function draftToPatch(d: RoomDraft): BookingRoomPatch {
     const n = Number(t)
     return Number.isFinite(n) ? n : null
   }
-  const guests = d.additional_guests.filter(Boolean)  // person uuids; drop empty slots
+  const guests = d.additionalGuests.filter(Boolean)  // person uuids; drop empty slots
   return {
-    person_id:           d.person_id,
-    guest_name:          orNull(d.guest_name),
-    room_name:           orNull(d.room_name),
-    confirmation_number: orNull(d.confirmation_number),
-    party_composition:   orNull(d.party_composition),
+    personId:           d.personId,
+    guestName:          orNull(d.guestName),
+    roomName:           orNull(d.roomName),
+    confirmationNumber: orNull(d.confirmationNumber),
+    partyComposition:   orNull(d.partyComposition),
     notes:               orNull(d.notes),
     nights:              numOrNull(d.nights),
     rate:                numOrNull(d.rate),
     total:               numOrNull(d.total),
-    extra_person_fee:    numOrNull(d.extra_person_fee),
-    additional_guests:   guests.length > 0 ? guests : null,
+    extraPersonFee:    numOrNull(d.extraPersonFee),
+    additionalGuests:   guests.length > 0 ? guests : null,
   }
 }
 
-// Single-field → patch coercion for blur-save. additional_guests is excluded —
-// it has its own saver — so the switch is exhaustive over every remaining key.
+// Single-field → patch coercion for blur-save. additionalGuests is excluded -
+// it has its own saver - so the switch is exhaustive over every remaining key.
 // The default is unreachable by construction and throws rather than silently
 // returning a no-op patch (no silent fallbacks).
-type SavableField = Exclude<keyof RoomDraft, 'additional_guests'>
+type SavableField = Exclude<keyof RoomDraft, 'additionalGuests'>
 
 function fieldToPatch<K extends SavableField>(k: K, v: RoomDraft[K]): BookingRoomPatch {
   const orNull    = (s: string) => (s.trim() === '' ? null : s.trim())
   const numOrNull = (s: string) => { const t = s.trim(); if (t === '') return null; const n = Number(t); return Number.isFinite(n) ? n : null }
   switch (k) {
-    case 'person_id':           return { person_id: v as string | null }
-    case 'guest_name':          return { guest_name: orNull(v as string) }
-    case 'room_name':           return { room_name: orNull(v as string) }
-    case 'confirmation_number': return { confirmation_number: orNull(v as string) }
-    case 'party_composition':   return { party_composition: orNull(v as string) }
+    case 'personId':           return { personId: v as string | null }
+    case 'guestName':          return { guestName: orNull(v as string) }
+    case 'roomName':           return { roomName: orNull(v as string) }
+    case 'confirmationNumber': return { confirmationNumber: orNull(v as string) }
+    case 'partyComposition':   return { partyComposition: orNull(v as string) }
     case 'notes':               return { notes: orNull(v as string) }
     case 'nights':              return { nights: numOrNull(v as string) }
     case 'rate':                return { rate: numOrNull(v as string) }
     case 'total':               return { total: numOrNull(v as string) }
-    case 'extra_person_fee':    return { extra_person_fee: numOrNull(v as string) }
+    case 'extraPersonFee':    return { extraPersonFee: numOrNull(v as string) }
   }
   throw new Error(`fieldToPatch: unhandled field ${String(k)}`)
 }
@@ -171,7 +171,7 @@ function RoomFormBody({ draft, setField, setPerson, onResolved, linkedName, part
   removeGuest:(idx: number) => void
   blurField?: (k: keyof RoomDraft) => void
 }) {
-  const guestPlaceholder = draft.person_id
+  const guestPlaceholder = draft.personId
     ? `Using: ${linkedName ?? 'linked person'}`
     : (partyLabel ? `Resolves to: ${partyLabel}` : 'e.g. Ms. Sayegh')
 
@@ -179,23 +179,23 @@ function RoomFormBody({ draft, setField, setPerson, onResolved, linkedName, part
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <PersonLinkPicker
         label='Room guest (global registry)'
-        personId={draft.person_id}
+        personId={draft.personId}
         onChange={setPerson}
         onResolved={onResolved}
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <RoomField label='Guest Name (override)' value={draft.guest_name} onChange={v => setField('guest_name', v)} onBlur={() => blurField?.('guest_name')} placeholder={guestPlaceholder} />
-        <RoomField label='Confirmation #' value={draft.confirmation_number} onChange={v => setField('confirmation_number', v)} onBlur={() => blurField?.('confirmation_number')} placeholder='4375602759' />
-        <RoomField label='Party Composition' value={draft.party_composition} onChange={v => setField('party_composition', v)} onBlur={() => blurField?.('party_composition')} placeholder='2 Adults, 2 Children' />
-        <RoomField label='Room Name' value={draft.room_name} onChange={v => setField('room_name', v)} onBlur={() => blurField?.('room_name')} placeholder='Two-Bedroom Suite' />
+        <RoomField label='Guest Name (override)' value={draft.guestName} onChange={v => setField('guestName', v)} onBlur={() => blurField?.('guestName')} placeholder={guestPlaceholder} />
+        <RoomField label='Confirmation #' value={draft.confirmationNumber} onChange={v => setField('confirmationNumber', v)} onBlur={() => blurField?.('confirmationNumber')} placeholder='4375602759' />
+        <RoomField label='Party Composition' value={draft.partyComposition} onChange={v => setField('partyComposition', v)} onBlur={() => blurField?.('partyComposition')} placeholder='2 Adults, 2 Children' />
+        <RoomField label='Room Name' value={draft.roomName} onChange={v => setField('roomName', v)} onBlur={() => blurField?.('roomName')} placeholder='Two-Bedroom Suite' />
       </div>
 
-      {/* Additional guests — repeatable, person-linked (uuid). Each slot is a
+      {/* Additional guests - repeatable, person-linked (uuid). Each slot is a
           PersonLinkPicker writing a global_people id; no free text. */}
       <div>
         <label style={labelStyle}>Additional Guests</label>
-        {draft.additional_guests.map((pid, idx) => (
+        {draft.additionalGuests.map((pid, idx) => (
           <div key={idx} style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 4 }}>
             <div style={{ flex: 1 }}>
               <PersonLinkPicker
@@ -219,7 +219,7 @@ function RoomFormBody({ draft, setField, setPerson, onResolved, linkedName, part
           <RoomField label='Nights' type='number' value={draft.nights} onChange={v => setField('nights', v)} onBlur={() => blurField?.('nights')} placeholder='3' />
           <RoomField label='Rate / night' type='number' value={draft.rate} onChange={v => setField('rate', v)} onBlur={() => blurField?.('rate')} placeholder='1305.00' />
           <RoomField label='Total' type='number' value={draft.total} onChange={v => setField('total', v)} onBlur={() => blurField?.('total')} placeholder='4347.60' />
-          <RoomField label='Extra Person Fee' type='number' value={draft.extra_person_fee} onChange={v => setField('extra_person_fee', v)} onBlur={() => blurField?.('extra_person_fee')} placeholder='390.00' />
+          <RoomField label='Extra Person Fee' type='number' value={draft.extraPersonFee} onChange={v => setField('extraPersonFee', v)} onBlur={() => blurField?.('extraPersonFee')} placeholder='390.00' />
         </div>
       </div>
 
@@ -278,7 +278,7 @@ interface BookingRoomsEditorProps {
   booking:            EngagementBooking
   partyLabel?:        string | null
   imagePresetPath?:   string
-  // Controlled (brief) mode — when present, drafts/images are lifted.
+  // Controlled (brief) mode - when present, drafts/images are lifted.
   roomDrafts?:        Record<string, RoomDraft>
   onRoomDraftsChange?: (drafts: Record<string, RoomDraft>) => void
   roomImageSrcs?:     Record<string, string>
@@ -296,7 +296,7 @@ export function BookingRoomsEditor(props: BookingRoomsEditorProps) {
     : <UncontrolledRooms booking={booking} partyLabel={partyLabel} imagePresetPath={imagePresetPath} />
 }
 
-// ── Controlled (brief) — lifted drafts, blur-save per field ─────────────────
+// ── Controlled (brief) - lifted drafts, blur-save per field ─────────────────
 
 function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onRoomDraftsChange, roomImageSrcs, onImageSrcsChange }: BookingRoomsEditorProps) {
   const { error } = useAdminToast()
@@ -324,18 +324,18 @@ function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onR
   }
 
   async function setPerson(r: BookingRoom, pid: string | null) {
-    setField(r, 'person_id', pid)
-    try { await updateBookingRoom(r.id, { person_id: pid }) }
+    setField(r, 'personId', pid)
+    try { await updateBookingRoom(r.id, { personId: pid }) }
     catch (e) { error(e instanceof Error ? e.message : 'Failed to link person') }
   }
 
   async function saveGuests(r: BookingRoom, guests: string[]) {
-    try { await updateBookingRoom(r.id, { additional_guests: guests.length ? guests : null }) }
+    try { await updateBookingRoom(r.id, { additionalGuests: guests.length ? guests : null }) }
     catch (e) { error(e instanceof Error ? e.message : 'Failed to save guests') }
   }
 
   async function saveImage(r: BookingRoom, src: string | null) {
-    try { await updateBookingRoom(r.id, { brief_image_src: src || null }) }
+    try { await updateBookingRoom(r.id, { briefImageSrc: src || null }) }
     catch (e) { error(e instanceof Error ? e.message : 'Failed to save image') }
   }
 
@@ -345,11 +345,11 @@ function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onR
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {rooms.map(r => {
         const d = getDraft(r)
-        const src = imgs[r.id] ?? r.brief_image_src ?? booking._hotel_image_src ?? ''
+        const src = imgs[r.id] ?? r.briefImageSrc ?? booking._hotel_image_src ?? ''
         return (
           <div key={r.id} style={{ background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8, padding: '10px 12px' }}>
-            {r.confirmation_number && (
-              <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700, marginBottom: 8 }}>#{r.confirmation_number}</div>
+            {r.confirmationNumber && (
+              <div style={{ fontSize: 10, color: A.gold, fontFamily: 'DM Mono, monospace', fontWeight: 700, marginBottom: 8 }}>#{r.confirmationNumber}</div>
             )}
             <RoomFormBody
               draft={d}
@@ -358,11 +358,11 @@ function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onR
               onResolved={name => setLinkedNames(prev => ({ ...prev, [r.id]: name }))}
               linkedName={linkedNames[r.id] ?? null}
               partyLabel={partyLabel ?? null}
-              addGuest={() => setField(r, 'additional_guests', [...d.additional_guests, ''])}
-              patchGuest={(idx, v) => { const g = [...d.additional_guests]; g[idx] = v; setField(r, 'additional_guests', g) }}
-              removeGuest={idx => { const g = d.additional_guests.filter((_, i) => i !== idx); setField(r, 'additional_guests', g); saveGuests(r, g) }}
+              addGuest={() => setField(r, 'additionalGuests', [...d.additionalGuests, ''])}
+              patchGuest={(idx, v) => { const g = [...d.additionalGuests]; g[idx] = v; setField(r, 'additionalGuests', g) }}
+              removeGuest={idx => { const g = d.additionalGuests.filter((_, i) => i !== idx); setField(r, 'additionalGuests', g); saveGuests(r, g) }}
               blurField={k => {
-                if (k === 'additional_guests') { saveGuests(r, d.additional_guests); return }
+                if (k === 'additionalGuests') { saveGuests(r, d.additionalGuests); return }
                 saveField(r, k as SavableField)
               }}
             />
@@ -380,7 +380,7 @@ function ControlledRooms({ booking, partyLabel, imagePresetPath, roomDrafts, onR
   )
 }
 
-// ── Uncontrolled (dossier) — own state, save-on-submit ──────────────────────
+// ── Uncontrolled (dossier) - own state, save-on-submit ──────────────────────
 
 function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: EngagementBooking; partyLabel: string | null; imagePresetPath?: string }) {
   const [rooms,  setRooms]  = useState<BookingRoom[]>(booking._rooms ?? [])
@@ -399,7 +399,7 @@ function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: 
   async function handleAdd() {
     setSaving('add')
     try {
-      const r = await createBookingRoom(booking.id, { ...draftToPatch(draft), sort_order: rooms.length })
+      const r = await createBookingRoom(booking.id, { ...draftToPatch(draft), sortOrder: rooms.length })
       setRooms(prev => [...prev, r]); setAdding(false); setDraft(emptyDraft()); success('Room added')
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to add room') }
     finally { setSaving(null) }
@@ -427,13 +427,13 @@ function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: 
       <RoomFormBody
         draft={draft}
         setField={setField}
-        setPerson={pid => setField('person_id', pid)}
+        setPerson={pid => setField('personId', pid)}
         onResolved={setLinkedName}
         linkedName={linkedName}
         partyLabel={partyLabel}
-        addGuest={() => setField('additional_guests', [...draft.additional_guests, ''])}
-        patchGuest={(idx, v) => { const g = [...draft.additional_guests]; g[idx] = v; setField('additional_guests', g) }}
-        removeGuest={idx => setField('additional_guests', draft.additional_guests.filter((_, i) => i !== idx))}
+        addGuest={() => setField('additionalGuests', [...draft.additionalGuests, ''])}
+        patchGuest={(idx, v) => { const g = [...draft.additionalGuests]; g[idx] = v; setField('additionalGuests', g) }}
+        removeGuest={idx => setField('additionalGuests', draft.additionalGuests.filter((_, i) => i !== idx))}
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button onClick={onCancel} style={{ fontFamily: A.font, fontSize: 11, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Cancel</button>
@@ -459,14 +459,14 @@ function UncontrolledRooms({ booking, partyLabel, imagePresetPath }: { booking: 
         ) : (
           <div key={r.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              {r.confirmation_number && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmation_number}</div>}
+              {r.confirmationNumber && <div style={{ fontSize: 11, fontWeight: 700, color: A.gold, fontFamily: 'DM Mono, monospace', marginBottom: 2 }}>#{r.confirmationNumber}</div>}
               <div style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily:A.font }}>{roomGuestName(r) ?? 'Guest'}</div>
-              {r.additional_guests?.length ? <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>+{r.additional_guests.length} additional guest{r.additional_guests.length === 1 ? '' : 's'}</div> : null}
-              {r.party_composition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.party_composition}</div>}
-              {r.room_name          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.room_name}</div>}
+              {r.additionalGuests?.length ? <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>+{r.additionalGuests.length} additional guest{r.additionalGuests.length === 1 ? '' : 's'}</div> : null}
+              {r.partyComposition  && <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{r.partyComposition}</div>}
+              {r.roomName          && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{r.roomName}</div>}
               {(r.total != null || r.rate != null) && (
                 <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-                  {r.rate != null ? `${r.rate}/night` : ''}{r.rate != null && r.total != null ? '  ·  ' : ''}{r.total != null ? `${r.total} total` : ''}{r.extra_person_fee != null ? `  ·  +${r.extra_person_fee} extra person` : ''}
+                  {r.rate != null ? `${r.rate}/night` : ''}{r.rate != null && r.total != null ? '  ·  ' : ''}{r.total != null ? `${r.total} total` : ''}{r.extraPersonFee != null ? `  ·  +${r.extraPersonFee} extra person` : ''}
                 </div>
               )}
               {r.notes              && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{r.notes}</div>}

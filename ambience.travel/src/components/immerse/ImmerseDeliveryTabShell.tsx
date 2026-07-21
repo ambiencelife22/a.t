@@ -1,4 +1,4 @@
-// ImmerseDeliveryTabShell.tsx — Tab chrome for delivery-stage engagement sections.
+// ImmerseDeliveryTabShell.tsx - Tab chrome for delivery-stage engagement sections.
 //
 // A3 Stage 2a (ships dark). Extracted verbatim from ImmerseDeliveryPage's tab
 // system: sticky tab bar, mobile menu, PDF download buttons, welcome-as-tab /
@@ -7,13 +7,13 @@
 // for delivery/completed stages; proposal stages render sections sequentially.
 //
 // Takes the resolved section set (already filtered by show_tab_*), the delivery
-// context, and the shell handshake. Owns only tab presentation — section content
+// context, and the shell handshake. Owns only tab presentation - section content
 // comes from the renderer map.
 
 import { useState, useCallback } from 'react'
 import type { EngagementClientData } from '../../queries/queriesImmerseEngagement'
 import type { SectionType } from '../../types/typesImmerse'
-import type { TimelineItem } from '../../types/typesTimeline'
+import type { TimelineItemView } from '../../types/typesImmerseDelivery'
 import type { ExportBranding } from '../../pdf/pdfShared'
 import { SECTION_RENDERERS, type ShellHandshake } from './ImmerseSectionRenderers'
 import { useImmerseConfirmationPdf } from '../../hooks/useImmerseConfirmationPdf'
@@ -24,7 +24,7 @@ import { AMBIENCE, TYPE } from '../../tokens/tokensAmbienceTravel'
 const c = AMBIENCE.light
 
 // Map delivery SectionType -> tab label. Welcome is a synthetic tab (not a
-// registry section — it's brief.welcome_letter content) handled separately.
+// registry section - it's brief.welcomeLetter content) handled separately.
 const TAB_LABEL: Partial<Record<SectionType, string>> = {
   brief:        'Engagement Brief',
   programme:    'Programme',
@@ -61,8 +61,8 @@ export function ImmerseDeliveryTabShell({
   const { days, entries } = clientData
   const { journey: trip, brief, house } = clientData
 
-  const welcomeLetter = (brief as { welcome_letter?: string } | null)?.welcome_letter ?? null
-  const welcomeAsTab  = (brief as { show_tab_welcome?: boolean } | null)?.show_tab_welcome === true && !!welcomeLetter
+  const welcomeLetter = (brief as { welcomeLetter?: string } | null)?.welcomeLetter ?? null
+  const welcomeAsTab  = (brief as { showTabWelcome?: boolean } | null)?.showTabWelcome === true && !!welcomeLetter
 
   // Build tab list: synthetic welcome tab (if configured) + registry sections in order.
   const tabs: DeliveryTab[] = []
@@ -99,26 +99,26 @@ export function ImmerseDeliveryTabShell({
 
   async function downloadConfirmationOrBrief() {
     let heroData: string | null = null
-    const heroSrc = brief?.hero_image_src || trip.destinations[0]?.hero_image_src || null
+    const heroSrc = brief?.heroImageSrc || trip.destinations[0]?.heroImageSrc || null
     if (heroSrc) {
       try {
         const blob = await fetch(heroSrc).then(r => r.blob())
         heroData = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(blob) })
       } catch { /* hero optional */ }
     }
-    const branding = (brief?.logo_variant ?? 'ambience') as ExportBranding
+    const branding = (brief?.logoVariant ?? 'ambience') as ExportBranding
     if (activeTab === 'brief') {
       handleDownloadEngagementBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName }, branding)
       return
     }
-    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName, experiences: (clientData.entries ?? []).filter(e => e.category === 'experience' && e.brief_show !== false).map(e => ({ entry_date: e.entry_date, title: e.title, notes: e.notes })) }, branding)
+    handleDownloadBrief({ trip, brief, house, destinationName: clientData.destinationName, heroImageData: heroData, elements: clientData.elements, contacts: clientData.contacts, guestDisplayName: clientData.guestDisplayName, experiences: (clientData.entries ?? []).filter(e => e.category === 'experience' && e.briefShow !== false).map(e => ({ entry_date: e.entryDate, title: e.title, notes: e.notes })) }, branding)
   }
 
   function downloadProgramme() {
-    const entriesByDate: Record<string, TimelineItem[]> = {}
+    const entriesByDate: Record<string, TimelineItemView[]> = {}
     for (const e of entries) {
-      if (!entriesByDate[e.entry_date]) entriesByDate[e.entry_date] = []
-      entriesByDate[e.entry_date].push(e)
+      if (!entriesByDate[e.entryDate]) entriesByDate[e.entryDate] = []
+      entriesByDate[e.entryDate].push(e)
     }
     handleDownloadProgramme({ journey: trip, brief, house, days, entriesByDate, links: clientData.links ?? [], guestDisplayName: clientData.guestDisplayName })
   }

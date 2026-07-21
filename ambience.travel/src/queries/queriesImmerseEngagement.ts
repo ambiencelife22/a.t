@@ -1,9 +1,9 @@
-// queriesImmerseEngagement.ts — Unified engagement data fetch (the orchestrator).
+// queriesImmerseEngagement.ts - Unified engagement data fetch (the orchestrator).
 //
 // The one entry point that resolves any engagement to its render payload
 // regardless of stage: tries the proposal EF, branches to the delivery bundle
 // when the lifecycle status is confirmed. Returns EngagementClientData.
-// Named for what it fetches (the engagement), NOT "client" — it fetches no
+// Named for what it fetches (the engagement), NOT "client" - it fetches no
 // client identity. Renamed from queriesImmerseClient.ts (S53O eight-shape B0.1).
 // Siblings: queriesImmerseProposal (proposal payload), queriesImmerseDelivery
 // (delivery bundle). This file orchestrates both.
@@ -15,12 +15,12 @@
 //   1. Try getImmerseEngagement (proposal EF). Returns data → proposal arm.
 //   2. Delivery bundle is fetched separately by the delivery surface (fetchDeliveryBundle).
 //   3. Returns data → confirmed arm.
-//   4. Both null → not-found (or not-public — EF returns null for both).
+//   4. Both null → not-found (or not-public - EF returns null for both).
 //
 // The EFs enforce public_view and access control server-side.
 // No probe, no pre-flight, no anon REST calls.
 //
-// Last updated: S53I — Collapse A. Removed illegal REST probe.
+// Last updated: S53I - Collapse A. Removed illegal REST probe.
 
 import type { EngagementClientData } from '../types/typesImmerseDelivery'
 import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
@@ -42,7 +42,7 @@ export type FetchEngagementResult =
 export async function fetchEngagementClientData(
   urlId: string
 ): Promise<FetchEngagementResult> {
-  // Single EF call — travel-get-immerse-proposal handles all engagements.
+  // Single EF call - travel-get-immerse-proposal handles all engagements.
   // Stage is computed from the lifecycle status slug and returned on the data.
   // confirmed (trip/completed) → caller redirects to /{urlId} (brief surface)
   // proposal (proposal/draft)  → caller renders at /{urlId}/proposal

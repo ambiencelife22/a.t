@@ -1,28 +1,28 @@
-// ImmerseRoomCategory.tsx — single room tier render (content panel + hero)
+// ImmerseRoomCategory.tsx - single room tier render (content panel + hero)
 // Owns: RoomCategory component. Renders the room's level, basis, size/rate
 //   chips, benefits grid, and hero image. Mobile reorders content → nav → hero.
 // Does not own: carousel state (lives in parent: FlatHotelOptions / HotelWithRooms)
 //
-// Last updated: S53C — room alert badge (roomAlert/roomAlertLevel), connecting
+// Last updated: S53C - room alert badge (roomAlert/roomAlertLevel), connecting
 //   note line (connectingNote), and tax treatment preferred over legacy
 //   rateSuffix. Rate-suffix display now resolves taxTreatment ?? rateSuffix.
-// Prior: S53B Closing+3 — Public rate pill now only renders with
+// Prior: S53B Closing+3 - Public rate pill now only renders with
 //   strikethrough + "PUBLIC" prefix when at least one comparison rate
 //   (nonNegotiatedNightlyRate or ambienceNightlyRate) is set. When public
 //   is alone, it renders as a neutral rate pill (no strikethrough, no
 //   "Public" label) since strikethrough without a comparison reads as a
 //   bug, not as savings context.
-// Prior: S32K — Replaced hardcoded "/ night" rate suffix with data-driven
+// Prior: S32K - Replaced hardcoded "/ night" rate suffix with data-driven
 //   room.rateCadence. Cadence comes from travel_rate_cadences
-//   reference table (Per Night, Per Stay, Per Week, Per Month — extensible).
-// Prior: S32K — Room name rendering fixed. Eyebrow now shows tierLabel
+//   reference table (Per Night, Per Stay, Per Week, Per Month - extensible).
+// Prior: S32K - Room name rendering fixed. Eyebrow now shows tierLabel
 //   (engagement-specific tier: "Highlighted", "Alternative 1"), title shows
 //   levelLabel (room name: "Oceanfront One Bedroom Suite", "Corner Suite").
 // S32: detect numeric rate strings ($1,200 / €420 / EURO 5,400 / GBP 800 / 1500).
 //   non-numeric is treated as informational copy.
-// Prior: S31 — Animation swapped to immerseFadeOnly.
-// Prior: S30G — Mobile NavRow between content and hero.
-// Prior: S30F — rateSuffix data-driven.
+// Prior: S31 - Animation swapped to immerseFadeOnly.
+// Prior: S30G - Mobile NavRow between content and hero.
+// Prior: S30F - rateSuffix data-driven.
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseComponents'
@@ -43,7 +43,7 @@ function formatSqRange(min: number | undefined, max: number | undefined, unit: s
   return `${min.toLocaleString()}-${max.toLocaleString()} ${unit}`
 }
 
-// S53C — alert badge palette by level.
+// S53C - alert badge palette by level.
 function alertPalette(level: string | undefined): { border: string; bg: string; fg: string } {
   if (level === 'warning') return { border: 'rgba(214,108,90,0.5)',  bg: 'rgba(214,108,90,0.12)',  fg: '#e8a08f' }
   if (level === 'pending') return { border: 'rgba(216,181,106,0.5)', bg: 'rgba(216,181,106,0.10)', fg: ID.gold }
@@ -64,7 +64,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
   const isActive = !isMobile && hovered
   const scale    = pressed ? 0.99 : 1
 
-  // S53C — prefer structured tax treatment over legacy free-text rate suffix.
+  // S53C - prefer structured tax treatment over legacy free-text rate suffix.
   const rateTaxLabel  = room.taxTreatment ?? room.rateSuffix
   const showRateSuffix = !room.taxInclusive && Boolean(rateTaxLabel)
 
@@ -128,12 +128,12 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
             </div>
           )}
 
-          {/* S53B Closing+3 — public rate pill:
+          {/* S53B Closing+3 - public rate pill:
               • With a comparison rate (non-negotiated or ambience) present:
                 strikethrough + "PUBLIC" prefix to read as the crossed-out
                 pre-negotiation reference.
               • Without a comparison rate: render as a plain neutral rate pill
-                with no strikethrough and no label — the price IS the price. */}
+                with no strikethrough and no label - the price IS the price. */}
           {room.publicNightlyRate && hasComparisonRate && (
             <div style={{ position: 'relative', padding: '7px 13px', borderRadius: 999, border: `1px solid ${ID.line}`, background: ID.panel2, color: ID.dim, opacity: 0.55, fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', gap: 5, alignItems: 'center', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', left: '-10%', top: '50%', width: '120%', height: 1, background: `linear-gradient(90deg, transparent, ${ID.dim}77, transparent)`, transform: 'rotate(-18deg)', pointerEvents: 'none' }} />
@@ -282,7 +282,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
           )}
         </div>
 
-        {/* S53C — connecting-rooms note. Renders when this room is part of a
+        {/* S53C - connecting-rooms note. Renders when this room is part of a
             connecting pair. Sits below the chips as a single descriptor line. */}
         {room.connectingNote && (
           <div style={{
@@ -305,7 +305,7 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
           </div>
         )}
 
-        {/* S53C — room alert badge. Distinct from amenities; styled by level
+        {/* S53C - room alert badge. Distinct from amenities; styled by level
             (pending / warning / info). Renders only when roomAlert is set. */}
         {alert && (
           <div style={{

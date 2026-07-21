@@ -1,4 +1,4 @@
-/* GuideCardHappening.tsx — single happening card for time-bound content.
+/* GuideCardHappening.tsx - single happening card for time-bound content.
  *
  * Conceptually distinct from GuideCardExperiences:
  *   Happenings have inherent time windows (e.g. Les Grimaldines: 28 July 2026).
@@ -7,7 +7,7 @@
  *
  * Shape consistency: same card chrome, dimensions, image treatment, and
  * address block as GuideCardExperiences so the grid stays cohesive. The
- * difference is internal — date pill, tagline as italic blockquote,
+ * difference is internal - date pill, tagline as italic blockquote,
  * website link.
  *
  * What it owns: card chrome, image, date pill, name, tagline, body,
@@ -20,16 +20,16 @@
  * GuideVariant.
  *
  * Body-mode logic:
- *   'full'   — render tagline + body + bullets + website. Full-access
+ *   'full'   - render tagline + body + bullets + website. Full-access
  *              viewers, or happenings marked publicly previewable
  *              (public_preview_rank != null) once that column is added.
- *   'teaser' — render teaser line only. Public viewers, happenings not
+ *   'teaser' - render teaser line only. Public viewers, happenings not
  *              publicly previewable.
  *
- * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ * Last updated: S53 - Renamed to convention. cardBodyMode() replaces inline
  *   isTeaser derivation. Ready for public_preview_rank on
  *   travel_happenings; behaviour is identical until that column ships.
- * Prior: S52 — initial build for the Coming Up section.
+ * Prior: S52 - initial build for the Coming Up section.
  */
 
 import React from 'react'
@@ -68,7 +68,7 @@ export function GuideCardHappening({ happening, hasFullAccess, destinationName }
 // ── Image block ──────────────────────────────────────────────────────────────
 
 function ImageBlock({ happening, isTeaser }: { happening: Happening; isTeaser: boolean }) {
-  if (!happening.image_src?.trim()) {
+  if (!happening.imageSrc?.trim()) {
     return (
       <div style={{ ...nameFallbackStyle, opacity: isTeaser ? 0.7 : 1 }}>
         <span style={nameFallbackTextStyle}>{happening.name}</span>
@@ -78,8 +78,8 @@ function ImageBlock({ happening, isTeaser }: { happening: Happening; isTeaser: b
   return (
     <div style={imageWrapStyle}>
       <img
-        src={happening.image_src}
-        alt={happening.image_alt ?? happening.name}
+        src={happening.imageSrc}
+        alt={happening.imageAlt ?? happening.name}
         style={{ ...imageStyle, opacity: isTeaser ? 0.7 : 1 }}
         loading="lazy"
       />
@@ -93,7 +93,7 @@ function ImageBlock({ happening, isTeaser }: { happening: Happening; isTeaser: b
 // optional category appended in muted weight.
 
 function DateEyebrow({ happening }: { happening: Happening }) {
-  const isSingleDay = happening.start_date === happening.end_date
+  const isSingleDay = happening.startDate === happening.endDate
   const tag = isSingleDay ? 'One Evening' : 'Limited Dates'
   return (
     <div style={eyebrowStyle}>
@@ -113,7 +113,7 @@ function DateEyebrow({ happening }: { happening: Happening }) {
 
 function DateLine({ happening }: { happening: Happening }) {
   return (
-    <div style={dateLineStyle}>{formatDateRange(happening.start_date, happening.end_date)}</div>
+    <div style={dateLineStyle}>{formatDateRange(happening.startDate, happening.endDate)}</div>
   )
 }
 
@@ -122,12 +122,12 @@ function formatDateRange(startISO: string, endISO: string): string {
   const end   = parseDate(endISO)
   if (startISO === endISO) return formatFullDate(start)
   if (start.year === end.year && start.month === end.month) {
-    return `${start.day}\u2013${end.day} ${MONTHS[start.month]} ${start.year}`
+    return `${start.day}-${end.day} ${MONTHS[start.month]} ${start.year}`
   }
   if (start.year === end.year) {
-    return `${start.day} ${MONTHS[start.month]} \u2013 ${end.day} ${MONTHS[end.month]} ${start.year}`
+    return `${start.day} ${MONTHS[start.month]} - ${end.day} ${MONTHS[end.month]} ${start.year}`
   }
-  return `${formatFullDate(start)} \u2013 ${formatFullDate(end)}`
+  return `${formatFullDate(start)} - ${formatFullDate(end)}`
 }
 
 function parseDate(iso: string): { year: number; month: number; day: number } {
@@ -191,7 +191,7 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
 // ── Address block ────────────────────────────────────────────────────────────
 
 function AddressBlock({ happening }: { happening: Happening }) {
-  const mapsUrl = resolveMapsUrl(happening.maps_url, happening.address)
+  const mapsUrl = resolveMapsUrl(happening.mapsUrl, happening.address)
   if (!happening.venue_name && !happening.address && !mapsUrl) return null
   return (
     <div style={addressStyle}>

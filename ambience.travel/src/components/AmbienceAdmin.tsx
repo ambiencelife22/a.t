@@ -1,19 +1,19 @@
 /* AmbienceAdmin.tsx
  * Top-level admin shell for ambience.travel/#admin (and localhost:5173/#admin).
  *
- * Last updated: S53G Phase 1 — new 5-group taxonomy wired into TabContent.
+ * Last updated: S53G Phase 1 - new 5-group taxonomy wired into TabContent.
  *   Legacy products (immerse, guides, library, house, operations, time, calendar,
  *   finance, programme) still dispatch correctly via alias routes in utilsAdminPath.
  *   New products (trips, clients, content, residences, studio) wired to placeholder
- *   or existing components as appropriate — full surface builds happen in Phase 3+.
+ *   or existing components as appropriate - full surface builds happen in Phase 3+.
  *   'itinerary' tab renamed to 'programme' throughout.
  *
- * Prior: S43 Add 2 — lazy() code splitting + Suspense.
- * Prior: S49 — programme tabs imported from ProgrammeAdmin.tsx.
- * Prior: S45 — ItineraryEditorPage at #admin/trips/{journeyId}/itinerary.
- * Prior: S46 — BriefEditorPage at #admin/trips/{journeyId}/brief.
- * Prior: S40D — House product group.
- * Prior: S36 — Library + Guides product groups.
+ * Prior: S43 Add 2 - lazy() code splitting + Suspense.
+ * Prior: S49 - programme tabs imported from ProgrammeAdmin.tsx.
+ * Prior: S45 - ItineraryEditorPage at #admin/trips/{journeyId}/itinerary.
+ * Prior: S46 - BriefEditorPage at #admin/trips/{journeyId}/brief.
+ * Prior: S40D - House product group.
+ * Prior: S36 - Library + Guides product groups.
  * Prior: S33
  */
 
@@ -60,7 +60,7 @@ const TimeAnalyticsTab     = lazyWithReload(() => import('./admin/TimeAnalyticsT
 const CalendarTab          = lazyWithReload(() => import('./admin/CalendarTab'))
 const ClientProfilePage    = lazyWithReload(() => import('./admin/ClientProfilePage'))
 
-// Full-page editors (cream canvas — bypass admin chrome)
+// Full-page editors (cream canvas - bypass admin chrome)
 const BriefEditorPage      = lazyWithReload(() => import('./admin/BriefEditorPage'))
 const ItineraryEditorPage  = lazyWithReload(() => import('./admin/ItineraryEditorPage'))
 
@@ -125,7 +125,7 @@ function AdminShell() {
 
   useEffect(() => { sessionStorage.removeItem('admin-chunk-reload') }, [])
 
-  // Full-page cream editors — bypass standard admin chrome
+  // Full-page cream editors - bypass standard admin chrome
   if (tab.product === 'trips' && tab.tab === 'programme') {
     return (
       <Suspense fallback={<AdminLoading />}>
@@ -195,7 +195,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
   }
 
   if (tab.product === 'content') {
-    // Unified content surface — dispatches to existing guide/library tabs
+    // Unified content surface - dispatches to existing guide/library tabs
     // Phase 3+: these will merge into a single ContentTab per category
     if (tab.tab === 'dining')      return <GuidesDiningTab />
     if (tab.tab === 'experiences') return <GuidesExperiencesTab />

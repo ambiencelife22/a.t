@@ -1,4 +1,4 @@
-/* GuideDownloadTab.tsx — canonical PDF download UI for all four guide variants.
+/* GuideDownloadTab.tsx - canonical PDF download UI for all four guide variants.
  *
  * Replaces the four near-identical DownloadTab components that used to live
  * inline across Guides<X>Tab files. One picker, one fetch path per variant,
@@ -16,15 +16,15 @@
  *   - The modal shell
  *   - The PDF rendering itself (pdfGuide.ts)
  *   - The CDN load (useGuidePdf)
- *   - Destination + overlay fetch (queriesGuides.getGuideDestination —
+ *   - Destination + overlay fetch (queriesGuides.getGuideDestination -
  *     one generic, variant-discriminated reader replaces the four
  *     getXxxGuideDestination functions)
  *
- * Last updated: S53 — Consumes generic getGuideDestination(variant, slug)
+ * Last updated: S53 - Consumes generic getGuideDestination(variant, slug)
  *   from queriesGuides. Eliminates four per-variant destination fetch
  *   imports; each branch calls the single generic. Venue fetchers stay
  *   per-variant (each has its own table + shape).
- * Prior: S52 — initial build.
+ * Prior: S52 - initial build.
  */
 
 import { useState } from 'react'
@@ -45,7 +45,7 @@ import {
 type LogoVariant = 'ambience' | 'alfaone' | 'unbranded'
 
 const VARIANTS: { variant: LogoVariant; label: string; description: string }[] = [
-  { variant: 'ambience',  label: 'Ambience',  description: 'Default branding — emblem + ambience.travel logo' },
+  { variant: 'ambience',  label: 'Ambience',  description: 'Default branding - emblem + ambience.travel logo' },
   { variant: 'alfaone',   label: 'AlfaOne',   description: 'AlfaOne Concierge wordmark, gold serif' },
   { variant: 'unbranded', label: 'Unbranded', description: 'No logo, no restriction notice, no copyright' },
 ]
@@ -74,7 +74,7 @@ export default function GuideDownloadTab({
     }
     setDownloading(logoVariant)
     try {
-      // Happenings are destination-level, not guide-variant-level — fetched
+      // Happenings are destination-level, not guide-variant-level - fetched
       // in parallel with the variant-specific data. Soft-fail: a happenings
       // query failure should not block the PDF.
       const happeningsPromise = fetchActiveHappeningsForDestination(
@@ -87,7 +87,7 @@ export default function GuideDownloadTab({
 
       // Variant-discriminated fetch. Each branch resolves to the right
       // (destination, venues) pair for ExportGuidePdfOptions. The destination
-      // fetch is now generic — only the venue fetcher differs per variant.
+      // fetch is now generic - only the venue fetcher differs per variant.
       let payload
       if (variant === 'dining') {
         const [destination, venues, happenings] = await Promise.all([
@@ -97,21 +97,21 @@ export default function GuideDownloadTab({
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
-        const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
+        const heroImageSrc = overlay?.heroImageSrc ?? destination.heroImageSrc ?? null
         payload = {
           variant:      'dining' as const,
           destination,
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
-            headline: overlay?.headline_override ?? copy.defaultHeadline,
-            intro:    overlay?.intro_override    ?? '',
+            eyebrow:  overlay?.eyebrowOverride  ?? destinationName,
+            headline: overlay?.headlineOverride ?? copy.defaultHeadline,
+            intro:    overlay?.introOverride    ?? '',
           },
           heroImageSrc,
-          guideYear:    overlay?.guide_year    ?? new Date().getFullYear(),
-          guideVersion: overlay?.guide_version ?? '1',
-          accuracyDate: overlay?.accuracy_date ?? null,
+          guideYear:    overlay?.guideYear    ?? new Date().getFullYear(),
+          guideVersion: overlay?.guideVersion ?? '1',
+          accuracyDate: overlay?.accuracyDate ?? null,
           logoVariant,
         }
       }
@@ -123,21 +123,21 @@ export default function GuideDownloadTab({
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
-        const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
+        const heroImageSrc = overlay?.heroImageSrc ?? destination.heroImageSrc ?? null
         payload = {
           variant:      'experiences' as const,
           destination,
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
-            headline: overlay?.headline_override ?? copy.defaultHeadline,
-            intro:    overlay?.intro_override    ?? '',
+            eyebrow:  overlay?.eyebrowOverride  ?? destinationName,
+            headline: overlay?.headlineOverride ?? copy.defaultHeadline,
+            intro:    overlay?.introOverride    ?? '',
           },
           heroImageSrc,
-          guideYear:    overlay?.guide_year    ?? new Date().getFullYear(),
-          guideVersion: overlay?.guide_version ?? '1',
-          accuracyDate: overlay?.accuracy_date ?? null,
+          guideYear:    overlay?.guideYear    ?? new Date().getFullYear(),
+          guideVersion: overlay?.guideVersion ?? '1',
+          accuracyDate: overlay?.accuracyDate ?? null,
           logoVariant,
         }
       }
@@ -149,21 +149,21 @@ export default function GuideDownloadTab({
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
-        const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
+        const heroImageSrc = overlay?.heroImageSrc ?? destination.heroImageSrc ?? null
         payload = {
           variant:      'hotels' as const,
           destination,
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
-            headline: overlay?.headline_override ?? copy.defaultHeadline,
-            intro:    overlay?.intro_override    ?? '',
+            eyebrow:  overlay?.eyebrowOverride  ?? destinationName,
+            headline: overlay?.headlineOverride ?? copy.defaultHeadline,
+            intro:    overlay?.introOverride    ?? '',
           },
           heroImageSrc,
-          guideYear:    overlay?.guide_year    ?? new Date().getFullYear(),
-          guideVersion: overlay?.guide_version ?? '1',
-          accuracyDate: overlay?.accuracy_date ?? null,
+          guideYear:    overlay?.guideYear    ?? new Date().getFullYear(),
+          guideVersion: overlay?.guideVersion ?? '1',
+          accuracyDate: overlay?.accuracyDate ?? null,
           logoVariant,
         }
       }
@@ -175,21 +175,21 @@ export default function GuideDownloadTab({
         ])
         if (!destination) { toast.error('Destination not found.'); setDownloading(null); return }
         const overlay      = destination.overlay
-        const heroImageSrc = overlay?.hero_image_src ?? destination.heroImageSrc ?? null
+        const heroImageSrc = overlay?.heroImageSrc ?? destination.heroImageSrc ?? null
         payload = {
           variant:      'shopping' as const,
           destination,
           venues,
           happenings,
           copy: {
-            eyebrow:  overlay?.eyebrow_override  ?? destinationName,
-            headline: overlay?.headline_override ?? copy.defaultHeadline,
-            intro:    overlay?.intro_override    ?? '',
+            eyebrow:  overlay?.eyebrowOverride  ?? destinationName,
+            headline: overlay?.headlineOverride ?? copy.defaultHeadline,
+            intro:    overlay?.introOverride    ?? '',
           },
           heroImageSrc,
-          guideYear:    overlay?.guide_year    ?? new Date().getFullYear(),
-          guideVersion: overlay?.guide_version ?? '1',
-          accuracyDate: overlay?.accuracy_date ?? null,
+          guideYear:    overlay?.guideYear    ?? new Date().getFullYear(),
+          guideVersion: overlay?.guideVersion ?? '1',
+          accuracyDate: overlay?.accuracyDate ?? null,
           logoVariant,
         }
       }

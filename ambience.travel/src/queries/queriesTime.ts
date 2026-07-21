@@ -2,6 +2,7 @@
 // Frontend query layer for time tracking. All access via Class A Edge Functions.
 // No direct table reads/writes (immerse/client-data architecture rule).
 import { supabase } from '../lib/supabase';
+import { snakeizeKeys } from '@shared/camelize';
 
 async function invokeRead<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('travel-read-timetracking', { body });
@@ -37,27 +38,27 @@ export const fetchTimeSummaryByEngagement = () =>
 export const fetchHouses = (query = '') =>
   invokeRead<{ houses: HouseOption[] }>({ mode: 'houses', query }).then(r => r.houses);
 
-export const fetchHousePeople = (house_id: string) =>
-  invokeRead<{ people: HouseMember[] }>({ mode: 'house_people', house_id }).then(r => r.people);
+export const fetchHousePeople = (houseId: string) =>
+  invokeRead<{ people: HouseMember[] }>({ mode: 'house_people', house_id: houseId }).then(r => r.people);
 
-export const fetchEngagementsForHouse = (house_id: string) =>
-  invokeRead<{ engagements: EngagementOption[] }>({ mode: 'engagements_for_house', house_id }).then(r => r.engagements);
+export const fetchEngagementsForHouse = (houseId: string) =>
+  invokeRead<{ engagements: EngagementOption[] }>({ mode: 'engagements_for_house', house_id: houseId }).then(r => r.engagements);
 
-export const fetchHouseForEngagement = (engagement_id: string) =>
-  invokeRead<{ house: HouseOption | null }>({ mode: 'house_for_engagement', engagement_id }).then(r => r.house);
+export const fetchHouseForEngagement = (engagementId: string) =>
+  invokeRead<{ house: HouseOption | null }>({ mode: 'house_for_engagement', engagement_id: engagementId }).then(r => r.house);
 
 // ---- Analytics ----
-export const fetchTimeAnalytics = (filters: TimeAnalyticsFilters = {}, group_by: AnalyticsGroupBy = 'house') =>
-  invokeRead<TimeAnalyticsResult>({ mode: 'analytics', group_by, ...filters });
+export const fetchTimeAnalytics = (filters: TimeAnalyticsFilters = {}, groupBy: AnalyticsGroupBy = 'house') =>
+  invokeRead<TimeAnalyticsResult>({ mode: 'analytics', group_by: groupBy, ...filters });
 
 // ---- Writes ----
 export const createTimeEntry = (input: TimeEntryInput) =>
-  invokeWrite<{ entry: TimeEntry }>({ mode: 'create_entry', ...input }).then(r => r.entry);
+  invokeWrite<{ entry: TimeEntry }>({ mode: 'create_entry', ...snakeizeKeys<Record<string, unknown>>(input) }).then(r => r.entry);
 
 export const updateTimeEntry = (id: string, patch: Partial<TimeEntryInput> & {
-  invoice_status?: string; invoiced_at?: string | null; paid_at?: string | null;
+  invoiceStatus?: string; invoicedAt?: string | null; paidAt?: string | null;
 }) =>
-  invokeWrite<{ entry: TimeEntry }>({ mode: 'update_entry', id, ...patch }).then(r => r.entry);
+  invokeWrite<{ entry: TimeEntry }>({ mode: 'update_entry', id, ...snakeizeKeys<Record<string, unknown>>(patch) }).then(r => r.entry);
 
 export const deleteTimeEntry = (id: string) =>
   invokeWrite<{ deleted: boolean }>({ mode: 'delete_entry', id }).then(r => r.deleted);
@@ -65,95 +66,95 @@ export const deleteTimeEntry = (id: string) =>
 export const upsertTimeActivity = (input: Partial<TimeActivity> & { slug: string; label: string }) =>
   invokeWrite<{ activity: TimeActivity }>({ mode: 'upsert_activity', ...input }).then(r => r.activity);
 
-export const upsertTimeRate = (input: Partial<TimeRate> & { slug: string; role_label: string; hourly_rate: number }) =>
+export const upsertTimeRate = (input: Partial<TimeRate> & { slug: string; role_label: string; hourlyRate: number }) =>
   invokeWrite<{ rate: TimeRate }>({ mode: 'upsert_rate', ...input }).then(r => r.rate);
 
 // ---- Types ----
 export interface TimeActivity {
-  id: string; slug: string; label: string; sort_order: number; is_active: boolean;
+  id: string; slug: string; label: string; sortOrder: number; isActive: boolean;
 }
 export interface TimeRate {
-  id: string; slug: string; role_label: string; hourly_rate: number;
-  currency: string; is_active: boolean;
+  id: string; slug: string; role_label: string; hourlyRate: number;
+  currency: string; isActive: boolean;
 }
 export interface TimeEntryFilters {
   house_id?: string; engagement_id?: string;
   work_date_from?: string; work_date_to?: string;
 }
 export interface TimeEntryInput {
-  house_id: string;
-  engagement_id?: string | null;
-  house_person_id?: string | null;
-  work_date: string;            // ISO YYYY-MM-DD
+  houseId: string;
+  engagementId?: string | null;
+  housePersonId?: string | null;
+  workDate: string;            // ISO YYYY-MM-DD
   hours: number;                // >0, <=5, 0.25 steps
-  activity_id?: string | null;
+  activityId?: string | null;
   notes?: string | null;
-  entry_type?: 'billable' | 'proactive';
-  performed_by?: string | null;             // deprecated free-text, retained for legacy rows
-  performed_by_person_id?: string | null;   // global_people id — the performer
-  is_invoiceable?: boolean;                  // will this be billed to the client?
-  rate_id?: string | null;      // effort_value + billable_amount computed server-side
-  started_at?: string | null;
-  ended_at?: string | null;
+  entryType?: 'billable' | 'proactive';
+  performedBy?: string | null;             // deprecated free-text, retained for legacy rows
+  performedByPersonId?: string | null;   // global_people id - the performer
+  isInvoiceable?: boolean;                  // will this be billed to the client?
+  rateId?: string | null;      // effort_value + billable_amount computed server-side
+  startedAt?: string | null;
+  endedAt?: string | null;
 }
 export interface TimeEntry extends TimeEntryInput {
   id: string;
   rate_applied: number | null;
-  effort_value: number | null;
-  billable_amount: number | null;
-  invoice_status: 'uninvoiced' | 'invoiced' | 'paid';
-  invoiced_at: string | null;
+  effortValue: number | null;
+  billableAmount: number | null;
+  invoiceStatus: 'uninvoiced' | 'invoiced' | 'paid';
+  invoicedAt: string | null;
   paid_at: string | null;
-  created_at: string; updated_at: string;
+  createdAt: string; updatedAt: string;
   travel_time_activities?: { slug: string; label: string } | null;
-  travel_time_rates?: { slug: string; role_label: string; hourly_rate: number; currency: string } | null;
-  performer?: { first_name: string | null; last_name: string | null; nickname: string | null } | null;
+  travel_time_rates?: { slug: string; role_label: string; hourlyRate: number; currency: string } | null;
+  performer?: { firstName: string | null; lastName: string | null; nickname: string | null } | null;
 }
 export interface TimeSummary { hours: number; amount: number; }
 
 export interface HouseOption {
-  id: string; a_house_id: string | null; display_name: string | null;
+  id: string; a_house_id: string | null; displayName: string | null;
 }
 export interface HouseMember {
-  id: string; house_id: string; person_id: string | null;
-  member_ref: string | null; role: string | null; display_name: string | null;
+  id: string; houseId: string; personId: string | null;
+  memberRef: string | null; role: string | null; displayName: string | null;
 }
 export interface EngagementOption {
-  id: string; url_id: string | null; title: string | null; iteration_label: string | null;
+  id: string; urlId: string | null; title: string | null; iterationLabel: string | null;
 }
 
 // ---- Analytics types ----
 export type AnalyticsGroupBy = 'house' | 'engagement' | 'team' | 'activity';
 
 export interface TimeAnalyticsFilters {
-  house_id?: string;
-  engagement_id?: string;
-  team_member_id?: string;      // performer person_id
-  activity_id?: string;
-  entry_type?: 'billable' | 'proactive';
-  is_invoiceable?: boolean;
-  work_date_from?: string;
-  work_date_to?: string;
+  houseId?: string;
+  engagementId?: string;
+  teamMemberId?: string;      // performer person_id
+  activityId?: string;
+  entryType?: 'billable' | 'proactive';
+  isInvoiceable?: boolean;
+  workDateFrom?: string;
+  workDateTo?: string;
 }
 
 export interface AnalyticsSummary {
-  hours: number; effort_value: number; invoiced: number; absorbed: number;
+  hours: number; effortValue: number; invoiced: number; absorbed: number;
 }
 export interface AnalyticsBreakdownRow {
   key: string; label: string;
-  hours: number; effort_value: number; invoiced: number; absorbed: number;
+  hours: number; effortValue: number; invoiced: number; absorbed: number;
 }
 export interface AnalyticsEntry {
   id: string; work_date: string;
   house: string | null; engagement: string | null; activity: string | null;
   performer: string | null;
-  hours: number; entry_type: string; is_invoiceable: boolean;
-  rate_applied: number | null; effort_value: number; billable_amount: number;
+  hours: number; entry_type: string; isInvoiceable: boolean;
+  rate_applied: number | null; effortValue: number; billableAmount: number;
   notes: string | null;
 }
 export interface TimeAnalyticsResult {
   summary: AnalyticsSummary;
   breakdown: AnalyticsBreakdownRow[];
-  group_by: AnalyticsGroupBy;
+  groupBy: AnalyticsGroupBy;
   entries: AnalyticsEntry[];
 }

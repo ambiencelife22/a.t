@@ -5,9 +5,9 @@
  * from a single source.
  *
  * Each passenger: label + conf + seats, on travel_engagement_passengers.
- * Seats and confirmation numbers are per-passenger here — the parent
+ * Seats and confirmation numbers are per-passenger here - the parent
  * travel_engagement_aux_bookings row no longer carries them (S54b cleanup).
- * person_id wiring deferred to a picker; passenger_label is the
+ * personId wiring deferred to a picker; passengerLabel is the
  * operator-facing field for now.
  *
  * Self-contained: own field component + styles, zero back-dependency on
@@ -53,35 +53,35 @@ function PaxField({ label, value, onChange, placeholder, type = 'text' }: {
 // ── Draft + mappers ─────────────────────────────────────────────────────────────
 
 type PaxDraft = {
-  person_id:           string | null
-  passenger_label:     string
-  confirmation_number: string
-  seat_numbers:        string
-  sort_order:          number
+  personId:           string | null
+  passengerLabel:     string
+  confirmationNumber: string
+  seatNumbers:        string
+  sortOrder:          number
 }
 
 function emptyPaxDraft(sortOrder: number): PaxDraft {
-  return { person_id: null, passenger_label: '', confirmation_number: '', seat_numbers: '', sort_order: sortOrder }
+  return { personId: null, passengerLabel: '', confirmationNumber: '', seatNumbers: '', sortOrder: sortOrder }
 }
 
 function paxToDraft(p: ElementPassenger): PaxDraft {
   return {
-    person_id:           p.person_id            ?? null,
-    passenger_label:     p.passenger_label     ?? '',
-    confirmation_number: p.confirmation_number  ?? '',
-    seat_numbers:        p.seat_numbers         ?? '',
-    sort_order:          p.sort_order,
+    personId:           p.personId            ?? null,
+    passengerLabel:     p.passengerLabel     ?? '',
+    confirmationNumber: p.confirmationNumber  ?? '',
+    seatNumbers:        p.seatNumbers         ?? '',
+    sortOrder:          p.sortOrder,
   }
 }
 
 function paxDraftToPatch(d: PaxDraft): ElementPassengerPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
-    person_id:           d.person_id,
-    passenger_label:     orNull(d.passenger_label),
-    confirmation_number: orNull(d.confirmation_number),
-    seat_numbers:        orNull(d.seat_numbers),
-    sort_order:          d.sort_order,
+    personId:           d.personId,
+    passengerLabel:     orNull(d.passengerLabel),
+    confirmationNumber: orNull(d.confirmationNumber),
+    seatNumbers:        orNull(d.seatNumbers),
+    sortOrder:          d.sortOrder,
   }
 }
 
@@ -96,7 +96,7 @@ export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { aux
   const [linkedName, setLinkedName] = useState<string | null>(null)
   const { success, error } = useAdminToast()
 
-  const sorted = [...pax].sort((a, b) => a.sort_order - b.sort_order)
+  const sorted = [...pax].sort((a, b) => a.sortOrder - b.sortOrder)
 
   function beginAdd() {
     setEditId(null)
@@ -143,16 +143,16 @@ export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { aux
       <div style={{ gridColumn: '1 / -1' }}>
         <PersonLinkPicker
           label='Passenger (global registry)'
-          personId={draft.person_id}
-          onChange={pid => setDraft({ ...draft, person_id: pid })}
+          personId={draft.personId}
+          onChange={pid => setDraft({ ...draft, personId: pid })}
           onResolved={setLinkedName}
         />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <PaxField label='Label (override)' value={draft.passenger_label} onChange={v => setDraft({ ...draft, passenger_label: v })} placeholder={draft.person_id ? 'Using linked person' : (partyLabel ? `Resolves to: ${partyLabel}` : 'e.g. Ms. Sayegh')} />
-        <PaxField label='Confirmation #' value={draft.confirmation_number} onChange={v => setDraft({ ...draft, confirmation_number: v })} placeholder='PVJZEW' />
-        <PaxField label='Seat Numbers' value={draft.seat_numbers} onChange={v => setDraft({ ...draft, seat_numbers: v })} placeholder='5F, 5E' />
-        <PaxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => setDraft({ ...draft, sort_order: parseInt(v, 10) || 0 })} />
+        <PaxField label='Label (override)' value={draft.passengerLabel} onChange={v => setDraft({ ...draft, passengerLabel: v })} placeholder={draft.personId ? 'Using linked person' : (partyLabel ? `Resolves to: ${partyLabel}` : 'e.g. Ms. Sayegh')} />
+        <PaxField label='Confirmation #' value={draft.confirmationNumber} onChange={v => setDraft({ ...draft, confirmationNumber: v })} placeholder='PVJZEW' />
+        <PaxField label='Seat Numbers' value={draft.seatNumbers} onChange={v => setDraft({ ...draft, seatNumbers: v })} placeholder='5F, 5E' />
+        <PaxField label='Sort Order' type='number' value={String(draft.sortOrder)} onChange={v => setDraft({ ...draft, sortOrder: parseInt(v, 10) || 0 })} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button onClick={() => { setAdding(false); setEditId(null) }} style={{ fontFamily: A.font, fontSize: 10, fontWeight: 600, color: A.faint, background: 'transparent', border: `1px solid ${A.border}`, borderRadius: 5, padding: '4px 10px', cursor: 'pointer' }}>
@@ -184,9 +184,9 @@ export function AuxPassengersEditor({ auxBookingId, initial, partyLabel }: { aux
         ) : (
           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 0' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{p.resolvedPassengerLabel || p.passengerLabel || 'Guest'}</span>
               <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', marginLeft: 8 }}>
-                {[p.confirmation_number, p.seat_numbers ? `Seats ${p.seat_numbers}` : null].filter(Boolean).join('  ·  ')}
+                {[p.confirmationNumber, p.seatNumbers ? `Seats ${p.seatNumbers}` : null].filter(Boolean).join('  ·  ')}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>

@@ -1,15 +1,15 @@
 /* EngagementDossierSection.tsx
  * Engagement dossier surface for ClientsTab.
  *
- * Last updated: S48 — Copy Link buttons added to EngagementActionPanel for
+ * Last updated: S48 - Copy Link buttons added to EngagementActionPanel for
  *   /confirmation and /programme client URLs. url_id now on DossierJourney.
  *   buildClientUrl + copyLink helpers. copied state with 2s feedback.
- * Prior: S48 — fetchAdminEngagementElements imported. handleDownload fetches aux.
- * Prior: S47 — navigateAdmin imported from adminPath. EngagementActionPanel
+ * Prior: S48 - fetchAdminEngagementElements imported. handleDownload fetches aux.
+ * Prior: S47 - navigateAdmin imported from adminPath. EngagementActionPanel
  *   onBriefSaved prop removed. trips local state removed.
- * Prior: S46 — Edit Brief navigates to BriefEditorPage.
- * Prior: S45 — EngagementActionPanel; confirmationBriefPdf; RoomsEditor.
- * Prior: S44 — initial ship.
+ * Prior: S46 - Edit Brief navigates to BriefEditorPage.
+ * Prior: S45 - EngagementActionPanel; confirmationBriefPdf; RoomsEditor.
+ * Prior: S44 - initial ship.
  */
 
 import { useEffect, useState } from 'react'
@@ -39,30 +39,30 @@ import { HotelPicker } from './HotelPicker'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mapBookingToDossier(b: EngagementBooking, house: HouseProfile | null): ClientDossierData {
-  const hotelName = b._hotel_name ?? b.supplier_name_override ?? b.name ?? 'Supplier'
-  const checkIn   = b.start_date ? formatDateShort(b.start_date) : '--'
-  const checkOut  = b.end_date   ? formatDateShort(b.end_date)   : '--'
+  const hotelName = b._hotel_name ?? b.supplierNameOverride ?? b.name ?? 'Supplier'
+  const checkIn   = b.startDate ? formatDateShort(b.startDate) : '--'
+  const checkOut  = b.endDate   ? formatDateShort(b.endDate)   : '--'
   const duration  = b.nights     ? `${b.nights} night${b.nights !== 1 ? 's' : ''}` : '--'
   const dateRange = (() => {
-    if (!b.start_date || !b.end_date) return checkIn
-    return formatDateRange(b.start_date, b.end_date)
+    if (!b.startDate || !b.endDate) return checkIn
+    return formatDateRange(b.startDate, b.endDate)
   })()
-  const salutation = house?.salutation_rule ?? null
+  const salutation = house?.salutationRule ?? null
   return {
-    guestDisplayName:   house?.display_name ?? '',
+    guestDisplayName:   house?.displayName ?? '',
     guestDescription:   salutation ? 'This VVIP guest will require attentive service and discreet security awareness.' : '',
-    partyIntro:         b.party_composition ? `${salutation ? 'They are' : 'The guest is'} arriving with ${b.party_composition}.` : '',
+    partyIntro:         b.partyComposition ? `${salutation ? 'They are' : 'The guest is'} arriving with ${b.partyComposition}.` : '',
     arrivalNote:        undefined,
     hotelName,
     destination:        '',
     dateRange,
     roomName:           b.name ?? hotelName,
     checkIn, checkOut, duration,
-    rateType:           b.rate_label?.display_name ?? '--',
+    rateType:           b.rateLabel?.displayName ?? '--',
     inclusions:         b.inclusions           ?? undefined,
-    confirmationNumber: b.confirmation_number  ?? undefined,
-    primaryContactName: b.primary_contact_name ?? undefined,
-    primaryContactRole: b.primary_contact_role ?? undefined,
+    confirmationNumber: b.confirmationNumber  ?? undefined,
+    primaryContactName: b.primaryContactName ?? undefined,
+    primaryContactRole: b.primaryContactRole ?? undefined,
     specialRequests:    [],
     roomArrangements:   [],
   }
@@ -98,8 +98,8 @@ function EngagementActionPanel({ trip, house }: {
   }
 
   function buildClientUrl(surface: 'confirmation' | 'programme'): string | null {
-    if (!trip.url_id) return null
-    return `https://immerse.ambience.travel/${trip.url_id}/${surface}`
+    if (!trip.urlId) return null
+    return `https://immerse.ambience.travel/${trip.urlId}/${surface}`
   }
 
   async function copyLink(surface: 'confirmation' | 'programme') {
@@ -112,7 +112,7 @@ function EngagementActionPanel({ trip, house }: {
 
   async function handleDownload() {
     let heroData: string | null = null
-    const heroSrc = trip.brief?.hero_image_src
+    const heroSrc = trip.brief?.heroImageSrc
     if (heroSrc) {
       try {
         const res  = await fetch(heroSrc)
@@ -131,7 +131,7 @@ function EngagementActionPanel({ trip, house }: {
       trip,
       brief:           trip.brief,
       house,
-      destinationName: trip.destinations[0]?.name ?? trip.journey_code,
+      destinationName: trip.destinations[0]?.name ?? trip.journeyCode,
       heroImageData:   heroData,
       elements,
       guestDisplayName: null,
@@ -164,7 +164,7 @@ function EngagementActionPanel({ trip, house }: {
       >
         Daily Programme
       </button>
-      {trip.url_id && (
+      {trip.urlId && (
         <>
           <button
             onClick={() => copyLink('confirmation')}
@@ -218,65 +218,65 @@ function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── AuxBookingsEditor ─────────────────────────────────────────────────────────
 // Trip-level flights / transfers / car services. Sibling to RoomsEditor.
-// Writes every editable column on travel_engagement_aux_bookings (supplier_id
-// deferred — needs a supplier picker, airline_name covers display).
+// Writes every editable column on travel_engagement_aux_bookings (supplierId
+// deferred - needs a supplier picker, airlineName covers display).
 
 type AuxDraft = {
   engagementTypeId:  string
   bookingTypeSlug:   string  // derived from registry for predicate checks
   name:                string
-  start_date:          string
-  start_time:          string
-  end_date:            string
-  end_time:            string
+  startDate:          string
+  startTime:          string
+  endDate:            string
+  endTime:            string
   origin:              string
   destination:         string
-  supplier_id: string
-  airline_name:        string
-  flight_number:       string
-  depart_airport:      string
-  arrive_airport:      string
-  cabin_class:         string
-  aircraft_type:       string
-  booked_by:           string
+  supplierId: string
+  airlineName:        string
+  flightNumber:       string
+  departAirport:      string
+  arriveAirport:      string
+  cabinClass:         string
+  aircraftType:       string
+  bookedBy:           string
   notes:               string
-  brief_show:          boolean
-  sort_order:          number
+  briefShow:          boolean
+  sortOrder:          number
 }
 
 function emptyAuxDraft(sortOrder: number, defaultTypeId = '', defaultSlug = 'flight'): AuxDraft {
   return {
     engagementTypeId: defaultTypeId, bookingTypeSlug: defaultSlug, name: '',
-    start_date: '', start_time: '', end_date: '', end_time: '',
-    origin: '', destination: '', supplier_id: '', airline_name: '', flight_number: '',
-    depart_airport: '', arrive_airport: '', cabin_class: '',
-    aircraft_type: '', booked_by: '', notes: '',
-    brief_show: true, sort_order: sortOrder,
+    startDate: '', startTime: '', endDate: '', endTime: '',
+    origin: '', destination: '', supplierId: '', airlineName: '', flightNumber: '',
+    departAirport: '', arriveAirport: '', cabinClass: '',
+    aircraftType: '', bookedBy: '', notes: '',
+    briefShow: true, sortOrder: sortOrder,
   }
 }
 
 function auxToDraft(a: AdminEngagementElement): AuxDraft {
   return {
-    engagementTypeId:  a.engagement_type_id  ?? '',
-    bookingTypeSlug:   a.element_type        ?? 'flight',
+    engagementTypeId:  a.engagementTypeId  ?? '',
+    bookingTypeSlug:   a.elementType        ?? 'flight',
     name:                a.name                ?? '',
-    start_date:          a.start_date          ?? '',
-    start_time:          a.start_time          ?? '',
-    end_date:            a.end_date            ?? '',
-    end_time:            a.end_time            ?? '',
+    startDate:          a.startDate          ?? '',
+    startTime:          a.startTime          ?? '',
+    endDate:            a.endDate            ?? '',
+    endTime:            a.endTime            ?? '',
     origin:              a.origin              ?? '',
     destination:         a.destination         ?? '',
-    supplier_id: a.supplier_id ?? '',
-    airline_name:        a.airline_name        ?? '',
-    flight_number:       a.flight_number       ?? '',
-    depart_airport:      a.depart_airport      ?? '',
-    arrive_airport:      a.arrive_airport      ?? '',
-    cabin_class:         a.cabin_class         ?? '',
-    aircraft_type:       a.aircraft_type       ?? '',
-    booked_by:           a.booked_by           ?? '',
+    supplierId: a.supplierId ?? '',
+    airlineName:        a.airlineName        ?? '',
+    flightNumber:       a.flightNumber       ?? '',
+    departAirport:      a.departAirport      ?? '',
+    arriveAirport:      a.arriveAirport      ?? '',
+    cabinClass:         a.cabinClass         ?? '',
+    aircraftType:       a.aircraftType       ?? '',
+    bookedBy:           a.bookedBy           ?? '',
     notes:               a.notes               ?? '',
-    brief_show:          a.brief_show,
-    sort_order:          a.sort_order,
+    briefShow:          a.briefShow,
+    sortOrder:          a.sortOrder,
   }
 }
 
@@ -284,25 +284,25 @@ function auxToDraft(a: AdminEngagementElement): AuxDraft {
 function draftToPatch(d: AuxDraft): AdminEngagementElementPatch {
   const orNull = (s: string): string | null => (s.trim() === '' ? null : s.trim())
   return {
-    engagement_type_id:  d.engagementTypeId ?? null,
+    engagementTypeId:  d.engagementTypeId ?? null,
     name:                orNull(d.name),
-    start_date:          orNull(d.start_date),
-    start_time:          orNull(d.start_time),
-    end_date:            orNull(d.end_date),
-    end_time:            orNull(d.end_time),
+    startDate:          orNull(d.startDate),
+    startTime:          orNull(d.startTime),
+    endDate:            orNull(d.endDate),
+    endTime:            orNull(d.endTime),
     origin:              orNull(d.origin),
     destination:         orNull(d.destination),
-    supplier_id: orNull(d.supplier_id),
-    airline_name:        orNull(d.airline_name),
-    flight_number:       orNull(d.flight_number),
-    depart_airport:      orNull(d.depart_airport),
-    arrive_airport:      orNull(d.arrive_airport),
-    cabin_class:         orNull(d.cabin_class),
-    aircraft_type:       orNull(d.aircraft_type),
-    booked_by:           orNull(d.booked_by),
+    supplierId: orNull(d.supplierId),
+    airlineName:        orNull(d.airlineName),
+    flightNumber:       orNull(d.flightNumber),
+    departAirport:      orNull(d.departAirport),
+    arriveAirport:      orNull(d.arriveAirport),
+    cabinClass:         orNull(d.cabinClass),
+    aircraftType:       orNull(d.aircraftType),
+    bookedBy:           orNull(d.bookedBy),
     notes:               orNull(d.notes),
-    brief_show:          d.brief_show,
-    sort_order:          d.sort_order,
+    briefShow:          d.briefShow,
+    sortOrder:          d.sortOrder,
   }
 }
 
@@ -343,37 +343,37 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagem
           </select>
         </div>
         <AuxField label='Name' value={draft.name} onChange={v => set('name', v)} placeholder='Emirates EK 824' />
-        <AuxField label='Booked By' value={draft.booked_by} onChange={v => set('booked_by', v)} placeholder='ambience' />
-        <AuxField label='Start Date' type='date' value={draft.start_date} onChange={v => set('start_date', v)} />
-        <AuxField label='Start Time' type='time' value={draft.start_time} onChange={v => set('start_time', v)} />
-        <AuxField label='End Date' type='date' value={draft.end_date} onChange={v => set('end_date', v)} />
-        <AuxField label='End Time' type='time' value={draft.end_time} onChange={v => set('end_time', v)} />
+        <AuxField label='Booked By' value={draft.bookedBy} onChange={v => set('bookedBy', v)} placeholder='ambience' />
+        <AuxField label='Start Date' type='date' value={draft.startDate} onChange={v => set('startDate', v)} />
+        <AuxField label='Start Time' type='time' value={draft.startTime} onChange={v => set('startTime', v)} />
+        <AuxField label='End Date' type='date' value={draft.endDate} onChange={v => set('endDate', v)} />
+        <AuxField label='End Time' type='time' value={draft.endTime} onChange={v => set('endTime', v)} />
         <AuxField label='Origin' value={draft.origin} onChange={v => set('origin', v)} placeholder='Riyadh' />
         <AuxField label='Destination' value={draft.destination} onChange={v => set('destination', v)} placeholder='Salzburg' />
       </div>
 
-      {/* Flight detail — only for Flight type */}
+      {/* Flight detail - only for Flight type */}
       {isFlight && (
         <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Flight Detail</div>
           <div style={{ gridColumn: '1 / -1', marginBottom: 8 }}>
             <AirlinePicker
-              supplierId={draft.supplier_id}
-              airlineNameFallback={draft.airline_name}
+              supplierId={draft.supplierId}
+              airlineNameFallback={draft.airlineName}
               bookingType={engagementTypes.find(t => t.id === draft.engagementTypeId)?.label ?? ''}
               variant='boxed'
               onChange={value => {
                 // Pick a supplier; clear the free-text override so the supplier wins.
-                setDraft({ ...draft, supplier_id: value, airline_name: value ? '' : draft.airline_name })
+                setDraft({ ...draft, supplierId: value, airlineName: value ? '' : draft.airlineName })
               }}
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <AuxField label='Flight #' value={draft.flight_number} onChange={v => set('flight_number', v)} placeholder='EK 824' />
-            <AuxField label='Depart Airport' value={draft.depart_airport} onChange={v => set('depart_airport', v)} placeholder='RUH' />
-            <AuxField label='Arrive Airport' value={draft.arrive_airport} onChange={v => set('arrive_airport', v)} placeholder='SZG' />
-            <AuxField label='Cabin Class' value={draft.cabin_class} onChange={v => set('cabin_class', v)} placeholder='Business' />
-            <AuxField label='Aircraft' value={draft.aircraft_type} onChange={v => set('aircraft_type', v)} placeholder='Boeing 777-300ER' />
+            <AuxField label='Flight #' value={draft.flightNumber} onChange={v => set('flightNumber', v)} placeholder='EK 824' />
+            <AuxField label='Depart Airport' value={draft.departAirport} onChange={v => set('departAirport', v)} placeholder='RUH' />
+            <AuxField label='Arrive Airport' value={draft.arriveAirport} onChange={v => set('arriveAirport', v)} placeholder='SZG' />
+            <AuxField label='Cabin Class' value={draft.cabinClass} onChange={v => set('cabinClass', v)} placeholder='Business' />
+            <AuxField label='Aircraft' value={draft.aircraftType} onChange={v => set('aircraftType', v)} placeholder='Boeing 777-300ER' />
           </div>
         </div>
       )}
@@ -382,11 +382,11 @@ function AuxForm({ draft, setDraft, onSave, onCancel, saving, saveLabel, engagem
       <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Display</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <AuxField label='Sort Order' type='number' value={String(draft.sort_order)} onChange={v => set('sort_order', parseInt(v, 10) || 0)} />
+          <AuxField label='Sort Order' type='number' value={String(draft.sortOrder)} onChange={v => set('sortOrder', parseInt(v, 10) || 0)} />
           <AuxField label='Notes' value={draft.notes} onChange={v => set('notes', v)} span />
         </div>
         <label style={{ ...labelStyle, marginTop: 10, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input type='checkbox' checked={draft.brief_show} onChange={e => set('brief_show', e.target.checked)} />
+          <input type='checkbox' checked={draft.briefShow} onChange={e => set('briefShow', e.target.checked)} />
           Show in brief
         </label>
       </div>
@@ -420,7 +420,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
       fetchEngagementTypes(),
     ])
       .then(([rows, types]) => {
-        setAux(rows.sort((a, b) => a.sort_order - b.sort_order))
+        setAux(rows.sort((a, b) => a.sortOrder - b.sortOrder))
         setEngagementTypes(types)
         if (types.length > 0) {
           const defaultType = types.find(t => t.slug === 'flight') ?? types[0]
@@ -450,13 +450,13 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
       const patch = draftToPatch(draft)
       if (editId) {
         const updated = await updateAdminEngagementElement(editId, patch)
-        setAux(prev => (prev ?? []).map(a => a.id === editId ? updated : a).sort((x, y) => x.sort_order - y.sort_order))
+        setAux(prev => (prev ?? []).map(a => a.id === editId ? updated : a).sort((x, y) => x.sortOrder - y.sortOrder))
         setEditId(null)
         success('Flight updated')
         return
       }
       const created = await createAdminEngagementElement(journeyId, patch)
-      setAux(prev => [...(prev ?? []), created].sort((x, y) => x.sort_order - y.sort_order))
+      setAux(prev => [...(prev ?? []), created].sort((x, y) => x.sortOrder - y.sortOrder))
       setAdding(false)
       success('Flight added')
     } catch (e) { error(e instanceof Error ? e.message : 'Failed to save flight') }
@@ -478,7 +478,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
 
   const rowLine = (a: AdminEngagementElement): string => {
     const route = [a.origin, a.destination].filter(Boolean).join(' \u2192 ')
-    const seats = a.cabin_class ?? ''
+    const seats = a.cabinClass ?? ''
     return [route, seats].filter(Boolean).join('  \u00b7  ')
   }
 
@@ -506,18 +506,18 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
           <div key={a.id} style={{ background: A.bg, border: `1px solid ${A.border}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.element_type_label ?? a.element_type ?? 'Other'}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>{a.elementTypeLabel ?? a.elementType ?? 'Other'}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{a.name ?? 'Booking'}</span>
-                {!a.brief_show && <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>hidden</span>}
+                {!a.briefShow && <span style={{ fontSize: 9, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>hidden</span>}
               </div>
               {rowLine(a) && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{rowLine(a)}</div>}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
-                {a.start_date && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.start_date}{a.start_time ? ` ${a.start_time.slice(0, 5)}` : ''}</span>}
+                {a.startDate && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{a.startDate}{a.startTime ? ` ${a.startTime.slice(0, 5)}` : ''}</span>}
               </div>
-              {isFlightElement(a.element_type) && (
+              {isFlightElement(a.elementType) && (
                 <AuxPassengersEditor auxBookingId={a.id} initial={a.passengers ?? []} />
               )}
-              {isGroundTransportElement(a.element_type) && (
+              {isGroundTransportElement(a.elementType) && (
                 <AuxDriverDetailsEditor auxBookingId={a.id} />
               )}
             </div>
@@ -548,26 +548,26 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
   partyLabel: string | null
 }) {
   const [expanded,  setExpanded]  = useState(false)
-  const [briefCat,  setBriefCat]  = useState(b.brief_category ?? '')
-  const [bookedBy,  setBookedBy]  = useState(b.booked_by ?? '')
-  const [briefShow, setBriefShow] = useState(b.brief_show ?? true)
+  const [briefCat,  setBriefCat]  = useState(b.briefCategory ?? '')
+  const [bookedBy,  setBookedBy]  = useState(b.bookedBy ?? '')
+  const [briefShow, setBriefShow] = useState(b.briefShow ?? true)
   const [saving,    setSaving]    = useState(false)
 
   const { pdfReady, pdfDownloading, handleDownloadDossier } = useDossierClientPdf()
 
-  const iataPartner  = b.iata_partner_id    ? partners[b.iata_partner_id]    : null
-  const refPartner   = b.referral_partner_id ? partners[b.referral_partner_id] : null
-  const indivPartner = b.individual_id       ? partners[b.individual_id]       : null
-  const supplierName = b._hotel_name ?? b.supplier_name_override ?? null
+  const iataPartner  = b.iataPartnerId    ? partners[b.iataPartnerId]    : null
+  const refPartner   = b.referralPartnerId ? partners[b.referralPartnerId] : null
+  const indivPartner = b.individualId       ? partners[b.individualId]       : null
+  const supplierName = b._hotel_name ?? b.supplierNameOverride ?? null
   const currency     = b.currency ?? 'USD'
-  const depositPaid  = !!b.deposit_paid_at
-  const balancePaid  = !!b.balance_paid_at
-  const commTotal    = b.commissionable_rate != null && b.nights != null ? b.commissionable_rate * b.nights : null
+  const depositPaid  = !!b.depositPaidAt
+  const balancePaid  = !!b.balancePaidAt
+  const commTotal    = b.commissionableRate != null && b.nights != null ? b.commissionableRate * b.nights : null
   const typeColor    = A.gold
 
   async function saveBriefFields() {
     setSaving(true)
-    try { await updateBookingBriefFields(b.id, { brief_category: briefCat || null, booked_by: bookedBy, brief_show: briefShow }) }
+    try { await updateBookingBriefFields(b.id, { briefCategory: briefCat || null, bookedBy: bookedBy, briefShow: briefShow }) }
     catch { /* silent */ }
     finally { setSaving(false) }
   }
@@ -582,16 +582,16 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {supplierName && b.name !== supplierName && <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{supplierName}</span>}
-            {b.start_date && (
+            {b.startDate && (
               <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                {formatDateShortRange(b.start_date, b.end_date)}{b.nights ? ` \u00b7 ${b.nights}N` : ''}
+                {formatDateShortRange(b.startDate, b.endDate)}{b.nights ? ` \u00b7 ${b.nights}N` : ''}
               </span>
             )}
-            {b.confirmation_number && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{b.confirmation_number}</span>}
+            {b.confirmationNumber && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{b.confirmationNumber}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-          {b.commission_amount != null && <span style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commission_amount, currency)}</span>}
+          {b.commissionAmount != null && <span style={{ fontSize: 12, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commissionAmount, currency)}</span>}
           <span style={{ fontSize: 10, color: A.faint, display: 'inline-block', transition: 'transform 150ms ease', transform: expanded ? 'rotate(90deg)' : 'none' }}>›</span>
         </div>
       </div>
@@ -599,13 +599,13 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
       {expanded && (
         <div style={{ borderTop: `1px solid ${A.border}`, padding: '12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {(b.commissionable_rate != null || b.total_rate != null) && (
+          {(b.commissionableRate != null || b.totalRate != null) && (
             <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10 }}>
-              {b.commissionable_rate != null && (
+              {b.commissionableRate != null && (
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 3 }}>Comm. Rate{b.nights && b.nights > 1 ? '/N' : ''}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.commissionable_rate, currency)}</div>
-                  {b.rate_label?.display_name && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.rate_label.display_name}</div>}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.commissionableRate, currency)}</div>
+                  {b.rateLabel?.displayName && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.rateLabel.displayName}</div>}
                 </div>
               )}
               {commTotal != null && b.nights != null && b.nights > 1 && (
@@ -614,18 +614,18 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
                   <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(commTotal, currency)}</div>
                 </div>
               )}
-              {b.total_rate != null && (
+              {b.totalRate != null && (
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 3 }}>Total Rate/N</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.total_rate, currency)}</div>
-                  {b.taxes_and_fees != null && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.taxes_and_fees}% taxes + fees</div>}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.totalRate, currency)}</div>
+                  {b.taxesAndFees != null && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.taxesAndFees}% taxes + fees</div>}
                 </div>
               )}
-              {b.commission_pct != null && (
+              {b.commissionPct != null && (
                 <div>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 3 }}>Commission</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commission_amount, currency)}</div>
-                  <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.commission_pct}% gross</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: A.gold, fontFamily: A.font }}>{fmt(b.commissionAmount, currency)}</div>
+                  <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{b.commissionPct}% gross</div>
                 </div>
               )}
             </div>
@@ -638,27 +638,27 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
             </div>
           )}
 
-          {(b.deposit_amount != null || b.balance_amount != null) && (
+          {(b.depositAmount != null || b.balanceAmount != null) && (
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Payment</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {b.deposit_amount != null && (
+                {b.depositAmount != null && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <div>
                       <span style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>Deposit </span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.deposit_amount, currency)}</span>
-                      {depositPaid && b.deposit_paid_at && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}> \u00b7 paid {formatDateShort(b.deposit_paid_at)}</span>}
+                      <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.depositAmount, currency)}</span>
+                      {depositPaid && b.depositPaidAt && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}> \u00b7 paid {formatDateShort(b.depositPaidAt)}</span>}
                     </div>
-                    <PaymentBadge paid={depositPaid} amount={b.deposit_amount} dueDate={b.deposit_due_date} currency={currency} />
+                    <PaymentBadge paid={depositPaid} amount={b.depositAmount} dueDate={b.depositDueDate} currency={currency} />
                   </div>
                 )}
-                {b.balance_amount != null && (
+                {b.balanceAmount != null && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <div>
                       <span style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>Balance </span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.balance_amount, currency)}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: A.text, fontFamily: A.font }}>{fmt(b.balanceAmount, currency)}</span>
                     </div>
-                    <PaymentBadge paid={balancePaid} amount={b.balance_amount} dueDate={b.balance_due_date} currency={currency} />
+                    <PaymentBadge paid={balancePaid} amount={b.balanceAmount} dueDate={b.balanceDueDate} currency={currency} />
                   </div>
                 )}
               </div>
@@ -669,19 +669,19 @@ function BookingCard({ booking: b, partners, mobile, house, partyLabel }: {
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Commission Splits</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {iataPartner   && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{iataPartner.name} <span style={{ fontSize: 10, color: A.faint }}>IATA</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.iata_share_pct}% \u00b7 {fmt(b.iata_share_amt, currency)}</span></div>}
-                {refPartner    && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{refPartner.name} <span style={{ fontSize: 10, color: A.faint }}>Referral</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.referral_share_pct}% \u00b7 {fmt(b.referral_share_amt, currency)}</span></div>}
-                {indivPartner  && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{indivPartner.name}</span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.individual_share_pct}% \u00b7 {fmt(b.individual_share_amt, currency)}</span></div>}
+                {iataPartner   && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{iataPartner.name} <span style={{ fontSize: 10, color: A.faint }}>IATA</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.iataSharePct}% \u00b7 {fmt(b.iataShareAmt, currency)}</span></div>}
+                {refPartner    && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{refPartner.name} <span style={{ fontSize: 10, color: A.faint }}>Referral</span></span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.referralSharePct}% \u00b7 {fmt(b.referralShareAmt, currency)}</span></div>}
+                {indivPartner  && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{indivPartner.name}</span><span style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{b.individualSharePct}% \u00b7 {fmt(b.individualShareAmt, currency)}</span></div>}
               </div>
             </div>
           )}
 
-          {(b.cancellation_policy || b.notes) && (
+          {(b.cancellationPolicy || b.notes) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {b.cancellation_policy && (
+              {b.cancellationPolicy && (
                 <div style={{ padding: '7px 10px', background: '#f8717108', border: '1px solid #f8717118', borderRadius: 6 }}>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f87171', fontFamily: A.font, marginBottom: 3 }}>Cancellation</div>
-                  <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{b.cancellation_policy}</div>
+                  <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{b.cancellationPolicy}</div>
                 </div>
               )}
               {b.notes && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>{b.notes}</div>}
@@ -738,35 +738,35 @@ const BOOKING_TYPES  = ['Hotel', 'Flight', 'Transfer', 'Restaurant', 'Experience
 const BOOKING_STATUS = ['quoted', 'confirmed', 'pending', 'cancelled', 'recommended', 'requested', 'awaiting_decision', 'paid']
 
 type BookingDraft = {
-  element_type:        string
+  elementType:        string
   name:                string
   status:              string
-  confirmation_number: string
-  accom_hotel_id:      string
-  start_date:          string
-  end_date:            string
+  confirmationNumber: string
+  accomHotelId:      string
+  startDate:          string
+  endDate:            string
   nights:              string
   currency:            string
-  commissionable_rate: string
-  total_rate:          string
-  taxes_and_fees:      string
-  board_basis_id:      string
-  payment_terms_id:    string
-  pricing_basis_id:    string
-  rate_label_id:       string
-  booked_by:           string
-  brief_category:      string
-  cancellation_policy: string
+  commissionableRate: string
+  totalRate:          string
+  taxesAndFees:      string
+  boardBasisId:      string
+  paymentTermsId:    string
+  pricingBasisId:    string
+  rateLabelId:       string
+  bookedBy:           string
+  briefCategory:      string
+  cancellationPolicy: string
   inclusions:          string
   notes:               string
 }
 
 function emptyBookingDraft(): BookingDraft {
   return {
-    element_type: 'Hotel', name: '', status: 'confirmed', confirmation_number: '',
-    accom_hotel_id: '', start_date: '', end_date: '', nights: '',
-    currency: 'EUR', commissionable_rate: '', total_rate: '', taxes_and_fees: '',
-    board_basis_id: '', payment_terms_id: '', pricing_basis_id: '', rate_label_id: '', booked_by: 'ambience', brief_category: '', cancellation_policy: '',
+    elementType: 'Hotel', name: '', status: 'confirmed', confirmationNumber: '',
+    accomHotelId: '', startDate: '', endDate: '', nights: '',
+    currency: 'EUR', commissionableRate: '', totalRate: '', taxesAndFees: '',
+    boardBasisId: '', paymentTermsId: '', pricingBasisId: '', rateLabelId: '', bookedBy: 'ambience', briefCategory: '', cancellationPolicy: '',
     inclusions: '', notes: '',
   }
 }
@@ -780,25 +780,25 @@ function bookingDraftToPatch(d: BookingDraft): Record<string, unknown> {
     return Number.isFinite(n) ? n : null
   }
   return {
-    element_type:        orNull(d.element_type),
+    elementType:        orNull(d.elementType),
     name:                orNull(d.name),
     status:              orNull(d.status),
-    confirmation_number: orNull(d.confirmation_number),
-    accom_hotel_id:      isHotelElement(d.element_type) ? orNull(d.accom_hotel_id) : null,
-    start_date:          orNull(d.start_date),
-    end_date:            orNull(d.end_date),
+    confirmationNumber: orNull(d.confirmationNumber),
+    accomHotelId:      isHotelElement(d.elementType) ? orNull(d.accomHotelId) : null,
+    startDate:          orNull(d.startDate),
+    endDate:            orNull(d.endDate),
     nights:              numOrNull(d.nights),
     currency:            orNull(d.currency),
-    commissionable_rate: numOrNull(d.commissionable_rate),
-    total_rate:          numOrNull(d.total_rate),
-    taxes_and_fees:      numOrNull(d.taxes_and_fees),
-    board_basis_id:      orNull(d.board_basis_id),
-    payment_terms_id:    orNull(d.payment_terms_id),
-    pricing_basis_id:    orNull(d.pricing_basis_id),
-    rate_label_id:       orNull(d.rate_label_id),
-    booked_by:           orNull(d.booked_by),
-    brief_category:      orNull(d.brief_category),
-    cancellation_policy: orNull(d.cancellation_policy),
+    commissionableRate: numOrNull(d.commissionableRate),
+    totalRate:          numOrNull(d.totalRate),
+    taxesAndFees:      numOrNull(d.taxesAndFees),
+    boardBasisId:      orNull(d.boardBasisId),
+    paymentTermsId:    orNull(d.paymentTermsId),
+    pricingBasisId:    orNull(d.pricingBasisId),
+    rateLabelId:       orNull(d.rateLabelId),
+    bookedBy:           orNull(d.bookedBy),
+    briefCategory:      orNull(d.briefCategory),
+    cancellationPolicy: orNull(d.cancellationPolicy),
     inclusions:          orNull(d.inclusions),
     notes:               orNull(d.notes),
   }
@@ -811,12 +811,12 @@ function BookingCreator({ journeyId, onCreated }: {
   const [open,   setOpen]   = useState(false)
   const [draft,  setDraft]  = useState<BookingDraft>(emptyBookingDraft())
   const [saving, setSaving] = useState(false)
-  const [rateRef, setRateRef] = useState<RateReference>({ board_bases: [], payment_terms: [], pricing_bases: [], rate_labels: [] })
+  const [rateRef, setRateRef] = useState<RateReference>({ boardBases: [], paymentTerms: [], pricingBases: [], rateLabels: [] })
   useEffect(() => { fetchRateReference().then(setRateRef).catch(() => {}) }, [])
   const { success, error } = useAdminToast()
 
   const set = <K extends keyof BookingDraft>(k: K, v: BookingDraft[K]) => setDraft({ ...draft, [k]: v })
-  const isHotel = isHotelElement(draft.element_type)
+  const isHotel = isHotelElement(draft.elementType)
 
   async function handleCreate() {
     setSaving(true)
@@ -846,7 +846,7 @@ function BookingCreator({ journeyId, onCreated }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div>
           <label style={labelStyle}>Type</label>
-          <select style={inputStyle} value={draft.element_type} onChange={e => set('element_type', e.target.value)}>
+          <select style={inputStyle} value={draft.elementType} onChange={e => set('elementType', e.target.value)}>
             {BOOKING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
@@ -860,16 +860,16 @@ function BookingCreator({ journeyId, onCreated }: {
 
       {isHotel && (
         <HotelPicker
-          hotelId={draft.accom_hotel_id}
-          onChange={(id, hotel) => setDraft({ ...draft, accom_hotel_id: id, name: draft.name || (hotel?.name ?? '') })}
+          hotelId={draft.accomHotelId}
+          onChange={(id, hotel) => setDraft({ ...draft, accomHotelId: id, name: draft.name || (hotel?.name ?? '') })}
         />
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <div><label style={labelStyle}>Name</label><input style={inputStyle} value={draft.name} onChange={e => set('name', e.target.value)} placeholder={isHotel ? 'Hotel Goldener Hirsch' : 'Booking name'} /></div>
-        <div><label style={labelStyle}>Confirmation #</label><input style={inputStyle} value={draft.confirmation_number} onChange={e => set('confirmation_number', e.target.value)} placeholder='74373105' /></div>
-        <div><label style={labelStyle}>Start Date</label><input style={inputStyle} type='date' value={draft.start_date} onChange={e => set('start_date', e.target.value)} /></div>
-        <div><label style={labelStyle}>End Date</label><input style={inputStyle} type='date' value={draft.end_date} onChange={e => set('end_date', e.target.value)} /></div>
+        <div><label style={labelStyle}>Confirmation #</label><input style={inputStyle} value={draft.confirmationNumber} onChange={e => set('confirmationNumber', e.target.value)} placeholder='74373105' /></div>
+        <div><label style={labelStyle}>Start Date</label><input style={inputStyle} type='date' value={draft.startDate} onChange={e => set('startDate', e.target.value)} /></div>
+        <div><label style={labelStyle}>End Date</label><input style={inputStyle} type='date' value={draft.endDate} onChange={e => set('endDate', e.target.value)} /></div>
         <div><label style={labelStyle}>Nights</label><input style={inputStyle} type='number' value={draft.nights} onChange={e => set('nights', e.target.value)} placeholder='3' /></div>
         <div><label style={labelStyle}>Currency</label><input style={inputStyle} value={draft.currency} onChange={e => set('currency', e.target.value)} placeholder='EUR' /></div>
       </div>
@@ -877,21 +877,21 @@ function BookingCreator({ journeyId, onCreated }: {
       <div style={{ borderTop: `1px solid ${A.border}`, paddingTop: 10 }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Rate Detail</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <div><label style={labelStyle}>Commissionable Rate / night</label><input style={inputStyle} type='number' value={draft.commissionable_rate} onChange={e => set('commissionable_rate', e.target.value)} placeholder='1305.00' /></div>
-          <div><label style={labelStyle}>Total Rate / night</label><input style={inputStyle} type='number' value={draft.total_rate} onChange={e => set('total_rate', e.target.value)} placeholder='' /></div>
-          <div><label style={labelStyle}>Taxes & Fees %</label><input style={inputStyle} type='number' value={draft.taxes_and_fees} onChange={e => set('taxes_and_fees', e.target.value)} placeholder='' /></div>
-          <div><label style={labelStyle}>Board Basis</label><select style={inputStyle} value={draft.board_basis_id} onChange={e => set('board_basis_id', e.target.value)}><option value=''>—</option>{rateRef.board_bases.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}</select></div>
-          <div><label style={labelStyle}>Payment Terms</label><select style={inputStyle} value={draft.payment_terms_id} onChange={e => set('payment_terms_id', e.target.value)}><option value=''>—</option>{rateRef.payment_terms.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}</select></div>
-          <div><label style={labelStyle}>Pricing Basis</label><select style={inputStyle} value={draft.pricing_basis_id} onChange={e => set('pricing_basis_id', e.target.value)}><option value=''>—</option>{rateRef.pricing_bases.map(o => <option key={o.id} value={o.id}>{o.display_name}</option>)}</select></div>
-          <div><label style={labelStyle}>Rate Label</label><select style={inputStyle} value={draft.rate_label_id} onChange={e => set('rate_label_id', e.target.value)}><option value=''>—</option>{rateRef.rate_labels.map(o => <option key={o.id} value={o.id}>{o.display_name}{o.client_visible ? '' : ' (internal)'}</option>)}</select></div>
+          <div><label style={labelStyle}>Commissionable Rate / night</label><input style={inputStyle} type='number' value={draft.commissionableRate} onChange={e => set('commissionableRate', e.target.value)} placeholder='1305.00' /></div>
+          <div><label style={labelStyle}>Total Rate / night</label><input style={inputStyle} type='number' value={draft.totalRate} onChange={e => set('totalRate', e.target.value)} placeholder='' /></div>
+          <div><label style={labelStyle}>Taxes & Fees %</label><input style={inputStyle} type='number' value={draft.taxesAndFees} onChange={e => set('taxesAndFees', e.target.value)} placeholder='' /></div>
+          <div><label style={labelStyle}>Board Basis</label><select style={inputStyle} value={draft.boardBasisId} onChange={e => set('boardBasisId', e.target.value)}><option value=''>-</option>{rateRef.boardBases.map(o => <option key={o.id} value={o.id}>{o.displayName}</option>)}</select></div>
+          <div><label style={labelStyle}>Payment Terms</label><select style={inputStyle} value={draft.paymentTermsId} onChange={e => set('paymentTermsId', e.target.value)}><option value=''>-</option>{rateRef.paymentTerms.map(o => <option key={o.id} value={o.id}>{o.displayName}</option>)}</select></div>
+          <div><label style={labelStyle}>Pricing Basis</label><select style={inputStyle} value={draft.pricingBasisId} onChange={e => set('pricingBasisId', e.target.value)}><option value=''>-</option>{rateRef.pricingBases.map(o => <option key={o.id} value={o.id}>{o.displayName}</option>)}</select></div>
+          <div><label style={labelStyle}>Rate Label</label><select style={inputStyle} value={draft.rateLabelId} onChange={e => set('rateLabelId', e.target.value)}><option value=''>-</option>{rateRef.rateLabels.map(o => <option key={o.id} value={o.id}>{o.displayName}{o.clientVisible ? '' : ' (internal)'}</option>)}</select></div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <div><label style={labelStyle}>Booked By</label><input style={inputStyle} value={draft.booked_by} onChange={e => set('booked_by', e.target.value)} placeholder='ambience' /></div>
-        <div><label style={labelStyle}>Brief Category</label><input style={inputStyle} value={draft.brief_category} onChange={e => set('brief_category', e.target.value)} placeholder='Accommodation' /></div>
+        <div><label style={labelStyle}>Booked By</label><input style={inputStyle} value={draft.bookedBy} onChange={e => set('bookedBy', e.target.value)} placeholder='ambience' /></div>
+        <div><label style={labelStyle}>Brief Category</label><input style={inputStyle} value={draft.briefCategory} onChange={e => set('briefCategory', e.target.value)} placeholder='Accommodation' /></div>
         <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Inclusions</label><input style={inputStyle} value={draft.inclusions} onChange={e => set('inclusions', e.target.value)} placeholder='Breakfast included' /></div>
-        <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Cancellation Policy</label><input style={inputStyle} value={draft.cancellation_policy} onChange={e => set('cancellation_policy', e.target.value)} placeholder='Free cancellation until 30 days prior' /></div>
+        <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Cancellation Policy</label><input style={inputStyle} value={draft.cancellationPolicy} onChange={e => set('cancellationPolicy', e.target.value)} placeholder='Free cancellation until 30 days prior' /></div>
         <div style={{ gridColumn: '1 / -1' }}><label style={labelStyle}>Notes</label><input style={inputStyle} value={draft.notes} onChange={e => set('notes', e.target.value)} placeholder='Internal notes' /></div>
       </div>
 
@@ -922,18 +922,18 @@ function EngagementBlock({ trip, partners, mobile, expanded, onToggle, house }: 
   const stageLabel: Record<string, string> = { trip: 'In Progress', completed: 'Completed', proposal: 'Proposal', draft: 'Draft', cancelled: 'Cancelled' }
   const tripColor       = trip.stage ? (stageColor[trip.stage] ?? A.gold) : A.faint
   const tripStageText   = trip.stage ? (stageLabel[trip.stage] ?? trip.stage) : 'Pre-confirmation'
-  const totalCommission = bookings.reduce((s, b) => s + (b.commission_amount ?? 0), 0)
-  const totalGross      = bookings.reduce((s, b) => s + (b.commissionable_rate ?? b.price ?? 0) * (b.nights ?? 1), 0)
+  const totalCommission = bookings.reduce((s, b) => s + (b.commissionAmount ?? 0), 0)
+  const totalGross      = bookings.reduce((s, b) => s + (b.commissionableRate ?? b.price ?? 0) * (b.nights ?? 1), 0)
 
   return (
     <div style={{ background: A.bgCard, border: `1px solid ${expanded ? A.gold + '40' : A.border}`, borderRadius: 12, overflow: 'hidden', transition: 'border-color 150ms ease' }}>
       <div onClick={onToggle} style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.journey_code}</span>
+          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.journeyCode}</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: tripColor, fontFamily: A.font, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tripStageText}</span>
-          {trip.start_date && (
+          {trip.startDate && (
             <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-              {formatDateShortRange(trip.start_date, trip.end_date)}{trip.duration_nights ? ` \u00b7 ${trip.duration_nights}N` : ''}
+              {formatDateShortRange(trip.startDate, trip.endDate)}{trip.durationNights ? ` \u00b7 ${trip.durationNights}N` : ''}
             </span>
           )}
         </div>
@@ -947,10 +947,10 @@ function EngagementBlock({ trip, partners, mobile, expanded, onToggle, house }: 
         <div style={{ borderTop: `1px solid ${A.border}`, padding: '0 16px 16px' }}>
           <div style={{ display: 'flex', gap: 20, padding: '12px 0', flexWrap: 'wrap', borderBottom: `1px solid ${A.border}`, marginBottom: 14 }}>
             {trip.destinations && trip.destinations.length > 0 && <MetaCell label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
-            {(trip.guest_count_adults || trip.guest_count_children) && (
-              <MetaCell label='Guests' value={`${trip.guest_count_adults ?? 0} adult${(trip.guest_count_adults ?? 0) !== 1 ? 's' : ''}${trip.guest_count_children ? `, ${trip.guest_count_children} child${trip.guest_count_children !== 1 ? 'ren' : ''}` : ''}`} />
+            {(trip.guestCountAdults || trip.guestCountChildren) && (
+              <MetaCell label='Guests' value={`${trip.guestCountAdults ?? 0} adult${(trip.guestCountAdults ?? 0) !== 1 ? 's' : ''}${trip.guestCountChildren ? `, ${trip.guestCountChildren} child${trip.guestCountChildren !== 1 ? 'ren' : ''}` : ''}`} />
             )}
-            {trip.trip_type && <MetaCell label='Type' value={<span style={{ textTransform: 'capitalize' }}>{trip.trip_type}</span>} />}
+            {trip.tripType && <MetaCell label='Type' value={<span style={{ textTransform: 'capitalize' }}>{trip.tripType}</span>} />}
             {trip.brief && <MetaCell label='Brief' value={<span style={{ color: A.gold }}>Ready</span>} />}
             {totalCommission > 0 && (
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
@@ -967,7 +967,7 @@ function EngagementBlock({ trip, partners, mobile, expanded, onToggle, house }: 
             ? <AdminEmptyState message='No bookings on this trip yet.' />
             : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} partyLabel={trip.brief?.prepared_for ?? null} />)}
+                {bookings.map(b => <BookingCard key={b.id} booking={b} partners={partners} mobile={mobile} house={house} partyLabel={trip.brief?.preparedFor ?? null} />)}
               </div>
             )
           }

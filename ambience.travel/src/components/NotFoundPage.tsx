@@ -1,14 +1,14 @@
-// NotFoundPage.tsx — canonical standalone 404 for unmatched routes
+// NotFoundPage.tsx - canonical standalone 404 for unmatched routes
 // What it owns:
 //   - Full-page not-found render for routes that have no layout context
 //   - Used by DiningGuideRoute (and any future guide/public route) when
 //     destination validation fails and there is no layout shell to render into
-//   - Renders its own dark background — does NOT require a parent layout
+//   - Renders its own dark background - does NOT require a parent layout
 //
 // What it does not own:
-//   - Immerse-layer not-found (ImmerseStateScreens.NotFound — renders inside
+//   - Immerse-layer not-found (ImmerseStateScreens.NotFound - renders inside
 //     ImmerseLayout on ID.bg dark surface)
-//   - Programme-layer not-found (inline in ProgrammeRoute — renders inside
+//   - Programme-layer not-found (inline in ProgrammeRoute - renders inside
 //     ProgrammeLayout on light surface)
 //
 // When to use this vs the layer-specific ones:
@@ -16,7 +16,7 @@
 //   - Route renders inside ImmerseLayout → ImmerseStateScreens.NotFound
 //   - Route renders inside ProgrammeLayout → inline NotFound in ProgrammeRoute
 //
-// Last updated: S40 — Created. Extracted from null-return pattern in
+// Last updated: S40 - Created. Extracted from null-return pattern in
 //   DiningGuideRoute. Gives guide routes a proper branded 404 instead of
 //   a blank screen after redirect.
 

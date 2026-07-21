@@ -1,10 +1,10 @@
-// TasksSection.tsx — Engagement-scoped task list.
+// TasksSection.tsx - Engagement-scoped task list.
 // Reads from travel-tasks EF (by_engagement mode).
 // Status transitions: open → done (complete mode), open → dismissed (dismiss mode),
 //   done/dismissed → open (reopen mode).
 // Template instantiation is manual for now; automation is Phase 3+.
 //
-// S53H — initial ship.
+// S53H - initial ship.
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -41,7 +41,7 @@ const STATUS_COLOR: Record<TaskStatus, string> = {
   dismissed: A.statusDismissed,
 }
 
-// Tint per status — for the subtle button borders (base colour at low alpha).
+// Tint per status - for the subtle button borders (base colour at low alpha).
 const STATUS_TINT: Record<TaskStatus, string> = {
   open:      A.statusOpenTint,
   done:      A.statusDoneTint,
@@ -104,7 +104,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
 
         const { tasks: rows } = await invokeTasks<{ tasks: Task[] }>({
           mode:          'by_engagement',
-          engagement_id: eng.id,
+          engagementId: eng.id,
         })
         setTasks(rows)
       } catch (e) {
@@ -138,7 +138,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
     try {
       const { task: created } = await invokeTasks<{ task: Task }>({
         mode:          'create',
-        engagement_id: engagementId,
+        engagementId: engagementId,
         title:         newTitle.trim(),
         due_date:      newDueDate || null,
       })

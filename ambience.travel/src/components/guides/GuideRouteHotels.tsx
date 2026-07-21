@@ -1,13 +1,13 @@
-// GuideRouteHotels.tsx — thin route wrapper for the hotels guide.
+// GuideRouteHotels.tsx - thin route wrapper for the hotels guide.
 //
 // Phase dispatch:
 //   loading   → RouteLoading
 //   notPublic → GuideGateHotels inline inside GuideLayout
-//   notFound  → NotFoundPage (dark, full page — genuine 404)
+//   notFound  → NotFoundPage (dark, full page - genuine 404)
 //   ready     → GuidePageHotels inside GuideLayout
 //
-// Last updated: S53 — notPublic phase added.
-// Prior: S53 — collapsed to thin wrapper.
+// Last updated: S53 - notPublic phase added.
+// Prior: S53 - collapsed to thin wrapper.
 
 import GuideLayout from '../layouts/GuideLayout'
 import { GuideGate } from './GuideGate'

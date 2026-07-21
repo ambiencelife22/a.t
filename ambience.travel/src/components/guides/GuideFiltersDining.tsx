@@ -1,4 +1,4 @@
-/* GuideFiltersDining.tsx — pill row of filter chips for the dining guide.
+/* GuideFiltersDining.tsx - pill row of filter chips for the dining guide.
  *
  * Chips: All, Highlighted (when items exist), one per cuisine subcategory,
  * Michelin (when items exist).
@@ -7,11 +7,11 @@
  *   Michelin and Highlighted toggle dispatch.
  * What it does not own: filtered-result computation (parent owns that).
  *
- * Last updated: S53 — Renamed to convention. Behaviour unchanged.
- * Prior: S40B — Added highlightedOnly to FilterState. Highlighted chip
+ * Last updated: S53 - Renamed to convention. Behaviour unchanged.
+ * Prior: S40B - Added highlightedOnly to FilterState. Highlighted chip
  *   renders when hasHighlightedItems is true.
- * Prior: S40 — Neighborhoods removed.
- * Prior: S35 — initial.
+ * Prior: S40 - Neighborhoods removed.
+ * Prior: S35 - initial.
  */
 
 import React from 'react'

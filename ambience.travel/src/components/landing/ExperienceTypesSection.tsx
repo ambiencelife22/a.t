@@ -1,7 +1,7 @@
 /* ExperienceTypesSection.tsx
  * Six experience type cards with images.
  * Animations:
- * - Cards dealt from a hand — scroll-progress driven
+ * - Cards dealt from a hand - scroll-progress driven
  * - Each card starts rotated ~0.6deg + slightly high, unwinds and drops flat as it lands
  * - Motion is rotation-led, not slide-led (subtle horizontal, more angular)
  * - Hover: image scale + lift + border darken

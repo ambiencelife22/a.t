@@ -1,6 +1,6 @@
-/* ─── Cormorant Garamond — self-hosted (S32E perf) ──────────────────────── */
+/* ─── Cormorant Garamond - self-hosted (S32E perf) ──────────────────────── */
 /* Replaces Google Fonts CDN dependency. Each file covers weights 300-600    */
-/* via variable-font range syntax. Latin subset only — non-latin codepoints  */
+/* via variable-font range syntax. Latin subset only - non-latin codepoints  */
 /* fall back to the next font in the stack.                                  */
 /* size-adjust + ascent/descent overrides tune fallback metrics to reduce    */
 /* CLS during font-swap reflow.                                              */
@@ -142,15 +142,15 @@ img {
   100% { opacity: 0.38; }
 }
 
-/* === S32F — append to src/index.css === */
+/* === S32F - append to src/index.css === */
 
-/* Section-level shimmer — flat panel sweep, subtle */
+/* Section-level shimmer - flat panel sweep, subtle */
 @keyframes immerseShimmerSweep {
   0%   { background-position: -100% 0; }
   100% { background-position:  200% 0; }
 }
 
-/* Emblem shimmer — gold sweep across emblem on TravelLoadingScreen */
+/* Emblem shimmer - gold sweep across emblem on TravelLoadingScreen */
 @keyframes immerseEmblemShimmer {
   0%   { background-position: -150% 0; opacity: 0.65; }
   50%  {                                opacity: 1;    }

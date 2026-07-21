@@ -1,4 +1,4 @@
-// GuideRouteDining.tsx — thin route wrapper for the dining guide.
+// GuideRouteDining.tsx - thin route wrapper for the dining guide.
 //
 // All route logic lives in useGuideRoute (path parsing, overlay gate,
 // grant check, state machine, error handling). This file picks the variant
@@ -7,13 +7,13 @@
 // Phase dispatch:
 //   loading   → RouteLoading
 //   notPublic → GuideGateDining inline inside GuideLayout
-//   notFound  → NotFoundPage (dark, full page — genuine 404)
+//   notFound  → NotFoundPage (dark, full page - genuine 404)
 //   ready     → GuidePageDining inside GuideLayout
 //
-// Last updated: S53 — notPublic phase added. Overlay-gated guides now render
+// Last updated: S53 - notPublic phase added. Overlay-gated guides now render
 //   GuideGateDining inside GuideLayout instead of a dark NotFoundPage. Guest
 //   sees destination hero then the tailored gate message.
-// Prior: S53 — collapsed to thin wrapper.
+// Prior: S53 - collapsed to thin wrapper.
 
 import GuideLayout from '../layouts/GuideLayout'
 import { GuideGate } from './GuideGate'

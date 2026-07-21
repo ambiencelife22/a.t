@@ -1,4 +1,4 @@
-// SignatureHero.tsx — parallax hero for ambience.travel signature experience pages
+// SignatureHero.tsx - parallax hero for ambience.travel signature experience pages
 // Owns the immersive full-bleed hero only. Does not own downstream sections.
 // Last updated: S9
 
@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { C } from '../../../types/typesLanding'
 import { fadeUp, useVisible } from '../LandingComponents'
 
-// Iceland palette — local to this component only, not exported
+// Iceland palette - local to this component only, not exported
 const ICE = {
   text:           '#F7F2EA',
   textMuted:      'rgba(247,242,234,0.78)',
@@ -86,7 +86,7 @@ export default function SignatureHero({
     >
       <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
-        {/* Two-column grid — stacks on mobile */}
+        {/* Two-column grid - stacks on mobile */}
         <div
           style={{
             display:             'grid',
@@ -96,7 +96,7 @@ export default function SignatureHero({
             minHeight:           isMobile ? 'auto' : 600,
           }}
         >
-          {/* Left — copy */}
+          {/* Left - copy */}
           <div
             style={{
               display:        'flex',
@@ -225,7 +225,7 @@ export default function SignatureHero({
             </div>
           </div>
 
-          {/* Right — image card with parallax */}
+          {/* Right - image card with parallax */}
           <div
             style={{
               ...fadeUp(visible, 200),
@@ -238,7 +238,7 @@ export default function SignatureHero({
               background:   '#1A2530',
             }}
           >
-            {/* Parallax image layer — disabled on mobile for perf */}
+            {/* Parallax image layer - disabled on mobile for perf */}
             <div
               ref={bgRef}
               style={{
@@ -266,7 +266,7 @@ export default function SignatureHero({
               }}
             />
 
-            {/* Overlay captions — hide glass note on mobile to reduce clutter */}
+            {/* Overlay captions - hide glass note on mobile to reduce clutter */}
             <div
               style={{
                 position:       'absolute',

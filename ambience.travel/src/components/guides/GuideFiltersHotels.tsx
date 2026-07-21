@@ -1,4 +1,4 @@
-/* GuideFiltersHotels.tsx — chip filters for the hotels guide page.
+/* GuideFiltersHotels.tsx - chip filters for the hotels guide page.
  *
  * Filters: minimum stars (4+ / 5+), Forbes-rated only, Preferred Partners only.
  * Chips hide when no hotels in the result set carry the relevant flag.
@@ -6,8 +6,8 @@
  * What it owns: filter row chrome, chip components + styling, clear-all button.
  * What it does not own: filter state (parent owns HotelFilterState).
  *
- * Last updated: S53 — Renamed to convention. Behaviour unchanged.
- * Prior: S37 — initial.
+ * Last updated: S53 - Renamed to convention. Behaviour unchanged.
+ * Prior: S37 - initial.
  */
 
 import React from 'react'

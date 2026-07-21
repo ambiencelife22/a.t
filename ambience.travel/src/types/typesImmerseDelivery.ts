@@ -1,7 +1,7 @@
-// typesImmerseDelivery.ts — Unified engagement RENDER-PAYLOAD types.
+// typesImmerseDelivery.ts - Unified engagement RENDER-PAYLOAD types.
 //
 // Named for what it holds: the client-FACING render payload for the immerse
-// engagement surface — NOT client identity. Client identity (the person/party)
+// engagement surface - NOT client identity. Client identity (the person/party)
 // lives in global_people and its relationship tables, never here. Everything in
 // this file is engagement/delivery composition: the stage-discriminated render
 // union, the delivery bundle, engagement contacts (client AND hotel AND ambience
@@ -14,7 +14,7 @@
 //
 // Architecture: discriminated union by stage, not a flattened superset.
 // A flattened superset with 40+ optional fields forces every consumer to
-// guess what's populated. The union is honest — each stage carries exactly
+// guess what's populated. The union is honest - each stage carries exactly
 // what it knows, nothing more.
 //
 // The route resolver (ImmerseEngagementRoute) returns EngagementClientData.
@@ -25,7 +25,7 @@
 //   proposal  → requested, quoted, pending
 //   confirmed → confirmed, paid, in_service, closed_won
 //
-// Last updated: S53O — eight-shape B0. Honest rename from typesImmerseClient.
+// Last updated: S53O - eight-shape B0. Honest rename from typesImmerseClient.
 
 import type {
   ImmerseEngagementData,
@@ -37,6 +37,12 @@ import type {
   ImmerseJourneyDay,
 } from './typesImmerse'
 import type { TimelineItem } from './typesTimeline'
+import type { CamelizeKeys } from '@shared/camelize'
+
+// Wire shape for timeline entries: the camelCase view the EF emits (via
+// camelizeKeys) and the frontend renders directly. Derived from TimelineItem
+// so it can never drift from the source.
+export type TimelineItemView = CamelizeKeys<TimelineItem>
 
 export type EngagementGuides = {
   hasDining:       boolean
@@ -57,18 +63,18 @@ export type EngagementLinkContent = {
   title:     string
   body:      string
   kicker:    string | null
-  image_src: string | null
-  image_alt: string | null
+  imageSrc: string | null
+  imageAlt: string | null
 }
 
 export type EngagementLink = {
   id:            string
-  link_type:     string
+  linkType:     string
   label:         string
   url:           string
-  sort_order:    number
-  is_highlighted: boolean
-  travel_engagement_link_content: EngagementLinkContent | null
+  sortOrder:    number
+  isHighlighted: boolean
+  travelEngagementLinkContent: EngagementLinkContent | null
 }
 
 export type DeliveryData = {
@@ -84,7 +90,7 @@ export type DeliveryData = {
   urlId:            string
   guestDisplayName: string | null
   days:             ImmerseJourneyDay[]
-  entries:          TimelineItem[]
+ entries:          TimelineItemView[]
 }
 export type DeliveryBundle = DeliveryData
 
@@ -94,7 +100,6 @@ export type DeliveryBundle = DeliveryData
 // Full render payload for the delivery surface: DeliveryData (confirmation half)
 // + programme days/entries. Assembled by fetchDeliveryBundle from both delivery
 // Edge Functions.
-
 // Tab identifiers for the delivery surface's tabbed navigation.
 export type DeliveryTabId = 'welcome' | 'confirmation' | 'programme' | 'brief' | 'contacts'
 
@@ -106,12 +111,12 @@ export type EngagementClientData =
       urlId:      string
       engagement: ImmerseEngagementData
       // Stay-shape detail (eight-shape B1). Present when the proposal is scoped
-      // to a single destination — a standalone stay, or a destination-within-a-
+      // to a single destination - a standalone stay, or a destination-within-a-
       // journey opened directly. Undefined for a whole-journey proposal. The
       // stay-detail renderers (intro/hotel_options/dining_grid/experiences_grid/
       // detail_pricing) read from here and resolve only for shape 'stay', so
       // `detail` is only ever read when present. Fetched by the route resolver
-      // (getProposalDestination) — B2 wires that fetch behind ?surface=next.
+      // (getProposalDestination) - B2 wires that fetch behind ?surface=next.
       detail?:    ImmerseDestinationData
     }
   | {

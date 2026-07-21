@@ -1,4 +1,4 @@
-// adminAssetQueries.ts — Supabase Storage writes for AmbienceAdmin
+// adminAssetQueries.ts - Supabase Storage writes for AmbienceAdmin
 // Owns:    webp conversion (client-side, canvas), image upload, PDF upload,
 //          folder listing for collision detection, asset deletion.
 // Not owned: storage path derivation (see storagePath.ts), upload UI
@@ -6,10 +6,10 @@
 //            EngagementDetailTab.tsx).
 //
 // Design notes:
-//   - All writes go through supabase.storage — never direct fetch().
+//   - All writes go through supabase.storage - never direct fetch().
 //   - WebP conversion happens client-side via <canvas>.toBlob(). No server
 //     roundtrip for the conversion itself; only the final webp gets POSTed.
-//   - Quality default 0.85 — visually lossless for photo content at typical
+//   - Quality default 0.85 - visually lossless for photo content at typical
 //     hero/gallery sizes. Adjustable per call.
 //   - Returns relative paths (no bucket prefix). Caller composes the full
 //     public URL via the bucket's public-read pattern when needed.
@@ -31,7 +31,7 @@ export type UploadResult = {
 
 /**
  * Convert any browser-decodable image (jpg, png, gif, webp, etc) to a webp
- * Blob via canvas. Pure client-side — no network call. Preserves source
+ * Blob via canvas. Pure client-side - no network call. Preserves source
  * dimensions; does NOT resize.
  *
  * Why canvas: HTMLImageElement decodes any image format the browser can
@@ -39,7 +39,7 @@ export type UploadResult = {
  * browser. No external library needed.
  *
  * Throws if the file isn't decodable as an image, or if the browser doesn't
- * support webp output (extremely rare in 2026 — Safari got it in 2020).
+ * support webp output (extremely rare in 2026 - Safari got it in 2020).
  */
 export async function convertToWebp(
   file:    File,
@@ -89,8 +89,8 @@ export async function convertToWebp(
  *   filename: filename without extension (e.g. 'hero-paris1'). The .webp
  *             extension is appended automatically.
  *   options.upsert: if true, overwrite an existing file at the same path.
- *                   Default false — collision returns an error.
- *   options.quality: webp quality 0.0–1.0. Default 0.85.
+ *                   Default false - collision returns an error.
+ *   options.quality: webp quality 0.0-1.0. Default 0.85.
  *
  * Returns: { path, publicUrl } where path is the relative storage path.
  */
@@ -158,7 +158,7 @@ export async function uploadPdf(
  * uploader UI to detect filename collisions and suggest the next number
  * in a series (e.g. fssc-1, fssc-2, fssc-3 → suggest fssc-4).
  *
- * Returns just the names — not full paths. Subfolders show up as entries
+ * Returns just the names - not full paths. Subfolders show up as entries
  * with id=null in the raw Supabase response; we strip those to file-only
  * since admins can't pick subfolders as targets here.
  */
@@ -197,7 +197,7 @@ export async function deleteAsset(fullPath: string): Promise<void> {
  *   - nextNumberedFilename: a suggestion that appends/increments a numeric
  *     suffix (e.g. fssc-1 → fssc-2, paris-hero → paris-hero-2)
  *
- * Pure function — no I/O. Caller already has the folder listing.
+ * Pure function - no I/O. Caller already has the folder listing.
  *
  * Examples:
  *   detectCollision('cbparis-1', ['cbparis-1.webp', 'cbparis-2.webp'])

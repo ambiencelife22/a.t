@@ -1,9 +1,9 @@
-// usePdfDownload.ts — shared hook for guide PDF download across all guide pages.
+// usePdfDownload.ts - shared hook for guide PDF download across all guide pages.
 // What it owns:
 //   - jsPDF CDN load (once per page, idempotent)
 //   - pdfReady state
 //   - pdfDownloading state
-//   - handleDownloadPdf — calls exportGuidePdf, manages loading state + toasts
+//   - handleDownloadPdf - calls exportGuidePdf, manages loading state + toasts
 //
 // What it does not own:
 //   - exportGuidePdf options construction (caller's job)
@@ -13,7 +13,7 @@
 //   const { pdfReady, pdfDownloading, handleDownloadPdf } = usePdfDownload()
 //   <button onClick={() => handleDownloadPdf(opts)} disabled={!pdfReady || pdfDownloading} />
 //
-// Last updated: S41 — extracted from DiningGuidePage. Shared across
+// Last updated: S41 - extracted from DiningGuidePage. Shared across
 //   DiningGuidePage + ExperiencesGuidePage (and any future guide pages).
 
 import { useEffect, useRef, useState } from 'react'

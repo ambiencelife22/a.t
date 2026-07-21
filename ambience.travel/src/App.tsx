@@ -1,5 +1,5 @@
 /* App.tsx
- * Top-level router for ambience.travel — no external routing library.
+ * Top-level router for ambience.travel - no external routing library.
  *
  * Production routes:
  *   ambience.travel/*                                    → LandingLayout (public)
@@ -46,31 +46,31 @@
  *   - any other host with #admin (incl. ambience.travel, localhost root)
  *     → AmbienceAdmin (new unified admin)
  *   The route resolver also supports any /admin/* hash sub-paths
- *   (#admin/immerse/engagements/<url_id>, etc) via the same 'admin' route —
+ *   (#admin/immerse/engagements/<url_id>, etc) via the same 'admin' route -
  *   the inner shell parses the hash itself.
  *
  * Login route (S40D): ambience.travel/login renders Auth in login mode.
  *   On successful auth, redirects to #admin. Allows admin access without
  *   depending on programme.ambience.travel for session establishment.
- *   Signup mode (?signup=1) is unaffected — remains programme-context only.
+ *   Signup mode (?signup=1) is unaffected - remains programme-context only.
  *
- * Last updated: S53 — Guide route imports point at the renamed
+ * Last updated: S53 - Guide route imports point at the renamed
  *   GuideRoute<Variant> files under src/components/guides/.
  *   DiningGuideRoute → GuideRouteDining, HotelGuideRoute → GuideRouteHotels,
  *   ExperiencesGuideRoute → GuideRouteExperiences,
  *   ShoppingGuideRoute → GuideRouteShopping.
- * Prior: S53 — Journey programme surface retired. Superseded by
+ * Prior: S53 - Journey programme surface retired. Superseded by
  *   ImmerseDeliveryPage + Programme tab. /journeys/:id routes and
  *   'preview-journey' route removed. ProgrammeRoute now serves only
  *   stay-type programmes.
  * Prior: /confirmation + /programme routes now resolve to ImmerseDeliveryPage
- *   with an initialTab (confirmation/programme) — legacy
+ *   with an initialTab (confirmation/programme) - legacy
  *   TripConfirmationPage + TripProgrammePage retired, consolidating to one
  *   trip surface. Still handled inside ImmerseEngagementRoute via
  *   RESERVED_SEGMENTS intercept.
- * Prior: S48 — Added confirmation + programme routes under immerse surface.
- * Prior: S40D — Added 'login' route at /login for admin auth.
- * Prior: S37 — Added 'guides-hotels' route. resolveGuidePath() now
+ * Prior: S48 - Added confirmation + programme routes under immerse surface.
+ * Prior: S40D - Added 'login' route at /login for admin auth.
+ * Prior: S37 - Added 'guides-hotels' route. resolveGuidePath() now
  *   returns surface union ('dining' | 'hotels'). Route resolver dispatches
  *   on surface. Mirrors S35 dining shape.
  */
@@ -157,12 +157,12 @@ function resolveImmerseSegments(): { seg1: string; seg2: string | null; seg3: st
   return { seg1: parts[0] ?? '', seg2: parts[1] ?? null, seg3: parts[2] ?? null }
 }
 
-// S35 — guides subdomain detection.
+// S35 - guides subdomain detection.
 function isGuidesHost(): boolean {
   return window.location.hostname === 'guides.ambience.travel'
 }
 
-// S35/S37 — resolve guide path segments.
+// S35/S37 - resolve guide path segments.
 function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hotels' | 'experiences' | 'shopping' } | null {
   const pathname = window.location.pathname.replace(/\/+$/, '')
 
@@ -182,7 +182,7 @@ function resolveGuidePath(): { destinationSlug: string; surface: 'dining' | 'hot
   return null
 }
 
-// S33 — admin route disambiguator.
+// S33 - admin route disambiguator.
 function isProgrammeAdminContext(): boolean {
   const hostname = window.location.hostname
   const pathname = window.location.pathname
@@ -204,12 +204,12 @@ function resolveRoute(): Route {
 
   if (params.get('signup') === '1') return 'signup'
 
-  // S40D — /login route for admin auth. Checked before #admin hash so that
+  // S40D - /login route for admin auth. Checked before #admin hash so that
   // ambience.travel/login works regardless of hash state.
-  // Not active on programme subdomain — signup flow there is separate.
+  // Not active on programme subdomain - signup flow there is separate.
   if (isLoginRoute() && !isProgrammeAdminContext()) return 'login'
 
-  // S33 — hash sub-paths supported (#admin/immerse/engagements/<url_id>, etc)
+  // S33 - hash sub-paths supported (#admin/immerse/engagements/<url_id>, etc)
   if (hash.startsWith('#admin')) {
     return isProgrammeAdminContext() ? 'admin-programme' : 'admin-ambience'
   }
@@ -284,7 +284,7 @@ export default function App() {
     )
   }
 
-  // S40D — admin login. On success, push to #admin.
+  // S40D - admin login. On success, push to #admin.
   if (route === 'login') {
     return (
       <Suspense fallback={<RouteLoading />}>
@@ -366,7 +366,7 @@ export default function App() {
     )
   }
 
-  // S33 — programme admin (existing, untouched)
+  // S33 - programme admin (existing, untouched)
   if (route === 'admin-programme') {
     return (
       <Suspense fallback={<RouteLoading />}>
@@ -375,7 +375,7 @@ export default function App() {
     )
   }
 
-  // S33 — new unified ambience admin
+  // S33 - new unified ambience admin
   if (route === 'admin-ambience') {
     return (
       <Suspense fallback={<RouteLoading />}>

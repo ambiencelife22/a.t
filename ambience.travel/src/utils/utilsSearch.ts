@@ -1,4 +1,4 @@
-// utilsSearch.ts — Canonical search/filter helper for ambience admin surfaces.
+// utilsSearch.ts - Canonical search/filter helper for ambience admin surfaces.
 //
 // Single source for all query-based filtering. Replaces scattered inline
 // .toLowerCase().includes(q) patterns across admin tabs.

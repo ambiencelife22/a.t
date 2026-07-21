@@ -1,4 +1,4 @@
-/* GuideEditModal.tsx — canonical edit modal for all four guide variants.
+/* GuideEditModal.tsx - canonical edit modal for all four guide variants.
  *
  * One modal authors everything for one guide: overlay, access (where
  * grants exist), and download. Mission: "the designer opens one editor
@@ -21,7 +21,7 @@
  *   - PDF dispatch (GuideDownloadTab)
  *   - Persistence (caller injects onSave + onDelete)
  *
- * Last updated: S52 — initial build.
+ * Last updated: S52 - initial build.
  */
 
 import { useState } from 'react'
@@ -50,7 +50,7 @@ export default function GuideEditModal({
   onDelete,
   onClose,
   onSaved,
-  // Access tab dependencies — required only when variantHasGrants(variant).
+  // Access tab dependencies - required only when variantHasGrants(variant).
   // Caller passes scoped fetchers (dining or experiences); component is
   // unaware of the backing table.
   fetchGrants,
@@ -172,7 +172,7 @@ export default function GuideEditModal({
           />
         )}
 
-        {/* Access tab — gated on variantHasGrants */}
+        {/* Access tab - gated on variantHasGrants */}
         {modalTab === 'access' && showAccess && fetchGrants && createGrant && deleteGrant && (
           <GuideAccessTab
             globalDestinationId={guide.global_destination_id}

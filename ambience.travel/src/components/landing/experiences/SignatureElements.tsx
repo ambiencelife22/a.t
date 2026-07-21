@@ -1,4 +1,4 @@
-// SignatureElements.tsx — four-element pillar cards for signature experience pages
+// SignatureElements.tsx - four-element pillar cards for signature experience pages
 // Owns the element grid section only. Does not own rhythm or stay sections.
 // Last updated: S9
 

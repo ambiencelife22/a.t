@@ -5,16 +5,16 @@
  * section components to import without circular deps.
  *
  * Exports:
- *   StatusFilterBar<T>  — filter pill row with counts
- *   AddFormShell        — gold-bordered form wrapper
- *   EntryCard           — coloured left-border card
- *   SectionHeader       — AdminSection + count + optional add button
- *   FormActions         — cancel / save row
- *   DesigBadge          — designation chip (HRH / HH / VVIP)
- *   SourceSelect        — source dropdown
- *   PPDValueInput       — date-aware value input for PPD fields
- *   formatDOB           — DD MON YYYY formatter
- *   capitalize          — first char upper
+ *   StatusFilterBar<T>  - filter pill row with counts
+ *   AddFormShell        - gold-bordered form wrapper
+ *   EntryCard           - coloured left-border card
+ *   SectionHeader       - AdminSection + count + optional add button
+ *   FormActions         - cancel / save row
+ *   DesigBadge          - designation chip (HRH / HH / VVIP)
+ *   SourceSelect        - source dropdown
+ *   PPDValueInput       - date-aware value input for PPD fields
+ *   formatDOB           - DD MON YYYY formatter
+ *   capitalize          - first char upper
  */
 
 import { A } from '../../tokens/tokensAdmin'

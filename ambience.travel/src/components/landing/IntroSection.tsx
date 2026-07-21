@@ -1,6 +1,6 @@
 /* IntroSection.tsx
  * Full-viewport dark brand moment for ambience.travel.
- * Single TravelCard per cycle — image on top, caption + data below.
+ * Single TravelCard per cycle - image on top, caption + data below.
  * Caption moved out of the image area entirely into the text section.
  * 5 cards, one at a time, alternating left/right anchor positions.
  * Total cycle: 4.4s (fade-in 500ms, hold 3.5s, fade-out 4.0s, next 4.4s).
@@ -23,7 +23,7 @@ type TravelCard = {
   timing:   string
 }
 
-// ── Data — 5 cards ────────────────────────────────────────────────────────────
+// ── Data - 5 cards ────────────────────────────────────────────────────────────
 
 const ITEMS: TravelCard[] = [
   {
@@ -100,7 +100,7 @@ const ITEMS: TravelCard[] = [
   },
 ]
 
-// ── Float positions — 6 anchors, alternating left/right ───────────────────────
+// ── Float positions - 6 anchors, alternating left/right ───────────────────────
 
 const ALL_POSITIONS = [
   { top: '12%', left: 'clamp(16px, 3vw, 48px)',               tx: '0',     ty: '0'    }, // left  top
@@ -113,12 +113,12 @@ const ALL_POSITIONS = [
   { top: '28%', left: 'calc(100% - clamp(16px, 3vw, 48px))',  tx: '-100%', ty: '-50%' }, // right upper-mid
 ]
 
-// ── Timing — 4.4s total cycle ─────────────────────────────────────────────────
+// ── Timing - 4.4s total cycle ─────────────────────────────────────────────────
 const FADE_IN_MS  = 500
 const FADE_OUT_MS = 4000
 const NEXT_MS     = 4400
 
-// ── TravelCard — image on top, caption + data below ──────────────────────────
+// ── TravelCard - image on top, caption + data below ──────────────────────────
 
 function TravelCard({ item }: { item: TravelCard }) {
   const color       = TRAVEL_MOMENT_COLORS[item.type] ?? C.gold
@@ -136,7 +136,7 @@ function TravelCard({ item }: { item: TravelCard }) {
         overflow:     'hidden',
       }}
     >
-      {/* Image — pure photo, no overlaid text */}
+      {/* Image - pure photo, no overlaid text */}
       <div
         style={{
           width:              '100%',
@@ -149,7 +149,7 @@ function TravelCard({ item }: { item: TravelCard }) {
         }}
       />
 
-      {/* Caption panel — property, location, type pill all in dark panel */}
+      {/* Caption panel - property, location, type pill all in dark panel */}
       <div
         style={{
           padding:      '12px 16px 10px',
@@ -178,7 +178,7 @@ function TravelCard({ item }: { item: TravelCard }) {
         </div>
       </div>
 
-      {/* Data row — Stay / Timing / Status */}
+      {/* Data row - Stay / Timing / Status */}
       <div
         style={{
           display:             'grid',
@@ -230,7 +230,7 @@ function TravelCard({ item }: { item: TravelCard }) {
   )
 }
 
-// ── FloatingItem — one card at a time, alternates sides ──────────────────────
+// ── FloatingItem - one card at a time, alternates sides ──────────────────────
 
 function FloatingItem({ isMobile }: { isMobile: boolean }) {
   const [index,  setIndex]  = useState(0)

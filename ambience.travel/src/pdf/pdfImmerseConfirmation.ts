@@ -79,28 +79,28 @@ type HotelMeasure = { headerH: number; rooms: RoomMeasure[]; nameLines: string[]
 function measureHotel(doc: any, booking: EngagementBooking): HotelMeasure {
   const contentW = CW - HOTEL_IMG_W
   const rooms    = booking._rooms ?? []
-  const headerConf = rooms.length === 0 && booking.confirmation_number
-  const hasException = booking.payment_exception === true
+  const headerConf = rooms.length === 0 && booking.confirmationNumber
+  const hasException = booking.paymentException === true
 
   serif(doc, 'normal', 11)
   const nameLines = doc.splitTextToSize(booking._hotel_name ?? booking.name ?? 'Hotel', contentW - HOTEL_PADH * 2)
   const headerContentH = HOTEL_PADV
     + nameLines.length * 5.5
-    + (buildDateRange(booking.check_in_date ?? booking.start_date, booking.end_date) ? 5 : 0)
-    + (booking.check_in_note ? 4.5 : 0)
-    + (booking.check_out_note ? 4.5 : 0)
-    + (booking.expected_arrival_time ? 5 : 0)
-    + (booking.late_checkout_approved_time ? 5 : 0)
-    + (booking.requested_checkout_time && !booking.late_checkout_approved_time ? 4.5 : 0)
-    + (booking.start_time ? 5 : 0)
-    + (booking.party_composition ? 5 : 0)
+    + (buildDateRange(booking.checkInDate ?? booking.startDate, booking.endDate) ? 5 : 0)
+    + (booking.checkInNote ? 4.5 : 0)
+    + (booking.checkOutNote ? 4.5 : 0)
+    + (booking.expectedArrivalTime ? 5 : 0)
+    + (booking.lateCheckoutApprovedTime ? 5 : 0)
+    + (booking.requestedCheckoutTime && !booking.lateCheckoutApprovedTime ? 4.5 : 0)
+    + (booking.startTime ? 5 : 0)
+    + (booking.partyComposition ? 5 : 0)
     + (hasException ? 6 : 0)
-    + (booking.cancellation_policy ? (doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
-    + ((booking._invoices ?? []).length > 0 ? (booking._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]).length * 12 + 8 : 0)
-    + (booking.inclusions_override ? (booking.inclusions_override as {heading:string;bullets:string[]}[]).reduce((acc, g) => acc + 6 + g.bullets.length * 4.5, 0) : 0)
+    + (booking.cancellationPolicy ? (doc.splitTextToSize(booking.cancellationPolicy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
+    + ((booking._invoices ?? []).length > 0 ? (booking._invoices as {id:string;invoiceNumber:string;invoiceDate:string|null;amount:number|null;currency:string;description:string|null}[]).length * 12 + 8 : 0)
+    + (booking.inclusionsOverride ? (booking.inclusionsOverride as {heading:string;bullets:string[]}[]).reduce((acc, g) => acc + 6 + g.bullets.length * 4.5, 0) : 0)
     + (headerConf ? 4 + 6 + 7 + 4.5 : 4 + 4.5)+ (hasException ? 6 : 0)
     + (() => { const a = scheduleAlert(booking); return a.pillLabel ? (2.6 * 2 + doc.splitTextToSize(a.pillLabel, contentW - HOTEL_PADH * 2 - 10).length * 4 + 3) : 0 })()
-    + (booking.cancellation_policy ? (doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
+    + (booking.cancellationPolicy ? (doc.splitTextToSize(booking.cancellationPolicy, contentW - HOTEL_PADH * 2).length * 4 + 10) : 0)
     + HOTEL_PADV
   const headerH = Math.max(36, headerContentH, HOTEL_IMG_H + HOTEL_PADV * 2)
 
@@ -121,19 +121,19 @@ function measureHotel(doc: any, booking: EngagementBooking): HotelMeasure {
 async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, m: HotelMeasure, continuation: boolean): Promise<void> {
   const imgW = HOTEL_IMG_W
   const contentX = P.margin + HOTEL_PADH + imgW; const contentW = CW - HOTEL_PADH - imgW
-  const ownArr = isOwnArrangements(booking.booked_by)
-  const bookedByText = bookedByLabel(booking.booked_by)
-  const dateRange = buildDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
+  const ownArr = isOwnArrangements(booking.bookedBy)
+  const bookedByText = bookedByLabel(booking.bookedBy)
+  const dateRange = buildDateRange(booking.checkInDate ?? booking.startDate, booking.endDate)
   const rooms = booking._rooms ?? []
-  const headerConf = rooms.length === 0 && booking.confirmation_number
-    ? `Conf #:  ${booking.confirmation_number}` : null
+  const headerConf = rooms.length === 0 && booking.confirmationNumber
+    ? `Conf #:  ${booking.confirmationNumber}` : null
   const headerH = m.headerH
 
   // Image - fixed 16:9 landscape, rounded, high-res (matches programme image standard).
   const imgX = P.margin + HOTEL_PADH
   const imgY = y + (headerH - HOTEL_IMG_H) / 2   // vertically centre in the header
   let croppedImg: { data: string; format: 'PNG' | 'JPEG' } | null = null
-  const imgSrc = booking.brief_image_src ?? booking._hotel_image_src
+  const imgSrc = booking.briefImageSrc ?? booking._hotel_image_src
   if (imgSrc) {
     try {
       const raw = await loadImg(imgSrc)
@@ -171,17 +171,17 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
   }
 
   if (dateRange) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(dateRange, tx, ty); ty += 5 }
-  if (booking.check_in_note) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.check_in_note, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
-  if (booking.check_out_note) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.check_out_note, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
-  if (booking.expected_arrival_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Expected arrival ${fmtTime(booking.expected_arrival_time)}`, tx, ty); ty += 5 }
-  if (booking.late_checkout_approved_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Late checkout approved ${fmtTime(booking.late_checkout_approved_time)}`, tx, ty); ty += 5 }
-  if (booking.requested_checkout_time && !booking.late_checkout_approved_time) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text(`Check-Out Time Requested · ${fmtTime(booking.requested_checkout_time)}`, tx, ty); ty += 4.5 }
-  if (booking.start_time) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Check-in ${fmtTime(booking.start_time)}`, tx, ty); ty += 5 }
-  if (booking.party_composition) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text((doc.splitTextToSize(booking.party_composition, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 5 }
+  if (booking.checkInNote) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.checkInNote, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
+  if (booking.checkOutNote) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text((doc.splitTextToSize(booking.checkOutNote, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 4.5 }
+  if (booking.expectedArrivalTime) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Expected arrival ${fmtTime(booking.expectedArrivalTime)}`, tx, ty); ty += 5 }
+  if (booking.lateCheckoutApprovedTime) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Late checkout approved ${fmtTime(booking.lateCheckoutApprovedTime)}`, tx, ty); ty += 5 }
+  if (booking.requestedCheckoutTime && !booking.lateCheckoutApprovedTime) { sans(doc, 'italic', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2]); doc.text(`Check-Out Time Requested · ${fmtTime(booking.requestedCheckoutTime)}`, tx, ty); ty += 4.5 }
+  if (booking.startTime) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text(`Check-in ${fmtTime(booking.startTime)}`, tx, ty); ty += 5 }
+  if (booking.partyComposition) { sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2]); doc.text((doc.splitTextToSize(booking.partyComposition, contentW - HOTEL_PADH * 2))[0] ?? '', tx, ty); ty += 5 }
 
-  if (booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) {
+  if (booking.inclusionsOverride && (booking.inclusionsOverride as {heading:string;bullets:string[]}[]).length > 0) {
     ty += 2
-    for (const group of booking.inclusions_override as {heading:string;bullets:string[]}[]) {
+    for (const group of booking.inclusionsOverride as {heading:string;bullets:string[]}[]) {
       sans(doc, 'bold', 7); doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
       doc.text(group.heading.toUpperCase(), tx, ty, { charSpace: 0.3 }); ty += 4.5
       for (const bullet of group.bullets) {
@@ -194,12 +194,12 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
     }
   }
 
-  if (booking.cancellation_policy) {
+  if (booking.cancellationPolicy) {
     ty += 2
     sans(doc, 'bold', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text('CANCELLATION POLICY', tx, ty, { charSpace: 0.3 }); ty += 4
     sans(doc, 'normal', 7.5); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-    const cpLines = doc.splitTextToSize(booking.cancellation_policy, contentW - HOTEL_PADH * 2)
+    const cpLines = doc.splitTextToSize(booking.cancellationPolicy, contentW - HOTEL_PADH * 2)
     for (const line of cpLines) { doc.text(line, tx, ty); ty += 4 }
     ty += 2
   }
@@ -207,31 +207,31 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
     ty += 2
     sans(doc, 'bold', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text('INVOICES', tx, ty, { charSpace: 0.3 }); ty += 5
-    for (const inv of booking._invoices as {id:string;invoice_number:string;invoice_date:string|null;amount:number|null;currency:string;description:string|null}[]) {
+    for (const inv of booking._invoices as {id:string;invoiceNumber:string;invoiceDate:string|null;amount:number|null;currency:string;description:string|null}[]) {
       sans(doc, 'normal', 7.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
-      const label = inv.description ?? `Invoice ${inv.invoice_number}`
+      const label = inv.description ?? `Invoice ${inv.invoiceNumber}`
       doc.text(label, tx, ty)
       const amtStr = inv.amount != null ? `${inv.currency} ${Math.abs(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
       if (amtStr) { sans(doc, 'normal', 7.5); doc.setTextColor(T.ink[0], T.ink[1], T.ink[2]); doc.text(amtStr, tx + contentW - HOTEL_PADH * 2, ty, { align: 'right' }) }
-      if (inv.invoice_date) { sans(doc, 'normal', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(inv.invoice_date, tx, ty + 4) }
+      if (inv.invoiceDate) { sans(doc, 'normal', 7); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(inv.invoiceDate, tx, ty + 4) }
       ty += 10
     }
   }
 
   ty += 4
-  if (booking.payment_exception === true) {
+  if (booking.paymentException === true) {
     sans(doc, 'bold', 7)
     doc.setTextColor(180, 50, 31)
     doc.text('PAYMENT OUTSTANDING', tx, ty, { charSpace: 0.4 })
     ty += 6
   }
   if (headerConf) { drawConfPill(doc, tx, ty - 4, headerConf, ownArr ? 'faint' : 'gold'); ty += 7 }
-  if (isOwnArrangements(booking.booked_by)) { drawOwnArrangementsChip(doc, tx, ty - 3.6) }
-  if (!isOwnArrangements(booking.booked_by)) { sans(doc, 'italic', 7.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(bookedByText, tx, ty) }
+  if (isOwnArrangements(booking.bookedBy)) { drawOwnArrangementsChip(doc, tx, ty - 3.6) }
+  if (!isOwnArrangements(booking.bookedBy)) { sans(doc, 'italic', 7.5); doc.setTextColor(T.faint[0], T.faint[1], T.faint[2]); doc.text(bookedByText, tx, ty) }
 }
 
 function drawRoomRow(doc: any, rm: RoomMeasure, booking: EngagementBooking, y: number): void {
-  const ownArr = isOwnArrangements(booking.booked_by)
+  const ownArr = isOwnArrangements(booking.bookedBy)
   const rtx = P.margin + HOTEL_PADH
   const d = roomDisplay(rm.room)
   const roomConf = d.conf ? `Conf #:  ${d.conf}` : null
@@ -299,13 +299,13 @@ function drawGreeterCard(doc: any, aux: AdminEngagementElement, y: number): numb
   const tx = P.margin + padH; let ty = y + padV
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text((aux.element_type_label ?? 'Airport Meet & Greet').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
+  doc.text((aux.elementTypeLabel ?? 'Airport Meet & Greet').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
 
   serif(doc, 'normal', 10.5)
   doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
   doc.text(aux.name ?? 'Airport Meet & Greet', tx, ty + 3); ty += 6
 
-  const dep = fmtTime(aux.start_time)
+  const dep = fmtTime(aux.startTime)
   if (dep) {
     sans(doc, 'bold', 9)
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
@@ -327,10 +327,10 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
   const rows: { label: string; value: string }[] = []
   if (v?.address)         rows.push({ label: 'Address',  value: v.address })
   if (v?.phone)           rows.push({ label: 'Phone',    value: v.phone })
-  if (v?.dress_code)      rows.push({ label: 'Dress',    value: v.dress_code })
-  if (v?.children_policy) rows.push({ label: 'Children', value: v.children_policy })
-  if (v?.table_hold_note) rows.push({ label: 'Table',    value: v.table_hold_note })
-  const gLine = guestLine(aux)
+  if (v?.dressCode)      rows.push({ label: 'Dress',    value: v.dressCode })
+  if (v?.childrenPolicy) rows.push({ label: 'Children', value: v.childrenPolicy })
+  if (v?.tableHoldNote) rows.push({ label: 'Table',    value: v.tableHoldNote })
+  const gLine = guestLine({ guestName: aux.guestName, guestCount: aux.guestCount })
   const pill = diningPdfStatus(aux)
 
   const cardH = Math.max(28,
@@ -344,7 +344,7 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
   const tx = P.margin + padH; let ty = y + padV
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-  doc.text((aux.element_type_label ?? 'Dining').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
+  doc.text((aux.elementTypeLabel ?? 'Dining').toUpperCase(), tx, ty + 3, { charSpace: 0.3 }); ty += 7
 
   serif(doc, 'normal', 10.5)
   doc.setTextColor(cancelled ? T.faint[0] : T.ink[0], cancelled ? T.faint[1] : T.ink[1], cancelled ? T.faint[2] : T.ink[2])
@@ -355,7 +355,7 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.setDrawColor(T.faint[0], T.faint[1], T.faint[2]); doc.setLineWidth(0.4)
     doc.line(tx, ty + 1.5, tx + nw, ty + 1.5)
   }
-  const dep = fmtTime(aux.start_time)
+  const dep = fmtTime(aux.startTime)
   if (dep) {
     sans(doc, 'bold', 9)
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
@@ -373,11 +373,11 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
     doc.text(r.label, tx, ty)
     const valStr = (doc.splitTextToSize(r.value, CW - padH * 2 - 22))[0] ?? r.value
-    if (r.label === 'Address' && v?.maps_url) {
+    if (r.label === 'Address' && v?.mapsUrl) {
       doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
       doc.text(valStr, tx + 20, ty)
       const vw = doc.getTextWidth(valStr)
-      try { doc.link(tx + 20, ty - 3, vw, 5, { url: v.maps_url }) } catch {}
+      try { doc.link(tx + 20, ty - 3, vw, 5, { url: v.mapsUrl }) } catch {}
       ty += 5
       continue
     }
@@ -399,11 +399,11 @@ function drawDiningCard(doc: any, aux: AdminEngagementElement, y: number): numbe
 function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): number {
   const alert = scheduleAlert(aux)
   const padV = 7; const padH = 10
-  const bookedByText = bookedByLabel(aux.booked_by)
-  const ownArr       = isOwnArrangements(aux.booked_by)
-  const paxLines     = passengerLines(aux)
-  const isGroundCar  = isGroundTransportElement(aux.element_type)
-  const detailLines  = isGroundCar ? driverDetailLines(aux) : paxLines
+  const bookedByText = bookedByLabel(aux.bookedBy)
+  const ownArr       = isOwnArrangements(aux.bookedBy)
+  const paxLines     = passengerLines({ passengers: (aux.passengers ?? []).map(p => ({ id: p.id, passengerLabel: p.passengerLabel, resolvedPassengerLabel: p.resolvedPassengerLabel, confirmationNumber: p.confirmationNumber, seatNumbers: p.seatNumbers, sortOrder: p.sortOrder })) })
+  const isGroundCar  = isGroundTransportElement(aux.elementType)
+  const detailLines  = isGroundCar ? driverDetailLines({ driverDetails: (aux.driverDetails ?? []).map(d => ({ id: d.id, driverName: d.driverName, driverPhone: d.driverPhone, carModel: d.carModel, plate: d.plate, vehicleRole: d.vehicleRole, sortOrder: d.sortOrder })) }) : paxLines
 
   // Vertical rhythm: header block (icon row · name/route/meta) is a fixed 23mm,
   // then detail lines at 5mm each, then a 5mm gap, then the booked-by line.
@@ -424,7 +424,7 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
   doc.setTextColor(T.gold[0], T.gold[1], T.gold[2])
   doc.text('\u2708', iconX, y + padV + 5)
 
-  const typeLabel = (aux.element_type ?? 'Flight').toUpperCase()
+  const typeLabel = (aux.elementType ?? 'Flight').toUpperCase()
   sans(doc, 'bold', 6)
   doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
   doc.text(typeLabel, iconX, y + padV + 11, { charSpace: 0.3 })
@@ -436,13 +436,13 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
     doc.text(aux.name, centreX, y + padV + 5)
   }
-  if (aux.origin || aux.destination || aux.depart_airport || aux.arrive_airport) {
-    const route = [aux.depart_airport ?? aux.origin, aux.arrive_airport ?? aux.destination].filter(Boolean).join('  \u2192  ')
+  if (aux.origin || aux.destination || aux.departAirport || aux.arriveAirport) {
+    const route = [aux.departAirport ?? aux.origin, aux.arriveAirport ?? aux.destination].filter(Boolean).join('  \u2192  ')
     sans(doc, 'normal', 9)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(route, centreX, y + padV + 11)
   }
-  const metaLine = [aux.start_date ? fmtDate(aux.start_date) : null, aux.cabin_class, aux.aircraft_type].filter(Boolean).join('  \u00b7  ')
+  const metaLine = [aux.startDate ? fmtDate(aux.startDate) : null, aux.cabinClass, aux.aircraftType].filter(Boolean).join('  \u00b7  ')
   if (metaLine) {
     sans(doc, 'normal', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
@@ -460,7 +460,7 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
 
   // Times, top-right
   const rightX = P.margin + CW - padH
-  const dep = fmtTime(aux.start_time); const arr = fmtTime(aux.end_time)
+  const dep = fmtTime(aux.startTime); const arr = fmtTime(aux.endTime)
   if (dep || arr) {
     const timeStr = dep && arr ? `${dep}  -  ${arr}` : dep || arr
     sans(doc, 'bold', 9)
@@ -557,14 +557,14 @@ function drawContactBlock(
 async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null, logo: Img | null, branding: ExportBranding = 'ambience') {
   const { trip, brief, house } = d
 
-  const title       = brief?.brief_title ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
-  const preparedFor = d.guestDisplayName ?? brief?.prepared_for ?? null
-  const dateRange   = brief?.snapshot_dates ?? buildDateRange(trip.start_date, trip.end_date)
+  const title       = brief?.briefTitle ?? d.destinationName ?? trip.destinations[0]?.name ?? ''
+  const preparedFor = d.guestDisplayName ?? brief?.preparedFor ?? null
+  const dateRange   = brief?.snapshotDates ?? buildDateRange(trip.startDate, trip.endDate)
 
   let y = await drawPdfHero(doc, {
     title,
     docType:       'Engagement Confirmation',
-    subtitle:      brief?.brief_subtitle ?? null,
+    subtitle:      brief?.briefSubtitle ?? null,
     preparedFor,
     dateRange,
     heroImageData: d.heroImageData,
@@ -577,9 +577,9 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   // ── Hotel cards ───────────────────────────────────────────────────────────
 
   const accomBookings = trip.bookings
-    .filter(bk => bk.brief_show !== false)
+    .filter(bk => bk.briefShow !== false)
     .slice()
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 
   if (accomBookings.length > 0) {
     drawRule(doc, P.margin, y, CW); y += 8
@@ -596,7 +596,7 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   // ── Aux sections - grouped by registry section (flights, transfers, greeters,
   //    dining, etc), mirroring the web confirmation. ────────────────────────────
 
-  const visibleAux = d.elements.filter(a => a.brief_show !== false)
+  const visibleAux = d.elements.filter(a => a.briefShow !== false)
   const auxSections = groupElementsBySection(visibleAux)
 
   for (const section of auxSections) {
@@ -607,23 +607,23 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
     doc.text(section.label.toUpperCase(), P.margin, y, { charSpace: 0.5 }); y += 7
 
     for (const aux of section.items) {
-      if (isMeetGreetElement(aux.element_type)) {
+      if (isMeetGreetElement(aux.elementType)) {
         const h = Math.max(24, HOTEL_PADV - 1 + 6 + 5 + greeterLines(aux).length * 4.8 + HOTEL_PADV - 1)
         if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
         y += drawGreeterCard(doc, aux, y) + 4
         continue
       }
-      if (aux.venue || aux.guest_name || aux.guest_count) {
+      if (aux.venue || aux.guestName || aux.guestCount) {
         const v = aux.venue
-        const rowN = [v?.address, v?.phone, v?.dress_code, v?.children_policy, v?.table_hold_note].filter(Boolean).length
-        const gl = (aux.guest_name || aux.guest_count) ? 1 : 0
+        const rowN = [v?.address, v?.phone, v?.dressCode, v?.childrenPolicy, v?.tableHoldNote].filter(Boolean).length
+        const gl = (aux.guestName || aux.guestCount) ? 1 : 0
         const pillN = diningPdfStatus(aux) ? 1 : 0
         const h = Math.max(28, 6 + 6 + 5 + gl * 5 + rowN * 5 + pillN * 7 + 6)
         if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
         y += drawDiningCard(doc, aux, y) + 4
         continue
       }
-      const detailN = isGroundTransportElement(aux.element_type) ? driverDetailLines(aux).length : (aux.passengers ?? []).length
+      const detailN = isGroundTransportElement(aux.elementType) ? driverDetailLines({ driverDetails: (aux.driverDetails ?? []).map(d => ({ id: d.id, driverName: d.driverName, driverPhone: d.driverPhone, carModel: d.carModel, plate: d.plate, vehicleRole: d.vehicleRole, sortOrder: d.sortOrder })) }).length : (aux.passengers ?? []).length
       const h = Math.max(34, 30 + Math.max(detailN, 1) * 5 + 4)
       if (y + h > P.h - FOOTER_MARGIN) y = addCreamPage(doc)
       y += drawFlightCard(doc, aux, y) + 4
@@ -653,16 +653,16 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
   const guests = allContacts.filter(c => c.role !== 'staff')
   const staff  = allContacts.filter(c => c.role === 'staff')
 
-  const hasContacts = !!brief?.advisor_name || guests.length > 0 || staff.length > 0
+  const hasContacts = !!brief?.advisorName || guests.length > 0 || staff.length > 0
   if (hasContacts) y = addCreamPage(doc)
 
-  if (brief?.advisor_name) {
+  if (brief?.advisorName) {
     const advisor: ConfirmationContact = {
       id:    'advisor',
-      name:  brief.advisor_name,
+      name:  brief.advisorName,
       role:  'advisor',
-      email: (brief as any).show_advisor_email ? (brief.advisor_email ?? null) : null,
-      phone: (brief as any).show_advisor_phone ? ((brief as any).advisor_phone ?? null) : null,
+      email: (brief as any).showAdvisorEmail ? (brief.advisorEmail ?? null) : null,
+      phone: (brief as any).showAdvisorPhone ? ((brief as any).advisorPhone ?? null) : null,
     }
     y = drawContactBlock(doc, 'Travel Advisor', [{ c: advisor, roleLabel: 'Travel Advisor' }], y, FOOTER_MARGIN)
   }
@@ -680,10 +680,10 @@ async function renderAll(doc: any, d: ConfirmationBriefData, emblem: Img | null,
 
 function buildFilename(d: ConfirmationBriefData): string {
   const safe = (s: string) => s.replace(/[^a-zA-Z0-9 \-]/g, '').replace(/\s+/g, ' ').trim()
-  const clientName = d.guestDisplayName ?? d.brief?.prepared_for ?? d.trip.destinations[0]?.name ?? ''
+  const clientName = d.guestDisplayName ?? d.brief?.preparedFor ?? d.trip.destinations[0]?.name ?? ''
   const destination = d.destinationName
   const dateRange = (() => {
-    const s = d.trip.start_date; const e = d.trip.end_date
+    const s = d.trip.startDate; const e = d.trip.endDate
     if (!s) return ''
     const sd = new Date(s.slice(0, 10) + 'T00:00:00')
     const ed = e ? new Date(e.slice(0, 10) + 'T00:00:00') : null

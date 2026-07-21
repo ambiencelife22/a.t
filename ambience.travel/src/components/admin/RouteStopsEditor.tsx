@@ -4,7 +4,7 @@
  *
  * Shape:
  *   - Compact list: drag handle + thumbnail + title + stay_label + sort
- *   - Edit button → modal with single form (no collapsibles — only 5 fields)
+ *   - Edit button → modal with single form (no collapsibles - only 5 fields)
  *   - Add Stop button → INSERT blank at sort = max + 1
  *   - Delete with confirm
  *   - Drag-to-reorder → reorderRouteStops (0-indexed, matches DB convention)
@@ -124,7 +124,7 @@ function SortableStopCard({
     gap:        12,
   }
 
-  const thumb = thumbSrc(stop.image_src)
+  const thumb = thumbSrc(stop.imageSrc)
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -162,8 +162,8 @@ function SortableStopCard({
           {stop.title || <span style={{ color: A.faint, fontStyle: 'italic' }}>(untitled)</span>}
         </div>
         <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-          {stop.stay_label ?? '—'}
-          <span style={{ color: A.faint, marginLeft: 8 }}>· position {stop.sort_order}</span>
+          {stop.stayLabel ?? '-'}
+          <span style={{ color: A.faint, marginLeft: 8 }}>· position {stop.sortOrder}</span>
         </div>
       </div>
 
@@ -233,7 +233,7 @@ function EditModal({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: A.gold, fontWeight: 700, fontFamily: A.font, marginBottom: 4 }}>
-              Route Stop · position {stop.sort_order}
+              Route Stop · position {stop.sortOrder}
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>
               {stop.title || '(untitled)'}
@@ -259,8 +259,8 @@ function EditModal({
           <Field label='Stay Label'>
             <input
               style={inputStyle}
-              value={draft.stay_label ?? ''}
-              onChange={e => patch('stay_label', e.target.value || null)}
+              value={draft.stayLabel ?? ''}
+              onChange={e => patch('stayLabel', e.target.value || null)}
               placeholder='e.g. 5-6 nights, Start, End'
             />
           </Field>
@@ -277,16 +277,16 @@ function EditModal({
 
         <Field label='Image Src'>
           <ImageFieldWithUploader
-            value={draft.image_src}
-            onChange={v => patch('image_src', v)}
+            value={draft.imageSrc}
+            onChange={v => patch('imageSrc', v)}
           />
         </Field>
 
         <Field label='Image Alt'>
           <input
             style={inputStyle}
-            value={draft.image_alt ?? ''}
-            onChange={e => patch('image_alt', e.target.value || null)}
+            value={draft.imageAlt ?? ''}
+            onChange={e => patch('imageAlt', e.target.value || null)}
           />
         </Field>
 
@@ -356,7 +356,7 @@ export default function RouteStopsEditor({
 
     const reordered = arrayMove(stops, oldIndex, newIndex)
     // 0-indexed sort_order to match DB convention
-    const withNewSort = reordered.map((s, i) => ({ ...s, sort_order: i }))
+    const withNewSort = reordered.map((s, i) => ({ ...s, sortOrder: i }))
     setStops(withNewSort)
 
     try {
@@ -392,8 +392,8 @@ export default function RouteStopsEditor({
     try {
       const sortOrder = await fetchMaxRouteStopSortOrder(engagementId)
       const newId = await insertRouteStop({
-        engagement_id:    engagementId,
-        sort_order: sortOrder,
+        engagementId:    engagementId,
+        sortOrder: sortOrder,
       })
       showToast('Stop added.', 'success')
       const fresh = await fetchRouteStops(engagementId)

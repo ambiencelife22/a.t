@@ -1,8 +1,9 @@
-// queriesGuidesHotels.ts — read path for hotels.
+// queriesGuidesHotels.ts - read path for hotels.
+import { camelizeKeys } from '@shared/camelize'
 //
 // What it owns:
 //   - HotelVenue type
-//   - getHotelsByDestination — fetches travel_accom_hotels for a slug
+//   - getHotelsByDestination - fetches travel_accom_hotels for a slug
 //
 // What it does not own:
 //   - Destination + overlay fetch → queriesGuides.getGuideDestination
@@ -13,7 +14,7 @@
 // fields (structured address, prestige badges, brand FK) so HotelVenue is
 // wider than DiningVenue.
 //
-// Last updated: S53 — public_preview_rank added to type + SELECT. Aligns
+// Last updated: S53 - public_preview_rank added to type + SELECT. Aligns
 //   travel_accom_hotels with the canonical Gateable contract in
 //   utilsGuideGating. Requires DB migration:
 //     ALTER TABLE travel_accom_hotels ADD COLUMN public_preview_rank INTEGER;
@@ -22,10 +23,10 @@
 //         PARTITION BY destination_id ORDER BY name) AS rn
 //         FROM travel_accom_hotels WHERE is_active = TRUE) ranked
 //       WHERE travel_accom_hotels.id = ranked.id;
-// Prior: S53 — Destination + overlay code lifted to queriesGuides.ts.
+// Prior: S53 - Destination + overlay code lifted to queriesGuides.ts.
 //   Removed HotelGuideOverlay, HotelGuideDestination, getHotelGuideDestination.
 //   This file is now purely the hotel read path.
-// Prior: S37 — initial. Pattern lifted from queriesGuidesDining.ts.
+// Prior: S37 - initial. Pattern lifted from queriesGuidesDining.ts.
 
 import { supabase } from '../lib/supabase'
 
@@ -40,28 +41,28 @@ export interface HotelVenue {
   zip_code:             string | null
   latitude:             number | null
   longitude:            number | null
-  google_maps_url:      string | null
+  googleMapsUrl:      string | null
   website:              string | null
-  hero_image_src:       string | null
-  hero_image_alt:       string | null
-  image_credit:         string | null
-  image_credit_url:     string | null
-  image_license:        string | null
+  heroImageSrc:       string | null
+  heroImageAlt:       string | null
+  imageCredit:         string | null
+  imageCreditUrl:     string | null
+  imageLicense:        string | null
   bullets:              unknown
   stars:                number | null
-  michelin_keys:        number | null
-  forbes_rating:        number | null
-  is_preferred_partner: boolean
-  is_supplementary:     boolean
-  brand_id:             string | null
+  michelinKeys:        number | null
+  forbesRating:        number | null
+  isPreferredPartner: boolean
+  isSupplementary:     boolean
+  brandId:             string | null
   brand2_id:            string | null
-  sort_order:           number
-  public_preview_rank:  number | null
+  sortOrder:           number
+  publicPreviewRank:  number | null
 }
 
 /**
  * Fetches all active hotels for a given destination slug. Orders by
- * is_supplementary ascending then name ascending — supplementary entries
+ * is_supplementary ascending then name ascending - supplementary entries
  * fall to bottom regardless of name. Mirrors the dining ordering convention.
  */
 export async function getHotelsByDestination(
@@ -107,5 +108,5 @@ export async function getHotelsByDestination(
     throw new Error(`Failed to fetch hotels: ${error.message}`)
   }
 
-  return (data ?? []) as HotelVenue[]
+  return camelizeKeys<HotelVenue[]>(data ?? [])
 }

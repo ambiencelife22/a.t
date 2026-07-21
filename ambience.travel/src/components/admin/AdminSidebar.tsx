@@ -1,10 +1,10 @@
-// AdminSidebar.tsx — Admin navigation, 5-group taxonomy.
+// AdminSidebar.tsx - Admin navigation, 5-group taxonomy.
 // S53I Phase 2: rebuilt for confirmed 5-group architecture (Trips, Clients,
 // Content, Residences, Studio). Legacy groups (immerse, guides, library, house,
-// operations, time, finance, programme) dissolved — all routing aliased in
+// operations, time, finance, programme) dissolved - all routing aliased in
 // utilsAdminPath.ts and still functional; sidebar now reflects the target state.
 //
-// Prior: S53G Phase 1 — legacy taxonomy (immerse, guides, library, house,
+// Prior: S53G Phase 1 - legacy taxonomy (immerse, guides, library, house,
 //   operations, time, finance, programme).
 
 import { useState } from 'react'

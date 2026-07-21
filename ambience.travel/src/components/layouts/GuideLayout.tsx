@@ -1,6 +1,6 @@
-// GuideLayout.tsx — layout wrapper for ambience.travel /guides/ destination guide pages
+// GuideLayout.tsx - layout wrapper for ambience.travel /guides/ destination guide pages
 // Owns nav, back-to-top, overflow lock, and the hamburger drawer menu.
-// Pure renderer — receives navItems via props. No data fetching, no URL inspection.
+// Pure renderer - receives navItems via props. No data fetching, no URL inspection.
 //
 // Mirrors ImmerseLayout structure: same fixed nav (60px, gold-on-dark, ID tokens),
 // same hamburger drawer pattern (right-side slide-in, 260px, 250ms ease, Escape to close),
@@ -8,11 +8,11 @@
 //
 // Distinct from ImmerseLayout in:
 //   - default logoHref points to ambience.travel (not ambience-emblem assumption)
-//   - nav drawer label is "Guides" (not "Menu") — clarifies subproduct context
+//   - nav drawer label is "Guides" (not "Menu") - clarifies subproduct context
 //   - nav items default to []. When future guide types ship (Activities, Hotels),
 //     callers pass tab-style items. For now, dining guides render with no menu.
 //
-// Last updated: S35 — initial. Pattern lifted directly from ImmerseLayout S26.
+// Last updated: S35 - initial. Pattern lifted directly from ImmerseLayout S26.
 
 import { useEffect, useState, type ReactNode } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
@@ -245,7 +245,7 @@ export default function GuideLayout({
 }
 
 // ── Nav link (internal) ──────────────────────────────────────────────────────
-// Mirrors ImmerseNavLink. Pure render — only its own hover state.
+// Mirrors ImmerseNavLink. Pure render - only its own hover state.
 
 type NavLinkProps = {
   item:        GuideNavItem

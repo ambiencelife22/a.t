@@ -1,30 +1,32 @@
 // supabase/functions/travel-read-engagement-admin/index.ts
 //
 // Edge Function: travel-read-engagement-admin
-// Class A — admin-only. Single source for all admin-side engagement reads.
+// Class A - admin-only. Single source for all admin-side engagement reads.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - Reads execute via service role to bypass RLS uniformly
-//   Auth is enforced via the shared requireAdmin gate (_shared/auth.ts) —
+//   Auth is enforced via the shared requireAdmin gate (_shared/auth.ts) -
 //   the inline JWT->is_admin->serviceClient preamble was extracted S54.
 //
 // Request body:
 //   { mode: ReadMode, ...mode-specific params }
 //
 // Modes:
-//   list                — fetchEngagementList()           → EngagementListRow[]
-//   detail              — fetchEngagementDetail(url_id)   → EngagementDetailRow | null
-//   child_counts        — fetchChildCounts(engagement_id) → ChildCounts
-//   engagement_statuses — fetchEngagementStatuses()       → StatusLookup[]
-//   itinerary_statuses  — fetchItineraryStatuses()        → StatusLookup[]
-//   people              — fetchPeople(query)              → PersonOption[]
-//   trips               — fetchTrips(query)               → TripOption[]
-//   person_by_id        — fetchPersonById(id)             → PersonOption | null
-//   trip_by_id          — fetchTripById(id)               → TripOption | null
-//   welcome_letter      — fetchWelcomeLetterCanonical()   → WelcomeLetterCanonical | null
+//   list                - fetchEngagementList()           → EngagementListRow[]
+//   detail              - fetchEngagementDetail(url_id)   → EngagementDetailRow | null
+//   child_counts        - fetchChildCounts(engagement_id) → ChildCounts
+//   engagement_statuses - fetchEngagementStatuses()       → StatusLookup[]
+//   itinerary_statuses  - fetchItineraryStatuses()        → StatusLookup[]
+//   people              - fetchPeople(query)              → PersonOption[]
+//   trips               - fetchTrips(query)               → TripOption[]
+//   person_by_id        - fetchPersonById(id)             → PersonOption | null
+//   trip_by_id          - fetchTripById(id)               → TripOption | null
+//   welcome_letter      - fetchWelcomeLetterCanonical()   → WelcomeLetterCanonical | null
+//   card_overrides      - fetchCardOverrides(engagementId) → CardOverrideRow[]
+//   canonical_card_search - searchCanonicalCards(query)    → CardCanonicalOption[]
 //
 // Deployed at: /functions/v1/travel-read-engagement-admin
 // First ship: S54
@@ -32,6 +34,9 @@
 //   inside travel-write-engagement.create_engagement; no remaining caller).
 // S54 shared-auth: migrated to requireAdmin (_shared/auth.ts) + corsHeaders/json/
 //   preflight (_shared/http.ts). First EF on the shared-auth pattern.
+// S54Q: card_overrides + canonical_card_search modes added. queriesAdminCardOverrides
+//   EF-routed; frontend no longer touches card-override / dining / experiences tables.
+//   Card types single-sourced in src/types/typesCards.ts.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
@@ -51,6 +56,9 @@ type ReadMode =
   | 'person_by_id'
   | 'trip_by_id'
   | 'welcome_letter'
+  | 'card_overrides'
+  | 'canonical_card_search'
+  | 'card_selections'
 
 const childCountTables = [
   'travel_overlay_engagement_destination_rows',
@@ -181,7 +189,7 @@ Deno.serve(async (req: Request) => {
 
       // Guest-label authoring inputs (Step 11 Part B):
       //  - houses: the engagement's linked houses (linker + primary flag).
-      //  - candidate_labels: labels belonging ONLY to those linked houses —
+      //  - candidate_labels: labels belonging ONLY to those linked houses -
       //    the sole valid set_label choices. Scoping the selector to these
       //    makes the cross-house guard's constraint visible in the UI: a
       //    designer physically cannot pick a label the guard would reject.
@@ -423,6 +431,76 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await q
       if (error) return json({ error: 'Failed to fetch suppliers' }, 500)
       return json({ suppliers: data ?? [] })
+    }
+
+    if (mode === 'card_selections') {
+      const canonFields = `
+        name, kicker, tagline, body, bullets_heading, bullets,
+        image_src, image_alt, image_credit, image_credit_url, image_license,
+        globalDestinations:global_destination_id ( slug )
+      `
+      const [selRes, ovrRes] = await Promise.all([
+        serviceClient
+          .from('travel_overlay_engagement_content_card_selections')
+          .select(`
+            id, engagement_id, sort_order, is_active, dining_venue_id, experience_id,
+            dining:travel_dining_venues!dining_venue_id ( ${canonFields} ),
+            experience:travel_experiences!experience_id ( ${canonFields} )
+          `)
+          .eq('engagement_id', body.engagementId)
+          .order('sort_order', { ascending: true }),
+        serviceClient
+          .from('travel_overlay_engagement_content_card_overrides')
+          .select(`
+            id, dining_venue_id, experience_id,
+            kicker_override, name_override, tagline_override, body_override,
+            bullets_heading_override, bullets_override,
+            image_src_override, image_alt_override,
+            image_credit_override, image_credit_url_override, image_license_override
+          `)
+          .eq('engagement_id', body.engagementId),
+      ])
+      if (selRes.error || ovrRes.error) return json({ error: 'Failed to fetch card selections' }, 500)
+      return json({ selections: selRes.data ?? [], overrides: ovrRes.data ?? [] })
+    }
+
+    if (mode === 'card_overrides') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_engagement_content_card_overrides')
+        .select(`
+          id, engagement_id, dining_venue_id, experience_id,
+          kicker_override, name_override, tagline_override, body_override,
+          bullets_heading_override, bullets_override,
+          image_src_override, image_alt_override,
+          image_credit_override, image_credit_url_override, image_license_override,
+          is_active,
+          dining:travel_dining_venues!dining_venue_id (
+            name, image_src, globalDestinations:global_destination_id ( slug )
+          ),
+          experience:travel_experiences!experience_id (
+            name, image_src, globalDestinations:global_destination_id ( slug )
+          )
+        `)
+        .eq('engagement_id', body.engagementId)
+        .order('is_active', { ascending: false })
+      if (error) return json({ error: 'Failed to fetch card overrides' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'canonical_card_search') {
+      const trimmed = String(body.query ?? '').trim()
+      const ilikeFilter = trimmed.length > 0 ? `%${trimmed}%` : '%'
+      const canonSelect = `id, name, image_src, globalDestinations:global_destination_id ( slug )`
+      const [diningRes, expRes] = await Promise.all([
+        serviceClient.from('travel_dining_venues').select(canonSelect).ilike('name', ilikeFilter).order('name', { ascending: true }).limit(40),
+        serviceClient.from('travel_experiences').select(canonSelect).ilike('name', ilikeFilter).order('name', { ascending: true }).limit(40),
+      ])
+      if (diningRes.error || expRes.error) return json({ error: 'Failed to search canonical cards' }, 500)
+      const rows = [
+        ...(diningRes.data ?? []).map((d: Record<string, unknown>) => ({ id: d.id, kind: 'dining', name: d.name, image_src: d.image_src, global_destination_slug: (d.globalDestinations as { slug?: string } | null)?.slug ?? null })),
+        ...(expRes.data ?? []).map((e: Record<string, unknown>) => ({ id: e.id, kind: 'experience', name: e.name, image_src: e.image_src, global_destination_slug: (e.globalDestinations as { slug?: string } | null)?.slug ?? null })),
+      ]
+      return json({ rows })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

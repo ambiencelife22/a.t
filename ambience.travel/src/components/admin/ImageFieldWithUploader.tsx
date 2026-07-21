@@ -1,10 +1,10 @@
-// ImageFieldWithUploader.tsx — text input + upload button for image fields
+// ImageFieldWithUploader.tsx - text input + upload button for image fields
 // Drop-in replacement for raw <input value={src} onChange={...} /> on
 // image_src / floorplan_src fields throughout admin. Paste-URL still works
 // (the input is editable directly); the "Upload" button opens AssetUploader
 // for the alternative path.
 //
-// Last updated: S36 — Added optional presetPath prop. When provided,
+// Last updated: S36 - Added optional presetPath prop. When provided,
 //   AssetUploader hides GeoCascade and uploads directly to the resolved
 //   destination folder (e.g. immerse/na/usa/ny/nyc/dining for NYC dining).
 //   When omitted, AssetUploader behaves as before (full GeoCascade picker).
@@ -57,7 +57,7 @@ export default function ImageFieldWithUploader({
   /**
    * If provided, AssetUploader uploads directly to this path with no
    * GeoCascade picker. Pass null when path can't be resolved (destination
-   * has no storage_path) — the upload button is disabled with a hint.
+   * has no storage_path) - the upload button is disabled with a hint.
    */
   presetPath?: string | null
 }) {
@@ -95,7 +95,7 @@ export default function ImageFieldWithUploader({
         <button
           onClick={() => { if (!uploadDisabled) setUploaderOpen(true) }}
           style={{ ...btnGhost, opacity: uploadDisabled ? 0.4 : 1, cursor: uploadDisabled ? 'not-allowed' : 'pointer' }}
-          title={uploadDisabled ? 'Destination not loaded yet — paste a URL or set storage_path on the destination first' : ''}
+          title={uploadDisabled ? 'Destination not loaded yet - paste a URL or set storage_path on the destination first' : ''}
           disabled={uploadDisabled}
         >
           {isImage ? '↑ Upload' : '↑ Upload PDF'}
@@ -104,7 +104,7 @@ export default function ImageFieldWithUploader({
 
       {uploadDisabled && (
         <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
-          Destination not loaded yet — upload disabled. Paste a URL above instead.
+          Destination not loaded yet - upload disabled. Paste a URL above instead.
         </div>
       )}
 

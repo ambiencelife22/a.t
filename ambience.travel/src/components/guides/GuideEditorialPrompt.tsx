@@ -1,4 +1,4 @@
-/* GuideEditorialPrompt.tsx — shared "there is more" prompt for the guide layer.
+/* GuideEditorialPrompt.tsx - shared "there is more" prompt for the guide layer.
  *
  * Rendered below the item grid when the viewer is seeing fewer items than
  * exist. Composition:

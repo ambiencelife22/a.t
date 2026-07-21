@@ -152,7 +152,7 @@ export const listings: Listing[] = [
     category: 'experience',
     address:  'Quatre Carreres, 46013 Valencia, Spain',
     website:  'https://www.cac.es',
-    note:     'One of Valencia\'s most iconic landmarks — architecture alone is worth the visit.',
+    note:     'One of Valencia\'s most iconic landmarks - architecture alone is worth the visit.',
   },
   {
     id:       'malvarrosa',
@@ -195,7 +195,7 @@ export const listings: Listing[] = [
     name:     'Turia Garden',
     category: 'experience',
     address:  'Quatre Carreres, 46013 Valencia, Spain',
-    note:     'Nine kilometres of parkland through the heart of the city — perfect for cycling or a long walk.',
+    note:     'Nine kilometres of parkland through the heart of the city - perfect for cycling or a long walk.',
   },
   {
     id:       'plaza-toros',
@@ -272,7 +272,7 @@ export const listings: Listing[] = [
   },
   {
     id:       'el-corte-ingles',
-    name:     'El Corte Inglés — Colón',
+    name:     'El Corte Inglés - Colón',
     category: 'shopping',
     address:  'C/ Pintor Sorolla, 26, 46002 Valencia',
     website:  'https://www.elcorteingles.es',

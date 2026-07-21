@@ -28,7 +28,7 @@
  *
  * S54: Writes migrated to travel-write-engagement EF. Status pills route via
  *   setEngagementStatus / setItineraryStatus (two independent axes). CreateModal
- *   simplified — url_id and is_public_template controls removed (EF generates
+ *   simplified - url_id and is_public_template controls removed (EF generates
  *   url_id; is_public_template is a template-library concern, not set here).
  *
  * Last updated: S54
@@ -214,7 +214,7 @@ type EditableTextProps = {
 
 function EditableText({
   value,
-  placeholder = '—',
+  placeholder = '-',
   monospace,
   serif,
   size = 'md',
@@ -421,8 +421,8 @@ function ClientPicker({ onSet, onCancel }: { onSet: (personId: string) => Promis
                 borderBottom: `1px solid ${A.border}`,
               }}
             >
-              {p.nickname ?? p.first_name ?? '(unnamed)'}
-              {p.last_name && <span style={{ color: A.faint, marginLeft: 6 }}>{p.last_name}</span>}
+              {p.nickname ?? p.firstName ?? '(unnamed)'}
+              {p.lastName && <span style={{ color: A.faint, marginLeft: 6 }}>{p.lastName}</span>}
             </div>
           ))}
         </div>
@@ -454,11 +454,11 @@ function EngagementCardInner({
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
   staggerIndex?:   number
 }) {
-  const hasIterationLabel = row.iteration_label && row.iteration_label.length > 0
+  const hasIterationLabel = row.iterationLabel && row.iterationLabel.length > 0
   const delay = staggerIndex !== undefined ? staggerDelay(staggerIndex) : '0ms'
 
-  const engSlug = statusToSlug(row.engagement_status_id, engagementStatuses)
-  const itSlug  = statusToSlug(row.itinerary_status_id,  itineraryStatuses)
+  const engSlug = statusToSlug(row.engagementStatusId, engagementStatuses)
+  const itSlug  = statusToSlug(row.itineraryStatusId,  itineraryStatuses)
 
   const engOptions = engagementStatuses.map(s => ({
     slug:  s.slug as EngagementStatusSlug,
@@ -509,18 +509,18 @@ function EngagementCardInner({
         <div style={{ fontSize: 14, fontWeight: 600, color: A.text, fontFamily: A.font, flex: 1 }}>
           {row.title || <span style={{ color: A.faint, fontStyle: 'italic' }}>(untitled)</span>}
         </div>
-        <AudiencePill audience={row.audience} isTemplate={row.is_public_template} />
+        <AudiencePill audience={row.audience} isTemplate={row.isPublicTemplate} />
       </div>
 
       {/* url_id + iteration */}
       <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", wordBreak: 'break-all' }}>
-        {row.url_id ?? '—'}
+        {row.urlId ?? '-'}
         {hasIterationLabel && (
-          <span style={{ color: A.muted, fontFamily: A.font }}> · {row.iteration_label}</span>
+          <span style={{ color: A.muted, fontFamily: A.font }}> · {row.iterationLabel}</span>
         )}
       </div>
 
-      {/* Status pills — right-aligned */}
+      {/* Status pills - right-aligned */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font }}>
@@ -528,7 +528,7 @@ function EngagementCardInner({
           </span>
           <StatusPill
             slug={engSlug}
-            label={engagementStatuses.find(s => s.id === row.engagement_status_id)?.label ?? engSlug}
+            label={engagementStatuses.find(s => s.id === row.engagementStatusId)?.label ?? engSlug}
             options={engOptions}
             onSelect={async (slug) => {
               const found = engagementStatuses.find(s => s.slug === slug)
@@ -542,7 +542,7 @@ function EngagementCardInner({
           </span>
           <StatusPill
             slug={itSlug}
-            label={itineraryStatuses.find(s => s.id === row.itinerary_status_id)?.label ?? itSlug}
+            label={itineraryStatuses.find(s => s.id === row.itineraryStatusId)?.label ?? itSlug}
             options={itOptions}
             onSelect={async (slug) => {
               const found = itineraryStatuses.find(s => s.slug === slug)
@@ -554,9 +554,9 @@ function EngagementCardInner({
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
-        {row.url_id && (
+        {row.urlId && (
           <a
-            href={buildEngagementUrl(row.url_id)}
+            href={buildEngagementUrl(row.urlId)}
             target='_blank'
             rel='noopener noreferrer'
             style={{ ...btnGhost, color: A.gold, borderColor: A.borderGold }}
@@ -564,9 +564,9 @@ function EngagementCardInner({
             View ↗
           </a>
         )}
-        {row.url_id && (
+        {row.urlId && (
           <button
-            onClick={() => navigateAdmin({ product: 'immerse', tab: 'engagements', urlId: row.url_id! })}
+            onClick={() => navigateAdmin({ product: 'immerse', tab: 'engagements', urlId: row.urlId! })}
             style={btnGhost}
           >
             Edit
@@ -651,18 +651,18 @@ function EngagementGroupBlock({
   isDragOverFromOtherGroup: boolean
   draggingFromThisGroup:    boolean
 }) {
-  const isOrphan = group.journey_id == null
-  const dropId   = isOrphan ? '__group_orphan__' : `group_${group.journey_id}`
+  const isOrphan = group.journeyId == null
+  const dropId   = isOrphan ? '__group_orphan__' : `group_${group.journeyId}`
   const { setNodeRef, isOver } = useDroppable({
     id:   dropId,
-    data: { type: 'group', journeyId: group.journey_id },
+    data: { type: 'group', journeyId: group.journeyId },
   })
 
   const showDropHighlight  = isOver && isDragOverFromOtherGroup
-  const personEditable     = !isOrphan && group.client_id != null
-  const clientNameValue    = group.client_nickname ?? group.client_first_name ?? ''
-  const tripFieldsEditable = !isOrphan && group.journey_id != null
-  const isPickingHere      = group.journey_id != null && pickingClientForTrip === group.journey_id
+  const personEditable     = !isOrphan && group.clientId != null
+  const clientNameValue    = group.clientNickname ?? group.clientFirstName ?? ''
+  const tripFieldsEditable = !isOrphan && group.journeyId != null
+  const isPickingHere      = group.journeyId != null && pickingClientForTrip === group.journeyId
 
   return (
     <div
@@ -719,7 +719,7 @@ function EngagementGroupBlock({
 
           {!isOrphan && (
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {/* Client name row — 18pt Cormorant serif */}
+              {/* Client name row - 18pt Cormorant serif */}
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 {personEditable ? (
                   <EditableText
@@ -733,22 +733,22 @@ function EngagementGroupBlock({
                     ariaLabel='Edit client name'
                     rejectEmpty={false}
                     onCommit={async (v) => {
-                      if (!group.client_id) return
-                      await onPersonUpdate(group.client_id, 'first_name', v)
+                      if (!group.clientId) return
+                      await onPersonUpdate(group.clientId, 'first_name', v)
                     }}
                   />
-                ) : group.journey_id ? (
+                ) : group.journeyId ? (
                   isPickingHere ? (
                     <ClientPicker
                       onSet={async (personId) => {
-                        await onSetEngagementClient(group.journey_id!, personId)
+                        await onSetEngagementClient(group.journeyId!, personId)
                         setPickingClientForTrip(null)
                       }}
                       onCancel={() => setPickingClientForTrip(null)}
                     />
                   ) : (
                     <span
-                      onClick={e => { e.stopPropagation(); setPickingClientForTrip(group.journey_id!) }}
+                      onClick={e => { e.stopPropagation(); setPickingClientForTrip(group.journeyId!) }}
                       style={{
                         fontSize:     18,
                         fontWeight:   700,
@@ -783,16 +783,16 @@ function EngagementGroupBlock({
                   editable={tripFieldsEditable}
                   ariaLabel='Edit public title'
                   onCommit={async (v) => {
-                    if (!group.journey_id) return
-                    await onEngagementUpdate(group.journey_id, 'public_title', v)
+                    if (!group.journeyId) return
+                    await onEngagementUpdate(group.journeyId, 'public_title', v)
                   }}
                 />
               </div>
 
-              {/* Trip code + date — DM Mono 11pt dim */}
+              {/* Trip code + date - DM Mono 11pt dim */}
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 <EditableText
-                  value={group.journey_code ?? ''}
+                  value={group.journeyCode ?? ''}
                   placeholder='Add trip code'
                   size='sm'
                   monospace
@@ -801,8 +801,8 @@ function EngagementGroupBlock({
                   ariaLabel='Edit trip code'
                   rejectEmpty
                   onCommit={async (v) => {
-                    if (!group.journey_id) return
-                    await onEngagementUpdate(group.journey_id, 'journey_code', v)
+                    if (!group.journeyId) return
+                    await onEngagementUpdate(group.journeyId, 'journey_code', v)
                   }}
                 />
                 {group.trip_start_date && (
@@ -840,7 +840,7 @@ function EngagementGroupBlock({
           color:         A.gold,
           fontFamily:    A.font,
         }}>
-          Drop to {isOrphan ? 'unlink' : `move to ${group.journey_code ?? 'this trip'}`}
+          Drop to {isOrphan ? 'unlink' : `move to ${group.journeyCode ?? 'this trip'}`}
         </div>
       )}
 
@@ -951,14 +951,14 @@ function CreateModal({
         engagement: {
           title:              title.trim(),
           audience,
-          journey_types:      [],
-          iteration_label:    iterationLabel.trim(),
+          journeyTypes:      [],
+          iterationLabel:    iterationLabel.trim(),
         },
-        engagement_status_slug: engSlug as EngagementStatusSlug | undefined,
-        itinerary_status_slug:  itSlug as ItineraryStatusSlug | undefined,
+        engagementStatusSlug: engSlug as EngagementStatusSlug | undefined,
+        itineraryStatusSlug:  itSlug as ItineraryStatusSlug | undefined,
       })
       success('Engagement created.')
-      onCreated(created.url_id ?? '')
+      onCreated(created.urlId ?? '')
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'
       error(`Failed to create: ${message}`)
@@ -1054,7 +1054,7 @@ export default function EngagementsListTab() {
 
   const groups = useMemo(() => groupByEngagement(rows), [rows])
 
-  function groupKey(g: EngagementGroup): string { return g.journey_id ?? '__orphan__' }
+  function groupKey(g: EngagementGroup): string { return g.journeyId ?? '__orphan__' }
 
   function toggle(g: EngagementGroup) {
     const key = groupKey(g)
@@ -1095,8 +1095,8 @@ export default function EngagementsListTab() {
   async function handleEngagementUpdate(journeyId: string, field: 'journey_code' | 'public_title', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
-      if (r.journey_id !== journeyId) return r
-      if (field === 'journey_code')    return { ...r, journey_code: value }
+      if (r.journeyId !== journeyId) return r
+      if (field === 'journey_code')    return { ...r, journeyCode: value }
       if (field === 'public_title') return { ...r, trip_public_title: value || null }
       return r
     }))
@@ -1115,9 +1115,9 @@ export default function EngagementsListTab() {
   async function handlePersonUpdate(personId: string, field: 'first_name' | 'nickname', value: string) {
     const prevSnapshot = rows
     setRows(prev => prev.map(r => {
-      if (r.client_id !== personId) return r
-      if (field === 'first_name') return { ...r, client_first_name: value || null }
-      if (field === 'nickname')   return { ...r, client_nickname:   value || null }
+      if (r.clientId !== personId) return r
+      if (field === 'first_name') return { ...r, clientFirstName: value || null }
+      if (field === 'nickname')   return { ...r, clientNickname:   value || null }
       return r
     }))
     try {
@@ -1158,9 +1158,9 @@ export default function EngagementsListTab() {
     if (overData.type === 'new_trip') { setPendingCreateForEngagement(activeRow); return }
     if (overData.type === 'group') {
       const newjourneyId = overData.journeyId ?? null
-      if (newjourneyId === activeRow.journey_id) return
+      if (newjourneyId === activeRow.journeyId) return
       const prevSnapshot = rows
-      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, journey_id: newjourneyId } : r))
+      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, journeyId: newjourneyId } : r))
       try {
         await reassignEngagementJourney(activeRow.id, newjourneyId)
         success(newjourneyId ? 'Engagement moved.' : 'Engagement unlinked.')
@@ -1177,11 +1177,11 @@ export default function EngagementsListTab() {
 
   function isDragFromOtherGroup(targetGroup: EngagementGroup): boolean {
     if (!draggingRow) return false
-    return draggingRow.journey_id !== targetGroup.journey_id
+    return draggingRow.journeyId !== targetGroup.journeyId
   }
   function isDraggingFromGroup(group: EngagementGroup): boolean {
     if (!draggingRow) return false
-    return draggingRow.journey_id === group.journey_id
+    return draggingRow.journeyId === group.journeyId
   }
 
   return (
@@ -1273,7 +1273,7 @@ export default function EngagementsListTab() {
         <EngagementCreateModal
           engagementId={pendingCreateForEngagement.id}
           engagementTitle={pendingCreateForEngagement.title}
-          engagementUrlId={pendingCreateForEngagement.url_id}
+          engagementUrlId={pendingCreateForEngagement.urlId}
           onClose={() => setPendingCreateForEngagement(null)}
           onSuccess={() => { setPendingCreateForEngagement(null); load() }}
           showToast={(msg, type) => type === 'success' ? success(msg) : error(msg)}

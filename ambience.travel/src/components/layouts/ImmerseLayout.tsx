@@ -1,15 +1,15 @@
-// ImmerseLayout.tsx — layout wrapper for ambience.travel /immerse/ proposal pages
+// ImmerseLayout.tsx - layout wrapper for ambience.travel /immerse/ proposal pages
 // Owns nav, back-to-top, overflow lock, and the hamburger drawer menu.
-// Pure renderer — receives navItems via props. No data fetching, no URL inspection.
-// Last updated: S26 — Added hamburger + slide-in drawer per S24 mini-handover.
+// Pure renderer - receives navItems via props. No data fetching, no URL inspection.
+// Last updated: S26 - Added hamburger + slide-in drawer per S24 mini-handover.
 //   Accepts navItems + logoHref props. Drawer mirrors ProgrammeLayout structure
 //   (right-side slide-in, dark overlay, 240px width, 250ms ease). Active item
 //   gets gold-tinted bg + gold text + gold border. 'Preview' subpage status
-//   renders as a non-clickable, dimmed row with a 'Coming soon' marker —
+//   renders as a non-clickable, dimmed row with a 'Coming soon' marker -
 //   visible in the menu so guests see the full journey shape, but not
 //   interactive. Controllers (ImmerseEngagementSurface) compute
 //   navItems + isActive from trip data they hold.
-// Prior: S10 — minimal layout with fixed top nav, logo left, no menu.
+// Prior: S10 - minimal layout with fixed top nav, logo left, no menu.
 
 import { useEffect, useState, type ReactNode } from 'react'
 import AmbienceLogo from '../AmbienceLogo'
@@ -236,7 +236,7 @@ export default function ImmerseLayout({ children, navItems, logoHref }: Props) {
 }
 
 // ── Nav link (internal) ──────────────────────────────────────────────────────
-// Split out so active/inactive hover behaviour reads cleanly. Pure render —
+// Split out so active/inactive hover behaviour reads cleanly. Pure render -
 // only its own hover state; navigation + close handled by the <a> + onNavigate.
 
 type NavLinkProps = {
@@ -249,7 +249,7 @@ function ImmerseNavLink({ item, onNavigate }: NavLinkProps) {
   const activeBorder      = 'rgba(201,184,142,0.40)'
   const hoverInactiveBg   = 'rgba(255,255,255,0.04)'
 
-  // S26: Preview items are non-interactive — no href, no hover, dimmed.
+  // S26: Preview items are non-interactive - no href, no hover, dimmed.
   // Matches the ImmerseSubpageStatus='preview' semantic (non-clickable,
   // opacity reduced, "coming soon"). Keeps them visible in the menu so guests
   // see the full journey shape, but signals they're not yet available.

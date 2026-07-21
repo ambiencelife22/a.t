@@ -5,7 +5,7 @@
 // mode-keyed dispatcher.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - All target tables have no direct anon/client read policy for this data
@@ -46,6 +46,7 @@ import { fetchHotelsByIds } from '../_shared/bookings.ts'
 
 
 type Mode =
+  | 'house_id_for_journey'
   | 'dossier'
   | 'brief'
   | 'rooms'
@@ -66,7 +67,7 @@ type Mode =
 // ok/err keep their existing call signatures across all handlers; they now route
 // through _shared/http.ts json() so the response shape + CORS headers are canonical.
 // err synthesizes the { error } envelope and takes (message, status); json takes
-// (body, status) — the envelope is the only difference, preserved here.
+// (body, status) - the envelope is the only difference, preserved here.
 
 function ok(payload: unknown): Response {
   return json(payload, 200)
@@ -182,7 +183,7 @@ for (const t of tripRows) {
   // Resolve room occupants (lead person_id + additional_guests uuids) → names at
   // the source, so every dossier consumer (brief preview, brief PDF) shows real
   // names, never raw uuids. Same resolver shape as _shared/engagement.ts and
-  // activity_detail — one resolution truth across all three read paths. Party
+  // activity_detail - one resolution truth across all three read paths. Party
   // label is per-trip (brief.prepared_for); the dossier spans trips, so lead
   // resolution here is person → guest_name override (party-label fallback is
   // applied where trip context is singular). Additional guests are always people.
@@ -237,6 +238,18 @@ async function handleBrief(db: SupabaseClient, journeyId: string): Promise<Respo
     .maybeSingle()
   if (error) return err('Failed to fetch brief', 500)
   return ok({ brief: data ?? null })
+}
+
+async function handleHouseIdForJourney(db: SupabaseClient, journeyId: string): Promise<Response> {
+  const { data, error } = await db
+    .from('travel_bookings')
+    .select('house_id')
+    .eq('journey_id', journeyId)
+    .not('house_id', 'is', null)
+    .limit(1)
+    .maybeSingle()
+  if (error) return err('Failed to resolve house_id for journey', 500)
+  return ok({ house_id: data?.house_id ?? null })
 }
 
 async function handleRooms(db: SupabaseClient, bookingId: string): Promise<Response> {
@@ -319,10 +332,10 @@ async function handleProgrammeGuests(db: SupabaseClient, programmeId: string): P
 }
 
 // Search people to link as a programme guest. Source is global_people (the one
-// canonical picker — NOT the dropped travel_clients table). Each result carries the
+// canonical picker - NOT the dropped travel_clients table). Each result carries the
 // resolved global_profiles.id (or null) so the UI shows whether the person is linkable
 // (has a login account) before the operator commits. A person with no profile is shown
-// but not linkable — surfaced honestly, never written as a dead link.
+// but not linkable - surfaced honestly, never written as a dead link.
 async function handleProgrammeGuestSearch(db: SupabaseClient, query: string): Promise<Response> {
   const trimmed = (query ?? '').trim()
   if (trimmed.length < 2) return ok({ results: [] })
@@ -444,21 +457,21 @@ async function handlePublicView(db: SupabaseClient, journeyId: string): Promise<
 // ── Calendar (fleet-wide; full pipeline) ──────────────────────────────────────
 // Single source for the admin Calendar tab. Returns all confirmed-stage trips +
 // near-term pending trips, with their per-hotel bookings (stays) + hotel names,
-// derived from the same canonical tables the dossier uses — NOT a parallel store.
+// derived from the same canonical tables the dossier uses - NOT a parallel store.
 // The calendar owns no dates; it renders these.
 //
 // Visibility is DECLARED, not inferred (see calendarTripState for the per-trip state):
 //   - confirmed-band (confirmed | paid | in_service | closed_won): ALWAYS shown,
-//     any date — past completed trips stay visible (a yesterday check-out must not
+//     any date - past completed trips stay visible (a yesterday check-out must not
 //     vanish). end_date<today derives the 'completed' state, it does NOT exclude.
 //   - pending-band (requested | quoted | pending): shown only within a near-term
-//     window (PENDING_LOOKAHEAD_DAYS) — far-future maybes are noise, not ops data.
+//     window (PENDING_LOOKAHEAD_DAYS) - far-future maybes are noise, not ops data.
 //   - excluded: cancelled / closed_lost (dead). Archive-only removal is the eventual
-//     model (archive state TBD — pairs with the booking-state arc).
+//     model (archive state TBD - pairs with the booking-state arc).
 //
 // Params: { range_start?: string (YYYY-MM-DD), range_end?: string }
 // When a range is passed (view paging), trips are filtered to those overlapping the
-// window. With no range (default load), ALL qualifying trips return — nothing is
+// window. With no range (default load), ALL qualifying trips return - nothing is
 // floored out by date.
 
 // Lifecycle slugs the calendar surfaces. Confirmed-band = always visible (any date,
@@ -471,9 +484,9 @@ const CALENDAR_PENDING_SLUGS   = ['requested', 'quoted', 'pending'] as const
 const PENDING_LOOKAHEAD_DAYS   = 120  // pending trips show if starting within ~4 months
 
 // Per-trip display state for the calendar bar. Single source for the color axis.
-//   completed — service is over (end_date < today; reads completed_at once that lands)
-//   confirmed — secured (confirmed/paid/in_service/closed_won)
-//   pending   — still securing (requested/quoted/pending), near-term only
+//   completed - service is over (end_date < today; reads completed_at once that lands)
+//   confirmed - secured (confirmed/paid/in_service/closed_won)
+//   pending   - still securing (requested/quoted/pending), near-term only
 // Returns null = don't show (pending too far out, or unknown slug).
 function calendarTripState(
   slug: string | null,
@@ -505,9 +518,9 @@ async function handleCalendar(
 ): Promise<Response> {
 
   // 1. Trips with a confirmed engagement, ending on/after the range start.
-  //    (A trip with no confirmed_engagement_id is pre-commitment — not shown.)
-  // Show ALL confirmed-stage trips — past (completed) ones stay visible; only an
-  // explicit archive removes a trip (archive state TBD — booking-state arc). When a
+  //    (A trip with no confirmed_engagement_id is pre-commitment - not shown.)
+  // Show ALL confirmed-stage trips - past (completed) ones stay visible; only an
+  // explicit archive removes a trip (archive state TBD - booking-state arc). When a
   // range is given (view window), filter to trips overlapping it: end >= range_start
   // AND start <= range_end. With no range (default load), return everything confirmed
   // so recently-completed trips like a yesterday check-out never silently vanish.
@@ -533,7 +546,7 @@ async function handleCalendar(
   const slugByEng = new Map<string, string>()
   // The engagement title is the canonical display name (engagement = the universal
   // spine). public_title is an optional override; when null, the calendar reads the
-  // engagement's title — never the bare journey_code if a real name exists upstream.
+  // engagement's title - never the bare journey_code if a real name exists upstream.
   const titleByEng = new Map<string, string>()
   if (engIds.length > 0) {
     const { data: engRows, error: engErr } = await db
@@ -563,7 +576,7 @@ async function handleCalendar(
 
   const journeyIds = confirmedTrips.map(t => t.id)
 
-  // 3. Bookings (stays) for those trips — start_date/end_date are check-in/out.
+  // 3. Bookings (stays) for those trips - start_date/end_date are check-in/out.
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
     .select('id, journey_id, name, status, start_date, end_date, accom_hotel_id, confirmation_number')
@@ -576,7 +589,7 @@ async function handleCalendar(
     accom_hotel_id: string | null; confirmation_number: string | null
   }>
 
-  // 3a. Lifecycle status registry — resolve status_id -> {slug,label,sort_order}.
+  // 3a. Lifecycle status registry - resolve status_id -> {slug,label,sort_order}.
   // Fetched once; the single source for resolving any element's status in this EF.
   const statusById = new Map<string, ChildStatus>()
   {
@@ -589,7 +602,7 @@ async function handleCalendar(
     }
   }
 
-  // 3b. Per-booking room statuses — the children the rollup derives from.
+  // 3b. Per-booking room statuses - the children the rollup derives from.
   const calBookingIds = bookings.map(b => b.id)
   const roomsByBookingId = new Map<string, ChildStatus[]>()
   if (calBookingIds.length > 0) {
@@ -611,7 +624,7 @@ async function handleCalendar(
   const hotelName = new Map<string, string>()
   for (const [id, h] of Object.entries(hotelMapCal)) hotelName.set(id, h.name)
 
-  // 4b. Activities (typed child engagements) — the engagement-spine read. Stay +
+  // 4b. Activities (typed child engagements) - the engagement-spine read. Stay +
   //     Transport children today; dining/experience/etc. flow through automatically
   //     as created (category = registry slug, never hardcoded). Fetched independently
   //     of trip span so out-of-span activities survive (e.g. a return flight the day
@@ -745,7 +758,7 @@ async function handleCalendar(
 // ── Activity detail (6C drill-down) ───────────────────────────────────────────
 // Fine-print for one itinerary item. Reuses the canonical resolvers in
 // _shared/names.ts so "who's in this room / on this flight" is IDENTICAL to the
-// client confirmation page — one resolution truth, never a parallel copy.
+// client confirmation page - one resolution truth, never a parallel copy.
 //   stay (booking_id)     → rooms with resolved guest names + per-room conf
 //   transport (aux id)    → passengers with resolved names + seat + conf
 // partyLabel (brief.prepared_for) is the trip's single client address, the last
@@ -789,7 +802,7 @@ async function handleActivityDetail(
     // A stay represents the HOTEL, not one booking. Resolve the anchor booking →
     // its hotel + trip, then gather ALL bookings at that hotel for that trip, and
     // return rooms across all of them. (The anchor is one incidental booking of
-    // the hotel group; the stay spans the whole group — mirrors the hotel-keyed
+    // the hotel group; the stay spans the whole group - mirrors the hotel-keyed
     // child-activity derivation.) Falls back to the single booking if the anchor
     // has no accom_hotel_id (non-hotel stay).
     const { data: bk } = await db
@@ -842,7 +855,7 @@ async function handleActivityDetail(
 
   if (auxBookingId) {
     // An aux booking is EITHER a flight/jet (→ passengers) OR a ground-car service
-    // (→ driver vehicles). The ENGAGEMENT TYPE SLUG discriminates — canonical, not the
+    // (→ driver vehicles). The ENGAGEMENT TYPE SLUG discriminates - canonical, not the
     // fragile display string. category is the registry slug passed from the itinerary row.
     const isGroundCar = category != null && GROUND_CAR_SLUGS.has(category)
 
@@ -948,6 +961,9 @@ Deno.serve(async (req: Request) => {
         if (!journey_id) return err('journey_id is required for day_entries mode', 400)
         return handleDayEntries(serviceClient, journey_id)
 
+      case 'house_id_for_journey':
+        if (!journey_id) return err('journey_id is required for house_id_for_journey mode', 400)
+        return handleHouseIdForJourney(serviceClient, journey_id)
       case 'aux_bookings':
         if (!journey_id) return err('journey_id is required for aux_bookings mode', 400)
         return handleAuxBookings(serviceClient, journey_id)

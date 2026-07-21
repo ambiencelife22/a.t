@@ -1,11 +1,12 @@
-// adminRouteStopQueries.ts — Supabase reads/writes for the route stops
+// adminRouteStopQueries.ts - Supabase reads/writes for the route stops
+import { camelizeKeys } from '@shared/camelize'
 // editor on engagement detail.
 // Owns: list / update / insert / delete / reorder rows on
 //       travel_overlay_route_stops.
 // Not owned: uploads (adminAssetQueries.ts), engagement-level queries
 //            (adminEngagementQueries.ts).
 //
-// Schema verified S33D pre-flight: 11 columns. Title is free text — no FK
+// Schema verified S33D pre-flight: 11 columns. Title is free text - no FK
 // to global_destinations (route stops can name places without canonical
 // destination rows, e.g. "Saudi Arabia" with no destination row).
 // sort_order is 0-indexed in this table (matches DB sample).
@@ -17,17 +18,17 @@ import { supabase } from '../lib/supabase'
 
 export type RouteStop = {
   id:                 string
-  engagement_id:            string
-  sort_order:         number
+  engagementId:            string
+  sortOrder:         number
   title:              string | null
-  stay_label:         string | null
+  stayLabel:         string | null
   note:               string | null
-  image_src:          string | null
-  image_alt:          string | null
-  destination_row_id: string | null
+  imageSrc:          string | null
+  imageAlt:          string | null
+  destinationRowId: string | null
   nights:             number | null
-  created_at:         string
-  updated_at:         string
+  createdAt:         string
+  updatedAt:         string
 }
 
 // ── List ──────────────────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ export async function fetchRouteStops(engagementId: string): Promise<RouteStop[]
     .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return (data ?? []) as RouteStop[]
+  return camelizeKeys<RouteStop[]>(data ?? [])
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────
@@ -50,9 +51,9 @@ export async function updateRouteStop(
 ): Promise<void> {
   const clean: Record<string, unknown> = { ...payload }
   delete clean.id
-  delete clean.engagement_id
-  delete clean.created_at
-  delete clean.updated_at
+  delete clean.engagementId
+  delete clean.createdAt
+  delete clean.updatedAt
 
   const { error } = await supabase
     .from('travel_overlay_route_stops')
@@ -64,26 +65,26 @@ export async function updateRouteStop(
 // ── Insert ────────────────────────────────────────────────────────────────────
 
 export type RouteStopCreatePayload = {
-  engagement_id:     string
-  sort_order:  number
+  engagementId:     string
+  sortOrder:  number
   title?:      string | null
-  stay_label?: string | null
+  stayLabel?: string | null
   note?:       string | null
-  image_src?:  string | null
-  image_alt?:  string | null
+  imageSrc?:  string | null
+  imageAlt?:  string | null
 }
 
 export async function insertRouteStop(payload: RouteStopCreatePayload): Promise<string> {
   const { data, error } = await supabase
     .from('travel_overlay_route_stops')
     .insert({
-      engagement_id:    payload.engagement_id,
-      sort_order: payload.sort_order,
+      engagement_id: payload.engagementId,
+      sort_order: payload.sortOrder,
       title:      payload.title      ?? null,
-      stay_label: payload.stay_label ?? null,
+      stay_label: payload.stayLabel ?? null,
       note:       payload.note       ?? null,
-      image_src:  payload.image_src  ?? null,
-      image_alt:  payload.image_alt  ?? null,
+      image_src: payload.imageSrc  ?? null,
+      image_alt: payload.imageAlt  ?? null,
     })
     .select('id')
     .single()
@@ -105,13 +106,13 @@ export async function deleteRouteStop(id: string): Promise<void> {
 
 /**
  * Reassigns sort_order to 0..N-1 across the list of IDs in the new desired
- * order. Note 0-indexed — matches existing DB convention for this table.
+ * order. Note 0-indexed - matches existing DB convention for this table.
  */
 export async function reorderRouteStops(orderedIds: string[]): Promise<void> {
   for (let i = 0; i < orderedIds.length; i++) {
     const { error } = await supabase
       .from('travel_overlay_route_stops')
-      .update({ sort_order: i })
+      .update({ sortOrder: i })
       .eq('id', orderedIds[i])
     if (error) throw error
   }

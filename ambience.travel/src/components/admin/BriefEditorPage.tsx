@@ -2,34 +2,34 @@
  * Dedicated full-page brief editor for a single trip.
  * Route: #admin/trips/{journeyId}/brief
  *
- * Last updated: S53O — brief accommodation reduced to index shape (hotel,
+ * Last updated: S53O - brief accommodation reduced to index shape (hotel,
  *   dates, nights, party composition, room categories + per-room conf,
- *   booked-by). Guest names, cancellation, invoices, inclusions removed —
+ *   booked-by). Guest names, cancellation, invoices, inclusions removed -
  *   those live on Confirmation + Programme. Matches EngagementBriefTab + PDF.
- * Prior: S54 — Tabs section added. Four show_tab_* booleans
+ * Prior: S54 - Tabs section added. Four show_tab_* booleans
  *   (confirmation, programme, brief, contacts) now wired into the admin UI
  *   with inline-save toggles, mirroring the public_view + advisor visibility
  *   pattern. Each toggle gates whether the corresponding tab renders on the
  *   public ImmerseConfirmedSections. persistContactsToggle generalised to persistToggle
  *   to handle both advisor and tab visibility fields.
- * Prior: S50 — Contacts section added. Editable advisor_name,
- *   advisor_email, advisor_phone with inline show_advisor_email +
- *   show_advisor_phone visibility toggles. Each toggle gates whether
+ * Prior: S50 - Contacts section added. Editable advisorName,
+ *   advisorEmail, advisorPhone with inline showAdvisorEmail +
+ *   showAdvisorPhone visibility toggles. Each toggle gates whether
  *   the corresponding field renders on the public Contacts tab via
  *   ImmerseConfirmedSections.tsx ContactsTab.
- * Prior: S48 — public_view toggle in Cover section. Controls visibility
+ * Prior: S48 - public_view toggle in Cover section. Controls visibility
  *   of the engagement to public anon clients. Enforced server-side by the
  *   travel-get-immerse-proposal Edge Function (S53H cutover; the old
  *   get-engagement-stage EF is retired). Default false; admin flips on per engagement.
- * Prior: S48 — fetchAdminEngagementElements + updateAdminEngagementElement wired in.
+ * Prior: S48 - fetchAdminEngagementElements + updateAdminEngagementElement wired in.
  *   elements fetched in parallel with dossier. auxDrafts state added.
  *   mergedAux built in handleDownload and passed to handleDownloadBrief.
- *   Design, BriefPreview, BriefAuxEditor — all untouched.
- * Prior: S48 — aux sections grouped by booking_type via auxBookingTypes
+ *   Design, BriefPreview, BriefAuxEditor - all untouched.
+ * Prior: S48 - aux sections grouped by booking_type via auxBookingTypes
  *   registry. BriefAuxEditor. Transport & Transfers section label.
- * Prior: S48 — flights fully editable, booked_by, AuxDraft type, dark editor.
- * Prior: S47 — booked_by_label added to RoomDraft.
- * Prior: S46 — initial ship.
+ * Prior: S48 - flights fully editable, bookedBy, AuxDraft type, dark editor.
+ * Prior: S47 - booked_by_label added to RoomDraft.
+ * Prior: S46 - initial ship.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -69,7 +69,7 @@ import { fmtTime } from '../../utils/utilsDates'
 
 const CREAM   = '#F7F5F0'
 const INK     = '#1A1D1A'
-const GOLD    = ID.gold   // #d8b56a — canonical (was drifted #C9A84C)
+const GOLD    = ID.gold   // #d8b56a - canonical (was drifted #C9A84C)
 const MUTED   = '#787060'
 const FAINT   = '#B4AFA5'
 const RULE    = '#DCDBD5'
@@ -117,21 +117,21 @@ type AuxDraft = {
   bookingTypeSlug:   string
   origin:              string
   destination:         string
-  start_date:          string
-  start_time:          string
-  end_date:            string
-  end_time:            string
-  booked_by:           string
+  startDate:          string
+  startTime:          string
+  endDate:            string
+  endTime:            string
+  bookedBy:           string
   notes:               string
   // Flight-specific (rendered only when isFlightType(booking_type))
-  supplier_id: string
-  airline_name:        string
-  flight_number:       string
-  depart_airport:      string
-  arrive_airport:      string
-  cabin_class:         string
-  seat_numbers:        string
-  aircraft_type:       string
+  supplierId: string
+  airlineName:        string
+  flightNumber:       string
+  departAirport:      string
+  arriveAirport:      string
+  cabinClass:         string
+  seatNumbers:        string
+  aircraftType:       string
 }
 
 interface PreviewFields {
@@ -195,10 +195,10 @@ function VisibilityToggle({ on, onChange, label }: { on: boolean; onChange: (v: 
 // (Flight or Private Jet / Charter). Provides:
 //   - Airline picker (filtered to Commercial Airline + Private Jet / Charter
 //     supplier types). Inline supplier creation if airline not yet in registry.
-//   - Validated flight_number (uppercase auto-transform, regex hint)
+//   - Validated flightNumber (uppercase auto-transform, regex hint)
 //   - Validated depart/arrive airports (3 or 4 letter IATA/ICAO)
 //   - Cabin class dropdown (locked to CABIN_CLASSES)
-//   - Seat numbers (free text — formats vary too widely to validate)
+//   - Seat numbers (free text - formats vary too widely to validate)
 //   - Seat type dropdown (locked to SEAT_TYPES including 'Mixed')
 //   - Aircraft type grouped dropdown (locked to AIRCRAFT_TYPE_GROUPS)
 
@@ -214,9 +214,9 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
   bookingTypeLabel: string
 }) {
   // Validation states for inline indicators (non-blocking)
-  const flightNumberValid = !draft.flight_number || FLIGHT_NUMBER_REGEX.test(draft.flight_number)
-  const departValid       = !draft.depart_airport || AIRPORT_REGEX.test(draft.depart_airport)
-  const arriveValid       = !draft.arrive_airport || AIRPORT_REGEX.test(draft.arrive_airport)
+  const flightNumberValid = !draft.flightNumber || FLIGHT_NUMBER_REGEX.test(draft.flightNumber)
+  const departValid       = !draft.departAirport || AIRPORT_REGEX.test(draft.departAirport)
+  const arriveValid       = !draft.arriveAirport || AIRPORT_REGEX.test(draft.arriveAirport)
 
   return (
     <div style={{
@@ -234,20 +234,20 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 12px' }}>
 
-        {/* Airline supplier picker — shared with the dossier AuxForm */}
+        {/* Airline supplier picker - shared with the dossier AuxForm */}
         <div style={{ gridColumn: '1 / -1' }}>
           <AirlinePicker
-            supplierId={draft.supplier_id}
-            airlineNameFallback={draft.airline_name}
+            supplierId={draft.supplierId}
+            airlineNameFallback={draft.airlineName}
             bookingType={bookingTypeLabel}
             variant='field'
             onChange={value => {
-              patch(aux.id, aux, 'supplier_id', value)
-              save(aux.id, 'supplier_id', value)
+              patch(aux.id, aux, 'supplierId', value)
+              save(aux.id, 'supplierId', value)
               // Clear free-text override when a supplier is picked.
-              if (value && draft.airline_name) {
-                patch(aux.id, aux, 'airline_name', '')
-                save(aux.id, 'airline_name', '')
+              if (value && draft.airlineName) {
+                patch(aux.id, aux, 'airlineName', '')
+                save(aux.id, 'airlineName', '')
               }
             }}
           />
@@ -258,27 +258,27 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
           <label style={fieldLabelStyle}>Flight Number</label>
           <input
             style={{ ...fieldStyle, textTransform: 'uppercase', borderBottomColor: flightNumberValid ? A.border : '#f87171' }}
-            value={draft.flight_number}
-            onChange={e => patch(aux.id, aux, 'flight_number', e.target.value.toUpperCase())}
-            onBlur={e => save(aux.id, 'flight_number', e.target.value.toUpperCase())}
+            value={draft.flightNumber}
+            onChange={e => patch(aux.id, aux, 'flightNumber', e.target.value.toUpperCase())}
+            onBlur={e => save(aux.id, 'flightNumber', e.target.value.toUpperCase())}
             placeholder='BA123'
           />
           {!flightNumberValid && (
             <div style={{ fontSize: 9, color: '#f87171', fontFamily: A.font, marginTop: 2 }}>
-              Format: 2{'\u2013'}3 letter code + 1{'\u2013'}4 digits (e.g. BA123, EK201)
+              Format: 2{'-'}3 letter code + 1{'-'}4 digits (e.g. BA123, EK201)
             </div>
           )}
         </div>
 
-        {/* Aircraft type — grouped dropdown */}
+        {/* Aircraft type - grouped dropdown */}
         <div>
           <label style={fieldLabelStyle}>Aircraft Type</label>
           <select
             style={{ ...fieldStyle, cursor: 'pointer' }}
-            value={draft.aircraft_type}
-            onChange={e => { patch(aux.id, aux, 'aircraft_type', e.target.value); save(aux.id, 'aircraft_type', e.target.value) }}
+            value={draft.aircraftType}
+            onChange={e => { patch(aux.id, aux, 'aircraftType', e.target.value); save(aux.id, 'aircraftType', e.target.value) }}
           >
-            <option value=''>{'\u2014 Select aircraft \u2014'}</option>
+            <option value=''>{'- Select aircraft -'}</option>
             {AIRCRAFT_TYPE_GROUPS.map(group => (
               <optgroup key={group.label} label={group.label}>
                 {group.options.map(opt => (
@@ -294,9 +294,9 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
           <label style={fieldLabelStyle}>Depart Airport</label>
           <input
             style={{ ...fieldStyle, textTransform: 'uppercase', borderBottomColor: departValid ? A.border : '#f87171' }}
-            value={draft.depart_airport}
-            onChange={e => patch(aux.id, aux, 'depart_airport', e.target.value.toUpperCase())}
-            onBlur={e => save(aux.id, 'depart_airport', e.target.value.toUpperCase())}
+            value={draft.departAirport}
+            onChange={e => patch(aux.id, aux, 'departAirport', e.target.value.toUpperCase())}
+            onBlur={e => save(aux.id, 'departAirport', e.target.value.toUpperCase())}
             placeholder='LAX or KLAX'
             maxLength={4}
           />
@@ -312,9 +312,9 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
           <label style={fieldLabelStyle}>Arrive Airport</label>
           <input
             style={{ ...fieldStyle, textTransform: 'uppercase', borderBottomColor: arriveValid ? A.border : '#f87171' }}
-            value={draft.arrive_airport}
-            onChange={e => patch(aux.id, aux, 'arrive_airport', e.target.value.toUpperCase())}
-            onBlur={e => save(aux.id, 'arrive_airport', e.target.value.toUpperCase())}
+            value={draft.arriveAirport}
+            onChange={e => patch(aux.id, aux, 'arriveAirport', e.target.value.toUpperCase())}
+            onBlur={e => save(aux.id, 'arriveAirport', e.target.value.toUpperCase())}
             placeholder='JFK or KJFK'
             maxLength={4}
           />
@@ -330,10 +330,10 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
           <label style={fieldLabelStyle}>Cabin Class</label>
           <select
             style={{ ...fieldStyle, cursor: 'pointer' }}
-            value={draft.cabin_class}
-            onChange={e => { patch(aux.id, aux, 'cabin_class', e.target.value); save(aux.id, 'cabin_class', e.target.value) }}
+            value={draft.cabinClass}
+            onChange={e => { patch(aux.id, aux, 'cabinClass', e.target.value); save(aux.id, 'cabinClass', e.target.value) }}
           >
-            <option value=''>{'\u2014 Select cabin \u2014'}</option>
+            <option value=''>{'- Select cabin -'}</option>
             {CABIN_CLASSES.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -343,9 +343,9 @@ function FlightDetailsSubsection({ aux, draft, patch, save, isMobile, bookingTyp
         {/* Seat numbers */}
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={fieldLabelStyle}>Seat Numbers</label>
-          <input style={fieldStyle} value={draft.seat_numbers}
-            onChange={e => patch(aux.id, aux, 'seat_numbers', e.target.value)}
-            onBlur={e => save(aux.id, 'seat_numbers', e.target.value)}
+          <input style={fieldStyle} value={draft.seatNumbers}
+            onChange={e => patch(aux.id, aux, 'seatNumbers', e.target.value)}
+            onBlur={e => save(aux.id, 'seatNumbers', e.target.value)}
             placeholder='12A, 12B, 12C' />
         </div>
 
@@ -368,24 +368,24 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
   function getDraft(aux: AdminEngagementElement): AuxDraft {
     return auxDrafts[aux.id] ?? {
       name:              aux.name              ?? '',
-      engagementTypeId:  aux.engagement_type_id ?? '',
-      bookingTypeSlug:   aux.element_type       ?? '',
+      engagementTypeId:  aux.engagementTypeId ?? '',
+      bookingTypeSlug:   aux.elementType       ?? '',
       origin:              aux.origin              ?? '',
       destination:         aux.destination         ?? '',
-      start_date:          aux.start_date          ?? '',
-      start_time:          aux.start_time?.slice(0, 5) ?? '',
-      end_date:            aux.end_date            ?? '',
-      end_time:            aux.end_time?.slice(0, 5) ?? '',
-      booked_by:           aux.booked_by           ?? '',
+      startDate:          aux.startDate          ?? '',
+      startTime:          aux.startTime?.slice(0, 5) ?? '',
+      endDate:            aux.endDate            ?? '',
+      endTime:            aux.endTime?.slice(0, 5) ?? '',
+      bookedBy:           aux.bookedBy           ?? '',
       notes:               aux.notes               ?? '',
-      supplier_id: aux.supplier_id ?? '',
-      airline_name:        aux.airline_name        ?? '',
-      flight_number:       aux.flight_number       ?? '',
-      depart_airport:      aux.depart_airport      ?? '',
-      arrive_airport:      aux.arrive_airport      ?? '',
-      cabin_class:         aux.cabin_class         ?? '',
-      seat_numbers:        (aux as any).seat_numbers        ?? '',
-      aircraft_type:       aux.aircraft_type       ?? '',
+      supplierId: aux.supplierId ?? '',
+      airlineName:        aux.airlineName        ?? '',
+      flightNumber:       aux.flightNumber       ?? '',
+      departAirport:      aux.departAirport      ?? '',
+      arriveAirport:      aux.arriveAirport      ?? '',
+      cabinClass:         aux.cabinClass         ?? '',
+      seatNumbers:        (aux as any).seatNumbers        ?? '',
+      aircraftType:       aux.aircraftType       ?? '',
     }
   }
 
@@ -395,7 +395,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
   }
 
   async function save(id: string, field: keyof AuxDraft, value: string) {
-    // engagementTypeId/bookingTypeSlug are frontend-only draft keys — never written
+    // engagementTypeId/bookingTypeSlug are frontend-only draft keys - never written
     // directly as patch fields. Type changes go via the type select handler below.
     if (field === 'engagementTypeId' || field === 'bookingTypeSlug') return
     try {
@@ -407,7 +407,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
 
   if (sections.length === 0) return (
     <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic' }}>
-      No aux bookings with brief_show enabled for this trip.
+      No aux bookings with briefShow enabled for this trip.
     </div>
   )
 
@@ -442,8 +442,8 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
                           const et = engagementTypes.find(t => t.id === e.target.value)
                           patch(aux.id, aux, 'engagementTypeId', e.target.value)
                           patch(aux.id, aux, 'bookingTypeSlug', et?.slug ?? '')
-                          updateAdminEngagementElement(aux.id, { engagement_type_id: e.target.value || null }).catch(err =>
-                            console.error('[BriefEditorPage] update engagement_type_id', err)
+                          updateAdminEngagementElement(aux.id, { engagementTypeId: e.target.value || null }).catch(err =>
+                            console.error('[BriefEditorPage] update engagementTypeId', err)
                           )
                         }}
                       >
@@ -469,33 +469,33 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
                     </div>
                     <div>
                       <label style={fieldLabelStyle}>Departure Date</label>
-                      <input type='date' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.start_date}
-                        onChange={e => patch(aux.id, aux, 'start_date', e.target.value)}
-                        onBlur={e => save(aux.id, 'start_date', e.target.value)} />
+                      <input type='date' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.startDate}
+                        onChange={e => patch(aux.id, aux, 'startDate', e.target.value)}
+                        onBlur={e => save(aux.id, 'startDate', e.target.value)} />
                     </div>
                     <div>
                       <label style={fieldLabelStyle}>Arrival Date</label>
-                      <input type='date' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.end_date}
-                        onChange={e => patch(aux.id, aux, 'end_date', e.target.value)}
-                        onBlur={e => save(aux.id, 'end_date', e.target.value)} />
+                      <input type='date' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.endDate}
+                        onChange={e => patch(aux.id, aux, 'endDate', e.target.value)}
+                        onBlur={e => save(aux.id, 'endDate', e.target.value)} />
                     </div>
                     <div>
                       <label style={fieldLabelStyle}>Departure Time</label>
-                      <input type='time' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.start_time}
-                        onChange={e => patch(aux.id, aux, 'start_time', e.target.value)}
-                        onBlur={e => save(aux.id, 'start_time', e.target.value)} />
+                      <input type='time' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.startTime}
+                        onChange={e => patch(aux.id, aux, 'startTime', e.target.value)}
+                        onBlur={e => save(aux.id, 'startTime', e.target.value)} />
                     </div>
                     <div>
                       <label style={fieldLabelStyle}>Arrival Time</label>
-                      <input type='time' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.end_time}
-                        onChange={e => patch(aux.id, aux, 'end_time', e.target.value)}
-                        onBlur={e => save(aux.id, 'end_time', e.target.value)} />
+                      <input type='time' style={{ ...fieldStyle, colorScheme: 'dark' }} value={draft.endTime}
+                        onChange={e => patch(aux.id, aux, 'endTime', e.target.value)}
+                        onBlur={e => save(aux.id, 'endTime', e.target.value)} />
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={fieldLabelStyle}>Booked By</label>
-                      <input style={fieldStyle} value={draft.booked_by}
-                        onChange={e => patch(aux.id, aux, 'booked_by', e.target.value)}
-                        onBlur={e => save(aux.id, 'booked_by', e.target.value)}
+                      <input style={fieldStyle} value={draft.bookedBy}
+                        onChange={e => patch(aux.id, aux, 'bookedBy', e.target.value)}
+                        onBlur={e => save(aux.id, 'bookedBy', e.target.value)}
                         placeholder='Booked by Deron' />
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
@@ -507,7 +507,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
                     </div>
                   </div>
 
-                  {/* S50 — Flight Details subsection — rendered only for flight types */}
+                  {/* S50 - Flight Details subsection - rendered only for flight types */}
                   {isFlightType(draft.bookingTypeSlug) && (
                     <FlightDetailsSubsection
                       aux={aux}
@@ -519,7 +519,7 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
                     />
                   )}
 
-                  {/* S54b — Per-passenger conf + seats. Shared with the dossier editor. */}
+                  {/* S54b - Per-passenger conf + seats. Shared with the dossier editor. */}
                   {isFlightType(draft.bookingTypeSlug) && (
                     <AuxPassengersEditor auxBookingId={aux.id} initial={aux.passengers ?? []} />
                   )}
@@ -538,15 +538,15 @@ function BriefAuxEditor({ elements, auxDrafts, onAuxDraftsChange, isMobile, enga
 function BriefPreview({ fields }: { fields: PreviewFields }) {
   const { briefTitle, briefSubtitle, preparedFor, heroImageSrc, logoVariant, trip, house, roomImageSrcs, roomDrafts, elements, auxDrafts } = fields
 
-  const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.journey_code
+  const title    = briefTitle || trip.destinations.map(d => d.name).join(' & ') || trip.journeyCode
   const subtitle = (briefSubtitle || 'TRIP CONFIRMATION BRIEF').toUpperCase()
-  const pfor     = preparedFor || house?.display_name || ''
-  const dates    = formatDateRange(trip.start_date, trip.end_date)
+  const pfor     = preparedFor || house?.displayName || ''
+  const dates    = formatDateRange(trip.startDate, trip.endDate)
 
   const accomBookings = trip.bookings
-    .filter(bk => bk.brief_show !== false)
+    .filter(bk => bk.briefShow !== false)
     .slice()
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 
   const auxSections = groupElementsBySection(elements)
 
@@ -579,12 +579,12 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
           <div style={{ fontSize: 9, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: GOLD, letterSpacing: '0.1em', marginBottom: 12 }}>ACCOMMODATION</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {accomBookings.map(booking => {
-              const isAmbience   = (booking.booked_by ?? 'ambience') === 'ambience'
-              const bookedByText = bookedByLabel(booking.booked_by)
+              const isAmbience   = (booking.bookedBy ?? 'ambience') === 'ambience'
+              const bookedByText = bookedByLabel(booking.bookedBy)
               const pillColor    = isAmbience ? GOLD : FAINT
               const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
-              const dateRange    = formatDateRange(booking.start_date, booking.end_date)
-              const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? null
+              const dateRange    = formatDateRange(booking.startDate, booking.endDate)
+              const headerImg    = booking.briefImageSrc ?? booking._hotel_image_src ?? null
               const rooms        = booking._rooms ?? []
 
               return (
@@ -597,12 +597,12 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                       <div>
                         <div style={{ fontSize: 14, color: INK, marginBottom: 3, lineHeight: 1.3 }}>{hotelName}</div>
                         {dateRange && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED }}>{dateRange}</div>}
-                        {booking.party_composition && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED, marginTop: 1 }}>{booking.party_composition}</div>}
+                        {booking.partyComposition && <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: MUTED, marginTop: 1 }}>{booking.partyComposition}</div>}
                       </div>
                       <div style={{ marginTop: 10 }}>
-                        {rooms.length === 0 && booking.confirmation_number && (
+                        {rooms.length === 0 && booking.confirmationNumber && (
                           <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${pillColor}`, borderRadius: 4, padding: '2px 8px', marginBottom: 4, background: isAmbience ? '#FAF7F0' : '#F5F5F5' }}>
-                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {booking.confirmation_number}</span>
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: pillColor }}>Conf #:  {booking.confirmationNumber}</span>
                           </div>
                         )}
                         <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', fontStyle: 'italic', color: FAINT }}>{bookedByText}</div>
@@ -610,16 +610,16 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
                     </div>
                   </div>
                   {rooms.length > 0 && (() => {
-                    // Category + count + per-room conf. Names omitted — the brief is
+                    // Category + count + per-room conf. Names omitted - the brief is
                     // an index; guest names live on the Confirmation surface. Draft
-                    // room_name honoured (|| falls through empty override). Same
+                    // roomName honoured (|| falls through empty override). Same
                     // grouping shape as EngagementBriefTab + pdfImmerseBrief (no drift).
                     const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, room) => {
                       const d    = roomDrafts[room.id]
-                      const name = (d?.room_name || room.room_name) ?? 'Room'
+                      const name = (d?.roomName || room.roomName) ?? 'Room'
                       if (!acc[name]) acc[name] = { count: 0, confs: [] }
                       acc[name].count += 1
-                      if (room.confirmation_number) acc[name].confs.push(room.confirmation_number)
+                      if (room.confirmationNumber) acc[name].confs.push(room.confirmationNumber)
                       return acc
                     }, {})
                     const categories = Object.entries(catGroups).map(([name, g]) => ({
@@ -664,10 +664,10 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
               const name       = d?.name               || aux.name               || ''
               const origin     = d?.origin             || aux.origin             || ''
               const dest       = d?.destination        || aux.destination        || ''
-              const bookedBy   = d?.booked_by?.trim()  || aux.booked_by?.trim()  || null
-              const startTime  = d?.start_time || aux.start_time?.slice(0, 5) || null
-              const endTime    = d?.end_time   || aux.end_time?.slice(0, 5)   || null
-              const startDate  = d?.start_date || aux.start_date              || null
+              const bookedBy   = d?.bookedBy?.trim()  || aux.bookedBy?.trim()  || null
+              const startTime  = d?.startTime || aux.startTime?.slice(0, 5) || null
+              const endTime    = d?.endTime   || aux.endTime?.slice(0, 5)   || null
+              const startDate  = d?.startDate || aux.startDate              || null
 
               const isAmbience  = !bookedBy || bookedBy === 'ambience'
               const bookedByTxt = bookedByLabel(bookedBy)
@@ -675,7 +675,7 @@ function BriefPreview({ fields }: { fields: PreviewFields }) {
 
               const dep = fmtTime(startTime)
               const arr = fmtTime(endTime)
-              const timeStr = dep && arr ? `${dep} \u2013 ${arr}` : dep || arr || ''
+              const timeStr = dep && arr ? `${dep} - ${arr}` : dep || arr || ''
               const route = [origin, dest].filter(Boolean).join(' \u2192 ')
 
               return (
@@ -732,7 +732,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
   const [saved,       setSaved]       = useState(false)
   const [pickerOpen,  setPickerOpen]  = useState(false)
 
-  // S48 — engagement public_view toggle
+  // S48 - engagement public_view toggle
   const [publicView,       setPublicView]       = useState(false)
   const [publicViewSaving, setPublicViewSaving] = useState(false)
 
@@ -744,14 +744,14 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
   const [logoVariant,   setLogoVariant]   = useState<string>('ambience')
   const [heroImageSrc,  setHeroImageSrc]  = useState('')
 
-  // S50 — Contacts section
+  // S50 - Contacts section
   const [advisorName,      setAdvisorName]      = useState('')
   const [advisorEmail,     setAdvisorEmail]     = useState('')
   const [advisorPhone,     setAdvisorPhone]     = useState('')
   const [showAdvisorEmail, setShowAdvisorEmail] = useState(false)
   const [showAdvisorPhone, setShowAdvisorPhone] = useState(false)
 
-  // S54 — Tab visibility toggles. Defaults match DB (all true).
+  // S54 - Tab visibility toggles. Defaults match DB (all true).
   const [showTabConfirmation, setShowTabConfirmation] = useState(true)
   const [showTabProgramme,    setShowTabProgramme]    = useState(true)
   const [showTabBrief,        setShowTabBrief]        = useState(true)
@@ -788,24 +788,24 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
 
       const br = found.brief
       if (br) {
-        setBriefTitle(br.brief_title ?? '')
-        setBriefSubtitle(br.brief_subtitle ?? '')
-        setPreparedFor(br.prepared_for ?? dossier.house?.display_name ?? '')
-        setHeroImageSrc(br.hero_image_src ?? '')
-        setLogoVariant(br.logo_variant ?? 'ambience')
-        setAdvisorName(br.advisor_name ?? '')
-        setAdvisorEmail(br.advisor_email ?? '')
-        setAdvisorPhone(br.advisor_phone ?? '')
-        setShowAdvisorEmail((br as any).show_advisor_email ?? false)
-        setShowAdvisorPhone((br as any).show_advisor_phone ?? false)
-        setShowTabConfirmation(br.show_tab_confirmation ?? true)
-        setShowTabProgramme(br.show_tab_programme       ?? true)
-        setShowTabBrief(br.show_tab_brief               ?? true)
-        setShowTabContacts(br.show_tab_contacts         ?? true)
-        setShowTabWelcome((br as any).show_tab_welcome  ?? false)
+        setBriefTitle(br.briefTitle ?? '')
+        setBriefSubtitle(br.briefSubtitle ?? '')
+        setPreparedFor(br.preparedFor ?? dossier.house?.displayName ?? '')
+        setHeroImageSrc(br.heroImageSrc ?? '')
+        setLogoVariant(br.logoVariant ?? 'ambience')
+        setAdvisorName(br.advisorName ?? '')
+        setAdvisorEmail(br.advisorEmail ?? '')
+        setAdvisorPhone(br.advisorPhone ?? '')
+        setShowAdvisorEmail((br as any).showAdvisorEmail ?? false)
+        setShowAdvisorPhone((br as any).showAdvisorPhone ?? false)
+        setShowTabConfirmation(br.showTabConfirmation ?? true)
+        setShowTabProgramme(br.showTabProgramme       ?? true)
+        setShowTabBrief(br.showTabBrief               ?? true)
+        setShowTabContacts(br.showTabContacts         ?? true)
+        setShowTabWelcome((br as any).showTabWelcome  ?? false)
         return
       }
-      setPreparedFor(dossier.house?.display_name ?? '')
+      setPreparedFor(dossier.house?.displayName ?? '')
       setBriefTitle(found.destinations[0]?.name ?? '')
     }
     load().catch(err => setLoadErr(err instanceof Error ? err.message : 'Load failed'))
@@ -825,19 +825,19 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
     }
   }
 
-  // S50 — Inline-save toggle on change. Mirrors public_view pattern.
-  // S54 — Generalised to handle tab visibility toggles alongside advisor visibility.
+  // S50 - Inline-save toggle on change. Mirrors public_view pattern.
+  // S54 - Generalised to handle tab visibility toggles alongside advisor visibility.
   async function persistToggle(
-    field: 'show_advisor_email' | 'show_advisor_phone'
-         | 'show_tab_confirmation' | 'show_tab_programme'
-         | 'show_tab_brief'        | 'show_tab_contacts'
-         | 'show_tab_welcome',
+    field: 'showAdvisorEmail' | 'showAdvisorPhone'
+         | 'showTabConfirmation' | 'showTabProgramme'
+         | 'showTabBrief'        | 'showTabContacts'
+         | 'showTabWelcome',
     value: boolean,
   ) {
     if (!trip || !house) return
     try {
       await upsertEngagementBrief(trip.id, house.id, { [field]: value } as any)
-    } catch { /* silent — UI already updated optimistically */ }
+    } catch { /* silent - UI already updated optimistically */ }
   }
 
   async function handleSave() {
@@ -845,20 +845,20 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
     setSaving(true); setSaveErr(null); setSaved(false)
     try {
       const patch: EngagementBriefPatch = {
-        brief_title:           briefTitle    || null,
-        brief_subtitle:        briefSubtitle || null,
-        prepared_for:          preparedFor   || null,
-        hero_image_src:        heroImageSrc  || null,
-        logo_variant:          logoVariant   || null,
-        advisor_name:          advisorName   || null,
-        advisor_email:         advisorEmail  || null,
-        advisor_phone:         advisorPhone  || null,
-        show_advisor_email:    showAdvisorEmail,
-        show_advisor_phone:    showAdvisorPhone,
-        show_tab_confirmation: showTabConfirmation,
-        show_tab_programme:    showTabProgramme,
-        show_tab_brief:        showTabBrief,
-        show_tab_contacts:     showTabContacts,
+        briefTitle:           briefTitle    || null,
+        briefSubtitle:        briefSubtitle || null,
+        preparedFor:          preparedFor   || null,
+        heroImageSrc:        heroImageSrc  || null,
+        logoVariant:          logoVariant   || null,
+        advisorName:          advisorName   || null,
+        advisorEmail:         advisorEmail  || null,
+        advisorPhone:         advisorPhone  || null,
+        showAdvisorEmail:    showAdvisorEmail,
+        showAdvisorPhone:    showAdvisorPhone,
+        showTabConfirmation: showTabConfirmation,
+        showTabProgramme:    showTabProgramme,
+        showTabBrief:        showTabBrief,
+        showTabContacts:     showTabContacts,
       }
       const savedBrief = await upsertEngagementBrief(trip.id, house.id, patch)
       setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
@@ -896,14 +896,14 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
           return {
             ...r,
             ...(draft ? {
-              guest_name:        draft.guest_name        || r.guest_name,
-              room_name:         draft.room_name         || r.room_name,
-              party_composition: draft.party_composition || r.party_composition,
+              guestName:        draft.guestName        || r.guestName,
+              roomName:         draft.roomName         || r.roomName,
+              partyComposition: draft.partyComposition || r.partyComposition,
               notes:             draft.notes             || r.notes,
-              additional_guests: draft.additional_guests.length ? draft.additional_guests : r.additional_guests,
-              resolved_additional_guests: r.resolved_additional_guests ?? [],
+              additionalGuests: draft.additionalGuests.length ? draft.additionalGuests : r.additionalGuests,
+              resolvedAdditionalGuests: r.resolvedAdditionalGuests ?? [],
             } : {}),
-            ...(imgSrc ? { brief_image_src: imgSrc } : {}),
+            ...(imgSrc ? { briefImageSrc: imgSrc } : {}),
           }
         }),
       })),
@@ -915,42 +915,42 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       return {
         ...aux,
         name:                d.name                || aux.name,
-        element_type:        aux.element_type,
+        elementType:        aux.elementType,
         origin:              d.origin              || aux.origin,
         destination:         d.destination         || aux.destination,
-        start_date:          d.start_date          || aux.start_date,
-        start_time:          d.start_time          || aux.start_time,
-        end_date:            d.end_date            || aux.end_date,
-        end_time:            d.end_time            || aux.end_time,
-        booked_by:           d.booked_by           || aux.booked_by,
+        startDate:          d.startDate          || aux.startDate,
+        startTime:          d.startTime          || aux.startTime,
+        endDate:            d.endDate            || aux.endDate,
+        endTime:            d.endTime            || aux.endTime,
+        bookedBy:           d.bookedBy           || aux.bookedBy,
         notes:               d.notes               || aux.notes,
-        supplier_id: d.supplier_id || aux.supplier_id,
-        airline_name:        d.airline_name        || aux.airline_name,
-        flight_number:       d.flight_number       || aux.flight_number,
-        depart_airport:      d.depart_airport      || aux.depart_airport,
-        arrive_airport:      d.arrive_airport      || aux.arrive_airport,
-        cabin_class:         d.cabin_class         || aux.cabin_class,
-        seat_numbers:        d.seat_numbers        || (aux as any).seat_numbers,
-        aircraft_type:       d.aircraft_type       || aux.aircraft_type,
+        supplierId: d.supplierId || aux.supplierId,
+        airlineName:        d.airlineName        || aux.airlineName,
+        flightNumber:       d.flightNumber       || aux.flightNumber,
+        departAirport:      d.departAirport      || aux.departAirport,
+        arriveAirport:      d.arriveAirport      || aux.arriveAirport,
+        cabinClass:         d.cabinClass         || aux.cabinClass,
+        seatNumbers:        d.seatNumbers        || (aux as any).seatNumbers,
+        aircraftType:       d.aircraftType       || aux.aircraftType,
       }
     })
 
     handleDownloadBrief({
       trip:            mergedTrip,
       brief:           trip.brief ?? ({
-        brief_title:    briefTitle    || null,
-        brief_subtitle: briefSubtitle || null,
-        prepared_for:   preparedFor   || null,
-        hero_image_src: heroImageSrc  || null,
-        logo_variant:   logoVariant   || null,
-        advisor_name:   advisorName   || null,
-        advisor_email:  advisorEmail  || null,
-        advisor_phone:  advisorPhone  || null,
-        show_advisor_email: showAdvisorEmail,
-        show_advisor_phone: showAdvisorPhone,
+        briefTitle:    briefTitle    || null,
+        briefSubtitle: briefSubtitle || null,
+        preparedFor:   preparedFor   || null,
+        heroImageSrc: heroImageSrc  || null,
+        logoVariant:   logoVariant   || null,
+        advisorName:   advisorName   || null,
+        advisorEmail:  advisorEmail  || null,
+        advisorPhone:  advisorPhone  || null,
+        showAdvisorEmail: showAdvisorEmail,
+        showAdvisorPhone: showAdvisorPhone,
       } as any),
       house,
-      destinationName: trip.destinations[0]?.name ?? trip.journey_code,
+      destinationName: trip.destinations[0]?.name ?? trip.journeyCode,
       heroImageData:   heroData,
       elements:     mergedAux,
       guestDisplayName: null,
@@ -989,7 +989,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
     </div>
   )
 
-  const hasVisibleAux = elements.filter(a => a.brief_show !== false).length > 0
+  const hasVisibleAux = elements.filter(a => a.briefShow !== false).length > 0
 
   return (
     <div style={{ minHeight: '100vh', background: A.bg, fontFamily: A.font, color: A.text }}>
@@ -997,7 +997,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: A.bgCard, borderBottom: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 12, padding: '0 24px', height: 50 }}>
         <button onClick={() => navigateAdmin({ product: 'house', tab: 'houses' })} style={{ ...btnBase, background: 'transparent', color: A.muted, border: `1px solid ${A.border}`, padding: '4px 10px', fontSize: 10 }}>← Houses</button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.journey_code}</span>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', fontWeight: 700, color: A.text, letterSpacing: '0.04em' }}>{trip.journeyCode}</span>
           <span style={{ fontSize: 10, color: A.muted }}>Confirmation Brief</span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1070,7 +1070,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
                 </div>
               </Field>
               <Field label='Prepared For'>
-                <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.display_name ?? ''} />
+                <input style={inputStyle} value={preparedFor} onChange={e => setPreparedFor(e.target.value)} placeholder={house?.displayName ?? ''} />
               </Field>
               <Field label='Public View'>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1095,7 +1095,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
                     }} />
                   </button>
                   <div style={{ flex: 1, fontSize: 10, color: publicView ? A.gold : A.faint, fontFamily: A.font, letterSpacing: '0.04em' }}>
-                    {publicView ? 'Client URL is live' : 'Hidden — client URL returns not found'}
+                    {publicView ? 'Client URL is live' : 'Hidden - client URL returns not found'}
                   </div>
                 </div>
               </Field>
@@ -1123,7 +1123,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
             </div>
           </section>
 
-          {/* S54 — Tabs section. Per-trip control of which tabs render on the
+          {/* S54 - Tabs section. Per-trip control of which tabs render on the
               public ImmerseConfirmedSections. All default to true (visible). */}
           <section>
             <div style={sectionHeadStyle}>Tabs</div>
@@ -1132,11 +1132,11 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {([
-                { key: 'welcome',      label: 'Welcome Letter', value: showTabWelcome,      setter: setShowTabWelcome,      field: 'show_tab_welcome'      as const },
-                { key: 'confirmation', label: 'Confirmation', value: showTabConfirmation, setter: setShowTabConfirmation, field: 'show_tab_confirmation' as const },
-                { key: 'programme',    label: 'Programme',    value: showTabProgramme,    setter: setShowTabProgramme,    field: 'show_tab_programme'    as const },
-                { key: 'brief',        label: 'Brief',        value: showTabBrief,        setter: setShowTabBrief,        field: 'show_tab_brief'        as const },
-                { key: 'contacts',     label: 'Contacts',     value: showTabContacts,     setter: setShowTabContacts,     field: 'show_tab_contacts'     as const },
+                { key: 'welcome',      label: 'Welcome Letter', value: showTabWelcome,      setter: setShowTabWelcome,      field: 'showTabWelcome'      as const },
+                { key: 'confirmation', label: 'Confirmation', value: showTabConfirmation, setter: setShowTabConfirmation, field: 'showTabConfirmation' as const },
+                { key: 'programme',    label: 'Programme',    value: showTabProgramme,    setter: setShowTabProgramme,    field: 'showTabProgramme'    as const },
+                { key: 'brief',        label: 'Brief',        value: showTabBrief,        setter: setShowTabBrief,        field: 'showTabBrief'        as const },
+                { key: 'contacts',     label: 'Contacts',     value: showTabContacts,     setter: setShowTabContacts,     field: 'showTabContacts'     as const },
               ]).map(t => (
                 <div key={t.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
                   <label style={{ ...labelStyle, marginBottom: 0 }}>{t.label}</label>
@@ -1150,11 +1150,11 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
             </div>
           </section>
 
-          {/* S50 — Contacts section. advisor_* fields with inline visibility toggles. */}
+          {/* S50 - Contacts section. advisor_* fields with inline visibility toggles. */}
           <section>
             <div style={sectionHeadStyle}>Contacts</div>
             <p style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>
-              Travel advisor details shown on the public Contacts tab. Each field can be hidden independently — the name remains visible but email and phone are gated.
+              Travel advisor details shown on the public Contacts tab. Each field can be hidden independently - the name remains visible but email and phone are gated.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <Field label='Advisor Name'>
@@ -1171,7 +1171,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
                   <label style={labelStyle}>Advisor Email</label>
                   <VisibilityToggle
                     on={showAdvisorEmail}
-                    onChange={v => { setShowAdvisorEmail(v); persistToggle('show_advisor_email', v) }}
+                    onChange={v => { setShowAdvisorEmail(v); persistToggle('showAdvisorEmail', v) }}
                     label='Show advisor email on Contacts tab'
                   />
                 </div>
@@ -1189,7 +1189,7 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
                   <label style={labelStyle}>Advisor Phone</label>
                   <VisibilityToggle
                     on={showAdvisorPhone}
-                    onChange={v => { setShowAdvisorPhone(v); persistToggle('show_advisor_phone', v) }}
+                    onChange={v => { setShowAdvisorPhone(v); persistToggle('showAdvisorPhone', v) }}
                     label='Show advisor phone on Contacts tab'
                   />
                 </div>
@@ -1217,8 +1217,8 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
                     </div>
                     <BookingRoomsEditor
                       booking={b}
-                      partyLabel={preparedFor || house?.display_name || null}
-                      imagePresetPath={trip.destinations[0]?.storage_path ? `${trip.destinations[0].storage_path}/accom` : undefined}
+                      partyLabel={preparedFor || house?.displayName || null}
+                      imagePresetPath={trip.destinations[0]?.storagePath ? `${trip.destinations[0].storagePath}/accom` : undefined}
                       roomDrafts={roomDrafts}
                       onRoomDraftsChange={setRoomDrafts}
                       roomImageSrcs={roomImageSrcs}
@@ -1267,18 +1267,18 @@ export default function BriefEditorPage({ journeyId }: { journeyId: string }) {
       {pickerOpen && (
         <AssetPicker
           onClose={() => setPickerOpen(false)}
-          presetPath={trip.destinations[0]?.storage_path ?? undefined}
+          presetPath={trip.destinations[0]?.storagePath ?? undefined}
           onSelected={async url => {
             setHeroImageSrc(url)
             setPickerOpen(false)
             if (trip && house) {
               try {
                 const savedBrief = await upsertEngagementBrief(trip.id, house.id, {
-                  brief_title:    briefTitle    || null,
-                  brief_subtitle: briefSubtitle || null,
-                  prepared_for:   preparedFor   || null,
-                  hero_image_src: url,
-                  logo_variant:   logoVariant   || null,
+                  briefTitle:    briefTitle    || null,
+                  briefSubtitle: briefSubtitle || null,
+                  preparedFor:   preparedFor   || null,
+                  heroImageSrc: url,
+                  logoVariant:   logoVariant   || null,
                 })
                 setTrip(prev => prev ? { ...prev, brief: savedBrief } : prev)
               } catch { /* silent */ }

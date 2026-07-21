@@ -3,11 +3,11 @@
  * Canonical date rendering across the travel app.
  *
  * Standing rule (S23 canon):
- * — All dates render as DD Month YYYY (e.g. "25 April 2026")
- * — Date-only ISO strings (YYYY-MM-DD) MUST route through formatDateOnly()
- * — Never pass a YYYY-MM-DD string to `new Date(iso).toLocaleDateString()`:
+ * - All dates render as DD Month YYYY (e.g. "25 April 2026")
+ * - Date-only ISO strings (YYYY-MM-DD) MUST route through formatDateOnly()
+ * - Never pass a YYYY-MM-DD string to `new Date(iso).toLocaleDateString()`:
  *   `new Date('2026-04-25')` parses as UTC midnight, then .toLocaleDateString()
- *   renders in local time — users west of UTC see -1 day.
+ *   renders in local time - users west of UTC see -1 day.
  *
  * Month names are hardcoded rather than locale-derived so output is stable
  * across environments and independent of any future i18n work.
@@ -15,9 +15,9 @@
  * Created S23. Extracted from PropertyIntroSection.tsx after a date-only
  * rendering audit found six Postgres date columns consumed across three files.
  *
- * Last updated: S53 — Two new formatters added:
- *   formatMonthYear   — "May 2026"    — guide accuracy disclaimers
- *   formatDateLong    — "01 July 2026" — general app DD Month YYYY
+ * Last updated: S53 - Two new formatters added:
+ *   formatMonthYear   - "May 2026"    - guide accuracy disclaimers
+ *   formatDateLong    - "01 July 2026" - general app DD Month YYYY
  * Both follow the UTC-safe parse pattern established in S23.
  */
 
@@ -39,7 +39,7 @@ const DAYS_OF_WEEK_SHORT = [
 ]
 
 // ── Canonical formatter ──────────────────────────────────────────────────────
-// Accepts YYYY-MM-DD (optionally followed by a time component — stripped).
+// Accepts YYYY-MM-DD (optionally followed by a time component - stripped).
 // Returns "25 April 2026".
 // Returns the input unchanged if it doesn't match the YYYY-MM-DD prefix.
 
@@ -89,7 +89,7 @@ export function formatDateRangeWeekday(start: string | null | undefined, end: st
 }
 
 // ── Short form ───────────────────────────────────────────────────────────────
-// Returns "25 Apr 2026" — for compact contexts like admin list views.
+// Returns "25 Apr 2026" - for compact contexts like admin list views.
 
 export function formatDateShort(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -124,7 +124,7 @@ export function formatDateShortRange(start: string | null | undefined, end: stri
 }
 
 // ── Month + year ─────────────────────────────────────────────────────────────
-// Returns "May 2026" — used in guide accuracy disclaimers where a precise day
+// Returns "May 2026" - used in guide accuracy disclaimers where a precise day
 // is not meaningful; the month of currency is the relevant signal.
 // First-of-month ISO values (2026-05-01) render as "May 2026".
 
@@ -137,7 +137,7 @@ export function formatMonthYear(iso: string | null | undefined): string {
   return `${MONTHS[month]} ${year}`
 }
 
-// ── Month+year short — "Jan 2027" ────────────────────────────────────────────
+// ── Month+year short - "Jan 2027" ────────────────────────────────────────────
 export function formatMonthYearShort(iso: string | null | undefined): string {
   if (!iso) return ''
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -146,7 +146,7 @@ export function formatMonthYearShort(iso: string | null | undefined): string {
   const month = parseInt(m[2], 10) - 1
   return `${MONTHS_SHORT[month]} ${year}`
 }
-// ── Date short upper — "03 JAN 2027" ─────────────────────────────────────────
+// ── Date short upper - "03 JAN 2027" ─────────────────────────────────────────
 // Zero-padded day, uppercase short month, 4-digit year.
 // Used for accuracy_date display and houseUi date badges.
 export function formatDateShortUpper(iso: string | null | undefined): string {
@@ -158,7 +158,7 @@ export function formatDateShortUpper(iso: string | null | undefined): string {
   const year  = m[1]
   return `${day} ${month} ${year}`
 }
-// ── Month upper — "JAN" ───────────────────────────────────────────────────────
+// ── Month upper - "JAN" ───────────────────────────────────────────────────────
 // Uppercase 3-letter month only. Used in PDF welcome letter date badge.
 export function formatMonthUpper(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -166,7 +166,7 @@ export function formatMonthUpper(iso: string | null | undefined): string {
   if (!m) return iso
   return MONTHS_SHORT[parseInt(m[2], 10) - 1].toUpperCase()
 }
-// ── DateTime — "5 Jan 2027 · 15:45" ──────────────────────────────────────────
+// ── DateTime - "5 Jan 2027 · 15:45" ──────────────────────────────────────────
 // ISO timestamp → canonical date + time. Uses 24h fmtTime for consistency.
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -176,7 +176,7 @@ export function formatDateTime(iso: string | null | undefined): string {
   if (!timePart || timePart === '00:00') return date
   return `${date} · ${fmtTime(timePart)}`
 }
-// ── Month+day short — "Jan 5" ─────────────────────────────────────────────────
+// ── Month+day short - "Jan 5" ─────────────────────────────────────────────────
 // Short month + day, no year. Used for message timestamps.
 export function formatMonthDay(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -184,11 +184,11 @@ export function formatMonthDay(iso: string | null | undefined): string {
   if (!m) return iso
   return `${MONTHS_SHORT[parseInt(m[2], 10) - 1]} ${parseInt(m[3], 10)}`
 }
-// ── Today — local browser date ────────────────────────────────────────────────
+// ── Today - local browser date ────────────────────────────────────────────────
 // Returns YYYY-MM-DD in the user's local timezone. Safe for comparing against
 // Postgres date columns (which are also date-only, no tz component).
 // DEBT P2: destination-aware date requires global_destinations.timezone (IANA)
-// + Intl.DateTimeFormat lookup. Currently uses browser local time — acceptable
+// + Intl.DateTimeFormat lookup. Currently uses browser local time - acceptable
 // since guests are typically in or traveling to the destination.
 
 export function localDateStr(): string {
@@ -200,7 +200,7 @@ export function localDateStr(): string {
 // "15:05" -> "15:05 (pm)", "08:40" -> "08:40 (am)", "00:30" -> "00:30 (am)".
 // 24-hour clock with am/pm period in parens (am: hour < 12, pm: hour >= 12;
 // midnight is am, noon is pm). Single source for time display across every
-// surface — admin editors, client page, all PDFs.
+// surface - admin editors, client page, all PDFs.
 
 export function fmtTime(t: string | null | undefined): string {
   if (!t) return ''

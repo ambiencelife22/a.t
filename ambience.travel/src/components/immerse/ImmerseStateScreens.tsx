@@ -1,26 +1,26 @@
-// ImmerseStateScreens.tsx — Shared loading + error screens for immerse routes.
+// ImmerseStateScreens.tsx - Shared loading + error screens for immerse routes.
 // Consumed by ImmerseEngagementRoute + ImmerseEngagementSurface (overview and
 // the unified detail render).
-// Both screens render *inside* an ImmerseLayout — the layout is the caller's
+// Both screens render *inside* an ImmerseLayout - the layout is the caller's
 // responsibility, so the screens themselves are chrome-free panels designed
 // to fill the layout's content area.
 //
 // Token policy:
-//   ImmerseLayout uses ID.bg as the page background (dark — #0E110E ish).
+//   ImmerseLayout uses ID.bg as the page background (dark - #0E110E ish).
 //   Both screens render on that dark surface, so colours come from the ID.*
 //   token family directly. Earlier hardcoded hex strings made the message
-//   text near-black on near-black — invisible on the immerse dark surface.
+//   text near-black on near-black - invisible on the immerse dark surface.
 //
-// Last updated: S32F — Added TravelLoadingScreen: branded full-screen loading
+// Last updated: S32F - Added TravelLoadingScreen: branded full-screen loading
 //   state with emblem shimmer + "Preparing Your Experiences" copy. Used by
 //   DestinationPage (and engagement load) where the full branded experience
-//   is wanted. Existing LoadingScreen kept as-is — minimal text fallback for
+//   is wanted. Existing LoadingScreen kept as-is - minimal text fallback for
 //   contexts where chrome is undesirable. Min display time prevents flash.
-// Prior: S32 — Replaced hardcoded hex (#171917, #7A8476, #C9B88E)
+// Prior: S32 - Replaced hardcoded hex (#171917, #7A8476, #C9B88E)
 //   with ID.text / ID.muted / ID.gold tokens from landingColors. The dark-on-
 //   dark "This proposal is not available" message is now legible. Outbound
 //   link goes to ambience.travel marketing site.
-// Prior: S30E perf — Extracted from ImmerseEngagementRoute to fix the
+// Prior: S30E perf - Extracted from ImmerseEngagementRoute to fix the
 //   destination subpage white-flash. DestinationPage was returning `null`
 //   while loading, producing an unstyled gap between unmount and mount.
 //   Both consumers now render LoadingScreen inside ImmerseLayout during
@@ -52,13 +52,13 @@ export function LoadingScreen() {
 
 // ─── Branded full-screen loader (S32F) ───────────────────────────────────────
 // Gold-shimmer emblem + "Preparing Your Experience".
-// Renders inside ImmerseLayout — caller owns chrome.
+// Renders inside ImmerseLayout - caller owns chrome.
 //
 // Sequence:
-//   0ms       — screen appears, emblem fades in
-//   180ms     — copy fades in
-//   continuous — emblem shimmer sweep
-//   on ready  — fades out (300ms), then unmounts
+//   0ms       - screen appears, emblem fades in
+//   180ms     - copy fades in
+//   continuous - emblem shimmer sweep
+//   on ready  - fades out (300ms), then unmounts
 //
 // minDuration prevents flash on cached loads.
 
@@ -124,7 +124,7 @@ export function TravelLoadingScreen({
             opacity:  0.85,
           }}
         />
-        {/* Gold sweep overlay — masked to emblem shape via parent overflow:hidden + border-radius */}
+        {/* Gold sweep overlay - masked to emblem shape via parent overflow:hidden + border-radius */}
         <div
           style={{
             position:       'absolute',

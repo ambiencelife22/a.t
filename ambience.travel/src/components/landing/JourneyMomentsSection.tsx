@@ -1,5 +1,5 @@
 /* JourneyMomentsSection.tsx
- * Four journey moment cards — dark themed.
+ * Four journey moment cards - dark themed.
  * Animations:
  * - Cards dealt left-to-right driven by scroll progress
  * - Each card slides from left with slight rotation, settles as it lands

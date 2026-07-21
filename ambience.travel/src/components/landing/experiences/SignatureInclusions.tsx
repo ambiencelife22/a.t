@@ -1,4 +1,4 @@
-// SignatureInclusions.tsx — inclusions and exclusions section for signature experience pages
+// SignatureInclusions.tsx - inclusions and exclusions section for signature experience pages
 // Owns the two-panel included/excluded list only.
 // Last updated: S9
 

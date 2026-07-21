@@ -1,7 +1,7 @@
 /* CardOverridesEditor.tsx
  * Editor for travel_overlay_engagement_content_card_overrides.
  *
- * Last updated: S38 — Removed canonical_slug display from edit modal header
+ * Last updated: S38 - Removed canonical_slug display from edit modal header
  *   and add-override picker rows. UUID-only throughout.
  * Prior: S334
  */
@@ -14,10 +14,8 @@ import {
   insertCardOverride,
   deleteCardOverride,
   searchCanonicalCards,
-  type CardOverride,
-  type CardCanonicalOption,
-  type CardKind,
 } from '../../queries/queriesAdminCardOverrides'
+import type { CardOverride, CardCanonicalOption, CardKind } from '../../types/typesCards'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { A } from '../../tokens/tokensAdmin'
 
@@ -150,17 +148,17 @@ function OverrideRowCard({
   onDelete:       (row: CardOverride) => void
   onToggleActive: (row: CardOverride) => void
 }) {
-  const thumb = thumbSrc(row.image_src_override ?? row.canonical_image_src)
+  const thumb = thumbSrc(row.imageSrcOverride ?? row.canonicalImageSrc)
   const overrideCount = [
-    row.kicker_override, row.name_override, row.tagline_override,
-    row.body_override, row.bullets_heading_override, row.image_src_override,
-    row.image_alt_override, row.image_credit_override,
-    row.image_credit_url_override, row.image_license_override,
-  ].filter(v => v !== null).length + (row.bullets_override !== null ? 1 : 0)
+    row.kickerOverride, row.nameOverride, row.taglineOverride,
+    row.bodyOverride, row.bulletsHeadingOverride, row.imageSrcOverride,
+    row.imageAltOverride, row.imageCreditOverride,
+    row.imageCreditUrlOverride, row.imageLicenseOverride,
+  ].filter(v => v !== null).length + (row.bulletsOverride !== null ? 1 : 0)
 
   return (
     <div style={{
-      opacity: row.is_active ? 1 : 0.5,
+      opacity: row.isActive ? 1 : 0.5,
       background: A.bgInput, border: `1px solid ${A.border}`,
       borderRadius: 12, padding: '12px 14px',
       display: 'flex', alignItems: 'center', gap: 12,
@@ -176,12 +174,12 @@ function OverrideRowCard({
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {row.name_override ?? row.canonical_name ?? <span style={{ color: A.faint, fontStyle: 'italic' }}>(unknown)</span>}
+          {row.nameOverride ?? row.canonicalName ?? <span style={{ color: A.faint, fontStyle: 'italic' }}>(unknown)</span>}
         </div>
         <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-          {row.canonical_global_dest_slug ?? '—'}
+          {row.canonicalGlobalDestSlug ?? '-'}
           <span style={{ color: A.faint, marginLeft: 8 }}>· {overrideCount} override{overrideCount === 1 ? '' : 's'}</span>
-          {!row.is_active && (
+          {!row.isActive && (
             <span style={{ color: A.danger, marginLeft: 8, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               inactive
             </span>
@@ -190,7 +188,7 @@ function OverrideRowCard({
       </div>
 
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button onClick={() => onToggleActive(row)} style={btnGhost}>{row.is_active ? 'Deactivate' : 'Activate'}</button>
+        <button onClick={() => onToggleActive(row)} style={btnGhost}>{row.isActive ? 'Deactivate' : 'Activate'}</button>
         <button onClick={() => onEdit(row)} style={btnGhost}>Edit</button>
         <button onClick={() => onDelete(row)} style={btnDanger}>Delete</button>
       </div>
@@ -255,11 +253,11 @@ function EditModal({
               {row.kind === 'dining' ? 'Dining Override' : 'Experience Override'}
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>
-              {row.canonical_name ?? '(unknown)'}
+              {row.canonicalName ?? '(unknown)'}
             </div>
-            {row.canonical_global_dest_slug && (
+            {row.canonicalGlobalDestSlug && (
               <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
-                {row.canonical_global_dest_slug}
+                {row.canonicalGlobalDestSlug}
               </div>
             )}
           </div>
@@ -270,8 +268,8 @@ function EditModal({
           NULL = canonical flows through · '' (empty string) = hide on render · non-empty = override
         </div>
 
-        <Field label='is_active'>
-          <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
+        <Field label='isActive'>
+          <select style={inputStyle} value={String(draft.isActive)} onChange={e => patch('isActive', e.target.value === 'true')}>
             <option value='true'>true (card renders)</option>
             <option value='false'>false (card hidden on this engagement)</option>
           </select>
@@ -280,41 +278,41 @@ function EditModal({
         <CollapsibleSection title='Text Overrides' defaultOpen>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Field label='Kicker'>
-              <input style={inputStyle} value={draft.kicker_override ?? ''} onChange={e => patch('kicker_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.kickerOverride ?? ''} onChange={e => patch('kickerOverride', e.target.value || null)} />
             </Field>
             <Field label='Name'>
-              <input style={inputStyle} value={draft.name_override ?? ''} onChange={e => patch('name_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.nameOverride ?? ''} onChange={e => patch('nameOverride', e.target.value || null)} />
             </Field>
           </div>
           <Field label='Tagline'>
-            <input style={inputStyle} value={draft.tagline_override ?? ''} onChange={e => patch('tagline_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.taglineOverride ?? ''} onChange={e => patch('taglineOverride', e.target.value || null)} />
           </Field>
           <Field label='Body'>
-            <textarea style={textareaStyle} value={draft.body_override ?? ''} onChange={e => patch('body_override', e.target.value || null)} />
+            <textarea style={textareaStyle} value={draft.bodyOverride ?? ''} onChange={e => patch('bodyOverride', e.target.value || null)} />
           </Field>
           <Field label='Bullets Heading'>
-            <input style={inputStyle} value={draft.bullets_heading_override ?? ''} onChange={e => patch('bullets_heading_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.bulletsHeadingOverride ?? ''} onChange={e => patch('bulletsHeadingOverride', e.target.value || null)} />
           </Field>
-          <Field label='Bullets (jsonb — array of strings or null)'>
-            <JsonField value={draft.bullets_override} onChange={v => patch('bullets_override', v)} />
+          <Field label='Bullets (jsonb - array of strings or null)'>
+            <JsonField value={draft.bulletsOverride} onChange={v => patch('bulletsOverride', v)} />
           </Field>
         </CollapsibleSection>
 
         <CollapsibleSection title='Image Overrides' defaultOpen={false}>
           <Field label='Image Src'>
-            <ImageFieldWithUploader value={draft.image_src_override} onChange={v => patch('image_src_override', v)} />
+            <ImageFieldWithUploader value={draft.imageSrcOverride} onChange={v => patch('imageSrcOverride', v)} />
           </Field>
           <Field label='Image Alt'>
-            <input style={inputStyle} value={draft.image_alt_override ?? ''} onChange={e => patch('image_alt_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.imageAltOverride ?? ''} onChange={e => patch('imageAltOverride', e.target.value || null)} />
           </Field>
           <Field label='Image Credit'>
-            <input style={inputStyle} value={draft.image_credit_override ?? ''} onChange={e => patch('image_credit_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.imageCreditOverride ?? ''} onChange={e => patch('imageCreditOverride', e.target.value || null)} />
           </Field>
           <Field label='Image Credit URL'>
-            <input style={inputStyle} value={draft.image_credit_url_override ?? ''} onChange={e => patch('image_credit_url_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.imageCreditUrlOverride ?? ''} onChange={e => patch('imageCreditUrlOverride', e.target.value || null)} />
           </Field>
           <Field label='Image License'>
-            <input style={inputStyle} value={draft.image_license_override ?? ''} onChange={e => patch('image_license_override', e.target.value || null)} />
+            <input style={inputStyle} value={draft.imageLicenseOverride ?? ''} onChange={e => patch('imageLicenseOverride', e.target.value || null)} />
           </Field>
         </CollapsibleSection>
 
@@ -364,7 +362,7 @@ function AddOverrideModal({
     if (adding) return
     setAdding(true)
     try {
-      await insertCardOverride({ engagement_id: engagementId, kind: option.kind, card_id: option.id })
+      await insertCardOverride({ engagementId: engagementId, kind: option.kind, cardId: option.id })
       showToast(`Added ${option.name}.`, 'success')
       onAdded()
     } catch (e: unknown) {
@@ -421,9 +419,9 @@ function AddOverrideModal({
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: A.text }}>{c.name}</span>
-                {c.global_destination_slug && (
+                {c.globalDestinationSlug && (
                   <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                    {c.global_destination_slug}
+                    {c.globalDestinationSlug}
                   </span>
                 )}
               </div>
@@ -470,8 +468,8 @@ export default function CardOverridesEditor({
   const existingKeys = useMemo(() => {
     const s = new Set<string>()
     rows.forEach(r => {
-      if (r.dining_venue_id) s.add(`dining:${r.dining_venue_id}`)
-      if (r.experience_id)   s.add(`experience:${r.experience_id}`)
+      if (r.diningVenueId) s.add(`dining:${r.diningVenueId}`)
+      if (r.experienceId)   s.add(`experience:${r.experienceId}`)
     })
     return s
   }, [rows])
@@ -480,7 +478,7 @@ export default function CardOverridesEditor({
   const experience = useMemo(() => rows.filter(r => r.kind === 'experience'), [rows])
 
   async function handleDelete(row: CardOverride) {
-    if (!window.confirm(`Remove override for "${row.canonical_name ?? '(unknown)'}"?\n\nThis deletes the override row only. Cannot be undone.`)) return
+    if (!window.confirm(`Remove override for "${row.canonicalName ?? '(unknown)'}"?\n\nThis deletes the override row only. Cannot be undone.`)) return
     try {
       await deleteCardOverride(row.id)
       showToast('Override removed.', 'success')
@@ -492,8 +490,8 @@ export default function CardOverridesEditor({
 
   async function handleToggleActive(row: CardOverride) {
     try {
-      await updateCardOverride(row.id, { is_active: !row.is_active })
-      showToast(row.is_active ? 'Deactivated.' : 'Activated.', 'success')
+      await updateCardOverride(row.id, { isActive: !row.isActive })
+      showToast(row.isActive ? 'Deactivated.' : 'Activated.', 'success')
       load()
     } catch (e: unknown) {
       showToast(`Failed: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')

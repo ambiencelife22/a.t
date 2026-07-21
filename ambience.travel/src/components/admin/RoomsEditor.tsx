@@ -3,23 +3,23 @@
  * Mounts inside EngagementDetailTab between CardsEditor and Pricing Section.
  *
  * Surface: travel_overlay_rooms (overlay) joined to travel_accom_rooms (canon).
- * Pattern: list rows + edit modal — mirrors CardsEditor / DestinationRowsEditor.
+ * Pattern: list rows + edit modal - mirrors CardsEditor / DestinationRowsEditor.
  *
  * Modal fields:
- *   Canonical link  — room picker (rooms from hotels featured in this engagement)
- *   Presentation    — level_label, room_basis, room_name_override, is_active, sort_order
- *   Rates           — ambience_nightly_rate, non_negotiated_nightly_rate,
+ *   Canonical link  - room picker (rooms from hotels featured in this engagement)
+ *   Presentation    - level_label, room_basis, room_name_override, is_active, sort_order
+ *   Rates           - ambience_nightly_rate, non_negotiated_nightly_rate,
  *                     rate_cadence_id (dropdown), rate_suffix_override, tax_inclusive
- *   Room detail     — sqm/sqft overrides, bed_config_override, room_inclusions
- *   Benefits        — room_benefits (jsonb as newline textarea)
- *   Images          — hero_image_src_override, hero_image_alt_override, floorplan_src_override
+ *   Room detail     - sqm/sqft overrides, bed_config_override, room_inclusions
+ *   Benefits        - room_benefits (jsonb as newline textarea)
+ *   Images          - hero_image_src_override, hero_image_alt_override, floorplan_src_override
  *
- * Last updated: S43 — Phase 5 pass.
+ * Last updated: S43 - Phase 5 pass.
  *   - useToast -> useAdminToast throughout. showToast prop dropped.
  *   - EditRoomModal + AddRoomModal -> AdminModal primitive.
  *   - Section headers -> AdminSection.
  *   - Boolean <select> -> PillToggle.
- * Prior: S42 — initial build.
+ * Prior: S42 - initial build.
  */
 
 import { useEffect, useState, useMemo } from 'react'
@@ -48,13 +48,13 @@ import {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function displayRoomName(room: OverlayRoom): string {
-  if (room.room_name_override)  return room.room_name_override
-  if (room.canonical_room_name) return room.canonical_room_name
+  if (room.roomNameOverride)  return room.roomNameOverride
+  if (room.canonicalRoomName) return room.canonicalRoomName
   return '(unnamed room)'
 }
 
 function displayHotelName(room: OverlayRoom): string {
-  return room.canonical_hotel_name ?? '(no hotel linked)'
+  return room.canonicalHotelName ?? '(no hotel linked)'
 }
 
 function benefitsToText(benefits: string[] | null): string {
@@ -79,7 +79,7 @@ interface EditRoomModalProps {
 function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }: EditRoomModalProps) {
   const { success, error }                  = useAdminToast()
   const [draft, setDraft]                   = useState<OverlayRoom>({ ...room })
-  const [benefitsText, setBenefitsText]     = useState(benefitsToText(room.room_benefits))
+  const [benefitsText, setBenefitsText]     = useState(benefitsToText(room.roomBenefits))
   const [saving, setSaving]                 = useState(false)
 
   function patch<K extends keyof OverlayRoom>(k: K, v: OverlayRoom[K]) {
@@ -97,14 +97,14 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
       const payload: OverlayRoomPatch = {}
 
       const scalarFields: (keyof OverlayRoomPatch)[] = [
-        'room_id', 'level_label', 'room_basis', 'room_name_override',
-        'ambience_nightly_rate', 'non_negotiated_nightly_rate', 'public_nightly_rate',
-        'rate_cadence_id', 'rate_suffix_override', 'tax_inclusive',
-        'room_inclusions', 'bed_config_override', 'bedding_type',
-        'sqft_min', 'sqft_max', 'sqm_min', 'sqm_max',
-        'sqft_min_override', 'sqft_max_override', 'sqm_min_override', 'sqm_max_override',
-        'hero_image_src_override', 'hero_image_alt_override', 'floorplan_src_override',
-        'is_active', 'sort_order',
+        'roomId', 'levelLabel', 'roomBasis', 'roomNameOverride',
+        'ambienceNightlyRate', 'nonNegotiatedNightlyRate', 'publicNightlyRate',
+        'rateCadenceId', 'rateSuffixOverride', 'taxInclusive',
+        'roomInclusions', 'bedConfigOverride', 'beddingType',
+        'sqftMin', 'sqftMax', 'sqmMin', 'sqmMax',
+        'sqftMinOverride', 'sqftMaxOverride', 'sqmMinOverride', 'sqmMaxOverride',
+        'heroImageSrcOverride', 'heroImageAltOverride', 'floorplanSrcOverride',
+        'isActive', 'sortOrder',
       ]
 
       for (const f of scalarFields) {
@@ -113,8 +113,8 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         }
       }
 
-      if (JSON.stringify(parsedBenefits) !== JSON.stringify(room.room_benefits ?? null)) {
-        payload.room_benefits = parsedBenefits
+      if (JSON.stringify(parsedBenefits) !== JSON.stringify(room.roomBenefits ?? null)) {
+        payload.roomBenefits = parsedBenefits
       }
 
       if (Object.keys(payload).length === 0) {
@@ -133,7 +133,7 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
     setSaving(false)
   }
 
-  const selectedCanon = canonicalRooms.find(r => r.id === draft.room_id) ?? null
+  const selectedCanon = canonicalRooms.find(r => r.id === draft.roomId) ?? null
 
   return (
     <AdminModal
@@ -157,22 +157,22 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
             <Field label='Linked Room'>
               <select
                 style={inputStyle}
-                value={draft.room_id ?? ''}
-                onChange={e => patch('room_id', e.target.value || null)}
+                value={draft.roomId ?? ''}
+                onChange={e => patch('roomId', e.target.value || null)}
               >
                 <option value=''>No canonical link</option>
                 {canonicalRooms.map(r => (
                   <option key={r.id} value={r.id}>
-                    {r.hotel_name} — {r.room_name ?? r.slug ?? r.id}
+                    {r.hotelName} - {r.roomName ?? r.slug ?? r.id}
                   </option>
                 ))}
               </select>
             </Field>
             {selectedCanon && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                <div><span style={{ color: A.muted }}>Category</span><br />{selectedCanon.category_slug ?? '—'}</div>
-                <div><span style={{ color: A.muted }}>Size</span><br />{selectedCanon.sqm_min ?? '—'} sqm / {selectedCanon.sqft_min ?? '—'} sqft</div>
-                <div><span style={{ color: A.muted }}>Bedding</span><br />{selectedCanon.bedding_configurations?.map(s => beddingLabel(s) ?? s).join(' or ') ?? selectedCanon.bed_config ?? '—'}</div>
+                <div><span style={{ color: A.muted }}>Category</span><br />{selectedCanon.categorySlug ?? '-'}</div>
+                <div><span style={{ color: A.muted }}>Size</span><br />{selectedCanon.sqmMin ?? '-'} sqm / {selectedCanon.sqftMin ?? '-'} sqft</div>
+                <div><span style={{ color: A.muted }}>Bedding</span><br />{selectedCanon.beddingConfigurations?.map(s => beddingLabel(s) ?? s).join(' or ') ?? selectedCanon.bedConfig ?? '-'}</div>
               </div>
             )}
           </div>
@@ -182,21 +182,21 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         <AdminSection title='Presentation'>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label='Level Label'>
-              <input style={inputStyle} value={draft.level_label ?? ''} onChange={e => patch('level_label', e.target.value || null)} placeholder='Highlighted, Alternative 1...' />
+              <input style={inputStyle} value={draft.levelLabel ?? ''} onChange={e => patch('levelLabel', e.target.value || null)} placeholder='Highlighted, Alternative 1...' />
             </Field>
             <Field label='Room Name Override'>
-              <input style={inputStyle} value={draft.room_name_override ?? ''} onChange={e => patch('room_name_override', e.target.value || null)} placeholder='Leave blank to use canonical name' />
+              <input style={inputStyle} value={draft.roomNameOverride ?? ''} onChange={e => patch('roomNameOverride', e.target.value || null)} placeholder='Leave blank to use canonical name' />
             </Field>
             <Field label='Room Basis'>
-              <input style={inputStyle} value={draft.room_basis ?? ''} onChange={e => patch('room_basis', e.target.value || null)} placeholder='Bed and Breakfast, Room Only...' />
+              <input style={inputStyle} value={draft.roomBasis ?? ''} onChange={e => patch('roomBasis', e.target.value || null)} placeholder='Bed and Breakfast, Room Only...' />
             </Field>
             <Field label='Sort Order'>
-              <input style={inputStyle} type='number' value={draft.sort_order} onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)} />
+              <input style={inputStyle} type='number' value={draft.sortOrder} onChange={e => patch('sortOrder', parseInt(e.target.value, 10) || 0)} />
             </Field>
             <Field label='Active'>
               <PillToggle
-                value={draft.is_active ?? true}
-                onChange={v => patch('is_active', v)}
+                value={draft.isActive ?? true}
+                onChange={v => patch('isActive', v)}
                 labelTrue='Active'
                 labelFalse='Hidden'
               />
@@ -208,16 +208,16 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         <AdminSection title='Rates'>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label='Ambience Rate'>
-              <input style={inputStyle} value={draft.ambience_nightly_rate ?? ''} onChange={e => patch('ambience_nightly_rate', e.target.value || null)} placeholder='USD $5,550' />
+              <input style={inputStyle} value={draft.ambienceNightlyRate ?? ''} onChange={e => patch('ambienceNightlyRate', e.target.value || null)} placeholder='USD $5,550' />
             </Field>
             <Field label='Non-Negotiated Rate'>
-              <input style={inputStyle} value={draft.non_negotiated_nightly_rate ?? ''} onChange={e => patch('non_negotiated_nightly_rate', e.target.value || null)} placeholder='USD $6,200' />
+              <input style={inputStyle} value={draft.nonNegotiatedNightlyRate ?? ''} onChange={e => patch('nonNegotiatedNightlyRate', e.target.value || null)} placeholder='USD $6,200' />
             </Field>
             <Field label='Public Rate'>
-              <input style={inputStyle} value={draft.public_nightly_rate ?? ''} onChange={e => patch('public_nightly_rate', e.target.value || null)} placeholder='USD $7,500' />
+              <input style={inputStyle} value={draft.publicNightlyRate ?? ''} onChange={e => patch('publicNightlyRate', e.target.value || null)} placeholder='USD $7,500' />
             </Field>
             <Field label='Rate Cadence'>
-              <select style={inputStyle} value={draft.rate_cadence_id ?? ''} onChange={e => patch('rate_cadence_id', e.target.value || null)}>
+              <select style={inputStyle} value={draft.rateCadenceId ?? ''} onChange={e => patch('rateCadenceId', e.target.value || null)}>
                 <option value=''>None</option>
                 {rateCadences.map(rc => (
                   <option key={rc.id} value={rc.id}>{rc.label}</option>
@@ -225,12 +225,12 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
               </select>
             </Field>
             <Field label='Rate Suffix Override'>
-              <input style={inputStyle} value={draft.rate_suffix_override ?? ''} onChange={e => patch('rate_suffix_override', e.target.value || null)} placeholder='++ Taxes & Fees' />
+              <input style={inputStyle} value={draft.rateSuffixOverride ?? ''} onChange={e => patch('rateSuffixOverride', e.target.value || null)} placeholder='++ Taxes & Fees' />
             </Field>
             <Field label='Tax Inclusive'>
               <PillToggle
-                value={draft.tax_inclusive ?? false}
-                onChange={v => patch('tax_inclusive', v)}
+                value={draft.taxInclusive ?? false}
+                onChange={v => patch('taxInclusive', v)}
                 labelTrue='Yes'
                 labelFalse='No'
               />
@@ -242,7 +242,7 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         <AdminSection title='Room Detail'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Field label='Bedding Type'>
-              <select style={inputStyle} value={draft.bedding_type ?? ''} onChange={e => patch('bedding_type', e.target.value || null)}>
+              <select style={inputStyle} value={draft.beddingType ?? ''} onChange={e => patch('beddingType', e.target.value || null)}>
                 <option value=''>TBD on arrival</option>
                 <option value='king'>King</option>
                 <option value='cal_king'>California King</option>
@@ -260,20 +260,20 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
               </select>
             </Field>
             <Field label='Room Inclusions'>
-              <textarea style={{ ...textareaStyle, minHeight: 72 }} value={draft.room_inclusions ?? ''} onChange={e => patch('room_inclusions', e.target.value || null)} placeholder='Two-Level Residence. Three full marble bathrooms...' />
+              <textarea style={{ ...textareaStyle, minHeight: 72 }} value={draft.roomInclusions ?? ''} onChange={e => patch('roomInclusions', e.target.value || null)} placeholder='Two-Level Residence. Three full marble bathrooms...' />
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
               <Field label='sqm min override'>
-                <input style={inputStyle} type='number' value={draft.sqm_min_override ?? ''} onChange={e => numericPatch('sqm_min_override', e.target.value)} />
+                <input style={inputStyle} type='number' value={draft.sqmMinOverride ?? ''} onChange={e => numericPatch('sqmMinOverride', e.target.value)} />
               </Field>
               <Field label='sqm max override'>
-                <input style={inputStyle} type='number' value={draft.sqm_max_override ?? ''} onChange={e => numericPatch('sqm_max_override', e.target.value)} />
+                <input style={inputStyle} type='number' value={draft.sqmMaxOverride ?? ''} onChange={e => numericPatch('sqmMaxOverride', e.target.value)} />
               </Field>
               <Field label='sqft min override'>
-                <input style={inputStyle} type='number' value={draft.sqft_min_override ?? ''} onChange={e => numericPatch('sqft_min_override', e.target.value)} />
+                <input style={inputStyle} type='number' value={draft.sqftMinOverride ?? ''} onChange={e => numericPatch('sqftMinOverride', e.target.value)} />
               </Field>
               <Field label='sqft max override'>
-                <input style={inputStyle} type='number' value={draft.sqft_max_override ?? ''} onChange={e => numericPatch('sqft_max_override', e.target.value)} />
+                <input style={inputStyle} type='number' value={draft.sqftMaxOverride ?? ''} onChange={e => numericPatch('sqftMaxOverride', e.target.value)} />
               </Field>
             </div>
           </div>
@@ -295,13 +295,13 @@ function EditRoomModal({ room, canonicalRooms, rateCadences, onClose, onSaved }:
         <AdminSection title='Images'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Field label='Hero Image Src Override'>
-              <input style={inputStyle} value={draft.hero_image_src_override ?? ''} onChange={e => patch('hero_image_src_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.heroImageSrcOverride ?? ''} onChange={e => patch('heroImageSrcOverride', e.target.value || null)} />
             </Field>
             <Field label='Hero Image Alt Override'>
-              <input style={inputStyle} value={draft.hero_image_alt_override ?? ''} onChange={e => patch('hero_image_alt_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.heroImageAltOverride ?? ''} onChange={e => patch('heroImageAltOverride', e.target.value || null)} />
             </Field>
             <Field label='Floorplan Src Override'>
-              <input style={inputStyle} value={draft.floorplan_src_override ?? ''} onChange={e => patch('floorplan_src_override', e.target.value || null)} />
+              <input style={inputStyle} value={draft.floorplanSrcOverride ?? ''} onChange={e => patch('floorplanSrcOverride', e.target.value || null)} />
             </Field>
           </div>
         </AdminSection>
@@ -331,11 +331,11 @@ function AddRoomModal({ engagementId, canonicalRooms, nextSortOrder, onClose, on
     setSaving(true)
     try {
       await createOverlayRoom({
-        engagement_id:     engagementId,
+        engagementId:     engagementId,
         room_id:     roomId || null,
-        level_label: levelLabel.trim() || null,
-        sort_order:  nextSortOrder,
-        is_active:   true,
+        levelLabel: levelLabel.trim() || null,
+        sortOrder:  nextSortOrder,
+        isActive:   true,
       })
       success('Room added.')
       onSaved()
@@ -361,7 +361,7 @@ function AddRoomModal({ engagementId, canonicalRooms, nextSortOrder, onClose, on
             <option value=''>No canonical link (manual entry)</option>
             {canonicalRooms.map(r => (
               <option key={r.id} value={r.id}>
-                {r.hotel_name} — {r.room_name ?? r.slug ?? r.id}
+                {r.hotelName} - {r.roomName ?? r.slug ?? r.id}
               </option>
             ))}
           </select>
@@ -427,7 +427,7 @@ export default function RoomsEditor({ engagementId }: RoomsEditorProps) {
 
   const nextSortOrder = useMemo(() => {
     if (rooms.length === 0) return 1
-    return Math.max(...rooms.map(r => r.sort_order)) + 1
+    return Math.max(...rooms.map(r => r.sortOrder)) + 1
   }, [rooms])
 
   const rateCadenceById = useMemo(() => {
@@ -437,10 +437,10 @@ export default function RoomsEditor({ engagementId }: RoomsEditorProps) {
   }, [rateCadences])
 
   function rateDisplay(room: OverlayRoom): string {
-    const rate = room.ambience_nightly_rate ?? room.non_negotiated_nightly_rate ?? null
+    const rate = room.ambienceNightlyRate ?? room.nonNegotiatedNightlyRate ?? null
     if (!rate) return ''
-    const cadence = room.rate_cadence_id ? rateCadenceById.get(room.rate_cadence_id)?.label : null
-    const suffix  = room.rate_suffix_override ?? ''
+    const cadence = room.rateCadenceId ? rateCadenceById.get(room.rateCadenceId)?.label : null
+    const suffix  = room.rateSuffixOverride ?? ''
     return [rate, cadence ? `/ ${cadence}` : '', suffix].filter(Boolean).join(' ')
   }
 
@@ -490,13 +490,13 @@ export default function RoomsEditor({ engagementId }: RoomsEditorProps) {
                 </div>
               </div>
               <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-                {room.level_label ?? <span style={{ color: A.faint }}>No label</span>}
+                {room.levelLabel ?? <span style={{ color: A.faint }}>No label</span>}
               </div>
               <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {rateDisplay(room) || <span style={{ color: A.faint }}>No rate</span>}
               </div>
-              <div style={{ fontSize: 11, color: room.is_active !== false ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
-                {room.is_active !== false ? 'Active' : 'Hidden'}
+              <div style={{ fontSize: 11, color: room.isActive !== false ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>
+                {room.isActive !== false ? 'Active' : 'Hidden'}
               </div>
               <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                 <button onClick={() => setEditingRoom(room)} style={{ ...btnGhost, padding: '4px 10px', fontSize: 11 }}>Edit</button>

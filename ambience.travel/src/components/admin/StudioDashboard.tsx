@@ -1,12 +1,12 @@
-// StudioDashboard.tsx — The first thing you see when you open admin.
+// StudioDashboard.tsx - The first thing you see when you open admin.
 // Answers: what needs attention, who's traveling when, what stage things are at,
 // how's the money. One screen, no clicks.
 //
-// Data: fetchPipeline() from queriesAdminFinance — confirmed + closed_won engagements.
+// Data: fetchPipeline() from queriesAdminFinance - confirmed + closed_won engagements.
 // Active pipeline (confirmed/paid/in_service) shown in Pipeline section.
 // Closed Won shown separately, filtered to fiscal year, sortable.
 //
-// Last updated: S53I — closed_won separated, native + USD commission columns.
+// Last updated: S53I - closed_won separated, native + USD commission columns.
 
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
@@ -77,9 +77,9 @@ function AttentionItem({ engagement, reason, amount, color, onClick }: {
       onMouseLeave={e => e.currentTarget.style.background = A.bgCard}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{engagement.title ?? engagement.url_id}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{engagement.title ?? engagement.urlId}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
-          {engagement.journey_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{engagement.journey_code}</span>}
+          {engagement.journeyCode && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{engagement.journeyCode}</span>}
           <span style={{ fontSize: 10, fontWeight: 700, color, fontFamily: A.font, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{reason}</span>
         </div>
       </div>
@@ -91,7 +91,7 @@ function AttentionItem({ engagement, reason, amount, color, onClick }: {
 // ── Upcoming row ──────────────────────────────────────────────────────────────
 
 function UpcomingRow({ engagement, onClick }: { engagement: PipelineTrip; onClick: () => void }) {
-  const days = engagement.start_date ? daysUntil(engagement.start_date) : null
+  const days = engagement.startDate ? daysUntil(engagement.startDate) : null
   const dayLabel = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days != null && days > 0 ? `${days} days` : null
 
   return (
@@ -108,9 +108,9 @@ function UpcomingRow({ engagement, onClick }: { engagement: PipelineTrip; onClic
       onMouseLeave={e => e.currentTarget.style.background = A.bgCard}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{engagement.title ?? engagement.url_id}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{engagement.title ?? engagement.urlId}</div>
         <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 2 }}>
-          {formatDateShortRange(engagement.start_date, engagement.end_date)}
+          {formatDateShortRange(engagement.startDate, engagement.endDate)}
         </div>
       </div>
       {dayLabel && (
@@ -161,13 +161,13 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
       {/* Engagement name + meta */}
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font, marginBottom: 2 }}>
-          {e.title ?? e.url_id}
+          {e.title ?? e.urlId}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {e.journey_code && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{e.journey_code}</span>}
-          {e.start_date && (
+          {e.journeyCode && <span style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>{e.journeyCode}</span>}
+          {e.startDate && (
             <span style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>
-              {formatDateShortRange(e.start_date, e.end_date)}
+              {formatDateShortRange(e.startDate, e.endDate)}
             </span>
           )}
           {stageMeta && (
@@ -180,32 +180,32 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
 
       {/* Value (USD) */}
       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, textAlign: 'right' }}>
-        {e.total_rate ? usd(e.total_rate) : <span style={{ color: A.faint }}>—</span>}
+        {e.totalRate ? usd(e.totalRate) : <span style={{ color: A.faint }}>-</span>}
       </div>
 
       {/* Comm. native currency */}
       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, textAlign: 'right' }}>
         {e.total_commission_native > 0
           ? isSameNative
-            ? <span style={{ color: A.faint }}>—</span>
+            ? <span style={{ color: A.faint }}>-</span>
             : money(e.total_commission_native, e.currency)
-          : <span style={{ color: A.faint }}>—</span>
+          : <span style={{ color: A.faint }}>-</span>
         }
       </div>
 
       {/* Comm. USD */}
       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, textAlign: 'right' }}>
-        {e.total_commission > 0 ? usd(e.total_commission) : <span style={{ color: A.faint }}>—</span>}
+        {e.total_commission > 0 ? usd(e.total_commission) : <span style={{ color: A.faint }}>-</span>}
       </div>
 
       {/* Received */}
       <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', fontFamily: A.font, textAlign: 'right' }}>
-        {e.commission_received > 0 ? usd(e.commission_received) : <span style={{ color: A.faint }}>—</span>}
+        {e.commissionReceived > 0 ? usd(e.commissionReceived) : <span style={{ color: A.faint }}>-</span>}
       </div>
 
       {/* Margin */}
       <div style={{ fontSize: 13, fontWeight: 700, color: e.net_margin >= 0 ? '#4ade80' : '#ef4444', fontFamily: A.font, textAlign: 'right' }}>
-        {e.net_margin !== 0 ? usd(e.net_margin) : <span style={{ color: A.faint }}>—</span>}
+        {e.net_margin !== 0 ? usd(e.net_margin) : <span style={{ color: A.faint }}>-</span>}
       </div>
     </button>
   )
@@ -238,8 +238,8 @@ export default function StudioDashboard() {
   }, [])
 
   function goTo(eng: PipelineTrip) {
-    if (!eng.url_id) return
-    navigateAdmin({ product: 'trips', tab: 'bookings', urlId: eng.url_id })
+    if (!eng.urlId) return
+    navigateAdmin({ product: 'trips', tab: 'bookings', urlId: eng.urlId })
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -247,9 +247,9 @@ export default function StudioDashboard() {
   const active    = data.filter(e => e.status_slug !== 'closed_won')
   const closedWon = data.filter(e =>
     e.status_slug === 'closed_won' &&
-    e.start_date != null &&
-    e.start_date >= FISCAL_YEAR_START &&
-    e.start_date <= FISCAL_YEAR_END
+    e.startDate != null &&
+    e.startDate >= FISCAL_YEAR_START &&
+    e.startDate <= FISCAL_YEAR_END
   )
 
   const attention = active.filter(e =>
@@ -257,11 +257,11 @@ export default function StudioDashboard() {
   )
 
   const upcoming = active
-    .filter(e => e.start_date && e.start_date >= today && daysUntil(e.start_date) <= 30)
-    .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+    .filter(e => e.startDate && e.startDate >= today && daysUntil(e.startDate) <= 30)
+    .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''))
 
   const inService = active.filter(e =>
-    e.start_date && e.start_date <= today && e.end_date && e.end_date >= today
+    e.startDate && e.startDate <= today && e.endDate && e.endDate >= today
   )
 
   const byStage = new Map<string, PipelineTrip[]>()
@@ -270,15 +270,15 @@ export default function StudioDashboard() {
     ;(byStage.get(slug) ?? byStage.set(slug, []).get(slug)!).push(e)
   }
 
-  const totalValue       = active.reduce((s, e) => s + (e.total_rate ?? 0), 0)
+  const totalValue       = active.reduce((s, e) => s + (e.totalRate ?? 0), 0)
   const totalCommission  = active.reduce((s, e) => s + e.total_commission, 0)
-  const totalReceived    = active.reduce((s, e) => s + e.commission_received, 0)
+  const totalReceived    = active.reduce((s, e) => s + e.commissionReceived, 0)
   const totalOutstanding = active.reduce((s, e) => s + e.commission_outstanding, 0)
   const totalMargin      = active.reduce((s, e) => s + e.net_margin, 0)
 
   const closedSorted = [...closedWon].sort((a, b) => {
-    if (closedSort === 'start_date')     return (a.start_date ?? '').localeCompare(b.start_date ?? '')
-    if (closedSort === 'total_rate')     return (b.total_rate ?? 0) - (a.total_rate ?? 0)
+    if (closedSort === 'start_date')     return (a.startDate ?? '').localeCompare(b.startDate ?? '')
+    if (closedSort === 'total_rate')     return (b.totalRate ?? 0) - (a.totalRate ?? 0)
     if (closedSort === 'net_margin')     return b.net_margin - a.net_margin
     return b.total_commission - a.total_commission
   })
@@ -300,7 +300,7 @@ export default function StudioDashboard() {
         <div style={{ fontSize: 24, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>Dashboard</div>
       </div>
 
-      {/* Money strip — active only */}
+      {/* Money strip - active only */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
         <Kpi label='Pipeline Value'         value={usd(totalValue)}         accent={A.gold} />
         <Kpi label='Total Commission'       value={usd(totalCommission)}    sub={`${usd(totalReceived)} received`} accent={A.gold} />
@@ -319,7 +319,7 @@ export default function StudioDashboard() {
               if (e.total_outstanding > 0)      reasons.push({ reason: 'Balance outstanding',    amount: usd(e.total_outstanding),      color: '#f87171' })
               if (e.total_billable > 0)         reasons.push({ reason: 'Billable expenses',      amount: usd(e.total_billable),         color: '#93C5FD' })
               return reasons.map((r, i) => (
-                <AttentionItem key={`${e.engagement_id}-${i}`} engagement={e} {...r} onClick={() => goTo(e)} />
+                <AttentionItem key={`${e.engagementId}-${i}`} engagement={e} {...r} onClick={() => goTo(e)} />
               ))
             })}
           </div>
@@ -330,7 +330,7 @@ export default function StudioDashboard() {
       {inService.length > 0 && (
         <Section title='Currently Traveling' count={inService.length}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {inService.map(e => <UpcomingRow key={e.engagement_id} engagement={e} onClick={() => goTo(e)} />)}
+            {inService.map(e => <UpcomingRow key={e.engagementId} engagement={e} onClick={() => goTo(e)} />)}
           </div>
         </Section>
       )}
@@ -339,7 +339,7 @@ export default function StudioDashboard() {
       {upcoming.length > 0 && (
         <Section title='Upcoming · 30 days' count={upcoming.length}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {upcoming.map(e => <UpcomingRow key={e.engagement_id} engagement={e} onClick={() => goTo(e)} />)}
+            {upcoming.map(e => <UpcomingRow key={e.engagementId} engagement={e} onClick={() => goTo(e)} />)}
           </div>
         </Section>
       )}
@@ -351,7 +351,7 @@ export default function StudioDashboard() {
             const group = byStage.get(slug) ?? []
             if (group.length === 0) return null
             const meta  = STAGE_META[slug]
-            const value = group.reduce((s, e) => s + (e.total_rate ?? 0), 0)
+            const value = group.reduce((s, e) => s + (e.totalRate ?? 0), 0)
             return <Kpi key={slug} label={meta.label} value={String(group.length)} sub={usd(value)} accent={meta.color} />
           })}
         </div>
@@ -359,7 +359,7 @@ export default function StudioDashboard() {
           <TableHeader />
           {active.map((e, i) => (
             <PipelineRow
-              key={e.engagement_id}
+              key={e.engagementId}
               e={e} i={i}
               stageMeta={STAGE_META[e.status_slug ?? ''] ?? { label: e.status_slug ?? '', color: A.faint }}
               onClick={() => goTo(e)}
@@ -368,9 +368,9 @@ export default function StudioDashboard() {
         </div>
       </Section>
 
-      {/* Closed Won — fiscal year */}
+      {/* Closed Won - fiscal year */}
       {closedSorted.length > 0 && (
-        <Section title={`Closed · Won — FY${FISCAL_YEAR_START.slice(0, 4)}`} count={closedSorted.length}>
+        <Section title={`Closed · Won - FY${FISCAL_YEAR_START.slice(0, 4)}`} count={closedSorted.length}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             {(['start_date', 'total_rate', 'net_margin', 'total_commission'] as SortKey[]).map(k => (
               <button key={k} onClick={() => setClosedSort(k)} style={{
@@ -387,7 +387,7 @@ export default function StudioDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, borderRadius: 10, overflow: 'hidden', border: `1px solid ${A.border}` }}>
             <TableHeader />
             {closedSorted.map((e, i) => (
-              <PipelineRow key={e.engagement_id} e={e} i={i} onClick={() => goTo(e)} />
+              <PipelineRow key={e.engagementId} e={e} i={i} onClick={() => goTo(e)} />
             ))}
           </div>
         </Section>

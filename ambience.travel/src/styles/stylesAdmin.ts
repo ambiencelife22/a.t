@@ -1,4 +1,4 @@
-// adminStyles.ts — Canonical shared style objects for all admin tabs.
+// adminStyles.ts - Canonical shared style objects for all admin tabs.
 //
 // Single source for input, button, and label styles across AmbienceAdmin.
 // Import from here; never define these locally in a tab component.
@@ -6,14 +6,14 @@
 // All values derived from A tokens (adminTokens.ts). If A tokens change,
 // styles here update automatically.
 //
-// Last updated: S43 — Phase 5 forms pass.
+// Last updated: S43 - Phase 5 forms pass.
 //   - labelStyle: color A.faint -> A.muted (spec: 9pt tracked caps, dim).
 //   - inputStyle: padding bumped to 14px.
 //   - applyFocusRing / removeFocusRing helpers: gold 30% focus ring via
 //     onFocus/onBlur, since React CSSProperties cannot express :focus.
 //     Use on any <input> or <textarea> that needs spec-compliant focus state.
 //   - inputWithFocus: spreads inputStyle + onFocus/onBlur for convenience.
-// Prior: S40D — extracted from HouseTab, GuidesDiningTab, LibraryDiningTab.
+// Prior: S40D - extracted from HouseTab, GuidesDiningTab, LibraryDiningTab.
 
 import { A } from '../tokens/tokensAdmin'
 

@@ -1,15 +1,15 @@
 // ImmerseComponents.tsx - shared primitives for all /immerse/ proposal components
 // Owns: ID palette, useImmerseMobile, shared UI atoms
 // Does not own page-level components, data, or animation primitives.
-// Last updated: S40B — useImmerseVisible + immerseFadeUp removed; retargeted
+// Last updated: S40B - useImmerseVisible + immerseFadeUp removed; retargeted
 //   to useVisible + fadeUp from lib/animations per S40 standing rule.
-// Prior: S30 — ImmerseWelcomeLetter flipped to left-align + cream light surface.
+// Prior: S30 - ImmerseWelcomeLetter flipped to left-align + cream light surface.
 //   All text tokens inside the welcome block use *OnLight variants
 //   (textOnLight, mutedOnLight) per the light-surface token rule earned in
 //   S29 Addendum 2 via the ImmerseStayBox muddy-text bug. Section background
 //   is IMMERSE.lightSurface. ImmerseTitle received an optional lightSurface
 //   prop to swap its default ID.text → IMMERSE.textOnLight.
-// Prior: S12 — original primitives shipped.
+// Prior: S12 - original primitives shipped.
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ID, IMMERSE } from '../../tokens/tokensLanding'

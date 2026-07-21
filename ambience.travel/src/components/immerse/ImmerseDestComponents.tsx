@@ -1,18 +1,18 @@
-// ImmerseDestComponents.tsx — section components for /immerse/ destination subpages
+// ImmerseDestComponents.tsx - section components for /immerse/ destination subpages
 // Owns: ImmerseDestIntro, ImmerseContentGrid, ImmerseDestPricing,
 //   ContentCard (private), PricingRow (private), PricingPanel (private),
-//   PRICING_CLOSER_DEFAULT (private — referenced by lib/immerseTypes comments)
+//   PRICING_CLOSER_DEFAULT (private - referenced by lib/immerseTypes comments)
 // Does not own: hotel options carousel (ImmerseHotelOptions.tsx), room render
 //   (ImmerseRoomCategory.tsx), nav helpers (ImmerseCarouselNav.tsx), keyframes
 //   (src/index.css)
-// Last updated: S37 — ImmerseContentGrid body now conditionally renders.
+// Last updated: S37 - ImmerseContentGrid body now conditionally renders.
 //   Empty string or null body no longer creates an empty <ImmerseBody>
 //   element with its margins. Pattern: {body && <ImmerseBody>...}.
 //   Same pattern should apply to other section bodies as a follow-up audit.
-// Prior: S31 — Extracted from ImmerseDestComponents.tsx (was ImmerseDestinationComponents); inline
+// Prior: S31 - Extracted from ImmerseDestComponents.tsx (was ImmerseDestinationComponents); inline
 //   <style> keyframe block removed (now global in src/index.css).
-// Prior: S23 addendum — bullets_heading render added in ContentCard.
-// Prior: S23 — Added PRICING_CLOSER_DEFAULT constant + closer render row.
+// Prior: S23 addendum - bullets_heading render added in ContentCard.
+// Prior: S23 - Added PRICING_CLOSER_DEFAULT constant + closer render row.
 
 import { useState } from 'react'
 import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle, ImmerseBody, ImmersePanel } from './ImmerseComponents'
@@ -85,7 +85,7 @@ export function ImmerseContentGrid({ eyebrow, title, body, items, dark = false, 
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 
-  // S55 — Hide section entirely when no items. Completes the S37 audit:
+  // S55 - Hide section entirely when no items. Completes the S37 audit:
   // "Same pattern should apply to other section bodies as a follow-up."
   if (!items || items.length === 0) return null
 

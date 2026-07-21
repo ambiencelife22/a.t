@@ -1,5 +1,5 @@
 /* LibraryDiningTab.tsx
- * Canonical dining venues library — list + filter + edit modal + JSON ingest.
+ * Canonical dining venues library - list + filter + edit modal + JSON ingest.
  *
  * Library = Layer 4 canonical pool. Edits here flow to every guide page that
  * features the venue. The guide overlay (per-destination hero/headline/intro)
@@ -11,19 +11,19 @@
  *     dropdown disabled, header shows destination name + "All destinations" link,
  *     image uploader pre-targets that destination's dining folder.
  *
- * UUID-keyed throughout. Destination name + slug for display only —
+ * UUID-keyed throughout. Destination name + slug for display only -
  * resolved via destinationsById Map at render time, never carried on
  * query types or used as a key.
  *
- * Toast: useToast() from ToastContext — ToastContainer mounted in main.tsx.
+ * Toast: useToast() from ToastContext - ToastContainer mounted in main.tsx.
  * Styles: canonical shared objects from adminStyles.ts.
  * UI atoms: Field from adminUi.tsx.
  *
- * Last updated: S40D (refactor) — extracted local Toast/useToast, style objects,
+ * Last updated: S40D (refactor) - extracted local Toast/useToast, style objects,
  *   Field to shared modules. No functional changes.
- * Prior: S39 — Removed legacy michelin boolean. Added recognition fields.
- * Prior: S39 — Synced to new AdminDiningVenue shape.
- * Prior: S38 — Removed slug.
+ * Prior: S39 - Removed legacy michelin boolean. Added recognition fields.
+ * Prior: S39 - Synced to new AdminDiningVenue shape.
+ * Prior: S38 - Removed slug.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -48,6 +48,7 @@ import {
   type IngestResult,
 } from '../../queries/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { matchesQuery } from '../../utils/utilsSearch'
 
@@ -55,13 +56,13 @@ import { matchesQuery } from '../../utils/utilsSearch'
 
 function recognitionLabel(v: AdminDiningVenue): string {
   const parts: string[] = []
-  if (v.michelin_award === 'star') {
-    const stars = v.michelin_stars ?? 1
+  if (v.michelinAward === 'star') {
+    const stars = v.michelinStars ?? 1
     parts.push('★'.repeat(stars))
   }
-  if (v.michelin_award === 'bib_gourmand') parts.push('Bib')
-  if (v.michelin_green_star) parts.push('Green ★')
-  if (v.worlds_50_best) parts.push('50 Best')
+  if (v.michelinAward === 'bib_gourmand') parts.push('Bib')
+  if (v.michelinGreenStar) parts.push('Green ★')
+  if (v.worlds50Best) parts.push('50 Best')
   return parts.join(' · ')
 }
 
@@ -106,14 +107,14 @@ function EditVenueModal({
     try {
       const payload: DiningVenuePatch = {}
       const fields: (keyof DiningVenuePatch)[] = [
-        'name', 'cuisine_subcategory',
-        'michelin_award', 'michelin_stars', 'michelin_green_star', 'worlds_50_best',
-        'kicker', 'tagline', 'body', 'bullets_heading', 'bullets',
-        'address', 'maps_url', 'website',
-        'neighborhood', 'price_band', 'public_preview_rank', 'tags',
-        'image_src', 'image_alt', 'image_credit', 'image_credit_url', 'image_license',
-        'image_2_src', 'image_2_alt',
-        'is_active', 'sort_order',
+        'name', 'cuisineSubcategory',
+        'michelinAward', 'michelinStars', 'michelinGreenStar', 'worlds50Best',
+        'kicker', 'tagline', 'body', 'bulletsHeading', 'bullets',
+        'address', 'mapsUrl', 'website',
+        'neighborhood', 'priceBand', 'publicPreviewRank', 'tags',
+        'imageSrc', 'imageAlt', 'imageCredit', 'imageCreditUrl', 'imageLicense',
+        'image2Src', 'image2Alt',
+        'isActive', 'sortOrder',
       ]
       for (const f of fields) {
         if (JSON.stringify(draft[f]) !== JSON.stringify(venue[f])) {
@@ -176,24 +177,24 @@ function EditVenueModal({
             <input style={inputStyle} value={draft.name} onChange={e => patch('name', e.target.value)} />
           </Field>
           <Field label='Cuisine Subcategory'>
-            <input style={inputStyle} value={draft.cuisine_subcategory ?? ''} onChange={e => patch('cuisine_subcategory', e.target.value || null)} />
+            <input style={inputStyle} value={draft.cuisineSubcategory ?? ''} onChange={e => patch('cuisineSubcategory', e.target.value || null)} />
           </Field>
           <Field label='Neighborhood'>
             <input style={inputStyle} value={draft.neighborhood ?? ''} onChange={e => patch('neighborhood', e.target.value || null)} />
           </Field>
           <Field label='Price Band'>
-            <input style={inputStyle} value={draft.price_band ?? ''} onChange={e => patch('price_band', e.target.value || null)} />
+            <input style={inputStyle} value={draft.priceBand ?? ''} onChange={e => patch('priceBand', e.target.value || null)} />
           </Field>
           <Field label='Public Preview Rank (1-4 or empty)'>
             <input
               style={inputStyle} type='number' min={1} max={4}
-              value={draft.public_preview_rank ?? ''}
+              value={draft.publicPreviewRank ?? ''}
               onChange={e => {
                 const v = e.target.value
-                if (v === '') { patch('public_preview_rank', null); return }
+                if (v === '') { patch('publicPreviewRank', null); return }
                 const n = parseInt(v, 10)
                 if (Number.isNaN(n)) return
-                patch('public_preview_rank', n)
+                patch('publicPreviewRank', n)
               }}
             />
           </Field>
@@ -204,12 +205,12 @@ function EditVenueModal({
           <Field label='Michelin Award'>
             <select
               style={inputStyle}
-              value={draft.michelin_award ?? ''}
+              value={draft.michelinAward ?? ''}
               onChange={e => {
                 const v = e.target.value
-                if (v === '') { patch('michelin_award', null); patch('michelin_stars', null); return }
-                patch('michelin_award', v as 'star' | 'bib_gourmand')
-                if (v === 'bib_gourmand') patch('michelin_stars', null)
+                if (v === '') { patch('michelinAward', null); patch('michelinStars', null); return }
+                patch('michelinAward', v as 'star' | 'bib_gourmand')
+                if (v === 'bib_gourmand') patch('michelinStars', null)
               }}
             >
               <option value=''>None</option>
@@ -220,25 +221,25 @@ function EditVenueModal({
           <Field label='Michelin Stars (1-3, when award = Star)'>
             <input
               style={inputStyle} type='number' min={1} max={3}
-              disabled={draft.michelin_award !== 'star'}
-              value={draft.michelin_stars ?? ''}
+              disabled={draft.michelinAward !== 'star'}
+              value={draft.michelinStars ?? ''}
               onChange={e => {
                 const v = e.target.value
-                if (v === '') { patch('michelin_stars', null); return }
+                if (v === '') { patch('michelinStars', null); return }
                 const n = parseInt(v, 10)
                 if (Number.isNaN(n)) return
-                patch('michelin_stars', n)
+                patch('michelinStars', n)
               }}
             />
           </Field>
           <Field label='Michelin Green Star'>
-            <select style={inputStyle} value={String(draft.michelin_green_star ?? false)} onChange={e => patch('michelin_green_star', e.target.value === 'true')}>
+            <select style={inputStyle} value={String(draft.michelinGreenStar ?? false)} onChange={e => patch('michelinGreenStar', e.target.value === 'true')}>
               <option value='false'>No</option>
               <option value='true'>Yes</option>
             </select>
           </Field>
           <Field label="World's 50 Best">
-            <select style={inputStyle} value={String(draft.worlds_50_best ?? false)} onChange={e => patch('worlds_50_best', e.target.value === 'true')}>
+            <select style={inputStyle} value={String(draft.worlds50Best ?? false)} onChange={e => patch('worlds50Best', e.target.value === 'true')}>
               <option value='false'>No</option>
               <option value='true'>Yes</option>
             </select>
@@ -256,7 +257,7 @@ function EditVenueModal({
           <textarea style={textareaStyle} value={draft.body ?? ''} onChange={e => patch('body', e.target.value || null)} />
         </Field>
         <Field label='Bullets Heading'>
-          <input style={inputStyle} value={draft.bullets_heading ?? ''} onChange={e => patch('bullets_heading', e.target.value || null)} />
+          <input style={inputStyle} value={draft.bulletsHeading ?? ''} onChange={e => patch('bulletsHeading', e.target.value || null)} />
         </Field>
         <Field label='Bullets (one per line)'>
           <textarea
@@ -275,7 +276,7 @@ function EditVenueModal({
         </Field>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Maps URL'>
-            <input style={inputStyle} value={draft.maps_url ?? ''} onChange={e => patch('maps_url', e.target.value || null)} />
+            <input style={inputStyle} value={draft.mapsUrl ?? ''} onChange={e => patch('mapsUrl', e.target.value || null)} />
           </Field>
           <Field label='Website'>
             <input style={inputStyle} value={draft.website ?? ''} onChange={e => patch('website', e.target.value || null)} />
@@ -314,37 +315,37 @@ function EditVenueModal({
 
         {/* Images */}
         <Field label='Image 1 Src'>
-          <ImageFieldWithUploader value={draft.image_src} onChange={v => patch('image_src', v)} presetPath={uploadPresetPath ?? undefined} />
+          <ImageFieldWithUploader value={draft.imageSrc} onChange={v => patch('imageSrc', v)} presetPath={uploadPresetPath ?? undefined} />
         </Field>
         <Field label='Image 1 Alt'>
-          <input style={inputStyle} value={draft.image_alt ?? ''} onChange={e => patch('image_alt', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageAlt ?? ''} onChange={e => patch('imageAlt', e.target.value || null)} />
         </Field>
         <Field label='Image 1 Credit'>
-          <input style={inputStyle} value={draft.image_credit ?? ''} onChange={e => patch('image_credit', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageCredit ?? ''} onChange={e => patch('imageCredit', e.target.value || null)} />
         </Field>
         <Field label='Image 1 Credit URL'>
-          <input style={inputStyle} value={draft.image_credit_url ?? ''} onChange={e => patch('image_credit_url', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageCreditUrl ?? ''} onChange={e => patch('imageCreditUrl', e.target.value || null)} />
         </Field>
         <Field label='Image 1 License'>
-          <input style={inputStyle} value={draft.image_license ?? ''} onChange={e => patch('image_license', e.target.value || null)} />
+          <input style={inputStyle} value={draft.imageLicense ?? ''} onChange={e => patch('imageLicense', e.target.value || null)} />
         </Field>
         <Field label='Image 2 Src'>
-          <ImageFieldWithUploader value={draft.image_2_src} onChange={v => patch('image_2_src', v)} presetPath={uploadPresetPath ?? undefined} />
+          <ImageFieldWithUploader value={draft.image2Src} onChange={v => patch('image2Src', v)} presetPath={uploadPresetPath ?? undefined} />
         </Field>
         <Field label='Image 2 Alt'>
-          <input style={inputStyle} value={draft.image_2_alt ?? ''} onChange={e => patch('image_2_alt', e.target.value || null)} />
+          <input style={inputStyle} value={draft.image2Alt ?? ''} onChange={e => patch('image2Alt', e.target.value || null)} />
         </Field>
 
         {/* Admin */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <Field label='Active'>
-            <select style={inputStyle} value={String(draft.is_active)} onChange={e => patch('is_active', e.target.value === 'true')}>
+            <select style={inputStyle} value={String(draft.isActive)} onChange={e => patch('isActive', e.target.value === 'true')}>
               <option value='true'>Yes</option>
               <option value='false'>No</option>
             </select>
           </Field>
           <Field label='Sort Order'>
-            <input style={inputStyle} type='number' value={draft.sort_order} onChange={e => patch('sort_order', parseInt(e.target.value, 10) || 0)} />
+            <input style={inputStyle} type='number' value={draft.sortOrder} onChange={e => patch('sortOrder', parseInt(e.target.value, 10) || 0)} />
           </Field>
         </div>
 
@@ -426,7 +427,7 @@ function ImportJsonModal({
 
         <Field label='Destination'>
           <select style={inputStyle} value={destId} onChange={e => setDestId(e.target.value)} disabled={!!scopedDestinationId}>
-            <option value=''>— Select destination —</option>
+            <option value=''>- Select destination -</option>
             {destinations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </Field>
@@ -452,7 +453,7 @@ function ImportJsonModal({
                 <div style={{ color: A.faint, fontWeight: 700, marginBottom: 4 }}>Skipped ({result.skipped.length}):</div>
                 {result.skipped.map(s => (
                   <div key={s.name} style={{ fontFamily: 'DM Mono, monospace', fontSize: 11 }}>
-                    {s.name} — {s.reason}
+                    {s.name} - {s.reason}
                   </div>
                 ))}
               </div>
@@ -478,7 +479,7 @@ interface LibraryDiningTabProps {
 }
 
 interface DestinationFull extends DestinationOption {
-  storage_path: string | null
+  storagePath: string | null
 }
 
 export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProps) {
@@ -500,8 +501,8 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
 
   const scopedDest     = destinationId ? destinationsById.get(destinationId) ?? null : null
   const uploadPresetPath = useMemo(() => {
-    if (!scopedDest || !scopedDest.storage_path) return null
-    return resolveStoragePath({ destinationStoragePath: scopedDest.storage_path, category: 'dining' })
+    if (!scopedDest || !scopedDest.storagePath) return null
+    return resolveStoragePath({ destinationStoragePath: scopedDest.storagePath, category: 'dining' })
   }, [scopedDest])
 
   async function loadDestinations() {
@@ -510,7 +511,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
       .select('id, slug, name, storage_path')
       .order('name', { ascending: true })
     if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-    setDestinations((data ?? []) as DestinationFull[])
+    setDestinations(camelizeKeys<DestinationFull[]>(data ?? []))
   }
 
   async function load() {
@@ -536,7 +537,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
     const q = search.trim().toLowerCase()
     if (!q) return venues
     return venues.filter(v =>
-      matchesQuery(q, v.name, v.cuisine_subcategory, v.neighborhood)
+      matchesQuery(q, v.name, v.cuisineSubcategory, v.neighborhood)
     )
   }, [venues, search])
 
@@ -552,7 +553,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
           <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
             {scopedDest
               ? `Editing ${scopedDest.name} venues only. Image uploads will go to ${uploadPresetPath ?? '(no storage path configured)'}.`
-              : 'Canonical pool — edits flow to every guide page that features the venue.'}
+              : 'Canonical pool - edits flow to every guide page that features the venue.'}
           </div>
           {scopedDest && (
             <a
@@ -596,7 +597,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {filtered.map(v => {
-            const dest  = destinationsById.get(v.global_destination_id)
+            const dest  = destinationsById.get(v.globalDestinationId)
             const recog = recognitionLabel(v)
             return (
               <div
@@ -611,9 +612,9 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
               >
                 <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{v.name}</div>
                 <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{dest?.name ?? <span style={{ color: A.faint }}>(unknown)</span>}</div>
-                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{v.cuisine_subcategory ?? <span style={{ color: A.faint }}>—</span>}</div>
+                <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>{v.cuisineSubcategory ?? <span style={{ color: A.faint }}>-</span>}</div>
                 <div style={{ fontSize: 11, color: recog ? A.gold : A.faint, fontFamily: A.font, fontWeight: 600 }}>{recog || ''}</div>
-                <div style={{ fontSize: 11, color: v.is_active ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>{v.is_active ? 'Active' : 'Hidden'}</div>
+                <div style={{ fontSize: 11, color: v.isActive ? A.positive : A.faint, fontFamily: A.font, fontWeight: 600 }}>{v.isActive ? 'Active' : 'Hidden'}</div>
               </div>
             )
           })}
@@ -623,11 +624,11 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
       {editingVenue && (
         <EditVenueModal
           venue={editingVenue}
-          destinationName={destinationsById.get(editingVenue.global_destination_id)?.name ?? '(unknown)'}
+          destinationName={destinationsById.get(editingVenue.globalDestinationId)?.name ?? '(unknown)'}
           uploadPresetPath={(() => {
-            const d = destinationsById.get(editingVenue.global_destination_id)
-            if (!d || !d.storage_path) return null
-            return resolveStoragePath({ destinationStoragePath: d.storage_path, category: 'dining' })
+            const d = destinationsById.get(editingVenue.globalDestinationId)
+            if (!d || !d.storagePath) return null
+            return resolveStoragePath({ destinationStoragePath: d.storagePath, category: 'dining' })
           })()}
           onClose={() => setEditingVenue(null)}
           onSaved={load}

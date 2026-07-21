@@ -1,15 +1,15 @@
-// RecognitionMark.tsx — neutral, cross-domain recognition marks.
-// What it owns (shared, presentation-only — NO domain imports):
+// RecognitionMark.tsx - neutral, cross-domain recognition marks.
+// What it owns (shared, presentation-only - NO domain imports):
 //   - RecognitionKind + the single source of truth for what each mark means
 //     (◆ ambience Pick, ★ Michelin Stars, BIB Gourmand, Green Star, 50 Best,
 //      Michelin Keys)
-//   - <RecognitionMark /> — single-mark pill with hover tooltip
-//   - <RecognitionKeyStrip /> — discreet legend
+//   - <RecognitionMark /> - single-mark pill with hover tooltip
+//   - <RecognitionKeyStrip /> - discreet legend
 // Consumed by both the dining guide (DiningCard, dining page) and the immerse
 // hotel cards (ImmerseHotelOptions). Domain-specific derivation (e.g. from
 // DiningVenue rows) lives in the consuming domain, NOT here.
 //
-// S53C — lifted out of components/guides/RecognitionKey.tsx so dining and hotels
+// S53C - lifted out of components/guides/RecognitionKey.tsx so dining and hotels
 //   both import a neutral shared module rather than hotels reaching into the
 //   dining module. The dining-only helper (deriveRecognitionKindsFromVenues)
 //   stays in the dining module and imports RecognitionKind from here.
@@ -81,7 +81,7 @@ export function RecognitionMark({ kind, starCount, keyCount }: RecognitionMarkPr
   )
 }
 
-// Single Michelin Key glyph — a small key drawn in gold, matched to the
+// Single Michelin Key glyph - a small key drawn in gold, matched to the
 // existing icon weight (cf. the connecting-suites svg in ImmerseHotelOptions).
 function KeyGlyph() {
   return (
@@ -209,7 +209,7 @@ const fiftyPillStyle: React.CSSProperties = {
   fontWeight:    600,
 }
 
-// Michelin Keys — N key glyphs in a gold-tinted pill, mirroring the stars idiom.
+// Michelin Keys - N key glyphs in a gold-tinted pill, mirroring the stars idiom.
 const keysGlyphStyle: React.CSSProperties = {
   display:      'inline-flex',
   alignItems:   'center',

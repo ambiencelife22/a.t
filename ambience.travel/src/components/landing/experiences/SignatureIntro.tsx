@@ -1,4 +1,4 @@
-// SignatureIntro.tsx — editorial intro section for signature experience pages
+// SignatureIntro.tsx - editorial intro section for signature experience pages
 // Owns the two-column "why this exists" framing only.
 // Last updated: S9
 

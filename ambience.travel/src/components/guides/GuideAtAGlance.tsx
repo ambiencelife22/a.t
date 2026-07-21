@@ -1,4 +1,4 @@
-/* GuideAtAGlance.tsx — shared "At a Glance" bulleted block for the guide layer.
+/* GuideAtAGlance.tsx - shared "At a Glance" bulleted block for the guide layer.
  *
  * Rendered near the top of a guide page when the overlay carries
  * at_a_glance_bullets. Gold-rule left border, gold eyebrow, diamond
@@ -12,7 +12,7 @@
  *   - GuideAtAGlance component chrome
  *
  * What it does not own:
- *   - Data source (overlay.at_a_glance_bullets, resolved by the caller)
+ *   - Data source (overlay.atAGlanceBullets, resolved by the caller)
  */
 
 import React from 'react'

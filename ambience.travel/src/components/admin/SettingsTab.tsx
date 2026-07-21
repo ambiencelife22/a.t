@@ -1,12 +1,12 @@
-// SettingsTab.tsx — Studio > Settings.
+// SettingsTab.tsx - Studio > Settings.
 //
 // Platform-level settings for AmbienceAdmin. Currently owns:
-//   - Maintenance mode toggle (a_platform_settings.maintenance_mode)
+//   - Maintenance mode toggle (a_platform_settings.maintenanceMode)
 //
 // Read:  travel-read-settings EF (admin JWT)
 // Write: travel-write-settings EF (admin JWT)
 //
-// Toggle is optimistic — UI updates immediately, reverts on error.
+// Toggle is optimistic - UI updates immediately, reverts on error.
 // Shows last-changed-by (user ID) and timestamp when available.
 //
 // Created: S53H
@@ -34,7 +34,7 @@ export default function SettingsTab() {
 
   async function handleToggle() {
     if (!settings || saving) return
-    const next = !settings.maintenance_mode
+    const next = !settings.maintenanceMode
 
     // Optimistic
     setSettings(s => s ? { ...s, maintenance_mode: next } : s)
@@ -112,7 +112,7 @@ export default function SettingsTab() {
             <button
               onClick={handleToggle}
               disabled={loading || saving}
-              aria-label={settings?.maintenance_mode ? 'Disable maintenance mode' : 'Enable maintenance mode'}
+              aria-label={settings?.maintenanceMode ? 'Disable maintenance mode' : 'Enable maintenance mode'}
               style={{
                 flexShrink:   0,
                 position:     'relative',
@@ -122,7 +122,7 @@ export default function SettingsTab() {
                 border:       'none',
                 background:   loading
                   ? A.bgInput
-                  : settings?.maintenance_mode
+                  : settings?.maintenanceMode
                     ? '#ef4444'
                     : A.bgInput,
                 cursor:       loading || saving ? 'default' : 'pointer',
@@ -133,7 +133,7 @@ export default function SettingsTab() {
               <span style={{
                 position:     'absolute',
                 top:          3,
-                left:         settings?.maintenance_mode ? 25 : 3,
+                left:         settings?.maintenanceMode ? 25 : 3,
                 width:        20,
                 height:       20,
                 borderRadius: '50%',
@@ -145,7 +145,7 @@ export default function SettingsTab() {
           </div>
 
           {/* Last updated */}
-          {settings?.updated_at && (
+          {settings?.updatedAt && (
             <div style={{
               marginTop:  16,
               paddingTop: 14,
@@ -157,11 +157,11 @@ export default function SettingsTab() {
               gap:        12,
             }}>
               <span>
-                Last changed {formatDateShort(settings.updated_at)}
+                Last changed {formatDateShort(settings.updatedAt)}
               </span>
-              {settings.updated_by && (
+              {settings.updatedBy && (
                 <span style={{ color: A.muted, fontFamily: 'monospace', fontSize: 10 }}>
-                  {settings.updated_by.slice(0, 8)}
+                  {settings.updatedBy.slice(0, 8)}
                 </span>
               )}
             </div>
@@ -176,23 +176,23 @@ export default function SettingsTab() {
               gap:        6,
               padding:    '3px 10px',
               borderRadius: 20,
-              background: settings.maintenance_mode
+              background: settings.maintenanceMode
                 ? 'rgba(239,68,68,0.10)'
                 : 'rgba(74,222,128,0.08)',
-              border: `1px solid ${settings.maintenance_mode
+              border: `1px solid ${settings.maintenanceMode
                 ? 'rgba(239,68,68,0.25)'
                 : 'rgba(74,222,128,0.2)'}`,
               fontSize:   11,
               fontWeight: 600,
-              color:      settings.maintenance_mode ? '#f87171' : '#4ade80',
+              color:      settings.maintenanceMode ? '#f87171' : '#4ade80',
               fontFamily: A.font,
             }}>
               <span style={{
                 width: 6, height: 6, borderRadius: '50%',
-                background: settings.maintenance_mode ? '#ef4444' : '#4ade80',
+                background: settings.maintenanceMode ? '#ef4444' : '#4ade80',
                 flexShrink: 0,
               }} />
-              {settings.maintenance_mode ? 'Maintenance active' : 'Live'}
+              {settings.maintenanceMode ? 'Maintenance active' : 'Live'}
             </div>
           )}
         </div>

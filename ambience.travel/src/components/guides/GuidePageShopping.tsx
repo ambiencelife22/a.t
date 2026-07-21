@@ -1,4 +1,4 @@
-/* GuidePageShopping.tsx — public shopping guide for a destination.
+/* GuidePageShopping.tsx - public shopping guide for a destination.
  *
  * Mirrors GuidePageDining / GuidePageExperiences / GuidePageHotels
  * structure. All shared behaviour lives in shared helpers.
@@ -26,10 +26,10 @@
  *   - PDF year/version resolution (utilsGuidePdf)
  *   - Style objects (stylesGuidePage)
  *
- * Last updated: S53 — Nine-file guide-layer extraction. Every shared piece
+ * Last updated: S53 - Nine-file guide-layer extraction. Every shared piece
  *   moves to the new modules; page reduces to fetch + filter + dispatch.
- * Prior: S53 — Universal eyebrow/headline pattern via GUIDE_COPY.shopping.
- * Prior: S52 — initial build.
+ * Prior: S53 - Universal eyebrow/headline pattern via GUIDE_COPY.shopping.
+ * Prior: S52 - initial build.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -113,7 +113,7 @@ export default function GuidePageShopping({
   const overlay = destination.overlay
 
   const atAGlanceBullets = useMemo(
-    () => overlay?.at_a_glance_bullets ?? [],
+    () => overlay?.atAGlanceBullets ?? [],
     [overlay],
   )
 
@@ -167,9 +167,9 @@ export default function GuidePageShopping({
     const seen    = new Set<string>()
     const ordered: string[] = []
     for (const s of shops) {
-      if (s.shop_type && !seen.has(s.shop_type)) {
-        seen.add(s.shop_type)
-        ordered.push(s.shop_type)
+      if (s.shopType && !seen.has(s.shopType)) {
+        seen.add(s.shopType)
+        ordered.push(s.shopType)
       }
     }
     return ordered.sort()
@@ -178,7 +178,7 @@ export default function GuidePageShopping({
   const visibleShops = useMemo(() => {
     const base = sortByName(filterVisibleItems(shops, hasFullAccess))
     if (!activeShopType) return base
-    return base.filter(s => s.shop_type === activeShopType)
+    return base.filter(s => s.shopType === activeShopType)
   }, [shops, hasFullAccess, activeShopType])
 
   return (
@@ -219,9 +219,9 @@ export default function GuidePageShopping({
                     happenings,
                     copy:         { eyebrow: hero.eyebrow, headline: hero.headline, intro: hero.intro },
                     heroImageSrc: hero.imageSrc,
-                    guideYear:    resolveGuideYear(overlay?.guide_year),
-                    guideVersion: resolveGuideVersion(overlay?.guide_version),
-                    accuracyDate: overlay?.accuracy_date ?? null,
+                    guideYear:    resolveGuideYear(overlay?.guideYear),
+                    guideVersion: resolveGuideVersion(overlay?.guideVersion),
+                    accuracyDate: overlay?.accuracyDate ?? null,
                   })}
                   disabled={!pdfReady || pdfDownloading || shops.length === 0}
                   style={{
@@ -274,8 +274,8 @@ export default function GuidePageShopping({
               <GuidePlanYourVisit overlay={overlay} variant={VARIANT} />
             )}
 
-            {overlay?.accuracy_date && (
-              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracy_date} />
+            {overlay?.accuracyDate && (
+              <GuideDisclaimer variant={VARIANT} accuracyDate={overlay.accuracyDate} />
             )}
           </>
         )}

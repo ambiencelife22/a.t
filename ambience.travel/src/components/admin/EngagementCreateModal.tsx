@@ -2,11 +2,11 @@
  * Modal form for creating a new travel_journey row, opened when an engagement
  * is dragged onto the "+ Drop here to create new trip" zone.
  *
- * Self-contained — uses A.* tokens, fetches no data on its own. Parent
+ * Self-contained - uses A.* tokens, fetches no data on its own. Parent
  * provides the dragged engagement context + onSuccess callback. Modal does
  * the create + reassign in one shot, parent reloads.
  *
- * Last updated: S33B — initial ship.
+ * Last updated: S33B - initial ship.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -16,7 +16,7 @@ import { A } from '../../tokens/tokensAdmin'
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type EngagementCreateModalProps = {
-  // The engagement being dragged onto the create zone — for context label
+  // The engagement being dragged onto the create zone - for context label
   // and for the post-create reassignment.
   engagementId:    string
   engagementTitle: string | null
@@ -91,7 +91,7 @@ const TRIP_CODE_REGEX = /^[A-Z0-9]{3,8}-\d{4}-[A-Z0-9]{2,8}$/i
 
 function suggestTripCode(engagementTitle: string | null): string {
   // Suggest a journey_code shape like NEW-YYYY-XX based on the engagement's
-  // title — operator can edit before submit. Pure UX nicety; no DB call.
+  // title - operator can edit before submit. Pure UX nicety; no DB call.
   const year = new Date().getFullYear()
   const titleSlug = (engagementTitle ?? '')
     .toUpperCase()
@@ -156,10 +156,10 @@ export default function EngagementCreateModal({
     setSaving(true)
     try {
       const newjourneyId = await createJourney({
-        journey_code:         tripCode.trim(),
+        journeyCode:         tripCode.trim(),
         public_title:      publicTitle.trim() ?? null,
-        start_date:        startDate ?? null,
-        end_date:          endDate ?? null,
+        startDate:        startDate ?? null,
+        endDate:          endDate ?? null,
         currency:          currency.trim() || 'USD',
         primary_client_id: null,
       })
@@ -332,12 +332,12 @@ export default function EngagementCreateModal({
               onChange={e => setCurrency(e.target.value)}
               disabled={saving}
             >
-              <option value='USD'>USD — US Dollar</option>
-              <option value='EUR'>EUR — Euro</option>
-              <option value='GBP'>GBP — British Pound</option>
-              <option value='AED'>AED — UAE Dirham</option>
-              <option value='SAR'>SAR — Saudi Riyal</option>
-              <option value='CHF'>CHF — Swiss Franc</option>
+              <option value='USD'>USD - US Dollar</option>
+              <option value='EUR'>EUR - Euro</option>
+              <option value='GBP'>GBP - British Pound</option>
+              <option value='AED'>AED - UAE Dirham</option>
+              <option value='SAR'>SAR - Saudi Riyal</option>
+              <option value='CHF'>CHF - Swiss Franc</option>
             </select>
           </div>
         </div>

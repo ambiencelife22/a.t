@@ -1,8 +1,8 @@
-/* GuideDisclaimer.tsx — accuracy disclaimer block for guide pages.
+/* GuideDisclaimer.tsx - accuracy disclaimer block for guide pages.
  *
  * Single source of truth for the disclaimer rendered below each guide's
  * venue grid. Variant-specific subject noun comes from GUIDE_COPY.
- * Date renders via formatMonthYear (Month YYYY) — never raw ISO.
+ * Date renders via formatMonthYear (Month YYYY) - never raw ISO.
  *
  * What it owns:
  *   - Disclaimer prose (subject noun + accuracy date + caveats)
@@ -10,17 +10,17 @@
  *   - Wrapper + text styles
  *
  * What it does not own:
- *   - Whether to render (caller gates on overlay?.accuracy_date)
+ *   - Whether to render (caller gates on overlay?.accuracyDate)
  *   - Overlay fetch (each GuidePage<X> owns this)
  *   - Style tokens (stylesGuidePage)
  *
  * Subject noun per variant (from GUIDE_COPY.disclaimerSubject):
- *   dining      — "The venues and recognition"
- *   experiences — "The experiences"
- *   hotels      — "The hotels"
- *   shopping    — "The shops"
+ *   dining      - "The venues and recognition"
+ *   experiences - "The experiences"
+ *   hotels      - "The hotels"
+ *   shopping    - "The shops"
  *
- * Last updated: S53 — Extracted from four guide pages. Previously each page
+ * Last updated: S53 - Extracted from four guide pages. Previously each page
  *   inlined its own disclaimer prose with a raw accuracy_date render.
  *   Now one component, one formatter, one source of truth.
  */
@@ -50,7 +50,7 @@ const DISCLAIMER_CAVEAT: Record<GuideVariant, string> = {
 
 interface GuideDisclaimerProps {
   variant:      GuideVariant
-  accuracyDate: string  // ISO YYYY-MM-DD — caller gates on non-null
+  accuracyDate: string  // ISO YYYY-MM-DD - caller gates on non-null
 }
 
 // ── Component ────────────────────────────────────────────────────────────────

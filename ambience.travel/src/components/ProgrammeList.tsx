@@ -1,7 +1,7 @@
 /* ProgrammeList.tsx
  * Lists all programmes linked to the authenticated guest.
  * Shown when navigating to "My Programme" in the Layout nav.
- * Each card links to the full-page programme URL — no in-app rendering.
+ * Each card links to the full-page programme URL - no in-app rendering.
  *
  * Card shows: property name, location, type, dates, status pill.
  * Clicking navigates to /stays/:id or /journeys/:id (full page, no Layout).

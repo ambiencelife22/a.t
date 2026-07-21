@@ -1,4 +1,4 @@
-// animations.ts — canonical animation registry for the entire ambience repo
+// animations.ts - canonical animation registry for the entire ambience repo
 // What it owns:
 //   - CSS keyframe injection for SPORTS (injectAppStyles)
 //   - ANIM + DURATION constants (SPORTS class-based animations)
@@ -10,12 +10,12 @@
 //   - useScrollProgress hook (TRAVEL scroll-linked animation driver)
 //
 // What it does not own:
-//   - Immerse keyframes — these live in src/index.css (hoisted S31).
+//   - Immerse keyframes - these live in src/index.css (hoisted S31).
 //     Do not duplicate immerseGoldBreatheSolid, immerseFadeIn, etc. here.
-//   - Token values — all colours come from lib/landingColors or lib/colors.
+//   - Token values - all colours come from lib/landingColors or lib/colors.
 //   - Component-level animation logic (hover states, transition props).
 //
-// Last updated: S40 — Created. Merged SPORTS animations.ts + TRAVEL inline
+// Last updated: S40 - Created. Merged SPORTS animations.ts + TRAVEL inline
 //   animation primitives (useVisible, fadeUp, useScrollParallax,
 //   useScrollProgress from ImmerseComponents). Single source of truth
 //   for all animation hooks and constants across the repo.
@@ -31,7 +31,7 @@ import { useState, useEffect, useRef } from 'react'
 import type React from 'react'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § SPORTS — CSS keyframe injection
+// § SPORTS - CSS keyframe injection
 // These keyframes are injected at runtime via injectAppStyles(), called once
 // in App.tsx on mount. They are SPORTS-specific; immerse keyframes live in
 // src/index.css and are always available globally.
@@ -176,7 +176,7 @@ const APP_STYLES = `
 ._a_load_pulse    { animation: _a_load_pulse    1.6s ease-in-out infinite; }
 ._a_load_fade_out { animation: _a_load_fade_out 300ms ease forwards; }
 
-/* Emblem entry flash — sharp hit then settle into pulse */
+/* Emblem entry flash - sharp hit then settle into pulse */
 @keyframes _a_load_flash {
   0%   { opacity: 0;    transform: scale(0.82); }
   18%  { opacity: 1;    transform: scale(1.12); filter: brightness(1.6); }
@@ -225,7 +225,7 @@ export function injectAppStyles(): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § SPORTS — Animation class name constants
+// § SPORTS - Animation class name constants
 // Apply as className values. Requires injectAppStyles() to have run.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -274,7 +274,7 @@ export const ANIM = {
 } as const
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § SPORTS — Timing constants (ms)
+// § SPORTS - Timing constants (ms)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const DURATION = {
@@ -288,7 +288,7 @@ export const DURATION = {
 } as const
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § SPORTS — useCardTransition
+// § SPORTS - useCardTransition
 // Drives paginated content transitions with direction awareness.
 //
 // Usage:
@@ -352,7 +352,7 @@ export function useCardTransition(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § SPORTS — useAnimatedNumber
+// § SPORTS - useAnimatedNumber
 // Counts from 0 to `target` over `duration` ms using requestAnimationFrame.
 // Re-animates whenever `target` changes.
 //
@@ -386,13 +386,13 @@ export function useAnimatedNumber(target: number, duration = 600): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § TRAVEL — useVisible
+// § TRAVEL - useVisible
 // IntersectionObserver-based trigger for scroll-into-view animations.
-// Returns { ref, visible } — attach ref to a container div, use visible
+// Returns { ref, visible } - attach ref to a container div, use visible
 // to drive fadeUp() or CSS animation class application.
 //
 // threshold: fraction of element that must be visible before triggering.
-// Once visible, stays visible (one-shot — intentional for entrance animations).
+// Once visible, stays visible (one-shot - intentional for entrance animations).
 //
 // Usage:
 //   const { ref, visible } = useVisible()
@@ -421,9 +421,9 @@ export function useVisible(threshold = 0.15): {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § TRAVEL — fadeUp
+// § TRAVEL - fadeUp
 // Returns an inline CSSProperties object that drives a fade + lift entrance.
-// Use with useVisible() — visible=false = hidden starting state,
+// Use with useVisible() - visible=false = hidden starting state,
 // visible=true = animated to final position.
 //
 // delay: stagger offset in ms. Use multiples of 60-120 for sequential items.
@@ -441,10 +441,10 @@ export function fadeUp(visible: boolean, delay = 0): React.CSSProperties {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § TRAVEL — useScrollParallax
+// § TRAVEL - useScrollParallax
 // Returns a translateY pixel offset driven by the element's scroll position
 // relative to the viewport centre. Apply to image wrappers for a subtle
-// depth effect — the image moves at `strength` fraction of scroll delta.
+// depth effect - the image moves at `strength` fraction of scroll delta.
 //
 // strength: 0.08 = image moves 8% of scroll distance (very subtle).
 //           0.14 = moderate. 0.20+ = noticeable. Keep <=0.12 for guide pages.
@@ -483,7 +483,7 @@ export function useScrollParallax(strength = 0.08): {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § TRAVEL — useScrollProgress
+// § TRAVEL - useScrollProgress
 // Returns a 0->1 progress value as an element scrolls from the bottom of the
 // viewport up to its centre. Use to drive scroll-linked opacity, scale, or
 // position animations.

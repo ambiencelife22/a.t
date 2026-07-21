@@ -3,11 +3,11 @@
  * Default page after sign-in. Shows programme status and key contacts.
  *
  * Sections:
- *   — Greeting row (name, date context)
- *   — Active programme card (if currently checked in)
- *   — Next programme card (upcoming, with countdown)
- *   — Key contact card (owner/manager from nearest programme)
- *   — Past programmes list (completed stays/journeys)
+ *   - Greeting row (name, date context)
+ *   - Active programme card (if currently checked in)
+ *   - Next programme card (upcoming, with countdown)
+ *   - Key contact card (owner/manager from nearest programme)
+ *   - Past programmes list (completed stays/journeys)
  *
  * No P&L, no financial data of any kind.
  * Data sourced via getGuestProgrammes() from queries.ts.
@@ -124,7 +124,7 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-// Active programme — currently checked in
+// Active programme - currently checked in
 function ActiveCard({ p }: { p: GuestProgramme }) {
   const daysLeft = p.checkOut ? Math.max(0, daysUntil(p.checkOut)) : null
 
@@ -256,7 +256,7 @@ function ActiveCard({ p }: { p: GuestProgramme }) {
   )
 }
 
-// Next programme — upcoming
+// Next programme - upcoming
 function NextCard({ p }: { p: GuestProgramme }) {
   const days      = p.checkIn ? daysUntil(p.checkIn) : null
   const url       = programmeProgrammeUrl(p)
@@ -508,14 +508,14 @@ export default function Dashboard({ displayName }: DashboardProps) {
             <div style={{ marginBottom: 32 }}>
               <SectionLabel>Coming up</SectionLabel>
               <NextCard p={upcoming[0]} />
-              {/* Additional upcoming — smaller treatment */}
+              {/* Additional upcoming - smaller treatment */}
               {upcoming.slice(1).map(p => (
                 <PastRow key={p.id} p={p} />
               ))}
             </div>
           )}
 
-          {/* Empty state — no active or upcoming */}
+          {/* Empty state - no active or upcoming */}
           {active.length === 0 && upcoming.length === 0 && past.length === 0 && (
             <EmptyState message='No programmes are linked to this account. Your travel adviser will add them when your itinerary is confirmed.' />
           )}

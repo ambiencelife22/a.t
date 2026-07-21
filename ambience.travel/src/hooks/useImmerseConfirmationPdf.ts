@@ -1,14 +1,14 @@
-// useImmerseConfirmationPdf.ts — jsPDF loader + download handlers for
+// useImmerseConfirmationPdf.ts - jsPDF loader + download handlers for
 // Confirmation Brief and Trip Brief PDFs.
 //
 // Exports two handlers from one hook so both PDF types share a single
 // jsPDF load lifecycle:
-//   handleDownloadBrief(data)        — Engagement Confirmation PDF
-//   handleDownloadEngagementBrief(data)    — Trip Brief PDF (structured summary)
+//   handleDownloadBrief(data)        - Engagement Confirmation PDF
+//   handleDownloadEngagementBrief(data)    - Trip Brief PDF (structured summary)
 //
-// Last updated: S49 — added handleDownloadEngagementBrief for Trip Brief tab.
+// Last updated: S49 - added handleDownloadEngagementBrief for Trip Brief tab.
 //   Both handlers share pdfReady / pdfDownloading state from one jsPDF load.
-// Prior: S45 — initial ship.
+// Prior: S45 - initial ship.
 
 import { useEffect, useRef, useState } from 'react'
 import { exportConfirmationBriefPdf, type ConfirmationBriefData } from '../pdf/pdfImmerseConfirmation'
@@ -49,7 +49,7 @@ export function useImmerseConfirmationPdf() {
       .catch(err => console.error('PDF library load error:', err))
   }, [])
 
-  // Confirmation Brief PDF — accommodation cards + flights (card layout)
+  // Confirmation Brief PDF - accommodation cards + flights (card layout)
   async function handleDownloadBrief(data: ConfirmationBriefData, branding: import('../pdf/pdfShared').ExportBranding = 'ambience') {
     if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
     setPdfDownloading(true)
@@ -63,7 +63,7 @@ export function useImmerseConfirmationPdf() {
     }
   }
 
-  // Trip Brief PDF — structured summary (overview table + sections)
+  // Trip Brief PDF - structured summary (overview table + sections)
   async function handleDownloadEngagementBrief(data: EngagementBriefPdfData, branding: import('../pdf/pdfShared').ExportBranding = 'ambience') {
     if (!pdfReady) { toastRef.current.info('PDF library is still loading. Try again in a moment.'); return }
     setPdfDownloading(true)

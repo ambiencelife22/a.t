@@ -1,9 +1,9 @@
-// utilsBooking.ts — Shared booking display helpers across ambience.TRAVEL.
+// utilsBooking.ts - Shared booking display helpers across ambience.TRAVEL.
 //
-// Canonical bookedByLabel — single source for all surfaces.
+// Canonical bookedByLabel - single source for all surfaces.
 // Rules:
 //   - null/undefined/'ambience' → '' (renders nothing; booked_by is
-//     designer-authored — absent authorship = absent label)
+//     designer-authored - absent authorship = absent label)
 //   - 'self'                    → 'Own Arrangements'
 //   - anything otherwise             → 'Booked by {value}'//
 // Used by:
@@ -24,9 +24,9 @@ export function bookedByLabel(bookedBy: string | null | undefined): string {
 
 // The booked_by axis has one meaningful visual distinction: did WE arrange it
 // (ambience, or a named designer like Deron) or did the CLIENT (self)? "self" =
-// Own Arrangements — the only value that earns the distinct, subtle treatment.
+// Own Arrangements - the only value that earns the distinct, subtle treatment.
 // Everything otherwise is ambience-arranged, regardless of which designer is named.
-// Single source — surfaces must not re-derive (booked_by ?? 'ambience').
+// Single source - surfaces must not re-derive (booked_by ?? 'ambience').
 export function isOwnArrangements(bookedBy: string | null | undefined): boolean {
   return bookedBy === 'self'
 }
@@ -34,7 +34,7 @@ export function isOwnArrangements(bookedBy: string | null | undefined): boolean 
 // Single source for all tel: href construction. Strips whitespace and common
 // formatting characters so the OS can dial correctly regardless of how the
 // phone number was stored.
-// ── Bedding type labels — single source ───────────────────────────────────────
+// ── Bedding type labels - single source ───────────────────────────────────────
 const BEDDING_LABELS: Record<string, string> = {
   king:        'King',
   cal_king:    'California King',
@@ -75,7 +75,7 @@ export function toWhatsAppHref(phone: string | null | undefined): string | null 
   return digits ? `https://wa.me/${digits}` : null
 }
 
-// ── Category accent colours — single source ───────────────────────────────────
+// ── Category accent colours - single source ───────────────────────────────────
 // The mapping of timeline/programme category → accent colour lives here once.
 // Two formats exported: hex (web surfaces) and RGB tuple (PDF/jsPDF surfaces).
 // Add new categories here; never duplicate this map in a component or PDF file.
@@ -94,7 +94,7 @@ const CATEGORY_ACCENT_MAP: Record<string, { hex: string; rgb: RGB }> = {
 
 const CATEGORY_ACCENT_DEFAULT = { hex: '#B4AFA5', rgb: [180, 175, 165] as RGB }
 
-// ── Flight detail composition — single source ─────────────────────────────────
+// ── Flight detail composition - single source ─────────────────────────────────
 // Composes route + times + flight number into one display string.
 // Used by CalendarTab (web) and PDF surfaces. Never compose inline.
 //
@@ -104,24 +104,24 @@ const CATEGORY_ACCENT_DEFAULT = { hex: '#B4AFA5', rgb: [180, 175, 165] as RGB }
 export interface FlightDetailInput {
   origin?:         string | null
   destination?:    string | null
-  depart_airport?: string | null
-  arrive_airport?: string | null
+  departAirport?: string | null
+  arriveAirport?: string | null
   time?:           string | null   // departure time (CalendarActivity uses .time)
-  start_time?:     string | null   // departure time (aux booking uses .start_time)
-  end_time?:       string | null
-  flight_number?:  string | null
-  airline_name?:   string | null
+  startTime?:     string | null   // departure time (aux booking uses .startTime)
+  endTime?:       string | null
+  flightNumber?:  string | null
+  airlineName?:   string | null
 }
 
 export function flightDetail(a: FlightDetailInput, fmtTimeFn: (t: string | null | undefined) => string): string {
-  const from  = a.depart_airport ?? a.origin ?? null
-  const to    = a.arrive_airport ?? a.destination ?? null
+  const from  = a.departAirport ?? a.origin ?? null
+  const to    = a.arriveAirport ?? a.destination ?? null
   const route = [from, to].filter(Boolean).join(' \u2192 ')
-  const depRaw = a.time ?? a.start_time ?? null
+  const depRaw = a.time ?? a.startTime ?? null
   const dep   = fmtTimeFn(depRaw)
-  const arr   = fmtTimeFn(a.end_time)
-  const times = dep && arr ? `${dep}\u2013${arr}` : dep || arr || ''
-  const parts = [route, times, a.flight_number ?? null].filter(Boolean)
+  const arr   = fmtTimeFn(a.endTime)
+  const times = dep && arr ? `${dep}-${arr}` : dep || arr || ''
+  const parts = [route, times, a.flightNumber ?? null].filter(Boolean)
   return parts.join('  \u00b7  ')
 }
 

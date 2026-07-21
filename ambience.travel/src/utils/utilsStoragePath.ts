@@ -1,11 +1,11 @@
-// storagePath.ts — destination storage path resolver, DB-driven
+// storagePath.ts - destination storage path resolver, DB-driven
 // Owns:    composing the full storage folder path from a destination's
 //          canonical storage_path column + category + optional hotel slug.
 // Not owned: cascade UI (see GeoCascade.tsx), uploads (adminAssetQueries.ts),
 //            DB queries for destinations (caller's job).
 //
 // The destination's storage_path column is the source of truth (added s33b_03).
-// This helper just composes the trailing segments — category folder + hotel
+// This helper just composes the trailing segments - category folder + hotel
 // folder when category=accom. Returns null when storage_path is null (admin
 // uses custom-path mode in that case).
 //

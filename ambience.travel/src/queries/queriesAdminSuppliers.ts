@@ -1,5 +1,5 @@
-// queriesAdminSuppliers.ts — Supplier query layer.
-// All access via Edge Functions — no direct supabase.from() calls.
+// queriesAdminSuppliers.ts - Supplier query layer.
+// All access via Edge Functions - no direct supabase.from() calls.
 //
 // Read:  travel-read-engagement-admin (mode: suppliers)
 // Write: travel-write-engagement      (mode: create_supplier)
@@ -12,9 +12,9 @@ export type Supplier = {
   id:            string
   name:          string
   supplier_type: SupplierType
-  is_active:     boolean
-  created_at:    string
-  updated_at:    string
+  isActive:     boolean
+  createdAt:    string
+  updatedAt:    string
 }
 
 export async function fetchSuppliers(types?: SupplierType[]): Promise<Supplier[]> {

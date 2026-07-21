@@ -1,9 +1,9 @@
-// queriesAdminFinance.ts — Admin queries for the Financial Module v1.
+// queriesAdminFinance.ts - Admin queries for the Financial Module v1.
 //
 // All reads + writes go through travel-read-expenses and travel-write-expenses
 // EFs via supabase.functions.invoke. Zero direct supabase.from() calls.
 //
-// Last updated: S53G v2 — EngagementFull type + fetchEngagementFull added.
+// Last updated: S53G v2 - EngagementFull type + fetchEngagementFull added.
 
 import { supabase } from '../lib/supabase'
 
@@ -13,8 +13,8 @@ export type BillingStatus = 'absorbed' | 'billable' | 'billed' | 'paid' | 'writt
 
 export type ExpenseItem = {
   id:            string
-  expense_id:    string
-  item_type:     string
+  expenseId:    string
+  itemType:     string
   description:   string
   amount:        number
   receipt_ref:   string | null
@@ -22,37 +22,37 @@ export type ExpenseItem = {
   recipient_id:  string | null
   paid_by:       string | null
   paid_at:       string | null
-  sort_order:    number
+  sortOrder:    number
 }
 
 export type Expense = {
   id:             string
-  engagement_id:  string | null
-  booking_id:     string | null
-  destination_id: string | null
+  engagementId:  string | null
+  bookingId:     string | null
+  destinationId: string | null
   team_member_id: string | null
-  expense_type:   string
+  expenseType:   string
   description:    string
   total_amount:   number
   currency:       string
-  billing_status: BillingStatus
+  billingStatus: BillingStatus
   paid_at:        string | null
-  billed_at:      string | null
+  billedAt:      string | null
   reimbursed_at:  string | null
-  linked_at:      string | null
+  linkedAt:      string | null
   notes:          string | null
   created_by:     string | null
-  created_at:     string
-  updated_at:     string
+  createdAt:     string
+  updatedAt:     string
   items:          ExpenseItem[]
 }
 
 export type EngagementSummaryFull = {
   total_commission:          number
   net_commission_expected:   number
-  commission_received:       number
+  commissionReceived:       number
   commission_outstanding:    number
-  total_rate:              number
+  totalRate:              number
   total_amenities:         number
   total_net_revenue:       number
   total_referral:          number
@@ -71,8 +71,8 @@ export type EngagementFull = {
   engagement: {
     id:      string
     title:   string | null
-    url_id:  string
-    travel_journey: { journey_code: string | null; start_date: string | null; end_date: string | null } | null
+    urlId:  string
+    travel_journey: { journeyCode: string | null; startDate: string | null; endDate: string | null } | null
   }
   bookings: Record<string, unknown>[]
   expenses: Expense[]
@@ -80,19 +80,19 @@ export type EngagementFull = {
 }
 
 export type PipelineTrip = {
-  engagement_id:           string
-  url_id:                  string
+  engagementId:           string
+  urlId:                  string
   title:                   string | null
   status_slug:             string | null
-  journey_code:               string | null
-  start_date:              string | null
-  end_date:                string | null
+  journeyCode:               string | null
+  startDate:              string | null
+  endDate:                string | null
   primary_client_id:       string | null
   total_commission:          number
   net_commission_expected:   number
-  commission_received:       number
+  commissionReceived:       number
   commission_outstanding:    number
-  total_rate:              number | null
+  totalRate:              number | null
   total_amenities:         number
   total_absorbed:          number
   total_billable:          number
@@ -103,7 +103,7 @@ export type PipelineTrip = {
 }
 
 export type CreateExpensePayload = {
-  expense_type:    string
+  expenseType:    string
   description:     string
   total_amount:    number
   engagement_id?:  string | null
@@ -141,7 +141,7 @@ export async function fetchPipeline(): Promise<PipelineTrip[]> {
 
 export async function fetchEngagementFull(engagementId: string): Promise<EngagementFull> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'by_engagement_full', engagement_id: engagementId },
+    body: { mode: 'by_engagement_full', engagementId: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -178,7 +178,7 @@ export async function deleteExpense(id: string): Promise<void> {
 
 export async function markBilled(expenseId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'mark_billed', expense_id: expenseId },
+    body: { mode: 'mark_billed', expenseId: expenseId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -187,7 +187,7 @@ export async function markBilled(expenseId: string): Promise<Expense> {
 
 export async function markPaid(expenseId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'mark_paid', expense_id: expenseId },
+    body: { mode: 'mark_paid', expenseId: expenseId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -196,7 +196,7 @@ export async function markPaid(expenseId: string): Promise<Expense> {
 
 export async function writeOff(expenseId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'write_off', expense_id: expenseId },
+    body: { mode: 'write_off', expenseId: expenseId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -205,7 +205,7 @@ export async function writeOff(expenseId: string): Promise<Expense> {
 
 export async function linkEngagement(expenseId: string, engagementId: string): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'link_engagement', expense_id: expenseId, engagement_id: engagementId },
+    body: { mode: 'link_engagement', expenseId: expenseId, engagementId: engagementId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -218,18 +218,18 @@ export type PaymentPlatform = {
   id:               string
   slug:             string
   label:            string
-  default_fee_pct:  number
-  default_fee_flat: number | null
-  sort_order:       number
-  is_active:        boolean
+  defaultFeePct:  number
+  defaultFeeFlat: number | null
+  sortOrder:       number
+  isActive:        boolean
 }
 
 export type RateType = {
   id:         string
   slug:       string
   label:      string
-  sort_order: number
-  is_active:  boolean
+  sortOrder: number
+  isActive:  boolean
 }
 
 const SUPPLIERS_EF = 'travel-read-suppliers'
@@ -253,17 +253,27 @@ export async function fetchRateTypes(): Promise<RateType[]> {
 }
 
 export async function markCommissionReceived(payload: {
-  booking_id:             string
-  platform_id?:           string
-  received_amount:        number
-  fee_pct?:               number
-  fee_amt?:               number
-  received_at?:           string
-  transaction_ref?:       string
-  remitting_partner_id?:  string
+  bookingId:          string
+  platformId?:        string
+  receivedAmount:     number
+  feePct?:            number
+  feeAmt?:            number
+  receivedAt?:        string
+  transactionRef?:    string
+  remittingPartnerId?: string
 }): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'mark_commission_received', ...payload },
+    body: {
+      mode:                 'mark_commission_received',
+      booking_id:           payload.bookingId,
+      platform_id:          payload.platformId,
+      received_amount:      payload.receivedAmount,
+      fee_pct:              payload.feePct,
+      fee_amt:              payload.feeAmt,
+      received_at:          payload.receivedAt,
+      transaction_ref:      payload.transactionRef,
+      remitting_partner_id: payload.remittingPartnerId,
+    },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -271,7 +281,7 @@ export async function markCommissionReceived(payload: {
 
 export async function updateBookingFinancial(bookingId: string, patch: Record<string, unknown>): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_booking_financial', booking_id: bookingId, patch },
+    body: { mode: 'update_booking_financial', bookingId: bookingId, patch },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -279,7 +289,7 @@ export async function updateBookingFinancial(bookingId: string, patch: Record<st
 
 export async function setHotelPlatform(hotelId: string, platformId: string | null): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'set_hotel_platform', hotel_id: hotelId, platform_id: platformId },
+    body: { mode: 'set_hotel_platform', hotelId: hotelId, platformId: platformId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -289,9 +299,9 @@ export type SupplierPartner = {
   id:                string
   name:              string
   partner_type:      string
-  default_share_pct: number | null
+  defaultSharePct: number | null
   currency:          string | null
-  is_active:         boolean
+  isActive:         boolean
 }
 
 export async function fetchPartners(): Promise<SupplierPartner[]> {

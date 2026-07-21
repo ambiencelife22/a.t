@@ -1,27 +1,27 @@
-/* GuideCardExperiences.tsx — single experience card for the experiences guide.
+/* GuideCardExperiences.tsx - single experience card for the experiences guide.
  *
  * What it owns: card chrome, image, kicker, name, body, bullets, address block.
  * What it does not own: gating decision (utilsGuideGating: cardBodyMode),
  *   layout, filter state.
  *
  * Shape notes:
- *   No recognition marks — travel_experiences has no michelin/highlighted columns.
- *   No image_2 — single image only.
- *   No tags, cuisine, neighborhood — not on travel_experiences schema.
- *   No venue_status banner — not on travel_experiences schema.
+ *   No recognition marks - travel_experiences has no michelin/highlighted columns.
+ *   No image_2 - single image only.
+ *   No tags, cuisine, neighborhood - not on travel_experiences schema.
+ *   No venue_status banner - not on travel_experiences schema.
  *   Kicker occupies the eyebrow slot.
  *
  * Body-mode logic:
- *   'full'   — render body + bullets. Full-access viewers, or experiences
+ *   'full'   - render body + bullets. Full-access viewers, or experiences
  *              marked publicly previewable (public_preview_rank != null)
  *              once that column is added to travel_experiences.
- *   'teaser' — render teaser line only. Public viewers, experiences not
+ *   'teaser' - render teaser line only. Public viewers, experiences not
  *              marked publicly previewable.
  *
- * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ * Last updated: S53 - Renamed to convention. cardBodyMode() replaces inline
  *   isTeaser derivation. Ready for public_preview_rank on
  *   travel_experiences; behaviour is identical until that column ships.
- * Prior: S41 — initial build.
+ * Prior: S41 - initial build.
  */
 
 import React from 'react'
@@ -61,7 +61,7 @@ export function GuideCardExperiences({ venue, hasFullAccess, destinationName }: 
 // ── Image block ──────────────────────────────────────────────────────────────
 
 function ImageBlock({ venue, isTeaser }: { venue: ExperienceVenue; isTeaser: boolean }) {
-  if (!venue.image_src?.trim()) {
+  if (!venue.imageSrc?.trim()) {
     return (
       <div style={{ ...nameFallbackStyle, opacity: isTeaser ? 0.7 : 1 }}>
         <span style={nameFallbackTextStyle}>{venue.name}</span>
@@ -71,8 +71,8 @@ function ImageBlock({ venue, isTeaser }: { venue: ExperienceVenue; isTeaser: boo
   return (
     <div style={imageWrapStyle}>
       <img
-        src={venue.image_src}
-        alt={venue.image_alt ?? venue.name}
+        src={venue.imageSrc}
+        alt={venue.imageAlt ?? venue.name}
         style={{ ...imageStyle, opacity: isTeaser ? 0.7 : 1 }}
         loading="lazy"
       />
@@ -113,7 +113,7 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
 // ── Address block ────────────────────────────────────────────────────────────
 
 function AddressBlock({ venue }: { venue: ExperienceVenue }) {
-  const mapsUrl = resolveMapsUrl(venue.maps_url, venue.address)
+  const mapsUrl = resolveMapsUrl(venue.mapsUrl, venue.address)
   if (!venue.address && !mapsUrl) return null
   return (
     <div style={addressStyle}>

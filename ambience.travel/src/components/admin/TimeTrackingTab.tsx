@@ -124,13 +124,13 @@ function HouseTypeahead({
           {options.map(h => (
             <div
               key={h.id}
-              onClick={() => { onChange(h.id, h.display_name); setOpen(false); setQuery('') }}
+              onClick={() => { onChange(h.id, h.displayName); setOpen(false); setQuery('') }}
               style={{
                 padding: '10px 14px', cursor: 'pointer', fontSize: 13,
                 color: A.text, fontFamily: A.font, borderBottom: `1px solid ${A.border}`,
               }}
             >
-              {h.display_name ?? '(unnamed)'}
+              {h.displayName ?? '(unnamed)'}
               {h.a_house_id && <span style={{ color: A.faint, marginLeft: 8, fontFamily: 'DM Mono, monospace', fontSize: 11 }}>{h.a_house_id}</span>}
             </div>
           ))}
@@ -195,8 +195,8 @@ function TimeEntryForm({
       if (!pid) return
       const me = await fetchTeamMemberByPerson(pid).catch(() => null)
       if (alive && me) {
-        setPerformedById(me.person_id)
-        if (me.default_rate_id) setRateId(prev => prev ?? me.default_rate_id)
+        setPerformedById(me.personId)
+        if (me.defaultRateId) setRateId(prev => prev ?? me.defaultRateId)
       }
     })()
     return () => { alive = false }
@@ -205,8 +205,8 @@ function TimeEntryForm({
   // Selecting a performer auto-fills their default rate (overridable).
   function selectPerformer(personId: string | null) {
     setPerformedById(personId)
-    const m = team.find(t => t.person_id === personId)
-    if (m?.default_rate_id) setRateId(m.default_rate_id)
+    const m = team.find(t => t.personId === personId)
+    if (m?.defaultRateId) setRateId(m.defaultRateId)
   }
 
   // Engagement selected without a house -> auto-resolve house via bookings hub
@@ -214,7 +214,7 @@ function TimeEntryForm({
     setEngId(id)
     if (id && !houseId) {
       fetchHouseForEngagement(id).then(h => {
-        if (h) { setHouseId(h.id); setHouseName(h.display_name) }
+        if (h) { setHouseId(h.id); setHouseName(h.displayName) }
       }).catch(() => {})
     }
   }
@@ -224,17 +224,17 @@ function TimeEntryForm({
     setSaving(true)
     try {
       const input: TimeEntryInput = {
-        house_id: houseId,
-        engagement_id: engagementId,
-        house_person_id: housePersonId,
-        work_date: workDate,
+        houseId: houseId,
+        engagementId: engagementId,
+        housePersonId: housePersonId,
+        workDate: workDate,
         hours,
-        activity_id: activityId,
+        activityId: activityId,
         notes: notes.trim() || null,
-        entry_type: entryType,
-        is_invoiceable: isInvoiceable,
-        performed_by_person_id: performedById,
-        rate_id: rateId,
+        entryType: entryType,
+        isInvoiceable: isInvoiceable,
+        performedByPersonId: performedById,
+        rateId: rateId,
       }
       await createTimeEntry(input)
       toast.success('Time entry logged.')
@@ -271,8 +271,8 @@ function TimeEntryForm({
                 <option value=''>None</option>
                 {engagements.map(en => (
                   <option key={en.id} value={en.id}>
-                    {en.title ?? en.url_id ?? '(untitled)'}
-                    {en.iteration_label ? ` - ${en.iteration_label}` : ''}
+                    {en.title ?? en.urlId ?? '(untitled)'}
+                    {en.iterationLabel ? ` - ${en.iterationLabel}` : ''}
                   </option>
                 ))}
               </select>
@@ -289,7 +289,7 @@ function TimeEntryForm({
               <option value=''>Whole house</option>
               {members.map(m => (
                 <option key={m.id} value={m.id}>
-                  {m.display_name ?? m.member_ref ?? '(member)'}{m.role ? ` (${m.role})` : ''}
+                  {m.displayName ?? m.memberRef ?? '(member)'}{m.role ? ` (${m.role})` : ''}
                 </option>
               ))}
             </select>
@@ -323,7 +323,7 @@ function TimeEntryForm({
           <Field label='Rate (optional, internal)'>
             <select style={inputStyle} value={rateId ?? ''} onChange={e => setRateId(e.target.value || null)}>
               <option value=''>No rate</option>
-              {rates.map(r => <option key={r.id} value={r.id}>{r.role_label} ({r.currency} {r.hourly_rate})</option>)}
+              {rates.map(r => <option key={r.id} value={r.id}>{r.role_label} ({r.currency} {r.hourlyRate})</option>)}
             </select>
           </Field>
         </div>
@@ -332,8 +332,8 @@ function TimeEntryForm({
           <select style={inputStyle} value={performedById ?? ''} onChange={e => selectPerformer(e.target.value || null)}>
             <option value=''>Unassigned</option>
             {team.map(m => (
-              <option key={m.person_id} value={m.person_id}>
-                {m.display_name}{m.role !== 'member' ? ` (${m.role})` : ''}
+              <option key={m.personId} value={m.personId}>
+                {m.displayName}{m.role !== 'member' ? ` (${m.role})` : ''}
               </option>
             ))}
           </select>
@@ -347,7 +347,7 @@ function TimeEntryForm({
           {(() => {
             const r = rates.find(x => x.id === rateId)
             if (!r) return null
-            const val = (r.hourly_rate * hours)
+            const val = (r.hourlyRate * hours)
             return (
               <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>
                 Effort value: {r.currency} {val.toFixed(2)} · {isInvoiceable ? `invoiced: ${r.currency} ${val.toFixed(2)}` : 'invoiced: 0'}
@@ -416,23 +416,23 @@ function TimeEntriesList({
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-                  color: e.entry_type === 'billable' ? A.gold : A.muted, fontFamily: A.font,
+                  color: e.entryType === 'billable' ? A.gold : A.muted, fontFamily: A.font,
                 }}>
-                  {e.entry_type}
+                  {e.entryType}
                 </span>
-                {e.billable_amount != null && (
+                {e.billableAmount != null && (
                   <span style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace' }}>
-                    {e.travel_time_rates?.currency ?? 'USD'} {e.billable_amount.toFixed(2)}
+                    {e.travel_time_rates?.currency ?? 'USD'} {e.billableAmount.toFixed(2)}
                   </span>
                 )}
               </div>
               <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>
-                {e.work_date}
+                {e.workDate}
                 {(() => {
                   const p = e.performer
                   const name = p
-                    ? (p.nickname || [p.first_name, p.last_name].filter(Boolean).join(' '))
-                    : e.performed_by
+                    ? (p.nickname || [p.firstName, p.lastName].filter(Boolean).join(' '))
+                    : e.performedBy
                   return name ? ` · ${name}` : ''
                 })()}
               </div>

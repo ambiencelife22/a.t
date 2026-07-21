@@ -1,4 +1,4 @@
-// imageUrl.ts — Storage URL rewriter for ambience.travel
+// imageUrl.ts - Storage URL rewriter for ambience.travel
 // Strips the Supabase project-host prefix from storage URLs returned by
 // queries, leaving a path-only string that resolves against the apex
 // domain via the /img/* rewrite in vercel.json. The project ref never
@@ -14,7 +14,7 @@
 // SUPABASE_STORAGE_PREFIX is hard-coded rather than read from
 // import.meta.env.VITE_SUPABASE_URL. Reading from the env would tie
 // the rewriter to a runtime variable, which breaks the "this is a
-// string-strip, not a URL builder" model — and means a staging project
+// string-strip, not a URL builder" model - and means a staging project
 // on a different ref would silently render broken URLs instead of
 // leaving the staging prefix visible. Keep it explicit.
 
@@ -29,7 +29,7 @@ export function rewriteImageUrl(url: string | null | undefined): string {
   return url
 }
 
-// Array variant — for gallery jsonb columns and any other URL[] fields.
+// Array variant - for gallery jsonb columns and any other URL[] fields.
 // Filters out empty results so callers get a clean string[].
 export function rewriteImageUrls(urls: (string | null | undefined)[] | null | undefined): string[] {
   if (!Array.isArray(urls)) return []

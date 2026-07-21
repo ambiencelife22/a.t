@@ -1,4 +1,4 @@
-/* GuideCardDining.tsx — single dining venue card for the guide page.
+/* GuideCardDining.tsx - single dining venue card for the guide page.
  *
  * What it owns: card chrome, image grid, status banner, meta-row, name,
  *   body, tags, address, recognition marks.
@@ -6,24 +6,24 @@
  *   layout, filter state.
  *
  * Body-mode logic:
- *   'full'   — render body + tags. Full access viewers, or items marked
+ *   'full'   - render body + tags. Full access viewers, or items marked
  *              publicly previewable (public_preview_rank != null).
- *   'teaser' — render teaser line only. Public viewers, items not
+ *   'teaser' - render teaser line only. Public viewers, items not
  *              publicly previewable.
  *
- * Last updated: S53 — cardBodyMode() replaces inline isTeaser derivation.
+ * Last updated: S53 - cardBodyMode() replaces inline isTeaser derivation.
  *   Rule stays the same; single source of truth for the derivation.
- * Prior: S40C — AddressBlock extracted from FullBody. Address on both
+ * Prior: S40C - AddressBlock extracted from FullBody. Address on both
  *   teaser and full access cards.
- * Prior: S39 — FullBody address block renders when maps_url is set even
+ * Prior: S39 - FullBody address block renders when maps_url is set even
  *   without an address. Falls back to "View on map" link text.
- * Prior: S37 — Added 50 Best as fourth recognition tier. Replaced inline
+ * Prior: S37 - Added 50 Best as fourth recognition tier. Replaced inline
  *   glyph rendering with shared GuideRecognitionMark component.
- * Prior: S37 — Replaced single MICHELIN pill with structured recognition
+ * Prior: S37 - Replaced single MICHELIN pill with structured recognition
  *   marks (stars + BIB pill + Green Star).
- * Prior: S37 — Added status banner. Reads venue.venue_status.
- * Prior: S36 — Collapsed two-register canon. Reads venue.body.
- * Prior: S35 — Initial ship.
+ * Prior: S37 - Added status banner. Reads venue.venue_status.
+ * Prior: S36 - Collapsed two-register canon. Reads venue.body.
+ * Prior: S35 - Initial ship.
  */
 
 import React from 'react'
@@ -81,18 +81,18 @@ function StatusBanner({ status }: { status: VenueStatus }) {
 // ── Recognition Marks ────────────────────────────────────────────────────────
 
 function RecognitionMarks({ venue }: { venue: DiningVenue }) {
-  const hasHighlight = venue.is_highlighted
-  const hasStar      = venue.michelin_award === 'star' && venue.michelin_stars
-  const hasBib       = venue.michelin_award === 'bib_gourmand'
-  const hasGreen     = venue.michelin_green_star
-  const hasFifty     = venue.worlds_50_best
+  const hasHighlight = venue.isHighlighted
+  const hasStar      = venue.michelinAward === 'star' && venue.michelinStars
+  const hasBib       = venue.michelinAward === 'bib_gourmand'
+  const hasGreen     = venue.michelinGreenStar
+  const hasFifty     = venue.worlds50Best
 
   if (!hasHighlight && !hasStar && !hasBib && !hasGreen && !hasFifty) return null
 
   return (
     <div style={recognitionRowStyle}>
       {hasHighlight && <GuideRecognitionMark kind="highlighted" />}
-      {hasStar      && <GuideRecognitionMark kind="stars" starCount={venue.michelin_stars!} />}
+      {hasStar      && <GuideRecognitionMark kind="stars" starCount={venue.michelinStars!} />}
       {hasBib       && <GuideRecognitionMark kind="bib" />}
       {hasGreen     && <GuideRecognitionMark kind="green" />}
       {hasFifty     && <GuideRecognitionMark kind="fifty_best" />}
@@ -108,8 +108,8 @@ interface ImageGridProps {
 }
 
 function ImageGrid({ venue, isTeaser }: ImageGridProps) {
-  const hasImage1 = venue.image_src && venue.image_src.trim()
-  const hasImage2 = venue.image_2_src && venue.image_2_src.trim()
+  const hasImage1 = venue.imageSrc && venue.imageSrc.trim()
+  const hasImage2 = venue.image2Src && venue.image2Src.trim()
   const count = (hasImage1 ? 1 : 0) + (hasImage2 ? 1 : 0)
 
   if (count === 0) {
@@ -120,8 +120,8 @@ function ImageGrid({ venue, isTeaser }: ImageGridProps) {
     return (
       <div style={{ ...imageGridStyle, gridTemplateColumns: '1fr' }}>
         <ImageTile
-          src={hasImage1 ? venue.image_src! : venue.image_2_src!}
-          alt={hasImage1 ? venue.image_alt : venue.image_2_alt}
+          src={hasImage1 ? venue.imageSrc! : venue.image2Src!}
+          alt={hasImage1 ? venue.imageAlt : venue.image2Alt}
           name={venue.name}
           isTeaser={isTeaser}
         />
@@ -131,8 +131,8 @@ function ImageGrid({ venue, isTeaser }: ImageGridProps) {
 
   return (
     <div style={{ ...imageGridStyle, gridTemplateColumns: '1.08fr 0.92fr' }}>
-      <ImageTile src={venue.image_src!} alt={venue.image_alt} name={venue.name} isTeaser={isTeaser} />
-      <ImageTile src={venue.image_2_src!} alt={venue.image_2_alt} name={venue.name} isTeaser={isTeaser} />
+      <ImageTile src={venue.imageSrc!} alt={venue.imageAlt} name={venue.name} isTeaser={isTeaser} />
+      <ImageTile src={venue.image2Src!} alt={venue.image2Alt} name={venue.name} isTeaser={isTeaser} />
     </div>
   )
 }
@@ -176,8 +176,8 @@ function NameFallbackPanel({ name, isTeaser }: NameFallbackPanelProps) {
 function MetaRow({ venue }: { venue: DiningVenue }) {
   return (
     <div style={metaRowStyle}>
-      {venue.cuisine_subcategory && (
-        <span style={eyebrowStyle}>{venue.cuisine_subcategory}</span>
+      {venue.cuisineSubcategory && (
+        <span style={eyebrowStyle}>{venue.cuisineSubcategory}</span>
       )}
       {venue.neighborhood && (
         <span style={neighborhoodStyle}>{venue.neighborhood}</span>
@@ -218,7 +218,7 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
 // ── Address Block ────────────────────────────────────────────────────────────
 
 function AddressBlock({ venue }: { venue: DiningVenue }) {
-  const mapsUrl = resolveMapsUrl(venue.maps_url, venue.address)
+  const mapsUrl = resolveMapsUrl(venue.mapsUrl, venue.address)
   if (!venue.address && !mapsUrl) return null
   return (
     <div style={addressStyle}>

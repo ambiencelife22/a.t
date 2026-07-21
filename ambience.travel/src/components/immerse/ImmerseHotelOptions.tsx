@@ -1,21 +1,21 @@
-// ImmerseHotelOptions.tsx — hotel selector + per-hotel detail + room/hotel carousel
+// ImmerseHotelOptions.tsx - hotel selector + per-hotel detail + room/hotel carousel
 // Owns: ImmerseHotelOptions (export), FlatHotelOptions, RegionedHotelOptions,
 //   HotelWithRooms, SelectorAndCarousel scaffolding, HotelButton, HotelDetailPanel,
 //   LightboxOverlay, buildRoomSlides, ConnectedPairSlide
 //
-// Last updated: S53C — Michelin Keys. HotelDetailPanel renders the hotel's
-//   michelinKeys (1–3) under the hotel name via the shared RecognitionMark
+// Last updated: S53C - Michelin Keys. HotelDetailPanel renders the hotel's
+//   michelinKeys (1-3) under the hotel name via the shared RecognitionMark
 //   (kind="keys"), matching the dining-guide accolade idiom. The value comes
-//   from the canon hotel (travel_accom_hotels.michelin_keys) via the hotels
+//   from the canon hotel (travel_accom_hotels.michelinKeys) via the hotels
 //   query, so it shows on every proposal featuring that hotel.
-// Prior: S53C — connecting-room pairs. Rooms are grouped into "slides":
+// Prior: S53C - connecting-room pairs. Rooms are grouped into "slides":
 //   a slide is either a single room or a connected pair (two rooms sharing a
 //   travel_accom_room_connections link, surfaced as room.connectedRoomId). A
 //   pair renders as ONE carousel slide: both RoomCategory panels stacked under a
 //   shared "Connecting Suites" header, with a combined total when both rooms
 //   share a rate cadence (sum is only valid within one cadence). Mission: the
 //   pair IS one offering, so it is presented as one decision, not two slides.
-// Prior: S42 Add 3 — Resort Map download link renders centered above the
+// Prior: S42 Add 3 - Resort Map download link renders centered above the
 //   room carousel, sourced from detailHotel.resortMapSrc.
 
 import { useState, useRef, useEffect } from 'react'
@@ -82,18 +82,18 @@ function buildRoomSlides(rooms: ImmerseRoomOption[]): RoomSlide[] {
   return slides
 }
 
-// S53C — numeric rate detection (mirrors RoomCategory) for combined total.
+// S53C - numeric rate detection (mirrors RoomCategory) for combined total.
 function rateIsNumeric(rate: string | undefined): boolean {
   if (!rate) return false
   return /^([$€£¥]|EURO?|USD|GBP|JPY|CHF|AED|SAR)?\s*[$€£¥]?\s*\d/i.test(rate.trim())
 }
 
-// S53C — the displayed rate of a room (ambience preferred, otherwise public).
+// S53C - the displayed rate of a room (ambience preferred, otherwise public).
 function displayedRate(room: ImmerseRoomOption): string | undefined {
   return room.ambienceNightlyRate ?? room.publicNightlyRate ?? undefined
 }
 
-// S53C — combined total for a pair. Only valid when both rooms share a cadence
+// S53C - combined total for a pair. Only valid when both rooms share a cadence
 // and both rates are numeric in the same currency. Returns null when a safe
 // sum cannot be formed (renderer then omits the total).
 function combinedPairTotal(a: ImmerseRoomOption, b: ImmerseRoomOption): string | null {
@@ -103,7 +103,7 @@ function combinedPairTotal(a: ImmerseRoomOption, b: ImmerseRoomOption): string |
   if (!rateIsNumeric(ra) || !rateIsNumeric(rb)) return null
   if ((a.rateCadence ?? null) !== (b.rateCadence ?? null)) return null
 
-  // Parse "<prefix> <number>" — keep the prefix from the first room, sum digits.
+  // Parse "<prefix> <number>" - keep the prefix from the first room, sum digits.
   const prefixMatch = ra.match(/^([^\d]*)/)
   const prefix      = prefixMatch ? prefixMatch[1].trim() : ''
   const numA = Number(ra.replace(/[^\d.]/g, ''))
@@ -115,7 +115,7 @@ function combinedPairTotal(a: ImmerseRoomOption, b: ImmerseRoomOption): string |
   return prefix ? `${prefix} ${formatted}` : formatted
 }
 
-// S53C — gallery for a slide. For a pair, merge both suites' galleries
+// S53C - gallery for a slide. For a pair, merge both suites' galleries
 // (suite A then suite B), deduped; hero = suite A's image; label names the pair.
 function slideGallery(slide: RoomSlide | undefined): {
   images: string[]
@@ -161,7 +161,7 @@ export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) 
 // Renders a connecting pair as ONE card matching RoomCategory's styling: a single
 // content panel (connecting header + combined total + each suite's name/size/
 // rate/benefits) beside a single hero image. Both suites' info lives together in
-// one card — not two stacked cards.
+// one card - not two stacked cards.
 
 function PairSuiteBlock({ room, isMobile }: { room: ImmerseRoomOption; isMobile: boolean }) {
   const rate        = room.ambienceNightlyRate ?? room.publicNightlyRate ?? undefined
@@ -169,8 +169,8 @@ function PairSuiteBlock({ room, isMobile }: { room: ImmerseRoomOption; isMobile:
   const rateTax     = room.taxTreatment ?? room.rateSuffix
   const showTax     = !room.taxInclusive && Boolean(rateTax)
 
-  const sqft = room.sqftMin ? (room.sqftMax && room.sqftMax !== room.sqftMin ? `${room.sqftMin.toLocaleString()}–${room.sqftMax.toLocaleString()} sq ft` : `${room.sqftMin.toLocaleString()} sq ft`) : ''
-  const sqm  = room.sqmMin  ? (room.sqmMax  && room.sqmMax  !== room.sqmMin  ? `${room.sqmMin.toLocaleString()}–${room.sqmMax.toLocaleString()} sqm`     : `${room.sqmMin.toLocaleString()} sqm`)     : ''
+  const sqft = room.sqftMin ? (room.sqftMax && room.sqftMax !== room.sqftMin ? `${room.sqftMin.toLocaleString()}-${room.sqftMax.toLocaleString()} sq ft` : `${room.sqftMin.toLocaleString()} sq ft`) : ''
+  const sqm  = room.sqmMin  ? (room.sqmMax  && room.sqmMax  !== room.sqmMin  ? `${room.sqmMin.toLocaleString()}-${room.sqmMax.toLocaleString()} sqm`     : `${room.sqmMin.toLocaleString()} sqm`)     : ''
   const sqLabel = [sqft, sqm].filter(Boolean).join(' · ')
 
   return (
@@ -320,7 +320,7 @@ function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hote
   const hotel = hotels[activeHotel]
   if (!hotel) return null
 
-  // S53C — build slides (singles + connected pairs) from this hotel's rooms.
+  // S53C - build slides (singles + connected pairs) from this hotel's rooms.
   const slides = buildRoomSlides(hotel.rooms)
 
   function goSlide(idx: number) {
@@ -482,7 +482,7 @@ function HotelWithRooms({ hotel, fadeIn, regionTitle, hotelArrowsAndDots, hotelD
   const [dragStart, setDragStart]   = useState<number | null>(null)
   const carouselRef                 = useRef<HTMLDivElement>(null)
 
-  // S53C — slides (singles + pairs) for this region hotel's rooms.
+  // S53C - slides (singles + pairs) for this region hotel's rooms.
   const slides             = buildRoomSlides(hotel.rooms)
   const total              = slides.length
   const gallery            = hotel.gallery ?? []
@@ -723,7 +723,7 @@ function SelectorAndCarousel<T>({
         <div style={{ position: 'relative', zIndex: 1, width: isMobile ? 'calc(100% - 24px)' : 'min(1220px, calc(100% - 36px))', margin: '0 auto' }}>
           <div style={{ ...immerseFadeUp(visible2, 0) }}>
 
-            {/* Resort map — centered above room carousel */}
+            {/* Resort map - centered above room carousel */}
             {detailHotel.resortMapSrc && <ResortMapLink src={detailHotel.resortMapSrc} />}
 
             <div

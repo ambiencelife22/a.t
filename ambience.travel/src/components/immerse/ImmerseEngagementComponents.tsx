@@ -1,8 +1,8 @@
-// ImmerseEngagementComponents.tsx — section components for /immerse/ engagement overview pages
+// ImmerseEngagementComponents.tsx - section components for /immerse/ engagement overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing
 // Does not own: hero (ImmerseHero), destination subpages (ImmerseDestComponents)
 //
-// Last updated: S53B+ — Mobile pricing table now shows Basis instead of Item.
+// Last updated: S53B+ - Mobile pricing table now shows Basis instead of Item.
 //   On mobile only two columns render; the previous mapping (Item + Range)
 //   was insufficient when two pricing rows shared a destination (e.g. two
 //   Großarl options on the Mohammed engagement both displayed as "Großarl").
@@ -15,34 +15,34 @@
 //     multi-destination engagements have empty pricing_total_label so the
 //     visual impact on the total row is null; single-destination engagements
 //     already drop Item on desktop via hideItem and don't render col 1.
-// Prior: S32K — ImmerseEngagementPricing now renders a 3-column table
-//   when all rows share a destination (Basis, Stay, Range) — drops the
+// Prior: S32K - ImmerseEngagementPricing now renders a 3-column table
+//   when all rows share a destination (Basis, Stay, Range) - drops the
 //   redundant Item column rather than repeating the destination name on
 //   every row. Multi-destination engagements still render the 4-column
 //   layout. The table headers and Td col indices are computed from a
 //   `singleDestination` flag derived from the row data.
-// Prior: S32C — Route strip linkedRow lookup changed from index-based
+// Prior: S32C - Route strip linkedRow lookup changed from index-based
 //   (destinationRows[i]) to title-match. Index-based was off by one whenever
 //   the route stops included an origin (e.g. v2: Saudi Start as stops[0])
-//   because route_stops and destination_rows have different cardinalities —
+//   because route_stops and destination_rows have different cardinalities -
 //   stops include origin/return, rows do not. Title match: stop title is
 //   tested against each destination row's title; first match wins, otherwise
 //   anchorId stays null and the stop renders non-clickable. Origin/return
 //   stops naturally have no matching row → correctly non-clickable. Any
 //   route stop whose title matches its destination row's title scrolls
 //   correctly to that row.
-// Prior: S30E stage 2 — File renamed ImmerseTripComponents.tsx →
+// Prior: S30E stage 2 - File renamed ImmerseTripComponents.tsx →
 //   ImmerseEngagementComponents.tsx. Component rename: ImmerseTripPricing →
 //   ImmerseEngagementPricing. ImmerseRouteStrip + ImmerseDestinationRows
-//   names preserved (engagement-agnostic concepts — route segments and
+//   names preserved (engagement-agnostic concepts - route segments and
 //   destination cards, not master-entity wrappers).
-// Prior: S30E stage 1 — Type rename ImmerseTripData → ImmerseEngagementData
+// Prior: S30E stage 1 - Type rename ImmerseTripData → ImmerseEngagementData
 //   on every consumer signature.
-// Prior: S20 — DestinationRow rewrite:
+// Prior: S20 - DestinationRow rewrite:
 //   (1) Whole card now clickable (anchor wraps card) when subpageStatus === 'live'
 //   (2) 'preview' state renders opacity 0.5, cursor not-allowed, no hover lift,
 //       "Coming soon" badge in bottom-right (replaces Discover More CTA slot)
-//   (3) Defensive fix for /null/ bug — destination_slug literal "null" string is rejected
+//   (3) Defensive fix for /null/ bug - destination_slug literal "null" string is rejected
 
 import {
   ID,
@@ -77,7 +77,7 @@ function getDestinationAnchorId(row: ImmerseDestinationRow) {
 
 // S53C: UUID match. A route stop links to its destination row by
 // destinationRowId (FK), not by title text. Identity is the UUID, never the
-// string — a stop title ("Option 1 · Leogang · Hotel") may differ freely from
+// string - a stop title ("Option 1 · Leogang · Hotel") may differ freely from
 // its row title ("Leogang · Hotel"). Origin/return stops have a null
 // destinationRowId → no match → correctly non-clickable.
 function findDestinationRowForStop(
@@ -93,7 +93,7 @@ function findDestinationRowForStop(
   return null
 }
 
-// Defensive — destination_slug literal text "null" was the source of the
+// Defensive - destination_slug literal text "null" was the source of the
 // /immerse/honeymoon/null bug. Reject it explicitly along with empty/whitespace.
 function hasUsableDestinationSlug(row: ImmerseDestinationRow): boolean {
   const slug = row.destinationSlug
@@ -329,9 +329,9 @@ function RouteStopCard({
 // the light background. Gold accents (eyebrow, number label, mood) stay gold.
 //
 // Each row reads row.subpageStatus to decide render mode:
-//   'live'    — whole card is an anchor, normal hover, "Discover More →" CTA
-//   'preview' — plain div, opacity 0.5, no hover lift, "Coming soon" badge
-//   'hidden'  — already filtered server-side; never reaches this component
+//   'live'    - whole card is an anchor, normal hover, "Discover More →" CTA
+//   'preview' - plain div, opacity 0.5, no hover lift, "Coming soon" badge
+//   'hidden'  - already filtered server-side; never reaches this component
 
 export function ImmerseDestinationRows({ data }: { data: ImmerseEngagementData }) {
   const { ref, visible } = useImmerseVisible()
@@ -534,7 +534,7 @@ function DestinationRow({
     </div>
   )
 
-  // Live: whole card is the anchor — entire surface clickable, keyboard-accessible.
+  // Live: whole card is the anchor - entire surface clickable, keyboard-accessible.
   if (isLive && pageHref) {
     return (
       <div
@@ -569,8 +569,8 @@ function DestinationRow({
   )
 }
 
-// Corner CTA / status badge — lives in the bottom-right slot of the card.
-// Live state shows the gold-bordered "Discover More →" pill (visual only — the
+// Corner CTA / status badge - lives in the bottom-right slot of the card.
+// Live state shows the gold-bordered "Discover More →" pill (visual only - the
 // whole card is the click target now). Preview shows a muted "Coming Soon" pill.
 function CornerBadge({ isLive, isPreview }: { isLive: boolean; isPreview: boolean }) {
   if (isLive) {
@@ -634,7 +634,7 @@ export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData
   const isMobile = useImmerseMobile()
 
   // Detect single-destination engagement: every pricing row points at the
-  // same destination name. When true, drop the Item column entirely — it
+  // same destination name. When true, drop the Item column entirely - it
   // would just repeat the destination name on every row.
   const uniqueDestinations = new Set(data.pricingRows.map(r => r.destination))
   const singleDestination  = uniqueDestinations.size <= 1
@@ -710,7 +710,7 @@ export function ImmerseEngagementPricing({ data }: { data: ImmerseEngagementData
 // when the engagement has a single destination. The Td/TotalTd helpers remain
 // stable; rendering caller is responsible for conditionally including the
 // col=1 Td when hideItem is true.
-// S53B+: mobile mapping swap — Basis takes the visible slot on mobile, Item
+// S53B+: mobile mapping swap - Basis takes the visible slot on mobile, Item
 // is hidden. Improves at-a-glance differentiation when two rows share the
 // same destination name.
 
@@ -763,7 +763,7 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
   const isMobile = useImmerseMobile()
 
   // S53B+: on mobile, visible columns are Basis (col 2) and Range (col 4).
-  // Item (col 1) and Stay (col 3) are hidden — Stay because there's no
+  // Item (col 1) and Stay (col 3) are hidden - Stay because there's no
   // room for it, Item because Basis is more useful at-a-glance.
   if (isMobile && col === 1) return null
   if (isMobile && col === 3) return null
@@ -787,7 +787,7 @@ export function Td({ children, col }: { children: React.ReactNode; col?: number 
 export function TotalTd({ children, col, colSpan }: { children?: React.ReactNode; col?: number; colSpan?: number }) {
   const isMobile = useImmerseMobile()
 
-  // S53B+: same mobile visibility mapping as Td — hide cols 1 (Item) and
+  // S53B+: same mobile visibility mapping as Td - hide cols 1 (Item) and
   // 3 (Stay). Total label in multi-destination engagements lives at col 1
   // and is therefore hidden on mobile; Mohammed-style multi-destination
   // engagements typically have an empty pricing_total_label so the impact

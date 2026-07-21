@@ -1,7 +1,8 @@
-// queriesGuidesHappenings.ts — Public happenings fetch for destination guides.
+// queriesGuidesHappenings.ts - Public happenings fetch for destination guides.
+import { camelizeKeys } from '@shared/camelize'
 //
 // What it owns:
-//   - fetchActiveHappeningsForDestination — reads travel_happenings filtered
+//   - fetchActiveHappeningsForDestination - reads travel_happenings filtered
 //     by destination + future-or-current end_date.
 //   - Optional startDate/endDate narrowing for trip-aware callers.
 //   - Type Happening for consumer surfaces.
@@ -14,9 +15,9 @@
 //   - Reads travel_happenings via RLS-gated SELECT
 //   - Public clients only see is_active = true AND public_preview_rank IS NOT NULL rows (RLS: happenings_public_read, also gated end_date >= today)
 //   - Admin clients see all rows (via separate RLS policy)
-//   - Industry-data classification — no Edge Function needed
+//   - Industry-data classification - no Edge Function needed
 //
-// Last updated: S53 — public_preview_rank added to type. (is_public column dropped S53O;
+// Last updated: S53 - public_preview_rank added to type. (is_public column dropped S53O;
 //   the migration recipe below is historical record of the original backfill.) select('*') pulls
 //   it once the column ships. Aligns travel_happenings with the canonical
 //   Gateable contract in utilsGuideGating. Requires DB migration:
@@ -30,11 +31,11 @@
 //   Follow-up debt: replace select('*') with an explicit column list to
 //   match the standard pattern in queriesGuidesDining and
 //   queriesGuidesExperiences.
-// Prior: S52 — optional startDate/endDate args added for future trip-aware
+// Prior: S52 - optional startDate/endDate args added for future trip-aware
 //   callers (immerse pages that know the guest's stay window). The current
 //   GuidePageExperiences caller does not pass dates and gets all future
 //   happenings for the destination.
-// Prior: S52 — initial ship for the Coming Up section on the experiences
+// Prior: S52 - initial ship for the Coming Up section on the experiences
 //   guide. Les Grimaldines (28 July 2026 St Tropez) is the first seeded
 //   happening.
 
@@ -51,23 +52,23 @@ export interface Happening {
   tagline:               string | null
   body:                  string | null
   bullets:               string[] | Array<{ text: string }>
-  start_date:            string   // ISO date (YYYY-MM-DD)
-  end_date:              string   // ISO date (YYYY-MM-DD)
+  startDate:            string   // ISO date (YYYY-MM-DD)
+  endDate:              string   // ISO date (YYYY-MM-DD)
   venue_name:            string | null
   address:               string | null
-  maps_url:              string | null
+  mapsUrl:              string | null
   website:               string | null
-  image_src:             string | null
-  image_alt:             string | null
-  image_credit:          string | null
-  image_credit_url:      string | null
-  image_license:         string | null
-  is_active:             boolean
-  sort_order:            number
-  public_preview_rank:   number | null
+  imageSrc:             string | null
+  imageAlt:             string | null
+  imageCredit:          string | null
+  imageCreditUrl:      string | null
+  imageLicense:         string | null
+  isActive:             boolean
+  sortOrder:            number
+  publicPreviewRank:   number | null
   surfaces:              HappeningSurface[]
-  created_at:            string
-  updated_at:            string
+  createdAt:            string
+  updatedAt:            string
 }
 
 // ── Reads ────────────────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ export async function fetchActiveHappeningsForDestination(
   const hasWindow = !!(opts.startDate || opts.endDate)
 
   if (hasWindow) {
-    // Window-overlap: happening.start_date <= window.end AND happening.end_date >= window.start
+    // Window-overlap: happening.startDate <= window.end AND happening.endDate >= window.start
     if (opts.endDate)   query = query.lte('start_date', opts.endDate)
     if (opts.startDate) query = query.gte('end_date',   opts.startDate)
   }
@@ -117,7 +118,7 @@ export async function fetchActiveHappeningsForDestination(
     .order('name',       { ascending: true })
 
   if (error) throw new Error(`Failed to fetch happenings: ${error.message}`)
-  return (data ?? []) as Happening[]
+  return camelizeKeys<Happening[]>(data ?? [])
 }
 
 /**

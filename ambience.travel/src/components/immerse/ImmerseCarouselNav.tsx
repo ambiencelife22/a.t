@@ -1,22 +1,22 @@
-// ImmerseCarouselNav.tsx — carousel nav helpers shared across hotel + room carousels
+// ImmerseCarouselNav.tsx - carousel nav helpers shared across hotel + room carousels
 // Owns: NavRow (dots + mobile flanking arrows), desktopGutterArrowStyle, mobileNavArrowStyle
-// Does not own: any carousel state — pure presentation, all state passed in
-// Last updated: S31 — Added desktopFlowArrowStyle for inline (non-absolute)
+// Does not own: any carousel state - pure presentation, all state passed in
+// Last updated: S31 - Added desktopFlowArrowStyle for inline (non-absolute)
 //   desktop arrows. Used by HotelWithRooms room-switch row between RoomCategory
 //   and gallery. Disabled state preserved in layout via opacity 0.18.
-// Prior: S31 — Desktop gutter arrow size bumped to fontSize 88 +
+// Prior: S31 - Desktop gutter arrow size bumped to fontSize 88 +
 //   fontWeight 600 (was 22 / regular).
-// Prior: S31 — NavRow now optionally preserves its on-screen position
+// Prior: S31 - NavRow now optionally preserves its on-screen position
 //   across taps via preserveScrollPosition prop. Used by RoomCategory mobile
 //   NavRow where content above changes height between rooms (varying bullet
 //   counts, rate chips, floorplan link presence) and would otherwise cause
 //   page jump. Pure-presentation prop; no state moved.
-// Prior: S31 — Mobile arrow size bumped a further 22% (font 22→27,
+// Prior: S31 - Mobile arrow size bumped a further 22% (font 22→27,
 //   padding 11/16→13/20). fontWeight 600 retained.
-// Prior: S31 — Extracted from ImmerseDestComponents.tsx.
+// Prior: S31 - Extracted from ImmerseDestComponents.tsx.
 //   Mobile arrow size bumped 10% (font 20→22, padding 10/14→11/16) +
 //   fontWeight 600 added.
-// Prior: S30G — Mobile arrows: removed background pill, border, border-radius.
+// Prior: S30G - Mobile arrows: removed background pill, border, border-radius.
 //   Mobile arrow size shrunk ~11% (font 20, padding 10/14).
 //   Mobile carousel arrows moved into dot row (flanking dots).
 
@@ -93,7 +93,7 @@ export function NavRow({ isMobile, total, activeIdx, prevIdx, onChange, preserve
   // Scroll-position preservation: when content above the NavRow changes height
   // between taps (e.g. RoomCategory content panel with varying bullet counts),
   // capture pre-tap top and restore post-render so the row stays under the
-  // user's finger. Mobile-only — desktop has no equivalent jump issue.
+  // user's finger. Mobile-only - desktop has no equivalent jump issue.
   const rowRef             = useRef<HTMLDivElement>(null)
   const pendingTopRef      = useRef<number | null>(null)
 

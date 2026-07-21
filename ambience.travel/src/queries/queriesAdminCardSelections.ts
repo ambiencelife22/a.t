@@ -1,364 +1,135 @@
-/* adminCardSelectionQueries.ts
- * Query layer for travel_overlay_engagement_content_card_selections.
- *
- * Last updated: S38 — Removed slug from CardCanonicalOption, CanonicalRow,
- *   CardSelection (canonical_slug dropped), and all SELECTs against
- *   travel_dining_venues + travel_experiences. UUID-only throughout.
- * Prior: S334
+/* queriesAdminCardSelections.ts
+ * EF-routed query layer for engagement content-card selections + overrides.
+ * DB -> EF (travel-read-engagement-admin / travel-write-engagement) -> typesCards -> here -> frontend.
+ * Frontend never touches the DB. camelizeKeys at every read boundary.
  */
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
+import type {
+  CardKind, CardSelection, CardCanonicalOption,
+  CardSelectionRow, CardOverrideJoinRow,
+} from '../types/typesCards'
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export type CardKind = 'dining' | 'experience'
-
-export interface CardSelection {
-  id:                          string
-  engagement_id:                     string
-  sort_order:                  number
-  is_active:                   boolean
-  dining_venue_id:             string | null
-  experience_id:               string | null
-  kind:                        CardKind
-  canonical_name:              string | null
-  canonical_kicker:            string | null
-  canonical_tagline:           string | null
-  canonical_body:              string | null
-  canonical_bullets_heading:   string | null
-  canonical_bullets:           string[] | null
-  canonical_image_src:         string | null
-  canonical_image_alt:         string | null
-  canonical_image_credit:      string | null
-  canonical_image_credit_url:  string | null
-  canonical_image_license:     string | null
-  canonical_global_dest_slug:  string | null
-  override_id:                 string | null
-  kicker_override:             string | null
-  name_override:               string | null
-  tagline_override:            string | null
-  body_override:               string | null
-  bullets_heading_override:    string | null
-  bullets_override:            string[] | null
-  image_src_override:          string | null
-  image_alt_override:          string | null
-  image_credit_override:       string | null
-  image_credit_url_override:   string | null
-  image_license_override:      string | null
-}
-
-export interface CardCanonicalOption {
-  id:                      string
-  kind:                    CardKind
-  name:                    string
-  image_src:               string | null
-  global_destination_slug: string | null
-}
-
-// ── Internal canon row shape ──────────────────────────────────────────────────
-
-interface CanonicalRow {
-  name:              string | null
-  kicker:            string | null
-  tagline:           string | null
-  body:              string | null
-  bullets_heading:   string | null
-  bullets:           string[] | null
-  image_src:         string | null
-  image_alt:         string | null
-  image_credit:      string | null
-  image_credit_url:  string | null
-  image_license:     string | null
-  global_destinations: { slug: string | null } | null
-}
-
-interface OverrideRow {
-  id:                          string
-  kicker_override:             string | null
-  name_override:               string | null
-  tagline_override:            string | null
-  body_override:               string | null
-  bullets_heading_override:    string | null
-  bullets_override:            string[] | null
-  image_src_override:          string | null
-  image_alt_override:          string | null
-  image_credit_override:       string | null
-  image_credit_url_override:   string | null
-  image_license_override:      string | null
-}
-
-interface SelectionWithCanonRow {
-  id:               string
-  engagement_id:          string
-  sort_order:       number
-  is_active:        boolean
-  dining_venue_id:  string | null
-  experience_id:    string | null
-  dining:           CanonicalRow | null
-  experience:       CanonicalRow | null
-}
-
-function shapeRow(
-  s: SelectionWithCanonRow,
-  override: OverrideRow | null,
-): CardSelection {
-  const isDining = s.dining_venue_id !== null
+function shapeRow(s: CardSelectionRow, override: CardOverrideJoinRow | null): CardSelection {
+  const isDining = s.diningVenueId !== null
   const canon = isDining ? s.dining : s.experience
   return {
-    id:         s.id,
-    engagement_id:    s.engagement_id,
-    sort_order: s.sort_order,
-    is_active:  s.is_active,
-    dining_venue_id: s.dining_venue_id,
-    experience_id:   s.experience_id,
-    kind:       isDining ? 'dining' : 'experience',
-    canonical_name:             canon?.name ?? null,
-    canonical_kicker:           canon?.kicker ?? null,
-    canonical_tagline:          canon?.tagline ?? null,
-    canonical_body:             canon?.body ?? null,
-    canonical_bullets_heading:  canon?.bullets_heading ?? null,
-    canonical_bullets:          canon?.bullets ?? null,
-    canonical_image_src:        canon?.image_src ?? null,
-    canonical_image_alt:        canon?.image_alt ?? null,
-    canonical_image_credit:     canon?.image_credit ?? null,
-    canonical_image_credit_url: canon?.image_credit_url ?? null,
-    canonical_image_license:    canon?.image_license ?? null,
-    canonical_global_dest_slug: canon?.global_destinations?.slug ?? null,
-    override_id:               override?.id ?? null,
-    kicker_override:           override?.kicker_override ?? null,
-    name_override:             override?.name_override ?? null,
-    tagline_override:          override?.tagline_override ?? null,
-    body_override:             override?.body_override ?? null,
-    bullets_heading_override:  override?.bullets_heading_override ?? null,
-    bullets_override:          override?.bullets_override ?? null,
-    image_src_override:        override?.image_src_override ?? null,
-    image_alt_override:        override?.image_alt_override ?? null,
-    image_credit_override:     override?.image_credit_override ?? null,
-    image_credit_url_override: override?.image_credit_url_override ?? null,
-    image_license_override:    override?.image_license_override ?? null,
+    id:                      s.id,
+    engagementId:            s.engagementId,
+    sortOrder:               s.sortOrder,
+    isActive:                s.isActive,
+    diningVenueId:           s.diningVenueId,
+    experienceId:            s.experienceId,
+    kind:                    isDining ? 'dining' : 'experience',
+    canonicalName:           canon?.name ?? null,
+    canonicalKicker:         canon?.kicker ?? null,
+    canonicalTagline:        canon?.tagline ?? null,
+    canonicalBody:           canon?.body ?? null,
+    canonicalBulletsHeading: canon?.bulletsHeading ?? null,
+    canonicalBullets:        canon?.bullets ?? null,
+    canonicalImageSrc:       canon?.imageSrc ?? null,
+    canonicalImageAlt:       canon?.imageAlt ?? null,
+    canonicalImageCredit:    canon?.imageCredit ?? null,
+    canonicalImageCreditUrl: canon?.imageCreditUrl ?? null,
+    canonicalImageLicense:   canon?.imageLicense ?? null,
+    canonicalGlobalDestSlug: canon?.globalDestinations?.slug ?? null,
+    overrideId:              override?.id ?? null,
+    kickerOverride:          override?.kickerOverride ?? null,
+    nameOverride:            override?.nameOverride ?? null,
+    taglineOverride:         override?.taglineOverride ?? null,
+    bodyOverride:            override?.bodyOverride ?? null,
+    bulletsHeadingOverride:  override?.bulletsHeadingOverride ?? null,
+    bulletsOverride:         override?.bulletsOverride ?? null,
+    imageSrcOverride:        override?.imageSrcOverride ?? null,
+    imageAltOverride:        override?.imageAltOverride ?? null,
+    imageCreditOverride:     override?.imageCreditOverride ?? null,
+    imageCreditUrlOverride:  override?.imageCreditUrlOverride ?? null,
+    imageLicenseOverride:    override?.imageLicenseOverride ?? null,
   }
 }
 
-const CANONICAL_FIELDS = `
-  name, kicker, tagline, body, bullets_heading, bullets,
-  image_src, image_alt, image_credit, image_credit_url, image_license,
-  global_destinations:global_destination_id ( slug )
-`
+async function invokeRead<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', { body })
+  if (error) throw new Error(`travel-read-engagement-admin [${body.mode}]: ${error.message}`)
+  return camelizeKeys<T>(data)
+}
 
-// ── Fetch ────────────────────────────────────────────────────────────────────
+async function invokeWrite<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-write-engagement', { body })
+  if (error) throw new Error(`travel-write-engagement [${body.mode}]: ${error.message}`)
+  return data as T
+}
 
 export async function fetchCardSelections(engagementId: string): Promise<CardSelection[]> {
-  const [selectionRes, overrideRes] = await Promise.all([
-    supabase
-      .from('travel_overlay_engagement_content_card_selections')
-      .select(`
-        id, engagement_id, sort_order, is_active, dining_venue_id, experience_id,
-        dining:travel_dining_venues!dining_venue_id ( ${CANONICAL_FIELDS} ),
-        experience:travel_experiences!experience_id ( ${CANONICAL_FIELDS} )
-      `)
-      .eq('engagement_id', engagementId)
-      .order('sort_order', { ascending: true }),
-    supabase
-      .from('travel_overlay_engagement_content_card_overrides')
-      .select(`
-        id, dining_venue_id, experience_id,
-        kicker_override, name_override, tagline_override, body_override,
-        bullets_heading_override, bullets_override,
-        image_src_override, image_alt_override,
-        image_credit_override, image_credit_url_override, image_license_override
-      `)
-      .eq('engagement_id', engagementId),
-  ])
-
-  if (selectionRes.error) throw selectionRes.error
-  if (overrideRes.error)  throw overrideRes.error
-
-  const selections = (selectionRes.data ?? []) as unknown as SelectionWithCanonRow[]
-  const overrides  = (overrideRes.data  ?? []) as unknown as (OverrideRow & {
-    dining_venue_id: string | null
-    experience_id:   string | null
-  })[]
-
-  const overrideByKey = new Map<string, OverrideRow>()
-  overrides.forEach(o => {
-    if (o.dining_venue_id) overrideByKey.set(`dining:${o.dining_venue_id}`, o)
-    if (o.experience_id)   overrideByKey.set(`experience:${o.experience_id}`, o)
+  const { selections, overrides } = await invokeRead<{ selections: CardSelectionRow[]; overrides: CardOverrideJoinRow[] }>({
+    mode: 'card_selections', engagementId,
   })
-
-  return selections.map(s => {
-    const key = s.dining_venue_id
-      ? `dining:${s.dining_venue_id}`
-      : `experience:${s.experience_id}`
+  const overrideByKey = new Map<string, CardOverrideJoinRow>()
+  ;(overrides ?? []).forEach(o => {
+    if (o.diningVenueId) overrideByKey.set(`dining:${o.diningVenueId}`, o)
+    if (o.experienceId) overrideByKey.set(`experience:${o.experienceId}`, o)
+  })
+  return (selections ?? []).map(s => {
+    const key = s.diningVenueId ? `dining:${s.diningVenueId}` : `experience:${s.experienceId}`
     return shapeRow(s, overrideByKey.get(key) ?? null)
   })
 }
 
-// ── Selection mutations ──────────────────────────────────────────────────────
-
-export async function updateSelection(
-  id: string,
-  payload: { sort_order?: number; is_active?: boolean },
-): Promise<void> {
-  const { error } = await supabase
-    .from('travel_overlay_engagement_content_card_selections')
-    .update(payload)
-    .eq('id', id)
-  if (error) throw error
+export async function updateSelection(id: string, payload: { sortOrder?: number; isActive?: boolean }): Promise<void> {
+  await invokeWrite({ mode: 'selection_update', id, fields: payload })
 }
 
-export async function insertSelection(args: {
-  engagement_id:    string
-  kind:       CardKind
-  card_id:    string
-  sort_order: number
-}): Promise<string> {
-  const row: Record<string, unknown> = {
-    engagement_id:    args.engagement_id,
-    sort_order: args.sort_order,
-    is_active:  true,
-  }
-  if (args.kind === 'dining')     row.dining_venue_id = args.card_id
-  if (args.kind === 'experience') row.experience_id   = args.card_id
-
-  const { data, error } = await supabase
-    .from('travel_overlay_engagement_content_card_selections')
-    .insert(row)
-    .select('id')
-    .single()
-
-  if (error) throw error
-  return data.id as string
+export async function insertSelection(args: { engagementId: string; kind: CardKind; cardId: string; sortOrder: number }): Promise<string> {
+  const { id } = await invokeWrite<{ id: string }>({
+    mode: 'selection_insert',
+    engagementId: args.engagementId, kind: args.kind, cardId: args.cardId, sortOrder: args.sortOrder,
+  })
+  return id
 }
 
 export async function deleteSelection(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_overlay_engagement_content_card_selections')
-    .delete()
-    .eq('id', id)
-  if (error) throw error
+  await invokeWrite({ mode: 'selection_delete', id })
 }
 
 export async function reorderSelections(orderedIds: string[]): Promise<void> {
-  for (let i = 0; i < orderedIds.length; i += 1) {
-    const { error } = await supabase
-      .from('travel_overlay_engagement_content_card_selections')
-      .update({ sort_order: i + 1 })
-      .eq('id', orderedIds[i])
-    if (error) throw error
-  }
+  await invokeWrite({ mode: 'selections_reorder', orderedIds })
 }
 
-// ── Override mutations ───────────────────────────────────────────────────────
-
 export async function upsertOverride(args: {
-  engagement_id:        string
-  kind:           CardKind
-  card_id:        string
-  override_id:    string | null
-  fields:         Partial<{
-    kicker_override:             string | null
-    name_override:               string | null
-    tagline_override:            string | null
-    body_override:               string | null
-    bullets_heading_override:    string | null
-    bullets_override:            string[] | null
-    image_src_override:          string | null
-    image_alt_override:          string | null
-    image_credit_override:       string | null
-    image_credit_url_override:   string | null
-    image_license_override:      string | null
-  }>
+  engagementId: string; kind: CardKind; cardId: string; overrideId: string | null
+  fields: Partial<Record<string, unknown>>
 }): Promise<string> {
-  if (args.override_id) {
-    const { error } = await supabase
-      .from('travel_overlay_engagement_content_card_overrides')
-      .update(args.fields)
-      .eq('id', args.override_id)
-    if (error) throw error
-    return args.override_id
+  if (args.overrideId) {
+    await invokeWrite({ mode: 'card_override_update', id: args.overrideId, fields: args.fields })
+    return args.overrideId
   }
-
-  const insertRow: Record<string, unknown> = {
-    engagement_id:   args.engagement_id,
-    is_active: true,
-    ...args.fields,
+  const { id } = await invokeWrite<{ id: string }>({
+    mode: 'card_override_insert', engagementId: args.engagementId, kind: args.kind, cardId: args.cardId,
+  })
+  if (Object.keys(args.fields).length > 0) {
+    await invokeWrite({ mode: 'card_override_update', id, fields: args.fields })
   }
-  if (args.kind === 'dining')     insertRow.dining_venue_id = args.card_id
-  if (args.kind === 'experience') insertRow.experience_id   = args.card_id
-
-  const { data, error } = await supabase
-    .from('travel_overlay_engagement_content_card_overrides')
-    .insert(insertRow)
-    .select('id')
-    .single()
-
-  if (error) throw error
-  return data.id as string
+  return id
 }
 
 export async function deleteOverride(overrideId: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_overlay_engagement_content_card_overrides')
-    .delete()
-    .eq('id', overrideId)
-  if (error) throw error
+  await invokeWrite({ mode: 'card_override_delete', id: overrideId })
 }
 
-// ── Canonical pool search ────────────────────────────────────────────────────
-
 export async function searchCanonicalCards(query: string): Promise<CardCanonicalOption[]> {
-  const trimmed = query.trim()
-  const ilikeFilter = trimmed.length > 0 ? `%${trimmed}%` : '%'
-
-  const [diningRes, expRes] = await Promise.all([
-    supabase
-      .from('travel_dining_venues')
-      .select(`id, name, image_src, global_destinations:global_destination_id ( slug )`)
-      .ilike('name', ilikeFilter)
-      .order('name', { ascending: true })
-      .limit(40),
-    supabase
-      .from('travel_experiences')
-      .select(`id, name, image_src, global_destinations:global_destination_id ( slug )`)
-      .ilike('name', ilikeFilter)
-      .order('name', { ascending: true })
-      .limit(40),
-  ])
-
-  if (diningRes.error) throw diningRes.error
-  if (expRes.error)    throw expRes.error
-
-  type CanonRow = {
-    id: string; name: string; image_src: string | null;
-    global_destinations: { slug: string | null } | null;
-  }
-
-  const dining = (diningRes.data ?? []) as unknown as CanonRow[]
-  const exps   = (expRes.data ?? [])    as unknown as CanonRow[]
-
-  const result: CardCanonicalOption[] = [
-    ...dining.map(d => ({
-      id: d.id, kind: 'dining' as const, name: d.name,
-      image_src: d.image_src,
-      global_destination_slug: d.global_destinations?.slug ?? null,
-    })),
-    ...exps.map(e => ({
-      id: e.id, kind: 'experience' as const, name: e.name,
-      image_src: e.image_src,
-      global_destination_slug: e.global_destinations?.slug ?? null,
-    })),
-  ]
-
-  result.sort((a, b) => {
+  const { rows } = await invokeRead<{ rows: CardCanonicalOption[] }>({ mode: 'canonical_card_search', query: query.trim() })
+  return (rows ?? []).slice().sort((a, b) => {
     if (a.kind !== b.kind) return a.kind < b.kind ? -1 : 1
     return a.name.localeCompare(b.name)
   })
-
-  return result
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
+export function nextSortOrder(existing: CardSelection[], kind: CardKind): number {
+  const inKind = existing.filter(c => c.kind === kind)
+  if (inKind.length === 0) return 1
+  return Math.max(...inKind.map(c => c.sortOrder)) + 1
+}
 export function resolveText(override: string | null, canonical: string | null): {
   state:    'default' | 'customised' | 'hidden'
   rendered: string
@@ -374,11 +145,5 @@ export function resolveBullets(override: string[] | null, canonical: string[] | 
 } {
   if (override === null)     return { state: 'default',    rendered: canonical ?? [] }
   if (override.length === 0) return { state: 'hidden',     rendered: [] }
-  return                             { state: 'customised', rendered: override }
-}
-
-export function nextSortOrder(existing: CardSelection[], kind: CardKind): number {
-  const inKind = existing.filter(s => s.kind === kind)
-  if (inKind.length === 0) return 1
-  return Math.max(...inKind.map(s => s.sort_order)) + 1
+  return                            { state: 'customised', rendered: override }
 }

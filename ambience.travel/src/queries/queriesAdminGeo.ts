@@ -1,4 +1,4 @@
-// adminGeoQueries.ts — Supabase reads for admin geography cascade
+// adminGeoQueries.ts - Supabase reads for admin geography cascade
 // Owns: subcontinent / country / state / destination / hotel queries used
 //       by the GeoCascade dropdown component.
 // Not owned: cascade UI (GeoCascade.tsx), storage path composition
@@ -12,6 +12,7 @@
 // Last updated: S33B
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ export type GeoState = {
   slug:       string
   name:       string
   code:       string
-  country_id: string
+  countryId: string
 }
 
 export type GeoDestination = {
@@ -41,16 +42,16 @@ export type GeoDestination = {
   slug:             string
   name:             string
   subcontinent_id:  string | null
-  country_id:       string | null
+  countryId:       string | null
   state_id:         string | null
-  storage_path:     string | null   // s33b_03 column
+  storagePath:     string | null   // s33b_03 column
 }
 
 export type GeoHotel = {
   id:             string
   short_slug:     string
   name:           string
-  destination_id: string | null
+  destinationId: string | null
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ export async function fetchSubcontinents(): Promise<GeoSubcontinent[]> {
     .select('id, slug, name')
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return (data ?? []) as GeoSubcontinent[]
+  return camelizeKeys<GeoSubcontinent[]>(data ?? [])
 }
 
 export async function fetchCountriesBySubcontinent(subcontinentId: string): Promise<GeoCountry[]> {
@@ -72,7 +73,7 @@ export async function fetchCountriesBySubcontinent(subcontinentId: string): Prom
     .order('sort_order', { ascending: true })
     .order('name',       { ascending: true })
   if (error) throw error
-  return (data ?? []) as GeoCountry[]
+  return camelizeKeys<GeoCountry[]>(data ?? [])
 }
 
 export async function fetchStatesByCountry(countryId: string): Promise<GeoState[]> {
@@ -83,12 +84,12 @@ export async function fetchStatesByCountry(countryId: string): Promise<GeoState[
     .order('sort_order', { ascending: true })
     .order('name',       { ascending: true })
   if (error) throw error
-  return (data ?? []) as GeoState[]
+  return camelizeKeys<GeoState[]>(data ?? [])
 }
 
 /**
  * Destinations filtered by parent FK. Pass exactly one of stateId / countryId
- * / subcontinentId — the most-specific available. kind='place' filter excludes
+ * / subcontinentId - the most-specific available. kind='place' filter excludes
  * narrative + system rows.
  */
 export async function fetchDestinations(filter: {
@@ -115,7 +116,7 @@ export async function fetchDestinations(filter: {
 
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as GeoDestination[]
+  return camelizeKeys<GeoDestination[]>(data ?? [])
 }
 
 export async function fetchHotelsByDestination(destinationId: string): Promise<GeoHotel[]> {
@@ -127,11 +128,11 @@ export async function fetchHotelsByDestination(destinationId: string): Promise<G
     .order('sort_order', { ascending: true })
     .order('name',       { ascending: true })
   if (error) throw error
-  return (data ?? []) as GeoHotel[]
+  return camelizeKeys<GeoHotel[]>(data ?? [])
 }
 
 // Global hotel search for the booking-create picker. Catalog data (the public
-// hotel library), read directly — consistent with queriesGuidesHotels and the
+// hotel library), read directly - consistent with queriesGuidesHotels and the
 // other direct travel_accom_hotels reads. Not client-private, so no EF needed.
 export type HotelPick = { id: string; name: string; city: string | null }
 
@@ -147,5 +148,5 @@ export async function fetchHotels(search?: string): Promise<HotelPick[]> {
   }
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as HotelPick[]
+  return camelizeKeys<HotelPick[]>(data ?? [])
 }

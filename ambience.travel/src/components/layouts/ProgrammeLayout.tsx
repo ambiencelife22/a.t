@@ -4,9 +4,9 @@
  *
  * Hamburger opens a minimal drawer with:
  *   Dashboard, My Programme, My Account, Sign Out
- * Navigation links push to the app root — no in-app routing needed here.
+ * Navigation links push to the app root - no in-app routing needed here.
  *
- * Uses landingTypes (C / DARK) — this is the dark programme aesthetic,
+ * Uses landingTypes (C / DARK) - this is the dark programme aesthetic,
  * not the travel theme palette.
  */
 
@@ -81,7 +81,7 @@ export default function ProgrammeLayout({ children, guestNames }: ProgrammeLayou
           <AmbienceLogo isDark={true} product='travel' height={44} />
         </a>
 
-        {/* Right side — guest name + hamburger */}
+        {/* Right side - guest name + hamburger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {guestNames && (
             <div style={{ fontSize: 11, color: DARK.label, letterSpacing: '0.02em' }}>

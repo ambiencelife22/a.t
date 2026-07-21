@@ -1,7 +1,7 @@
 /* Layout.tsx
  * Global authenticated layout for ambience.travel programme product.
- * Top nav bar with hamburger — no persistent sidebar.
- * Drawer slides in from the right — consistent with ProgrammeLayout.
+ * Top nav bar with hamburger - no persistent sidebar.
+ * Drawer slides in from the right - consistent with ProgrammeLayout.
  *
  * Pages: dashboard | programme | profile
  */
@@ -60,7 +60,7 @@ export default function Layout({ activePage, onNavigate, onSignOut, guestName, c
         padding:        '0 clamp(16px,4vw,40px)',
       }}>
 
-        {/* Logo — clicking goes to dashboard */}
+        {/* Logo - clicking goes to dashboard */}
         <button
           onClick={() => navigate('dashboard')}
           style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -69,7 +69,7 @@ export default function Layout({ activePage, onNavigate, onSignOut, guestName, c
           <AmbienceLogo isDark={isDark} product='travel' height={44} />
         </button>
 
-        {/* Right — active page label + theme toggle + hamburger */}
+        {/* Right - active page label + theme toggle + hamburger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 12, color: C.muted, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {PAGE_TITLES[activePage]}

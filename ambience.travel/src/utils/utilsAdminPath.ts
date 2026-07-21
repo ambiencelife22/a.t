@@ -1,21 +1,21 @@
-// utilsAdminPath.ts — Hash parsing + URL builders for AmbienceAdmin (#admin)
+// utilsAdminPath.ts - Hash parsing + URL builders for AmbienceAdmin (#admin)
 // Pure functions. No state. No side effects.
 //
-// S53G — Admin redesign Phase 1: new 5-group taxonomy.
+// S53G - Admin redesign Phase 1: new 5-group taxonomy.
 //   New products: trips (pipeline + detail), clients, content, residences, studio.
 //   Old products aliased: immerse, guides, library, house, operations, time,
-//   calendar, finance, programme — all still parse correctly so no live URL breaks
+//   calendar, finance, programme - all still parse correctly so no live URL breaks
 //   during the transition. Aliases route to their new equivalents where possible,
 //   or to DEFAULT_TAB as a safe fallback.
 //
 // New URL schema (confirmed with D, S53G admin redesign plan v2):
 //   #admin                                         → studio dashboard (default landing)
 //   #admin/trips                                   → trips pipeline list
-//   #admin/trips/<url_id>                          → trip detail — overview tab
-//   #admin/trips/<url_id>/bookings                 → trip detail — bookings + finance tab
-//   #admin/trips/<url_id>/tasks                    → trip detail — tasks tab
-//   #admin/trips/<url_id>/contacts                 → trip detail — contacts tab
-//   #admin/trips/<url_id>/activity                 → trip detail — activity tab
+//   #admin/trips/<url_id>                          → trip detail - overview tab
+//   #admin/trips/<url_id>/bookings                 → trip detail - bookings + finance tab
+//   #admin/trips/<url_id>/tasks                    → trip detail - tasks tab
+//   #admin/trips/<url_id>/contacts                 → trip detail - contacts tab
+//   #admin/trips/<url_id>/activity                 → trip detail - activity tab
 //   #admin/trips/<trip_uuid>/programme             → full-page programme editor (ItineraryEditorPage)
 //   #admin/trips/<trip_uuid>/brief                 → full-page brief editor (BriefEditorPage)
 //   #admin/clients                                 → households list
@@ -49,12 +49,12 @@
 //   #admin/finance[/engagement/<id>]               → studio/finance[/engagement/<id>]
 //   #admin/programme/<tab>                         → residences/<tab> (tab slugs unchanged)
 //
-// Prior: S53G — Added finance product (pipeline + engagement).
-// Prior: S53C — Added time product (effort log + analytics).
-// Prior: S47  — trips union extended with itinerary tab.
-// Prior: S45  — Added operations product.
-// Prior: S40D — Added house product.
-// Prior: S36  — Added guides + library products.
+// Prior: S53G - Added finance product (pipeline + engagement).
+// Prior: S53C - Added time product (effort log + analytics).
+// Prior: S47  - trips union extended with itinerary tab.
+// Prior: S45  - Added operations product.
+// Prior: S40D - Added house product.
+// Prior: S36  - Added guides + library products.
 // Prior: S33
 
 import { isTripUrlId } from '../utils/utilsImmersePath'
@@ -109,7 +109,7 @@ export type StudioTabId =
   | 'time-analytics'
   | 'settings'
 
-// Legacy alias — kept until Phase 7 dissolution
+// Legacy alias - kept until Phase 7 dissolution
 export type ProgrammeTabId =
   | 'programmes'
   | 'letters'
@@ -133,7 +133,7 @@ export type AdminTab =
   | { product: 'residences'; tab: ResidenceTabId }
   | { product: 'studio';     tab: StudioTabId }
   | { product: 'studio';     tab: 'finance-engagement'; engagementId: string }
-  // ── Legacy aliases (transition only — dissolve Phase 7) ──
+  // ── Legacy aliases (transition only - dissolve Phase 7) ──
   | { product: 'immerse';    tab: 'engagements'; urlId: string | null }
   | { product: 'immerse';    tab: 'showcases' }
   | { product: 'guides';     tab: 'dining' }
@@ -253,7 +253,7 @@ export function parseAdminHash(hash: string): AdminTab {
 
   if (product === 'immerse') {
     if (seg1 === 'engagements') {
-      // Forward to trips — url_id is the same
+      // Forward to trips - url_id is the same
       const urlId = seg2 ?? null
       if (urlId && !isTripUrlId(urlId)) return { product: 'trips', tab: 'list' }
       if (urlId) return { product: 'trips', tab: 'overview', urlId }
@@ -347,7 +347,7 @@ export function buildAdminHash(target: AdminTab): string {
     return '#admin/studio'
   }
 
-  // ── Legacy aliases — build old-style URLs so existing links still work ────
+  // ── Legacy aliases - build old-style URLs so existing links still work ────
   // These will be removed in Phase 7 once all call sites are migrated.
   if (target.product === 'immerse') {
     if (target.tab === 'engagements') {

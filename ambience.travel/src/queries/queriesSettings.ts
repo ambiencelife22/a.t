@@ -2,35 +2,36 @@
 // Canonical client access layer for a_platform_settings.
 //
 // Two read paths:
-//   1. fetchMaintenanceMode() — direct anon Supabase query, no EF.
+//   1. fetchMaintenanceMode() - direct anon Supabase query, no EF.
 //      Used by ImmerseEngagementRoute (guest context, no session).
 //      RLS public read policy on a_platform_settings allows this.
-//   2. fetchSettings() — via travel-read-settings EF.
+//   2. fetchSettings() - via travel-read-settings EF.
 //      Used by admin SettingsTab (authenticated context).
 //      Returns full record including updated_at / updated_by.
 //
 // Write path:
-//   setMaintenanceMode(value) — via travel-write-settings EF.
+//   setMaintenanceMode(value) - via travel-write-settings EF.
 //   Admin-only. JWT required.
 //
 // Created: S53H
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PlatformSettings {
-  maintenance_mode: boolean
-  updated_at:       string | null
-  updated_by:       string | null
+  maintenanceMode: boolean
+  updatedAt:       string | null
+  updatedBy:       string | null
 }
 
-// ── Guest path — direct anon query ────────────────────────────────────────────
+// ── Guest path - direct anon query ────────────────────────────────────────────
 
 /**
  * Lightweight read for the guest gate in ImmerseEngagementRoute.
- * No EF — anon client reads a_platform_settings directly via RLS public policy.
- * Returns false on any error (fail open — never block a guest on a read failure).
+ * No EF - anon client reads a_platform_settings directly via RLS public policy.
+ * Returns false on any error (fail open - never block a guest on a read failure).
  */
 export async function fetchMaintenanceMode(): Promise<boolean> {
   const { data, error } = await supabase
@@ -43,7 +44,7 @@ export async function fetchMaintenanceMode(): Promise<boolean> {
   return (data as { maintenance_mode: boolean }).maintenance_mode
 }
 
-// ── Admin path — EF ───────────────────────────────────────────────────────────
+// ── Admin path - EF ───────────────────────────────────────────────────────────
 
 /**
  * Full settings read for admin SettingsTab.
@@ -56,8 +57,8 @@ export async function fetchSettings(): Promise<PlatformSettings> {
     .limit(1)
     .maybeSingle()
   if (error) throw error
-  if (!data) return { maintenance_mode: false, updated_at: null, updated_by: null }
-  return data as PlatformSettings
+  if (!data) return { maintenanceMode: false, updatedAt: null, updatedBy: null }
+  return camelizeKeys<PlatformSettings>(data)
 }
 
 /**

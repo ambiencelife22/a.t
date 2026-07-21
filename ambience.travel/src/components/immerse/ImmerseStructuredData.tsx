@@ -1,4 +1,4 @@
-// ImmerseStructuredData.tsx — schema.org JSON-LD injector for /immerse/ destination pages
+// ImmerseStructuredData.tsx - schema.org JSON-LD injector for /immerse/ destination pages
 // Owns: head injection and cleanup of structured data script tag
 // Does not own data shape, rendering, or routing
 // Last updated: S12

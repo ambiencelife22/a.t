@@ -1,4 +1,4 @@
-/* GuidePlanYourVisit.tsx — Plan Your Visit section for guide pages.
+/* GuidePlanYourVisit.tsx - Plan Your Visit section for guide pages.
  *
  * What it owns:
  *   - Full-width section render below the venue grid
@@ -8,30 +8,30 @@
  *
  * What it does not own:
  *   - Overlay data fetching (each GuidePage<X> owns this)
- *   - Gate logic — caller decides whether to render
+ *   - Gate logic - caller decides whether to render
  *   - Style objects (stylesGuidePage.ts)
  *   - Variant union (typesGuides.GuideVariant is the single source of truth)
  *   - Overlay shape (typesGuides.GuideOverlay is the single source of truth)
  *
  * Fallback copy per variant (extend FALLBACK_COPY when a new variant ships):
- *   dining        — reservation + planning tips
- *   experiences   — booking + timing tips
- *   hotels        — check-in + property tips
- *   shopping      — maison + atelier tips
+ *   dining        - reservation + planning tips
+ *   experiences   - booking + timing tips
+ *   hotels        - check-in + property tips
+ *   shopping      - maison + atelier tips
  *
  * Override vs suppress vs fallback for heading, intro, bullets:
- *   null          — use fallback copy (no override set)
- *   ""            — suppress entirely (intentional hide)
- *   "some text"   — use override content
+ *   null          - use fallback copy (no override set)
+ *   ""            - suppress entirely (intentional hide)
+ *   "some text"   - use override content
  *
- * Last updated: S53 — Renamed to convention (was PlanYourVisit).
+ * Last updated: S53 - Renamed to convention (was PlanYourVisit).
  *   Consumers updated to import GuidePlanYourVisit.
- * Prior: S53 — Consumes canonical GuideVariant + GuideOverlay from
+ * Prior: S53 - Consumes canonical GuideVariant + GuideOverlay from
  *   typesGuides. Fallback key 'accommodation' renamed to 'hotels' to
  *   match canonical variant naming.
- * Prior: S49 — empty-string-hide convention applied to heading, intro,
+ * Prior: S49 - empty-string-hide convention applied to heading, intro,
  *   and bullets. null = fallback, "" = suppress, content = use content.
- * Prior: S40 — Created.
+ * Prior: S40 - Created.
  */
 
 import React from 'react'
@@ -55,7 +55,7 @@ import {
 
 // ── Fallback copy ────────────────────────────────────────────────────────────
 // Used when overlay fields are null. Destination-agnostic.
-// Keys match the GuideVariant union from typesGuides — add a block here
+// Keys match the GuideVariant union from typesGuides - add a block here
 // when a new guide variant ships.
 
 const FALLBACK_COPY: Record<GuideVariant, {
@@ -116,12 +116,12 @@ const FALLBACK_COPY: Record<GuideVariant, {
 
 function resolveField(override: string | null | undefined, fallback: string): string | null {
   if (override === '')  return null       // explicit suppress
-  if (override == null) return fallback   // no override — use fallback
+  if (override == null) return fallback   // no override - use fallback
   return override.trim() || fallback      // whitespace-only treated as no override
 }
 
 function resolveBullets(override: string[] | null | undefined, fallback: string[]): string[] {
-  if (override === null)                               return fallback  // no override — use fallback
+  if (override === null)                               return fallback  // no override - use fallback
   if (override !== undefined && override.length === 0) return []        // explicit empty array = suppress
   return override ?? fallback
 }
@@ -139,11 +139,11 @@ export function GuidePlanYourVisit({ overlay, variant }: GuidePlanYourVisitProps
   const { ref, visible } = useVisible(0.12)
   const fallback = FALLBACK_COPY[variant]
 
-  const heading = resolveField(overlay?.plan_your_visit_heading, fallback.heading)
-  const intro   = resolveField(overlay?.plan_your_visit_intro,   fallback.intro)
-  const bullets = resolveBullets(overlay?.plan_your_visit_bullets, fallback.bullets)
+  const heading = resolveField(overlay?.planYourVisitHeading, fallback.heading)
+  const intro   = resolveField(overlay?.planYourVisitIntro,   fallback.intro)
+  const bullets = resolveBullets(overlay?.planYourVisitBullets, fallback.bullets)
 
-  // Nothing to render — all fields suppressed
+  // Nothing to render - all fields suppressed
   if (!heading && !intro && !bullets.length) return null
 
   return (

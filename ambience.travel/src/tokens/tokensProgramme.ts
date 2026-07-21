@@ -1,11 +1,11 @@
-/* theme.ts — dual-mode palette for ambience.travel programme product.
- * Identical to ambience.SPORTS theme.ts — one palette across all products.
- * Landing page colours remain in landingTypes.ts — do not merge.
+/* theme.ts - dual-mode palette for ambience.travel programme product.
+ * Identical to ambience.SPORTS theme.ts - one palette across all products.
+ * Landing page colours remain in landingTypes.ts - do not merge.
  *
  * C is a stable mutable object. _setPalette() swaps values in place.
  * All C.* references in render functions pick up the current palette automatically.
  *
- * Last updated: S51 — DANGER consolidated in from tokensProgrammeColors.ts
+ * Last updated: S51 - DANGER consolidated in from tokensProgrammeColors.ts
  *   (now deleted). One file for one product's colour tokens.
  */
 

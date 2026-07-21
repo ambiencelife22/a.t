@@ -1,4 +1,4 @@
-/* GuideChipFilters.tsx — shared chip-based filter row.
+/* GuideChipFilters.tsx - shared chip-based filter row.
  *
  * Renders a horizontal row of pill chips: one "All" chip followed by one
  * chip per option. Used by ShoppingGuidePage (shop_type) and

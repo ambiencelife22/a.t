@@ -16,7 +16,7 @@ export type Property = {
   tagline:     string
   location:    string
   heroImage:   string
-  photos:      PropertyPhoto[]  // cycling property photos — N images with captions
+  photos:      PropertyPhoto[]  // cycling property photos - N images with captions
   mapsUrl:     string | null
   mapsEmbedUrl: string | null
   owner:       Contact
@@ -72,13 +72,13 @@ export type Listing = {
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export type Booking = {
-  id:             string           // URL slug — random, unguessable
+  id:             string           // URL slug - random, unguessable
   propertyId:     string
   guestNames:     string           // e.g. "Ragnar & Gunnar"
-  checkIn?:       string           // ISO date — absent for preview/undated bookings
-  checkOut?:      string           // ISO date — absent for preview/undated bookings
+  checkIn?:       string           // ISO date - absent for preview/undated bookings
+  checkOut?:      string           // ISO date - absent for preview/undated bookings
   welcomeLetter:  string           // markdown-lite plain text
   activeListingIds?: string[]      // if undefined, show all
   alarmCodeProvided?: boolean      // if false, show no-code alternate alarm text
-  passwordHash?:  string           // optional — if set, require password
+  passwordHash?:  string           // optional - if set, require password
 }

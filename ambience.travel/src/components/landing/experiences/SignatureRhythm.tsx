@@ -1,4 +1,4 @@
-// SignatureRhythm.tsx — experience rhythm section for signature experience pages
+// SignatureRhythm.tsx - experience rhythm section for signature experience pages
 // Owns the day/phase cadence list only.
 // Last updated: S9
 
@@ -49,7 +49,7 @@ export default function SignatureRhythm({ eyebrow, title, body, rows }: Props) {
           alignItems:          'start',
         }}
       >
-        {/* Left — heading */}
+        {/* Left - heading */}
         <div>
           <p
             style={{
@@ -81,7 +81,7 @@ export default function SignatureRhythm({ eyebrow, title, body, rows }: Props) {
           </p>
         </div>
 
-        {/* Right — rhythm rows */}
+        {/* Right - rhythm rows */}
         <div
           style={{
             background:   '#FBFAF7',

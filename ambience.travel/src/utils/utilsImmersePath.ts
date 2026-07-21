@@ -1,21 +1,21 @@
-// immersePath.ts — Canonical helpers for the /immerse/ surface.
+// immersePath.ts - Canonical helpers for the /immerse/ surface.
 // Owns: IMMERSE_HOST constant, isImmerseHost(), isTripUrlId(), getOverviewUrl().
-// Does not own: route resolution (App.resolveRoute, ImmerseEngagementRoute) —
+// Does not own: route resolution (App.resolveRoute, ImmerseEngagementRoute) -
 //   surface-specific and stays in those files; both consume the helpers below.
 //
-// Subdomain awareness (paths carry the overview/detail split — /<dest> is the
+// Subdomain awareness (paths carry the overview/detail split - /<dest> is the
 // detail segment, rendered by ImmerseEngagementSurface as shape 'stay'):
 //   immerse.ambience.travel/<url_id>[/<dest>]   → no /immerse/ prefix
 //   ambience.travel/immerse/<url_id>[/<dest>]   → /immerse/ prefix
 //   localhost:5173/immerse/<url_id>[/<dest>]    → /immerse/ prefix
 //
 // History:
-//   S32F — Lifted from inline definitions in App.tsx, ImmerseEngagementRoute.tsx,
+//   S32F - Lifted from inline definitions in App.tsx, ImmerseEngagementRoute.tsx,
 //     and the then-existing DestinationPage.tsx. Per Dev Standards §II "no
-//     duplicated logic from canonical lib" — three independent copies of
+//     duplicated logic from canonical lib" - three independent copies of
 //     IMMERSE_HOST + isImmerseHost() existed pre-S32F, plus the 11-char url_id
 //     regex in two files. Single source of truth now.
-//   S53O — DestinationPage deleted (eight-shape); its /<dest> detail render moved
+//   S53O - DestinationPage deleted (eight-shape); its /<dest> detail render moved
 //     into ImmerseEngagementSurface. This file's helpers unchanged.
 
 export const IMMERSE_HOST = 'immerse.ambience.travel'
@@ -27,7 +27,7 @@ export function isImmerseHost(): boolean {
 }
 
 // Canonical engagement url_id shape: 11 alphanumeric chars.
-// Same regex enforced by the DB CHECK constraint on travel_engagements.url_id.
+// Same regex enforced by the DB CHECK constraint on travel_engagements.urlId.
 // Public templates use a 'pub' visual prefix that matches this regex too.
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 

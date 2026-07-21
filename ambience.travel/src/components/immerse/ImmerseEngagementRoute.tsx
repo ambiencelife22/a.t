@@ -1,14 +1,14 @@
-// ImmerseEngagementRoute.tsx — Unified client-facing engagement route.
+// ImmerseEngagementRoute.tsx - Unified client-facing engagement route.
 //
 // Collapse A: one route, one fetch, stage discriminant determines render.
 // Both arms → ImmerseEngagementSurface (registry-driven; resolveSectionSet).
 //
 // Phase dispatch:
 //   loading    → ImmerseLayout shell (blank, no flash)
-//   not-found  → NotFoundPage (dark, full page — engagement does not exist)
-//   not-public → ImmerseNotPublicFallback (cream, full page — visibility gate)
-//   error      → NotFoundPage (dark, full page — unexpected failure)
-//   archived   → ImmerseProposalArchivedFallback (cream — proposal was archived)
+//   not-found  → NotFoundPage (dark, full page - engagement does not exist)
+//   not-public → ImmerseNotPublicFallback (cream, full page - visibility gate)
+//   error      → NotFoundPage (dark, full page - unexpected failure)
+//   archived   → ImmerseProposalArchivedFallback (cream - proposal was archived)
 //   both arms → ImmerseEngagementSurface (stage resolved via computeEngagementStage)
 //
 // not-public is deliberately distinct from not-found:
@@ -17,10 +17,10 @@
 //   Both show full-page screens with no ImmerseLayout chrome. Different
 //   surfaces, different messages, different colours.
 //
-// Last updated: S53 — not-public routes to ImmerseNotPublicFallback instead
+// Last updated: S53 - not-public routes to ImmerseNotPublicFallback instead
 //   of NotFoundPage. P0 gate screen: branded cream surface with tailored
 //   message rather than the generic dark 404.
-// Prior: S53I — Collapse A route layer.
+// Prior: S53I - Collapse A route layer.
 
 import { useEffect, useState } from 'react'
 import ImmerseLayout from '../layouts/ImmerseLayout'
@@ -95,7 +95,7 @@ function useEngagementRoute(
         const eng = data.engagement
         if (eng.proposalVisibility === 'archived') { setState({ phase: 'archived' }); return }
          // Destination proposal: fetch the stay detail so the surface renders it as
-        // shape 'stay' through the registry (the unified path — replaced the bespoke
+        // shape 'stay' through the registry (the unified path - replaced the bespoke
         // detail page, deleted S53O eight-shape Stage D). If the detail fetch fails,
         // fall through to the plain proposal state; the surface resolves the missing
         // destination to its branded not-found screen.
@@ -172,7 +172,7 @@ export default function ImmerseEngagementRoute({
     return <ImmerseEngagementSurface data={proposalData} activeDestSlug={activeDestSlug} />
   }
   if (state.phase === 'delivery') {
-    // Delivery engagements render at root /{urlId} — the brief/confirmation/programme surface.
+    // Delivery engagements render at root /{urlId} - the brief/confirmation/programme surface.
     // A hit on /{urlId}/proposal for a delivery engagement redirects to root.
     if (isProposalPath) {
       const rootUrl = window.location.hostname === 'immerse.ambience.travel'

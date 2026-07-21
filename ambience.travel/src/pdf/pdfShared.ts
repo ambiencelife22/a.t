@@ -93,8 +93,8 @@ export type PdfEngagementLink = {
   id:             string
   label:          string
   url:            string
-  link_type:      string
-  is_highlighted: boolean
+  linkType:      string
+  isHighlighted: boolean
 }
 
 // Used inside drawPdfHero. Shared logic for all logo_variant values.
@@ -255,12 +255,12 @@ export async function drawPdfHero(doc: any, params: HeroParams): Promise<number>
 // ── Footer chrome - one source of truth for all PDFs ─────────────────────────
 //
 // Renders on every page: rule + tagline + page n of N.
-// brief?.footer_tagline overrides the default when set.
+// brief?.footerTagline overrides the default when set.
 
 export function stampPageChrome(doc: any, brief: EngagementBrief | null): void {
   const count   = doc.getNumberOfPages()
   const FOOTER_TAGLINE = 'TAILORED TRAVEL DESIGN  \u00b7  CONCIERGE SUPPORT  \u00b7  ambience.travel'
-  const footer  = brief?.footer_tagline ?? FOOTER_TAGLINE
+  const footer  = brief?.footerTagline ?? FOOTER_TAGLINE
   const LINK    = 'ambience.travel'
   const footerY = P.h - 10
 
@@ -294,12 +294,12 @@ export function stampPageChrome(doc: any, brief: EngagementBrief | null): void {
 // Returns one display line per passenger: "Label · Conf X · Seats Y".
 
 export interface AuxPassengerLike {
-  person_id?:               string | null
-  passenger_label:          string | null
-  resolved_passenger_label?: string | null
-  confirmation_number:      string | null
-  seat_numbers:             string | null
-  sort_order:               number
+  personId?:               string | null
+  passengerLabel:          string | null
+  resolvedPassengerLabel?: string | null
+  confirmationNumber:      string | null
+  seatNumbers:             string | null
+  sortOrder:               number
 }
 
 export interface EngagementElementLike {
@@ -307,33 +307,33 @@ export interface EngagementElementLike {
 }
 
 export interface AuxDriverDetailLike {
-  driver_name:  string | null
-  driver_phone: string | null
-  car_model:    string | null
+  driverName:  string | null
+  driverPhone: string | null
+  carModel:    string | null
   plate:        string | null
-  vehicle_role: string | null
-  sort_order:   number
+  vehicleRole: string | null
+  sortOrder:   number
 }
 
 export interface AuxWithDriverDetails {
-  driver_details?: AuxDriverDetailLike[] | null
+  driverDetails?: AuxDriverDetailLike[] | null
 }
 
 export function driverDetailLines(aux: AuxWithDriverDetails): string[] {
-  const veh = (aux.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+  const veh = (aux.driverDetails ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
   return veh.map(v => {
-    const label = v.vehicle_role ? `${v.vehicle_role}: ` : ''
-    const detail = [v.driver_name, v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')
+    const label = v.vehicleRole ? `: ` : ''
+    const detail = [v.driverName, v.driverPhone, v.carModel, v.plate].filter(Boolean).join('  \u00b7  ')
     return `${label}${detail}`
   })
 }
 
 export function passengerLines(aux: EngagementElementLike): string[] {
-  const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+  const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
   return pax.map(p => [
     passengerName(p),
-    p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
-    p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+    p.confirmationNumber ? `Conf ` : null,
+    p.seatNumbers ? `Seats ` : null,
   ].filter(Boolean).join('  \u00b7  '))
 }
 
@@ -345,15 +345,15 @@ export function passengerLines(aux: EngagementElementLike): string[] {
 // resolved_guest_name is set by the caller (names.ts) before this runs.
 
 export interface RoomLike {
-  resolved_guest_name?:        string | null
-  guest_name?:                 string | null
-  resolved_additional_guests?: string[] | null
-  additional_guests?:          string[] | null
-  party_composition?:          string | null
-  room_name?:                  string | null
+  resolvedGuestName?:        string | null
+  guestName?:                 string | null
+  resolvedAdditionalGuests?: string[] | null
+  additionalGuests?:          string[] | null
+  partyComposition?:          string | null
+  roomName?:                  string | null
   notes?:                      string | null
-  confirmation_number?:        string | null
-  bedding_type?:               string | null
+  confirmationNumber?:        string | null
+  beddingType?:               string | null
 }
 
 export interface RoomDisplay {
@@ -368,14 +368,14 @@ export function roomDisplay(room: RoomLike): RoomDisplay {
   const guests: string[] = []
   const lead = roomGuestName(room)
   if (lead) guests.push(lead)
-  if (room.resolved_additional_guests?.length) guests.push(...room.resolved_additional_guests)
-  if (room.party_composition) guests.push(room.party_composition)
+  if (room.resolvedAdditionalGuests?.length) guests.push(...room.resolvedAdditionalGuests)
+  if (room.partyComposition) guests.push(room.partyComposition)
   return {
-    roomName:  room.room_name ?? null,
+    roomName:  room.roomName ?? null,
     guestLine: guests.length ? guests.join('  \u00b7  ') : null,
     board:     room.notes ?? null,
-    conf:      room.confirmation_number ?? null,
-    bedding:   beddingLabel(room.bedding_type),
+    conf:      room.confirmationNumber ?? null,
+    bedding:   beddingLabel(room.beddingType),
   }
 }
 
@@ -394,40 +394,40 @@ export function roomLine(room: RoomLike): string {
 // ── Dining status - shared cancellation/terms model for PDFs ──────────────────
 // Mirrors diningPillModel in ImmerseConfirmedSections. Returns the label + an RGB tone.
 export interface DiningStatusLike {
-  show_cancellation?:            boolean | null
-  dining_status?:                string | null
-  cancellation_penalty_applied?: boolean | null
-  cancellation_note?:            string | null
-  venue?: { booking_terms?: string | null } | null
+  showCancellation?:            boolean | null
+  diningStatus?:                string | null
+  cancellationPenaltyApplied?: boolean | null
+  cancellationNote?:            string | null
+  venue?: { bookingTerms?: string | null } | null
 }
 
 export function diningPdfStatus(d: DiningStatusLike): { label: string; tone: RGB } | null {
-  if (d.show_cancellation === false) return null
-  const cancelled = d.dining_status === 'cancelled'
-  const penalty   = d.cancellation_penalty_applied === true
+  if (d.showCancellation === false) return null
+  const cancelled = d.diningStatus === 'cancelled'
+  const penalty   = d.cancellationPenaltyApplied === true
   const red: RGB  = [180, 50, 31]
-  if (cancelled && penalty) return { label: d.cancellation_note ?? 'Cancelled - penalty applies', tone: red }
-  if (cancelled)            return { label: d.cancellation_note ?? 'Cancelled', tone: T.muted }
-  if (d.venue?.booking_terms) return { label: d.venue.booking_terms, tone: T.gold }
+  if (cancelled && penalty) return { label: d.cancellationNote ?? 'Cancelled - penalty applies', tone: red }
+  if (cancelled)            return { label: d.cancellationNote ?? 'Cancelled', tone: T.muted }
+  if (d.venue?.bookingTerms) return { label: d.venue.bookingTerms, tone: T.gold }
   return null
 }
 
 export function isDiningCancelled(d: DiningStatusLike): boolean {
-  return d.dining_status === 'cancelled' && d.show_cancellation !== false
+  return d.diningStatus === 'cancelled' && d.showCancellation !== false
 }
 
 // ── Greeter line - meet_greet contact composition for PDFs ────────────────────
 export interface GreeterLike {
-  contact_name?:  string | null
-  contact_phone?: string | null
+  contactName?:  string | null
+  contactPhone?: string | null
   notes?:         string | null
 }
-export function guestLine(x: { guest_name: string | null; guest_count: number | null }): string {
-  return [x.guest_name, x.guest_count ? `${x.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
+export function guestLine(x: { guestName?: string | null; guestCount?: number | null; guest_name?: string | null; guest_count?: number | null }): string {
+  return [x.guestName ?? x.guestName, (x.guestCount ?? x.guestCount) ? `${x.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
 }
 export function greeterLines(g: GreeterLike): string[] {
   const out: string[] = []
-  const contact = [g.contact_name, g.contact_phone].filter(Boolean).join('  \u00b7  ')
+  const contact = [g.contactName, g.contactPhone].filter(Boolean).join('  \u00b7  ')
   if (contact) out.push(contact)
   if (g.notes) out.push(g.notes)
   return out

@@ -1,4 +1,4 @@
-// ImmerseProposalArchivedFallback.tsx — AXIS-2 client-facing archive surface.
+// ImmerseProposalArchivedFallback.tsx - AXIS-2 client-facing archive surface.
 //
 // Shown when an engagement's proposal_visibility === 'archived'. The client
 // holds a url_id to a proposal that WAS live and has since been archived by the
@@ -8,7 +8,7 @@
 //
 // Theme: the immerse client palette (cream / serif), mirroring TripNotFound /
 // TripLoading so it reads as native to the client surface. Brand chrome is the
-// established /emblem.png asset (same as TripLoading/TripNotFound) — no invented
+// established /emblem.png asset (same as TripLoading/TripNotFound) - no invented
 // logo, tagline, or copy. Contact is text-only by design (no email/link surfaced
 // here); the client reaches their travel designer through their existing channel.
 //
@@ -35,7 +35,7 @@ export default function ImmerseProposalArchivedFallback() {  return (
         boxSizing:      'border-box',
       }}
     >
-      {/* Brand emblem — established asset, not invented chrome */}
+      {/* Brand emblem - established asset, not invented chrome */}
       <img src='/emblem.png' alt='' style={{ width: 52, height: 52, opacity: 0.55, marginBottom: 4 }} />
 
       {/* Eyebrow */}
@@ -65,7 +65,7 @@ export default function ImmerseProposalArchivedFallback() {  return (
         This proposal is no longer active.
       </div>
 
-      {/* Supporting line — degrade toward human contact */}
+      {/* Supporting line - degrade toward human contact */}
       <div
         style={{
           fontSize:   14,

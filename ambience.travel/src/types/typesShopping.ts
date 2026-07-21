@@ -1,10 +1,10 @@
-// typesShopping.ts — Canonical registries for travel_shopping.
+// typesShopping.ts - Canonical registries for travel_shopping.
 //
 // What it owns:
-//   - SHOP_TYPES — canonical type list (mirrors DB CHECK constraint)
-//   - ShopType — type union
-//   - SHOP_TYPE_META — display metadata (descriptions for admin form helpers)
-//   - isValidShopType — runtime validator
+//   - SHOP_TYPES - canonical type list (mirrors DB CHECK constraint)
+//   - ShopType - type union
+//   - SHOP_TYPE_META - display metadata (descriptions for admin form helpers)
+//   - isValidShopType - runtime validator
 //
 // Sync requirement: the values in SHOP_TYPES MUST match the DB CHECK constraint
 // travel_shopping_type_check exactly. To add a new type:
@@ -12,7 +12,7 @@
 //   2. Add the value to SHOP_TYPES below
 //   3. Add a SHOP_TYPE_META entry
 //
-// Last updated: S52 — initial registry. Seven types cover the v1 shopping
+// Last updated: S52 - initial registry. Seven types cover the v1 shopping
 //   taxonomy across destinations (Saint-Tropez, London, NYC, Paris, etc.).
 //   Designed to serve the guest's mental model ("what kind of place is this?")
 //   with mutually exclusive primary identities.

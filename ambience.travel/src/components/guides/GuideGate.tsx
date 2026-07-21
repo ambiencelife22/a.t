@@ -1,4 +1,4 @@
-// GuideGate.tsx — inline gate screen for guide pages.
+// GuideGate.tsx - inline gate screen for guide pages.
 //
 // Rendered inside GuideLayout when useGuideRoute returns phase='notPublic'
 // for any guide variant. The hero renders above this block; the guest sees
@@ -11,7 +11,7 @@
 // What it does not own: layout shell (GuideLayout), hero (GuideHero),
 //   whether to render (GuideRoute* gates on notPublic phase).
 //
-// Created: S53 — P0 gate screen. One component for all four variants.
+// Created: S53 - P0 gate screen. One component for all four variants.
 
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { GUIDE_COPY, type GuideVariant } from '../../types/typesGuides'

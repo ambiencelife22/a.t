@@ -1,4 +1,4 @@
-// AssetPicker.tsx — modal for browsing and selecting existing images from
+// AssetPicker.tsx - modal for browsing and selecting existing images from
 // the ambience-assets bucket. Returns the public URL of the selected asset.
 //
 // Used by: BriefEditorPage (hero + room image pickers).
@@ -9,14 +9,14 @@
 //   - Handles up to TWO levels of subfolders before images:
 //       e.g. nyc/ → accom/ → four-seasons/ → image.webp
 //   - Root-level images shown under a 'Hero' tab alongside subfolder tabs
-//   - Click to select — calls onSelected(publicUrl) and closes
+//   - Click to select - calls onSelected(publicUrl) and closes
 //
-// Last updated: S49 — root-level images (hero images) now appear under a
+// Last updated: S49 - root-level images (hero images) now appear under a
 //   'Hero' tab when the folder also contains subfolders. Previously the
 //   category tab strip appeared but root images were never reachable.
-// Prior: S47 — two-level subfolder support.
-// Prior: S46 — single subfolder level.
-// Prior: S45 — initial ship.
+// Prior: S47 - two-level subfolder support.
+// Prior: S46 - single subfolder level.
+// Prior: S45 - initial ship.
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -106,7 +106,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
       if (dirs.length > 0) {
         setLevel1Dirs(dirs)
-        setLevel1RootImages(imgs)  // may be empty — that's fine
+        setLevel1RootImages(imgs)  // may be empty - that's fine
         // If there are root images, auto-select the Hero tab
         if (imgs.length > 0) {
           setLevel1Sel(HERO_TAB)
@@ -179,7 +179,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-  // Build tab list — Hero tab first if root images exist
+  // Build tab list - Hero tab first if root images exist
   const allTabs = [
     ...(level1RootImages.length > 0 ? [HERO_TAB] : []),
     ...level1Dirs,
@@ -237,7 +237,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           </div>
         )}
 
-        {/* Level 1 — tab strip (Hero tab + subfolders) */}
+        {/* Level 1 - tab strip (Hero tab + subfolders) */}
         {allTabs.length > 0 && (
           <div>
             <label style={labelStyle}>Category</label>
@@ -263,7 +263,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
           </div>
         )}
 
-        {/* Level 2 — dropdown */}
+        {/* Level 2 - dropdown */}
         {level2Dirs.length > 0 && (
           <div>
             <label style={labelStyle}>Hotel / Venue</label>
@@ -272,7 +272,7 @@ export default function AssetPicker({ onClose, onSelected, presetPath }: AssetPi
               value={level2Sel}
               onChange={e => setLevel2Sel(e.target.value)}
             >
-              <option value=''>— Select —</option>
+              <option value=''>- Select -</option>
               {level2Dirs.map(f => (
                 <option key={f} value={f}>{f}</option>
               ))}

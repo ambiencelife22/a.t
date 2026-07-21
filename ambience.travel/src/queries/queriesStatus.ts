@@ -1,29 +1,30 @@
-// statusQueries.ts — Engagement + itinerary status lookup queries
+// statusQueries.ts - Engagement + itinerary status lookup queries
 // Owns:
-//   - fetchEngagementStatuses()  — all rows of travel_lifecycle_statuses
-//   - fetchItineraryStatuses()   — all rows of travel_itinerary_statuses
-//   - mapEngagementStatus / mapItineraryStatus — row → camelCase mappers,
+//   - fetchEngagementStatuses()  - all rows of travel_lifecycle_statuses
+//   - fetchItineraryStatuses()   - all rows of travel_itinerary_statuses
+//   - mapEngagementStatus / mapItineraryStatus - row → camelCase mappers,
 //     exported so hydrateEngagement in immerseEngagementQueries.ts can reuse them
 //     on the nested join row without duplicating the snake_case → camelCase
 //     shape.
 //
 // Used by admin dropdowns (operator-facing). Neither fetcher is consumed
-// by guest-facing routes — guests see resolved labels via the joined
+// by guest-facing routes - guests see resolved labels via the joined
 // status object on ImmerseEngagementData (see immerseEngagementQueries.ts
 // hydrateEngagement).
 //
-// Last updated: S30E — Engagement abstraction. Renames mirror DB:
+// Last updated: S30E - Engagement abstraction. Renames mirror DB:
 //   travel_trip_statuses → travel_lifecycle_statuses; fetchTripStatuses →
 //   fetchEngagementStatuses; mapTripStatus → mapEngagementStatus;
-//   TripStatus type → EngagementStatus. Itinerary side unchanged —
+//   TripStatus type → EngagementStatus. Itinerary side unchanged -
 //   itinerary lifecycle is journey-engagement-specific.
-// Prior: S30D — initial.
+// Prior: S30D - initial.
 //
 // Lookup tables are public-readable per RLS; using `supabase` (auth-attached)
 // is fine. Order by sort_order so dropdowns render in the operator-facing
 // logical sequence without re-sorting client-side.
 
 import { supabase } from '../lib/supabase'
+import { camelizeKeys } from '@shared/camelize'
 import type { EngagementStatus, ItineraryStatus } from '../types/typesImmerse'
 
 // ─── DB row types ────────────────────────────────────────────────────────────
@@ -32,8 +33,8 @@ type EngagementStatusRow = {
   id:         string
   slug:       string
   label:      string
-  sort_order: number
-  is_active:  boolean
+  sortOrder: number
+  isActive:  boolean
 }
 
 type ItineraryStatusRow = EngagementStatusRow   // identical shape
@@ -51,7 +52,7 @@ export async function fetchEngagementStatuses(activeOnly = true): Promise<Engage
   const { data, error } = await query
   if (error || !data) return []
 
-  return (data as EngagementStatusRow[]).map(mapEngagementStatus)
+  return camelizeKeys<EngagementStatusRow[]>(data).map(mapEngagementStatus)
 }
 
 export async function fetchItineraryStatuses(activeOnly = true): Promise<ItineraryStatus[]> {
@@ -65,7 +66,7 @@ export async function fetchItineraryStatuses(activeOnly = true): Promise<Itinera
   const { data, error } = await query
   if (error || !data) return []
 
-  return (data as ItineraryStatusRow[]).map(mapItineraryStatus)
+  return camelizeKeys<ItineraryStatusRow[]>(data).map(mapItineraryStatus)
 }
 
 // ─── Internal mappers ────────────────────────────────────────────────────────
@@ -77,8 +78,8 @@ export function mapEngagementStatus(row: EngagementStatusRow): EngagementStatus 
     id:        row.id,
     slug:      row.slug,
     label:     row.label,
-    sortOrder: row.sort_order,
-    isActive:  row.is_active,
+    sortOrder: row.sortOrder,
+    isActive:  row.isActive,
   }
 }
 
@@ -87,7 +88,7 @@ export function mapItineraryStatus(row: ItineraryStatusRow): ItineraryStatus {
     id:        row.id,
     slug:      row.slug,
     label:     row.label,
-    sortOrder: row.sort_order,
-    isActive:  row.is_active,
+    sortOrder: row.sortOrder,
+    isActive:  row.isActive,
   }
 }

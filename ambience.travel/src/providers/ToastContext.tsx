@@ -1,11 +1,11 @@
 /* ToastContext.tsx
- * Global toast notification system — used by both ambience.SPORTS and
+ * Global toast notification system - used by both ambience.SPORTS and
  * ambience.TRAVEL.
  *
  * Usage:
  *   const { toast } = useToast()
  *   toast.success('Saved.')
- *   toast.error('Failed to save — please try again.')
+ *   toast.error('Failed to save - please try again.')
  *   toast.warning('No active sportsbooks found.')
  *   toast.info('Tip: use book:DK to filter by book.')
  *
@@ -13,7 +13,7 @@
  *   1. Wrap app with <ToastProvider>
  *   2. Render <ToastContainer /> once, outside Layout
  *
- * Last updated: S20 — header note added re: cross-product use.
+ * Last updated: S20 - header note added re: cross-product use.
  */
 
 import { createContext, useContext } from 'react'

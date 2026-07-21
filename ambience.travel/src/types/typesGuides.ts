@@ -1,9 +1,9 @@
-/* typesGuides.ts — shared guide type foundation.
+/* typesGuides.ts - shared guide type foundation.
  *
  * One overlay shape across all four guide variants (dining, experiences,
  * hotels, shopping). All four travel_*_guides tables share the identical
  * 13-column DB shape. This file is the single source of truth for the
- * guide layer — editor, public reader, route layer.
+ * guide layer - editor, public reader, route layer.
  *
  * What it owns:
  *   - GuideVariant union
@@ -11,11 +11,11 @@
  *   - GUIDE_GRANT_TABLE_NAMES (writable grants tables)
  *   - GUIDE_GRANT_VIEW_NAMES (readable per-user grants views)
  *   - GUIDE_ROUTE_SEGMENTS (URL path segments)
- *   - GuideOverlay — overlay shape (public reader + editor)
- *   - GuideOverlayDraft, GuideOverlayPatch — editor aliases
- *   - GuideDestination — generic destination shape used by all four variants
- *   - GrantStatus — shared grant check result
- *   - GUIDE_COPY — per-variant copy defaults, including section labels,
+ *   - GuideOverlay - overlay shape (public reader + editor)
+ *   - GuideOverlayDraft, GuideOverlayPatch - editor aliases
+ *   - GuideDestination - generic destination shape used by all four variants
+ *   - GrantStatus - shared grant check result
+ *   - GUIDE_COPY - per-variant copy defaults, including section labels,
  *     item nouns, teaser italic lines, empty and loading state text,
  *     and default intro template
  *   - formatItemCount, formatSectionHeader, resolveDefaultIntro
@@ -28,11 +28,11 @@
  *   - Gating logic (utilsGuideGating.ts)
  *   - PDF year/version resolvers (utilsGuidePdf.ts)
  *
- * Last updated: S53 — GUIDE_COPY extended with sectionLabel, teaserItalic,
+ * Last updated: S53 - GUIDE_COPY extended with sectionLabel, teaserItalic,
  *   emptyStateText, loadingStateText, defaultIntroTemplate. Nine-file
  *   guide-layer extraction consolidates all inline copy into this file.
- * Prior: S53 — Generic GuideDestination + GrantStatus consolidation.
- * Prior: S52 — initial build.
+ * Prior: S53 - Generic GuideDestination + GrantStatus consolidation.
+ * Prior: S52 - initial build.
  */
 
 export type GuideVariant = 'dining' | 'experiences' | 'hotels' | 'shopping'
@@ -75,19 +75,19 @@ export const GUIDE_ROUTE_SEGMENTS: Record<GuideVariant, string> = {
  * page reads them. One type, four tables.
  */
 export interface GuideOverlay {
-  hero_image_src:          string | null
-  hero_image_alt:          string | null
-  eyebrow_override:        string | null
-  headline_override:       string | null
-  intro_override:          string | null
-  is_active:               boolean
-  accuracy_date:           string | null
-  at_a_glance_bullets:     string[] | null
-  guide_year:              number | null
-  guide_version:           string | null
-  plan_your_visit_heading: string | null
-  plan_your_visit_intro:   string | null
-  plan_your_visit_bullets: string[] | null
+  heroImageSrc:          string | null
+  heroImageAlt:          string | null
+  eyebrowOverride:        string | null
+  headlineOverride:       string | null
+  introOverride:          string | null
+  isActive:               boolean
+  accuracyDate:           string | null
+  atAGlanceBullets:     string[] | null
+  guideYear:              number | null
+  guideVersion:           string | null
+  planYourVisitHeading: string | null
+  planYourVisitIntro:   string | null
+  planYourVisitBullets: string[] | null
 }
 
 /** Alias for editor clarity. Same shape. */
@@ -128,19 +128,19 @@ export type GrantStatus =
  * files.
  *
  * Field roles:
- *   defaultHeadline      — hero H1 when overlay.headline_override is null
- *   productLabel         — long-form label ("Dining Guide") for footers,
+ *   defaultHeadline      - hero H1 when overlay.headlineOverride is null
+ *   productLabel         - long-form label ("Dining Guide") for footers,
  *                          editorial prompt eyebrow, PDF metadata
- *   sectionLabel         — short section title suffix ("Selected {label}")
- *   itemNoun             — singular count noun ("Table")
- *   itemNounPlural       — plural count noun ("Tables")
- *   teaserItalic         — italic line inside the editorial prompt below
+ *   sectionLabel         - short section title suffix ("Selected {label}")
+ *   itemNoun             - singular count noun ("Table")
+ *   itemNounPlural       - plural count noun ("Tables")
+ *   teaserItalic         - italic line inside the editorial prompt below
  *                          the grid ("There is more to this table.")
- *   emptyStateText       — text when the filtered set is empty and viewer
+ *   emptyStateText       - text when the filtered set is empty and viewer
  *                          has advisor access
- *   loadingStateText     — text while the fetch is in flight
- *   defaultIntroTemplate — hero intro template with {destinationName} slot
- *                          when overlay.intro_override is null
+ *   loadingStateText     - text while the fetch is in flight
+ *   defaultIntroTemplate - hero intro template with {destinationName} slot
+ *                          when overlay.introOverride is null
  */
 export interface GuideVariantCopy {
   defaultHeadline:      string
@@ -219,7 +219,7 @@ export function formatSectionHeader(variant: GuideVariant, count: number): strin
 
 /**
  * Default hero intro for a variant, given a destination name.
- * Called when overlay.intro_override is null.
+ * Called when overlay.introOverride is null.
  */
 export function resolveDefaultIntro(
   variant:         GuideVariant,

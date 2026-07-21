@@ -1,7 +1,7 @@
 /* EditorialSection.tsx
- * Four editorial cards — warm light bg.
+ * Four editorial cards - warm light bg.
  * Animations:
- * - Staggered fade-in reveal — opacity only, no translate
+ * - Staggered fade-in reveal - opacity only, no translate
  * - Hover: lift + image scale + border darken + shadow deepen
  * Note: outer wrapper owns shadow; inner wrapper clips image.
  */
@@ -37,7 +37,7 @@ function EditorialCard({ item, delay, visible }: { item: typeof cards[0], delay:
   const [hovered, setHovered] = useState(false)
 
   return (
-    // Outer — shadow, no overflow clip
+    // Outer - shadow, no overflow clip
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -56,7 +56,7 @@ function EditorialCard({ item, delay, visible }: { item: typeof cards[0], delay:
         flexDirection: 'column',
       }}
     >
-      {/* Inner — clips image, owns border, stretches full height */}
+      {/* Inner - clips image, owns border, stretches full height */}
       <div
         style={{
           overflow:      'hidden',

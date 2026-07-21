@@ -1,4 +1,4 @@
-// queriesAdminProgramme.ts — Admin queries for the programme product.
+// queriesAdminProgramme.ts - Admin queries for the programme product.
 //
 // All reads + writes go through travel-read-programme-admin and
 // travel-write-programme-admin EFs via supabase.functions.invoke.
@@ -7,7 +7,7 @@
 // Mirrors the call sites in ProgrammeAdmin.tsx 1:1. Each function maps to
 // exactly one EF mode.
 //
-// Last updated: S53G — initial build. Extracted from ProgrammeAdmin.tsx
+// Last updated: S53G - initial build. Extracted from ProgrammeAdmin.tsx
 //   (29 direct DB calls across 5 tables → 0).
 
 import { supabase } from '../lib/supabase'
@@ -16,25 +16,25 @@ import { supabase } from '../lib/supabase'
 
 export type ProgrammeRow = {
   id:                   string
-  url_id:               string
+  urlId:               string
   programme_type:       string
   sub_path:             string
   status:               string
   active:               boolean
-  is_public:            boolean
+  isPublic:            boolean
   public_wifi:          boolean
   public_alarm:         boolean
   public_owner_phone:   boolean
   public_manager_phone: boolean
   no_alarm:             boolean
   public_arrival:       boolean
-  guest_names:          string
-  guest_count:          number
-  check_in:             string | null
-  check_out:            string | null
-  welcome_letter:       string
-  property_id:          string | null
-  active_listing_ids:   string[] | null
+  guestNames:          string
+  guestCount:          number
+  checkIn:             string | null
+  checkOut:            string | null
+  welcomeLetter:       string
+  propertyId:          string | null
+  activeListingIds:   string[] | null
   alarm_code_provided:  boolean
   properties:           { id: string; name: string; slug: string } | null
 }
@@ -47,13 +47,13 @@ export type PropertyRow = {
   city:               string | null
   country:            string | null
   hero_image:         string | null
-  maps_url:           string | null
-  maps_embed_url:     string | null
-  owner_name:         string | null
-  owner_phone:        string | null
-  manager_name:       string | null
-  manager_phone:      string | null
-  emergency_contacts: { label: string; phone: string }[]
+  mapsUrl:           string | null
+  mapsEmbedUrl:     string | null
+  ownerName:         string | null
+  ownerPhone:        string | null
+  managerName:       string | null
+  managerPhone:      string | null
+  emergencyContacts: { label: string; phone: string }[]
   active:             boolean
 }
 
@@ -67,17 +67,17 @@ export type ListingRow = {
   hours:       string | null
   note:        string | null
   favourite:   boolean
-  property_id: string
+  propertyId: string
 }
 
 export type PropertySectionRow = {
   id:          string
   title:       string
   icon:        string
-  sort_order:  number
+  sortOrder:  number
   variant:     string
   content:     unknown
-  property_id: string
+  propertyId: string
 }
 
 export type PropertySectionMeta = {
@@ -93,16 +93,16 @@ export type ProgrammeSectionRow = {
 }
 
 export type ProgrammePayload = {
-  url_id:               string
+  urlId:               string
   programme_type:       string
   sub_path:             string
   status:               string
-  guest_names:          string
-  guest_count:          number
-  check_in:             string | null
-  check_out:            string | null
-  welcome_letter:       string
-  property_id:          string | null
+  guestNames:          string
+  guestCount:          number
+  checkIn:             string | null
+  checkOut:            string | null
+  welcomeLetter:       string
+  propertyId:          string | null
   alarm_code_provided:  boolean
 }
 
@@ -115,7 +115,7 @@ export type ListingPayload = {
   hours:       string | null
   note:        string | null
   favourite:   boolean
-  property_id: string
+  propertyId: string
 }
 
 export type PropertyPayload = {
@@ -124,13 +124,13 @@ export type PropertyPayload = {
   city:               string | null
   country:            string | null
   hero_image:         string | null
-  maps_url:           string | null
-  maps_embed_url:     string | null
-  owner_name:         string | null
-  owner_phone:        string | null
-  manager_name:       string | null
-  manager_phone:      string | null
-  emergency_contacts: { label: string; phone: string }[]
+  mapsUrl:           string | null
+  mapsEmbedUrl:     string | null
+  ownerName:         string | null
+  ownerPhone:        string | null
+  managerName:       string | null
+  managerPhone:      string | null
+  emergencyContacts: { label: string; phone: string }[]
 }
 
 export type TogglableField =
@@ -181,7 +181,7 @@ export async function fetchProgrammePropertyStubs(): Promise<{ id: string; name:
 
 export async function fetchListings(propertyId: string): Promise<ListingRow[]> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'listings', property_id: propertyId },
+    body: { mode: 'listings', propertyId: propertyId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -190,7 +190,7 @@ export async function fetchListings(propertyId: string): Promise<ListingRow[]> {
 
 export async function fetchPropertySections(propertyId: string): Promise<PropertySectionRow[]> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'property_sections', property_id: propertyId },
+    body: { mode: 'property_sections', propertyId: propertyId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -199,7 +199,7 @@ export async function fetchPropertySections(propertyId: string): Promise<Propert
 
 export async function fetchPropertySectionsMeta(propertyId: string): Promise<PropertySectionMeta[]> {
   const { data, error } = await supabase.functions.invoke(READ_EF, {
-    body: { mode: 'property_sections_meta', property_id: propertyId },
+    body: { mode: 'property_sections_meta', propertyId: propertyId },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -251,7 +251,7 @@ export async function toggleProgrammeField(id: string, field: TogglableField, va
 
 export async function updateWelcomeLetter(id: string, welcomeLetter: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_welcome_letter', id, welcome_letter: welcomeLetter },
+    body: { mode: 'update_welcome_letter', id, welcomeLetter: welcomeLetter },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -314,7 +314,7 @@ export async function upsertProgrammeSection(
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
     body: {
       mode:         'upsert_programme_section',
-      existing_id:  existingId,
+      existingId:  existingId,
       programme_id: programmeId,
       section_id:   sectionId,
       content,
@@ -365,7 +365,7 @@ export async function updateSectionMeta(id: string, title: string, icon: string)
   if (data?.error) throw new Error(data.error)
 }
 
-// ── Programme guest functions (S53H — GuestLinker EF-compliance migration) ───
+// ── Programme guest functions (S53H - GuestLinker EF-compliance migration) ───
 
 export interface ProgrammeGuest {
   id:           string
@@ -401,9 +401,9 @@ export async function searchProgrammeGuestCandidates(query: string): Promise<Gue
   if (error) throw error
   const results = (data?.results ?? []) as Array<Record<string, unknown>>
   return results.map(r => ({
-    personId:    r.person_id as string,
+    personId:    r.personId as string,
     profileId:   (r.profile_id as string | null) ?? null,
-    displayName: (r.display_name as string) ?? '',
+    displayName: (r.displayName as string) ?? '',
     nickname:    (r.nickname as string | null) ?? null,
     linkable:    !!r.linkable,
   }))
@@ -411,7 +411,7 @@ export async function searchProgrammeGuestCandidates(query: string): Promise<Gue
 
 export async function linkProgrammeGuest(programmeId: string, personId: string): Promise<ProgrammeGuest> {
   const { data, error } = await supabase.functions.invoke('travel-write-journey', {
-    body: { mode: 'link_programme_guest', programme_id: programmeId, person_id: personId },
+    body: { mode: 'link_programme_guest', programme_id: programmeId, personId: personId },
   })
   if (error) throw await toLinkError(error)
   return mapGuest((data?.guest ?? {}) as Record<string, unknown>)
@@ -457,10 +457,10 @@ function mapGuest(r: Record<string, unknown>): ProgrammeGuest {
   return {
     id:           r.id as string,
     programmeId:  r.programme_id as string,
-    displayName:  (r.display_name as string) ?? '',
+    displayName:  (r.displayName as string) ?? '',
     profileId:    (r.profile_id as string | null) ?? null,
     isLead:       !!r.is_lead,
-    sortOrder:    (r.sort_order as number) ?? 0,
+    sortOrder:    (r.sortOrder as number) ?? 0,
     resolvedName: (r.resolved_name as string | null) ?? null,
   }
 }

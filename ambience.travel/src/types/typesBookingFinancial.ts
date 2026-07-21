@@ -1,18 +1,18 @@
-// typesBookingFinancial.ts — canonical booking-financial shape for the admin
+// typesBookingFinancial.ts - canonical booking-financial shape for the admin
 // Financial/Operations surfaces.
 //
 // B1 of the Financial/Operations consolidation (see the S53I "One Source,
 // Consumed Everywhere" plan, Collapse B). Today two near-identical types describe
 // the same booking's financial truth from two surfaces:
-//   - BookingRow  (dissolved S53I — fields absorbed into this canonical type)
-//   - OpsBooking  (dissolved S53I — fields absorbed into this canonical type)
+//   - BookingRow  (dissolved S53I - fields absorbed into this canonical type)
+//   - OpsBooking  (dissolved S53I - fields absorbed into this canonical type)
 //                                                 house/trip resolution + the
-//                                                 payment_exception_override flag
+//                                                 paymentExceptionOverride flag
 // This is the parallel-ship disease at the type level. This file is the single
 // canonical shape both surfaces re-type onto. It is the SUPERSET: every field
 // either surface reads. Surface-specific *_usd derivations and _resolved fields
 // are optional so a producer that does not compute them is honestly typed
-// (absent, not fabricated) — same discipline as ImmerseEngagementBooking.payment_exception.
+// (absent, not fabricated) - same discipline as ImmerseEngagementBooking.payment_exception.
 //
 // Once B2 (one read EF) + B4 (one surface) land, BookingRow and OpsBooking are
 // deleted and every consumer reads BookingFinancial directly.
@@ -23,108 +23,108 @@
 // so the unified OutlookTab surface can show the full room breakdown.
 export type BookingFinancialRoom = {
   id:                  string
-  booking_id:          string
-  room_name:           string | null
-  confirmation_number: string | null
-  guest_name:          string | null
+  bookingId:          string
+  roomName:           string | null
+  confirmationNumber: string | null
+  guestName:          string | null
   nights:              number | null
   rate:                number | null
-  tax_pct:             number | null
+  taxPct:             number | null
   total:               number | null
-  check_in_time:       string | null
-  bedding_type:        string | null
-  sort_order:          number
+  checkInTime:       string | null
+  beddingType:        string | null
+  sortOrder:          number
 }
 
 // ── The canonical booking-financial shape ─────────────────────────────────────
 export type BookingFinancial = {
   // ── Identity ──────────────────────────────────────────────────────────────
   id:                     string
-  journey_id:                string
-  engagement_id:          string | null
+  journeyId:                string
+  engagementId:          string | null
   name:                   string | null
   status:                 string | null
-  confirmation_number:    string | null
+  confirmationNumber:    string | null
 
   // ── Dates ─────────────────────────────────────────────────────────────────
-  start_date:             string | null
-  end_date:               string | null
+  startDate:             string | null
+  endDate:               string | null
   nights:                 number | null
 
   // ── Rate ──────────────────────────────────────────────────────────────────
   currency:               string | null
-  commissionable_rate:    number | null
-  total_rate:             number | null
-  taxes_and_fees:         number | null
-  board_basis:            { display_name: string } | null
-  payment_terms:          { display_name: string } | null
-  pricing_basis:          { display_name: string } | null
-  rate_label:             { display_name: string; client_visible: boolean } | null
+  commissionableRate:    number | null
+  totalRate:             number | null
+  taxesAndFees:         number | null
+  boardBasis:            { displayName: string } | null
+  paymentTerms:          { displayName: string } | null
+  pricingBasis:          { displayName: string } | null
+  rateLabel:             { displayName: string; clientVisible: boolean } | null
   price:                  number | null
   // USD-normalised derivations (OutlookTab reads these; computed by travel-read-expenses)
   // not). Optional: absent means "not computed by this producer", never zero.
-  commissionable_rate_usd?: number | null
-  total_rate_usd?:          number | null
-  taxes_and_fees_usd?:      number | null
+  commissionableRateUsd?: number | null
+  totalRateUsd?:          number | null
+  taxesAndFeesUsd?:      number | null
 
-  // ── Amenities (absorbed cost — operator pays, never client-facing) ─────────
+  // ── Amenities (absorbed cost - operator pays, never client-facing) ─────────
   cost:                   number | null
 
   // ── Commission ────────────────────────────────────────────────────────────
-  commission_pct:         number | null
-  commission_amount:      number | null
-  commission_amount_usd?: number | null
-  commission_paid_at:     string | null
-  invoice_number:         string | null
-  // Receipt detail — recorded by mark_commission_received, selected by
+  commissionPct:         number | null
+  commissionAmount:      number | null
+  commissionAmountUsd?: number | null
+  commissionPaidAt:     string | null
+  invoiceNumber:         string | null
+  // Receipt detail - recorded by mark_commission_received, selected by
   // BOOKING_FINANCIAL_SELECT. Present after a receipt is captured.
-  commission_received_amount?:     number | null
-  commission_payment_fee_pct?:     number | null
-  commission_payment_fee_amt?:     number | null
-  commission_net_received?:          number | null
-  commission_payment_platform_id?:   string | null
-  commission_transaction_ref?:       string | null
-  commission_remitting_partner_id?:  string | null
+  commissionReceivedAmount?:     number | null
+  commissionPaymentFeePct?:     number | null
+  commissionPaymentFeeAmt?:     number | null
+  commissionNetReceived?:          number | null
+  commissionPaymentPlatformId?:   string | null
+  commissionTransactionRef?:       string | null
+  commissionRemittingPartnerId?:  string | null
   // Resolved joins
-  travel_payment_platforms?: { slug: string; label: string; default_fee_pct: number } | null
-  travel_partners?:          { id: string; name: string; partner_type: string } | null
+  travelPaymentPlatforms?: { slug: string; label: string; defaultFeePct: number } | null
+  travelPartners?:          { id: string; name: string; partnerType: string } | null
 
   // ── Net revenue (rate-type-aware; _shared/expenses.ts computeNetRevenue) ───
-  net_revenue:            number | null
-  net_revenue_usd?:       number | null
+  netRevenue:            number | null
+  netRevenueUsd?:       number | null
 
   // ── Payment: deposit / balance ────────────────────────────────────────────
-  deposit_amount:         number | null
-  deposit_due_date:       string | null
-  deposit_paid_at:        string | null
-  balance_amount:         number | null
-  balance_due_date:       string | null
-  balance_paid_at:        string | null
-  // Guest payment signal — admin force-flag for the "Payment Outstanding" line.
+  depositAmount:         number | null
+  depositDueDate:       string | null
+  depositPaidAt:        string | null
+  balanceAmount:         number | null
+  balanceDueDate:       string | null
+  balancePaidAt:        string | null
+  // Guest payment signal - admin force-flag for the "Payment Outstanding" line.
   // null = defer to date logic (overdue balance); true = force. Never false.
-  payment_exception_override: boolean | null
+  paymentExceptionOverride: boolean | null
 
   // ── Partner splits ────────────────────────────────────────────────────────
-  iata_partner_id:        string | null
-  iata_share_pct:         number | null
-  iata_share_amt:         number | null
-  referral_partner_id:    string | null
-  referral_share_pct:     number | null
-  referral_share_amt:     number | null
-  individual_id:          string | null
-  individual_share_pct:   number | null
-  individual_share_amt:   number | null
+  iataPartnerId:        string | null
+  iataSharePct:         number | null
+  iataShareAmt:         number | null
+  referralPartnerId:    string | null
+  referralSharePct:     number | null
+  referralShareAmt:     number | null
+  individualId:          string | null
+  individualSharePct:   number | null
+  individualShareAmt:   number | null
 
   // ── Supplier ──────────────────────────────────────────────────────────────
-  accom_hotel_id:         string | null
-  supplier_id:            string | null
-  supplier_name_override: string | null
+  accomHotelId:         string | null
+  supplierId:            string | null
+  supplierNameOverride: string | null
 
   // ── Policy ────────────────────────────────────────────────────────────────
-  cancellation_policy:    string | null
+  cancellationPolicy:    string | null
   notes:                  string | null
-  sort_order:             number | null
-  created_at:             string | null
+  sortOrder:             number | null
+  createdAt:             string | null
 
   // ── Rooms (per-room financial source; OutlookTab nests these) ────────────
   rooms:                  BookingFinancialRoom[]
@@ -132,7 +132,7 @@ export type BookingFinancial = {
   // ── Resolved / display (client-side joins; optional per producer) ─────────
   // Canonical name is _hotel_name (the resolved-field convention used across
   // programme, confirmation, and OutlookTab). _hotel_name
-  // is the odd one out and its adapter maps hotel_name -> _hotel_name. Reconciling
+  // is the odd one out and its adapter maps hotelName -> _hotel_name. Reconciling
   // that naming divergence is part of this consolidation, not a bandaid around it.
   _hotel_name?:           string | null
   _journey_code?:            string | null

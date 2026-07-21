@@ -1,10 +1,10 @@
-// pdfUtils.ts — Shared PDF primitives for all ambience PDF exports.
+// pdfUtils.ts - Shared PDF primitives for all ambience PDF exports.
 //
 // What it owns:
 //   - Image loading:   loadImg (PNG/JPEG via canvas)
 //   - SVG loading:     loadSvg (fetch → Blob → Image → canvas raster)
 //   - Cover crop:      makeCoverCropAsync (async canvas cover-crop to exact mm target)
-//   - Font helpers:    serif(), sans() — thin wrappers around doc.setFont/setFontSize
+//   - Font helpers:    serif(), sans() - thin wrappers around doc.setFont/setFontSize
 //   - Draw helpers:    drawRule(), drawStar(), drawStarRow()
 //   - jsPDF guard:     assertJsPdf()
 //
@@ -19,7 +19,7 @@
 // Rule: never import from a PDF module here. This file has no upstream
 //   dependencies other than guidePdfFonts.ts constants.
 //
-// Last updated: S48 — initial extraction from guidePdf.ts +
+// Last updated: S48 - initial extraction from guidePdf.ts +
 //   confirmationBriefPdf.ts. Identical logic, single source.
 
 import { PDF_FONTS, PDF_FONTS_SANS_MEDIUM_FAMILY } from './pdfFonts'
@@ -39,7 +39,7 @@ export interface Img {
 
 /**
  * Asserts that jsPDF has been loaded onto window.jspdf.
- * Throws a descriptive error if not — caller should surface this to the user.
+ * Throws a descriptive error if not - caller should surface this to the user.
  */
 export function assertJsPdf(): any {
   const jsPDF = (window as any).jspdf?.jsPDF
@@ -54,7 +54,7 @@ export function assertJsPdf(): any {
  * PNG: transparent background preserved.
  * JPEG/WEBP: white background composited first (jsPDF requires opaque JPEG).
  *
- * Returns null on network error or canvas failure — callers must handle gracefully.
+ * Returns null on network error or canvas failure - callers must handle gracefully.
  */
 export async function loadImg(src: string): Promise<Img | null> {
   return new Promise(resolve => {
@@ -129,7 +129,7 @@ export async function loadSvg(src: string, targetW: number): Promise<Img | null>
  * and crops it to exactly destWmm × destHmm at PX px/mm resolution.
  *
  * Rule: always await this after loadImg. Never pass raw src to jsPDF.addImage
- * when a specific crop region is required — dimensions and crop must be
+ * when a specific crop region is required - dimensions and crop must be
  * pre-resolved (Dev Standards S47).
  *
  * Falls back to returning the original srcData on canvas error.
@@ -162,7 +162,7 @@ export async function makeCoverCropAsync(
         c.height = outH
         const ctx = c.getContext('2d')
         if (!ctx) { resolve({ data: srcData, format }); return }
-        // Rounded-corner clip — bake the radius into the image data so it
+        // Rounded-corner clip - bake the radius into the image data so it
         // composites cleanly over any page background (PNG keeps the corners
         // transparent; JPEG can't, so rounding forces a PNG result).
         if (rad > 0) {

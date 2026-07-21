@@ -5,7 +5,7 @@
 // PDF render the stream as-is (no client-side derivation).
 //
 // Hotel check-in/out are DERIVED from bookings (never stored). Standalone entries
-// (dining, experiences, notes — anything without a booking source) pass through.
+// (dining, experiences, notes - anything without a booking source) pass through.
 // Aux (flights/transfers) are derived from aux bookings, carrying passengers.
 //
 // Same-day ordering canon: check-out (morning, depart) → timed items (by
@@ -20,11 +20,11 @@
 //     distinct from check-in. Set explicitly on the booking, not derived.
 //
 // Early check-in / late check-out approved times surface as check_in_note /
-// check_out_note on the TimelineItem when set — guest-facing context, never
+// check_out_note on the TimelineItem when set - guest-facing context, never
 // used for sort ordering.
 //
 // Check-in/out NOTES (e.g. an early-check-in half-rate arrangement) ride on the
-// derived items so every surface — confirmation, programme, brief, all PDFs —
+// derived items so every surface - confirmation, programme, brief, all PDFs -
 // shows the concierge's intention. The note is guest-facing context, never an
 // internal artifact.
 
@@ -33,7 +33,7 @@
 import type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem } from './typesTimeline.ts'
 export type { TimelineRoom, TimelinePassenger, TimelineDriverDetail, TimelineItem }
 
-// ── Input shapes (loose — these are already-fetched DB rows) ───────────────────
+// ── Input shapes (loose - these are already-fetched DB rows) ───────────────────
 
 type BookingLike = {
   id?:                            unknown
@@ -68,9 +68,9 @@ type EngagementElementLike = {
   element_type_label?:  string | null
   name?:                string | null
   start_date?:          string | null
-  end_date?:            string | null   // arrival date — used for same-day match
+  end_date?:            string | null   // arrival date - used for same-day match
   start_time?:          string | null
-  end_time?:            string | null   // arrival time — used for derivation
+  end_time?:            string | null   // arrival time - used for derivation
   origin?:              string | null
   destination?:         string | null
   notes?:               string | null
@@ -124,14 +124,14 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
 
   // Pre-pass: detect re-check-ins (split stays). A re-check-in is the SAME PARTY
-  // returning to a hotel they already stayed at earlier on this trip — not merely
+  // returning to a hotel they already stayed at earlier on this trip - not merely
   // any second booking at a shared hotel. Party identity = the occupant set (each
   // room's lead person_id + additional_guests uuids, unioned across the booking).
   // A booking is a re-check-in iff one of its occupants appears in an
   // earlier-STARTING stay at the same hotel. Disjoint parties sharing a hotel
   // (e.g. a guest booked into a property the principal's entourage also occupies)
   // are independent FIRST check-ins, each labelled "Check-in", not "Re-Check-in".
-  // Ordered by start_date — the earliest stay for any given person is their
+  // Ordered by start_date - the earliest stay for any given person is their
   // check-in; a later overlapping stay is their re-check-in.
   const reCheckin = new Set<string>()
 
@@ -191,7 +191,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
       // ── Three distinct check-in concepts (no longer conflated) ──────────────
       // Standard: hotel published policy (always). Approved: negotiated early
       // check-in (if set). Expected arrival: when the guest physically arrives
-      // (if set) — NOT a check-in. Each renders on its own line, nulls hidden.
+      // (if set) - NOT a check-in. Each renders on its own line, nulls hidden.
       const standardCheckin = (b._standard_checkin_time as string | null) ?? null
       const approvedCheckin = (b.early_checkin_approved_time as string | null) ?? null
       const expectedArrival = (b.expected_arrival_time as string | null) ?? null
@@ -341,14 +341,14 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
   return out
 }
 
-// Standalone stored entries — anything NOT sourced from a booking.
+// Standalone stored entries - anything NOT sourced from a booking.
 export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
   const out: TimelineItem[] = []
   for (const e of entries) {
     if (e.brief_show === false) continue
     if (e.source_booking_id) continue
     out.push({
-      id: e.id as string, kind: 'entry', entry_date: e.entry_date as string,
+      id: e.id as string, kind: 'entry', entry_date: e.entryDate as string,
       start_time: (e.start_time as string | null) ?? null,
       end_time: (e.end_time as string | null) ?? null,
       category: (e.category as string | null) ?? null, categoryLabel: null,

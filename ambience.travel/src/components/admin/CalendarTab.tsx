@@ -1,12 +1,12 @@
-// CalendarTab.tsx — Admin Calendar (Stage 1, rebuilt S55 for span integrity).
+// CalendarTab.tsx - Admin Calendar (Stage 1, rebuilt S55 for span integrity).
 //
-// Derives entirely from the `calendar` mode of travel-read-journey-admin — confirmed/
+// Derives entirely from the `calendar` mode of travel-read-journey-admin - confirmed/
 // upcoming trips + stays. The calendar owns NO dates; it renders what the EF returns.
 //
-// S55 rebuild — span integrity (live clients travelling; this is an ops surface):
+// S55 rebuild - span integrity (live clients travelling; this is an ops surface):
 //   - Month view uses WEEK-SEGMENTED SPANNING BARS: a trip is one continuous band
 //     across the days it covers, name shown once, clamped to each week row and
-//     resumed on the next (multi-week trips like the Alps Jul19–Aug2 segment).
+//     resumed on the next (multi-week trips like the Alps Jul19-Aug2 segment).
 //   - Stays render as check-in / check-out markers under the trip bands.
 //   - Week view: clear stacked event list per day.
 //   - Tooltip always carries the full text; bars ellipsis when narrow.
@@ -34,7 +34,7 @@ const L = {
 
 // ── Marker icon set ──────────────────────────────────────────────────────────
 // One coherent inline-SVG set (stay / flight / car) at a shared 14px, 1.4 stroke,
-// currentColor — so every marker reads as one designed family and inherits the
+// currentColor - so every marker reads as one designed family and inherits the
 // surface color. Single source: TransportMark, WeekStay, and the legend all render
 // <MarkerIcon kind=…/>, so the legend can never advertise a marker the grid omits.
 type MarkerKind = 'stay' | 'flight' | 'car' | 'dining' | 'event'
@@ -89,24 +89,24 @@ function stateBandStyle(state: EngagementState): { bg: string; fg: string; borde
 type ConfirmationState = 'confirmed' | 'partially_confirmed' | 'designing'
 type CalendarStay = {
   id: string; name: string | null; status: string | null; booking_type: string | null
-  check_in: string | null; check_out: string | null; hotel_id: string | null; hotel_name: string | null
+  checkIn: string | null; checkOut: string | null; hotelId: string | null; hotelName: string | null
   confirmation: ConfirmationState; rooms_confirmed: number; rooms_total: number
 }
 // A typed child engagement (from the engagement spine). category is the registry slug
-// ('stay' | 'transport' | dining/experience/etc. as they're created) — never hardcoded.
+// ('stay' | 'transport' | dining/experience/etc. as they're created) - never hardcoded.
 type CalendarActivity = {
   id: string; category: string | null; label: string | null; title: string | null
-  date: string | null; end_date: string | null; time: string | null
+  date: string | null; endDate: string | null; time: string | null
   source_booking_id: string | null; is_element: boolean
   // Flight detail (movement activities; null for stays/others)
-  booked_by: string | null; origin: string | null; destination: string | null
-  depart_airport: string | null; arrive_airport: string | null
-  flight_number: string | null; airline_name: string | null; end_time: string | null
+  bookedBy: string | null; origin: string | null; destination: string | null
+  departAirport: string | null; arriveAirport: string | null
+  flightNumber: string | null; airlineName: string | null; endTime: string | null
 }
 type EngagementState = 'completed' | 'confirmed' | 'pending'
 type CalendarEngagement = {
-  id: string; journey_code: string; title: string | null
-  start_date: string | null; end_date: string | null
+  id: string; journeyCode: string; title: string | null
+  startDate: string | null; endDate: string | null
   status_slug: string | null; state: EngagementState; primary_client_id: string | null
   stays: CalendarStay[]; activities: CalendarActivity[]
 }
@@ -132,14 +132,14 @@ function fmtRange(start: string | null, end: string | null): string {
   if (!start) return ''
   const s = parseISO(start); const label = `${s.getDate()} ${MONTHS[s.getMonth()].slice(0,3)}`
   if (!end || end === start) return label
-  const e = parseISO(end); return `${label} – ${e.getDate()} ${MONTHS[e.getMonth()].slice(0,3)}`
+  const e = parseISO(end); return `${label} - ${e.getDate()} ${MONTHS[e.getMonth()].slice(0,3)}`
 }
 const SLUG_LABEL: Record<string,string> = { confirmed:'Confirmed', paid:'Paid', in_service:'In service' }
-function tripStatusLabel(slug: string | null): string { return slug ? (SLUG_LABEL[slug] ?? slug) : '—' }
-// Confirmation is DERIVED upstream (EF, via _shared/confirmation.ts) — the calendar
+function tripStatusLabel(slug: string | null): string { return slug ? (SLUG_LABEL[slug] ?? slug) : '-' }
+// Confirmation is DERIVED upstream (EF, via _shared/confirmation.ts) - the calendar
 // renders the three honest states, never re-deriving from status. 'designing' = not
 // yet confirmed (still in the design phase); shown tentative. partially_confirmed =
-// some rooms locked, some pending — its own state, not flattened.
+// some rooms locked, some pending - its own state, not flattened.
 function confLabel(s: CalendarStay): string {
   if (s.confirmation === 'confirmed') return 'Confirmed'
   if (s.confirmation === 'partially_confirmed') return `Partial · ${s.rooms_confirmed}/${s.rooms_total} rooms`
@@ -157,7 +157,7 @@ function isOwnArrangements(bookedBy: string | null): boolean { return bookedBy =
 
 
 // Engagement types render as a SPAN (held across dates, like a stay) or a MOMENT
-// (a point with a departure time). Single source for the shape — mirrors the
+// (a point with a departure time). Single source for the shape - mirrors the
 // ENGAGEMENT_TAXONOMY span/moment classification.
 const SPAN_CATEGORIES = new Set(['stay', 'car_service', 'car_rental', 'cruise', 'yacht_charter'])
 const MOMENT_CATEGORIES = new Set(['flight', 'private_jet', 'airport_transfer', 'transfer', 'heli_transfer', 'public_transport'])
@@ -166,13 +166,13 @@ function activityIsSpan(a: CalendarActivity): boolean {
   if (a.category && SPAN_CATEGORIES.has(a.category)) return true
   if (a.category && MOMENT_CATEGORIES.has(a.category)) return false
   // tour / unknown: span if it covers more than one day, otherwise a moment.
-  return !!(a.end_date && a.date && a.end_date !== a.date)
+  return !!(a.endDate && a.date && a.endDate !== a.date)
 }
 
 // 6C drill-down shapes (from the activity_detail EF mode).
-type RoomDetail = { id: string; room_name: string | null; guest_name: string | null; resolved_additional_guests?: string[] | null; confirmation_number: string | null; party_composition: string | null }
-type PassengerDetail = { id: string; passenger_name: string | null; seat_numbers: string | null; confirmation_number: string | null }
-type VehicleDetail = { id: string; driver_name: string | null; driver_phone: string | null; car_model: string | null; plate: string | null; company: string | null; vehicle_role: string | null }
+type RoomDetail = { id: string; roomName: string | null; guestName: string | null; resolved_additional_guests?: string[] | null; confirmationNumber: string | null; partyComposition: string | null }
+type PassengerDetail = { id: string; passenger_name: string | null; seatNumbers: string | null; confirmationNumber: string | null }
+type VehicleDetail = { id: string; driverName: string | null; driverPhone: string | null; carModel: string | null; plate: string | null; company: string | null; vehicleRole: string | null }
 type ActivityDetail =
   | { kind: 'stay'; rooms: RoomDetail[] }
   | { kind: 'transport'; passengers: PassengerDetail[] }
@@ -203,7 +203,7 @@ export default function CalendarTab() {
     if (view === 'agenda') return 'Upcoming'
     if (view === 'week') {
       const ws = startOfWeek(cursor), we = addDays(ws, 6)
-      return `${ws.getDate()} ${MONTHS[ws.getMonth()].slice(0,3)} – ${we.getDate()} ${MONTHS[we.getMonth()].slice(0,3)} ${we.getFullYear()}`
+      return `${ws.getDate()} ${MONTHS[ws.getMonth()].slice(0,3)} - ${we.getDate()} ${MONTHS[we.getMonth()].slice(0,3)} ${we.getFullYear()}`
     }
     return `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
   }, [view, cursor])
@@ -237,7 +237,7 @@ export default function CalendarTab() {
       {loading && <Centered>Loading the calendar…</Centered>}
       {error && !loading && <Centered tone="danger">{error}</Centered>}
       {!loading && !error && engagements.length === 0 && (
-        <Centered>No engagements to show. All confirmed engagements — past, current, and upcoming — appear here.</Centered>
+        <Centered>No engagements to show. All confirmed engagements - past, current, and upcoming - appear here.</Centered>
       )}
 
       {!loading && !error && engagements.length > 0 && (
@@ -280,7 +280,7 @@ function Segmented({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode)
   )
 }
 
-// Subtle legend — context-aware: trip-state trio always; stay/flight/car markers
+// Subtle legend - context-aware: trip-state trio always; stay/flight/car markers
 // only on week view (where they render). Renders the SAME MarkerIcon set the grid
 // uses, so it can never advertise a marker that isn't on screen.
 function CalendarKey({ view }: { view: ViewMode }) {
@@ -342,16 +342,16 @@ function MonthView({ cursor, engagements, onSelect }: { cursor: Date; engagement
 function WeekRow({ week, cursorMonth, today, engagements, onSelect }: { week: Date[]; cursorMonth: number; today: Date; engagements: CalendarEngagement[]; onSelect: (id: string)=>void }) {
   const weekStartISO = fmtISO(week[0]); const weekEndISO = fmtISO(week[6])
   const bars = useMemo<WeekBar[]>(() => {
-    const overlapping = engagements.filter(t => t.start_date && t.end_date && t.start_date <= weekEndISO && t.end_date >= weekStartISO)
-    overlapping.sort((a,b) => (a.start_date! < b.start_date! ? -1 : 1))
+    const overlapping = engagements.filter(t => t.startDate && t.endDate && t.startDate <= weekEndISO && t.endDate >= weekStartISO)
+    overlapping.sort((a,b) => (a.startDate! < b.startDate! ? -1 : 1))
     const laneEnds: number[] = []; const result: WeekBar[] = []
     for (const t of overlapping) {
-      const segStart = maxISO(t.start_date!, weekStartISO); const segEnd = minISO(t.end_date!, weekEndISO)
+      const segStart = maxISO(t.startDate!, weekStartISO); const segEnd = minISO(t.endDate!, weekEndISO)
       const startCol = mondayIndex(parseISO(segStart)); const endCol = mondayIndex(parseISO(segEnd))
       const foundLane = laneEnds.findIndex(end => end < startCol)
       const lane = foundLane === -1 ? laneEnds.length : foundLane
       laneEnds[lane] = endCol
-      result.push({ trip: t, startCol, endCol, lane, continuesLeft: t.start_date! < weekStartISO, continuesRight: t.end_date! > weekEndISO })
+      result.push({ trip: t, startCol, endCol, lane, continuesLeft: t.startDate! < weekStartISO, continuesRight: t.endDate! > weekEndISO })
     }
     return result
   }, [engagements, weekStartISO, weekEndISO])
@@ -380,7 +380,7 @@ function WeekRow({ week, cursorMonth, today, engagements, onSelect }: { week: Da
                     display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))',
                     gridAutoRows:`${BAR_H + BAR_GAP}px`, padding:'0 6px', boxSizing:'border-box' }}>
         {bars.map((b, i) => {
-          const label = b.trip.title || b.trip.journey_code
+          const label = b.trip.title || b.trip.journeyCode
           const sb = stateBandStyle(b.trip.state)
           return (
             <button key={i} onClick={() => onSelect(b.trip.id)} title={`${label}${b.trip.state==='completed'?' · Completed':b.trip.state==='pending'?' · Securing':''}`} style={{
@@ -400,7 +400,7 @@ function WeekRow({ week, cursorMonth, today, engagements, onSelect }: { week: Da
   )
 }
 
-// Transport mark — a connector, not a destination. Lighter than a stay marker: a gold
+// Transport mark - a connector, not a destination. Lighter than a stay marker: a gold
 // departure time + flight name, no border fill. Click selects the trip (the panel
 // itinerary carries the detail; 6C day-detail will carry per-passenger fine-print).
 function TransportMark({ trip, activity, onSelect }: { trip: CalendarEngagement; activity: CalendarActivity; onSelect:(id:string)=>void }) {
@@ -424,15 +424,15 @@ function WeekView({ cursor, engagements, onSelect }: { cursor: Date; engagements
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,minmax(0,1fr))' }}>
         {days.map((day, i) => {
           const iso = fmtISO(day); const isToday = sameDay(day, today)
-          const spanning = engagements.filter(t => t.start_date && t.end_date && t.start_date <= iso && t.end_date >= iso)
+          const spanning = engagements.filter(t => t.startDate && t.endDate && t.startDate <= iso && t.endDate >= iso)
           const checkins: {trip:CalendarEngagement;stay:CalendarStay}[] = []; const checkouts: {trip:CalendarEngagement;stay:CalendarStay}[] = []
-          // Deduplicate by hotel_id + date — one marker per distinct hotel per day
+          // Deduplicate by hotel_id + date - one marker per distinct hotel per day
           const seenIn = new Set<string>(); const seenOut = new Set<string>()
           for (const t of engagements) for (const s of t.stays) {
-            const inKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_in}`
-            const outKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_out}`
-            if (s.check_in===iso && !seenIn.has(inKey)) { checkins.push({trip:t,stay:s}); seenIn.add(inKey) }
-            if (s.check_out===iso && !seenOut.has(outKey)) { checkouts.push({trip:t,stay:s}); seenOut.add(outKey) }
+            const inKey = `${t.id}::${s.hotelId ?? s.name}::${s.checkIn}`
+            const outKey = `${t.id}::${s.hotelId ?? s.name}::${s.checkOut}`
+            if (s.checkIn===iso && !seenIn.has(inKey)) { checkins.push({trip:t,stay:s}); seenIn.add(inKey) }
+            if (s.checkOut===iso && !seenOut.has(outKey)) { checkouts.push({trip:t,stay:s}); seenOut.add(outKey) }
           }
           const transport: {trip:CalendarEngagement;activity:CalendarActivity}[] = []
           for (const t of engagements) for (const a of t.activities) { if (a.category !== 'stay' && a.date===iso) transport.push({trip:t,activity:a}) }
@@ -444,14 +444,14 @@ function WeekView({ cursor, engagements, onSelect }: { cursor: Date; engagements
                 <div style={{ textTransform:'uppercase', letterSpacing:'0.1em', fontSize:10, fontWeight:700, color:L.muted }}>{WD[i]}</div>
                 <div style={{ fontFamily:L.serif, fontSize:20, fontWeight:500, color: isToday?L.ink:L.muted }}>{day.getDate()}</div>
               </div>
-              {empty && <div style={{ fontSize:11, color:L.muted, opacity:0.5 }}>—</div>}
+              {empty && <div style={{ fontSize:11, color:L.muted, opacity:0.5 }}>-</div>}
               {spanning.map((t, j) => {
-                const isStart = t.start_date===iso, isEnd = t.end_date===iso
+                const isStart = t.startDate===iso, isEnd = t.endDate===iso
                 const phase = isStart?'Begins':isEnd?'Ends':'In progress'
                 return (
-                  <button key={`t-${j}`} onClick={()=>onSelect(t.id)} title={`${t.title||t.journey_code} · ${phase}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
+                  <button key={`t-${j}`} onClick={()=>onSelect(t.id)} title={`${t.title||t.journeyCode} · ${phase}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
                     borderRadius:10, padding:'6px 9px', marginBottom:6, fontFamily:L.sans, border:`1px ${stateBandStyle(t.state).dashed?'dashed':'solid'} ${stateBandStyle(t.state).border}`, background:stateBandStyle(t.state).bg, opacity: (isStart||isEnd)?1:0.86, boxSizing:'border-box', minWidth:0 }}>
-                    <strong style={{ display:'block', fontSize:11.5, color:stateBandStyle(t.state).fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title||t.journey_code}</strong>
+                    <strong style={{ display:'block', fontSize:11.5, color:stateBandStyle(t.state).fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title||t.journeyCode}</strong>
                     <span style={{ fontSize:10, color:L.muted }}>{phase}</span>
                   </button>
                 )
@@ -468,7 +468,7 @@ function WeekView({ cursor, engagements, onSelect }: { cursor: Date; engagements
 }
 function WeekStay({ trip, stay, kind, onSelect }: { trip:CalendarEngagement; stay:CalendarStay; kind:'in'|'out'; onSelect:(id:string)=>void }) {
   const tentative = confIsTentative(stay); const partial = confIsPartial(stay)
-  const hotel = stay.hotel_name||stay.name||'Stay'
+  const hotel = stay.hotelName||stay.name||'Stay'
   const verb = kind==='in'?'Check-in':'Check-out'
   return (
     <button onClick={()=>onSelect(trip.id)} title={`${verb}: ${hotel} · ${confLabel(stay)}`} style={{ display:'block', width:'100%', textAlign:'left', cursor:'pointer',
@@ -491,20 +491,20 @@ function AgendaView({ engagements, onSelect }: { engagements: CalendarEngagement
   const groups = useMemo(() => {
     const start = todayISO(); const acc: AgendaItem[] = []
     for (const t of engagements) {
-      if (t.start_date && t.start_date >= start) acc.push({ date:t.start_date, sort:0, node:{kind:'trip-start',trip:t} })
-      if (t.end_date && t.end_date >= start) acc.push({ date:t.end_date, sort:3, node:{kind:'trip-end',trip:t} })
+      if (t.startDate && t.startDate >= start) acc.push({ date:t.startDate, sort:0, node:{kind:'trip-start',trip:t} })
+      if (t.endDate && t.endDate >= start) acc.push({ date:t.endDate, sort:3, node:{kind:'trip-end',trip:t} })
       const seenAgendaIn = new Set<string>(); const seenAgendaOut = new Set<string>()
       for (const s of t.stays) {
-        const inKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_in}`
-        const outKey = `${t.id}::${s.hotel_id ?? s.name}::${s.check_out}`
-        if (s.check_in && s.check_in >= start && !seenAgendaIn.has(inKey)) {
-          acc.push({ date:s.check_in, sort:1, node:{kind:'stay-checkin',trip:t,stay:s} }); seenAgendaIn.add(inKey)
+        const inKey = `${t.id}::${s.hotelId ?? s.name}::${s.checkIn}`
+        const outKey = `${t.id}::${s.hotelId ?? s.name}::${s.checkOut}`
+        if (s.checkIn && s.checkIn >= start && !seenAgendaIn.has(inKey)) {
+          acc.push({ date:s.checkIn, sort:1, node:{kind:'stay-checkin',trip:t,stay:s} }); seenAgendaIn.add(inKey)
         }
-        if (s.check_out && s.check_out >= start && !seenAgendaOut.has(outKey)) {
-          acc.push({ date:s.check_out, sort:2, node:{kind:'stay-checkout',trip:t,stay:s} }); seenAgendaOut.add(outKey)
+        if (s.checkOut && s.checkOut >= start && !seenAgendaOut.has(outKey)) {
+          acc.push({ date:s.checkOut, sort:2, node:{kind:'stay-checkout',trip:t,stay:s} }); seenAgendaOut.add(outKey)
         }
       }
-      // Transport (flights/movements) — the agenda previously omitted these entirely.
+      // Transport (flights/movements) - the agenda previously omitted these entirely.
       // sort:1.5 places a flight between check-out (2) and the next day's check-in.
       for (const a of t.activities) {
         if (a.category === 'stay') continue
@@ -542,9 +542,9 @@ const ROW_STYLE = { display:'grid', gridTemplateColumns:'110px 1fr auto', gap:12
   cursor:'pointer', fontFamily:L.sans, borderRadius:14, background:L.panel, padding:'12px 14px', width:'100%' }
 
 function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void }) {
-  // Stay milestone branch — early return narrows ev to the stay-bearing variant.
+  // Stay milestone branch - early return narrows ev to the stay-bearing variant.
   if (ev.kind==='stay-checkin' || ev.kind==='stay-checkout') {
-    const hotel = ev.stay.hotel_name||ev.stay.name||'Stay'
+    const hotel = ev.stay.hotelName||ev.stay.name||'Stay'
     const timeLabel = ev.kind==='stay-checkin'?'Check-in':'Check-out'
     const tentative = confIsTentative(ev.stay); const partial = confIsPartial(ev.stay)
     const sub = `Stay · ${confLabel(ev.stay)}`
@@ -560,10 +560,10 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
     )
   }
 
-  // Transport branch — flight detail + Own Arrangements indicator.
+  // Transport branch - flight detail + Own Arrangements indicator.
   if (ev.kind === 'transport') {
     const a = ev.activity
-    const own = isOwnArrangements(a.booked_by)
+    const own = isOwnArrangements(a.bookedBy)
     const detail = flightLine(a)
     return (
       <button onClick={()=>onSelect(ev.trip.id)} style={{ ...ROW_STYLE, border:`1px solid ${L.line}` }}>
@@ -574,7 +574,7 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
         </span>
         <span style={{ alignSelf:'center', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3 }}>
           <span style={{ color:L.gold, display:'flex' }}><MarkerIcon kind={markerKindFor(a.category)} size={13} /></span>
-          {own && <span style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:L.muted, border:`1px solid ${L.line}`, borderRadius:999, padding:'2px 6px', whiteSpace:'nowrap' }}>{bookedByLabel(a.booked_by)}</span>}
+          {own && <span style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:L.muted, border:`1px solid ${L.line}`, borderRadius:999, padding:'2px 6px', whiteSpace:'nowrap' }}>{bookedByLabel(a.bookedBy)}</span>}
         </span>
       </button>
     )
@@ -582,8 +582,8 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
 
   // Trip start/end branch.
   const timeLabel = ev.kind==='trip-start'?'Starts':'Ends'
-  const title = ev.trip.title || ev.trip.journey_code
-  const sub = `${tripStatusLabel(ev.trip.status_slug)} · ${fmtRange(ev.trip.start_date, ev.trip.end_date)}`
+  const title = ev.trip.title || ev.trip.journeyCode
+  const sub = `${tripStatusLabel(ev.trip.status_slug)} · ${fmtRange(ev.trip.startDate, ev.trip.endDate)}`
   return (
     <button onClick={()=>onSelect(ev.trip.id)} style={{ ...ROW_STYLE, border:`1px solid ${L.line}` }}>
       <span style={{ fontSize:13, color:L.muted }}>{timeLabel}</span>
@@ -602,14 +602,14 @@ function EngagementPanel({ trip, onClose }: { trip: CalendarEngagement; onClose:
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, borderBottom:`1px solid ${L.line}`, paddingBottom:14, marginBottom:14 }}>
         <div>
           <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:6 }}>Selected engagement</div>
-          <h2 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:22, lineHeight:1.15, color:L.ink }}>{trip.title||trip.journey_code}</h2>
+          <h2 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:22, lineHeight:1.15, color:L.ink }}>{trip.title||trip.journeyCode}</h2>
           <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6, background:L.goldTint, border:`1px solid ${L.goldBorder}`, borderRadius:999, padding:'5px 10px', fontSize:11, fontWeight:700, color:L.band }}>{tripStatusLabel(trip.status_slug)}</div>
         </div>
         <button onClick={onClose} aria-label="Close" style={{ appearance:'none', cursor:'pointer', border:`1px solid ${L.line}`, background:L.panel, borderRadius:'50%', width:30, height:30, color:L.muted, fontSize:16, lineHeight:1 }}>×</button>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
-        <Info label="Engagement dates" value={fmtRange(trip.start_date, trip.end_date)} />
-        <Info label="Stays" value={`${new Set(trip.stays.map(s => s.hotel_id).filter(Boolean)).size || trip.stays.length}`} />
+        <Info label="Engagement dates" value={fmtRange(trip.startDate, trip.endDate)} />
+        <Info label="Stays" value={`${new Set(trip.stays.map(s => s.hotelId).filter(Boolean)).size || trip.stays.length}`} />
       </div>
       <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:8 }}>Itinerary</div>
       <div style={{ display:'grid', gap:8 }}>
@@ -641,7 +641,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
     if (next && !detail && !loadingDetail) {
       setLoadingDetail(true)
       const body = span
-        ? { mode: 'activity_detail', booking_id: activity.source_booking_id, category: activity.category }
+        ? { mode: 'activity_detail', bookingId: activity.source_booking_id, category: activity.category }
         : { mode: 'activity_detail', node_id: activity.id, category: activity.category }
       const { data } = await supabase.functions.invoke('travel-read-journey-admin', { body })
       setDetail((data ?? null) as ActivityDetail | null)
@@ -667,7 +667,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
               <strong style={{ display:'block', fontSize:13.5, color:L.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{activity.title || 'Transport'}</strong>
               <span style={{ fontSize:11, color:L.muted }}>
                 {flightLine(activity) || (activity.label || 'Transport')}
-                {isOwnArrangements(activity.booked_by) ? `  ·  ${bookedByLabel(activity.booked_by)}` : ''}
+                {isOwnArrangements(activity.bookedBy) ? `  ·  ${bookedByLabel(activity.bookedBy)}` : ''}
               </span>
             </span>
             {canExpand && <span style={{ color:L.muted, fontSize:12 }}>{open?'▾':'▸'}</span>}
@@ -676,7 +676,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
           <span style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, alignItems:'start' }}>{time && <span style={{ fontFamily:L.serif, fontSize:15, fontWeight:600, color:L.gold, fontVariantNumeric:'tabular-nums' }}>{time}</span>}
             <span style={{ minWidth:0 }}>
               <strong style={{ display:'block', fontSize:14, color:L.ink, marginBottom:4 }}>{activity.title || 'Stay'}</strong>
-              <span style={{ display:'block', fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(activity.date, activity.end_date)}{confText ? ` · ${confText}` : ''}</span>
+              <span style={{ display:'block', fontSize:12, color:L.muted, lineHeight:1.45 }}>{fmtRange(activity.date, activity.endDate)}{confText ? ` · ${confText}` : ''}</span>
             </span>
             {canExpand && <span style={{ color:L.muted, fontSize:12 }}>{open?'▾':'▸'}</span>}
           </span>
@@ -688,13 +688,13 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
           {!loadingDetail && detail?.kind === 'stay' && <RoomList rooms={detail.rooms} />}
           {!loadingDetail && detail?.kind === 'transport' && (
             <div style={{ display:'grid', gap:10 }}>
-              {(flightLine(activity) || activity.flight_number || isOwnArrangements(activity.booked_by)) && (
+              {(flightLine(activity) || activity.flightNumber || isOwnArrangements(activity.bookedBy)) && (
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8, paddingBottom:8, borderBottom:`1px solid ${L.line}` }}>
                   <span style={{ fontSize:11.5, color:L.muted, fontVariantNumeric:'tabular-nums' }}>
                     {flightLine(activity)}
                   </span>
-                  {isOwnArrangements(activity.booked_by) && (
-                    <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:L.muted, border:`1px solid ${L.line}`, borderRadius:999, padding:'2px 7px', whiteSpace:'nowrap' }}>{bookedByLabel(activity.booked_by)}</span>
+                  {isOwnArrangements(activity.bookedBy) && (
+                    <span style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:L.muted, border:`1px solid ${L.line}`, borderRadius:999, padding:'2px 7px', whiteSpace:'nowrap' }}>{bookedByLabel(activity.bookedBy)}</span>
                   )}
                 </div>
               )}
@@ -716,11 +716,11 @@ function RoomList({ rooms }: { rooms: RoomDetail[] }) {
       {rooms.map(r => (
         <div key={r.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
           <span style={{ minWidth:0 }}>
-            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{r.room_name || 'Room'}</strong>
-            <span style={{ fontSize:11.5, color:L.muted }}>{r.guest_name || '—'}</span>
+            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{r.roomName || 'Room'}</strong>
+            <span style={{ fontSize:11.5, color:L.muted }}>{r.guestName || '-'}</span>
           </span>
-          {r.confirmation_number && (
-            <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>Conf {r.confirmation_number}</span>
+          {r.confirmationNumber && (
+            <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>Conf {r.confirmationNumber}</span>
           )}
         </div>
       ))}
@@ -735,11 +735,11 @@ function PassengerList({ passengers }: { passengers: PassengerDetail[] }) {
       {passengers.map(p => (
         <div key={p.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
           <span style={{ minWidth:0 }}>
-            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{p.passenger_name || '—'}</strong>
-            {p.seat_numbers && <span style={{ fontSize:11.5, color:L.muted }}>Seat {p.seat_numbers}</span>}
+            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{p.passenger_name || '-'}</strong>
+            {p.seatNumbers && <span style={{ fontSize:11.5, color:L.muted }}>Seat {p.seatNumbers}</span>}
           </span>
-          {p.confirmation_number && (
-            <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{p.confirmation_number}</span>
+          {p.confirmationNumber && (
+            <span style={{ fontSize:10.5, fontWeight:700, color:L.gold, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{p.confirmationNumber}</span>
           )}
         </div>
       ))}
@@ -758,14 +758,14 @@ function VehicleList({ vehicles }: { vehicles: VehicleDetail[] }) {
       {vehicles.map(v => (
         <div key={v.id} style={{ display:'grid', gap:2 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
-            <strong style={{ fontSize:12.5, color:L.ink }}>{v.driver_name || 'Driver'}</strong>
-            {v.vehicle_role && (
-              <span style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.gold }}>{v.vehicle_role}</span>
+            <strong style={{ fontSize:12.5, color:L.ink }}>{v.driverName || 'Driver'}</strong>
+            {v.vehicleRole && (
+              <span style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:L.gold }}>{v.vehicleRole}</span>
             )}
           </div>
           <div style={{ fontSize:11.5, color:L.muted, display:'flex', gap:8, flexWrap:'wrap' }}>
-            {v.driver_phone && <span style={{ fontVariantNumeric:'tabular-nums' }}>{v.driver_phone}</span>}
-            {v.car_model && <span>{v.car_model}</span>}
+            {v.driverPhone && <span style={{ fontVariantNumeric:'tabular-nums' }}>{v.driverPhone}</span>}
+            {v.carModel && <span>{v.carModel}</span>}
             {v.plate && <span style={{ fontVariantNumeric:'tabular-nums' }}>{v.plate}</span>}
           </div>
           {v.company && <div style={{ fontSize:10.5, color:L.muted, opacity:0.7 }}>{v.company}</div>}
@@ -779,7 +779,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ border:`1px solid ${L.line}`, borderRadius:12, padding:11, background:L.surface }}>
       <div style={{ textTransform:'uppercase', letterSpacing:'0.1em', fontSize:10, fontWeight:700, color:L.muted }}>{label}</div>
-      <div style={{ marginTop:3, fontSize:14, fontWeight:600, color:L.ink }}>{value||'—'}</div>
+      <div style={{ marginTop:3, fontSize:14, fontWeight:600, color:L.ink }}>{value||'-'}</div>
     </div>
   )
 }

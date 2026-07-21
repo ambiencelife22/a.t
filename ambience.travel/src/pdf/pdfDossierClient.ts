@@ -1,4 +1,4 @@
-// clientDossierPdf.ts — Client Dossier PDF export for ambience.TRAVEL admin
+// clientDossierPdf.ts - Client Dossier PDF export for ambience.TRAVEL admin
 // What it owns:
 //   - jsPDF lifecycle (register fonts, page chrome, save)
 //   - Logo + emblem header block
@@ -18,16 +18,16 @@
 //   - jsPDF script loading (useDossierDownload owns this)
 //
 // Highlight tiers:
-//   plain      — standard bullet, no background
-//   important  — gold left bar + amber tint
-//   vital      — red left bar + red tint
+//   plain      - standard bullet, no background
+//   important  - gold left bar + amber tint
+//   vital      - red left bar + red tint
 //
-// Last updated: S48 — refactored to import shared primitives from pdfUtils.ts.
+// Last updated: S48 - refactored to import shared primitives from pdfUtils.ts.
 //   Removed: setSerif, setSans, local ImagePayload interface, loadImageAsDataUrl,
 //   rasterizeSvgAsDataUrl, PDF_FONTS / PDF_FONTS_SANS_MEDIUM_FAMILY imports,
 //   inline jsPDF guard. Renamed: setSerif->serif, setSans->sans,
 //   loadImageAsDataUrl->loadImg, rasterizeSvgAsDataUrl->loadSvg. assertJsPdf() added.
-// Prior: S45 — initial ship.
+// Prior: S45 - initial ship.
 
 import { loadGuideFonts, registerGuideFonts } from './pdfFonts'
 import { assertJsPdf, loadImg, loadSvg, serif, sans, type RGB, type Img } from './pdfUtils'
@@ -278,7 +278,7 @@ export async function exportClientDossierPdf(dossier: ClientDossierData): Promis
   if (dossier.roomArrangements?.length) {
     for (const section of dossier.roomArrangements) {
       if (y > PAGE.height - 40) y = newPage(doc)
-      y = drawSectionHeading(doc, `Arrangements \u2013 ${section.roomName}`, y)
+      y = drawSectionHeading(doc, `Arrangements - ${section.roomName}`, y)
       for (const item of section.items) {
         if (y > PAGE.height - 30) y = newPage(doc)
         y = drawBulletItem(doc, item.text, y, item.priority, contentWidth)

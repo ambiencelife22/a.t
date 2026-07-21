@@ -173,7 +173,7 @@ export default function ProgrammeRoute() {
               const base = hostname === 'programme.ambience.travel'
                 ? 'https://programme.ambience.travel'
                 : `${window.location.protocol}//${window.location.host}`
-              setFallback({ url: `${base}/${first.sub_path}/${first.url_id}`, guestNames: first.guest_names })
+              setFallback({ url: `${base}/${first.sub_path}/${first.urlId}`, guestNames: first.guestNames })
             }
           }
           setError('access-denied')

@@ -3,12 +3,12 @@
  * Pattern mirrors SPORTS DeleteSystemSection (3 gating steps + execute).
  *
  * Steps:
- *   1 · Cascade warning — explicit list of what gets deleted, [I understand]
- *   2 · Type-to-confirm — user must type the engagement title exactly
- *   3 · Final confirmation — last-chance copy, destructive red button
- *   4 · Execute — busy spinner → success or error
+ *   1 · Cascade warning - explicit list of what gets deleted, [I understand]
+ *   2 · Type-to-confirm - user must type the engagement title exactly
+ *   3 · Final confirmation - last-chance copy, destructive red button
+ *   4 · Execute - busy spinner → success or error
  *
- * No backup integration — the cascade hits 10 tables and a CSV is not
+ * No backup integration - the cascade hits 10 tables and a CSV is not
  * sensibly recoverable. Scheduled backups are a separate workstream
  * (S335 carry-forward).
  *
@@ -173,14 +173,14 @@ export default function DeleteEngagementModal({
 
         <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
           Canonical content (hotels, rooms, dining venues, experiences, destinations) is
-          <em> not </em>affected — only the engagement-specific content for this proposal.
+          <em> not </em>affected - only the engagement-specific content for this proposal.
           {' '}<strong style={{ color: A.text }}>This action cannot be undone.</strong>
         </div>
 
         <div style={{ display: 'flex', gap: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
           <button onClick={onClose} style={btnGhost}>Cancel</button>
           <button onClick={() => setStep(2)} style={{ ...btnDanger, marginLeft: 'auto' }}>
-            I understand — continue
+            I understand - continue
           </button>
         </div>
       </>

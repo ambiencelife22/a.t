@@ -1,4 +1,4 @@
-// GuideHero.tsx — full-bleed hero for guide pages
+// GuideHero.tsx - full-bleed hero for guide pages
 // Mirrors the LandingHero + ImmerseHero pattern: parallax <img>, three
 // overlay layers (vignette, overlayVertical, overlaySide), glass card
 // with eyebrow + headline + intro.
@@ -18,14 +18,14 @@
 // Glass card position: lower-third aligned. Guide pages are utilitarian
 // content; the hero should set tone without dominating.
 //
-// Last updated: S40B — useImmerseVisible + immerseFadeUp retargeted to
+// Last updated: S40B - useImmerseVisible + immerseFadeUp retargeted to
 //   useVisible + fadeUp from lib/animations per S40 standing rule.
-// Prior: S36 — Removed negative-margin viewport escape (marginLeft/Right:
+// Prior: S36 - Removed negative-margin viewport escape (marginLeft/Right:
 //   calc(50% - 50vw)). DiningGuidePage now renders this hero outside its
 //   constrained <main> container, so the hero is naturally full-width to its
 //   parent (GuideLayout > children). The S35 escape trick assumed a
 //   full-width parent that wasn't there. Hero now plays nice as a sibling.
-// Prior: S35 — Refactored from two-column gradient-panel layout to full-bleed
+// Prior: S35 - Refactored from two-column gradient-panel layout to full-bleed
 //   parallax pattern.
 
 import { useEffect, useRef, useState } from 'react'

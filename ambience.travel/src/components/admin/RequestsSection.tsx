@@ -8,7 +8,7 @@
  * Data fetched in HouseDetail.loadAll via fetchRequestsForHouse and
  * passed in as TravelRequest[]. onReload triggers a full loadAll refresh.
  *
- * Last updated: S44 — initial ship.
+ * Last updated: S44 - initial ship.
  */
 
 import { useState, useMemo } from 'react'
@@ -59,7 +59,7 @@ function toDatetimeLocal(iso: string): string {
 }
 
 function fromDatetimeLocal(val: string): string {
-  // Converts datetime-local to full ISO — treat as local time
+  // Converts datetime-local to full ISO - treat as local time
   return val ? new Date(val).toISOString() : new Date().toISOString()
 }
 
@@ -87,9 +87,9 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
       await updateRequest(req.id, {
         request_body: draft.request_body?.trim(),
         channel:      draft.channel,
-        handled_by:   draft.handled_by?.trim() || null,
+        handledBy:   draft.handledBy?.trim() || null,
         notes:        draft.notes?.trim() || null,
-        received_at:  draft.received_at,
+        receivedAt:  draft.receivedAt,
       })
       success('Saved.')
       setEditing(false)
@@ -120,9 +120,9 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
                 {CHANNEL_ICON[req.channel]} <span style={{ color: A.muted }}>{req.channel}</span>
               </span>
             )}
-            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{fmtReceived(req.received_at)}</span>
-            {req.handled_by && (
-              <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>· {req.handled_by}</span>
+            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{fmtReceived(req.receivedAt)}</span>
+            {req.handledBy && (
+              <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>· {req.handledBy}</span>
             )}
           </div>
           {/* Body preview */}
@@ -149,7 +149,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           <div style={{ display: 'flex', gap: 4 }}>
             {!editing && (
               <button
-                onClick={() => { setEditing(true); setExpanded(true); setDraft({ request_body: req.request_body, channel: req.channel ?? undefined, handled_by: req.handled_by ?? '', notes: req.notes ?? '', received_at: req.received_at }) }}
+                onClick={() => { setEditing(true); setExpanded(true); setDraft({ request_body: req.request_body, channel: req.channel ?? undefined, handledBy: req.handledBy ?? '', notes: req.notes ?? '', receivedAt: req.receivedAt }) }}
                 style={{ ...btnG, padding: '3px 8px', fontSize: 10 }}
               >Edit</button>
             )}
@@ -158,7 +158,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
         </div>
       </div>
 
-      {/* Status selector — always visible when expanded */}
+      {/* Status selector - always visible when expanded */}
       {expanded && !editing && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font, whiteSpace: 'nowrap' }}>Status</span>
@@ -169,7 +169,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           >
             {REQUEST_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          {req.journey_id && (
+          {req.journeyId && (
             <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>Trip linked</span>
           )}
         </div>
@@ -197,13 +197,13 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
               <input
                 type='datetime-local'
                 style={{ ...inputStyle, colorScheme: 'dark' }}
-                value={draft.received_at ? toDatetimeLocal(draft.received_at) : ''}
-                onChange={e => setDraft(d => ({ ...d, received_at: e.target.value ? fromDatetimeLocal(e.target.value) : d.received_at }))}
+                value={draft.receivedAt ? toDatetimeLocal(draft.receivedAt) : ''}
+                onChange={e => setDraft(d => ({ ...d, receivedAt: e.target.value ? fromDatetimeLocal(e.target.value) : d.receivedAt }))}
               />
             </Field>
           </div>
           <Field label='Handled by'>
-            <input style={inputStyle} placeholder='Name...' value={draft.handled_by ?? ''} onChange={e => setDraft(d => ({ ...d, handled_by: e.target.value }))} />
+            <input style={inputStyle} placeholder='Name...' value={draft.handledBy ?? ''} onChange={e => setDraft(d => ({ ...d, handledBy: e.target.value }))} />
           </Field>
           <Field label='Notes'>
             <textarea style={{ ...textareaStyle, minHeight: 60 }} placeholder='Internal notes...' value={draft.notes ?? ''} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
@@ -215,7 +215,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
   )
 }
 
-// ── RequestsSection — exported ────────────────────────────────────────────────
+// ── RequestsSection - exported ────────────────────────────────────────────────
 
 export function RequestsSection({ requests, houseId, onReload, mobile }: {
   requests: TravelRequest[]
@@ -230,8 +230,8 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
   const [draft, setDraft]     = useState({
     request_body: '',
     channel:      '' as RequestChannel | '',
-    received_at:  toDatetimeLocal(new Date().toISOString()),
-    handled_by:   '',
+    receivedAt:  toDatetimeLocal(new Date().toISOString()),
+    handledBy:   '',
     notes:        '',
   })
 
@@ -254,15 +254,15 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
         houseId,
         draft.request_body.trim(),
         draft.channel || null,
-        draft.received_at ? fromDatetimeLocal(draft.received_at) : null,
+        draft.receivedAt ? fromDatetimeLocal(draft.receivedAt) : null,
         null,
         null,
-        draft.handled_by.trim() || null,
+        draft.handledBy.trim() || null,
         draft.notes.trim() || null,
       )
       success('Request logged.')
       setAdding(false)
-      setDraft({ request_body: '', channel: '', received_at: toDatetimeLocal(new Date().toISOString()), handled_by: '', notes: '' })
+      setDraft({ request_body: '', channel: '', receivedAt: toDatetimeLocal(new Date().toISOString()), handledBy: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -303,13 +303,13 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
               <input
                 type='datetime-local'
                 style={{ ...inputStyle, colorScheme: 'dark' }}
-                value={draft.received_at}
-                onChange={e => setDraft(d => ({ ...d, received_at: e.target.value }))}
+                value={draft.receivedAt}
+                onChange={e => setDraft(d => ({ ...d, receivedAt: e.target.value }))}
               />
             </Field>
           </div>
           <Field label='Handled by'>
-            <input style={inputStyle} placeholder='Name...' value={draft.handled_by} onChange={e => setDraft(d => ({ ...d, handled_by: e.target.value }))} />
+            <input style={inputStyle} placeholder='Name...' value={draft.handledBy} onChange={e => setDraft(d => ({ ...d, handledBy: e.target.value }))} />
           </Field>
           <Field label='Notes (optional)'>
             <input style={inputStyle} placeholder='Internal context...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />

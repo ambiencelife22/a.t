@@ -1,4 +1,4 @@
-/* GuideCardHotels.tsx — single hotel card for the hotels guide page.
+/* GuideCardHotels.tsx - single hotel card for the hotels guide page.
  *
  * What it owns: card chrome, image, prestige row (stars + forbes + partner),
  *   name, description, address-as-link, website link, teaser body.
@@ -12,17 +12,17 @@
  *   - Michelin Keys: deferred pending icon asset
  *
  * Body-mode logic:
- *   'full'   — render description + address + website. Full-access viewers,
+ *   'full'   - render description + address + website. Full-access viewers,
  *              or hotels marked publicly previewable (public_preview_rank
  *              != null) once that column is added to travel_accom_hotels.
- *   'teaser' — render teaser line only. Public viewers, hotels not marked
+ *   'teaser' - render teaser line only. Public viewers, hotels not marked
  *              publicly previewable.
  *
- * Last updated: S53 — Renamed to convention. cardBodyMode() replaces inline
+ * Last updated: S53 - Renamed to convention. cardBodyMode() replaces inline
  *   isTeaser derivation. Ready for public_preview_rank on
  *   travel_accom_hotels; behaviour is identical until that column ships,
- *   since Gateable.public_preview_rank is optional.
- * Prior: S37 — initial.
+ *   since Gateable.publicPreviewRank is optional.
+ * Prior: S37 - initial.
  */
 
 import React from 'react'
@@ -57,14 +57,14 @@ export function GuideCardHotels({ hotel, hasFullAccess, destinationName }: Guide
 // ── Image + name-fallback ────────────────────────────────────────────────────
 
 function ImageBlock({ hotel, isTeaser }: { hotel: HotelVenue; isTeaser: boolean }) {
-  if (!hotel.hero_image_src || !hotel.hero_image_src.trim()) {
+  if (!hotel.heroImageSrc || !hotel.heroImageSrc.trim()) {
     return <NameFallbackPanel name={hotel.name} isTeaser={isTeaser} />
   }
   return (
     <div style={imageTileStyle}>
       <img
-        src={hotel.hero_image_src}
-        alt={hotel.hero_image_alt ?? hotel.name}
+        src={hotel.heroImageSrc}
+        alt={hotel.heroImageAlt ?? hotel.name}
         style={{ ...imageTileImgStyle, opacity: isTeaser ? 0.7 : 1 }}
         loading="lazy"
       />
@@ -85,9 +85,9 @@ function NameFallbackPanel({ name, isTeaser }: { name: string; isTeaser: boolean
 
 function PrestigeRow({ hotel }: { hotel: HotelVenue }) {
   const hasStars   = hotel.stars !== null && hotel.stars > 0
-  const hasKeys    = hotel.michelin_keys !== null && hotel.michelin_keys > 0
-  const hasForbes  = hotel.forbes_rating !== null
-  const hasPartner = hotel.is_preferred_partner
+  const hasKeys    = hotel.michelinKeys !== null && hotel.michelinKeys > 0
+  const hasForbes  = hotel.forbesRating !== null
+  const hasPartner = hotel.isPreferredPartner
   if (!hasStars && !hasKeys && !hasForbes && !hasPartner) {
     return <div style={prestigeRowEmptyStyle} />
   }
@@ -100,11 +100,11 @@ function PrestigeRow({ hotel }: { hotel: HotelVenue }) {
       )}
       {hasKeys && (
         <span style={pillKeysStyle}>
-          {hotel.michelin_keys} {hotel.michelin_keys === 1 ? 'KEY' : 'KEYS'}
+          {hotel.michelinKeys} {hotel.michelinKeys === 1 ? 'KEY' : 'KEYS'}
         </span>
       )}
       {hasForbes && (
-        <span style={pillForbesStyle}>FORBES {hotel.forbes_rating}{'\u2605'}</span>
+        <span style={pillForbesStyle}>FORBES {hotel.forbesRating}{'\u2605'}</span>
       )}
       {hasPartner && (
         <span style={pillPartnerStyle}>PREFERRED PARTNER</span>
@@ -117,7 +117,7 @@ function PrestigeRow({ hotel }: { hotel: HotelVenue }) {
 
 function FullBody({ hotel }: { hotel: HotelVenue }) {
   const fullAddress = [hotel.address, hotel.city, hotel.zip_code].filter(Boolean).join(', ')
-  const mapsUrl = resolveMapsLink(hotel.google_maps_url, fullAddress || null)
+  const mapsUrl = resolveMapsLink(hotel.googleMapsUrl, fullAddress || null)
 
   return (
     <>

@@ -1,23 +1,23 @@
-// ImmerseConfirmedSections.tsx — Section components for the confirmed engagement surface.
+// ImmerseConfirmedSections.tsx - Section components for the confirmed engagement surface.
 //
 // Owns the four section components rendered when an engagement is in the
 // 'delivery' or 'completed' stage (Collapse A · A2). Each component is self-contained
-// and accepts only the data it needs — no page-level state leaks in.
+// and accepts only the data it needs - no page-level state leaks in.
 //
 // Sections:
-//   ConfirmationTab  — accommodation cards + aux bookings
-//   ProgrammeTab     — day-by-day with collapsible sidebar
-//   EngagementBriefTab     — structured summary (flights, hotels, transfers, contacts)
-//   ContactsTab      — advisor + selected house people
+//   ConfirmationTab  - accommodation cards + aux bookings
+//   ProgrammeTab     - day-by-day with collapsible sidebar
+//   EngagementBriefTab     - structured summary (flights, hotels, transfers, contacts)
+//   ContactsTab      - advisor + selected house people
 //
 // Shared helpers (used only by these sections):
 //   StatusPill, diningPillModel, DiningPillBox, DiningPill, Lightbox, TabSection
 // Viewport width comes from the canonical useWindowWidth hook (src/hooks), A5.
 //
-// Theme tokens (c.surface, c.ink, c.gold etc) are re-declared here — they will move to
+// Theme tokens (c.surface, c.ink, c.gold etc) are re-declared here - they will move to
 // a shared token file in A3 when the unified surface is built.
 //
-// Last updated: S53H · A2 — extracted from ImmerseTripPage.tsx.
+// Last updated: S53H · A2 - extracted from ImmerseTripPage.tsx.
 
 import { useEffect, useState } from 'react'
 import type { DeliveryData, EngagementContact } from '../../queries/queriesImmerseEngagement'
@@ -25,11 +25,11 @@ import { moneyDec } from '../../utils/utilsCurrency'
 import { scheduleAlert } from '../../utils/utilsScheduleAlert'
 import type {
   BookingInvoice,
-  CardItem,
+  EngagementElementView,
   EngagementElement as AdminEngagementElement,
   ImmerseJourneyDay as JourneyDay,
 } from '../../types/typesImmerse'
-import type { TimelineItem } from '../../types/typesTimeline'
+import type { TimelineItemView } from '../../types/typesImmerseDelivery'
 import { groupElementsBySection, isFlightElement, isTransferElement, isGroundTransportElement, isDiningElement, isMeetGreetElement } from '../../types/typesElements'
 import { getEventStatusMeta }            from '../../types/typesEventStatus'
 import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, toWhatsAppHref, beddingLabel } from '../../utils/utilsBooking'
@@ -81,7 +81,7 @@ function StatusPill({ status }: { status: string | null }) {
   )
 }
 
-// Dining cancellation/terms pill — single model, both surfaces.
+// Dining cancellation/terms pill - single model, both surfaces.
 // active + booking_terms → gold advisory; cancelled + penalty → red; cancelled no-penalty → neutral.
 function diningPillModel(opts: {
   showCancellation: boolean | null
@@ -114,11 +114,11 @@ function DiningPillBox({ model }: { model: { color: string; label: string } | nu
 
 function DiningPill({ aux }: { aux: AdminEngagementElement }) {
   return <DiningPillBox model={diningPillModel({
-    showCancellation: aux.show_cancellation ?? null,
-    diningStatus:     aux.dining_status ?? null,
-    penaltyApplied:   aux.cancellation_penalty_applied ?? null,
-    cancellationNote: aux.cancellation_note ?? null,
-    bookingTerms:     aux.venue?.booking_terms ?? null,
+    showCancellation: aux.showCancellation ?? null,
+    diningStatus:     aux.diningStatus ?? null,
+    penaltyApplied:   aux.cancellationPenaltyApplied ?? null,
+    cancellationNote: aux.cancellationNote ?? null,
+    bookingTerms:     aux.venue?.bookingTerms ?? null,
   })} />
 }
 
@@ -189,32 +189,32 @@ export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
  const { journey: trip, elements } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
-  const destHero = trip.destinations[0]?.hero_image_src ?? null
+  const destHero = trip.destinations[0]?.heroImageSrc ?? null
 
   const accomBookings = trip.bookings
-    .filter(bk => bk.brief_show !== false)
+    .filter(bk => bk.briefShow !== false)
     .slice()
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 
 const auxSections = groupElementsBySection(elements)
 
-  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.brief_show !== false)
+  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.briefShow !== false)
 
   return (
     <div>
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
 
-{/* Accommodation — one block per hotel, rooms nested beneath */}
+{/* Accommodation - one block per hotel, rooms nested beneath */}
       {accomBookings.length > 0 && (
         <TabSection label='ACCOMMODATION'>
           {accomBookings.map(booking => {
-            const ownArr       = isOwnArrangements(booking.booked_by)
-            const bookedByText = bookedByLabel(booking.booked_by)
+            const ownArr       = isOwnArrangements(booking.bookedBy)
+            const bookedByText = bookedByLabel(booking.bookedBy)
             const pillColor    = ownArr ? c.faint : c.gold
             const hotelName    = booking._hotel_name ?? booking.name ?? 'Hotel'
-            const dateRange    = formatDateRange(booking.check_in_date ?? booking.start_date, booking.end_date)
+            const dateRange    = formatDateRange(booking.checkInDate ?? booking.startDate, booking.endDate)
             const stayAlert    = scheduleAlert(booking)
-            const headerImg    = booking.brief_image_src ?? booking._hotel_image_src ?? destHero
+            const headerImg    = booking.briefImageSrc ?? booking._hotel_image_src ?? destHero
             const rooms        = booking._rooms ?? []
 
             return (
@@ -244,14 +244,14 @@ const auxSections = groupElementsBySection(elements)
                           <AlertPill label={stayAlert.pillLabel} tone={stayAlert.tone ?? 'danger'} />
                         </div>
                       )}
-                      {booking.check_in_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_in_note}</div>}
-                      {booking.check_out_note && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.check_out_note}</div>}
-                      {booking.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(booking.standard_checkin_time)}`}</div>}
-{booking.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(booking.approved_checkin_time)}`}</div>}
-{booking.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(booking.expected_arrival_time)}`}</div>}
-                      {booking.late_checkout_approved_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout approved: ${fmtTime(booking.late_checkout_approved_time)}`}</div>}
-                      {booking.requested_checkout_time && !booking.late_checkout_approved_time && (
-                        <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Time Requested · ${fmtTime(booking.requested_checkout_time)}`} tone="caution" /></div>
+                      {booking.checkInNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.checkInNote}</div>}
+                      {booking.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{booking.checkOutNote}</div>}
+                      {booking.standardCheckinTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(booking.standardCheckinTime)}`}</div>}
+{booking.approvedCheckinTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(booking.approvedCheckinTime)}`}</div>}
+{booking.expectedArrivalTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(booking.expectedArrivalTime)}`}</div>}
+                      {booking.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late checkout approved: ${fmtTime(booking.lateCheckoutApprovedTime)}`}</div>}
+                      {booking.requestedCheckoutTime && !booking.lateCheckoutApprovedTime && (
+                        <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out Time Requested · ${fmtTime(booking.requestedCheckoutTime)}`} tone="caution" /></div>
                       )}
                       {(booking.extras ?? []).map((x, xi) => (
                         <div key={xi} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>
@@ -259,11 +259,11 @@ const auxSections = groupElementsBySection(elements)
                           {x.note ? <span style={{ color: c.faint }}>{`  ·  ${x.note}`}</span> : null}
                         </div>
                       ))}
-                      {booking.party_composition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.party_composition}</div>}
+                      {booking.partyComposition && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{booking.partyComposition}</div>}
                       </div>
                     <div style={{ marginTop: 12 }}>
-                      {booking.payment_exception && <AlertPill label="Payment Outstanding" tone="danger" />}
-                      {rooms.length === 0 && booking.confirmation_number && (
+                      {booking.paymentException && <AlertPill label="Payment Outstanding" tone="danger" />}
+                      {rooms.length === 0 && booking.confirmationNumber && (
                         <div style={{
                           display: 'inline-flex', alignItems: 'center',
                           border: `1px solid ${pillColor}`, borderRadius: 5,
@@ -271,7 +271,7 @@ const auxSections = groupElementsBySection(elements)
                           background: ownArr ? '#F5F5F5' : '#FAF7F0',
                         }}>
                           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
-                            Conf #: {booking.confirmation_number}
+                            Conf #: {booking.confirmationNumber}
                           </span>
                         </div>
                       )}
@@ -289,10 +289,10 @@ const auxSections = groupElementsBySection(elements)
                     </div>
                   </div>
                 </div>
-                {/* Inclusions, cancellation policy, invoices — full width below header */}
-                {(booking.inclusions_override && (booking.inclusions_override as {heading:string;bullets:string[]}[]).length > 0) && (
+                {/* Inclusions, cancellation policy, invoices - full width below header */}
+                {(booking.inclusionsOverride && (booking.inclusionsOverride as {heading:string;bullets:string[]}[]).length > 0) && (
                   <div style={{ padding: '16px 20px', borderTop: `0.5px solid ${c.lineStrong}` }}>
-                    {(booking.inclusions_override as {heading:string;bullets:string[]}[]).map((group, gi) => (
+                    {(booking.inclusionsOverride as {heading:string;bullets:string[]}[]).map((group, gi) => (
                       <div key={gi} style={{ marginTop: gi > 0 ? 12 : 0 }}>
                         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans, marginBottom: 6 }}>{group.heading}</div>
                         {group.bullets.map((b, bi) => (
@@ -305,10 +305,10 @@ const auxSections = groupElementsBySection(elements)
                     ))}
                   </div>
                 )}
-                {booking.cancellation_policy && (
+                {booking.cancellationPolicy && (
                   <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${c.lineStrong}`, background: c.surfaceSunken }}>
                     <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, fontFamily: TYPE.sans, marginBottom: 4 }}>Cancellation Policy</div>
-                    <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellation_policy}</div>
+                    <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{booking.cancellationPolicy}</div>
                   </div>
                 )}
                 {(booking._invoices ?? []).length > 0 && (
@@ -317,10 +317,10 @@ const auxSections = groupElementsBySection(elements)
                     {(booking._invoices as BookingInvoice[]).map(inv => (
                       <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 6, paddingBottom: 6, borderTop: `0.5px solid ${c.lineStrong}` }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{inv.description ?? `Invoice ${inv.invoice_number}`}</div>
+                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{inv.description ?? `Invoice ${inv.invoiceNumber}`}</div>
                           <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>
-                            {inv.invoice_date ? formatDate(inv.invoice_date) : ''}
-                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.faint, marginLeft: 8 }}>#{inv.invoice_number}</span>
+                            {inv.invoiceDate ? formatDate(inv.invoiceDate) : ''}
+                            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.faint, marginLeft: 8 }}>#{inv.invoiceNumber}</span>
                           </div>
                         </div>
                         <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, flexShrink: 0 }}>
@@ -343,11 +343,11 @@ const auxSections = groupElementsBySection(elements)
                           flexWrap: 'wrap',
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {room.room_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{room.room_name}</div>}
+                            {room.roomName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{room.roomName}</div>}
                             {guests && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{guests}</div>}
-                            {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
+                            {beddingLabel(room.beddingType) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.beddingType)}</div>}
                           </div>
-                          {room.confirmation_number && (
+                          {room.confirmationNumber && (
                             <div style={{
                               display: 'inline-flex', alignItems: 'center', flexShrink: 0,
                               border: `1px solid ${pillColor}`, borderRadius: 5,
@@ -355,7 +355,7 @@ const auxSections = groupElementsBySection(elements)
                               background: ownArr ? '#F5F5F5' : '#FAF7F0',
                             }}>
                               <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: pillColor }}>
-                                Conf #: {room.confirmation_number}
+                                Conf #: {room.confirmationNumber}
                               </span>
                             </div>
                           )}
@@ -374,10 +374,10 @@ const auxSections = groupElementsBySection(elements)
       {auxSections.map(section => (
         <TabSection key={section.type} label={section.label}>
           {section.items.map(aux => {
-            const ownArr    = isOwnArrangements(aux.booked_by)
+            const ownArr    = isOwnArrangements(aux.bookedBy)
             const pillColor = ownArr ? c.faint : c.gold
             const alert      = scheduleAlert(aux)
-            const timeStr    = [fmtTime(aux.start_time), fmtTime(aux.end_time)].filter(Boolean).join(' - ')
+            const timeStr    = [fmtTime(aux.startTime), fmtTime(aux.endTime)].filter(Boolean).join(' - ')
             const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
 
             return (
@@ -387,34 +387,34 @@ const auxSections = groupElementsBySection(elements)
                 display: 'flex', alignItems: 'flex-start', gap: 16,
                 boxSizing: 'border-box',
               }}>
-                {aux.image_src ? (
+                {aux.imageSrc ? (
                   <div
                     style={{
                       width: 72, height: 72, flexShrink: 0, borderRadius: 8, overflow: 'hidden',
                       background: c.surfaceSunken, position: 'relative', cursor: 'zoom-in',
                     }}
-                    onClick={() => setLightbox({ src: aux.image_src!, alt: aux.name ?? '' })}
+                    onClick={() => setLightbox({ src: aux.imageSrc!, alt: aux.name ?? '' })}
                   >
-                    <img src={aux.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={aux.imageSrc} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ) : (
                   <div style={{ fontSize: 22, color: c.gold, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.dining_status === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.dining_status === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
+                  {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.diningStatus === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.diningStatus === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
-                  {aux.start_date && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.start_date)}</div>}
+                  {aux.startDate && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.startDate)}</div>}
                   {alert.originalStart || alert.originalEnd ? (
                     <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>
-                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(alert.originalStart)}</span> {fmtTime(aux.start_time)}
-                      {aux.end_time && <> - <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(alert.originalEnd)}</span> {fmtTime(aux.end_time)}</>}
+                      <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(alert.originalStart)}</span> {fmtTime(aux.startTime)}
+                      {aux.endTime && <> - <span style={{ textDecoration: 'line-through', color: c.faint, fontWeight: 400 }}>{fmtTime(alert.originalEnd)}</span> {fmtTime(aux.endTime)}</>}
                     </div>
                   ) : alert.struck ? (
                     <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 400, color: c.faint, textDecoration: 'line-through', marginTop: 4 }}>{timeStr}</div>
                   ) : (timeStr && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>{timeStr}</div>)}
-                  {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).length > 0 && (
+                  {[aux.cabinClass, aux.aircraftType, aux.tailNumber, aux.flightTime ? `${aux.flightTime} flight time` : null, aux.distanceNm ? `${aux.distanceNm} NM` : null].filter(Boolean).length > 0 && (
                     <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>
-                      {[aux.cabin_class, aux.aircraft_type, aux.tail_number, aux.flight_time ? `${aux.flight_time} flight time` : null, aux.distance_nm ? `${aux.distance_nm} NM` : null].filter(Boolean).join(' \u00b7 ')}
+                      {[aux.cabinClass, aux.aircraftType, aux.tailNumber, aux.flightTime ? `${aux.flightTime} flight time` : null, aux.distanceNm ? `${aux.distanceNm} NM` : null].filter(Boolean).join(' \u00b7 ')}
                     </div>
                   )}
                   {aux.crew && aux.crew.length > 0 && (
@@ -428,22 +428,22 @@ const auxSections = groupElementsBySection(elements)
                       ))}
                     </div>
                   )}
-                  {(aux.depart_fbo_name || aux.arrive_fbo_name) && (
+                  {(aux.departFboName || aux.arriveFboName) && (
                     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {aux.depart_fbo_name && (
+                      {aux.departFboName && (
                         <div>
                           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 2 }}>Departure FBO</div>
-                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{aux.depart_fbo_name}</div>
-                          {aux.depart_fbo_address && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>{aux.depart_fbo_address}</div>}
-                          {aux.depart_fbo_phone && <a href={toTelHref(aux.depart_fbo_phone) ?? '#'} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 1, display: 'inline-block' }}>{aux.depart_fbo_phone}</a>}
+                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{aux.departFboName}</div>
+                          {aux.departFboAddress && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>{aux.departFboAddress}</div>}
+                          {aux.departFboPhone && <a href={toTelHref(aux.departFboPhone) ?? '#'} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 1, display: 'inline-block' }}>{aux.departFboPhone}</a>}
                         </div>
                       )}
-                      {aux.arrive_fbo_name && (
+                      {aux.arriveFboName && (
                         <div>
                           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 2 }}>Arrival FBO</div>
-                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{aux.arrive_fbo_name}</div>
-                          {aux.arrive_fbo_address && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>{aux.arrive_fbo_address}</div>}
-                          {aux.arrive_fbo_phone && <a href={toTelHref(aux.arrive_fbo_phone) ?? '#'} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 1, display: 'inline-block' }}>{aux.arrive_fbo_phone}</a>}
+                          <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{aux.arriveFboName}</div>
+                          {aux.arriveFboAddress && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 1 }}>{aux.arriveFboAddress}</div>}
+                          {aux.arriveFboPhone && <a href={toTelHref(aux.arriveFboPhone) ?? '#'} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 1, display: 'inline-block' }}>{aux.arriveFboPhone}</a>}
                         </div>
                       )}
                     </div>
@@ -460,14 +460,14 @@ const auxSections = groupElementsBySection(elements)
                     }}>Own Arrangements</span>
                   )}
                   {(() => {
-                    const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+                    const pax = (aux.passengers ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
                     if (pax.length === 0) return null
                     return (
                       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                         {pax.map(p => {
                           const detail = [
-                            p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
-                            p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                            p.confirmationNumber ? `Conf ${p.confirmationNumber}` : null,
+                            p.seatNumbers ? `Seats ${p.seatNumbers}` : null,
                           ].filter(Boolean).join('  \u00b7  ')
                           return (
                             <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -480,41 +480,41 @@ const auxSections = groupElementsBySection(elements)
                     )
                   })()}
                   {(() => {
-                    const isGroundCar = isGroundTransportElement(aux.element_type)
-                    const veh = isGroundCar ? (aux.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order) : []
+                    const isGroundCar = isGroundTransportElement(aux.elementType)
+                    const veh = isGroundCar ? (aux.driverDetails ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder) : []
                     if (veh.length === 0) return null
                     return (
                       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {veh.map(v => (
                           <div key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{v.driver_name || 'Driver'}</span>
-                            {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans }}>{v.vehicle_role}</span>}
+                            <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{v.driverName || 'Driver'}</span>
+                            {v.vehicleRole && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans }}>{v.vehicleRole}</span>}
                             <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: c.muted }}>
-                              {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}
+                              {[v.driverPhone, v.carModel, v.plate].filter(Boolean).join('  \u00b7  ')}
                             </span>
                           </div>
                         ))}
                       </div>
                     )
                   })()}
-                  {isMeetGreetElement(aux.element_type) && (aux.contact_name || aux.contact_phone) && (
+                  {isMeetGreetElement(aux.elementType) && (aux.contactName || aux.contactPhone) && (
                     <div style={{ marginTop: 8 }}>
-                      {aux.contact_name && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{aux.contact_name}</div>}
-                      {aux.contact_phone && (
-                        <a href={toTelHref(aux.contact_phone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 2 }}>{aux.contact_phone}</a>
+                      {aux.contactName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink }}>{aux.contactName}</div>}
+                      {aux.contactPhone && (
+                        <a href={toTelHref(aux.contactPhone) ?? '#'} style={{ display: 'inline-block', fontSize: 12, fontFamily: TYPE.sans, color: c.gold, textDecoration: 'none', marginTop: 2 }}>{aux.contactPhone}</a>
                       )}
                       {aux.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginTop: 2 }}>{aux.notes}</div>}
                     </div>
                   )}
-                  {(aux.venue || aux.guest_name || aux.guest_count) && (() => {
+                  {(aux.venue || aux.guestName || aux.guestCount) && (() => {
                     const v = aux.venue
-                    const guestLine = [aux.guest_name, aux.guest_count ? `${aux.guest_count} guests` : null].filter(Boolean).join('  \u00b7  ')
+                    const guestLine = [aux.guestName, aux.guestCount ? `${aux.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const rows: { label: string; value: string }[] = []
                     if (v?.address)         rows.push({ label: 'Address',  value: v.address })
                     if (v?.phone)           rows.push({ label: 'Phone',    value: v.phone })
-                    if (v?.dress_code)      rows.push({ label: 'Dress',    value: v.dress_code })
-                    if (v?.children_policy) rows.push({ label: 'Children', value: v.children_policy })
-                    if (v?.table_hold_note) rows.push({ label: 'Table',    value: v.table_hold_note })
+                    if (v?.dressCode)      rows.push({ label: 'Dress',    value: v.dressCode })
+                    if (v?.childrenPolicy) rows.push({ label: 'Children', value: v.childrenPolicy })
+                    if (v?.tableHoldNote) rows.push({ label: 'Table',    value: v.tableHoldNote })
                     return (
                       <div style={{ marginTop: 8 }}>
                         {guestLine && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginBottom: rows.length ? 8 : 0 }}>{guestLine}</div>}
@@ -522,8 +522,8 @@ const auxSections = groupElementsBySection(elements)
                           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginTop: i ? 4 : 0, flexWrap: 'wrap' }}>
                             <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>{r.label}</div>
                             <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                              {r.label === 'Address' && v?.maps_url
-                                ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: c.gold, textDecoration: 'none' }}>{r.value}</a>
+                              {r.label === 'Address' && v?.mapsUrl
+                                ? <a href={v.mapsUrl} target='_blank' rel='noopener noreferrer' style={{ color: c.gold, textDecoration: 'none' }}>{r.value}</a>
                                 : r.value}
                             </div>
                           </div>
@@ -542,7 +542,7 @@ const auxSections = groupElementsBySection(elements)
         <TabSection label='EXPERIENCES'>
           {experiences.map(x => (
             <div key={x.id} style={{ background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12, overflow: 'hidden', padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint }}>{formatDate(x.entry_date)}</div>
+              formatDate(x.entryDate)
               <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, marginTop: 2 }}>{x.title}</div>
               {x.notes && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>{x.notes}</div>}
             </div>
@@ -557,26 +557,26 @@ const auxSections = groupElementsBySection(elements)
 
 export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
   days:               JourneyDay[]
-  entries:            TimelineItem[]
+  entries:            TimelineItemView[]
   brief:              any
   onActiveDayChange?: (label: string, openSidebar: () => void) => void
 }) {
   const visibleDays = days.filter(d => d.show)
-  const defaultDate = visibleDays.find(d => d.entry_date === localDateStr())?.entry_date ?? visibleDays[0]?.entry_date ?? null
+  const defaultDate = visibleDays.find(d => d.entryDate === localDateStr())?.entryDate ?? visibleDays[0]?.entryDate ?? null
   const [activeDate,  setActiveDate]  = useState(defaultDate)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [lightbox,    setLightbox]    = useState<{ src: string; alt: string } | null>(null)
   const width    = useWindowWidth()
   const isMobile = width < 768
 
-  const activeDay = visibleDays.find(d => d.entry_date === activeDate) ?? null
+  const activeDay = visibleDays.find(d => d.entryDate === activeDate) ?? null
 
   useEffect(() => {
     if (!onActiveDayChange) return
-    const idx      = visibleDays.findIndex(d => d.entry_date === activeDate)
+    const idx      = visibleDays.findIndex(d => d.entryDate === activeDate)
     const dayN     = idx >= 0 ? `Day ${idx + 1}` : null
     const label    = activeDay
-      ? (activeDay.day_label || formatDateShortWeekday(activeDay.entry_date))
+      ? (activeDay.dayLabel || formatDateShortWeekday(activeDay.entryDate))
       : 'Select day'
     const combined = dayN ? `${dayN} · ${label}` : label
     onActiveDayChange(combined, () => setSidebarOpen(true))
@@ -584,10 +584,10 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 
 // The EF (_shared/timeline.ts) already merged + ordered the stream. Filter by
   // active day and map each TimelineItem to the card shape. No client derivation.
-  const cards: CardItem[] = activeDay
+  const cards: EngagementElementView[] = activeDay
     ? entries
-        .filter(e => e.entry_date === activeDay.entry_date && e.brief_show)
-        .map(e => {
+        .filter(e => e.entryDate === activeDay.entryDate && e.briefShow)
+        .map((e): EngagementElementView => {
           const isFlight = (e.category === 'flight' || e.category === 'private_jet') && e.kind === 'aux'
           let flightOrigin:      string | null = null
           let flightDestination: string | null = null
@@ -600,75 +600,12 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
             }
           }
           return {
-            id:                  e.id,
-            category:            e.category,
-            categoryLabel:       e.categoryLabel,
-            start_time:          e.start_time,
-            end_time:            e.end_time,
-            title:               e.title,
-            subtitle:            isFlight ? null : e.subtitle,
-            notes:               e.notes,
-            confirmation_number: e.confirmation_number,
-            guest_label:         e.guest_label,
-            booked_by:           e.booked_by,
-            image_src:           e.image_src,
-            status:              e.status,
-            checkInNote:         e.check_in_note ?? null,
-            checkOutNote:        e.check_out_note ?? null,
-            kind:                  e.kind,
-            requestedCheckoutTime: e.requested_checkout_time ?? null,
-            lateCheckoutApprovedTime: (e as any).late_checkout_approved_time ?? null,
-            standard_checkin_time: e.standard_checkin_time ?? null,
-            approved_checkin_time: e.approved_checkin_time ?? null,
-            expected_arrival_time: e.expected_arrival_time ?? null,
-            description:         null,
-            bookingType:         e.category,
-            contactName:         e.contact_name ?? null,
-            contactPhone:        e.contact_phone ?? null,
-            guestName:           e.guest_name ?? null,
-            guestCount:          e.guest_count ?? null,
-            diningStatus:        e.dining_status ?? null,
-            cancellationPenaltyApplied: e.cancellation_penalty_applied ?? null,
-            cancellationNote:    e.cancellation_note ?? null,
-            showCancellation:    e.show_cancellation ?? null,
-            scheduleStatus:      e.schedule_status ?? null,
-            scheduleNote:        e.schedule_note ?? null,
-            originalStartTime:   e.original_start_time ?? null,
-            originalEndTime:     e.original_end_time ?? null,
-            venue:               e.venue ?? null,
+            ...e,
+            subtitle:          isFlight ? null : e.subtitle,
             flightOrigin,
             flightDestination,
-            flightDepartTime:    isFlight ? e.start_time : null,
-            flightArriveTime:    isFlight ? e.end_time   : null,
-            seatNumbers:         null,
-            cabinClass:          null,
-            passengers:          e.passengers.map(p => ({
-              id:                       p.id,
-              passenger_label:          p.passenger_label,
-              resolved_passenger_label: p.resolved_passenger_label,
-              confirmation_number:      p.confirmation_number,
-              seat_numbers:             p.seat_numbers,
-              sort_order:               p.sort_order,
-            })),
-            rooms:               e.rooms.map(r => ({
-              id:                  r.id,
-              guest:               r.guest,
-              additional_guests:   r.additional_guests ?? [],
-              room_name:           r.room_name,
-              party_composition:   r.party_composition,
-              confirmation_number: r.confirmation_number,
-              notes:               r.notes,
-              bedding_type:        r.bedding_type ?? null,
-            })),
-            driverDetails:       (e.driver_details ?? []).map(d => ({
-              id:           d.id,
-              driver_name:  d.driver_name,
-              driver_phone: d.driver_phone,
-              car_model:    d.car_model,
-              plate:        d.plate,
-              vehicle_role: d.vehicle_role,
-              sort_order:   d.sort_order,
-            })),
+            flightDepartTime:  isFlight ? e.startTime : null,
+            flightArriveTime:  isFlight ? e.endTime   : null,
           }
         })
     : []
@@ -732,11 +669,11 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
           {sidebarOpen && (
             <nav style={{ flex: 1, padding: '8px 0', overflowY: 'auto' }}>
               {visibleDays.map((day, i) => {
-                const isActive = day.entry_date === activeDate
+                const isActive = day.entryDate === activeDate
                 return (
                   <button
-                    key={day.entry_date}
-                    onClick={() => { setActiveDate(day.entry_date); if (isMobile) setSidebarOpen(false) }}
+                    key={day.entryDate}
+                    onClick={() => { setActiveDate(day.entryDate); if (isMobile) setSidebarOpen(false) }}
                     style={{
                       width:      '100%',
                       textAlign:  'left',
@@ -752,7 +689,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                       Day {i + 1}
                     </div>
                     <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontWeight: isActive ? 700 : 400, color: isActive ? c.ink : c.muted, lineHeight: 1.3 }}>
-                      {day.day_label || formatDateShortWeekday(day.entry_date)}
+                      {day.dayLabel || formatDateShortWeekday(day.entryDate)}
                     </div>
                   </button>
                 )
@@ -774,14 +711,14 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
           <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,5vw,56px)' }}>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 10, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: c.gold, marginBottom: 6 }}>
-                {activeDay.day_label || ''}
+                {activeDay.dayLabel || ''}
               </div>
               <div style={{ fontSize: 'clamp(22px,3vw,32px)', fontFamily: TYPE.serif, color: c.ink, lineHeight: 1.2, marginBottom: 14 }}>
-                {formatDateWeekday(activeDay.entry_date)}
+                {formatDateWeekday(activeDay.entryDate)}
               </div>
-              {activeDay.day_note && (
+              {activeDay.dayNote && (
                 <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, fontStyle: 'italic', marginBottom: 12 }}>
-                  {activeDay.day_note}
+                  {activeDay.dayNote}
                 </div>
               )}
               <div style={{ height: 1, background: c.lineStrong }} />
@@ -793,17 +730,17 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {cards.map(item => {
                   const accent      = categoryAccentHex(item.category)
-                  const dep         = fmtTime(item.start_time)
-                  const arr         = fmtTime(item.end_time)
+                  const dep         = fmtTime(item.startTime)
+                  const arr         = fmtTime(item.endTime)
                   const isFlight    = !!(item.flightOrigin || item.flightDestination || item.flightDepartTime || item.flightArriveTime)
                   const timeStr     = isFlight ? null : (dep && arr ? `${dep} - ${arr}` : dep || arr || null)
                   const isMobileW   = width < 600
-                  const stackLayout = isMobileW && !!item.image_src
+                  const stackLayout = isMobileW && !!item.imageSrc
 
                   // Hotel stays render in the Confirmation card style (concise image
                   // header + clean nested rooms), not the generic programme card.
                   const isHotelStay = item.category === 'stay' && item.rooms.length > 0
-                  const alert = scheduleAlert({ schedule_status: item.scheduleStatus, schedule_note: item.scheduleNote, status: item.status, status_note: null, original_start_time: item.originalStartTime, original_end_time: item.originalEndTime })
+                  const alert = scheduleAlert({ scheduleStatus: item.scheduleStatus, scheduleNote: item.scheduleNote, status: item.status, statusNote: null, originalStartTime: item.originalStartTime, originalEndTime: item.originalEndTime })
                   if (isHotelStay) {
                     return (
                       <div key={item.id} style={{
@@ -811,16 +748,16 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         borderRadius: 12, overflow: 'hidden', boxSizing: 'border-box',
                       }}>
                         <div style={{ display: 'flex', minHeight: 100 }}>
-                          {item.image_src && (
+                          {item.imageSrc && (
                             <div
                               style={{
                                 width: 'clamp(100px,30%,200px)', flexShrink: 0,
                                 background: c.surfaceSunken, position: 'relative', overflow: 'hidden',
                                 cursor: 'zoom-in',
                               }}
-                              onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
+                              onClick={() => setLightbox({ src: item.imageSrc!, alt: item.title })}
                             >
-                              <img src={item.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={item.imageSrc} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                           )}
                           <div style={{ flex: 1, minWidth: 0, padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -837,18 +774,18 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                               {item.checkOutNote && <div style={{ fontSize: 10, fontFamily: TYPE.sans, color: c.ink, fontStyle: 'italic', marginTop: 2 }}>{item.checkOutNote}</div>}
                               {item.lateCheckoutApprovedTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Late Checkout Approved: ${fmtTime(item.lateCheckoutApprovedTime)}`}</div>}
                               {item.requestedCheckoutTime && <div style={{ marginTop: 4 }}><AlertPill label={`Check-Out TimeRequested · ${fmtTime(item.requestedCheckoutTime)}`} tone="caution" /></div>}
-                              {item.standard_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(item.standard_checkin_time)}`}</div>}
-{item.approved_checkin_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(item.approved_checkin_time)}`}</div>}
-{item.expected_arrival_time && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(item.expected_arrival_time)}`}</div>}
+                              {item.standardCheckinTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Check-in: ${fmtTime(item.standardCheckinTime)}`}</div>}
+{item.approvedCheckinTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Early check-in approved: ${fmtTime(item.approvedCheckinTime)}`}</div>}
+{item.expectedArrivalTime && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{`Expected arrival: ${fmtTime(item.expectedArrivalTime)}`}</div>}
                             </div>
-                            {bookedByLabel(item.booked_by) && (
-                              <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontStyle: 'italic', color: c.faint, marginTop: 8 }}>{bookedByLabel(item.booked_by)}</div>
+                            {bookedByLabel(item.bookedBy) && (
+                              <div style={{ fontSize: 11, fontFamily: TYPE.sans, fontStyle: 'italic', color: c.faint, marginTop: 8 }}>{bookedByLabel(item.bookedBy)}</div>
                             )}
                           </div>
                         </div>
                         <div style={{ borderTop: `0.5px solid ${c.lineStrong}` }}>
                           {item.rooms.map((room, ri) => {
-                            const rd = webRoomDisplay({ guest_name: room.guest, resolved_additional_guests: room.additional_guests, party_composition: room.party_composition, room_name: room.room_name })
+                            const rd = webRoomDisplay({ guestName: room.guest, resolvedAdditionalGuests: room.additionalGuests, partyComposition: room.partyComposition, roomName: room.roomName })
                             return (
                               <div key={room.id} style={{
                                 display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
@@ -859,15 +796,15 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {rd.roomName && <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{rd.roomName}</div>}
                                   {rd.guestLine && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{rd.guestLine}</div>}
-                                  {beddingLabel(room.bedding_type) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.bedding_type)}</div>}
+                                  {beddingLabel(room.beddingType) && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{beddingLabel(room.beddingType)}</div>}
                                   {room.notes && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, fontStyle: 'italic', marginTop: 2 }}>{room.notes}</div>}
                                 </div>
-                                {room.confirmation_number && (
+                                {room.confirmationNumber && (
                                   <div style={{
                                     display: 'inline-flex', alignItems: 'center', flexShrink: 0,
                                     border: `1px solid ${c.gold}`, borderRadius: 5, padding: '3px 10px', background: '#FAF7F0',
                                   }}>
-                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.ink }}>Conf #: {room.confirmation_number}</span>
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.ink }}>Conf #: {room.confirmationNumber}</span>
                                   </div>
                                 )}
                               </div>
@@ -878,8 +815,8 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                     )
                   }
 
-                  // Airport greeter — concise card: who's meeting, phone, flight ref, time.
-                  if (isMeetGreetElement(item.bookingType) && (item.contactName || item.contactPhone)) {
+                  // Airport greeter - concise card: who's meeting, phone, flight ref, time.
+                  if (isMeetGreetElement(item.category) && (item.contactName || item.contactPhone)) {
                     return (
                       <div key={item.id} style={{
                         background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
@@ -903,37 +840,37 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   }
 
                   // Venue reservation (dining, reservation, or any shape with a venue/party)
-                  // — essentials inline + pill + collapsible reservation details.
+                  // - essentials inline + pill + collapsible reservation details.
                   if (item.venue || item.guestName || item.guestCount) {
                     const pill = diningPillModel({
                       showCancellation: item.showCancellation,
                       diningStatus:     item.diningStatus,
                       penaltyApplied:   item.cancellationPenaltyApplied,
                       cancellationNote: item.cancellationNote,
-                      bookingTerms:     item.venue?.booking_terms ?? null,
+                      bookingTerms:     item.venue?.bookingTerms ?? null,
                     })
                     const cancelled = item.diningStatus === 'cancelled'
                     const essentials = [item.guestName, item.guestCount ? `${item.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const v = item.venue
-                    const hasDetails = !!(v?.address || v?.phone || v?.dress_code || v?.children_policy || v?.table_hold_note)
+                    const hasDetails = !!(v?.address || v?.phone || v?.dressCode || v?.childrenPolicy || v?.tableHoldNote)
                     return (
                       <div key={item.id} style={{
                         background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
                         overflow: 'hidden', display: 'flex',
                         flexDirection: stackLayout ? 'column' : 'row',
-                        minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
+                        minHeight: (!stackLayout && item.imageSrc) ? 140 : 'auto',
                         boxSizing: 'border-box',
                       }}>
-                        {item.image_src && (
+                        {item.imageSrc && (
                           <div
                             style={{ width: stackLayout ? '100%' : 'clamp(120px,28%,200px)', height: stackLayout ? 200 : 'auto', flexShrink: 0, background: c.surfaceSunken, position: 'relative', overflow: 'hidden', cursor: 'zoom-in' }}
-                            onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
+                            onClick={() => setLightbox({ src: item.imageSrc!, alt: item.title })}
                           >
-                            <img src={item.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={item.imageSrc} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accent }} />
                           </div>
                         )}
-                        <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', minWidth: 0, borderLeft: (!stackLayout && !item.image_src) ? `3px solid ${accent}` : 'none' }}>
+                        <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', minWidth: 0, borderLeft: (!stackLayout && !item.imageSrc) ? `3px solid ${accent}` : 'none' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
@@ -952,7 +889,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                     <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Address</div>
                                     <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5, wordBreak: 'break-word' }}>
-                                      {v.maps_url ? <a href={v.maps_url} target='_blank' rel='noopener noreferrer' style={{ color: c.gold, textDecoration: 'none' }}>{v.address}</a> : v.address}
+                                      {v.mapsUrl ? <a href={v.mapsUrl} target='_blank' rel='noopener noreferrer' style={{ color: c.gold, textDecoration: 'none' }}>{v.address}</a> : v.address}
                                     </div>
                                   </div>
                                 )}
@@ -962,22 +899,22 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                     <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink }}>{v.phone}</div>
                                   </div>
                                 )}
-                                {v?.dress_code && (
+                                {v?.dressCode && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                     <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Dress</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.dress_code}</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.dressCode}</div>
                                   </div>
                                 )}
-                                {v?.children_policy && (
+                                {v?.childrenPolicy && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                     <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Children</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.children_policy}</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.childrenPolicy}</div>
                                   </div>
                                 )}
-                                {v?.table_hold_note && (
+                                {v?.tableHoldNote && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                     <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Table</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.table_hold_note}</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.tableHoldNote}</div>
                                   </div>
                                 )}
                               </div>
@@ -994,10 +931,10 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                       background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
                       overflow: 'hidden', display: 'flex',
                       flexDirection: stackLayout ? 'column' : 'row',
-                      minHeight: (!stackLayout && item.image_src) ? 140 : 'auto',
+                      minHeight: (!stackLayout && item.imageSrc) ? 140 : 'auto',
                       boxSizing: 'border-box',
                     }}>
-                      {item.image_src && (
+                      {item.imageSrc && (
                         <div
                           style={{
                             width: stackLayout ? '100%' : 'clamp(120px,28%,200px)',
@@ -1005,9 +942,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             flexShrink: 0, background: c.surfaceSunken,
                             position: 'relative', overflow: 'hidden', cursor: 'zoom-in',
                           }}
-                          onClick={() => setLightbox({ src: item.image_src!, alt: item.title })}
+                          onClick={() => setLightbox({ src: item.imageSrc!, alt: item.title })}
                         >
-                          <img src={item.image_src} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={item.imageSrc} alt='' style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: accent }} />
                         </div>
                       )}
@@ -1015,7 +952,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                       <div style={{
                         flex: 1, padding: '16px 20px', display: 'flex',
                         flexDirection: 'column', minWidth: 0,
-                        borderLeft: (!stackLayout && !item.image_src) ? `3px solid ${accent}` : 'none',
+                        borderLeft: (!stackLayout && !item.imageSrc) ? `3px solid ${accent}` : 'none',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1042,7 +979,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                         {item.rooms.length > 0 && (
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {item.rooms.map(room => {
-                              const rd = webRoomDisplay({ guest_name: room.guest, resolved_additional_guests: room.additional_guests, party_composition: room.party_composition, room_name: room.room_name })
+                              const rd = webRoomDisplay({ guestName: room.guest, resolvedAdditionalGuests: room.additionalGuests, partyComposition: room.partyComposition, roomName: room.roomName })
                               return (
                                 <div key={room.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
@@ -1050,12 +987,12 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                       {rd.roomName && <span style={{ display: 'block', fontSize: 13, fontFamily: TYPE.sans, fontWeight: 600, color: c.ink, lineHeight: 1.3 }}>{rd.roomName}</span>}
                                       {rd.guestLine && <span style={{ display: 'block', fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>{rd.guestLine}</span>}
                                     </div>
-                                    {room.confirmation_number && (
+                                    {room.confirmationNumber && (
                                       <span style={{
                                         display: 'inline-flex', alignItems: 'center', flexShrink: 0,
                                         border: `1px solid ${c.gold}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0',
                                       }}>
-                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>Conf #: {room.confirmation_number}</span>
+                                        <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>Conf #: {room.confirmationNumber}</span>
                                       </span>
                                     )}
                                   </div>
@@ -1123,7 +1060,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 )}
                               </div>
                             )}
-                            {item.cabinClass && (
+                            {false && (
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{
                                   width: 64, flexShrink: 0,
@@ -1134,15 +1071,15 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                   Cabin
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                  {item.cabinClass}
+                                  {null}
                                 </div>
                               </div>
                             )}
                             {item.passengers.length > 0 ? (
                               item.passengers.map(p => {
                                 const detail = [
-                                  p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
-                                  p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                                  p.confirmationNumber ? `Conf ${p.confirmationNumber}` : null,
+                                  p.seatNumbers ? `Seats ${p.seatNumbers}` : null,
                                 ].filter(Boolean).join('  \u00b7  ')
                                 return (
                                   <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -1150,24 +1087,13 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                       Guest
                                     </div>
                                     <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                      <span style={{ fontWeight: 600 }}>{p.resolved_passenger_label || p.passenger_label || 'Guest'}</span>
+                                      <span style={{ fontWeight: 600 }}>{p.resolvedPassengerLabel || p.passengerLabel || 'Guest'}</span>
                                       {detail && <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.muted }}>{`  ${detail}`}</span>}
                                     </div>
                                   </div>
                                 )
                               })
-                            ) : (
-                              item.seatNumbers && (
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                  <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.faint }}>
-                                    Seats
-                                  </div>
-                                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                    {item.seatNumbers}
-                                  </div>
-                                </div>
-                              )
-                            )}
+                            ) : null}
                           </div>
                         )}
 
@@ -1179,22 +1105,22 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                             {item.driverDetails.map(v => (
                               <div key={v.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: c.faint }}>
-                                  {v.vehicle_role || 'Driver'}
+                                  {v.vehicleRole || 'Driver'}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                                  <span style={{ fontWeight: 600 }}>{v.driver_name || 'Driver'}</span>
-                                  {[v.driver_phone, v.car_model, v.plate].filter(Boolean).length > 0 && (
-                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.muted }}>{`  ${[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}`}</span>
+                                  <span style={{ fontWeight: 600 }}>{v.driverName || 'Driver'}</span>
+                                  {[v.driverPhone, v.carModel, v.plate].filter(Boolean).length > 0 && (
+                                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: c.muted }}>{`  ${[v.driverPhone, v.carModel, v.plate].filter(Boolean).join('  \u00b7  ')}`}</span>
                                   )}
                                 </div>
                               </div>
                             ))}
                           </div>
                         )}
-                        {item.passengers.length === 0 && item.confirmation_number && (
+                        {item.passengers.length === 0 && item.confirmationNumber && (
                           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c.lineStrong}` }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', border: `1px solid ${c.gold}`, borderRadius: 4, padding: '1px 8px', background: '#FAF7F0' }}>
-                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>Conf #: {item.confirmation_number}</span>
+                              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: c.ink }}>Conf #: {item.confirmationNumber}</span>
                             </div>
                           </div>
                         )}
@@ -1211,7 +1137,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
           </div>
         )}
 
-        {brief?.programme_notes?.trim() && (
+        {brief?.programmeNotes?.trim() && (
           <div style={{
             padding:   'clamp(20px,4vw,36px) clamp(20px,5vw,56px)',
             borderTop: `1px solid ${c.lineStrong}`,
@@ -1220,7 +1146,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
               Notes
             </div>
             <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.8, whiteSpace: 'pre-line' }}>
-              {brief.programme_notes}
+              {brief.programmeNotes}
             </div>
           </div>
         )}
@@ -1236,10 +1162,10 @@ export function EngagementBriefTab({ clientData }: {
 }) {
   const { journey: trip, house, elements } = clientData
 
-  const flights   = elements.filter(a => isFlightElement(a.element_type))
-  const transfers = elements.filter(a => isTransferElement(a.element_type))
-  const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.brief_show !== false)
-  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.brief_show !== false)
+  const flights   = elements.filter(a => isFlightElement(a.elementType))
+  const transfers = elements.filter(a => isTransferElement(a.elementType))
+  const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.briefShow !== false)
+  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.briefShow !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -1273,10 +1199,10 @@ export function EngagementBriefTab({ clientData }: {
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <BriefSection title='Overview'>
         <BriefRow label='Guest'        value={clientData.guestDisplayName ?? ''} />
-        <BriefRow label='Trip'         value={clientData.brief?.brief_title ?? trip.destinations[0]?.name ?? ''} />
-        {trip.start_date      && <BriefRow label='Departure'    value={formatDate(trip.start_date)} />}
-        {trip.end_date        && <BriefRow label='Return'       value={formatDate(trip.end_date)} />}
-        {trip.duration_nights && <BriefRow label='Duration'     value={`${trip.duration_nights} nights`} />}
+        <BriefRow label='Trip'         value={clientData.brief?.briefTitle ?? trip.destinations[0]?.name ?? ''} />
+        {trip.startDate      && <BriefRow label='Departure'    value={formatDate(trip.startDate)} />}
+        {trip.endDate        && <BriefRow label='Return'       value={formatDate(trip.endDate)} />}
+        {trip.durationNights && <BriefRow label='Duration'     value={`${trip.durationNights} nights`} />}
         {trip.destinations.length > 0 && <BriefRow label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
       </BriefSection>
 
@@ -1285,15 +1211,15 @@ export function EngagementBriefTab({ clientData }: {
           {hotels.map(h => {
             const rooms = h._rooms ?? []
             // Room categories with counts + per-room confirmation numbers.
-            // Names are deliberately omitted here — guest names live on the
+            // Names are deliberately omitted here - guest names live on the
             // Confirmation tab. The brief is an at-a-glance index: category,
             // count, conf. Party composition (counts, not names) shows once
             // at booking level.
             const catGroups = rooms.reduce((acc: Record<string, { count: number; confs: string[] }>, r: any) => {
-              const name = r.room_name ?? 'Room'
+              const name = r.roomName ?? 'Room'
               if (!acc[name]) acc[name] = { count: 0, confs: [] }
               acc[name].count += 1
-              if (r.confirmation_number) acc[name].confs.push(r.confirmation_number)
+              if (r.confirmationNumber) acc[name].confs.push(r.confirmationNumber)
               return acc
             }, {})
             const categories = Object.entries(catGroups).map(([name, g]) => ({
@@ -1303,14 +1229,14 @@ export function EngagementBriefTab({ clientData }: {
             return (
               <div key={h.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
-                  {formatDateRange(h.check_in_date ?? h.start_date, h.end_date) || ''}
+                  {formatDateRange(h.checkInDate ?? h.startDate, h.endDate) || ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>
                     {h._hotel_name ?? h.name ?? 'Hotel'}
                   </div>
                   {h.nights && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2 }}>{`${h.nights} nights`}</div>}
-                  {h.party_composition && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>{h.party_composition}</div>}
+                  {h.partyComposition && <div style={{ fontSize: 11, color: c.muted, fontFamily: TYPE.sans, marginTop: 2, wordBreak: 'break-word' }}>{h.partyComposition}</div>}
                   {categories.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {categories.map((cat, i) => (
@@ -1325,8 +1251,8 @@ export function EngagementBriefTab({ clientData }: {
                       ))}
                     </div>
                   )}
-                  {bookedByLabel(h.booked_by) && (
-                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>{bookedByLabel(h.booked_by)}</div>
+                  {bookedByLabel(h.bookedBy) && (
+                    <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>{bookedByLabel(h.bookedBy)}</div>
                   )}
                 </div>
               </div>
@@ -1339,15 +1265,15 @@ export function EngagementBriefTab({ clientData }: {
         <BriefSection title='Flights'>
           {flights.map(f => {
             const route = [f.origin, f.destination].filter(Boolean).join(' \u2192 ')
-            const cabin = f.cabin_class ?? null
-            const aircraft = f.aircraft_type ?? null
+            const cabin = f.cabinClass ?? null
+            const aircraft = f.aircraftType ?? null
             const flightMeta = [route, cabin, aircraft].filter(Boolean).join('  \u00b7  ')
-            const pax = (f.passengers ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+            const pax = (f.passengers ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
 
             return (
               <div key={f.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
-                  {f.start_date ? formatDate(f.start_date) : ''}
+                  {f.startDate ? formatDate(f.startDate) : ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>
@@ -1363,8 +1289,8 @@ export function EngagementBriefTab({ clientData }: {
                     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {pax.map(p => {
                         const detail = [
-                          p.confirmation_number ? `Conf ${p.confirmation_number}` : null,
-                          p.seat_numbers ? `Seats ${p.seat_numbers}` : null,
+                          p.confirmationNumber ? `Conf ${p.confirmationNumber}` : null,
+                          p.seatNumbers ? `Seats ${p.seatNumbers}` : null,
                         ].filter(Boolean).join('  \u00b7  ')
                         return (
                           <div key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -1382,9 +1308,9 @@ export function EngagementBriefTab({ clientData }: {
                     </div>
                   )}
 
-                  {bookedByLabel(f.booked_by) && (
+                  {bookedByLabel(f.bookedBy) && (
                     <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>
-                      {bookedByLabel(f.booked_by)}
+                      {bookedByLabel(f.bookedBy)}
                     </div>
                   )}
                 </div>
@@ -1398,11 +1324,11 @@ export function EngagementBriefTab({ clientData }: {
         <BriefSection title='Transfers'>
           {transfers.map(t => {
             const route = [t.origin, t.destination].filter(Boolean).join(' \u2192 ')
-            const veh = (t.driver_details ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
+            const veh = (t.driverDetails ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
             return (
               <div key={t.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>
                 <div style={{ width: 'clamp(80px,30%,140px)', flexShrink: 0, fontSize: 11, color: c.faint, fontFamily: TYPE.sans }}>
-                  {t.start_date ? formatDate(t.start_date) : ''}
+                  {t.startDate ? formatDate(t.startDate) : ''}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans, wordBreak: 'break-word' }}>
@@ -1414,11 +1340,11 @@ export function EngagementBriefTab({ clientData }: {
                     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {veh.map(v => (
                         <div key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{v.driver_name || 'Driver'}</span>
-                          {v.vehicle_role && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans }}>{v.vehicle_role}</span>}
-                          {[v.driver_phone, v.car_model, v.plate].filter(Boolean).length > 0 && (
+                          <span style={{ fontSize: 12, fontWeight: 600, color: c.ink, fontFamily: TYPE.sans }}>{v.driverName || 'Driver'}</span>
+                          {v.vehicleRole && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c.gold, fontFamily: TYPE.sans }}>{v.vehicleRole}</span>}
+                          {[v.driverPhone, v.carModel, v.plate].filter(Boolean).length > 0 && (
                             <span style={{ fontSize: 11, color: c.muted, fontFamily: 'DM Mono, monospace' }}>
-                              {[v.driver_phone, v.car_model, v.plate].filter(Boolean).join('  \u00b7  ')}
+                              {[v.driverPhone, v.carModel, v.plate].filter(Boolean).join('  \u00b7  ')}
                             </span>
                           )}
                         </div>
@@ -1426,9 +1352,9 @@ export function EngagementBriefTab({ clientData }: {
                     </div>
                   )}
 
-                  {bookedByLabel(t.booked_by) && (
+                  {bookedByLabel(t.bookedBy) && (
                     <div style={{ fontSize: 11, color: c.faint, fontFamily: TYPE.sans, marginTop: 4, fontStyle: 'italic' }}>
-                      {bookedByLabel(t.booked_by)}
+                      {bookedByLabel(t.bookedBy)}
                     </div>
                   )}
                 </div>
@@ -1439,21 +1365,21 @@ export function EngagementBriefTab({ clientData }: {
       )}
 
       {(() => {
-        const greeters = elements.filter(a => isMeetGreetElement(a.element_type) && a.brief_show !== false)
+        const greeters = elements.filter(a => isMeetGreetElement(a.elementType) && a.briefShow !== false)
         return greeters.length > 0 ? (
           <BriefSection title='Airport Meet & Greet'>
             {greeters.map(g => (
               <BriefRow
                 key={g.id}
-                label={g.start_date ? formatDate(g.start_date) : ''}
+                label={g.startDate ? formatDate(g.startDate) : ''}
                 value={g.name ?? 'Airport Meet & Greet'}
                 sub={[
-                  g.start_time ? fmtTime(g.start_time) : null,
-                  g.contact_name ?? null,
-                  g.contact_phone ?? null,
+                  g.startTime ? fmtTime(g.startTime) : null,
+                  g.contactName ?? null,
+                  g.contactPhone ?? null,
                   g.notes ?? null,
                 ].filter(Boolean).join('  \u00b7  ')}
-                bookedBy={bookedByLabel(g.booked_by)}
+                bookedBy={bookedByLabel(g.bookedBy)}
               />
             ))}
           </BriefSection>
@@ -1461,25 +1387,25 @@ export function EngagementBriefTab({ clientData }: {
       })()}
 
       {(() => {
-        const dining = elements.filter(a => isDiningElement(a.element_type) && a.brief_show !== false)
+        const dining = elements.filter(a => isDiningElement(a.elementType) && a.briefShow !== false)
         return dining.length > 0 ? (
           <BriefSection title='Dining'>
             {dining.map(d => {
-              const cancelled = d.dining_status === 'cancelled' && d.show_cancellation !== false
+              const cancelled = d.diningStatus === 'cancelled' && d.showCancellation !== false
               return (
               <BriefRow
                 key={d.id}
-                label={d.start_date ? formatDate(d.start_date) : ''}
+                label={d.startDate ? formatDate(d.startDate) : ''}
                 value={d.name ?? 'Dining'}
                 sub={[
-                  d.start_time ? fmtTime(d.start_time) : null,
-                  d.guest_name ?? null,
-                  d.guest_count ? `${d.guest_count} guests` : null,
-                  d.confirmation_number ? `Ref: ${d.confirmation_number}` : null,
+                  d.startTime ? fmtTime(d.startTime) : null,
+                  d.guestName ?? null,
+                  d.guestCount ? `${d.guestCount} guests` : null,
+                  d.confirmationNumber ? `Ref: ${d.confirmationNumber}` : null,
                 ].filter(Boolean).join('  \u00b7  ')}
-                bookedBy={bookedByLabel(d.booked_by)}
+                bookedBy={bookedByLabel(d.bookedBy)}
                 cancelled={cancelled}
-                cancellationNote={d.cancellation_penalty_applied ? d.cancellation_note : null}
+                cancellationNote={d.cancellationPenaltyApplied ? d.cancellationNote : null}
               />
               )
             })}
@@ -1490,13 +1416,13 @@ export function EngagementBriefTab({ clientData }: {
       {experiences.length > 0 && (
         <BriefSection title='Experiences'>
           {experiences.map(x => (
-              <BriefRow key={x.id} label={formatDate(x.entry_date)} value={x.title} sub={x.notes ?? undefined} />
+              formatDate(x.entryDate)
             ))}
         </BriefSection>
       )}
-      {clientData.brief?.important_notes && (clientData.brief.important_notes as string[]).length > 0 && (
+      {clientData.brief?.importantNotes && (clientData.brief.importantNotes as string[]).length > 0 && (
         <BriefSection title='Important Notes'>
-          {(clientData.brief.important_notes as string[]).map((note, i) => (
+          {(clientData.brief.importantNotes as string[]).map((note, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.6, paddingTop: 6, paddingBottom: 6 }}>
               <img src='/emblem.png' alt='' style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, marginTop: 3, opacity: 0.35 }} />
               <span>{note}</span>
@@ -1509,7 +1435,7 @@ export function EngagementBriefTab({ clientData }: {
         <BriefSection title='Links'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {clientData.links.map(link => {
-              const content = link.travel_engagement_link_content ?? null
+              const content = link.travelEngagementLinkContent ?? null
               return (
                 <div key={link.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   <a
@@ -1524,14 +1450,14 @@ export function EngagementBriefTab({ clientData }: {
                       justifyContent: 'space-between',
                       padding:        '14px 18px',
                       borderRadius:   content ? '10px 10px 0 0' : 10,
-                      border:         link.is_highlighted ? `1.5px solid ${c.gold}` : `1px solid ${c.lineStrong}`,
-                      borderBottom:   content ? 'none' : link.is_highlighted ? `1.5px solid ${c.gold}` : `1px solid ${c.lineStrong}`,
-                      background:     link.is_highlighted ? `${c.gold}08` : '#fff',
+                      border:         link.isHighlighted ? `1.5px solid ${c.gold}` : `1px solid ${c.lineStrong}`,
+                      borderBottom:   content ? 'none' : link.isHighlighted ? `1.5px solid ${c.gold}` : `1px solid ${c.lineStrong}`,
+                      background:     link.isHighlighted ? `${c.gold}08` : '#fff',
                       cursor:         'pointer',
                       transition:     'border-color 150ms',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {link.link_type === 'guide' ? (
+                        {link.linkType === 'guide' ? (
                           <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg' style={{ flexShrink: 0 }}>
                             <rect x='3' y='1' width='9' height='12' rx='1' stroke={c.gold} strokeWidth='1.2'/>
                             <line x1='3' y1='13' x2='12' y2='13' stroke={c.gold} strokeWidth='1.2'/>
@@ -1569,10 +1495,10 @@ export function EngagementBriefTab({ clientData }: {
                           {content.kicker}
                         </div>
                       )}
-                      {content.image_src && (
+                      {content.imageSrc && (
                         <img
-                          src={content.image_src ?? undefined}
-                          alt={content.image_alt ?? ''}
+                          src={content.imageSrc ?? undefined}
+                          alt={content.imageAlt ?? ''}
                           style={{ width: '100%', borderRadius: 6, marginBottom: 10, objectFit: 'cover', maxHeight: 180 }}
                         />
                       )}
@@ -1592,9 +1518,9 @@ export function EngagementBriefTab({ clientData }: {
 }
 
 // ── Contacts tab ──────────────────────────────────────────────────────────────
-// S54 — renders advisor + selected house people (clientData.contacts), resolved
+// S54 - renders advisor + selected house people (clientData.contacts), resolved
 // server-side from brief.contact_person_ids + contact_name_format. Falls back to
-// house.display_name when no people are selected.
+// house.displayName when no people are selected.
 
 export function ContactsTab({ clientData }: { clientData: DeliveryData }){
   const { brief, house, contacts, supplierContacts } = clientData
@@ -1637,23 +1563,23 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
   return (
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       {/* Advisor */}
-      {brief?.advisor_name && (
+      {brief?.advisorName && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
             Travel Advisor
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
             <ContactCard
-              name={brief.advisor_name}
+              name={brief.advisorName}
               role='Travel Advisor'
-              email={(brief as any).show_advisor_email ? brief.advisor_email : null}
-              phone={(brief as any).show_advisor_phone ? (brief as any).advisor_phone : null}
+              email={(brief as any).showAdvisorEmail ? brief.advisorEmail : null}
+              phone={(brief as any).showAdvisorPhone ? (brief as any).advisorPhone : null}
             />
           </div>
         </div>
       )}
 
-      {/* Supplier contacts (hotel concierge, DMC, etc.) — above guests */}
+      {/* Supplier contacts (hotel concierge, DMC, etc.) - above guests */}
       {(supplierContacts ?? []).length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
@@ -1673,21 +1599,21 @@ export function ContactsTab({ clientData }: { clientData: DeliveryData }){
       <ContactBlock label={staff.length === 1 ? 'Staff' : 'Staff'} people={staff} />
       
       {/* Fallback: no people selected -> house display name */}
-      {!hasAny && house?.display_name && (
+      {!hasAny && house?.displayName && (
         <div>
           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: c.faint, marginBottom: 12 }}>
             Guest
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-            <ContactCard name={house.display_name} role='Guest' />
+            <ContactCard name={house.displayName} role='Guest' />
           </div>
         </div>
       )}
 
-      {brief?.hotel_contact_note && (
+      {brief?.hotelContactNote && (
         <div style={{ marginTop: 28, padding: '16px 20px', borderRadius: 10, background: `${c.gold}08`, border: `1px solid ${c.gold}25` }}>
           <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: c.gold, marginBottom: 8 }}>Hotel Contact Note</div>
-          <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7 }}>{brief.hotel_contact_note}</div>
+          <div style={{ fontSize: 13, fontFamily: TYPE.sans, color: c.muted, lineHeight: 1.7 }}>{brief.hotelContactNote}</div>
         </div>
       )}
     </div>

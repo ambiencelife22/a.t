@@ -1,6 +1,6 @@
 /* ProgrammeAccessDenied.tsx
  * Shown when an authenticated user has no guest access to the requested programme.
- * Dark theme — matches Auth.tsx and ProgrammeLayout aesthetic.
+ * Dark theme - matches Auth.tsx and ProgrammeLayout aesthetic.
  * Classy, minimal, personal. No error language, no technical detail.
  * Rendered by ProgrammeRoute when Supabase returns no programme for the current user.
  */
@@ -71,7 +71,7 @@ export default function ProgrammeAccessDenied({ email, fallbackProgramme }: Prog
           opacity:      0.5,
         }} />
 
-        {/* Message — branches on whether a fallback programme exists */}
+        {/* Message - branches on whether a fallback programme exists */}
         <div style={{
           fontSize:      20,
           fontWeight:    800,
@@ -102,7 +102,7 @@ export default function ProgrammeAccessDenied({ email, fallbackProgramme }: Prog
           Signed in as {email}
         </div>
 
-        {/* Go to my programme — only shown when a fallback exists */}
+        {/* Go to my programme - only shown when a fallback exists */}
         {fallbackProgramme && (
           <a
             href={fallbackProgramme.url}

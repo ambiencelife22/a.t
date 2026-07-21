@@ -1,7 +1,7 @@
 // src/components/landing/LandingHero.tsx
 // Full-bleed hero for the travel landing page.
 // Mirrors the immerse hero pattern (parallax <img>, three overlay layers, glass card)
-// but scoped down — no guest name, no nights label, no CTAs.
+// but scoped down - no guest name, no nights label, no CTAs.
 //
 // Image: Soneva Jani Maldives.
 
@@ -23,7 +23,7 @@ const HERO_LAYOUT = {
 } as const
 
 const HERO_IMAGE_SRC = 'https://rjobcbpnhymuczjhqzmh.supabase.co/storage/v1/object/public/ambience-assets/immerse/io/maldives/sonevajani1.webp'
-const HERO_IMAGE_ALT = 'Soneva Jani, Maldives — overwater villa at twilight'
+const HERO_IMAGE_ALT = 'Soneva Jani, Maldives - overwater villa at twilight'
 
 export default function LandingHero() {
   const { ref, visible } = useImmerseVisible(0.05)
@@ -155,7 +155,7 @@ export default function LandingHero() {
                 color:         ID.text,
               }}
             >
-              {/* Line 1 — Private Travel. */}
+              {/* Line 1 - Private Travel. */}
                 <div>
                     {titleLine1.split(' ').map((word, i) => (
                     <span
@@ -174,7 +174,7 @@ export default function LandingHero() {
                     ))}
                 </div>
 
-                {/* Line 2 — Well Designed. (continues stagger from line 1) */}
+                {/* Line 2 - Well Designed. (continues stagger from line 1) */}
                 <div>
                     {titleLine2.split(' ').map((word, i) => {
                     const delay = 100 + (titleLine1.split(' ').length + i) * 55

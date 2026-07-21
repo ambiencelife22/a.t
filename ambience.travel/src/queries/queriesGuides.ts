@@ -1,16 +1,16 @@
-// queriesGuides.ts — generic read path shared by all four guide variants.
+// queriesGuides.ts - generic read path shared by all four guide variants.
 //
 // What it owns:
-//   - getGuideDestination(variant, slug) — fetches global_destinations row
+//   - getGuideDestination(variant, slug) - fetches global_destinations row
 //     plus the per-variant travel_*_guides overlay
-//   - checkGuideGrant(variant, slug) — checks travel_*_guide_for_user view
+//   - checkGuideGrant(variant, slug) - checks travel_*_guide_for_user view
 //     when grant infrastructure exists for the variant; returns 'ungated'
 //     when it doesn't
 //
 // What it does not own:
-//   - Variant-specific reads (venues / experiences / shops / hotels) — those
+//   - Variant-specific reads (venues / experiences / shops / hotels) - those
 //     live in queriesGuides<X>.ts
-//   - Admin writes — admin CRUD lives in queriesAdminGuides.ts
+//   - Admin writes - admin CRUD lives in queriesAdminGuides.ts
 //
 // Architecture:
 //   Single source of truth for "fetch a destination + overlay for variant X"
@@ -18,7 +18,7 @@
 //   Eliminates four near-identical implementations that previously lived in
 //   the per-variant query files.
 //
-// Last updated: S53 — initial build.
+// Last updated: S53 - initial build.
 
 import { supabase } from '../lib/supabase'
 import {
@@ -49,8 +49,8 @@ const OVERLAY_FIELDS = `
 // ── getGuideDestination ─────────────────────────────────────────────────────
 //
 // Returns null if the destination slug doesn't exist. Returns the destination
-// even when overlay is null (no travel_*_guides row exists). The caller —
-// typically useGuideRoute — decides what overlay-null means.
+// even when overlay is null (no travel_*_guides row exists). The caller -
+// typically useGuideRoute - decides what overlay-null means.
 
 export async function getGuideDestination(
   variant: GuideVariant,
@@ -86,16 +86,16 @@ export async function getGuideDestination(
     id:             string
     slug:           string
     name:           string
-    hero_image_src: string | null
-    hero_image_alt: string | null
+    heroImageSrc: string | null
+    heroImageAlt: string | null
   }
 
   return {
     id:           d.id,
     slug:         d.slug,
     name:         d.name,
-    heroImageSrc: d.hero_image_src,
-    heroImageAlt: d.hero_image_alt,
+    heroImageSrc: d.heroImageSrc,
+    heroImageAlt: d.heroImageAlt,
     overlay,
   }
 }

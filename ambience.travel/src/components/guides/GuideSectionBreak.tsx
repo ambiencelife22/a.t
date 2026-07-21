@@ -1,4 +1,4 @@
-// GuideSectionBreak.tsx — editorial section break for grouped guide venues
+// GuideSectionBreak.tsx - editorial section break for grouped guide venues
 // What it owns: visual chapter break between primary, supplementary, and
 //   recently closed venue groups. Sits between groups in the dining guide
 //   grid via gridColumn '1 / -1'.
@@ -13,7 +13,7 @@
 //
 // Used by: DiningGuidePage for "Also nearby" + "Recently closed" sections.
 //
-// Last updated: S52 — Created to replace the lightweight inline divider.
+// Last updated: S52 - Created to replace the lightweight inline divider.
 //   Treats supplementary + recently closed as deliberate editorial sections
 //   rather than row separators.
 

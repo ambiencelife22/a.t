@@ -64,7 +64,7 @@ export const IMMERSE = {
   warning:        '#fbbf24',
 
   // ── Shadow / depth tokens (S19) ──────────────────────────────────────────
-  // Lighter than ID.shadow — used on brick-style cards inside immerse sections
+  // Lighter than ID.shadow - used on brick-style cards inside immerse sections
   brickDepth:        '0 8px 24px rgba(15,18,22,0.045)',
   brickDepthHover:   '0 12px 28px rgba(15,18,22,0.065)',
   ctaDepth:          '0 4px 14px rgba(15,18,22,0.05)',
@@ -96,7 +96,7 @@ export const IMMERSE = {
 // ── Hero tokens (S32F) ───────────────────────────────────────────────────────
 // Hero-specific visual vocabulary. Lifted from inline literals in
 // ImmerseHero.tsx per Dev Standards §II "no hardcoded hex strings in
-// component files". Hero is the highest-visibility surface in the codebase —
+// component files". Hero is the highest-visibility surface in the codebase -
 // its tokens are scoped to a dedicated block so future hero work stays
 // contained.
 //
@@ -109,7 +109,7 @@ export const IMMERSE_HERO = {
   overlayVertical: 'linear-gradient(180deg, rgba(3,6,18,0.22) 0%, rgba(2,4,12,0.52) 100%)',
   overlaySide:     'linear-gradient(90deg, rgba(6,6,6,0.72) 0%, rgba(6,6,6,0.40) 32%, rgba(6,6,6,0.18) 62%, rgba(6,6,6,0.28) 100%)',
 
-  // Glass card chrome — sits on top of overlay stack, contains personalisation + CTAs.
+  // Glass card chrome - sits on top of overlay stack, contains personalisation + CTAs.
   glassBorder:     '1px solid rgba(255,255,255,0.20)',
   glassBackground: 'linear-gradient(180deg, rgba(12,12,12,0.18), rgba(12,12,12,0.10))',
   glassShadow:     '0 20px 60px rgba(0,0,0,0.22)',
@@ -121,7 +121,7 @@ export const IMMERSE_HERO = {
   ctaGhostBorder:      'rgba(255,255,255,0.10)',       // dining ghost border
   ctaGhostBorderStrong:'rgba(255,255,255,0.14)',       // secondary ghost border (slightly stronger)
 
-  // Title word-stagger animation — title fade-in cubic-bezier
+  // Title word-stagger animation - title fade-in cubic-bezier
   titleStaggerEasing: 'cubic-bezier(0.16,1,0.3,1)',
 } as const
 

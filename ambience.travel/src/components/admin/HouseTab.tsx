@@ -1,5 +1,5 @@
 /* HouseTab.tsx
- * ambience.HOUSE — private client intelligence platform.
+ * ambience.HOUSE - private client intelligence platform.
  *
  * Shell component only. Section components are imported from their own files.
  * Shared UI primitives live in houseUi.tsx.
@@ -8,14 +8,14 @@
  *   < 768px (mobile): single column, horizontal pill nav, full-screen modal.
  *   >= 768px (desktop): two-panel layout, sticky sidebar nav.
  *
- * Last updated: S52 — PPD_KEYS removed (was inline at line 114, violation of
+ * Last updated: S52 - PPD_KEYS removed (was inline at line 114, violation of
  *   single-source rule). Now imported from typesPpd.ts as PPD_PEOPLE_KEYS,
  *   aliased to PPD_KEYS locally to preserve all call sites.
- * Prior: S44 — refactor. Extracted section components + shared primitives.
+ * Prior: S44 - refactor. Extracted section components + shared primitives.
  *   Added Trip Dossier section (EngagementDossierSection) + adminTripQueries fetch.
- * Prior: S43 — Phase 4 redesign (useAdminToast, HouseCard, shared primitives).
- * Prior: S41 — Destinations + Contacts sections added.
- * Prior: S40D — mobile-responsive layout pass.
+ * Prior: S43 - Phase 4 redesign (useAdminToast, HouseCard, shared primitives).
+ * Prior: S41 - Destinations + Contacts sections added.
+ * Prior: S40D - mobile-responsive layout pass.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -148,24 +148,24 @@ type Section = 'overview' | 'preferences' | 'dining' | 'destinations' | 'contact
 
 // ── Person modal ──────────────────────────────────────────────────────────────
 
-// Formal name assembly — the patronymic chain. Single rule, used by the Profile-tab
+// Formal name assembly - the patronymic chain. Single rule, used by the Profile-tab
 // live preview now and mirrored by the canonical formatName() formatter later:
 //   given + [middle] + [connector] father + [connector] grandfather + [family]
 // Each part included only if present; the bin/bint connector prefixes father AND
 // grandfather when set. Western names (no middle/patronymic/connector) collapse to
 // "First Last" naturally.
 function assembleFormalName(parts: {
-  first_name?: string; middle_name?: string; father_name?: string
-  grandfather_name?: string; last_name?: string; patronymic_connector?: string
+  firstName?: string; middleName?: string; fatherName?: string
+  grandfatherName?: string; lastName?: string; patronymicConnector?: string
 }): string {
-  const c = (parts.patronymic_connector ?? '').trim()
+  const c = (parts.patronymicConnector ?? '').trim()
   const seg: string[] = []
   const push = (v?: string) => { const t = (v ?? '').trim(); if (t) seg.push(t) }
-  push(parts.first_name)
-  push(parts.middle_name)
-  if ((parts.father_name ?? '').trim())      { if (c) seg.push(c); push(parts.father_name) }
-  if ((parts.grandfather_name ?? '').trim()) { if (c) seg.push(c); push(parts.grandfather_name) }
-  push(parts.last_name)
+  push(parts.firstName)
+  push(parts.middleName)
+  if ((parts.fatherName ?? '').trim())      { if (c) seg.push(c); push(parts.fatherName) }
+  if ((parts.grandfatherName ?? '').trim()) { if (c) seg.push(c); push(parts.grandfatherName) }
+  push(parts.lastName)
   return seg.join(' ')
 }
 
@@ -182,27 +182,27 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   const mobile             = useWindowWidth() < 768
   const [tab, setTab]      = useState<'identity' | 'preferences' | 'sensitive' | 'profile'>('identity')
 
-  const [identityDraft, setIdentityDraft]   = useState({ member_ref: person.member_ref, role: person.role, notes: person.notes ?? '' })
+  const [identityDraft, setIdentityDraft]   = useState({ memberRef: person.memberRef, role: person.role, notes: person.notes ?? '' })
   const [identitySaving, setIdentitySaving] = useState(false)
   const [profile, setProfile]               = useState<HousePersonProfile | null | 'loading'>('loading')
   const [profileLoaded, setProfileLoaded]   = useState(false)
 
-  // Editable global_people identity (driven by person.person_id).
+  // Editable global_people identity (driven by person.personId).
   const [gp, setGp]               = useState<GlobalPersonResolved | null | 'loading'>('loading')
   const [gpLoaded, setGpLoaded]   = useState(false)
-  const [gpDraft, setGpDraft]     = useState({ first_name: '', middle_name: '', father_name: '', grandfather_name: '', last_name: '', patronymic_connector: '', pronouns: '', nickname: '', email: '', phone: '' })
+  const [gpDraft, setGpDraft]     = useState({ firstName: '', middleName: '', fatherName: '', grandfatherName: '', lastName: '', patronymicConnector: '', pronouns: '', nickname: '', email: '', phone: '' })
   const [gpSaving, setGpSaving]   = useState(false)
 
-  const personPrefs = useMemo(() => allPreferences.filter(p => p.person_id === person.id), [allPreferences, person.id])
-  const personPPD   = useMemo(() => allPPD.filter(p => p.person_id === person.person_id), [allPPD, person.person_id])
+  const personPrefs = useMemo(() => allPreferences.filter(p => p.personId === person.id), [allPreferences, person.id])
+  const personPPD   = useMemo(() => allPPD.filter(p => p.personId === person.personId), [allPPD, person.personId])
 
   const [addingPref, setAddingPref] = useState(false)
   const [prefCat, setPrefCat]       = useState<PrefCategory>('Dining')
-  const [prefDraft, setPrefDraft]   = useState({ pref_key: '', pref_value: '', source: 'direct', confidence: 'confirmed' as PrefConfidence })
+  const [prefDraft, setPrefDraft]   = useState({ prefKey: '', prefValue: '', source: 'direct', confidence: 'confirmed' as PrefConfidence })
   const [prefSaving, setPrefSaving] = useState(false)
 
   const [addingPPD, setAddingPPD] = useState(false)
-  const [ppdDraft, setPpdDraft]   = useState({ data_key: '', data_value: '', access_note: '' })
+  const [ppdDraft, setPpdDraft]   = useState({ dataKey: '', dataValue: '', accessNote: '' })
   const [ppdSaving, setPpdSaving] = useState(false)
 
   useEffect(() => {
@@ -215,17 +215,17 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   useEffect(() => {
     if (tab !== 'profile' || gpLoaded) return
     setGpLoaded(true)
-    if (!person.person_id) { setGp(null); return }
-    fetchGlobalPersonById(person.person_id)
+    if (!person.personId) { setGp(null); return }
+    fetchGlobalPersonById(person.personId)
       .then(p => {
         setGp(p)
         if (p) setGpDraft({
-          first_name:           p.first_name           ?? '',
-          middle_name:          p.middle_name          ?? '',
-          father_name:          p.father_name          ?? '',
-          grandfather_name:     p.grandfather_name     ?? '',
-          last_name:            p.last_name            ?? '',
-          patronymic_connector: p.patronymic_connector ?? '',
+          firstName:           p.firstName           ?? '',
+          middleName:          p.middleName          ?? '',
+          fatherName:          p.fatherName          ?? '',
+          grandfatherName:     p.grandfatherName     ?? '',
+          lastName:            p.lastName            ?? '',
+          patronymicConnector: p.patronymicConnector ?? '',
           pronouns:             p.pronouns             ?? '',
           nickname:             p.nickname             ?? '',
           email:                p.email                ?? '',
@@ -233,13 +233,13 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
         })
       })
       .catch(() => setGp(null))
-  }, [tab, gpLoaded, person.person_id])
+  }, [tab, gpLoaded, person.personId])
 
   async function saveIdentity() {
-    if (!identityDraft.member_ref.trim()) return
+    if (!identityDraft.memberRef.trim()) return
     setIdentitySaving(true)
     try {
-      await updatePerson(person.id, { member_ref: identityDraft.member_ref.trim(), role: identityDraft.role, notes: identityDraft.notes.trim() || null })
+      await updatePerson(person.id, { memberRef: identityDraft.memberRef.trim(), role: identityDraft.role, notes: identityDraft.notes.trim() || null })
       success('Saved.')
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
@@ -247,16 +247,16 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   }
 
   async function saveGlobalPerson() {
-    if (!person.person_id) return
+    if (!person.personId) return
     setGpSaving(true)
     try {
-      const updated = await updateGlobalPerson(person.person_id, {
-        first_name:           gpDraft.first_name.trim()           || null,
-        middle_name:          gpDraft.middle_name.trim()          || null,
-        father_name:          gpDraft.father_name.trim()          || null,
-        grandfather_name:     gpDraft.grandfather_name.trim()     || null,
-        last_name:            gpDraft.last_name.trim()            || null,
-        patronymic_connector: gpDraft.patronymic_connector || null,
+      const updated = await updateGlobalPerson(person.personId, {
+        firstName:           gpDraft.firstName.trim()           || null,
+        middleName:          gpDraft.middleName.trim()          || null,
+        fatherName:          gpDraft.fatherName.trim()          || null,
+        grandfatherName:     gpDraft.grandfatherName.trim()     || null,
+        lastName:            gpDraft.lastName.trim()            || null,
+        patronymicConnector: gpDraft.patronymicConnector || null,
         pronouns:             gpDraft.pronouns || null,
         nickname:             gpDraft.nickname.trim()             || null,
         email:                gpDraft.email.trim()                || null,
@@ -269,7 +269,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   }
 
   async function deleteSelf() {
-    if (!window.confirm(`Remove ${person.member_ref} from this household?`)) return
+    if (!window.confirm(`Remove ${person.memberRef} from this household?`)) return
     try {
       await deletePerson(person.id)
       success('Removed.')
@@ -279,13 +279,13 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   }
 
   async function addPref() {
-    if (!prefDraft.pref_key.trim() || !prefDraft.pref_value.trim()) return
+    if (!prefDraft.prefKey.trim() || !prefDraft.prefValue.trim()) return
     setPrefSaving(true)
     try {
-      await createPreference(houseId, person.id, prefCat, prefDraft.pref_key.trim(), prefDraft.pref_value.trim(), null, prefDraft.source, prefDraft.confidence)
+      await createPreference(houseId, person.id, prefCat, prefDraft.prefKey.trim(), prefDraft.prefValue.trim(), null, prefDraft.source, prefDraft.confidence)
       success('Added.')
       setAddingPref(false)
-      setPrefDraft({ pref_key: '', pref_value: '', source: 'direct', confidence: 'confirmed' })
+      setPrefDraft({ prefKey: '', prefValue: '', source: 'direct', confidence: 'confirmed' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setPrefSaving(false)
@@ -302,13 +302,13 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
   }
 
   async function addPPD() {
-    if (!ppdDraft.data_key.trim() || !ppdDraft.data_value.trim()) return
+    if (!ppdDraft.dataKey.trim() || !ppdDraft.dataValue.trim()) return
     setPpdSaving(true)
     try {
-      await createPPDPeopleEntry(houseId, person.person_id, ppdDraft.data_key.trim(), ppdDraft.data_value.trim(), ppdDraft.access_note.trim() || null)
+      await createPPDPeopleEntry(houseId, person.personId, ppdDraft.dataKey.trim(), ppdDraft.dataValue.trim(), ppdDraft.accessNote.trim() || null)
       success('Added.')
       setAddingPPD(false)
-      setPpdDraft({ data_key: '', data_value: '', access_note: '' })
+      setPpdDraft({ dataKey: '', dataValue: '', accessNote: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setPpdSaving(false)
@@ -362,7 +362,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 4 }}>Member</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>{person.member_ref}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: A.text, fontFamily: A.font }}>{person.memberRef}</div>
             <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, textTransform: 'capitalize', marginTop: 2 }}>{person.role}</div>
           </div>
           <button onClick={onClose} style={btnG}>Close</button>
@@ -383,7 +383,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
               <Field label='Reference Code'>
-                <input style={inputStyle} value={identityDraft.member_ref} onChange={e => setIdentityDraft(d => ({ ...d, member_ref: e.target.value }))} />
+                <input style={inputStyle} value={identityDraft.memberRef} onChange={e => setIdentityDraft(d => ({ ...d, memberRef: e.target.value }))} />
               </Field>
               <Field label='Role'>
                 <select style={inputStyle} value={identityDraft.role} onChange={e => setIdentityDraft(d => ({ ...d, role: e.target.value }))}>
@@ -393,10 +393,10 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
             </div>
             <PersonLinkPicker
               label='Linked Person (global registry)'
-              personId={person.person_id}
+              personId={person.personId}
               onChange={async (pid) => {
                 try {
-                  await updatePerson(person.id, { person_id: pid })
+                  await updatePerson(person.id, { personId: pid })
                   success(pid ? 'Linked.' : 'Unlinked.')
                   await onReload()
                 } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
@@ -417,24 +417,24 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
         {tab === 'preferences' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>Preferences for {person.member_ref} specifically.</div>
+              <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>Preferences for {person.memberRef} specifically.</div>
               {!addingPref && <button onClick={() => setAddingPref(true)} style={btnP}>+ Add</button>}
             </div>
             {addingPref && (
               <AddFormShell>
                 <Field label='Category'>
-                  <select style={inputStyle} value={prefCat} onChange={e => { setPrefCat(e.target.value as PrefCategory); setPrefDraft(d => ({ ...d, pref_key: '' })) }}>
+                  <select style={inputStyle} value={prefCat} onChange={e => { setPrefCat(e.target.value as PrefCategory); setPrefDraft(d => ({ ...d, prefKey: '' })) }}>
                     {PREF_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </Field>
                 <Field label='Key'>
-                  <select style={inputStyle} value={prefDraft.pref_key} onChange={e => setPrefDraft(d => ({ ...d, pref_key: e.target.value }))}>
+                  <select style={inputStyle} value={prefDraft.prefKey} onChange={e => setPrefDraft(d => ({ ...d, prefKey: e.target.value }))}>
                     <option value=''>Select...</option>
                     {(PREF_KEYS[prefCat] ?? []).map(k => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </Field>
                 <Field label='Value'>
-                  <input style={inputStyle} placeholder='Value...' value={prefDraft.pref_value} onChange={e => setPrefDraft(d => ({ ...d, pref_value: e.target.value }))} autoFocus />
+                  <input style={inputStyle} placeholder='Value...' value={prefDraft.prefValue} onChange={e => setPrefDraft(d => ({ ...d, prefValue: e.target.value }))} autoFocus />
                 </Field>
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
                   <Field label='Confidence'>
@@ -457,8 +457,8 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
                     <EntryCard key={p.id} accentColor={CONF_COLOR[p.confidence]}>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', opacity: p.confidence === 'outdated' ? 0.55 : 1 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.pref_key}</div>
-                          <div style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 2 }}>{p.pref_value}</div>
+                          <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.prefKey}</div>
+                          <div style={{ fontSize: 12, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 2 }}>{p.prefValue}</div>
                         </div>
                         <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                           {p.confidence !== 'confirmed' && <button onClick={() => confirmPref(p)} style={{ ...btnG, padding: '3px 7px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>✓</button>}
@@ -485,16 +485,16 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
             {addingPPD && (
               <AddFormShell danger>
                 <Field label='Field'>
-                  <select style={inputStyle} value={ppdDraft.data_key} onChange={e => setPpdDraft(d => ({ ...d, data_key: e.target.value }))}>
+                  <select style={inputStyle} value={ppdDraft.dataKey} onChange={e => setPpdDraft(d => ({ ...d, dataKey: e.target.value }))}>
                     <option value=''>Select...</option>
                     {PPD_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </Field>
                 <Field label='Value'>
-                  <PPDValueInput dataKey={ppdDraft.data_key} value={ppdDraft.data_value} onChange={v => setPpdDraft(d => ({ ...d, data_value: v }))} />
+                  <PPDValueInput dataKey={ppdDraft.dataKey} value={ppdDraft.dataValue} onChange={v => setPpdDraft(d => ({ ...d, dataValue: v }))} />
                 </Field>
                 <Field label='Access Note (optional)'>
-                  <input style={inputStyle} placeholder='Who has access...' value={ppdDraft.access_note} onChange={e => setPpdDraft(d => ({ ...d, access_note: e.target.value }))} />
+                  <input style={inputStyle} placeholder='Who has access...' value={ppdDraft.accessNote} onChange={e => setPpdDraft(d => ({ ...d, accessNote: e.target.value }))} />
                 </Field>
                 <FormActions onCancel={() => setAddingPPD(false)} onSave={addPPD} saving={ppdSaving} />
               </AddFormShell>
@@ -507,11 +507,11 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
                     <EntryCard key={entry.id} danger>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.data_key}</div>
-                          <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>{entry.data_value}</div>
-                          {entry.access_note && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{entry.access_note}</div>}
+                          <div style={{ fontSize: 10, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.dataKey}</div>
+                          <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>{entry.dataValue}</div>
+                          {entry.accessNote && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{entry.accessNote}</div>}
                         </div>
-                        <CopyButton value={entry.data_value} />
+                        <CopyButton value={entry.dataValue} />
                         <button onClick={() => removePPD(entry.id)} style={btnD}>x</button>
                       </div>
                     </EntryCard>
@@ -525,10 +525,10 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
         {tab === 'profile' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* Editable global_people identity (canonical registry). */}
-            {!person.person_id ? (
+            {!person.personId ? (
               <div style={{ padding: '10px 14px', background: A.bgCard, border: `1px solid ${A.border}`, borderRadius: 8 }}>
                 <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, lineHeight: 1.6 }}>
-                  Not linked to the person registry. Use the <span style={{ color: A.gold }}>Linked Person</span> field on the Identity tab to link or create a global record — identity fields become editable here once linked.
+                  Not linked to the person registry. Use the <span style={{ color: A.gold }}>Linked Person</span> field on the Identity tab to link or create a global record - identity fields become editable here once linked.
                 </div>
               </div>
             ) : gp === 'loading' ? (
@@ -539,34 +539,34 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 12, borderBottom: `1px solid ${A.border}` }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>Registry Identity</div>
 
-                {/* Name chain — reading order. Western names use first+last and leave
+                {/* Name chain - reading order. Western names use first+last and leave
                     the middle/patronymic fields blank; one form serves both. */}
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                   <Field label='First Name'>
-                    <input style={inputStyle} value={gpDraft.first_name} onChange={e => setGpDraft(d => ({ ...d, first_name: e.target.value }))} />
+                    <input style={inputStyle} value={gpDraft.firstName} onChange={e => setGpDraft(d => ({ ...d, firstName: e.target.value }))} />
                   </Field>
                   <Field label='Middle Name'>
-                    <input style={inputStyle} value={gpDraft.middle_name} onChange={e => setGpDraft(d => ({ ...d, middle_name: e.target.value }))} />
+                    <input style={inputStyle} value={gpDraft.middleName} onChange={e => setGpDraft(d => ({ ...d, middleName: e.target.value }))} />
                   </Field>
                   <Field label="Father's Name">
-                    <input style={inputStyle} value={gpDraft.father_name} onChange={e => setGpDraft(d => ({ ...d, father_name: e.target.value }))} />
+                    <input style={inputStyle} value={gpDraft.fatherName} onChange={e => setGpDraft(d => ({ ...d, fatherName: e.target.value }))} />
                   </Field>
                   <Field label="Grandfather's Name">
-                    <input style={inputStyle} value={gpDraft.grandfather_name} onChange={e => setGpDraft(d => ({ ...d, grandfather_name: e.target.value }))} />
+                    <input style={inputStyle} value={gpDraft.grandfatherName} onChange={e => setGpDraft(d => ({ ...d, grandfatherName: e.target.value }))} />
                   </Field>
                   <Field label='Family / Last Name'>
-                    <input style={inputStyle} value={gpDraft.last_name} onChange={e => setGpDraft(d => ({ ...d, last_name: e.target.value }))} />
+                    <input style={inputStyle} value={gpDraft.lastName} onChange={e => setGpDraft(d => ({ ...d, lastName: e.target.value }))} />
                   </Field>
                   <Field label='Connector'>
-                    <select style={inputStyle} value={gpDraft.patronymic_connector} onChange={e => setGpDraft(d => ({ ...d, patronymic_connector: e.target.value }))}>
-                      <option value=''>— none —</option>
+                    <select style={inputStyle} value={gpDraft.patronymicConnector} onChange={e => setGpDraft(d => ({ ...d, patronymicConnector: e.target.value }))}>
+                      <option value=''>- none -</option>
                       <option value='bin'>bin (son of)</option>
                       <option value='bint'>bint (daughter of)</option>
                     </select>
                   </Field>
                 </div>
 
-                {/* Live formal-name preview — the chain assembled as you type. */}
+                {/* Live formal-name preview - the chain assembled as you type. */}
                 {assembleFormalName(gpDraft) && (
                   <div style={{ padding: '8px 12px', background: `${A.gold}0c`, border: `1px solid ${A.gold}25`, borderRadius: 8 }}>
                     <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 3 }}>Formal name</div>
@@ -576,7 +576,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
 
                 <Field label='Pronouns (internal)'>
                   <select style={{ ...inputStyle, maxWidth: mobile ? '100%' : 220 }} value={gpDraft.pronouns} onChange={e => setGpDraft(d => ({ ...d, pronouns: e.target.value }))}>
-                    <option value=''>— not set —</option>
+                    <option value=''>- not set -</option>
                     <option value='he/him'>he/him</option>
                     <option value='she/her'>she/her</option>
                     <option value='they/them'>they/them</option>
@@ -613,7 +613,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
                   <span style={{ fontSize: 13, color: A.muted, fontFamily: A.font }}>No linked account</span>
                 </div>
                 <div style={{ fontSize: 12, color: A.faint, fontFamily: A.font, lineHeight: 1.6 }}>
-                  {person.member_ref} does not have a linked ambience login. Profile auto-links via <span style={{ fontFamily: 'DM Mono, monospace' }}>global_profiles.person_id</span> when they sign up.
+                  {person.memberRef} does not have a linked ambience login. Profile auto-links via <span style={{ fontFamily: 'DM Mono, monospace' }}>global_profiles.personId</span> when they sign up.
                 </div>
               </div>
             ) : (
@@ -624,7 +624,7 @@ function PersonModal({ person, houseId, allPreferences, allPPD, roles, onClose, 
                 </div>
                 <EntryCard>
                   <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>Display name</div>
-                  <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{profile.display_name ?? '(not set)'}</div>
+                  <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{profile.displayName ?? '(not set)'}</div>
                 </EntryCard>
                 <EntryCard>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -663,7 +663,7 @@ function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
     const q = search.toLowerCase().trim()
     if (!q) return houses
     return houses.filter(h =>
-      matchesQuery(q, h.display_name, h.a_house_id, h.summary, h.service_style_notes)
+      matchesQuery(q, h.displayName, h.aHouseId, h.summary, h.serviceStyleNotes)
     )
   }, [houses, search])
 
@@ -690,7 +690,7 @@ function HouseList({ onSelect }: { onSelect: (h: House) => void }) {
 
 function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
   const [hov, setHov] = useState(false)
-  const summary = house.summary || house.service_style_notes
+  const summary = house.summary || house.serviceStyleNotes
 
   return (
     <div
@@ -711,7 +711,7 @@ function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
-          <span style={{ fontSize: 17, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.display_name}</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.displayName}</span>
           {house.designation && <DesigBadge designation={house.designation} />}
           <span style={{ fontSize: 9, color: house.status === 'active' ? '#4ade80' : A.faint, fontFamily: A.font, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {house.status}
@@ -725,7 +725,7 @@ function HouseCard({ house, onClick }: { house: House; onClick: () => void }) {
         </div>
       )}
       <div style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em' }}>
-        {house.a_house_id}
+        {house.aHouseId}
       </div>
     </div>
   )
@@ -744,7 +744,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
   const { error, success }            = useAdminToast()
   const searchRef                     = useRef<HTMLInputElement>(null)
   const [addingPerson, setAddingPerson] = useState(false)
-  const [pd, setPd]                   = useState({ member_ref: '', role: 'primary' })
+  const [pd, setPd]                   = useState({ memberRef: '', role: 'primary' })
   const roles                          = data.roles
   const [addSaving, setAddSaving]     = useState(false)
 
@@ -785,34 +785,34 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const personRef = (id: string | null) => id ? (data.people.find(p => p.id === id)?.member_ref ?? null) : null
+  const personRef = (id: string | null) => id ? (data.people.find(p => p.id === id)?.memberRef ?? null) : null
 
   const searchResults = useMemo(() => {
     const query = q.toLowerCase().trim()
     if (!query) return null
     return {
-      preferences:  data.preferences.filter(p => matchesQuery(query, p.pref_key, p.pref_value)),
+      preferences:  data.preferences.filter(p => matchesQuery(query, p.prefKey, p.prefValue)),
       dining:       data.dining.filter(d => matchesQuery(query, d.restaurant_name, d.city)),
-      destinations: data.destinations.filter(d => matchesQuery(query, d.destination_name, d.country)),
+      destinations: data.destinations.filter(d => matchesQuery(query, d.destinationName, d.country)),
       contacts:     data.contacts.filter(c => matchesQuery(query, c.name, c.role)),
-      ppd:          data.ppd.filter(p => matchesQuery(query, p.data_key, p.data_value)),
+      ppd:          data.ppd.filter(p => matchesQuery(query, p.dataKey, p.dataValue)),
     }
   }, [q, data])
 
   const avoidDining = data.dining.filter(d => d.status === 'avoid')
 
   async function addPerson() {
-    if (!pd.member_ref.trim()) return
+    if (!pd.memberRef.trim()) return
     setAddSaving(true)
     try {
       // Mint a linked global_people row so the house-person is born linked,
       // not orphaned. member_ref doubles as the new person's nickname for
       // display until richer identity fields are filled in.
-      const gp = await createGlobalPerson({ nickname: pd.member_ref.trim() })
-      await createPerson(house.id, pd.member_ref.trim(), pd.role, null, gp.id)
+      const gp = await createGlobalPerson({ nickname: pd.memberRef.trim() })
+      await createPerson(house.id, pd.memberRef.trim(), pd.role, null, gp.id)
       success('Added.')
       setAddingPerson(false)
-      setPd({ member_ref: '', role: 'primary' })
+      setPd({ memberRef: '', role: 'primary' })
       await loadAll()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setAddSaving(false)
@@ -839,11 +839,11 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
       {addingPerson && (
         <div style={{ marginTop: 6 }}>
           <AddFormShell>
-            <input style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} placeholder='J, K, Child 1...' value={pd.member_ref} onChange={e => setPd(d => ({ ...d, member_ref: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') addPerson() }} />
+            <input style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} placeholder='J, K, Child 1...' value={pd.memberRef} onChange={e => setPd(d => ({ ...d, memberRef: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') addPerson() }} />
             <select style={{ ...inputStyle, fontSize: 13, padding: '9px 12px' }} value={pd.role} onChange={e => setPd(d => ({ ...d, role: e.target.value }))}>
               {roles.map(r => <option key={r.slug} value={r.slug}>{r.label}</option>)}
             </select>
-            <FormActions onCancel={() => { setAddingPerson(false); setPd({ member_ref: '', role: 'primary' }) }} onSave={addPerson} saving={addSaving} />
+            <FormActions onCancel={() => { setAddingPerson(false); setPd({ memberRef: '', role: 'primary' }) }} onSave={addPerson} saving={addSaving} />
           </AddFormShell>
         </div>
       )}
@@ -923,7 +923,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <button onClick={onBack} style={{ ...btnG, padding: '5px 10px', fontSize: 11, flexShrink: 0 }}>← All</button>
-          <span style={{ fontSize: mobile ? 18 : 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{house.display_name}</span>
+          <span style={{ fontSize: mobile ? 18 : 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{house.displayName}</span>
           {house.designation && <DesigBadge designation={house.designation} />}
         </div>
         <div style={{ position: 'relative', flexShrink: 0, width: mobile ? '100%' : 'auto' }}>
@@ -1000,8 +1000,8 @@ function SearchResults({ results, personRef, onClose }: {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
             {results.preferences.map(p => (
               <EntryCard key={p.id} accentColor={CONF_COLOR[p.confidence]}>
-                <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.pref_key}{personRef(p.person_id) ? ` · ${personRef(p.person_id)}` : ''}</div>
-                <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 2 }}>{p.pref_value}</div>
+                <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.category} · {p.prefKey}{personRef(p.personId) ? ` · ${personRef(p.personId)}` : ''}</div>
+                <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 2 }}>{p.prefValue}</div>
               </EntryCard>
             ))}
           </div>
@@ -1033,7 +1033,7 @@ function SearchResults({ results, personRef, onClose }: {
               <EntryCard key={d.id} accentColor={DEST_STATUS_COLOR[d.status]}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{d.destination_name}</div>
+                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{d.destinationName}</div>
                     <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[d.city, d.country].filter(Boolean).join(', ')}</div>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: DEST_STATUS_COLOR[d.status], fontFamily: A.font, textTransform: 'uppercase' }}>{DEST_STATUS_LABEL[d.status]}</span>
@@ -1050,7 +1050,7 @@ function SearchResults({ results, personRef, onClose }: {
             {results.contacts.map(c => (
               <EntryCard key={c.id}>
                 <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{c.name}</div>
-                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{c.contact_type}{c.role ? ` · ${c.role}` : ''}</div>
+                <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{c.contactType}{c.role ? ` · ${c.role}` : ''}</div>
               </EntryCard>
             ))}
           </div>
@@ -1064,10 +1064,10 @@ function SearchResults({ results, personRef, onClose }: {
               <EntryCard key={p.id} danger>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.data_key}</div>
-                    <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, wordBreak: 'break-all' }}>{p.data_value}</div>
+                    <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>{p.dataKey}</div>
+                    <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, wordBreak: 'break-all' }}>{p.dataValue}</div>
                   </div>
-                  <CopyButton value={p.data_value} />
+                  <CopyButton value={p.dataValue} />
                 </div>
               </EntryCard>
             ))}
@@ -1079,10 +1079,10 @@ function SearchResults({ results, personRef, onClose }: {
   )
 }
 
-// ── Household roster — tier-grouped, intra-tier drag-reorder ───────────────────
+// ── Household roster - tier-grouped, intra-tier drag-reorder ───────────────────
 // Role owns the tier (from the roles registry sort_order); sort_order owns the
 // position WITHIN a tier. The UI makes both axes legible: tier headers show role's
-// doing, drag reorders within a tier (you can't drag across tiers — role governs
+// doing, drag reorders within a tier (you can't drag across tiers - role governs
 // that, so the view can never show an order the model would overturn). On drop, the
 // tier's new id order is persisted via reorderPeople. Single source preserved.
 function RosterRoster({ people, roles, onSelect, onReload, onError }: {
@@ -1140,10 +1140,10 @@ function RosterRoster({ people, roles, onSelect, onReload, onError }: {
                 opacity: dragId === p.id ? 0.4 : 1, border: overId === p.id ? `1px dashed ${A.gold}55` : '1px solid transparent' }}>
               <span style={{ color: A.faint, opacity: 0.4, fontSize: 13, cursor: 'grab', flexShrink: 0, lineHeight: 1 }} title='Drag to reorder'>⋮⋮</span>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${A.gold}18`, border: `1px solid ${A.gold}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: A.gold, fontFamily: A.font, flexShrink: 0 }}>
-                {p.member_ref.slice(0, 1).toUpperCase()}
+                {p.memberRef.slice(0, 1).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{p.member_ref}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{p.memberRef}</div>
                 <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{p.role}</div>
               </div>
               <span style={{ fontSize: 12, color: A.faint, opacity: 0.5 }}>›</span>
@@ -1161,7 +1161,7 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
   house: House; data: AllData; mobile: boolean; onSaved: () => void; onReload: () => void
 }) {
   const [editingName, setEditingName]       = useState(false)
-  const [nameDraft, setNameDraft]           = useState(house.display_name)
+  const [nameDraft, setNameDraft]           = useState(house.displayName)
   const [nameSaving, setNameSaving]         = useState(false)
   const [editingSummary, setEditingSummary] = useState(false)
   const [summaryDraft, setSummaryDraft]     = useState(house.summary ?? '')
@@ -1174,9 +1174,9 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
   }
 
   async function saveName() {
-    if (!nameDraft.trim() || nameDraft.trim() === house.display_name) { setEditingName(false); return }
+    if (!nameDraft.trim() || nameDraft.trim() === house.displayName) { setEditingName(false); return }
     setNameSaving(true)
-    try { await updateHouse(house.id, { display_name: nameDraft.trim() }); success('Name updated.'); setEditingName(false); await onSaved() }
+    try { await updateHouse(house.id, { displayName: nameDraft.trim() }); success('Name updated.'); setEditingName(false); await onSaved() }
     catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setNameSaving(false)
   }
@@ -1198,7 +1198,7 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
 
   const hardDietaryAvoids = data.preferences.filter(p =>
     p.confidence === 'confirmed' &&
-    (p.category === 'Allergies' || (p.category === 'Dining' && ['No Alcohol', 'No Pork', 'Halal', 'Kosher', 'Vegan', 'Vegetarian'].includes(p.pref_key)))
+    (p.category === 'Allergies' || (p.category === 'Dining' && ['No Alcohol', 'No Pork', 'Halal', 'Kosher', 'Vegan', 'Vegetarian'].includes(p.prefKey)))
   )
 
   return (
@@ -1206,13 +1206,13 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {editingName ? (
           <>
-            <input style={{ ...inputStyle, fontSize: 16, fontWeight: 700, padding: '7px 12px', flex: 1, minWidth: 160 }} value={nameDraft} onChange={e => setNameDraft(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditingName(false); setNameDraft(house.display_name) } }} />
+            <input style={{ ...inputStyle, fontSize: 16, fontWeight: 700, padding: '7px 12px', flex: 1, minWidth: 160 }} value={nameDraft} onChange={e => setNameDraft(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditingName(false); setNameDraft(house.displayName) } }} />
             <button onClick={saveName} style={{ ...btnP, opacity: nameSaving ? 0.5 : 1 }} disabled={nameSaving}>Save</button>
-            <button onClick={() => { setEditingName(false); setNameDraft(house.display_name) }} style={btnG}>Cancel</button>
+            <button onClick={() => { setEditingName(false); setNameDraft(house.displayName) }} style={btnG}>Cancel</button>
           </>
         ) : (
           <>
-            <span style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.display_name}</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font }}>{house.displayName}</span>
             <button onClick={() => setEditingName(true)} style={{ ...btnG, padding: '3px 10px', fontSize: 10 }}>Edit name</button>
           </>
         )}
@@ -1240,7 +1240,7 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#f87171', fontFamily: A.font, whiteSpace: 'nowrap' }}>Dietary</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {hardDietaryAvoids.map(p => (
-              <span key={p.id} style={{ padding: '2px 9px', borderRadius: 20, background: '#f8717120', border: '1px solid #f8717140', color: '#f87171', fontSize: 11, fontWeight: 600, fontFamily: A.font }}>{p.pref_key}</span>
+              <span key={p.id} style={{ padding: '2px 9px', borderRadius: 20, background: '#f8717120', border: '1px solid #f8717140', color: '#f87171', fontSize: 11, fontWeight: 600, fontFamily: A.font }}>{p.prefKey}</span>
             ))}
           </div>
         </div>
@@ -1264,9 +1264,9 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
                     {prefs.map(p => (
                       <div key={p.id} style={{ borderLeft: `2px solid ${CONF_COLOR[p.confidence]}40`, paddingLeft: 10 }}>
                         <div style={{ fontSize: 10, color: A.muted, fontFamily: A.font, marginBottom: 2 }}>
-                          {p.pref_key}{p.person_id ? <span style={{ color: A.faint }}> · {data.people.find(pe => pe.id === p.person_id)?.member_ref}</span> : null}
+                          {p.prefKey}{p.personId ? <span style={{ color: A.faint }}> · {data.people.find(pe => pe.id === p.personId)?.memberRef}</span> : null}
                         </div>
-                        <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, lineHeight: 1.4 }}>{p.pref_value}</div>
+                        <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, lineHeight: 1.4 }}>{p.prefValue}</div>
                       </div>
                     ))}
                   </div>
@@ -1321,26 +1321,26 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
-  const [draft, setDraft]   = useState({ pref_key: '', pref_value: '', notes: '', source: 'direct', confidence: 'confirmed' as PrefConfidence, person_id: '' })
+  const [draft, setDraft]   = useState({ prefKey: '', prefValue: '', notes: '', source: 'direct', confidence: 'confirmed' as PrefConfidence, personId: '' })
   const { success, error }  = useAdminToast()
 
   const catPrefs = useMemo(() => {
     const base = data.preferences.filter(p => p.category === cat)
     if (!filter.trim()) return base
     const q = filter.toLowerCase()
-    return base.filter(p => matchesQuery(q, p.pref_key, p.pref_value))
+    return base.filter(p => matchesQuery(q, p.prefKey, p.prefValue))
   }, [data.preferences, cat, filter])
 
   const catCount = (c: PrefCategory) => data.preferences.filter(p => p.category === c).length
 
   async function handleAdd() {
-    if (!draft.pref_key.trim() || !draft.pref_value.trim()) return
+    if (!draft.prefKey.trim() || !draft.prefValue.trim()) return
     setSaving(true)
     try {
-      await createPreference(houseId, draft.person_id || null, cat, draft.pref_key.trim(), draft.pref_value.trim(), draft.notes.trim() || null, draft.source, draft.confidence)
+      await createPreference(houseId, draft.personId || null, cat, draft.prefKey.trim(), draft.prefValue.trim(), draft.notes.trim() || null, draft.source, draft.confidence)
       success('Added.')
       setAdding(false)
-      setDraft({ pref_key: '', pref_value: '', notes: '', source: 'direct', confidence: 'confirmed', person_id: '' })
+      setDraft({ prefKey: '', prefValue: '', notes: '', source: 'direct', confidence: 'confirmed', personId: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1384,17 +1384,17 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
       {adding && (
         <AddFormShell>
           <Field label='Key'>
-            <select style={inputStyle} value={draft.pref_key} onChange={e => setDraft(d => ({ ...d, pref_key: e.target.value }))}>
+            <select style={inputStyle} value={draft.prefKey} onChange={e => setDraft(d => ({ ...d, prefKey: e.target.value }))}>
               <option value=''>Select...</option>
               {(PREF_KEYS[cat] ?? []).map(k => <option key={k} value={k}>{k}</option>)}
             </select>
           </Field>
-          <Field label='Value'><input style={inputStyle} placeholder='Value...' value={draft.pref_value} onChange={e => setDraft(d => ({ ...d, pref_value: e.target.value }))} autoFocus /></Field>
+          <Field label='Value'><input style={inputStyle} placeholder='Value...' value={draft.prefValue} onChange={e => setDraft(d => ({ ...d, prefValue: e.target.value }))} autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Person'>
-              <select style={inputStyle} value={draft.person_id} onChange={e => setDraft(d => ({ ...d, person_id: e.target.value }))}>
+              <select style={inputStyle} value={draft.personId} onChange={e => setDraft(d => ({ ...d, personId: e.target.value }))}>
                 <option value=''>Household</option>
-                {data.people.map(p => <option key={p.id} value={p.id}>{p.member_ref}</option>)}
+                {data.people.map(p => <option key={p.id} value={p.id}>{p.memberRef}</option>)}
               </select>
             </Field>
             <Field label='Confidence'>
@@ -1421,10 +1421,10 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', opacity: p.confidence === 'outdated' ? 0.55 : 1 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>
-                      {p.pref_key}
-                      {personRef(p.person_id) && <span style={{ fontWeight: 400, color: A.faint }}> · {personRef(p.person_id)}</span>}
+                      {p.prefKey}
+                      {personRef(p.personId) && <span style={{ fontWeight: 400, color: A.faint }}> · {personRef(p.personId)}</span>}
                     </div>
-                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 3, lineHeight: 1.4 }}>{p.pref_value}</div>
+                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600, marginTop: 3, lineHeight: 1.4 }}>{p.prefValue}</div>
                     {p.notes && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{p.notes}</div>}
                     <div style={{ fontSize: 9, color: A.faint, fontFamily: A.font, marginTop: 3 }}>{p.source}</div>
                   </div>
@@ -1450,7 +1450,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
   const [filter, setFilter] = useState<DiningStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as DiningStatus, visit_date: '', journey_id: '', notes: '' })
+  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as DiningStatus, visitDate: '', journeyId: '', notes: '' })
   const { success, error }  = useAdminToast()
   const STATUSES: DiningStatus[] = ['favorite', 'visited', 'to_try', 'avoid']
 
@@ -1472,10 +1472,10 @@ function DiningSection({ data, houseId, onReload, mobile }: {
     if (!draft.restaurant_name.trim()) return
     setSaving(true)
     try {
-      await createDiningEntry(houseId, draft.restaurant_name.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visit_date || null, draft.journey_id || null, null, draft.notes.trim() || null)
+      await createDiningEntry(houseId, draft.restaurant_name.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visitDate || null, draft.journeyId || null, null, draft.notes.trim() || null)
       success('Added.')
       setAdding(false)
-      setDraft({ restaurant_name: '', city: '', country: '', status: 'visited', visit_date: '', journey_id: '', notes: '' })
+      setDraft({ restaurant_name: '', city: '', country: '', status: 'visited', visitDate: '', journeyId: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1516,8 +1516,8 @@ function DiningSection({ data, houseId, onReload, mobile }: {
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visit_date} onChange={e => setDraft(d => ({ ...d, visit_date: e.target.value }))} /></Field>
-            <Field label='Journey'><select style={inputStyle} value={draft.journey_id} onChange={e => setDraft(d => ({ ...d, journey_id: e.target.value }))}><option value=''>None</option>{data.dossier.engagements.map(j => <option key={j.id} value={j.id}>{j.journey_code}</option>)}</select></Field>
+            <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visitDate} onChange={e => setDraft(d => ({ ...d, visitDate: e.target.value }))} /></Field>
+            <Field label='Journey'><select style={inputStyle} value={draft.journeyId} onChange={e => setDraft(d => ({ ...d, journeyId: e.target.value }))}><option value=''>None</option>{data.dossier.engagements.map(j => <option key={j.id} value={j.id}>{j.journeyCode}</option>)}</select></Field>
           </div>
           <Field label='Notes'><input style={inputStyle} placeholder='What they thought...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
@@ -1537,8 +1537,8 @@ function DiningSection({ data, houseId, onReload, mobile }: {
                       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{e.restaurant_name}</div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                         {(e.city || e.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[e.city, e.country].filter(Boolean).join(', ')}</span>}
-                        {e.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(e.visit_date)}</span>}
-                        {e.journey_id && <span style={{ fontSize: 10, color: A.faint, fontFamily: "DM Mono, monospace" }}>{data.dossier.engagements.find(j => j.id === e.journey_id)?.journey_code ?? ""}</span>}
+                        {e.visitDate && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(e.visitDate)}</span>}
+                        {e.journeyId && <span style={{ fontSize: 10, color: A.faint, fontFamily: "DM Mono, monospace" }}>{data.dossier.engagements.find(j => j.id === e.journeyId)?.journeyCode ?? ""}</span>}
                       </div>
                       {e.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
                     </div>
@@ -1565,7 +1565,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
   const [filter, setFilter] = useState<DestinationStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ destination_name: '', country: '', city: '', trip_type: '' as DestinationTripType | '', status: 'visited' as DestinationStatus, visit_date: '', journey_id: '', notes: '' })
+  const [draft, setDraft]   = useState({ destinationName: '', country: '', city: '', tripType: '' as DestinationTripType | '', status: 'visited' as DestinationStatus, visitDate: '', journeyId: '', notes: '' })
   const { success, error }  = useAdminToast()
 
   const grouped = useMemo(() => {
@@ -1583,13 +1583,13 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
   }, [data.destinations])
 
   async function handleAdd() {
-    if (!draft.destination_name.trim()) return
+    if (!draft.destinationName.trim()) return
     setSaving(true)
     try {
-      await createDestination(houseId, draft.destination_name.trim(), draft.country.trim() || null, draft.city.trim() || null, (draft.trip_type || null) as DestinationTripType | null, draft.status, draft.visit_date || null, draft.journey_id || null, draft.notes.trim() || null)
+      await createDestination(houseId, draft.destinationName.trim(), draft.country.trim() || null, draft.city.trim() || null, (draft.tripType || null) as DestinationTripType | null, draft.status, draft.visitDate || null, draft.journeyId || null, draft.notes.trim() || null)
       success('Added.')
       setAdding(false)
-      setDraft({ destination_name: '', country: '', city: '', trip_type: '', status: 'visited', visit_date: '', journey_id: '', notes: '' })
+      setDraft({ destinationName: '', country: '', city: '', tripType: '', status: 'visited', visitDate: '', journeyId: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1619,7 +1619,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
 
       {adding && (
         <AddFormShell>
-          <Field label='Destination'><input style={inputStyle} placeholder='Mallorca, Lake Como...' value={draft.destination_name} onChange={e => setDraft(d => ({ ...d, destination_name: e.target.value }))} autoFocus /></Field>
+          <Field label='Destination'><input style={inputStyle} placeholder='Mallorca, Lake Como...' value={draft.destinationName} onChange={e => setDraft(d => ({ ...d, destinationName: e.target.value }))} autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Country'><input style={inputStyle} placeholder='Italy...' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>
             <Field label='City'><input style={inputStyle} placeholder='Como...' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
@@ -1631,15 +1631,15 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
               </select>
             </Field>
             <Field label='Trip Type'>
-              <select style={inputStyle} value={draft.trip_type} onChange={e => setDraft(d => ({ ...d, trip_type: e.target.value as DestinationTripType | '' }))}>
+              <select style={inputStyle} value={draft.tripType} onChange={e => setDraft(d => ({ ...d, tripType: e.target.value as DestinationTripType | '' }))}>
                 <option value=''>Not specified</option>
                 {DEST_TRIP_TYPES.map(t => <option key={t} value={t}>{capitalize(t)}</option>)}
               </select>
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visit_date} onChange={e => setDraft(d => ({ ...d, visit_date: e.target.value }))} /></Field>
-            <Field label='Journey'><select style={inputStyle} value={draft.journey_id} onChange={e => setDraft(d => ({ ...d, journey_id: e.target.value }))}><option value=''>None</option>{data.dossier.engagements.map(j => <option key={j.id} value={j.id}>{j.journey_code}</option>)}</select></Field>
+            <Field label='Visit Date'><input type='date' style={{ ...inputStyle, colorScheme: 'dark' }} value={draft.visitDate} onChange={e => setDraft(d => ({ ...d, visitDate: e.target.value }))} /></Field>
+            <Field label='Journey'><select style={inputStyle} value={draft.journeyId} onChange={e => setDraft(d => ({ ...d, journeyId: e.target.value }))}><option value=''>None</option>{data.dossier.engagements.map(j => <option key={j.id} value={j.id}>{j.journeyCode}</option>)}</select></Field>
           </div>
           <Field label='Notes'><input style={inputStyle} placeholder='Any notes...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
@@ -1656,12 +1656,12 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
                 <EntryCard key={dest.id} accentColor={DEST_STATUS_COLOR[status]}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{dest.destination_name}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{dest.destinationName}</div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                         {(dest.city || dest.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[dest.city, dest.country].filter(Boolean).join(', ')}</span>}
-                        {dest.trip_type && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{dest.trip_type}</span>}
-                        {dest.visit_date && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(dest.visit_date)}</span>}
-                        {dest.journey_id && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{data.dossier.engagements.find(j => j.id === dest.journey_id)?.journey_code ?? ''}</span>}
+                        {dest.tripType && <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font, textTransform: 'capitalize' }}>{dest.tripType}</span>}
+                        {dest.visitDate && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(dest.visitDate)}</span>}
+                        {dest.journeyId && <span style={{ fontSize: 10, color: A.faint, fontFamily: 'DM Mono, monospace' }}>{data.dossier.engagements.find(j => j.id === dest.journeyId)?.journeyCode ?? ''}</span>}
                       </div>
                       {dest.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{dest.notes}</div>}
                     </div>
@@ -1683,7 +1683,7 @@ function DestinationsSection({ data, houseId, onReload, mobile }: {
 // ── LabelsSection ─────────────────────────────────────────────────────────────
 // Public guest labels for a house (a_house_public_labels). The authored
 // public-identity source projected across the privacy wall. key is the enum
-// (family/principal/delegation/couple/staff) — bounded, no free text. is_default
+// (family/principal/delegation/couple/staff) - bounded, no free text. is_default
 // flows only through setDefaultLabel (one-default-per-house index, EF-enforced).
 
 function LabelsSection({ data, houseId, onReload, mobile }: {
@@ -1691,17 +1691,17 @@ function LabelsSection({ data, houseId, onReload, mobile }: {
 }) {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ key: 'family' as HouseLabelKey, display_name: '' })
+  const [draft, setDraft]   = useState({ key: 'family' as HouseLabelKey, displayName: '' })
   const { success, error }  = useAdminToast()
 
   async function handleAdd() {
-    if (!draft.display_name.trim()) return
+    if (!draft.displayName.trim()) return
     setSaving(true)
     try {
-      await createLabel(houseId, draft.key, draft.display_name.trim(), data.labels.length)
+      await createLabel(houseId, draft.key, draft.displayName.trim(), data.labels.length)
       success('Added.')
       setAdding(false)
-      setDraft({ key: 'family', display_name: '' })
+      setDraft({ key: 'family', displayName: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1720,17 +1720,17 @@ function LabelsSection({ data, houseId, onReload, mobile }: {
 
   function LabelCard({ label }: { label: HouseLabel }) {
     return (
-      <EntryCard accentColor={label.is_default ? A.gold : undefined}>
+      <EntryCard accentColor={label.isDefault ? A.gold : undefined}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{label.display_name}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{label.displayName}</div>
               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, padding: '1px 6px', border: `1px solid ${A.gold}30`, borderRadius: 4 }}>{label.key}</span>
-              {label.is_default && <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Default</span>}
+              {label.isDefault && <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Default</span>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {!label.is_default && (
+            {!label.isDefault && (
               <button onClick={() => makeDefault(label.id)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: '#4ade80', borderColor: '#4ade8030' }}>
                 Set default
               </button>
@@ -1750,7 +1750,7 @@ function LabelsSection({ data, houseId, onReload, mobile }: {
       {adding && (
         <AddFormShell>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '2fr 1fr', gap: 10 }}>
-            <Field label='Display Name'><input style={inputStyle} placeholder='e.g. AlSuwaidi Family...' value={draft.display_name} onChange={e => setDraft(d => ({ ...d, display_name: e.target.value }))} autoFocus /></Field>
+            <Field label='Display Name'><input style={inputStyle} placeholder='e.g. AlSuwaidi Family...' value={draft.displayName} onChange={e => setDraft(d => ({ ...d, displayName: e.target.value }))} autoFocus /></Field>
             <Field label='Context'>
               <select style={inputStyle} value={draft.key} onChange={e => setDraft(d => ({ ...d, key: e.target.value as HouseLabelKey }))}>
                 {LABEL_KEYS.map(k => <option key={k} value={k}>{capitalize(k)}</option>)}
@@ -1778,27 +1778,27 @@ function ContactsSection({ data, houseId, onReload, mobile }: {
 }) {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ contact_type: 'pa' as ContactType, name: '', role: '', company: '', is_primary: false, notes: '' })
+  const [draft, setDraft]   = useState({ contactType: 'pa' as ContactType, name: '', role: '', company: '', isPrimary: false, notes: '' })
   const { success, error }  = useAdminToast()
 
-  const primary   = data.contacts.filter(c => c.is_primary)
-  const secondary = data.contacts.filter(c => !c.is_primary)
+  const primary   = data.contacts.filter(c => c.isPrimary)
+  const secondary = data.contacts.filter(c => !c.isPrimary)
 
   async function handleAdd() {
     if (!draft.name.trim()) return
     setSaving(true)
     try {
-      await createContact(houseId, draft.contact_type, draft.name.trim(), draft.role.trim() || null, draft.company.trim() || null, draft.is_primary, draft.notes.trim() || null, null)
+      await createContact(houseId, draft.contactType, draft.name.trim(), draft.role.trim() || null, draft.company.trim() || null, draft.isPrimary, draft.notes.trim() || null, null)
       success('Added.')
       setAdding(false)
-      setDraft({ contact_type: 'pa', name: '', role: '', company: '', is_primary: false, notes: '' })
+      setDraft({ contactType: 'pa', name: '', role: '', company: '', isPrimary: false, notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
   }
 
   async function togglePrimary(contact: HouseContact) {
-    try { await updateContact(contact.id, { is_primary: !contact.is_primary }); await onReload() }
+    try { await updateContact(contact.id, { isPrimary: !contact.isPrimary }); await onReload() }
     catch (e) { error(e instanceof Error ? e.message : 'Failed') }
   }
 
@@ -1810,13 +1810,13 @@ function ContactsSection({ data, houseId, onReload, mobile }: {
 
   function ContactCard({ contact }: { contact: HouseContact }) {
     return (
-      <EntryCard accentColor={contact.is_primary ? A.gold : undefined}>
+      <EntryCard accentColor={contact.isPrimary ? A.gold : undefined}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{contact.name}</div>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, padding: '1px 6px', border: `1px solid ${A.gold}30`, borderRadius: 4 }}>{contact.contact_type}</span>
-              {contact.is_primary && <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Primary</span>}
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, padding: '1px 6px', border: `1px solid ${A.gold}30`, borderRadius: 4 }}>{contact.contactType}</span>
+              {contact.isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>Primary</span>}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
               {contact.role && <span style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{contact.role}</span>}
@@ -1825,8 +1825,8 @@ function ContactsSection({ data, houseId, onReload, mobile }: {
             {contact.notes && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, marginTop: 4, fontStyle: 'italic' }}>{contact.notes}</div>}
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            <button onClick={() => togglePrimary(contact)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: contact.is_primary ? A.faint : '#4ade80', borderColor: contact.is_primary ? A.border : '#4ade8030' }}>
-              {contact.is_primary ? 'Unprimary' : 'Primary'}
+            <button onClick={() => togglePrimary(contact)} style={{ ...btnG, padding: '3px 8px', fontSize: 10, color: contact.isPrimary ? A.faint : '#4ade80', borderColor: contact.isPrimary ? A.border : '#4ade8030' }}>
+              {contact.isPrimary ? 'Unprimary' : 'Primary'}
             </button>
             <button onClick={() => remove(contact.id)} style={btnD}>x</button>
           </div>
@@ -1845,7 +1845,7 @@ function ContactsSection({ data, houseId, onReload, mobile }: {
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
             <Field label='Name'><input style={inputStyle} placeholder='Full name...' value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} autoFocus /></Field>
             <Field label='Type'>
-              <select style={inputStyle} value={draft.contact_type} onChange={e => setDraft(d => ({ ...d, contact_type: e.target.value as ContactType }))}>
+              <select style={inputStyle} value={draft.contactType} onChange={e => setDraft(d => ({ ...d, contactType: e.target.value as ContactType }))}>
                 {CONTACT_TYPES.map(t => <option key={t} value={t}>{capitalize(t)}</option>)}
               </select>
             </Field>
@@ -1856,7 +1856,7 @@ function ContactsSection({ data, houseId, onReload, mobile }: {
           </div>
           <Field label='Notes'><input style={inputStyle} placeholder='Any notes...' value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} /></Field>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input type='checkbox' id='is-primary' checked={draft.is_primary} onChange={e => setDraft(d => ({ ...d, is_primary: e.target.checked }))} style={{ accentColor: A.gold }} />
+            <input type='checkbox' id='is-primary' checked={draft.isPrimary} onChange={e => setDraft(d => ({ ...d, isPrimary: e.target.checked }))} style={{ accentColor: A.gold }} />
             <label htmlFor='is-primary' style={{ fontSize: 12, color: A.muted, fontFamily: A.font, cursor: 'pointer' }}>Mark as primary contact</label>
           </div>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
@@ -1897,13 +1897,13 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
 }) {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ data_key: '', data_value: '', access_note: '', person_id: '' })
+  const [draft, setDraft]   = useState({ dataKey: '', dataValue: '', accessNote: '', personId: '' })
   const { success, error }  = useAdminToast()
 
   const grouped = useMemo(() => {
     const m = new Map<string, PPDPeopleEntry[]>()
     for (const e of data.ppd) {
-      const key = e.person_id ?? '__household__'
+      const key = e.personId ?? '__household__'
       if (!m.has(key)) m.set(key, [])
       m.get(key)!.push(e)
     }
@@ -1911,13 +1911,13 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
   }, [data.ppd])
 
   async function handleAdd() {
-    if (!draft.data_key.trim() || !draft.data_value.trim()) return
+    if (!draft.dataKey.trim() || !draft.dataValue.trim()) return
     setSaving(true)
     try {
-      await createPPDPeopleEntry(houseId, draft.person_id || null, draft.data_key.trim(), draft.data_value.trim(), draft.access_note.trim() || null)
+      await createPPDPeopleEntry(houseId, draft.personId || null, draft.dataKey.trim(), draft.dataValue.trim(), draft.accessNote.trim() || null)
       success('Added.')
       setAdding(false)
-      setDraft({ data_key: '', data_value: '', access_note: '', person_id: '' })
+      setDraft({ dataKey: '', dataValue: '', accessNote: '', personId: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1941,19 +1941,19 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
       {adding && (
         <AddFormShell danger>
           <Field label='Person'>
-            <select style={inputStyle} value={draft.person_id} onChange={e => setDraft(d => ({ ...d, person_id: e.target.value }))}>
+            <select style={inputStyle} value={draft.personId} onChange={e => setDraft(d => ({ ...d, personId: e.target.value }))}>
               <option value=''>Household</option>
-              {data.people.map(p => <option key={p.id} value={p.person_id ?? ''}>{p.member_ref} ({p.role})</option>)}
+              {data.people.map(p => <option key={p.id} value={p.personId ?? ''}>{p.memberRef} ({p.role})</option>)}
             </select>
           </Field>
           <Field label='Field'>
-            <select style={inputStyle} value={draft.data_key} onChange={e => setDraft(d => ({ ...d, data_key: e.target.value }))}>
+            <select style={inputStyle} value={draft.dataKey} onChange={e => setDraft(d => ({ ...d, dataKey: e.target.value }))}>
               <option value=''>Select...</option>
               {PPD_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
             </select>
           </Field>
-          <Field label='Value'><PPDValueInput dataKey={draft.data_key} value={draft.data_value} onChange={v => setDraft(d => ({ ...d, data_value: v }))} /></Field>
-          <Field label='Access Note (optional)'><input style={inputStyle} placeholder='Who has access...' value={draft.access_note} onChange={e => setDraft(d => ({ ...d, access_note: e.target.value }))} /></Field>
+          <Field label='Value'><PPDValueInput dataKey={draft.dataKey} value={draft.dataValue} onChange={v => setDraft(d => ({ ...d, dataValue: v }))} /></Field>
+          <Field label='Access Note (optional)'><input style={inputStyle} placeholder='Who has access...' value={draft.accessNote} onChange={e => setDraft(d => ({ ...d, accessNote: e.target.value }))} /></Field>
           <FormActions onCancel={() => setAdding(false)} onSave={handleAdd} saving={saving} />
         </AddFormShell>
       )}
@@ -1961,17 +1961,17 @@ function SensitiveSection({ data, houseId, onReload, personRef }: {
         ? <AdminEmptyState message='No personal data records yet.' />
         : Array.from(grouped.entries()).map(([key, rows]) => (
           <div key={key}>
-            <AdminSection title={key === '__household__' ? 'Household' : (data.people.find(pe => pe.person_id === rows[0].person_id)?.member_ref ?? 'Unknown')} style={{ borderLeftColor: '#f8717150' }} />
+            <AdminSection title={key === '__household__' ? 'Household' : (data.people.find(pe => pe.personId === rows[0].personId)?.memberRef ?? 'Unknown')} style={{ borderLeftColor: '#f8717150' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
               {rows.map(entry => (
                 <EntryCard key={entry.id} danger>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.data_key}</div>
-                      <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>{entry.data_value}</div>
-                      {entry.access_note && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{entry.access_note}</div>}
+                      <div style={{ fontSize: 11, fontWeight: 700, color: A.muted, fontFamily: A.font }}>{entry.dataKey}</div>
+                      <div style={{ fontSize: 13, color: A.text, fontFamily: 'DM Mono, monospace', fontWeight: 600, marginTop: 2, wordBreak: 'break-all' }}>{entry.dataValue}</div>
+                      {entry.accessNote && <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, marginTop: 2, fontStyle: 'italic' }}>{entry.accessNote}</div>}
                     </div>
-                    <CopyButton value={entry.data_value} />
+                    <CopyButton value={entry.dataValue} />
                     <button onClick={() => remove(entry.id)} style={btnD}>x</button>
                   </div>
                 </EntryCard>
@@ -1993,17 +1993,17 @@ function NotesSection({ house, onSaved }: { house: House; onSaved: () => void })
   const { success, error }    = useAdminToast()
 
   const FIELDS: Array<{ key: keyof House; label: string; placeholder: string; danger?: boolean }> = [
-    { key: 'service_style_notes', label: 'Service Style', placeholder: 'How this household expects to be served...' },
-    { key: 'travel_style_notes',  label: 'Travel Style',  placeholder: 'Travel pace, preferred destinations...' },
-    { key: 'avoid_notes',         label: 'Avoid',         placeholder: 'Hard avoids -- destinations, experiences, vendors...', danger: true },
-    { key: 'service_notes',       label: 'Service Notes', placeholder: 'Operational notes for the service team...' },
-    { key: 'missing_info_notes',  label: 'Missing Info',  placeholder: 'What we still need to learn...' },
+    { key: 'serviceStyleNotes', label: 'Service Style', placeholder: 'How this household expects to be served...' },
+    { key: 'travelStyleNotes',  label: 'Travel Style',  placeholder: 'Travel pace, preferred destinations...' },
+    { key: 'avoidNotes',         label: 'Avoid',         placeholder: 'Hard avoids -- destinations, experiences, vendors...', danger: true },
+    { key: 'serviceNotes',       label: 'Service Notes', placeholder: 'Operational notes for the service team...' },
+    { key: 'missingInfoNotes',  label: 'Missing Info',  placeholder: 'What we still need to learn...' },
   ]
 
   async function handleSave() {
     setSaving(true)
     try {
-      await updateHouse(house.id, { service_style_notes: draft.service_style_notes, travel_style_notes: draft.travel_style_notes, avoid_notes: draft.avoid_notes, service_notes: draft.service_notes, missing_info_notes: draft.missing_info_notes })
+      await updateHouse(house.id, { serviceStyleNotes: draft.serviceStyleNotes, travelStyleNotes: draft.travelStyleNotes, avoidNotes: draft.avoidNotes, serviceNotes: draft.serviceNotes, missingInfoNotes: draft.missingInfoNotes })
       success('Saved.')
       setEditing(false)
       onSaved()

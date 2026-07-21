@@ -1,10 +1,10 @@
-// typesElements.ts — Canonical aux booking + day-entry display registry.
+// typesElements.ts - Canonical aux booking + day-entry display registry.
 //
 // What it owns:
 //   - ELEMENT_TYPE_META + getElementTypeMeta (icon + display meta, slug-keyed)
 //   - FLIGHT_BOOKING_TYPES + isFlightType
 //   - CABIN_CLASSES + SEAT_TYPES (includes 'Mixed')
-//   - AIRCRAFT_TYPES — curated registry (commercial + private aviation).
+//   - AIRCRAFT_TYPES - curated registry (commercial + private aviation).
 //     Dropdown-only, no free-text fallback. Anything missing gets added
 //     to this file. Data integrity compounds; curated lists are how
 //     enterprise platforms keep reference data clean over years.
@@ -15,15 +15,15 @@
 //   - Supplier identity / commission terms (see typesSuppliers.ts)
 //   - Booking lifecycle status (see typesEventStatus.ts)
 //   - DB queries, UI rendering
-//   - The canonical type list itself — that lives in travel_engagement_types
+//   - The canonical type list itself - that lives in travel_engagement_types
 //     (DB registry). This file holds only DISPLAY meta (icons) the registry
-//     does not carry. Type labels + sort_order come from the registry via the
-//     EF (element_type_label); META is keyed by registry SLUG.
+//     does not carry. Type labels + sortOrder come from the registry via the
+//     EF (elementTypeLabel); META is keyed by registry SLUG.
 //
 // Source of truth for:
-//   - travel_engagement_aux_bookings.cabin_class CHECK constraint
+//   - travel_engagement_aux_bookings.cabinClass CHECK constraint
 //   - travel_engagement_aux_bookings.seat_type CHECK constraint
-//   - travel_engagement_aux_bookings.aircraft_type display values
+//   - travel_engagement_aux_bookings.aircraftType display values
 //   - travel_journey_day_entries.category accent tokens
 //
 // S53H: realigned to the 18-type slug registry (travel_engagement_types).
@@ -32,13 +32,13 @@
 //   lookup fell through). Predicates rewritten to compare SLUGS (isHotelElement
 //   = 'stay', isFlightElement = flight/private_jet, ground = transfer/
 //   airport_transfer/car_service). Curated aircraft/cabin/seat lists untouched.
-// Prior: S50 — AIRCRAFT_TYPES curated registry added (~75 entries). SEAT_TYPES
+// Prior: S50 - AIRCRAFT_TYPES curated registry added (~75 entries). SEAT_TYPES
 //   gains 'Mixed'. Aircraft is dropdown-only.
-// Prior: S50 — consolidated from legacy typesAuxBooking.ts (deleted).
+// Prior: S50 - consolidated from legacy typesAuxBooking.ts (deleted).
 
-// ── Metadata registry — keyed by DB registry SLUG ─────────────────────────────
+// ── Metadata registry - keyed by DB registry SLUG ─────────────────────────────
 // The 18-type registry (travel_engagement_types) is the source of truth for
-// labels + sort_order; this map adds the one thing the registry lacks: an icon.
+// labels + sortOrder; this map adds the one thing the registry lacks: an icon.
 // Keyed by slug so a slug-or-label input both resolve. journey/reservation/
 // arrangement/acquisition are non-movement types but carry icons for any surface
 // that renders them.
@@ -46,35 +46,35 @@
 export interface ElementTypeMeta {
   label:      string
   icon:       string
-  sort_order: number
-  section:    string   // guest-facing grouping key — slugs sharing a section fold together
+  sortOrder: number
+  section:    string   // guest-facing grouping key - slugs sharing a section fold together
 }
 
 // section: the guest-facing grouping. Slugs that are the same guest concept share
 // a section so they render under ONE heading (a resort-to-resort chauffeured car
-// is the same whether typed 'transfer' or 'car_service'). sort_order drives BOTH
-// within-section item order and section order (min sort_order in a section wins).
+// is the same whether typed 'transfer' or 'car_service'). sortOrder drives BOTH
+// within-section item order and section order (min sortOrder in a section wins).
 const ELEMENT_TYPE_META: Record<string, ElementTypeMeta> = {
-  acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sort_order: 55,  section: 'acquisition' },
-  airport_transfer: { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sort_order: 7,  section: 'ground_car' },
-  meet_greet:       { label: 'AIRPORT MEET & GREET', icon: '\uD83E\uDEAA', sort_order: 5, section: 'airport' },
-  arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sort_order: 56,  section: 'arrangement' },
-  car_rental:       { label: 'CAR RENTAL',        icon: '\uD83D\uDE99', sort_order: 44,  section: 'car_rental' },
-  car_service:      { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sort_order: 7, section: 'ground_car' },
-  transfer:         { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sort_order: 7, section: 'ground_car' },
-  cruise:           { label: 'CRUISE',            icon: '\uD83D\uDEA2', sort_order: 66,  section: 'cruise' },
-  dining:           { label: 'DINING',            icon: '\uD83C\uDF7D', sort_order: 11,  section: 'dining' },
-  experience:       { label: 'EXPERIENCES',       icon: '\u2728',       sort_order: 15,  section: 'experience' },
-  flight:           { label: 'FLIGHTS',           icon: '\u2708',       sort_order: 0,  section: 'flight' },
-  heli_transfer:    { label: 'HELICOPTER',        icon: '\uD83D\uDE81', sort_order: 77, section: 'heli' },
-  journey:          { label: 'JOURNEY',           icon: '\uD83E\uDDED', sort_order: 88, section: 'journey' },
-  private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sort_order: 1, section: 'private_jet' },
-  public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sort_order: 99, section: 'rail' },
-  reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sort_order: 19, section: 'reservation' },
-  stay:             { label: 'STAYS',             icon: '\uD83C\uDFE8', sort_order: 10, section: 'stay' },
-  tour:             { label: 'TOURS',             icon: '\uD83D\uDDFA', sort_order: 48, section: 'tour' },
-  yacht_charter:    { label: 'YACHT CHARTER',     icon: '\u26F5',       sort_order: 22, section: 'yacht' },
-  other:            { label: 'OTHER',             icon: '\u00b7',       sort_order: 99, section: 'other' },
+  acquisition:      { label: 'ACQUISITION',       icon: '\uD83D\uDD11', sortOrder: 55,  section: 'acquisition' },
+  airport_transfer: { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sortOrder: 7,  section: 'ground_car' },
+  meet_greet:       { label: 'AIRPORT MEET & GREET', icon: '\uD83E\uDEAA', sortOrder: 5, section: 'airport' },
+  arrangement:      { label: 'ARRANGEMENTS',      icon: '\u00b7',       sortOrder: 56,  section: 'arrangement' },
+  car_rental:       { label: 'CAR RENTAL',        icon: '\uD83D\uDE99', sortOrder: 44,  section: 'car_rental' },
+  car_service:      { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sortOrder: 7, section: 'ground_car' },
+  transfer:         { label: 'CAR SERVICES & TRANSFERS', icon: '\uD83D\uDE98', sortOrder: 7, section: 'ground_car' },
+  cruise:           { label: 'CRUISE',            icon: '\uD83D\uDEA2', sortOrder: 66,  section: 'cruise' },
+  dining:           { label: 'DINING',            icon: '\uD83C\uDF7D', sortOrder: 11,  section: 'dining' },
+  experience:       { label: 'EXPERIENCES',       icon: '\u2728',       sortOrder: 15,  section: 'experience' },
+  flight:           { label: 'FLIGHTS',           icon: '\u2708',       sortOrder: 0,  section: 'flight' },
+  heli_transfer:    { label: 'HELICOPTER',        icon: '\uD83D\uDE81', sortOrder: 77, section: 'heli' },
+  journey:          { label: 'JOURNEY',           icon: '\uD83E\uDDED', sortOrder: 88, section: 'journey' },
+  private_jet:      { label: 'PRIVATE AVIATION',  icon: '\u2708',       sortOrder: 1, section: 'private_jet' },
+  public_transport: { label: 'RAIL & TRANSIT',    icon: '\uD83D\uDE86', sortOrder: 99, section: 'rail' },
+  reservation:      { label: 'RESERVATION',       icon: '\uD83D\uDCC5', sortOrder: 19, section: 'reservation' },
+  stay:             { label: 'STAYS',             icon: '\uD83C\uDFE8', sortOrder: 10, section: 'stay' },
+  tour:             { label: 'TOURS',             icon: '\uD83D\uDDFA', sortOrder: 48, section: 'tour' },
+  yacht_charter:    { label: 'YACHT CHARTER',     icon: '\u26F5',       sortOrder: 22, section: 'yacht' },
+  other:            { label: 'OTHER',             icon: '\u00b7',       sortOrder: 99, section: 'other' },
 }
 
 // Client-facing section grouping. Admin tracks every slug separately (a pre-booked
@@ -91,7 +91,7 @@ export function clientSectionKey(slug: string | null | undefined): string {
 }
 
 // Normalize a slug OR a Title Case label to a registry slug. Accepts both so
-// callers passing booking_type (slug) or element_type_label (Title Case) both
+// callers passing booking_type (slug) or elementTypeLabel (Title Case) both
 // resolve. 'Airport Transfer' -> 'airport_transfer', 'flight' -> 'flight'.
 function toSlug(value: string): string {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_')
@@ -104,16 +104,16 @@ export function getElementTypeMeta(bookingType: string | null | undefined): Elem
   if (known) return known
   // Unknown type: derive a display label, no icon, sort last.
   const label = bookingType.toUpperCase() + (bookingType.endsWith('s') ? '' : 'S')
-  return { label, icon: '\u00b7', sort_order: 99, section: 'other' }
+  return { label, icon: '\u00b7', sortOrder: 99, section: 'other' }
 }
 
-// ── Section grouping — single source ──────────────────────────────────────────
+// ── Section grouping - single source ──────────────────────────────────────────
 // ConfirmationTab, BriefAuxEditor, and BriefPreview all render aux bookings as
-// ordered, typed sections. This is the one implementation. Filters brief_show,
-// sorts by registry sort_order then row sort_order, folds consecutive same-slug
+// ordered, typed sections. This is the one implementation. Filters briefShow,
+// sorts by registry sortOrder then row sortOrder, folds consecutive same-slug
 // bookings into a single section. Keyed on the canonical slug (booking_type),
 // never the display label. Generic over the row type so each surface can pass its
-// own aux shape as long as it carries booking_type, brief_show, and sort_order.
+// own aux shape as long as it carries booking_type, briefShow, and sortOrder.
 
 export interface ElementSection<T> {
   type:  string   // registry slug
@@ -122,24 +122,24 @@ export interface ElementSection<T> {
   items: T[]
 }
 
-export function groupElementsBySection<T extends { element_type: string | null; brief_show?: boolean; sort_order: number }>(
+export function groupElementsBySection<T extends { elementType: string | null; briefShow?: boolean; sortOrder: number }>(
   elements: T[],
 ): ElementSection<T>[] {
   const sorted = elements
-    .filter(a => a.brief_show !== false)
+    .filter(a => a.briefShow !== false)
     .sort((a, b) => {
-      const ma = getElementTypeMeta(a.element_type)
-      const mb = getElementTypeMeta(b.element_type)
-      if (ma.sort_order !== mb.sort_order) return ma.sort_order - mb.sort_order
-      const aKey = `${(a as any).start_date ?? ''}${(a as any).start_time ?? ''}`
-      const bKey = `${(b as any).start_date ?? ''}${(b as any).start_time ?? ''}`
+      const ma = getElementTypeMeta(a.elementType)
+      const mb = getElementTypeMeta(b.elementType)
+      if (ma.sortOrder !== mb.sortOrder) return ma.sortOrder - mb.sortOrder
+      const aKey = `${(a as any).startDate ?? ''}${(a as any).startTime ?? ''}`
+      const bKey = `${(b as any).startDate ?? ''}${(b as any).startTime ?? ''}`
       if (aKey !== bKey) return aKey < bKey ? -1 : 1
-      return a.sort_order - b.sort_order
+      return a.sortOrder - b.sortOrder
     })
 
   const sections: ElementSection<T>[] = []
   for (const aux of sorted) {
-    const meta = getElementTypeMeta(aux.element_type ?? 'other')
+    const meta = getElementTypeMeta(aux.elementType ?? 'other')
     const last = sections[sections.length - 1]
     if (last && last.type === meta.section) {
       last.items.push(aux)
@@ -187,7 +187,7 @@ export const SEAT_TYPES = [
 
 export type SeatType = typeof SEAT_TYPES[number]
 
-// ── Aircraft types — commercial ───────────────────────────────────────────────
+// ── Aircraft types - commercial ───────────────────────────────────────────────
 // Grouped by manufacturer, alphabetical within group.
 
 export const AIRCRAFT_TYPES_COMMERCIAL = [
@@ -234,8 +234,8 @@ export const AIRCRAFT_TYPES_COMMERCIAL = [
 
 export type AircraftTypeCommercial = typeof AIRCRAFT_TYPES_COMMERCIAL[number]
 
-// ── Aircraft types — private aviation ─────────────────────────────────────────
-// Curated by class — Light, Midsize, Super-Midsize, Heavy, Ultra-Long-Range,
+// ── Aircraft types - private aviation ─────────────────────────────────────────
+// Curated by class - Light, Midsize, Super-Midsize, Heavy, Ultra-Long-Range,
 // VIP airliner. Covers the operators most commonly seen in HRH-grade design.
 
 export const AIRCRAFT_TYPES_PRIVATE = [
@@ -350,7 +350,7 @@ export function getCategoryAccent(category: string | null | undefined): string {
   return CATEGORY_ACCENT[toSlug(category)] ?? CATEGORY_ACCENT.other
 }
 
-// ── Booking type predicates — single source ───────────────────────────────────
+// ── Booking type predicates - single source ───────────────────────────────────
 // All booking_type checks across the codebase must use these. Never inline
 // string comparisons or .includes() checks on booking_type values.
 // Slug-based (S53G): booking_type is a registry slug. Accepts slug or label via
@@ -389,79 +389,79 @@ export function isMeetGreetElement(bookingType: string | null | undefined): bool
 // and admin (AdminEngagementElement) surfaces. Each composes this base and adds
 // only what is genuinely surface-specific: admin adds booking_type + the with-
 // `company` driver type; the client uses the no-`company` driver type (a deliberate
-// boundary — operator-internal fields never reach the guest). Passenger is shared.
-// schedule_status lives here so it is defined ONCE, not copied per surface.
+// boundary - operator-internal fields never reach the guest). Passenger is shared.
+// scheduleStatus lives here so it is defined ONCE, not copied per surface.
 export type ElementPassenger = {
   id:                        string
-  aux_booking_id:            string
-  person_id:                 string | null
-  passenger_label:           string | null
-  confirmation_number:       string | null
-  seat_numbers:              string | null
-  sort_order:                number
-  resolved_passenger_label?: string | null
+  auxBookingId:            string
+  personId:                 string | null
+  passengerLabel:           string | null
+  confirmationNumber:       string | null
+  seatNumbers:              string | null
+  sortOrder:                number
+  resolvedPassengerLabel?: string | null
 }
-export type ElementPassengerPatch = Partial<Omit<ElementPassenger, 'id' | 'aux_booking_id'>>
+export type ElementPassengerPatch = Partial<Omit<ElementPassenger, 'id' | 'auxBookingId'>>
 
 export type ElementBase = {
   id:                  string
-  journey_id:          string
-  engagement_type_id:  string | null
-  element_type:        string | null
-  element_type_label:  string | null
+  journeyId:          string
+  engagementTypeId:  string | null
+  elementType:        string | null
+  elementTypeLabel:  string | null
   name:                string | null
-  start_date:          string | null
-  start_time:          string | null
-  end_date:            string | null
-  end_time:            string | null
+  startDate:          string | null
+  startTime:          string | null
+  endDate:            string | null
+  endTime:            string | null
   origin:              string | null
   destination:         string | null
   notes:               string | null
-  confirmation_number: string | null
-  booked_by:           string | null
-  guest_name:          string | null
-  guest_count:         number | null
-  contact_name:        string | null
-  contact_phone:       string | null
-  dining_status:                string | null
-  cancellation_penalty_applied: boolean | null
-  cancellation_note:            string | null
-  show_cancellation:            boolean | null
-  schedule_status?:             string | null
-  original_start_time?:         string | null
-  original_end_time?:           string | null
-  schedule_note?:               string | null
+  confirmationNumber: string | null
+  bookedBy:           string | null
+  guestName:          string | null
+  guestCount:         number | null
+  contactName:        string | null
+  contactPhone:       string | null
+  diningStatus:                string | null
+  cancellationPenaltyApplied: boolean | null
+  cancellationNote:            string | null
+  showCancellation:            boolean | null
+  scheduleStatus?:             string | null
+  originalStartTime?:         string | null
+  originalEndTime?:           string | null
+  scheduleNote?:               string | null
   venue?: {
     address:         string | null
-    maps_url:        string | null
+    mapsUrl:        string | null
     phone:           string | null
-    dress_code:      string | null
-    children_policy: string | null
-    table_hold_note: string | null
-    booking_terms:   string | null
+    dressCode:      string | null
+    childrenPolicy: string | null
+    tableHoldNote: string | null
+    bookingTerms:   string | null
   } | null
-  brief_show:          boolean
-  sort_order:          number
-  supplier_id:         string | null
-  airline_name:        string | null
-  flight_number:       string | null
-  depart_airport:      string | null
-  arrive_airport:      string | null
-  cabin_class:         string | null
-  aircraft_type:       string | null
-  tail_number?:        string | null
-  flight_time?:        string | null
-  distance_nm?:        number | null
-  depart_fbo_name?:    string | null
-  depart_fbo_address?: string | null
-  depart_fbo_phone?:   string | null
-  arrive_fbo_name?:    string | null
-  arrive_fbo_address?: string | null
-  arrive_fbo_phone?:   string | null
+  briefShow:          boolean
+  sortOrder:          number
+  supplierId:         string | null
+  airlineName:        string | null
+  flightNumber:       string | null
+  departAirport:      string | null
+  arriveAirport:      string | null
+  cabinClass:         string | null
+  aircraftType:       string | null
+  tailNumber?:        string | null
+  flightTime?:        string | null
+  distanceNm?:        number | null
+  departFboName?:    string | null
+  departFboAddress?: string | null
+  departFboPhone?:   string | null
+  arriveFboName?:    string | null
+  arriveFboAddress?: string | null
+  arriveFboPhone?:   string | null
   crew?:               { name: string; role: string }[]
-  dining_venue_id?:    string | null
-  image_src?:          string | null
+  diningVenueId?:    string | null
+  imageSrc?:          string | null
   passengers?:         ElementPassenger[]
-  created_at:          string
-  updated_at:          string
+  createdAt:          string
+  updatedAt:          string
 }

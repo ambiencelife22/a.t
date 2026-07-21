@@ -1,8 +1,8 @@
 /* ProgrammePage.tsx
  * Guest-facing stay programme page for ambience.travel.
- * Uses C.* from theme.ts and DANGER from colors.ts — no hardcoded hex.
+ * Uses C.* from theme.ts and DANGER from colors.ts - no hardcoded hex.
  *
- * Last updated: S23 — HouseManual section toggle now scroll-locks. When the
+ * Last updated: S23 - HouseManual section toggle now scroll-locks. When the
  *   user opens a different section, the clicked button's viewport position is
  *   captured before state mutation; after layout, the page is scrolled so the
  *   button lands at the same viewport y. Prevents the jarring jump that
@@ -18,7 +18,7 @@ import PropertyIntroSection from './PropertyIntroSection'
 
 // ── Travel-specific light-section tokens ──────────────────────────────────────
 // These are fixed light values used in the guest-facing light sections.
-// Not part of the dark theme — intentional contrast with the dark hero.
+// Not part of the dark theme - intentional contrast with the dark hero.
 
 const L = {
   bg:     '#F7F4EE',
@@ -32,7 +32,7 @@ const L = {
 }
 
 
-// ── Gated value — shown when a field is not visible on public programmes ───────
+// ── Gated value - shown when a field is not visible on public programmes ───────
 
 function GatedValue() {
   return (
@@ -222,7 +222,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
       return {
         ...section,
         content: [
-          { type: 'note' as const, text: 'Alarm code details are available — please ask your host.' },
+          { type: 'note' as const, text: 'Alarm code details are available - please ask your host.' },
           ...section.content,
         ],
       }
@@ -230,7 +230,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
     return section
   })
 
-  // Privacy notice — shown when any gate is active
+  // Privacy notice - shown when any gate is active
   const anyGated = isPublic && (!publicArrival || !publicAlarm || !publicWifi || !publicOwnerPhone || !publicManagerPhone)
 
   return (
@@ -307,7 +307,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
                   ))}
                   {section.title === 'Arrival' && (!isPublic || publicArrival) && (
                     <>
-                      {/* Maps embed — commented out pending Google Maps API key
+                      {/* Maps embed - commented out pending Google Maps API key
                       {mapsEmbedUrl && (
                         <iframe
                           src={mapsEmbedUrl}
