@@ -46,6 +46,15 @@ export interface EngagementStatus {
   isActive:  boolean
 }
 
+export interface EngagementStatusRow {
+  id: string
+  slug: string
+  label: string
+  sortOrder: number
+  isActive: boolean
+}
+export type ItineraryStatusRow = EngagementStatusRow
+
 export interface ItineraryStatus {
   id:        string
   slug:      string

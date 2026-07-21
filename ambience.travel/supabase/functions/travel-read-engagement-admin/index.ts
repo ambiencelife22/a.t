@@ -243,7 +243,7 @@ Deno.serve(async (req: Request) => {
     if (mode === 'engagement_statuses') {
       const { data, error } = await serviceClient
         .from('travel_lifecycle_statuses')
-        .select('id, slug, label, sort_order')
+        .select('id, slug, label, sort_order, is_active')
         .order('sort_order', { ascending: true })
 
       if (error) {
@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
     if (mode === 'itinerary_statuses') {
       const { data, error } = await serviceClient
         .from('travel_itinerary_statuses')
-        .select('id, slug, label, sort_order')
+        .select('id, slug, label, sort_order, is_active')
         .order('sort_order', { ascending: true })
 
       if (error) {

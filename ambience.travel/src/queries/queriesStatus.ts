@@ -25,48 +25,26 @@
 
 import { supabase } from '../lib/supabase'
 import { camelizeKeys } from '@shared/camelize'
-import type { EngagementStatus, ItineraryStatus } from '../types/typesImmerse'
-
-// ─── DB row types ────────────────────────────────────────────────────────────
-
-type EngagementStatusRow = {
-  id:         string
-  slug:       string
-  label:      string
-  sortOrder: number
-  isActive:  boolean
-}
-
-type ItineraryStatusRow = EngagementStatusRow   // identical shape
+import type { EngagementStatus, ItineraryStatus, EngagementStatusRow, ItineraryStatusRow } from '../types/typesImmerse'
 
 // ─── Fetchers ────────────────────────────────────────────────────────────────
 
 export async function fetchEngagementStatuses(activeOnly = true): Promise<EngagementStatus[]> {
-  const query = supabase
-    .from('travel_lifecycle_statuses')
-    .select('id, slug, label, sort_order, is_active')
-    .order('sort_order', { ascending: true })
-
-  if (activeOnly) query.eq('is_active', true)
-
-  const { data, error } = await query
-  if (error || !data) return []
-
-  return camelizeKeys<EngagementStatusRow[]>(data).map(mapEngagementStatus)
+  const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', {
+    body: { mode: 'engagement_statuses', activeOnly },
+  })
+  if (error) throw new Error(`engagement_statuses: ${error.message}`)
+  const rows = camelizeKeys<EngagementStatusRow[]>(data?.rows ?? [])
+  return rows.map(mapEngagementStatus)
 }
 
 export async function fetchItineraryStatuses(activeOnly = true): Promise<ItineraryStatus[]> {
-  const query = supabase
-    .from('travel_itinerary_statuses')
-    .select('id, slug, label, sort_order, is_active')
-    .order('sort_order', { ascending: true })
-
-  if (activeOnly) query.eq('is_active', true)
-
-  const { data, error } = await query
-  if (error || !data) return []
-
-  return camelizeKeys<ItineraryStatusRow[]>(data).map(mapItineraryStatus)
+  const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', {
+    body: { mode: 'itinerary_statuses', activeOnly },
+  })
+  if (error) throw new Error(`itinerary_statuses: ${error.message}`)
+  const rows = camelizeKeys<ItineraryStatusRow[]>(data?.rows ?? [])
+  return rows.map(mapItineraryStatus)
 }
 
 // ─── Internal mappers ────────────────────────────────────────────────────────
