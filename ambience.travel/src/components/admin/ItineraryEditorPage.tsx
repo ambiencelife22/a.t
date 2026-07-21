@@ -527,7 +527,7 @@ export default function ItineraryEditorPage({ journeyId }: { journeyId: string }
         const res = await fetch(DELIVERY_FN, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-          body:    JSON.stringify({ urlId: urlId }),
+          body:    JSON.stringify({ url_id: urlId }),
         })
         if (!res.ok) return
         const payload = await res.json()

@@ -39,11 +39,8 @@ import {
   createOverlayRoom,
   updateOverlayRoom,
   deleteOverlayRoom,
-  type OverlayRoom,
-  type CanonicalRoom,
-  type RateCadence,
-  type OverlayRoomPatch,
 } from '../../queries/queriesAdminRooms'
+import type { OverlayRoom, CanonicalRoom, RateCadence, OverlayRoomPatch } from '../../types/typesRooms'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -332,7 +329,7 @@ function AddRoomModal({ engagementId, canonicalRooms, nextSortOrder, onClose, on
     try {
       await createOverlayRoom({
         engagementId:     engagementId,
-        room_id:     roomId || null,
+        roomId: roomId || null,
         levelLabel: levelLabel.trim() || null,
         sortOrder:  nextSortOrder,
         isActive:   true,

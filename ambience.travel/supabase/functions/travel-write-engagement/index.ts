@@ -97,6 +97,9 @@ type WriteMode =
   | 'route_stop_insert'
   | 'route_stop_delete'
   | 'route_stops_reorder'
+  | 'overlay_room_create'
+  | 'overlay_room_update'
+  | 'overlay_room_delete'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -858,6 +861,40 @@ Deno.serve(async (req: Request) => {
           .update({ sort_order: i }).eq('id', ids[i])
         if (error) return json({ error: 'Failed to reorder route stops' }, 500)
       }
+      return json({ success: true })
+    }
+
+    if (mode === 'overlay_room_create') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_rooms')
+        .insert({
+          engagement_id: body.engagement_id,
+          room_id:       body.room_id ?? null,
+          level_label:   body.level_label ?? null,
+          sort_order:    body.sort_order,
+          is_active:     body.is_active,
+        })
+        .select('id').single()
+      if (error) return json({ error: 'Failed to create overlay room' }, 500)
+      return json({ id: data.id })
+    }
+
+    if (mode === 'overlay_room_update') {
+      const patch = snakeizeKeys<Record<string, unknown>>(body.patch ?? {})
+      delete patch.id; delete patch.engagement_id
+      delete patch.canonical_room_name; delete patch.canonical_hotel_name
+      const { error } = await serviceClient
+        .from('travel_overlay_rooms')
+        .update(patch).eq('id', body.id)
+      if (error) return json({ error: 'Failed to update overlay room' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'overlay_room_delete') {
+      const { error } = await serviceClient
+        .from('travel_overlay_rooms')
+        .delete().eq('id', body.id)
+      if (error) return json({ error: 'Failed to delete overlay room' }, 500)
       return json({ success: true })
     }
 

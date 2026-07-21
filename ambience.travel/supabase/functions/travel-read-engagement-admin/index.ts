@@ -70,6 +70,10 @@ type ReadMode =
   | 'destination_max_sort_order'
   | 'route_stops'
   | 'route_stop_max_sort'
+  | 'rate_cadences'
+  | 'canonical_rooms'
+  | 'overlay_rooms'
+  | 'room_max_sort'
 
 const childCountTables = [
   'travel_overlay_engagement_destination_rows',
@@ -640,6 +644,56 @@ Deno.serve(async (req: Request) => {
         .limit(1)
         .maybeSingle()
       if (error) return json({ error: 'Failed to fetch max route stop sort' }, 500)
+      return json({ maxSortOrder: (data?.sort_order ?? -1) as number })
+    }
+
+    if (mode === 'rate_cadences') {
+      const { data, error } = await serviceClient
+        .from('travel_rate_cadences')
+        .select('id, slug, label, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch rate cadences' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'canonical_rooms') {
+      const { data: hotelSlots, error: hotelErr } = await serviceClient
+        .from('travel_overlay_engagement_destination_hotels')
+        .select('hotel_id')
+        .eq('engagement_id', body.engagement_id)
+      if (hotelErr) return json({ error: 'Failed to fetch hotel slots' }, 500)
+      const hotelIds = [...new Set((hotelSlots ?? []).map((r: Record<string, unknown>) => r.hotel_id as string).filter(Boolean))]
+      if (hotelIds.length === 0) return json({ rows: [] })
+      const { data, error } = await serviceClient
+        .from('travel_accom_rooms')
+        .select('id, hotel_id, room_name, slug, category_slug, bed_config, bedding_configurations, sqft_min, sqft_max, sqm_min, sqm_max, room_image_src, hotel:travel_accom_hotels!hotel_id(name)')
+        .in('hotel_id', hotelIds)
+        .order('hotel_id', { ascending: true })
+        .order('slug', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch canonical rooms' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'overlay_rooms') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_rooms')
+        .select('id, engagement_id, room_id, level_label, room_basis, room_benefits, non_negotiated_nightly_rate, ambience_nightly_rate, public_nightly_rate, rate_cadence_id, rate_suffix_override, tax_inclusive, room_inclusions, room_name_override, sqft_min, sqft_max, sqm_min, sqm_max, sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override, bed_config_override, bedding_type, hero_image_src_override, hero_image_alt_override, floorplan_src_override, is_active, sort_order, canonical:travel_accom_rooms!room_id(room_name, hotel:travel_accom_hotels!hotel_id(name))')
+        .eq('engagement_id', body.engagement_id)
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch overlay rooms' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'room_max_sort') {
+      const { data, error } = await serviceClient
+        .from('travel_overlay_rooms')
+        .select('sort_order')
+        .eq('engagement_id', body.engagement_id)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) return json({ error: 'Failed to fetch max room sort' }, 500)
       return json({ maxSortOrder: (data?.sort_order ?? -1) as number })
     }
 
