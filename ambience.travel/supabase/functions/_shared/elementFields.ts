@@ -1,7 +1,7 @@
 // _shared/elementFields.ts
 // SINGLE SOURCE for the flat<->normalized element field mapping. Consumed by BOTH
 // the read-flatten (buildElementFlat) and the write-split (travel-write-journey),
-// so they cannot drift. Never hand-mirror the split in a handler — import here.
+// so they cannot drift. Never hand-mirror the split in a handler, import here.
 //
 // Stage 7: flat travel_engagement_aux_bookings -> NODE (travel_engagements) + 1:1
 // detail (transport OR dining). Bare types (airport_transfer, meet_greet) = node only.
@@ -39,6 +39,12 @@ export const DINING_FIELDS = [
   'contact_phone', 'cancellation_note', 'booking_terms_override', 'notes', 'booked_by',
 ] as const
 
+// travel_engagement_experience_detail columns. Flat name == column name.
+export const EXPERIENCE_FIELDS = [
+  'supplier_id', 'person_id', 'guest_count', 'price_per_person', 'currency',
+  'package_name', 'package_inclusions', 'menu', 'notes',
+] as const
+
 // Flat patch carries these as FREE TEXT; tables store registry FKs. Write-split
 // resolves text -> id. flat text field -> { registry table, match col, detail fk col }.
 export const TRANSPORT_TEXT_TO_FK: Record<string, { table: string; match: string; fk: string }> = {
@@ -56,5 +62,6 @@ export function detailTableForType(slug: string | null): string | null {
   if (slug === 'flight') return 'travel_engagement_transport_detail'
   // dining + reservation share one detail shape: a canonical supplier + party/time/terms.
   if (slug === 'dining' || slug === 'reservation') return 'travel_engagement_dining_detail'
+  if (slug === 'spa_wellness' || slug === 'tour' || slug === 'experience') return 'travel_engagement_experience_detail'
   return null
 }

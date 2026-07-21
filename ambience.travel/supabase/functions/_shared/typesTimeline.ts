@@ -2,7 +2,7 @@
 // ONE source for the trip-timeline shapes. Imported by BOTH the server producer
 // (_shared/timeline.ts) and the frontend (src/types/typesTimeline.ts via the
 // @shared Vite alias). Types-only, zero runtime imports, so it crosses the
-// Deno/Vite boundary cleanly. Adding a field here reaches both surfaces at once —
+// Deno/Vite boundary cleanly. Adding a field here reaches both surfaces at once  - 
 // no more hand-synced drift (schedule_status and driver_details both drifted
 // before this file existed).
 
@@ -62,6 +62,11 @@ export type TimelineItem = {
   guest_name:                   string | null
   guest_count:                  number | null
   dining_status:                string | null
+  package_name:                 string | null
+  price_per_person:             number | null
+  currency:                     string | null
+  package_inclusions:           string[] | null
+  menu:                         string[] | null
   cancellation_penalty_applied: boolean | null
   cancellation_note:            string | null
   show_cancellation:            boolean | null

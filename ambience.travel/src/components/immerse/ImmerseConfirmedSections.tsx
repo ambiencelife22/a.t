@@ -880,6 +880,32 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                           </div>
                           <div style={{ fontSize: 'clamp(14px,1.8vw,17px)', fontFamily: TYPE.serif, color: cancelled ? c.faint : c.ink, lineHeight: 1.3, marginBottom: 4, textDecoration: cancelled ? 'line-through' : 'none' }}>{item.title}</div>
                           {essentials && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted }}>{essentials}</div>}
+                          {(item.packageName || item.pricePerPerson || (item.packageInclusions?.length ?? 0) > 0 || (item.menu?.length ?? 0) > 0) && (
+                            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `0.5px solid ${c.lineStrong}` }}>
+                              {(item.packageName || item.pricePerPerson) && (
+                                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: (item.packageInclusions?.length || item.menu?.length) ? 8 : 0 }}>
+                                  {item.packageName && <span style={{ fontSize: 13, fontFamily: TYPE.serif, color: c.ink }}>{item.packageName}</span>}
+                                  {item.pricePerPerson != null && <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: c.muted }}>{`${moneyDec(item.pricePerPerson, item.currency ?? 'EUR')} per person`}</span>}
+                                </div>
+                              )}
+                              {(item.packageInclusions?.length ?? 0) > 0 && (
+                                <div style={{ marginBottom: (item.menu?.length ?? 0) > 0 ? 8 : 0 }}>
+                                  <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 4 }}>Includes</div>
+                                  {item.packageInclusions!.map((line, i) => (
+                                    <div key={i} style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.6 }}>{line}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {(item.menu?.length ?? 0) > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint, marginBottom: 4 }}>Menu</div>
+                                  {item.menu!.map((line, i) => (
+                                    <div key={i} style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.6 }}>{line}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <DiningPillBox model={pill} />
                           {hasDetails && (
                             <details style={{ marginTop: 10 }}>

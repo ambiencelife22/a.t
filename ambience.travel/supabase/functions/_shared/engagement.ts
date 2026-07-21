@@ -9,20 +9,20 @@
 // That duplication drifted (confirmation carried a stale inline resolvePartyName
 // that returned '' instead of null). This module is the one home for the fetch
 // and name-resolution; each EF still composes its own DISPLAY shape from the
-// returned pieces (image-display rules legitimately differ per surface — same
+// returned pieces (image-display rules legitimately differ per surface, same
 // principle as roomDisplay living in pdfShared while layout stays per-PDF).
 //
 // What stays in each EF (genuinely EF-specific, not duplicated):
 //   confirmation : contacts resolution, guides, fullBookings financial null-out
 //   programme    : standalone entries + dining/exp images, buildTimeline, buildDays
 //
-// Created: S55 — _shared/trip.ts extraction (single-source quest #1).
-// S53O — error guards added to the engagement + engagement_display fetches in
+// Created: S55 - _shared/trip.ts extraction (single-source quest #1).
+// S53O - error guards added to the engagement + engagement_display fetches in
 //   fetchEngagementCore (was silent; the class of bug that hid the bedding_type and
 //   is_total phantom-column failures). Overlay rename (travel_immerse_* ->
 //   travel_overlay_*) is IN PROGRESS: engagement_display is now renamed
 //   (travel_overlay_engagement_display, line ~139). This file still reads the
-//   un-renamed travel_engagements (line ~34, ~135) — the LAST table in
+//   un-renamed travel_engagements (line ~34, ~135) - the LAST table in
 //   Phase A. When it renames, all three client EFs redeploy together (this module
 //   is imported by confirmation + programme; the proposal EF reads engagements directly).
 
@@ -47,7 +47,7 @@ export async function resolvejourneyIds(
     .single()
   if (engErr || !eng?.journey_id) return null
   const journeyId = eng.journey_id as string
-  // House resolves from the brief (authoritative single source) — a deliverable
+  // House resolves from the brief (authoritative single source) - a deliverable
   // need not have a hotel booking (dining / reservation / experience engagements).
   const { data: brief } = await db
     .from('travel_journey_briefs')
@@ -57,7 +57,7 @@ export async function resolvejourneyIds(
     .limit(1)
     .single()
   if (brief?.house_id) return { journeyId, houseId: brief.house_id as string }
-  // Fallback: legacy journeys without a brief house_id — derive from a booking.
+  // Fallback: legacy journeys without a brief house_id - derive from a booking.
   const { data: booking } = await db
     .from('travel_bookings')
     .select('house_id')
@@ -139,10 +139,10 @@ export async function fetchEngagementCore(
   // operator deliberately wants a different hero on the confirmation surface).
   // Resolve: brief overlay → engagement canon → null.
   // Engagement-level guest label (HPGL). travel_overlay_engagement_display.house_display_name
-  // is the projected, admin-authored public label (single source — set by the
+  // is the projected, admin-authored public label (single source - set by the
   // projection trigger, never resolved here). Keyed by engagement_id in the
   // display table. Best-effort: null when no confirmed engagement
-  // or no projected row — callers fall through to prepared_for with ?? (never ||).
+  // or no projected row - callers fall through to prepared_for with ?? (never ||).
   const confirmedEngId = (tripResult.data?.confirmed_engagement_id as string | null) ?? null
   let engHeroSrc: string | null = null
   let engTitle: string | null = null
@@ -217,10 +217,10 @@ export interface EngagementBookingsData {
   hotelById:      Record<string, { name: string; hero_image_src: string | null; standard_checkin_time: string | null }>
 }
 
-// ── Aux booking select — single source ────────────────────────────────────────
+// ── Aux booking select - single source ────────────────────────────────────────
 // Every EF that reads travel_engagement_aux_bookings uses this exact string.
 // engagement_type_id embeds the registry slug + label via FK join.
-// booking_type (text) was dropped in S53G — slug is now the canonical type field.
+// booking_type (text) was dropped in S53G - slug is now the canonical type field.
 
 export const AUX_BOOKING_SELECT = [
   'id', 'engagement_id', 'engagement_type_id',
@@ -255,7 +255,7 @@ export function flattenAuxType(a: Record<string, unknown>): Record<string, unkno
 // consumers are unchanged. Separate-fetch pattern (matches fetchEngagementBookings below).
 // Registry FKs are reversed to free-text on read so the flat shape matches legacy aux.
 // parentEngId = the journey's confirmed engagement (already resolved by fetchEngagementCore
-// as confirmed_engagement_id — pass it in, do not re-fetch).
+// as confirmed_engagement_id - pass it in, do not re-fetch).
 
 const NODE_COL_TO_FLAT: Record<string, string> = Object.fromEntries(
   Object.entries(NODE_FIELD_MAP).map(([flat, col]) => [col, flat]),
@@ -278,12 +278,15 @@ export async function fetchEngagementElements(
   if (nodeRows.length === 0) return []
 
   const ids = nodeRows.map(n => n.id as string)
-  const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
+  const [tRes, dRes, xRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail')
       .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, flight_time, distance_nm, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone')
       .in('node_id', ids),
     db.from('travel_engagement_dining_detail')
       .select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
+      .in('node_id', ids),
+    db.from('travel_engagement_experience_detail')
+      .select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, menu, notes')
       .in('node_id', ids),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
@@ -291,6 +294,7 @@ export async function fetchEngagementElements(
   ])
   const tById = new Map(((tRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
   const dById = new Map(((dRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
+  const xById = new Map(((xRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
   const cabinById    = new Map(((cabinRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
   const aircraftById = new Map(((acRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
   const airportById  = new Map(((apRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.iata as string]))
@@ -300,6 +304,7 @@ export async function fetchEngagementElements(
     const etObj = Array.isArray(et) ? et[0] : et
     const t = tById.get(n.id as string)
     const d = dById.get(n.id as string)
+    const x = xById.get(n.id as string)
 
     const flat: Record<string, unknown> = {
       id:                 n.id,
@@ -311,7 +316,7 @@ export async function fetchEngagementElements(
     }
     for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
 
-    const detail = t ?? d ?? {}
+    const detail = t ?? d ?? x ?? {}
     for (const [k, v] of Object.entries(detail)) { if (k !== 'node_id') flat[k] = v ?? null }
 
     flat.cabin_class    = null
@@ -363,14 +368,14 @@ export async function fetchEngagementBookings(
     }
   }
 
-  // Canon hotels (name + hero) via accom_hotel_id — one source (_shared/bookings.ts).
+  // Canon hotels (name + hero) via accom_hotel_id - one source (_shared/bookings.ts).
   const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter(Boolean))] as string[]
   const hotelById = await fetchHotelsByIds(db, hotelIds)
 
   // Resolve room guest people (batch) and group rooms by booking with
   // resolved_guest_name + resolved_additional_guests attached. The id set spans
   // BOTH the lead person_id and every additional_guests uuid, so one query
-  // resolves all room occupants (lead + additional) — single source.
+  // resolves all room occupants (lead + additional) - single source.
   const roomPersonIds = [...new Set([
     ...rooms.map(r => r.person_id).filter(Boolean),
     ...rooms.flatMap(r => (r.additional_guests as string[] | null) ?? []),
@@ -435,8 +440,8 @@ export async function fetchEngagementBookings(
   return { bookings, roomsByBooking, canonRoomById, hotelById }
 }
 
-// ── Element enrichment — passengers + drivers + dining venue ──────────────────
-// Shared by confirmation + programme (was inlined verbatim in both — same select,
+// ── Element enrichment - passengers + drivers + dining venue ──────────────────
+// Shared by confirmation + programme (was inlined verbatim in both - same select,
 // same output shape, a drift risk). Takes flat element rows from fetchEngagementElements,
 // attaches passengers/drivers (keyed on the aux id, carried as source_aux_booking_id),
 // resolves the dining venue into image_src + nested venue{} facts.
@@ -458,7 +463,7 @@ export async function enrichElements(
     await attachPassengers(db, elements, partyLabel),
   ) as Array<Record<string, unknown>>
 
-  // Venue content resolves from guide canon via supplier_id — the single content
+  // Venue content resolves from guide canon via supplier_id - the single content
   // home for any venue type (dining, experience, hotel). travel_venue_content unions
   // the three guide tables; travel_suppliers carries no content (commerce only).
   const supplierIds = [...new Set(
@@ -472,7 +477,7 @@ export async function enrichElements(
     for (const d of (venues ?? []) as Array<Record<string, unknown>>) venueBySupplier[d.supplier_id as string] = d
   }
 
-  // Crew (private aviation) — per flight element, ordered by sort_order.
+  // Crew (private aviation) - per flight element, ordered by sort_order.
   const nodeIds = withPax.map(a => a.id).filter(Boolean) as string[]
   const crewByNode: Record<string, Array<{ name: string; role: string }>> = {}
   if (nodeIds.length > 0) {
@@ -505,7 +510,7 @@ export async function enrichElements(
 
 // ── Single element by node id, flat shape ─────────────────────────────────────
 // Used by the write path (travel-write-journey) to return the created/updated
-// element in the SAME flat shape the readers use — one source of truth for the
+// element in the SAME flat shape the readers use - one source of truth for the
 // shape (the flatten below), no duplication in the write RPC. Reuses the exact
 // per-node flatten as fetchEngagementElements.
 export async function fetchEngagementElement(
@@ -520,15 +525,17 @@ export async function fetchEngagementElement(
   if (!nodes) return null
   const n = nodes as Record<string, unknown>
 
-  const [tRes, dRes, cabinRes, acRes, apRes] = await Promise.all([
+  const [tRes, dRes, xRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail').select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_engagement_dining_detail').select('node_id, supplier_id, dining_venue_id, guest_name, guest_count, dining_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by').eq('node_id', nodeId).maybeSingle(),
+    db.from('travel_engagement_experience_detail').select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, menu, notes').eq('node_id', nodeId).maybeSingle(),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
     db.from('travel_airports').select('id, iata'),
   ])
   const t = tRes.data as Record<string, unknown> | null
   const d = dRes.data as Record<string, unknown> | null
+  const x = xRes.data as Record<string, unknown> | null
   const cabinById    = new Map(((cabinRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
   const aircraftById = new Map(((acRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
   const airportById  = new Map(((apRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.iata as string]))
@@ -546,7 +553,7 @@ export async function fetchEngagementElement(
   }
   for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
 
-  const detail = t ?? d ?? {}
+  const detail = t ?? d ?? x ?? {}
   for (const [k, v] of Object.entries(detail)) { if (k !== 'node_id') flat[k] = v ?? null }
 
   flat.cabin_class    = null
