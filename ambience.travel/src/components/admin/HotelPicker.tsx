@@ -18,7 +18,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
-import { fetchHotels, type HotelPick } from '../../queries/queriesAdminGeo'
+import { fetchHotels } from '../../queries/queriesAdminGeo'
+import type { HotelPick } from '../../types/typesGeo'
 
 const boxedStyle: React.CSSProperties = {
   fontFamily: A.font, fontSize: 11, color: A.text, background: A.bg,

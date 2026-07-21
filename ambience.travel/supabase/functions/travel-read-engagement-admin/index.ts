@@ -59,6 +59,12 @@ type ReadMode =
   | 'card_overrides'
   | 'canonical_card_search'
   | 'card_selections'
+  | 'geo_subcontinents'
+  | 'geo_countries'
+  | 'geo_states'
+  | 'geo_destinations'
+  | 'geo_hotels_by_destination'
+  | 'geo_hotels_search'
 
 const childCountTables = [
   'travel_overlay_engagement_destination_rows',
@@ -501,6 +507,77 @@ Deno.serve(async (req: Request) => {
         ...(expRes.data ?? []).map((e: Record<string, unknown>) => ({ id: e.id, kind: 'experience', name: e.name, image_src: e.image_src, global_destination_slug: (e.globalDestinations as { slug?: string } | null)?.slug ?? null })),
       ]
       return json({ rows })
+    }
+
+    if (mode === 'geo_subcontinents') {
+      const { data, error } = await serviceClient
+        .from('global_subcontinents')
+        .select('id, slug, name')
+        .order('sort_order', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch subcontinents' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'geo_countries') {
+      const { data, error } = await serviceClient
+        .from('global_countries')
+        .select('id, slug, name, subcontinent_id')
+        .eq('subcontinent_id', body.subcontinent_id)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch countries' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'geo_states') {
+      const { data, error } = await serviceClient
+        .from('global_states')
+        .select('id, slug, name, code, country_id')
+        .eq('country_id', body.country_id)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch states' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'geo_destinations') {
+      let q = serviceClient
+        .from('global_destinations')
+        .select('id, slug, name, subcontinent_id, country_id, state_id, storage_path')
+        .eq('kind', 'place')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
+      if (body.state_id) q = q.eq('state_id', body.state_id)
+      if (!body.state_id && body.country_id) q = q.eq('country_id', body.country_id).is('state_id', null)
+      if (!body.state_id && !body.country_id && body.subcontinent_id) q = q.eq('subcontinent_id', body.subcontinent_id).is('country_id', null)
+      const { data, error } = await q
+      if (error) return json({ error: 'Failed to fetch destinations' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'geo_hotels_by_destination') {
+      const { data, error } = await serviceClient
+        .from('travel_accom_hotels')
+        .select('id, short_slug, name, destination_id')
+        .eq('destination_id', body.destination_id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch hotels' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'geo_hotels_search') {
+      let q = serviceClient
+        .from('travel_accom_hotels')
+        .select('id, name, city')
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .limit(50)
+      if (body.search && String(body.search).trim()) q = q.ilike('name', `%${String(body.search).trim()}%`)
+      const { data, error } = await q
+      if (error) return json({ error: 'Failed to search hotels' }, 500)
+      return json({ rows: data ?? [] })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

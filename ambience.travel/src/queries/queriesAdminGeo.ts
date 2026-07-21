@@ -13,78 +13,30 @@
 
 import { supabase } from '../lib/supabase'
 import { camelizeKeys } from '@shared/camelize'
+import type {
+  GeoSubcontinent, GeoCountry, GeoState, GeoDestination, GeoHotel, HotelPick,
+} from '../types/typesGeo'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type GeoSubcontinent = {
-  id:   string
-  slug: string
-  name: string
+async function invokeGeo<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', { body })
+  if (error) throw new Error(`geo read (${body.mode}): ${error.message}`)
+  return camelizeKeys<T>(data?.rows ?? [])
 }
+// ── Types moved to typesGeo.ts ────────────────────────────────────────────────
 
-export type GeoCountry = {
-  id:               string
-  slug:             string
-  name:             string
-  subcontinent_id:  string
-}
-
-export type GeoState = {
-  id:         string
-  slug:       string
-  name:       string
-  code:       string
-  countryId: string
-}
-
-export type GeoDestination = {
-  id:               string
-  slug:             string
-  name:             string
-  subcontinent_id:  string | null
-  countryId:       string | null
-  state_id:         string | null
-  storagePath:     string | null   // s33b_03 column
-}
-
-export type GeoHotel = {
-  id:             string
-  short_slug:     string
-  name:           string
-  destinationId: string | null
-}
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 export async function fetchSubcontinents(): Promise<GeoSubcontinent[]> {
-  const { data, error } = await supabase
-    .from('global_subcontinents')
-    .select('id, slug, name')
-    .order('sort_order', { ascending: true })
-  if (error) throw error
-  return camelizeKeys<GeoSubcontinent[]>(data ?? [])
+  return invokeGeo<GeoSubcontinent[]>({ mode: 'geo_subcontinents' })
 }
 
 export async function fetchCountriesBySubcontinent(subcontinentId: string): Promise<GeoCountry[]> {
-  const { data, error } = await supabase
-    .from('global_countries')
-    .select('id, slug, name, subcontinent_id')
-    .eq('subcontinent_id', subcontinentId)
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
-  if (error) throw error
-  return camelizeKeys<GeoCountry[]>(data ?? [])
+  return invokeGeo<GeoCountry[]>({ mode: 'geo_countries', subcontinent_id: subcontinentId })
 }
 
 export async function fetchStatesByCountry(countryId: string): Promise<GeoState[]> {
-  const { data, error } = await supabase
-    .from('global_states')
-    .select('id, slug, name, code, country_id')
-    .eq('country_id', countryId)
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
-  if (error) throw error
-  return camelizeKeys<GeoState[]>(data ?? [])
+  return invokeGeo<GeoState[]>({ mode: 'geo_states', country_id: countryId })
 }
 
 /**
@@ -97,56 +49,18 @@ export async function fetchDestinations(filter: {
   countryId?:      string
   subcontinentId?: string
 }): Promise<GeoDestination[]> {
-  let q = supabase
-    .from('global_destinations')
-    .select('id, slug, name, subcontinent_id, country_id, state_id, storage_path')
-    .eq('kind', 'place')
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
-
-  if (filter.stateId) {
-    q = q.eq('state_id', filter.stateId)
-  }
-  if (!filter.stateId && filter.countryId) {
-    q = q.eq('country_id', filter.countryId).is('state_id', null)
-  }
-  if (!filter.stateId && !filter.countryId && filter.subcontinentId) {
-    q = q.eq('subcontinent_id', filter.subcontinentId).is('country_id', null)
-  }
-
-  const { data, error } = await q
-  if (error) throw error
-  return camelizeKeys<GeoDestination[]>(data ?? [])
+  return invokeGeo<GeoDestination[]>({
+    mode: 'geo_destinations',
+    state_id: filter.stateId ?? null,
+    country_id: filter.countryId ?? null,
+    subcontinent_id: filter.subcontinentId ?? null,
+  })
 }
 
 export async function fetchHotelsByDestination(destinationId: string): Promise<GeoHotel[]> {
-  const { data, error } = await supabase
-    .from('travel_accom_hotels')
-    .select('id, short_slug, name, destination_id')
-    .eq('destination_id', destinationId)
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true })
-    .order('name',       { ascending: true })
-  if (error) throw error
-  return camelizeKeys<GeoHotel[]>(data ?? [])
+  return invokeGeo<GeoHotel[]>({ mode: 'geo_hotels_by_destination', destination_id: destinationId })
 }
 
-// Global hotel search for the booking-create picker. Catalog data (the public
-// hotel library), read directly - consistent with queriesGuidesHotels and the
-// other direct travel_accom_hotels reads. Not client-private, so no EF needed.
-export type HotelPick = { id: string; name: string; city: string | null }
-
 export async function fetchHotels(search?: string): Promise<HotelPick[]> {
-  let q = supabase
-    .from('travel_accom_hotels')
-    .select('id, name, city')
-    .eq('is_active', true)
-    .order('name', { ascending: true })
-    .limit(50)
-  if (search && search.trim()) {
-    q = q.ilike('name', `%${search.trim()}%`)
-  }
-  const { data, error } = await q
-  if (error) throw error
-  return camelizeKeys<HotelPick[]>(data ?? [])
+  return invokeGeo<HotelPick[]>({ mode: 'geo_hotels_search', search: search ?? '' })
 }

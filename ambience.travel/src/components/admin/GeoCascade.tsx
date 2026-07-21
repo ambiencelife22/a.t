@@ -13,12 +13,10 @@ import {
   fetchStatesByCountry,
   fetchDestinations,
   fetchHotelsByDestination,
-  type GeoSubcontinent,
-  type GeoCountry,
-  type GeoState,
-  type GeoDestination,
-  type GeoHotel,
-} from '../../queries/queriesAdminGeo'
+  } from '../../queries/queriesAdminGeo'
+import type {
+  GeoSubcontinent, GeoCountry, GeoState, GeoDestination, GeoHotel,
+} from '../../types/typesGeo'
 import {
   resolveStoragePath,
   type AssetCategory,
@@ -169,7 +167,7 @@ export default function GeoCascade({
     }
 
     const hotelStorageSlug = hotel
-      ? (hotel.short_slug)
+      ? (hotel.shortSlug)
       : undefined
 
     const resolved = resolveStoragePath({
@@ -282,7 +280,7 @@ export default function GeoCascade({
                 <option value=''>Select hotel…</option>
                 {hotels.map(h => (
                   <option key={h.id} value={h.id}>
-                    {h.name} (h.short_slug)
+                    {h.name} (h.shortSlug)
                   </option>
                 ))}
               </select>
