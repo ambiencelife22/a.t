@@ -329,7 +329,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
     rooms:       RoomRow[]
     dests:       TripDestRow[]
     engagements: EngRow[]
-  }>({ mode: 'dossier', houseId: houseId })
+  }>({ mode: 'dossier', house_id: houseId })
 
   const { tripRows, bookingRows, hotelMap, partners, house, briefs, rooms, dests, engagements } = raw
 
@@ -407,7 +407,7 @@ export async function fetchJourneyDossierForHouse(houseId: string): Promise<Enga
 
 export async function fetchJourneyBrief(journeyId: string): Promise<EngagementBrief | null> {
   const { brief } = await invokeReadJourney<{ brief: EngagementBrief | null }>({
-    mode: 'brief', journeyId: journeyId,
+    mode: 'brief', journey_id: journeyId,
   })
   return brief
 }
@@ -416,7 +416,7 @@ export async function fetchJourneyBrief(journeyId: string): Promise<EngagementBr
 
 export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[]> {
   const { rooms } = await invokeReadJourney<{ rooms: BookingRoom[] }>({
-    mode: 'rooms', bookingId: bookingId,
+    mode: 'rooms', booking_id: bookingId,
   })
   return rooms
 }
@@ -425,7 +425,7 @@ export async function fetchBookingRooms(bookingId: string): Promise<BookingRoom[
 
 export async function fetchJourneyDays(journeyId: string): Promise<JourneyDay[]> {
   const { days } = await invokeReadJourney<{ days: JourneyDay[] }>({
-    mode: 'days', journeyId: journeyId,
+    mode: 'days', journey_id: journeyId,
   })
   return days
 }
@@ -434,7 +434,7 @@ export async function fetchJourneyDays(journeyId: string): Promise<JourneyDay[]>
 
 export async function fetchJourneyDayEntries(journeyId: string): Promise<JourneyDayEntry[]> {
   const { dayEntries } = await invokeReadJourney<{ dayEntries: JourneyDayEntry[] }>({
-    mode: 'day_entries', journeyId: journeyId,
+    mode: 'day_entries', journey_id: journeyId,
   })
   return dayEntries
 }
@@ -443,7 +443,7 @@ export async function fetchJourneyDayEntries(journeyId: string): Promise<Journey
 
 export async function fetchAdminEngagementElements(journeyId: string): Promise<AdminEngagementElement[]> {
   const { elements } = await invokeReadJourney<{ elements: AdminEngagementElement[] }>({
-    mode: 'aux_bookings', journeyId: journeyId,
+    mode: 'aux_bookings', journey_id: journeyId,
   })
   return elements
 }
@@ -468,7 +468,7 @@ export async function resolveHouseIdForJourney(journeyId: string): Promise<strin
 
 export async function upsertEngagementBrief(journeyId: string, houseId: string, patch: EngagementBriefPatch): Promise<EngagementBrief> {
   const { brief } = await invokeWriteJourney<{ brief: EngagementBrief }>({
-    mode: 'upsert_brief', journeyId: journeyId, houseId: houseId, patch,
+    mode: 'upsert_brief', journey_id: journeyId, house_id: houseId, patch,
   })
   return brief
 }
@@ -477,13 +477,13 @@ export async function updateBookingBriefFields(
   bookingId: string,
   patch: { briefCategory?: string | null; briefShow?: boolean; briefImageSrc?: string | null; bookedBy?: string | null },
 ): Promise<void> {
-  await invokeWriteJourney({ mode: 'update_booking_brief', bookingId: bookingId, patch })
+  await invokeWriteJourney({ mode: 'update_booking_brief', booking_id: bookingId, patch })
 }
 
 // Generic booking-field update - update_booking_brief is generic-patch server-side,
 // so this writes any travel_bookings column. Returns nothing (EF returns {success}).
 export async function updateBookingFields(bookingId: string, patch: Partial<EngagementBooking>): Promise<void> {
-  await invokeWriteJourney({ mode: 'update_booking_brief', bookingId: bookingId, patch })
+  await invokeWriteJourney({ mode: 'update_booking_brief', booking_id: bookingId, patch })
 }
 
 // Create a new travel_bookings row on a trip. patch may set any column;
@@ -494,7 +494,7 @@ export async function createBooking(
   patch: Partial<Omit<EngagementBooking, 'id' | 'journey_id' | '_hotel_name' | '_hotel_image_src' | '_rooms'>>,
 ): Promise<Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'>> {
   const { booking } = await invokeWriteJourney<{ booking: Omit<EngagementBooking, '_hotel_name' | '_hotel_image_src' | '_rooms'> }>({
-    mode: 'create_booking', journeyId: journeyId, patch,
+    mode: 'create_booking', journey_id: journeyId, patch,
   })
   return booking
 }
@@ -503,7 +503,7 @@ export async function createBooking(
 
 export async function createBookingRoom(bookingId: string, patch: BookingRoomPatch): Promise<BookingRoom> {
   const { room } = await invokeWriteJourney<{ room: BookingRoom }>({
-    mode: 'create_room', bookingId: bookingId, patch,
+    mode: 'create_room', booking_id: bookingId, patch,
   })
   return room
 }
@@ -523,7 +523,7 @@ export async function deleteBookingRoom(roomId: string): Promise<void> {
 
 export async function createAdminEngagementElement(journeyId: string, patch: AdminEngagementElementPatch): Promise<AdminEngagementElement> {
   const { auxBooking } = await invokeWriteJourney<{ auxBooking: AdminEngagementElement }>({
-    mode: 'create_aux_booking', journeyId: journeyId, patch,
+    mode: 'create_aux_booking', journey_id: journeyId, patch,
   })
   return auxBooking
 }
@@ -607,14 +607,14 @@ export type EngagementWelcomeLetterPatch = Partial<Omit<EngagementWelcomeLetter,
 
 export async function fetchEngagementWelcomeLetters(journeyId: string): Promise<EngagementWelcomeLetter[]> {
   const { letters } = await invokeReadJourney<{ letters: EngagementWelcomeLetter[] }>({
-    mode: 'welcome_letters', journeyId: journeyId,
+    mode: 'welcome_letters', journey_id: journeyId,
   })
   return letters
 }
 
 export async function upsertEngagementWelcomeLetter(journeyId: string, letter: EngagementWelcomeLetterPatch): Promise<EngagementWelcomeLetter> {
   const { letter: row } = await invokeWriteJourney<{ letter: EngagementWelcomeLetter }>({
-    mode: 'upsert_welcome_letter', journeyId: journeyId, letter,
+    mode: 'upsert_welcome_letter', journey_id: journeyId, letter,
   })
   return row
 }
@@ -627,14 +627,14 @@ export async function deleteEngagementWelcomeLetter(id: string): Promise<void> {
 
 export async function upsertJourneyDay(journeyId: string, date: string, patch: JourneyDayPatch): Promise<JourneyDay> {
   const { day } = await invokeWriteJourney<{ day: JourneyDay }>({
-    mode: 'upsert_day', journeyId: journeyId, entry_date: date, patch,
+    mode: 'upsert_day', journey_id: journeyId, entry_date: date, patch,
   })
   return day
 }
 
 export async function createJourneyDayEntry(journeyId: string, entry: Omit<JourneyDayEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<JourneyDayEntry> {
   const { dayEntry } = await invokeWriteJourney<{ dayEntry: JourneyDayEntry }>({
-    mode: 'create_day_entry', journeyId: journeyId, entry,
+    mode: 'create_day_entry', journey_id: journeyId, entry,
   })
   return dayEntry
 }
@@ -707,7 +707,7 @@ export async function fetchRateReference(): Promise<RateReference> {
 
 export async function fetchHouseIdForTrip(journeyId: string): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', {
-    body: { mode: 'house_id_for_trip', journeyId: journeyId },
+    body: { mode: 'house_id_for_journey', journey_id: journeyId },
   })
   if (error) { console.error('[fetchHouseIdForTrip]', error.message); return null }
   return (data?.houseId as string | null) ?? null

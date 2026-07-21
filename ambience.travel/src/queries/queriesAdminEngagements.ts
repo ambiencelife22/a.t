@@ -78,8 +78,8 @@ export type EngagementListRow = {
   // Trip linkage (NULL when engagement isn't linked to a canonical trip)
   journeyId:           string | null
   journeyCode:         string | null
-  trip_public_title: string | null
-  trip_start_date:   string | null
+  tripPublicTitle: string | null
+  tripStartDate:   string | null
 
   // Primary client on the linked trip (NULL when no trip OR no primary client)
   clientFirstName: string | null
@@ -208,8 +208,8 @@ export type EngagementGroup = {
   // null when this is the orphan group
   journeyId:           string | null
   journeyCode:         string | null
-  trip_public_title: string | null
-  trip_start_date:   string | null
+  tripPublicTitle: string | null
+  tripStartDate:   string | null
   clientId:         string | null
   clientDisplay:    string | null   // "Yazeed" or "Yazeed Last" or null
   // Raw client name fields - needed for inline-edit writes
@@ -249,8 +249,8 @@ export function groupByEngagement(rows: EngagementListRow[]): EngagementGroup[] 
     groups.set(row.journeyId, {
       journeyId:           row.journeyId,
       journeyCode:         row.journeyCode,
-      trip_public_title: row.trip_public_title,
-      trip_start_date:   row.trip_start_date,
+      tripPublicTitle: row.tripPublicTitle,
+      tripStartDate: row.tripStartDate,
       clientId:         row.clientId,
       clientDisplay:    clientDisplay && clientDisplay.length > 0 ? clientDisplay : null,
       clientFirstName: row.clientFirstName,
@@ -262,27 +262,27 @@ export function groupByEngagement(rows: EngagementListRow[]): EngagementGroup[] 
 
   // Sort engagements within each trip by created_at ASC
   for (const group of groups.values()) {
-    group.engagements.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    group.engagements.sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
   }
 
   // Sort trips by start_date DESC (most recent first), nulls last
   const tripGroups = Array.from(groups.values()).sort((a, b) => {
-    if (a.trip_start_date && b.trip_start_date) {
-      return b.trip_start_date.localeCompare(a.trip_start_date)
+    if (a.tripStartDate && b.tripStartDate) {
+      return b.tripStartDate.localeCompare(a.tripStartDate)
     }
-    if (a.trip_start_date) return -1
-    if (b.trip_start_date) return 1
+    if (a.tripStartDate) return -1
+    if (b.tripStartDate) return 1
     return 0
   })
 
   // Orphan group at the bottom
   if (orphans.length > 0) {
-    orphans.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    orphans.sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
     tripGroups.push({
       journeyId:           null,
       journeyCode:         null,
-      trip_public_title: null,
-      trip_start_date:   null,
+      tripPublicTitle: null,
+      tripStartDate: null,
       clientId:         null,
       clientDisplay:    null,
       clientFirstName: null,

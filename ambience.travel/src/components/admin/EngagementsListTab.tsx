@@ -774,7 +774,7 @@ function EngagementGroupBlock({
                 )}
 
                 <EditableText
-                  value={group.trip_public_title ?? ''}
+                  value={group.tripPublicTitle ?? ''}
                   placeholder='Add trip title'
                   size='lg'
                   fontWeight={700}
@@ -805,9 +805,9 @@ function EngagementGroupBlock({
                     await onEngagementUpdate(group.journeyId, 'journey_code', v)
                   }}
                 />
-                {group.trip_start_date && (
+                {group.tripStartDate && (
                   <span style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace" }}>
-                    · {group.trip_start_date}
+                    · {group.tripStartDate}
                   </span>
                 )}
               </div>
@@ -1097,7 +1097,7 @@ export default function EngagementsListTab() {
     setRows(prev => prev.map(r => {
       if (r.journeyId !== journeyId) return r
       if (field === 'journey_code')    return { ...r, journeyCode: value }
-      if (field === 'public_title') return { ...r, trip_public_title: value || null }
+      if (field === 'public_title') return { ...r, tripPublicTitle: value || null }
       return r
     }))
     try {
