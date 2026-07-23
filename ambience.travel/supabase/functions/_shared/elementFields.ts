@@ -42,7 +42,7 @@ export const DINING_FIELDS = [
 // travel_engagement_experience_detail columns. Flat name == column name.
 export const EXPERIENCE_FIELDS = [
   'supplier_id', 'person_id', 'guest_count', 'price_per_person', 'currency',
-  'package_name', 'package_inclusions', 'schedule', 'notes',
+  'package_name', 'package_inclusions', 'schedule', 'notes', 'booked_by',
 ] as const
 
 // Flat patch carries these as FREE TEXT; tables store registry FKs. Write-split

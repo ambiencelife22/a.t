@@ -229,6 +229,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         expected_arrival_time: expectedArrival,
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
+        depart_airport: null, arrive_airport: null, depart_terminal: null, arrive_terminal: null, cabin_class: null, aircraft_type: null,
         package_name: null, price_per_person: null, currency: null, package_inclusions: null, schedule: null,
         cancellation_penalty_applied: null, cancellation_note: null,
         show_cancellation: null, schedule_status: null, schedule_note: (b.status_note as string | null) ?? null, requested_checkout_time: null, late_checkout_approved_time: null, original_start_time: null, original_end_time: null, venue: null,
@@ -264,6 +265,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
         expected_arrival_time: null,
         contact_name: null, contact_phone: null,
         guest_name: null, guest_count: null, dining_status: null,
+        depart_airport: null, arrive_airport: null, depart_terminal: null, arrive_terminal: null, cabin_class: null, aircraft_type: null,
         package_name: null, price_per_person: null, currency: null, package_inclusions: null, schedule: null,
         cancellation_penalty_applied: null, cancellation_note: null,
         show_cancellation: null, schedule_status: null, schedule_note: (b.status_note as string | null) ?? null, original_start_time: null, original_end_time: null, venue: null,
@@ -282,11 +284,15 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
     if (a.brief_show === false) continue
     if (!a.start_date) continue
     const isFlight = (a.element_type ?? '') === 'flight' || (a.element_type ?? '') === 'private_jet'
-    const route = a.origin && a.destination ? `${a.origin} \u2192 ${a.destination}` : null
+    const depPoint = (a.depart_airport as string | null) ?? (a.origin as string | null) ?? null
+    const arrPoint = (a.arrive_airport as string | null) ?? (a.destination as string | null) ?? null
+    const route = depPoint && arrPoint ? `${depPoint} \u2192 ${arrPoint}` : null
+    const terminals = (a.depart_terminal || a.arrive_terminal)
+      ? [a.depart_terminal ?? null, a.arrive_terminal ?? null].filter(Boolean).join('  \u2192  ')
+      : null
     const subtitle = isFlight
-      ? ([route, a.cabin_class, a.aircraft_type].filter(Boolean).join('  \u00b7  ') || null)
+      ? ([route, a.cabin_class, a.aircraft_type, terminals].filter(Boolean).join('  \u00b7  ') || null)
       : route
-
     const passengers: TimelinePassenger[] = (a.passengers ?? [])
       .slice()
       .sort((x, y) => ((x.sort_order as number) ?? 0) - ((y.sort_order as number) ?? 0))
@@ -327,6 +333,12 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       guest_name: (a.resolved_guest_name as string | null) ?? (a.guest_name as string | null) ?? null,
       guest_count: (a.guest_count as number | null) ?? null,
       dining_status: (a.dining_status as string | null) ?? null,
+      depart_airport: (a.depart_airport as string | null) ?? null,
+      arrive_airport: (a.arrive_airport as string | null) ?? null,
+      depart_terminal: (a.depart_terminal as string | null) ?? null,
+      arrive_terminal: (a.arrive_terminal as string | null) ?? null,
+      cabin_class: (a.cabin_class as string | null) ?? null,
+      aircraft_type: (a.aircraft_type as string | null) ?? null,
       package_name: (a.package_name as string | null) ?? null,
       price_per_person: (a.price_per_person as number | null) ?? null,
       currency: (a.currency as string | null) ?? null,
@@ -371,6 +383,7 @@ export function buildEntryItems(entries: EntryLike[]): TimelineItem[] {
       expected_arrival_time: null,
       contact_name: null, contact_phone: null,
       guest_name: null, guest_count: null, dining_status: null,
+      depart_airport: null, arrive_airport: null, depart_terminal: null, arrive_terminal: null, cabin_class: null, aircraft_type: null,
       package_name: null, price_per_person: null, currency: null, package_inclusions: null, schedule: null,
       cancellation_penalty_applied: null, cancellation_note: null,
       show_cancellation: null, schedule_status: null, schedule_note: null, requested_checkout_time: null, late_checkout_approved_time: null, original_start_time: null, original_end_time: null, venue: null,

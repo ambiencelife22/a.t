@@ -48,7 +48,7 @@ import type {
   EngagementElement as AdminEngagementElement,
 } from '../types/typesImmerse'
 import { isFlightElement, isTransferElement, isMeetGreetElement, isDiningElement } from '../types/typesElements'
-import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, buildRoute } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -282,7 +282,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
     y = drawSectionHeader(doc, 'Flights', y)
     for (const f of flights) {
       y = checkOverflow(doc, y, 18)
-      const route    = [f.departAirport ?? f.origin, f.arriveAirport ?? f.destination].filter(Boolean).join('  \u2192  ')
+      const route    = buildRoute(f).route ?? ''
       const meta     = [route, f.cabinClass, f.aircraftType].filter(Boolean).join('   \u00b7   ') || null
       const paxLines = passengerLines(f)
       y += drawDataRow(doc, {
@@ -316,7 +316,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
       y += drawDataRow(doc, {
         date:        t.startDate ? fmtDate(t.startDate) : '-',
         name:        t.name ?? 'Transfer',
-        sub:         [t.origin, t.destination].filter(Boolean).join('  \u2192  ') || null,
+        sub:         buildRoute(t).route ?? null,
         bookedBy:    bookedByLabel(t.bookedBy),
         bookedByRaw: t.bookedBy,
       }, y)

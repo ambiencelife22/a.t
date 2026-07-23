@@ -18,6 +18,7 @@ import { navigateAdmin } from '../../utils/utilsAdminPath'
 import { AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import { formatDateShort, formatDateShortRange, formatDateRange } from '../../utils/utilsDates'
 import { moneyDec as fmt } from '../../utils/utilsCurrency'
+import { buildRoute } from '../../utils/utilsBooking'
 import type {
   EngagementDossierData, DossierJourney, EngagementBooking, EngagementPartner,
   HouseProfile,
@@ -477,7 +478,7 @@ function AuxBookingsEditor({ journeyId }: { journeyId: string }) {
   useEffect(() => { load() }, [journeyId])
 
   const rowLine = (a: AdminEngagementElement): string => {
-    const route = [a.origin, a.destination].filter(Boolean).join(' \u2192 ')
+    const route = buildRoute(a).route ?? ''
     const seats = a.cabinClass ?? ''
     return [route, seats].filter(Boolean).join('  \u00b7  ')
   }

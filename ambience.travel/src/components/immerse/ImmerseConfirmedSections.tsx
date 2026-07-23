@@ -32,7 +32,7 @@ import type {
 import type { TimelineItemView } from '../../types/typesImmerseDelivery'
 import { groupElementsBySection, isFlightElement, isTransferElement, isGroundTransportElement, isDiningElement, isMeetGreetElement } from '../../types/typesElements'
 import { getEventStatusMeta }            from '../../types/typesEventStatus'
-import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, toWhatsAppHref, beddingLabel } from '../../utils/utilsBooking'
+import { bookedByLabel, isOwnArrangements, categoryAccentHex, toTelHref, toWhatsAppHref, beddingLabel, buildRoute } from '../../utils/utilsBooking'
 import { webRoomDisplay, passengerName } from '../../utils/utilsRoomDisplay'
 import { fmtTime, localDateStr, formatDate, formatDateRange, formatDateWeekday, formatDateShortWeekday } from '../../utils/utilsDates'
 import { useWindowWidth } from '../../hooks/useWindowWidth'
@@ -378,7 +378,7 @@ const auxSections = groupElementsBySection(elements)
             const pillColor = ownArr ? c.faint : c.gold
             const alert      = scheduleAlert(aux)
             const timeStr    = [fmtTime(aux.startTime), fmtTime(aux.endTime)].filter(Boolean).join(' - ')
-            const route      = [aux.origin, aux.destination].filter(Boolean).join(' \u2192 ')
+            const { route, terminals } = buildRoute(aux)
 
             return (
               <div key={aux.id} style={{
@@ -628,16 +628,9 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
         .filter(e => e.entryDate === activeDay.entryDate && e.briefShow)
         .map((e): EngagementElementView => {
           const isFlight = (e.category === 'flight' || e.category === 'private_jet') && e.kind === 'aux'
-          let flightOrigin:      string | null = null
-          let flightDestination: string | null = null
-          if (isFlight && e.subtitle) {
-            const parts = e.subtitle.split('\u2192').map(s => s.trim())
-            if (parts.length >= 2) {
-              flightOrigin      = parts[0] || null
-              // subtitle may carry extra " · cabin · aircraft" after the arrow; take up to the first ·
-              flightDestination = (parts[1].split('\u00b7')[0] || '').trim() || null
-            }
-          }
+          const { from: flightOrigin, to: flightDestination } = isFlight
+            ? buildRoute(e)
+            : { from: null, to: null }
           return {
             ...e,
             subtitle:          isFlight ? null : e.subtitle,
@@ -1341,7 +1334,7 @@ export function EngagementBriefTab({ clientData }: {
       {flights.length > 0 && (
         <BriefSection title='Flights'>
           {flights.map(f => {
-            const route = [f.origin, f.destination].filter(Boolean).join(' \u2192 ')
+            const route = buildRoute(f).route ?? ''
             const cabin = f.cabinClass ?? null
             const aircraft = f.aircraftType ?? null
             const flightMeta = [route, cabin, aircraft].filter(Boolean).join('  \u00b7  ')
@@ -1400,7 +1393,7 @@ export function EngagementBriefTab({ clientData }: {
       {transfers.length > 0 && (
         <BriefSection title='Transfers'>
           {transfers.map(t => {
-            const route = [t.origin, t.destination].filter(Boolean).join(' \u2192 ')
+            const route = buildRoute(t).route ?? ''
             const veh = (t.driverDetails ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
             return (
               <div key={t.id} style={{ display: 'flex', gap: 16, paddingTop: 10, paddingBottom: 10 }}>

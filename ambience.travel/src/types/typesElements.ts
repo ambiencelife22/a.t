@@ -418,6 +418,8 @@ export type ElementBase = {
   endTime:            string | null
   origin:              string | null
   destination:         string | null
+  departTerminal:      string | null
+  arriveTerminal:      string | null
   notes:               string | null
   confirmationNumber: string | null
   bookedBy:           string | null

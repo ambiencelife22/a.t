@@ -132,3 +132,24 @@ export function categoryAccentHex(category: string | null | undefined): string {
 export function categoryAccentRgb(category: string | null | undefined): RGB {
   return (CATEGORY_ACCENT_MAP[category ?? ''] ?? CATEGORY_ACCENT_DEFAULT).rgb
 }
+
+// ── Route (single source) ────────────────────────────────────────────────────
+// One assembly for any routed element (flight, transfer, car service). Structured
+// airport FKs win; free-text origin/destination is the fallback for element types
+// that legitimately have no IATA (transfers). Terminals are structured flight
+// facts. NEVER parse a display string to recover route data - callers take the
+// element, not a subtitle.
+export function buildRoute(el: {
+  departAirport?:  string | null
+  arriveAirport?:  string | null
+  origin?:         string | null
+  destination?:    string | null
+  departTerminal?: string | null
+  arriveTerminal?: string | null
+}): { from: string | null; to: string | null; route: string | null; terminals: string | null } {
+  const from = el.departAirport ?? el.origin ?? null
+  const to   = el.arriveAirport ?? el.destination ?? null
+  const route = from && to ? `${from} \u2192 ${to}` : null
+  const terminals = [el.departTerminal, el.arriveTerminal].filter(Boolean).join('  \u2192  ') || null
+  return { from, to, route, terminals }
+}

@@ -38,7 +38,7 @@ import type {
   ImmerseBookingRoom as BookingRoom,
   EngagementElement as AdminEngagementElement,
 } from '../types/typesImmerse'
-import { bookedByLabel, isOwnArrangements } from '../utils/utilsBooking'
+import { bookedByLabel, buildRoute, isOwnArrangements } from '../utils/utilsBooking'
 import { isGroundTransportElement, groupElementsBySection, isMeetGreetElement, isDiningElement } from '../types/typesElements'
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -466,7 +466,7 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.text(aux.name, centreX, y + padV + 5)
   }
   if (aux.origin || aux.destination || aux.departAirport || aux.arriveAirport) {
-    const route = [aux.departAirport ?? aux.origin, aux.arriveAirport ?? aux.destination].filter(Boolean).join('  \u2192  ')
+    const { route, terminals: terminalLine } = buildRoute(aux)
     sans(doc, 'normal', 9)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     doc.text(route, centreX, y + padV + 11)
