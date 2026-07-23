@@ -465,13 +465,13 @@ function drawFlightCard(doc: any, aux: AdminEngagementElement, y: number): numbe
     doc.setTextColor(T.ink[0], T.ink[1], T.ink[2])
     doc.text(aux.name, centreX, y + padV + 5)
   }
-  if (aux.origin || aux.destination || aux.departAirport || aux.arriveAirport) {
-    const { route, terminals: terminalLine } = buildRoute(aux)
+  const { route: auxRoute, terminals: auxTerminals } = buildRoute(aux)
+  if (auxRoute) {
     sans(doc, 'normal', 9)
     doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
-    doc.text(route, centreX, y + padV + 11)
+    doc.text(auxRoute, centreX, y + padV + 11)
   }
-  const metaLine = [aux.startDate ? fmtDate(aux.startDate) : null, aux.cabinClass, aux.aircraftType].filter(Boolean).join('  \u00b7  ')
+  const metaLine = [aux.startDate ? fmtDate(aux.startDate) : null, aux.cabinClass, aux.aircraftType, auxTerminals].filter(Boolean).join('  \u00b7  ')
   if (metaLine) {
     sans(doc, 'normal', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])

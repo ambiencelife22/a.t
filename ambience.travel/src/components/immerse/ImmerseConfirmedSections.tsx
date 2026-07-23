@@ -403,6 +403,7 @@ const auxSections = groupElementsBySection(elements)
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.diningStatus === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.diningStatus === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
+                  {terminals && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, wordBreak: 'break-word' }}>{terminals}</div>}
                   {aux.startDate && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.startDate)}</div>}
                   {alert.originalStart || alert.originalEnd ? (
                     <div style={{ fontSize: 13, fontFamily: TYPE.sans, fontWeight: 700, color: c.ink, marginTop: 4 }}>
