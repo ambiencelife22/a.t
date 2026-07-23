@@ -42,6 +42,7 @@ import { supabase } from '../../lib/supabase'
 import { camelizeKeys } from '@shared/camelize'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { matchesQuery } from '../../utils/utilsSearch'
+import { fetchAllDestinationsFull } from '../../queries/queriesGuides'
 
 // ── Recognition summary ───────────────────────────────────────────────────────
 
@@ -345,12 +346,7 @@ export default function LibraryHotelsTab({ destinationId }: LibraryHotelsTabProp
   const scopedDest = destinationId ? destinationsById.get(destinationId) ?? null : null
 
   async function loadDestinations() {
-    const { data, error } = await supabase
-      .from('global_destinations')
-      .select('id, slug, name, storage_path')
-      .order('name', { ascending: true })
-    if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-    setDestinations(camelizeKeys<DestinationFull[]>(data ?? []))
+    setDestinations(await fetchAllDestinationsFull() as DestinationFull[])
   }
 
   async function load() {

@@ -51,6 +51,7 @@ import { supabase } from '../../lib/supabase'
 import { camelizeKeys } from '@shared/camelize'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { matchesQuery } from '../../utils/utilsSearch'
+import { fetchAllDestinationsFull } from '../../queries/queriesGuides'
 
 // ── Recognition label helper ──────────────────────────────────────────────────
 
@@ -506,12 +507,7 @@ export default function LibraryDiningTab({ destinationId }: LibraryDiningTabProp
   }, [scopedDest])
 
   async function loadDestinations() {
-    const { data, error } = await supabase
-      .from('global_destinations')
-      .select('id, slug, name, storage_path')
-      .order('name', { ascending: true })
-    if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-    setDestinations(camelizeKeys<DestinationFull[]>(data ?? []))
+    setDestinations(await fetchAllDestinationsFull() as DestinationFull[])
   }
 
   async function load() {

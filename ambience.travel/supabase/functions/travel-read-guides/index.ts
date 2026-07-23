@@ -112,6 +112,24 @@ Deno.serve(async (req) => {
       return json({ rows: data ?? [] })
     }
 
+    if (mode === 'destinations_all') {
+      const { data, error } = await serviceClient
+        .from('global_destinations')
+        .select('id, slug, name, storage_path')
+        .order('name', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch destinations' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
+    if (mode === 'destinations_all') {
+      const { data, error } = await serviceClient
+        .from('global_destinations')
+        .select('id, slug, name, storage_path')
+        .order('name', { ascending: true })
+      if (error) return json({ error: 'Failed to fetch destinations' }, 500)
+      return json({ rows: data ?? [] })
+    }
+
     return json({ error: 'Unknown mode: ' + mode }, 400)
   } catch (err) {
     console.error('travel-read-guides unexpected error:', err)

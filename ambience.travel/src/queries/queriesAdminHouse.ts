@@ -36,6 +36,17 @@ async function invokeReadHouse<T>(body: Record<string, unknown>): Promise<T> {
   return data as T
 }
 
+// Admin self-check. The requireAdmin gate on a-read-house IS the check: a
+// non-admin caller is rejected by the gate, which surfaces here as a throw.
+export async function checkIsAdminSelf(): Promise<boolean> {
+  try {
+    const { isAdmin } = await invokeReadHouse<{ isAdmin: boolean }>({ mode: 'is_admin_self' })
+    return isAdmin === true
+  } catch {
+    return false
+  }
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type HouseStatus      = 'active' | 'inactive' | 'archived'

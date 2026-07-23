@@ -29,6 +29,10 @@ Deno.serve(async (req: Request) => {
     if (!gate.ok) return gate.response
     const { serviceClient } = gate
 
+    if (mode === 'is_admin_self') {
+      return json({ isAdmin: true }, 200)
+    }
+
     if (mode === 'roles') {
       const { data, error } = await serviceClient
         .from('a_house_roles')

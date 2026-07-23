@@ -22,18 +22,23 @@
 
 import { supabase } from '../lib/supabase'
 import { camelizeKeys } from '@shared/camelize'
-
-async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
-  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
-  return data as T
-}
 import {
   type GuideDestination,
   type GuideOverlay,
   type GuideVariant,
   type GrantStatus,
 } from '../types/typesGuides'
+
+async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
+  if (error) throw new Error(`guide read (${body.mode}): ${error.message}`)
+  return data as T
+}
+
+export async function fetchAllDestinationsFull(): Promise<Array<{ id: string; slug: string; name: string; storagePath: string | null }>> {
+  const { rows } = await invokeReadGuides<{ rows: unknown[] }>({ mode: 'destinations_all' })
+  return camelizeKeys<Array<{ id: string; slug: string; name: string; storagePath: string | null }>>(rows ?? [])
+}
 
 
 // ── getGuideDestination ─────────────────────────────────────────────────────
