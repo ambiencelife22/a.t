@@ -393,17 +393,17 @@ export function roomLine(room: RoomLike): string {
 
 // ── Dining status - shared cancellation/terms model for PDFs ──────────────────
 // Mirrors diningPillModel in ImmerseConfirmedSections. Returns the label + an RGB tone.
-export interface DiningStatusLike {
+export interface reservationStatusLike {
   showCancellation?:            boolean | null
-  diningStatus?:                string | null
+  reservationStatus?:           string | null
   cancellationPenaltyApplied?: boolean | null
   cancellationNote?:            string | null
   venue?: { bookingTerms?: string | null } | null
 }
 
-export function diningPdfStatus(d: DiningStatusLike): { label: string; tone: RGB } | null {
+export function diningPdfStatus(d: reservationStatusLike): { label: string; tone: RGB } | null {
   if (d.showCancellation === false) return null
-  const cancelled = d.diningStatus === 'cancelled'
+  const cancelled = d.reservationStatus === 'cancelled'
   const penalty   = d.cancellationPenaltyApplied === true
   const red: RGB  = [180, 50, 31]
   if (cancelled && penalty) return { label: d.cancellationNote ?? 'Cancelled - penalty applies', tone: red }
@@ -412,8 +412,8 @@ export function diningPdfStatus(d: DiningStatusLike): { label: string; tone: RGB
   return null
 }
 
-export function isDiningCancelled(d: DiningStatusLike): boolean {
-  return d.diningStatus === 'cancelled' && d.showCancellation !== false
+export function isDiningCancelled(d: reservationStatusLike): boolean {
+  return d.reservationStatus === 'cancelled' && d.showCancellation !== false
 }
 
 // ── Greeter line - meet_greet contact composition for PDFs ────────────────────

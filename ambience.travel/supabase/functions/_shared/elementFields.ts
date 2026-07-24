@@ -35,7 +35,7 @@ export const TRANSPORT_FIELDS = [
 
 // travel_engagement_reservation_detail columns. Flat name == column name.
 export const DINING_FIELDS = [
-  'supplier_id', 'guest_name', 'guest_count', 'dining_status', 'contact_name',
+  'supplier_id', 'guest_name', 'guest_count', 'reservation_status', 'contact_name',
   'contact_phone', 'cancellation_note', 'booking_terms_override', 'notes', 'booked_by',
 ] as const
 

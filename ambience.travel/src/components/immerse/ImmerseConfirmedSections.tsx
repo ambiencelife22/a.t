@@ -85,13 +85,13 @@ function StatusPill({ status }: { status: string | null }) {
 // active + booking_terms → gold advisory; cancelled + penalty → red; cancelled no-penalty → neutral.
 function diningPillModel(opts: {
   showCancellation: boolean | null
-  diningStatus:     string | null
+  reservationStatus: string | null
   penaltyApplied:   boolean | null
   cancellationNote: string | null
   bookingTerms:     string | null
 }): { color: string; label: string } | null {
   if (opts.showCancellation === false) return null
-  const cancelled = opts.diningStatus === 'cancelled'
+  const cancelled = opts.reservationStatus === 'cancelled'
   const penalty   = opts.penaltyApplied === true
   if (cancelled && penalty) return { color: '#B4321F', label: opts.cancellationNote ?? 'Cancelled - penalty applies' }
   if (cancelled)            return { color: c.muted,     label: opts.cancellationNote ?? 'Cancelled' }
@@ -115,7 +115,7 @@ function DiningPillBox({ model }: { model: { color: string; label: string } | nu
 function DiningPill({ aux }: { aux: AdminEngagementElement }) {
   return <DiningPillBox model={diningPillModel({
     showCancellation: aux.showCancellation ?? null,
-    diningStatus:     aux.diningStatus ?? null,
+    reservationStatus:     aux.reservationStatus ?? null,
     penaltyApplied:   aux.cancellationPenaltyApplied ?? null,
     cancellationNote: aux.cancellationNote ?? null,
     bookingTerms:     aux.venue?.bookingTerms ?? null,
@@ -399,7 +399,7 @@ const auxSections = groupElementsBySection(elements)
                   <div style={{ fontSize: 22, color: c.gold, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>{section.icon}</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.diningStatus === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.diningStatus === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
+                  {aux.name && <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: aux.reservationStatus === 'cancelled' ? c.faint : c.ink, marginBottom: 3, textDecoration: aux.reservationStatus === 'cancelled' ? 'line-through' : 'none' }}>{aux.name}</div>}
                   {route && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, wordBreak: 'break-word' }}>{route}</div>}
                   {terminals && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, wordBreak: 'break-word' }}>{terminals}</div>}
                   {aux.startDate && <div style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.faint, marginTop: 2 }}>{formatDate(aux.startDate)}</div>}
@@ -864,12 +864,12 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                   if (item.venue || item.guestName || item.guestCount) {
                     const pill = diningPillModel({
                       showCancellation: item.showCancellation,
-                      diningStatus:     item.diningStatus,
+                      reservationStatus:     item.reservationStatus,
                       penaltyApplied:   item.cancellationPenaltyApplied,
                       cancellationNote: item.cancellationNote,
                       bookingTerms:     item.venue?.bookingTerms ?? null,
                     })
-                    const cancelled = item.diningStatus === 'cancelled'
+                    const cancelled = item.reservationStatus === 'cancelled'
                     const essentials = [item.guestName, item.guestCount ? `${item.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const v = item.venue
                     const hasDetails = !!(v?.address || v?.phone || v?.dressCode || v?.childrenPolicy || v?.tableHoldNote)
@@ -1456,7 +1456,7 @@ export function EngagementBriefTab({ clientData }: {
       )).map(section => (
         <BriefSection key={section.type} title={section.label}>
           {section.items.map(d => {
-            const cancelled = d.diningStatus === 'cancelled' && d.showCancellation !== false
+            const cancelled = d.reservationStatus === 'cancelled' && d.showCancellation !== false
             return (
               <BriefRow
                 key={d.id}

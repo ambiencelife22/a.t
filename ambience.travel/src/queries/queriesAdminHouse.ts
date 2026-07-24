@@ -53,7 +53,7 @@ export type HouseStatus      = 'active' | 'inactive' | 'archived'
 export type HouseDesignation = 'HRH' | 'HH' | 'VVIP' | null
 export type HouseRole        = string
 export type PrefConfidence   = 'confirmed' | 'to_confirm' | 'outdated'
-export type DiningStatus     = 'favorite' | 'visited' | 'avoid' | 'to_try'
+export type reservationStatus     = 'favorite' | 'visited' | 'avoid' | 'to_try'
 export type DestinationStatus = 'visited' | 'planned' | 'avoided'
 export type DestinationTripType = 'family' | 'couple' | 'solo' | 'business' | 'other'
 export type ContactType      = 'pa' | 'driver' | 'fixer' | 'medical' | 'security' | 'concierge' | 'other'
@@ -130,7 +130,7 @@ export interface HouseDiningEntry {
   restaurant_name: string
   city:            string | null
   country:         string | null
-  status:          DiningStatus
+  status:          reservationStatus
   visitDate:      string | null
   journeyId:      string | null
   venue_id:        string | null
@@ -417,7 +417,7 @@ export async function fetchDiningHistoryForHouse(houseId: string): Promise<House
 
 export async function createDiningEntry(
   houseId: string, restaurantName: string, city: string | null, country: string | null,
-  status: DiningStatus, visitDate: string | null, journeyId: string | null,
+  status: reservationStatus, visitDate: string | null, journeyId: string | null,
   venueId: string | null, notes: string | null,
 ): Promise<void> {
   const { error } = await supabase.functions.invoke('a-write-house-records', {

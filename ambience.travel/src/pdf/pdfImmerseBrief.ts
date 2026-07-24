@@ -371,7 +371,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
     y = drawSectionHeader(doc, sec.label, y)
     for (const dd of sec.items) {
       y = checkOverflow(doc, y, 20)
-      const cancelled = isDiningCancelled({ showCancellation: dd.showCancellation, diningStatus: dd.diningStatus })
+      const cancelled = isDiningCancelled({ showCancellation: dd.showCancellation, reservationStatus: dd.reservationStatus })
       const v = dd.venue
       const sub = [
         dd.startTime ? fmtTime(dd.startTime) : null,

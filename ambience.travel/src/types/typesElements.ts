@@ -433,7 +433,7 @@ export type ElementBase = {
   guestCount:         number | null
   contactName:        string | null
   contactPhone:       string | null
-  diningStatus:                string | null
+  reservationStatus:           string | null
   packageName:                 string | null
   pricePerPerson:              number | null
   currency:                    string | null

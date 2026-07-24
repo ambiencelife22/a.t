@@ -61,7 +61,7 @@ export type TimelineItem = {
   contact_phone:                string | null
   guest_name:                   string | null
   guest_count:                  number | null
-  dining_status:                string | null
+  reservation_status:           string | null
   depart_airport:               string | null
   arrive_airport:               string | null
   depart_terminal:              string | null

@@ -45,7 +45,7 @@ import {
   type HouseDiningEntry, type HouseDestination, type HouseContact,
   type PPDPeopleEntry, type HousePersonProfile,
   type HouseRole_Registry,
-  type PrefCategory, type PrefConfidence, type DiningStatus,
+  type PrefCategory, type PrefConfidence, type reservationStatus,
   type DestinationStatus, type DestinationTripType, type ContactType,
   type HouseLabel, type HouseLabelKey,
 } from '../../queries/queriesAdminHouse'
@@ -81,7 +81,7 @@ const CONF_COLOR: Record<PrefConfidence, string> = {
   outdated:   '#f87171',
 }
 
-const STATUS: Record<DiningStatus, { text: string; label: string }> = {
+const STATUS: Record<reservationStatus, { text: string; label: string }> = {
   favorite: { text: '#D8B56A', label: 'Favourite' },
   visited:  { text: '#4ade80', label: 'Visited'   },
   avoid:    { text: '#f87171', label: 'Avoid'      },
@@ -1447,16 +1447,16 @@ function PreferencesSection({ data, houseId, onReload, personRef, mobile }: {
 function DiningSection({ data, houseId, onReload, mobile }: {
   data: AllData; houseId: string; onReload: () => void; mobile: boolean
 }) {
-  const [filter, setFilter] = useState<DiningStatus | 'all'>('all')
+  const [filter, setFilter] = useState<reservationStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as DiningStatus, visitDate: '', journeyId: '', notes: '' })
+  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as reservationStatus, visitDate: '', journeyId: '', notes: '' })
   const { success, error }  = useAdminToast()
-  const STATUSES: DiningStatus[] = ['favorite', 'visited', 'to_try', 'avoid']
+  const STATUSES: reservationStatus[] = ['favorite', 'visited', 'to_try', 'avoid']
 
   const grouped = useMemo(() => {
     const filtered = filter === 'all' ? data.dining : data.dining.filter(d => d.status === filter)
-    const m = new Map<DiningStatus, HouseDiningEntry[]>()
+    const m = new Map<reservationStatus, HouseDiningEntry[]>()
     for (const s of STATUSES) m.set(s, [])
     for (const d of filtered) m.get(d.status)!.push(d)
     return STATUSES.map(s => ({ status: s, entries: m.get(s)! })).filter(g => g.entries.length > 0)
@@ -1481,7 +1481,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
     setSaving(false)
   }
 
-  async function changeStatus(entry: HouseDiningEntry, status: DiningStatus) {
+  async function changeStatus(entry: HouseDiningEntry, status: reservationStatus) {
     try { await updateDiningEntry(entry.id, { status }); await onReload() }
     catch (e) { error(e instanceof Error ? e.message : 'Failed') }
   }
@@ -1495,9 +1495,9 @@ function DiningSection({ data, houseId, onReload, mobile }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <StatusFilterBar
         options={STATUSES} active={filter}
-        onSelect={v => setFilter(v as DiningStatus | 'all')}
+        onSelect={v => setFilter(v as reservationStatus | 'all')}
         labelFor={s => s === 'all' ? 'All' : s === 'to_try' ? 'To Try' : capitalize(s as string)}
-        colorFor={s => s === 'all' ? A.gold : STATUS[s as DiningStatus].text}
+        colorFor={s => s === 'all' ? A.gold : STATUS[s as reservationStatus].text}
         counts={counts}
       >
         {!adding && <button onClick={() => setAdding(true)} style={btnP}>+ Add</button>}
@@ -1510,7 +1510,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
             <Field label='City'><input style={inputStyle} placeholder='City...' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
             <Field label='Country'><input style={inputStyle} placeholder='Country...' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>
             <Field label='Status'>
-              <select style={inputStyle} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as DiningStatus }))}>
+              <select style={inputStyle} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as reservationStatus }))}>
                 {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : capitalize(s)}</option>)}
               </select>
             </Field>
@@ -1544,7 +1544,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
                     </div>
                     <button onClick={() => remove(e.id)} style={btnD}>x</button>
                   </div>
-                  <select value={e.status} onChange={ev => changeStatus(e, ev.target.value as DiningStatus)} style={{ ...inputStyle, width: '100%', marginTop: 8, padding: '6px 10px', fontSize: 11 }}>
+                  <select value={e.status} onChange={ev => changeStatus(e, ev.target.value as reservationStatus)} style={{ ...inputStyle, width: '100%', marginTop: 8, padding: '6px 10px', fontSize: 11 }}>
                     {STATUSES.map(s => <option key={s} value={s}>{s === 'to_try' ? 'To Try' : capitalize(s)}</option>)}
                   </select>
                 </EntryCard>

@@ -147,7 +147,7 @@ function timelineToRows(items: TimelineItemView[]): ProgrammeEntry[] {
     const diningPill = isDining
       ? diningPdfStatus({
           showCancellation:            it.showCancellation,
-          diningStatus:                it.diningStatus,
+          reservationStatus:           it.reservationStatus,
           cancellationPenaltyApplied: it.cancellationPenaltyApplied,
           cancellationNote:            it.cancellationNote,
           venue:                        it.venue ? { bookingTerms: it.venue.bookingTerms } : null,
@@ -155,7 +155,7 @@ function timelineToRows(items: TimelineItemView[]): ProgrammeEntry[] {
       : null
     const diningCancelled = isDining && isDiningCancelled({
       showCancellation: it.showCancellation,
-      diningStatus:     it.diningStatus,
+      reservationStatus: it.reservationStatus,
     })
 
     const diningDetail: string[] = []
