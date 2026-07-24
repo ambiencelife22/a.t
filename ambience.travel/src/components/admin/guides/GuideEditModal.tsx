@@ -58,7 +58,7 @@ export default function GuideEditModal({
   deleteGrant,
 }: {
   variant:         GuideVariant
-  guide:           GuideOverlayDraft & { id: string; global_destination_id: string }
+  guide:           GuideOverlayDraft & { id: string; globalDestinationId: string }
   destinationName: string
   destinationSlug: string
   onSave:          (patch: GuideOverlayPatch) => Promise<void>
@@ -175,7 +175,7 @@ export default function GuideEditModal({
         {/* Access tab - gated on variantHasGrants */}
         {modalTab === 'access' && showAccess && fetchGrants && createGrant && deleteGrant && (
           <GuideAccessTab
-            globalDestinationId={guide.global_destination_id}
+            globalDestinationId={guide.globalDestinationId}
             fetchGrants={fetchGrants}
             createGrant={createGrant}
             deleteGrant={deleteGrant}
@@ -188,7 +188,7 @@ export default function GuideEditModal({
             variant={variant}
             destinationSlug={destinationSlug}
             destinationName={destinationName}
-            destinationId={guide.global_destination_id}
+            destinationId={guide.globalDestinationId}
           />
         )}
       </div>

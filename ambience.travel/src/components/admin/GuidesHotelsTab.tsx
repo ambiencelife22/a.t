@@ -77,7 +77,7 @@ export default function GuidesHotelsTab() {
     setCreating(false)
   }
 
-  const guideByDestId              = new Map(guides.map(g => [g.global_destination_id, g]))
+  const guideByDestId              = new Map(guides.map(g => [g.globalDestinationId, g]))
   const destinationsWithoutOverlay = destinationsWithCounts.filter(d => !guideByDestId.has(d.id))
 
   return (
@@ -119,8 +119,8 @@ export default function GuidesHotelsTab() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {guides.map(g => {
-                  const dest       = destinationsById.get(g.global_destination_id)
-                  const hotelCount = destinationsWithCounts.find(d => d.id === g.global_destination_id)?.hotel_count ?? 0
+                  const dest       = destinationsById.get(g.globalDestinationId)
+                  const hotelCount = destinationsWithCounts.find(d => d.id === g.globalDestinationId)?.hotelCount ?? 0
                   return (
                     <div
                       key={g.id}
@@ -201,7 +201,7 @@ export default function GuidesHotelsTab() {
                         {dest?.name ?? '(unknown)'}
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-                        {d.hotel_count} {d.hotel_count === 1 ? 'hotel' : 'hotels'}
+                        {d.hotelCount} {d.hotelCount === 1 ? 'hotel' : 'hotels'}
                       </div>
                       <button
                         onClick={() => handleCreate(d.id)}
@@ -223,8 +223,8 @@ export default function GuidesHotelsTab() {
         <GuideEditModal
           variant='hotels'
           guide={editing}
-          destinationName={destinationsById.get(editing.global_destination_id)?.name ?? '(unknown)'}
-          destinationSlug={destinationsById.get(editing.global_destination_id)?.slug ?? ''}
+          destinationName={destinationsById.get(editing.globalDestinationId)?.name ?? '(unknown)'}
+          destinationSlug={destinationsById.get(editing.globalDestinationId)?.slug ?? ''}
           onSave={async (patch) => { await updateHotelGuide(editing.id, patch) }}
           onDelete={async () => { await deleteHotelGuide(editing.id) }}
           onClose={() => setEditing(null)}

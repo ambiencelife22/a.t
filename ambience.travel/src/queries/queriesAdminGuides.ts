@@ -24,6 +24,28 @@ import { camelizeKeys } from '@shared/camelize'
 //   michelin_stars, michelin_green_star, worlds_50_best.
 
 import { supabase } from '../lib/supabase'
+import type {
+  DestinationOption, MichelinAward,
+  DestinationWithDiningCounts, DestinationWithExperiencesCounts,
+  DestinationWithHotelCounts, DestinationWithShoppingCounts,
+  AdminDiningVenue, AdminExperienceVenue, AdminHotel, AdminShop,
+  AdminDiningGuide, AdminExperiencesGuide, AdminHotelGuide, AdminShoppingGuide,
+  AdminGrant, AdminExperiencesGrant,
+  DiningVenuePatch, HotelPatch, DiningGuidePatch, ExperiencesGuidePatch,
+  HotelGuidePatch, ShoppingGuidePatch,
+  IngestVenueRecord, IngestPayload, IngestResult,
+} from '../types/typesAdminGuides'
+export type {
+  DestinationOption, MichelinAward,
+  DestinationWithDiningCounts, DestinationWithExperiencesCounts,
+  DestinationWithHotelCounts, DestinationWithShoppingCounts,
+  AdminDiningVenue, AdminExperienceVenue, AdminHotel, AdminShop,
+  AdminDiningGuide, AdminExperiencesGuide, AdminHotelGuide, AdminShoppingGuide,
+  AdminGrant, AdminExperiencesGrant,
+  DiningVenuePatch, HotelPatch, DiningGuidePatch, ExperiencesGuidePatch,
+  HotelGuidePatch, ShoppingGuidePatch,
+  IngestVenueRecord, IngestPayload, IngestResult,
+} from '../types/typesAdminGuides'
 import { fetchPeople, fetchPeopleByIds, type GlobalPersonResolved } from './queriesGlobalPeople'
 
 // S54c - global_people is read exclusively via queriesGlobalPeople (EF layer).
@@ -32,77 +54,9 @@ export type GlobalPerson = GlobalPersonResolved
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface DestinationOption {
-  id:   string
-  slug: string
-  name: string
-}
 
-export interface DestinationWithDiningCounts {
-  id:          string
-  venue_count: number
-  hasOverlay: boolean
-}
 
-export type MichelinAward = 'star' | 'bib_gourmand'
 
-export interface AdminDiningVenue {
-  id:                    string
-  globalDestinationId: string
-  name:                  string
-  cuisineSubcategory:   string | null
-  kicker:                string | null
-  tagline:               string | null
-  body:                  string | null
-  bulletsHeading:       string | null
-  bullets:               string[] | null
-  michelinAward:        MichelinAward | null
-  michelinStars:        number | null
-  michelinGreenStar:   boolean
-  worlds50Best:        boolean
-  address:               string | null
-  mapsUrl:              string | null
-  website:               string | null
-  neighborhood:          string | null
-  priceBand:            string | null
-  publicPreviewRank:   number | null
-  tags:                  string[] | null
-  imageSrc:             string | null
-  imageAlt:             string | null
-  imageCredit:          string | null
-  imageCreditUrl:      string | null
-  imageLicense:         string | null
-  image2Src:           string | null
-  image2Alt:           string | null
-  isActive:             boolean
-  sortOrder:            number
-}
-
-export interface AdminDiningGuide {
-  id:                      string
-  global_destination_id:   string
-  heroImageSrc:          string | null
-  heroImageAlt:          string | null
-  eyebrowOverride:        string | null
-  headlineOverride:       string | null
-  introOverride:          string | null
-  isActive:               boolean
-  accuracyDate:           string | null
-  atAGlanceBullets:     string[] | null
-  guideYear:              number | null
-  guideVersion:           string | null
-  planYourVisitHeading: string | null
-  planYourVisitIntro:   string | null
-  planYourVisitBullets: string[] | null
-}
-
-export interface AdminGrant {
-  id:                    string
-  userId:               string
-  global_destination_id: string
-  grantedAt:            string
-  person:                GlobalPerson | null  // null = profile not linked to a person
-}
 
 // ── Reads ────────────────────────────────────────────────────────────────────
 
@@ -142,7 +96,7 @@ export async function fetchDestinationsWithDining(): Promise<DestinationWithDini
 
   const out: DestinationWithDiningCounts[] = []
   for (const [id, count] of venueCountByDest.entries()) {
-    out.push({ id, venue_count: count, hasOverlay: overlaySet.has(id) })
+    out.push({ id, venueCount: count, hasOverlay: overlaySet.has(id) })
   }
   return out
 }
@@ -212,7 +166,7 @@ export async function fetchGrantsForDestination(
   const rows = (data ?? []) as unknown as Array<{
     id:                    string
     userId:               string
-    global_destination_id: string
+    globalDestinationId:   string
     grantedAt:            string
     profile: {
       personId: string | null
@@ -233,7 +187,7 @@ export async function fetchGrantsForDestination(
   return rows.map(r => ({
     id:                    r.id,
     userId:               r.userId,
-    global_destination_id: r.global_destination_id,
+    globalDestinationId: r.globalDestinationId,
     grantedAt:            r.grantedAt,
     person:                r.profile?.personId
       ? (peopleById.get(r.profile.personId) ?? null)
@@ -259,7 +213,6 @@ export async function fetchProfileByPersonId(
 
 // ── Writes - venues (UUID-keyed) ─────────────────────────────────────────────
 
-export type DiningVenuePatch = Partial<Omit<AdminDiningVenue, 'id'>>
 
 export async function updateDiningVenue(id: string, patch: DiningVenuePatch): Promise<void> {
   const { error } = await supabase
@@ -279,7 +232,6 @@ export async function deleteDiningVenue(id: string): Promise<void> {
 
 // ── Writes - guides (UUID-keyed) ─────────────────────────────────────────────
 
-export type DiningGuidePatch = Partial<Omit<AdminDiningGuide, 'id' | 'global_destination_id'>>
 
 export async function updateDiningGuide(id: string, patch: DiningGuidePatch): Promise<void> {
   const { error } = await supabase
@@ -312,57 +264,9 @@ export async function deleteDiningGuide(id: string): Promise<void> {
 
 // ── Experiences guide types ──────────────────────────────────────────────────
 
-export interface AdminExperienceVenue {
-  id:                    string
-  global_destination_id: string
-  name:                  string
-  kicker:                string | null
-  tagline:               string | null
-  body:                  string | null
-  bulletsHeading:       string | null
-  bullets:               string[] | null
-  address:               string | null
-  mapsUrl:              string | null
-  imageSrc:             string | null
-  imageAlt:             string | null
-  imageCredit:          string | null
-  imageCreditUrl:      string | null
-  imageLicense:         string | null
-  isActive:             boolean
-  sortOrder:            number
-}
 
-export interface AdminExperiencesGuide {
-  id:                      string
-  global_destination_id:   string
-  heroImageSrc:          string | null
-  heroImageAlt:          string | null
-  eyebrowOverride:        string | null
-  headlineOverride:       string | null
-  introOverride:          string | null
-  isActive:               boolean
-  accuracyDate:           string | null
-  atAGlanceBullets:     string[] | null
-  guideYear:              number | null
-  guideVersion:           string | null
-  planYourVisitHeading: string | null
-  planYourVisitIntro:   string | null
-  planYourVisitBullets: string[] | null
-}
 
-export interface AdminExperiencesGrant {
-  id:                    string
-  userId:               string
-  global_destination_id: string
-  grantedAt:            string
-  person:                GlobalPerson | null
-}
 
-export interface DestinationWithExperiencesCounts {
-  id:          string
-  venue_count: number
-  hasOverlay: boolean
-}
 
 // ── Experiences reads ────────────────────────────────────────────────────────
 
@@ -392,7 +296,7 @@ export async function fetchDestinationsWithExperiences(): Promise<DestinationWit
 
   const out: DestinationWithExperiencesCounts[] = []
   for (const [id, count] of venueCountByDest.entries()) {
-    out.push({ id, venue_count: count, hasOverlay: overlaySet.has(id) })
+    out.push({ id, venueCount: count, hasOverlay: overlaySet.has(id) })
   }
   return out
 }
@@ -431,15 +335,13 @@ export async function fetchExperiencesGrantsForDestination(
 
   // S51: display_name dropped from global_profiles spine - name resolves
   // exclusively via the profile → person link.
-  const rows = (data ?? []) as unknown as Array<{
-    id:                    string
-    userId:               string
-    global_destination_id: string
-    grantedAt:            string
-    profile: {
-      personId: string | null
-    } | null
-  }>
+  const rows = camelizeKeys<Array<{
+    id:                  string
+    userId:              string
+    globalDestinationId: string
+    grantedAt:           string
+    profile: { personId: string | null } | null
+  }>>(data ?? [])
 
   const personIds = rows
     .map(r => r.profile?.personId)
@@ -452,11 +354,11 @@ export async function fetchExperiencesGrantsForDestination(
   }
 
   return rows.map(r => ({
-    id:                    r.id,
-    userId:               r.userId,
-    global_destination_id: r.global_destination_id,
-    grantedAt:            r.grantedAt,
-    person:                r.profile?.personId
+    id:                  r.id,
+    userId:              r.userId,
+    globalDestinationId: r.globalDestinationId,
+    grantedAt:           r.grantedAt,
+    person:              r.profile?.personId
       ? (peopleById.get(r.profile.personId) ?? null)
       : null,
   }))
@@ -464,7 +366,6 @@ export async function fetchExperiencesGrantsForDestination(
 
 // ── Experiences writes - guides ───────────────────────────────────────────────
 
-export type ExperiencesGuidePatch = Partial<Omit<AdminExperiencesGuide, 'id' | 'global_destination_id'>>
 
 export async function updateExperiencesGuide(id: string, patch: ExperiencesGuidePatch): Promise<void> {
   const { error } = await supabase
@@ -537,25 +438,8 @@ export async function deleteGrant(id: string): Promise<void> {
 
 // ── JSON ingest ──────────────────────────────────────────────────────────────
 
-export interface IngestVenueRecord {
-  name:         string
-  subCategory?: string
-  address?:     string
-  website?:     string
-  description?: string
-  tags?:        string[]
-}
 
-export interface IngestPayload {
-  destination?: string
-  contentType?: string
-  restaurants:  IngestVenueRecord[]
-}
 
-export interface IngestResult {
-  inserted: number
-  skipped:  Array<{ name: string; reason: string }>
-}
 
 export async function ingestDiningJson(
   globalDestinationId: string,
@@ -620,69 +504,9 @@ export async function ingestDiningJson(
 
 // ── Hotel types ───────────────────────────────────────────────────────────────
 
-export interface AdminHotel {
-  id:                    string
-  globalDestinationId: string  // via destination_id FK
-  name:                  string
-  shortSlug:            string
-  heroImageSrc:        string | null
-  heroImageAlt:        string | null
-  bullets:               string[] | null
-  sortOrder:            number
-  isActive:             boolean
-  isPreferredPartner:  boolean
-  isSupplementary:      boolean
-  stars:                 number | null
-  michelinKeys:         number | null
-  forbesRating:         number | null
-  description:           string | null
-  internalNotes:        string | null
-  address:               string | null
-  city:                  string | null
-  zipCode:              string | null
-  latitude:              number | null
-  longitude:             number | null
-  googleMapsUrl:       string | null
-  website:               string | null
-  phone:                 string | null
-  reservationsPhone:    string | null
-  mainEmail:            string | null
-  reservationsEmail:    string | null
-  salesEmail:           string | null
-  conciergeEmail:       string | null
-  guestRelationsEmail: string | null
-  frontOfficeEmail:    string | null
-  imageCredit:          string | null
-  imageCreditUrl:      string | null
-  imageLicense:         string | null
-}
 
-export interface AdminHotelGuide {
-  id:                      string
-  global_destination_id:   string
-  heroImageSrc:          string | null
-  heroImageAlt:          string | null
-  eyebrowOverride:        string | null
-  headlineOverride:       string | null
-  introOverride:          string | null
-  isActive:               boolean
-  accuracyDate:           string | null
-  guideYear:              number | null
-  guideVersion:           string | null
-  atAGlanceBullets:     string[] | null
-  planYourVisitHeading: string | null
-  planYourVisitIntro:   string | null
-  planYourVisitBullets: string[] | null
-}
 
-export interface DestinationWithHotelCounts {
-  id:          string
-  hotel_count: number
-  hasOverlay: boolean
-}
 
-export type HotelPatch      = Partial<Omit<AdminHotel, 'id'>>
-export type HotelGuidePatch = Partial<Omit<AdminHotelGuide, 'id' | 'global_destination_id'>>
 
 // ── Hotel reads ───────────────────────────────────────────────────────────────
 
@@ -749,7 +573,7 @@ export async function fetchDestinationsWithHotels(): Promise<DestinationWithHote
 
   return Array.from(countByDest.entries()).map(([id, count]) => ({
     id,
-    hotel_count: count,
+    hotelCount: count,
     hasOverlay: overlaySet.has(id),
   }))
 }
@@ -812,52 +636,9 @@ export async function deleteHotelGuide(id: string): Promise<void> {
 
 // ── Shopping guide types ──────────────────────────────────────────────────────
 
-export interface AdminShop {
-  id:                    string
-  global_destination_id: string
-  name:                  string
-  brand:                 string | null
-  shopType:             string | null
-  tagline:               string | null
-  body:                  string | null
-  bullets:               unknown
-  address:               string | null
-  mapsUrl:              string | null
-  byAppointment:        boolean
-  imageSrc:             string | null
-  imageAlt:             string | null
-  imageCredit:          string | null
-  imageCreditUrl:      string | null
-  imageLicense:         string | null
-  isActive:             boolean
-  sortOrder:            number
-}
 
-export interface AdminShoppingGuide {
-  id:                      string
-  global_destination_id:   string
-  heroImageSrc:          string | null
-  heroImageAlt:          string | null
-  eyebrowOverride:        string | null
-  headlineOverride:       string | null
-  introOverride:          string | null
-  isActive:               boolean
-  accuracyDate:           string | null
-  atAGlanceBullets:     string[] | null
-  guideYear:              number | null
-  guideVersion:           string | null
-  planYourVisitHeading: string | null
-  planYourVisitIntro:   string | null
-  planYourVisitBullets: string[] | null
-}
 
-export interface DestinationWithShoppingCounts {
-  id:          string
-  shop_count:  number
-  hasOverlay: boolean
-}
 
-export type ShoppingGuidePatch = Partial<Omit<AdminShoppingGuide, 'id' | 'global_destination_id'>>
 
 // ── Shopping reads ────────────────────────────────────────────────────────────
 
@@ -887,7 +668,7 @@ export async function fetchDestinationsWithShopping(): Promise<DestinationWithSh
 
   const out: DestinationWithShoppingCounts[] = []
   for (const [id, count] of shopCountByDest.entries()) {
-    out.push({ id, shop_count: count, hasOverlay: overlaySet.has(id) })
+    out.push({ id, shopCount: count, hasOverlay: overlaySet.has(id) })
   }
   return out
 }

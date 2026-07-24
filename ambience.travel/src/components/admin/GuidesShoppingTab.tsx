@@ -76,7 +76,7 @@ export default function GuidesShoppingTab() {
     setCreating(false)
   }
 
-  const guideByDestId              = new Map(guides.map(g => [g.global_destination_id, g]))
+  const guideByDestId              = new Map(guides.map(g => [g.globalDestinationId, g]))
   const destinationsWithoutOverlay = destinationsWithCounts.filter(d => !guideByDestId.has(d.id))
 
   return (
@@ -118,8 +118,8 @@ export default function GuidesShoppingTab() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {guides.map(g => {
-                  const dest      = destinationsById.get(g.global_destination_id)
-                  const shopCount = destinationsWithCounts.find(d => d.id === g.global_destination_id)?.shop_count ?? 0
+                  const dest      = destinationsById.get(g.globalDestinationId)
+                  const shopCount = destinationsWithCounts.find(d => d.id === g.globalDestinationId)?.shopCount ?? 0
                   return (
                     <div
                       key={g.id}
@@ -200,7 +200,7 @@ export default function GuidesShoppingTab() {
                         {dest?.name ?? '(unknown)'}
                       </div>
                       <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>
-                        {d.shop_count} {d.shop_count === 1 ? 'shop' : 'shops'}
+                        {d.shopCount} {d.shopCount === 1 ? 'shop' : 'shops'}
                       </div>
                       <button
                         onClick={() => handleCreate(d.id)}
@@ -222,8 +222,8 @@ export default function GuidesShoppingTab() {
         <GuideEditModal
           variant='shopping'
           guide={editing}
-          destinationName={destinationsById.get(editing.global_destination_id)?.name ?? '(unknown)'}
-          destinationSlug={destinationsById.get(editing.global_destination_id)?.slug ?? ''}
+          destinationName={destinationsById.get(editing.globalDestinationId)?.name ?? '(unknown)'}
+          destinationSlug={destinationsById.get(editing.globalDestinationId)?.slug ?? ''}
           onSave={async (patch) => { await updateShoppingGuide(editing.id, patch) }}
           onDelete={async () => { await deleteShoppingGuide(editing.id) }}
           onClose={() => setEditing(null)}
