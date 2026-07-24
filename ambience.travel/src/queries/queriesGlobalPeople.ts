@@ -4,6 +4,10 @@
 // No direct table reads/writes (client-data architecture rule - sensitive
 // data only through EF).
 //
+// Types (GlobalPersonResolved, GlobalPersonInput) live in
+// src/types/typesGlobalPeople.ts and are re-exported here so consumers keep
+// importing person types from the query layer (types > queries > components).
+//
 // global_people is a cross-product spine: passengers, house-people, grants,
 // and team all FK to it. This layer is the canonical client path
 // ecosystem-wide. Consumers: PersonLinkPicker (link existing), PersonModal
@@ -15,6 +19,8 @@
 
 import { supabase } from '../lib/supabase'
 import { snakeizeKeys } from '@shared/camelize'
+import type { GlobalPersonResolved, GlobalPersonInput } from '../types/typesGlobalPeople'
+export type { GlobalPersonResolved, GlobalPersonInput }
 
 async function invokeRead<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('global-read-people', { body })
@@ -35,72 +41,22 @@ async function invokeWrite<T>(body: Record<string, unknown>): Promise<T> {
   return data as T
 }
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-// Resolved person (read/write shape - display_name resolved server-side).
-export interface GlobalPersonResolved {
-  id:                   string
-  firstName:           string | null
-  middleName:          string | null
-  lastName:            string | null
-  fatherName:          string | null
-  grandfatherName:     string | null
-  patronymicConnector: string | null
-  pronouns:             string | null
-  nickname:             string | null
-  email:                string | null
-  phone:                string | null
-  lastInitial:         string | null
-  isPublicDisplay:    boolean
-  over_18_confirmed_at: string | null
-  displayName:         string
-}
-
-// Editable fields for create/update. All optional - create defaults NOT NULLs.
-export interface GlobalPersonInput {
-  firstName?:           string | null
-  middleName?:          string | null
-  lastName?:            string | null
-  fatherName?:          string | null
-  grandfatherName?:     string | null
-  patronymicConnector?: string | null
-  pronouns?:             string | null
-  nickname?:             string | null
-  email?:                string | null
-  phone?:                string | null
-  notes?:                string | null
-  lastInitial?:         string | null
-  isPublicDisplay?:    boolean
-  over_18_confirmed_at?: string | null
-}
-
 // ── Reads ──────────────────────────────────────────────────────────────────
-
 // All people, ordered by first_name. Optional search filters name fields + email.
-export const fetchPeople = (search?: string) =>
-  invokeRead<{ people: GlobalPersonResolved[] }>({ mode: 'list', search })
-    .then(r => r.people)
+export const fetchPeople = (search?: string): Promise<GlobalPersonResolved[]> =>
+  invokeRead<{ people: GlobalPersonResolved[] }>({ mode: 'list', search }).then(r => r.people)
 
-// Single person by global_people.id.
-export const fetchPersonById = (id: string) =>
-  invokeRead<{ person: GlobalPersonResolved | null }>({ mode: 'by_id', id })
-    .then(r => r.person)
+export const fetchPersonById = (id: string): Promise<GlobalPersonResolved | null> =>
+  invokeRead<{ person: GlobalPersonResolved | null }>({ mode: 'by_id', id }).then(r => r.person)
 
-// Batch resolve a list of global_people ids.
-export const fetchPeopleByIds = (ids: string[]) =>
+export const fetchPeopleByIds = (ids: string[]): Promise<GlobalPersonResolved[]> =>
   ids.length === 0
     ? Promise.resolve([] as GlobalPersonResolved[])
-    : invokeRead<{ people: GlobalPersonResolved[] }>({ mode: 'by_ids', ids })
-        .then(r => r.people)
+    : invokeRead<{ people: GlobalPersonResolved[] }>({ mode: 'by_ids', ids }).then(r => r.people)
 
 // ── Writes ─────────────────────────────────────────────────────────────────
+export const createPerson = (input: GlobalPersonInput = {}): Promise<GlobalPersonResolved> =>
+  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'create', ...snakeizeKeys<Record<string, unknown>>(input) }).then(r => r.person)
 
-// Mint a new global_people row. Returns the resolved person (with its new id).
-export const createPerson = (input: GlobalPersonInput = {}) =>
-  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'create', ...snakeizeKeys<Record<string, unknown>>(input) })
-    .then(r => r.person)
-
-// Patch an existing global_people row.
-export const updatePerson = (id: string, patch: GlobalPersonInput) =>
-  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'update', id, ...snakeizeKeys<Record<string, unknown>>(patch) })
-    .then(r => r.person)
+export const updatePerson = (id: string, patch: GlobalPersonInput): Promise<GlobalPersonResolved> =>
+  invokeWrite<{ person: GlobalPersonResolved }>({ mode: 'update', id, ...snakeizeKeys<Record<string, unknown>>(patch) }).then(r => r.person)
