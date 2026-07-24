@@ -198,8 +198,6 @@ export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
 
 const auxSections = groupElementsBySection(elements)
 
-  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.briefShow !== false)
-
   return (
     <div>
       {lightbox && <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
@@ -578,17 +576,6 @@ const auxSections = groupElementsBySection(elements)
           })}
         </TabSection>
       ))}
-      {experiences.length > 0 && (
-        <TabSection label='EXPERIENCES'>
-          {experiences.map(x => (
-            <div key={x.id} style={{ background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12, overflow: 'hidden', padding: '16px 20px' }}>
-              formatDate(x.entryDate)
-              <div style={{ fontSize: 16, fontFamily: TYPE.serif, color: c.ink, marginTop: 2 }}>{x.title}</div>
-              {x.notes && <div style={{ fontSize: 12, fontFamily: TYPE.sans, color: c.muted, marginTop: 4 }}>{x.notes}</div>}
-            </div>
-          ))}
-        </TabSection>
-      )}
     </div>
   )
 }
@@ -1236,7 +1223,6 @@ export function EngagementBriefTab({ clientData }: {
   const flights   = elements.filter(a => isFlightElement(a.elementType))
   const transfers = elements.filter(a => isTransferElement(a.elementType))
   const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.briefShow !== false)
-  const experiences = (clientData.entries ?? []).filter(e => e.category === 'experience' && e.briefShow !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -1457,40 +1443,40 @@ export function EngagementBriefTab({ clientData }: {
         ) : null
       })()}
 
-      {(() => {
-        const dining = elements.filter(a => isDiningElement(a.elementType) && a.briefShow !== false)
-        return dining.length > 0 ? (
-          <BriefSection title='Dining'>
-            {dining.map(d => {
-              const cancelled = d.diningStatus === 'cancelled' && d.showCancellation !== false
-              return (
+      {/* Venue + experience sections resolve from the SAME section registry the
+          confirmation uses (groupElementsBySection + ELEMENT_TYPE_META): one
+          source for how element types group and what each section is called.
+          Flights, transfers and greeters are rendered above with their own
+          detail shape; everything else (reservations, dining, spa, tours,
+          acquisitions, arrangements) resolves here automatically. */}
+      {groupElementsBySection(elements.filter(a =>
+        !isFlightElement(a.elementType) &&
+        !isTransferElement(a.elementType) &&
+        !isMeetGreetElement(a.elementType)
+      )).map(section => (
+        <BriefSection key={section.type} title={section.label}>
+          {section.items.map(d => {
+            const cancelled = d.diningStatus === 'cancelled' && d.showCancellation !== false
+            return (
               <BriefRow
                 key={d.id}
                 label={d.startDate ? formatDate(d.startDate) : ''}
-                value={d.name ?? 'Dining'}
+                value={d.name ?? section.label}
                 sub={[
                   d.startTime ? fmtTime(d.startTime) : null,
                   d.resolvedGuestName ?? d.guestName ?? null,
                   d.guestCount ? `${d.guestCount} guests` : null,
+                  d.packageName ?? null,
                   d.confirmationNumber ? `Ref: ${d.confirmationNumber}` : null,
                 ].filter(Boolean).join('  \u00b7  ')}
                 bookedBy={bookedByLabel(d.bookedBy)}
                 cancelled={cancelled}
                 cancellationNote={d.cancellationPenaltyApplied ? d.cancellationNote : null}
               />
-              )
-            })}
-          </BriefSection>
-        ) : null
-      })()}
-
-      {experiences.length > 0 && (
-        <BriefSection title='Experiences'>
-          {experiences.map(x => (
-              formatDate(x.entryDate)
-            ))}
+            )
+          })}
         </BriefSection>
-      )}
+      ))}
       {clientData.brief?.importantNotes && (clientData.brief.importantNotes as string[]).length > 0 && (
         <BriefSection title='Important Notes'>
           {(clientData.brief.importantNotes as string[]).map((note, i) => (

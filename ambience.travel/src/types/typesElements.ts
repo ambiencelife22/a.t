@@ -378,8 +378,13 @@ export function isGroundTransportElement(bookingType: string | null | undefined)
   return t === 'transfer' || t === 'airport_transfer' || t === 'car_service'
 }
 
+// Venue reservations: dining and reservation share one detail shape
+// (travel_engagement_reservation_detail) and one guest treatment. Both are a
+// table held at a venue, so both belong to this family - matching only 'dining'
+// silently dropped every reservation-typed booking from the brief.
 export function isDiningElement(bookingType: string | null | undefined): boolean {
-  return toSlug(bookingType ?? '') === 'dining'
+  const t = toSlug(bookingType ?? '')
+  return t === 'dining' || t === 'reservation'
 }
 
 export function isMeetGreetElement(bookingType: string | null | undefined): boolean {

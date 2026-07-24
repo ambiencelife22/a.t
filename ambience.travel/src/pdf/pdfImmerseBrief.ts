@@ -47,7 +47,7 @@ import type {
   ImmerseEngagementHouse as HouseProfile,
   EngagementElement as AdminEngagementElement,
 } from '../types/typesImmerse'
-import { isFlightElement, isTransferElement, isMeetGreetElement, isDiningElement } from '../types/typesElements'
+import { isFlightElement, isTransferElement, isMeetGreetElement, groupElementsBySection } from '../types/typesElements'
 import { bookedByLabel, isOwnArrangements, buildRoute } from '../utils/utilsBooking'
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -357,23 +357,31 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
     y += 10
   }
 
-  // ── Dining ──────────────────────────────────────────────────────────────────
-
-  const dining = d.elements.filter(a => isDiningElement(a.elementType) && a.briefShow !== false)
-  if (dining.length > 0) {
-    y = drawSectionHeader(doc, 'Dining', y)
-    for (const dd of dining) {
+  // ── Venue + experience sections ─────────────────────────────────────────────
+  // Sections resolve from the SAME registry the web brief and confirmation use
+  // (groupElementsBySection + ELEMENT_TYPE_META): one source for how element
+  // types group and what each section is called. Flights, transfers and greeters
+  // render above with their own detail shape; everything else resolves here.
+  const venueSections = groupElementsBySection(d.elements.filter(a =>
+    !isFlightElement(a.elementType) &&
+    !isTransferElement(a.elementType) &&
+    !isMeetGreetElement(a.elementType)
+  ))
+  for (const sec of venueSections) {
+    y = drawSectionHeader(doc, sec.label, y)
+    for (const dd of sec.items) {
       y = checkOverflow(doc, y, 20)
       const cancelled = isDiningCancelled({ showCancellation: dd.showCancellation, diningStatus: dd.diningStatus })
       const v = dd.venue
       const sub = [
         dd.startTime ? fmtTime(dd.startTime) : null,
-        dd.guestName ?? null,
+        dd.resolvedGuestName ?? dd.guestName ?? null,
         dd.guestCount ? `${dd.guestCount} guests` : null,
+        dd.packageName ?? null,
       ].filter(Boolean).join('  \u00b7  ')
       y += drawDataRow(doc, {
         date:        dd.startDate ? fmtDate(dd.startDate) : '-',
-        name:        dd.name ?? 'Dining',
+        name:        dd.name ?? sec.label,
         sub:         v?.address ?? (sub || null),
         subIsLink:   v?.address ? (v?.mapsUrl ?? null) : null,
         bookedBy:    bookedByLabel(dd.bookedBy),
@@ -381,33 +389,12 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
         cancelled,
         cancelNote:  dd.cancellationPenaltyApplied ? dd.cancellationNote : null,
       }, y)
-      // Time/guest line beneath address (when address occupied the sub slot)
       if (v?.address && sub) {
         y = checkOverflow(doc, y, 7)
         sans(doc, 'normal', 7.5)
         doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
         doc.text(sub, P.margin + LABEL_W, y); y += 6
       }
-    }
-    y += 10
-  }
-
-  // ── Experiences ───────────────────────────────────────────────────────────
-  const experiences = d.experiences ?? []
-  if (experiences.length > 0) {
-    y = drawSectionHeader(doc, 'Experiences', y)
-    for (const xp of experiences) {
-      y = checkOverflow(doc, y, 20)
-      y += drawDataRow(doc, {
-        date:        xp.entry_date ? fmtDate(xp.entry_date) : '-',
-        name:        xp.title,
-        sub:         xp.notes ?? null,
-        subIsLink:   null,
-        bookedBy:    null,
-        bookedByRaw: null,
-        cancelled:   false,
-        cancelNote:  null,
-      }, y)
     }
     y += 10
   }
