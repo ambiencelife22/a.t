@@ -22,6 +22,9 @@
 //   og:site_name = "ambience.TRAVEL" — the preview's built-in attribution
 //   row — so branding is present without compositing an emblem onto the hero.
 
+import fs from 'node:fs'
+import path from 'node:path'
+
 const URL_ID_RE = /^[A-Za-z0-9]{11}$/
 
 // Scraper user-agents. Anything matching gets injected OG HTML; everything
@@ -70,6 +73,22 @@ function esc(s) {
     .replace(/'/g, '&#39;')
 }
 
+// Open Graph card image, derived from the page hero.
+//
+// Heroes are large full-bleed webp (2MB+). Scrapers do not reliably render
+// webp and skip oversized images, which is why previews fell back to the
+// generic card. Supabase image transformation returns a correctly sized JPEG
+// from the same source, so ONE hero asset serves both contexts: no separate
+// OG file to author and keep in sync.
+//
+// 1200x630 is the Open Graph card ratio. quality=75 keeps it around 200KB.
+function ogImage(src) {
+  if (!src) return ''
+  const t = String(src).replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+  if (t === String(src)) return String(src)   // not a Supabase storage URL, use as-is
+  return `${t}?width=1200&height=630&resize=cover&quality=75`
+}
+
 // The generic ambience card — used for hidden, missing, or errored engagements.
 // Carries zero engagement-specific data. Safe for public_view=false.
 function genericMeta(urlId) {
@@ -116,7 +135,7 @@ function buildHtml(meta) {
 </html>`
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const ua = req.headers['user-agent'] || ''
   const urlId = (req.query && req.query.urlId) || ''
 
@@ -168,7 +187,7 @@ module.exports = async function handler(req, res) {
 
     const title = stripVersion(row.title) || SITE_NAME
     const description = row.hero_tagline || row.subtitle || DEFAULT_DESC
-    const image = row.hero_image_src || EMBLEM_URL
+    const image = ogImage(row.hero_image_src) || EMBLEM_URL
 
     return send(res, buildHtml({
       title,
@@ -193,8 +212,6 @@ function send(res, html) {
 // at the deployment root; read and return it so the client app boots normally.
 function serveSpa(res) {
   try {
-    const fs = require('fs')
-    const path = require('path')
     // Vercel build output: index.html sits at the output root.
     const candidates = [
       path.join(process.cwd(), 'index.html'),
