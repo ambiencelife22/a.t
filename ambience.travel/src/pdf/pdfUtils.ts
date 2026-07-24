@@ -56,6 +56,24 @@ export function assertJsPdf(): any {
  *
  * Returns null on network error or canvas failure - callers must handle gracefully.
  */
+/**
+ * Supabase storage images are full-bleed webp originals (often 2MB+ at 4000px).
+ * Loading them raw means downloading and canvas-decoding the whole thing for a
+ * placement that is at most ~1600px on an A4 page: slow, memory-heavy, and the
+ * re-encoded JPEG stays large. Supabase image transformation returns a right-
+ * sized JPEG from the same source, so ONE canon asset serves the page hero, the
+ * link preview and the PDF. Non-storage URLs (local assets, data URIs) pass
+ * through untouched.
+ *
+ * 1600px wide covers a full-page A4 hero at ~200dpi; quality 82 is print-clean.
+ */
+function pdfImageSrc(src: string, width = 1600, quality = 82): string {
+  if (!src) return src
+  const t = src.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+  if (t === src) return src
+  return t + '?width=' + width + '&quality=' + quality
+}
+
 export async function loadImg(src: string): Promise<Img | null> {
   return new Promise(resolve => {
     const img = new Image()
@@ -69,7 +87,9 @@ export async function loadImg(src: string): Promise<Img | null> {
         c.height = nh
         const ctx = c.getContext('2d')
         if (!ctx) { resolve(null); return }
-        const isPng = /\.png(\?|$)/i.test(src)
+        // Transformed storage images always come back JPEG regardless of source
+        // extension, so only untransformed PNGs keep the PNG path.
+        const isPng = /\.png(\?|$)/i.test(src) && pdfImageSrc(src) === src
         if (!isPng) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, nw, nh) }
         ctx.drawImage(img, 0, 0)
         resolve(isPng
@@ -78,7 +98,7 @@ export async function loadImg(src: string): Promise<Img | null> {
       } catch { resolve(null) }
     }
     img.onerror = () => resolve(null)
-    img.src = src
+    img.src = pdfImageSrc(src)
   })
 }
 
