@@ -203,6 +203,7 @@ export default async function handler(req, res) {
 
 function send(res, html) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
+  res.setHeader('x-og-build', 'ogimage-transform')
   // Short cache: previews can refresh within minutes of an engagement edit.
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300')
   res.status(200).send(html)
