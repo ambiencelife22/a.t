@@ -187,6 +187,14 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     }
   })
 
+  // Overview hero falls back to destination 1 (overlay imageSrc, already
+  // resolved overlay -> template -> canon). rewriteImageUrl returns '' on null,
+  // so guard on empty, not nullish.
+  let heroImageSrc = rewriteImageUrl(eng.heroImageSrc as string | null)
+  if (!heroImageSrc) heroImageSrc = destinationRows[0]?.imageSrc ?? ''
+  let heroImageAlt = (eng.heroImageAlt ?? '') as string
+  if (!heroImageAlt) heroImageAlt = destinationRows[0]?.imageAlt ?? ''
+
   return {
     engagementId:    eng.id as string,
     audience:        normalizeAudience(eng.audience as string | null),
@@ -207,8 +215,8 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     eyebrow:       (eng.eyebrow   ?? '') as string,
     title:         (eng.title     ?? '') as string,
     subtitle:      (eng.subtitle  ?? '') as string,
-    heroImageSrc:  rewriteImageUrl(eng.heroImageSrc as string | null),
-    heroImageAlt:  (eng.heroImageAlt ?? '') as string,
+    heroImageSrc,
+    heroImageAlt,
     heroImageSrc2: rewriteImageUrl(eng.heroImageSrc2 as string | null) ?? undefined,
     heroImageAlt2: (eng.heroImageAlt2 ?? undefined) as string | undefined,
     heroTitle2:    (eng.heroTitle2    ?? undefined) as string | undefined,
