@@ -228,7 +228,7 @@ function RouteStopCard({
         e.currentTarget.style.boxShadow = IMMERSE.brickDepth
       }}
     >
-      <div style={{ height: 220, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ flex: 1, minHeight: 220, position: 'relative', overflow: 'hidden' }}>
         <img
           src={stop.imageSrc}
           alt={stop.imageAlt}
@@ -276,26 +276,28 @@ function RouteStopCard({
         </div>
       </div>
 
-      <div
-        style={{
-          padding: 18,
-          display: 'flex',
-          flexDirection: 'column',
-          flexGrow: 1,
-          justifyContent: 'flex-start',
-          background: ID.panel2,
-        }}
-      >
+      {stop.note ? (
         <div
           style={{
-            color: ID.muted,
-            fontSize: 13,
-            lineHeight: 1.7,
+            padding: 18,
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+            justifyContent: 'flex-start',
+            background: ID.panel2,
           }}
         >
-          {stop.note}
+          <div
+            style={{
+              color: ID.muted,
+              fontSize: 13,
+              lineHeight: 1.7,
+            }}
+          >
+            {stop.note}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 

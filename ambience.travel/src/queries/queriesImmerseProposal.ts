@@ -130,16 +130,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     signoffName: (eng.welcomeSignoffNameOverride ?? welcome?.signoffName ?? '') as string,
   }
 
-  const routeStops: ImmerseRouteStop[] = stops.map(r => ({
-    id:              r.id as string,
-    title:           (r.title      ?? '') as string,
-    stayLabel:       (r.stayLabel ?? '') as string,
-    note:            (r.note       ?? '') as string,
-    imageSrc:        rewriteImageUrl(r.imageSrc as string | null),
-    imageAlt:        (r.imageAlt  ?? '') as string,
-    destinationRowId: (r.destinationRowId ?? null) as string | null,
-    nights:          r.nights as number | undefined,
-  }))
+  const destRowImageById = new Map<string, { src: string | null; alt: string }>()
 
   const destinationRows: ImmerseDestinationRow[] = dests.map(r => {
     const gd         = r.globalDestinations as Record<string, unknown> | null
@@ -158,7 +149,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
       ?? fallback?.heroImageAlt
       ?? (gd?.heroImageAlt as string | null)
       ?? ''
-
+    destRowImageById.set(r.id as string, { src: resolvedImageSrc, alt: resolvedImageAlt as string })
     return {
       id:                  r.id as string,
       numberLabel:         (r.numberLabel ?? '') as string,
@@ -173,6 +164,23 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
       destinationUrlSlug:  (r.destinationUrlSlug ?? null) as string | null,
       subpageStatus:       normalizeSubpageStatus(r.subpageStatus as string | null),
       heroEyebrowOverride: (r.heroEyebrowOverride ?? undefined) as string | undefined,
+    }
+  })
+
+  const routeStops: ImmerseRouteStop[] = stops.map(r => {
+    const rowId  = (r.destinationRowId ?? null) as string | null
+    const canon  = rowId ? destRowImageById.get(rowId) : undefined
+    const rawSrc = (r.imageSrc as string | null) ?? canon?.src ?? null
+    const rawAlt = (r.imageAlt as string | null) ?? canon?.alt ?? ''
+    return {
+      id:               r.id as string,
+      title:            (r.title    ?? '') as string,
+      stayLabel:        (r.stayLabel ?? '') as string,
+      note:             (r.note     ?? '') as string,
+      imageSrc:         rewriteImageUrl(rawSrc),
+      imageAlt:         rawAlt,
+      destinationRowId: rowId,
+      nights:           r.nights as number | undefined,
     }
   })
 
