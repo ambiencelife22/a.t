@@ -135,6 +135,18 @@ export type ImmerseContentCard = {
   imageLicense?:   string
 }
 
+// Happenings extend the content card with time/venue/category fields (from
+// travel_happenings canon). Curated per proposal via the same selection layer.
+export type ImmerseHappeningCard = ImmerseContentCard & {
+  category?:  string | null
+  startDate?: string | null
+  endDate?:   string | null
+  venueName?: string | null
+  address?:   string | null
+  mapsUrl?:   string | null
+  website?:   string | null
+}
+
 export type ImmersePricingRow = {
   id:              string
   item:            string
@@ -351,6 +363,8 @@ export type SectionType =
   | 'hotel_options'
   | 'dining_grid'
   | 'experiences_grid'
+  | 'interstitial_2'
+  | 'happenings_grid'
   | 'detail_pricing'
 
 export type Section = {
@@ -377,6 +391,10 @@ export const SECTION_REGISTRY: readonly Section[] = [
   // ImmerseDestinationData.heroImageSrc2 - same band, both payloads carry it.
   { id: 'interstitial',     stages: ['draft', 'proposal'],                          shapes: ['journey', 'stay'],                                                                      sortOrder: 40 },
   { id: 'experiences_grid', stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 50 },
+  // interstitial_2: second cinematic band (hero-3 fields), between experiences
+  // and happenings on stay subpages. Reads ImmerseDestinationData.heroImageSrc3.
+  { id: 'interstitial_2',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 52 },
+  { id: 'happenings_grid',  stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 54 },
   { id: 'destinations',     stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 55 },
   { id: 'pricing',          stages: ['draft', 'proposal'],                          shapes: ['journey', 'dining', 'reservation', 'transport', 'experience', 'acquisition', 'arrangement'], sortOrder: 60 },
   { id: 'detail_pricing',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 60 },
@@ -471,6 +489,8 @@ export type ImmerseDestinationData = {
   heroImageAlt:    string
   heroImageSrc2?:  string
   heroImageAlt2?:  string
+  heroImageSrc3?:  string
+  heroImageAlt3?:  string
   heroTitle2?:     string
   heroSubtitle2?:  string
   heroPills:       string[]
@@ -489,6 +509,10 @@ export type ImmerseDestinationData = {
   experiencesTitle:   string
   experiencesBody:    string
   experiences:        ImmerseContentCard[]
+  happeningsEyebrow?: string
+  happeningsTitle?:   string
+  happeningsBody?:    string
+  happenings:         ImmerseHappeningCard[]
   pricingEyebrow:      string
   pricingTitle:        string
   pricingBody:         string

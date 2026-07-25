@@ -177,19 +177,21 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
         cursor: 'default',
       }}
     >
-      <div style={{ height: 210, overflow: 'hidden', position: 'relative' }}>
-        <img
-          src={item.imageSrc}
-          alt={item.imageAlt}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-            transform: hovered ? 'scale(1.04)' : 'scale(1)',
-            transition: 'transform 0.65s cubic-bezier(0.16,1,0.3,1)',
-          }}
-        />
+      <div style={{ height: 210, overflow: 'hidden', position: 'relative', background: ID.panel2 }}>
+        {item.imageSrc ? (
+          <img
+            src={item.imageSrc}
+            alt={item.imageAlt}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              transform: hovered ? 'scale(1.04)' : 'scale(1)',
+              transition: 'transform 0.65s cubic-bezier(0.16,1,0.3,1)',
+            }}
+          />
+        ) : null}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, transparent 36%, rgba(3,3,3,0.36) 100%)' }} />
       </div>
       <div style={{ padding: 18 }}>

@@ -260,6 +260,7 @@ async function buildDestinationPayload(
       global_destination_id,
       hero_image_src_override, hero_image_alt_override,
       hero_image_src_2_override, hero_image_alt_2_override,
+      hero_image_src_3_override, hero_image_alt_3_override,
       hero_title_2_override, hero_subtitle_2_override,
       hero_eyebrow_override,
       intro_title_override, intro_body_override,
@@ -661,7 +662,7 @@ async function fetchCards(
   const slugFilter = (q: any) =>
     urlSlug ? q.eq('destination_url_slug', urlSlug) : q.is('destination_url_slug', null)
 
-  const [diningRes, expRes] = await Promise.all([
+  const [diningRes, expRes, happeningRes] = await Promise.all([
     slugFilter(
       db.from('travel_overlay_engagement_content_card_selections')
         .select(`
@@ -694,9 +695,25 @@ async function fetchCards(
         .eq('travel_experiences.global_destination_id', globalDestinationId)
         .order('sort_order')
     ),
+    slugFilter(
+      db.from('travel_overlay_engagement_content_card_selections')
+        .select(`
+          sort_order, happening_id,
+          travel_happenings!inner (
+            id, global_destination_id, category, name, tagline, body,
+            bullets, start_date, end_date, venue_name, address, maps_url, website,
+            image_src, image_alt, image_credit, image_credit_url, image_license
+          )
+        `)
+        .eq('engagement_id', engagementId)
+        .eq('is_active', true)
+        .not('happening_id', 'is', null)
+        .eq('travel_happenings.global_destination_id', globalDestinationId)
+        .order('sort_order')
+    ),
   ])
 
-  type Sel = { sort_order: number; cardType: 'dining' | 'experience'; fkId: string; canon: Record<string, unknown> }
+  type Sel = { sort_order: number; cardType: 'dining' | 'experience' | 'happening'; fkId: string; canon: Record<string, unknown> }
   const selections: Sel[] = []
 
   for (const r of (diningRes.data ?? [])) {
@@ -709,11 +726,17 @@ async function fetchCards(
     if (!canon || !r.experience_id) continue
     selections.push({ sort_order: r.sort_order as number, cardType: 'experience', fkId: r.experience_id as string, canon })
   }
+  for (const r of (happeningRes.data ?? [])) {
+    const canon = r.travel_happenings as unknown as Record<string, unknown> | null
+    if (!canon || !r.happening_id) continue
+    selections.push({ sort_order: r.sort_order as number, cardType: 'happening', fkId: r.happening_id as string, canon })
+  }
 
-  if (!selections.length) return { dining: [], experiences: [] }
+  if (!selections.length) return { dining: [], experiences: [], happenings: [] }
 
-  const diningIds = selections.filter(s => s.cardType === 'dining').map(s => s.fkId)
-  const expIds    = selections.filter(s => s.cardType === 'experience').map(s => s.fkId)
+  const diningIds    = selections.filter(s => s.cardType === 'dining').map(s => s.fkId)
+  const expIds       = selections.filter(s => s.cardType === 'experience').map(s => s.fkId)
+  const happeningIds = selections.filter(s => s.cardType === 'happening').map(s => s.fkId)
 
   const overrideQueries: Promise<{ data: Record<string, unknown>[] | null }>[] = []
   if (diningIds.length) overrideQueries.push(
@@ -726,27 +749,42 @@ async function fetchCards(
   )
   if (expIds.length) overrideQueries.push(
     db.from('travel_overlay_engagement_content_card_overrides')
-      .select(`dining_venue_id, experience_id, kicker_override, name_override, tagline_override,
+      .select(`dining_venue_id, experience_id, happening_id, kicker_override, name_override, tagline_override,
                body_override, bullets_heading_override, bullets_override,
                image_src_override, image_alt_override, image_credit_override,
                image_credit_url_override, image_license_override`)
       .eq('engagement_id', engagementId).eq('is_active', true).in('experience_id', expIds) as any
   )
+  if (happeningIds.length) overrideQueries.push(
+    db.from('travel_overlay_engagement_content_card_overrides')
+      .select(`dining_venue_id, experience_id, happening_id, kicker_override, name_override, tagline_override,
+               body_override, bullets_heading_override, bullets_override,
+               image_src_override, image_alt_override, image_credit_override,
+               image_credit_url_override, image_license_override`)
+      .eq('engagement_id', engagementId).eq('is_active', true).in('happening_id', happeningIds) as any
+  )
 
   const overrideResults = await Promise.all(overrideQueries)
-  const ovByDining = new Map<string, Record<string, unknown>>()
-  const ovByExp    = new Map<string, Record<string, unknown>>()
+  const ovByDining    = new Map<string, Record<string, unknown>>()
+  const ovByExp       = new Map<string, Record<string, unknown>>()
+  const ovByHappening = new Map<string, Record<string, unknown>>()
   for (const res of overrideResults) {
     for (const ov of ((res as any).data ?? []) as Record<string, unknown>[]) {
       if (ov.dining_venue_id) ovByDining.set(ov.dining_venue_id as string, ov)
       if (ov.experience_id)   ovByExp.set(ov.experience_id as string, ov)
+      if (ov.happening_id)    ovByHappening.set(ov.happening_id as string, ov)
     }
   }
 
   selections.sort((a, b) => a.sort_order - b.sort_order)
 
+  const ovFor = (s: Sel) => {
+    if (s.cardType === 'dining') return ovByDining.get(s.fkId)
+    if (s.cardType === 'happening') return ovByHappening.get(s.fkId)
+    return ovByExp.get(s.fkId)
+  }
   const cards = selections.map(s => {
-    const ov  = s.cardType === 'dining' ? ovByDining.get(s.fkId) : ovByExp.get(s.fkId)
+    const ov  = ovFor(s)
     const r   = s.canon
     const bulletsOv    = ov?.bullets_override
     const bulletsCanon = Array.isArray(r.bullets) ? r.bullets as string[] : null
@@ -764,12 +802,20 @@ async function fetchCards(
       imageCredit:    ov?.image_credit_override     ?? r.image_credit    ?? null,
       imageCreditUrl: ov?.image_credit_url_override ?? r.image_credit_url ?? null,
       imageLicense:   ov?.image_license_override    ?? r.image_license   ?? null,
+      category:       r.category   ?? null,
+      startDate:      r.start_date ?? null,
+      endDate:        r.end_date   ?? null,
+      venueName:      r.venue_name ?? null,
+      address:        r.address    ?? null,
+      mapsUrl:        r.maps_url   ?? null,
+      website:        r.website    ?? null,
     }
   })
 
   return {
     dining:      cards.filter(c => c._cardType === 'dining').map(({ _cardType, ...c }) => c),
     experiences: cards.filter(c => c._cardType === 'experience').map(({ _cardType, ...c }) => c),
+    happenings:  cards.filter(c => c._cardType === 'happening').map(({ _cardType, ...c }) => c),
   }
 }
 

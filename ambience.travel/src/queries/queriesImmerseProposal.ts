@@ -32,6 +32,7 @@ import type {
   ImmerseRegionGroup,
   ImmerseRoomOption,
   ImmerseContentCard,
+  ImmerseHappeningCard,
   ImmersePricingRow,
   ImmersePricingNote,
   ImmerseRouteStop,
@@ -260,7 +261,7 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
   const ov        = payload.destRow             as Record<string, unknown> | null
   const globalHero = payload.globalHero         as Record<string, unknown> | null
   const hotels    = payload.hotels              as Record<string, unknown>
-  const cards     = payload.cards               as { dining: Record<string, unknown>[]; experiences: Record<string, unknown>[] }
+  const cards     = payload.cards               as { dining: Record<string, unknown>[]; experiences: Record<string, unknown>[]; happenings: Record<string, unknown>[] }
   const pricing   = payload.pricingRows         as Record<string, unknown>[]
 
   if (!dest || !ov) return null
@@ -276,6 +277,9 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
   const hero2Src = rewriteImageUrl(
     (ov.heroImageSrc2Override ?? null) as string | null
   )
+  const hero3Src = rewriteImageUrl(
+    (ov.heroImageSrc3Override ?? null) as string | null
+  )
 
   return {
     destinationId,
@@ -290,6 +294,8 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     heroImageAlt: heroAlt,
     heroImageSrc2: hero2Src ?? undefined,
     heroImageAlt2: (ov.heroImageAlt2Override ?? undefined) as string | undefined,
+    heroImageSrc3: hero3Src ?? undefined,
+    heroImageAlt3: (ov.heroImageAlt3Override ?? undefined) as string | undefined,
     heroTitle2:    (ov.heroTitle2Override ?? undefined) as string | undefined,
     heroSubtitle2: (ov.heroSubtitle2Override ?? undefined) as string | undefined,
     heroPills:     (dest.heroPills ?? []) as string[],
@@ -312,6 +318,10 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     experiencesTitle:   (ov.experiencesTitleOverride   ?? dest.experiencesTitle   ?? '') as string,
     experiencesBody:    (ov.experiencesBodyOverride    ?? dest.experiencesBody    ?? '') as string,
     experiences:        (cards?.experiences ?? []).map(hydrateContentCard),
+    happeningsEyebrow: (ov.happeningsEyebrowOverride ?? dest.happeningsEyebrow ?? '') as string,
+    happeningsTitle:   (ov.happeningsTitleOverride   ?? dest.happeningsTitle   ?? '') as string,
+    happeningsBody:    (ov.happeningsBodyOverride    ?? dest.happeningsBody    ?? '') as string,
+    happenings:        (cards?.happenings ?? []).map(hydrateHappeningCard),
 
     pricingEyebrow: (dest.pricingEyebrow ?? '') as string,
     pricingTitle:   (dest.pricingTitle   ?? '') as string,
@@ -426,6 +436,19 @@ function hydrateContentCard(r: Record<string, unknown>): ImmerseContentCard {
     imageCredit:    (r.imageCredit    ?? undefined) as string | undefined,
     imageCreditUrl: (r.imageCreditUrl ?? undefined) as string | undefined,
     imageLicense:   (r.imageLicense   ?? undefined) as string | undefined,
+  }
+}
+// Happening card: content card plus time/venue/category fields.
+function hydrateHappeningCard(r: Record<string, unknown>): ImmerseHappeningCard {
+  return {
+    ...hydrateContentCard(r),
+    category:  (r.category  ?? null) as string | null,
+    startDate: (r.startDate ?? null) as string | null,
+    endDate:   (r.endDate   ?? null) as string | null,
+    venueName: (r.venueName ?? null) as string | null,
+    address:   (r.address   ?? null) as string | null,
+    mapsUrl:   (r.mapsUrl   ?? null) as string | null,
+    website:   (r.website   ?? null) as string | null,
   }
 }
 

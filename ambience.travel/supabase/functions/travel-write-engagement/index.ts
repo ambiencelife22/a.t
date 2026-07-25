@@ -691,6 +691,7 @@ Deno.serve(async (req: Request) => {
       const row: Record<string, unknown> = { engagement_id: engagementId, sort_order: sortOrder ?? 0, is_active: true }
       if (kind === 'dining') row.dining_venue_id = cardId
       if (kind === 'experience') row.experience_id = cardId
+      if (kind === 'happening') row.happening_id = cardId
       const { data, error } = await serviceClient
         .from('travel_overlay_engagement_content_card_selections')
         .insert(row).select('id').single()
@@ -753,6 +754,7 @@ Deno.serve(async (req: Request) => {
       const row: Record<string, unknown> = { engagement_id: engagementId, is_active: true }
       if (kind === 'dining') row.dining_venue_id = cardId
       if (kind === 'experience') row.experience_id = cardId
+      if (kind === 'happening') row.happening_id = cardId
       const { data, error } = await serviceClient
         .from('travel_overlay_engagement_content_card_overrides')
         .insert(row)

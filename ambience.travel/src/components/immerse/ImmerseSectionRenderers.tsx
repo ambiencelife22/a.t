@@ -149,7 +149,19 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
       />
     )
   },
-
+  interstitial_2: (ctx) => {
+    // Second cinematic band (hero-3), between experiences and happenings on
+    // stay subpages. Reads ctx.detail.heroImageSrc3; hides if unset.
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    const d = ctx.detail
+    if (!d.heroImageSrc3) return null
+    return (
+      <ImmerseHeroBlock
+        imageSrc={d.heroImageSrc3}
+        imageAlt={d.heroImageAlt3}
+      />
+    )
+  },
   destinations: (ctx) => {
     const eng = ctx.engagement
     return <ImmerseDestinationRows data={eng} />
@@ -237,6 +249,19 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
         body={d.experiencesBody}
         items={d.experiences}
         dark
+      />
+    )
+  },
+  happenings_grid: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    const d = ctx.detail
+    if (!d.happenings.length) return null
+    return (
+      <ImmerseContentGrid
+        eyebrow={d.happeningsEyebrow ?? ''}
+        title={d.happeningsTitle ?? 'Happenings'}
+        body={d.happeningsBody ?? ''}
+        items={d.happenings}
       />
     )
   },
