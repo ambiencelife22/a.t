@@ -23,6 +23,7 @@ import { getSession } from '../utils/utilsAuth'
 import { parseAdminHash, type AdminTab } from '../utils/utilsAdminPath'
 import { A } from '../tokens/tokensAdmin'
 import { AdminToastProvider } from './admin/_adminPrimitives'
+import { checkIsAdminSelf } from '../queries/queriesAdminHouse'
 
 function lazyWithReload<T extends { default: React.ComponentType<any> }>(
   factory: () => Promise<T>,
@@ -284,12 +285,8 @@ export default function AmbienceAdmin() {
     async function check() {
       const session = await getSession()
       if (!session) { setStatus('denied'); return }
-      const { data } = await supabase
-        .from('global_profiles')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single()
-      setStatus(data?.is_admin === true ? 'allowed' : 'denied')
+      const isAdmin = await checkIsAdminSelf()
+      setStatus(isAdmin ? 'allowed' : 'denied')
     }
     check()
   }, [])

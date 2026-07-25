@@ -24,6 +24,7 @@ import { supabase } from '../../lib/supabase'
 import type { BookingFinancial, BookingFinancialRoom } from '../../types/typesBookingFinancial'
 import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
 import { moneyDec as usdDec } from '../../utils/utilsCurrency'
+import { fetchEngagementDetail } from '../../queries/queriesAdminEngagements'
 import {
   fetchEngagementFull,
   createExpense,
@@ -744,15 +745,12 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
 
   useEffect(() => {
     if (engagementIdProp) { setEngagementId(engagementIdProp); return }
-    supabase
-      .from('travel_engagements')
-      .select('id')
-      .eq('url_id', urlId)
-      .single()
-      .then(({ data: eng, error }) => {
-        if (error || !eng) { toast.error('Engagement not found'); setLoading(false); return }
-        setEngagementId(eng.id)
+    fetchEngagementDetail(urlId)
+      .then((detail) => {
+        if (!detail) { toast.error('Engagement not found'); setLoading(false); return }
+        setEngagementId(detail.row.id)
       })
+      .catch(() => { toast.error('Engagement not found'); setLoading(false) })
   }, [urlId, engagementIdProp])
 
   async function load() {

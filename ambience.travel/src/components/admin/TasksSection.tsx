@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { A } from '../../tokens/tokensAdmin'
 import { useAdminToast } from './_adminPrimitives'
+import { fetchEngagementDetail } from '../../queries/queriesAdminEngagements'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -94,17 +95,13 @@ export default function TasksSection({ urlId }: { urlId: string }) {
     async function load() {
       setLoading(true)
       try {
-        const { data: eng, error: engErr } = await supabase
-          .from('travel_engagements')
-          .select('id')
-          .eq('url_id', urlId)
-          .single()
-        if (engErr || !eng) throw new Error('Engagement not found')
-        setEngagementId(eng.id)
+        const detail = await fetchEngagementDetail(urlId)
+        if (!detail) throw new Error('Engagement not found')
+        setEngagementId(detail.row.id)
 
         const { tasks: rows } = await invokeTasks<{ tasks: Task[] }>({
           mode:          'by_engagement',
-          engagementId: eng.id,
+          engagementId: detail.row.id,
         })
         setTasks(rows)
       } catch (e) {
