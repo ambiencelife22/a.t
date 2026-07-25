@@ -132,8 +132,10 @@ Deno.serve(async (req: Request) => {
     if (mode === 'guide_create') {
       const guideTable = GUIDE_TABLE[variant!]
       if (!guideTable) return json({ error: 'Unknown variant' }, 400)
-      const { data, error } = await db.from(guideTable).insert({ global_destination_id: body.global_destination_id, is_active: true }).select('id').single()
-      if (error) return json({ error: 'Failed to create guide' }, 500)
+      const now = new Date()
+      const accuracyDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
+      const { data, error } = await db.from(guideTable).insert({ global_destination_id: body.global_destination_id, is_active: true, accuracy_date: accuracyDate }).select('id').single()
+      if (error) return json({ error: 'Failed to create guide: ' + error.message }, 500)
       return json({ id: data.id })
     }
 
