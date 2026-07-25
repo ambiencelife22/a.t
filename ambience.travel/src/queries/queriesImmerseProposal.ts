@@ -296,6 +296,8 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     heroImageAlt2: (ov.heroImageAlt2Override ?? undefined) as string | undefined,
     heroImageSrc3: hero3Src ?? undefined,
     heroImageAlt3: (ov.heroImageAlt3Override ?? undefined) as string | undefined,
+    heroTitle3:    (ov.heroTitle3Override ?? undefined) as string | undefined,
+    heroSubtitle3: (ov.heroSubtitle3Override ?? undefined) as string | undefined,
     heroTitle2:    (ov.heroTitle2Override ?? undefined) as string | undefined,
     heroSubtitle2: (ov.heroSubtitle2Override ?? undefined) as string | undefined,
     heroPills:     (dest.heroPills ?? []) as string[],

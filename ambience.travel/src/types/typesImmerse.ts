@@ -491,6 +491,8 @@ export type ImmerseDestinationData = {
   heroImageAlt2?:  string
   heroImageSrc3?:  string
   heroImageAlt3?:  string
+  heroTitle3?:     string
+  heroSubtitle3?:  string
   heroTitle2?:     string
   heroSubtitle2?:  string
   heroPills:       string[]

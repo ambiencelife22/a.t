@@ -159,6 +159,8 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
       <ImmerseHeroBlock
         imageSrc={d.heroImageSrc3}
         imageAlt={d.heroImageAlt3}
+        title={d.heroTitle3}
+        subtitle={d.heroSubtitle3}
       />
     )
   },
