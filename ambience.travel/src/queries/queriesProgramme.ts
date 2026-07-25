@@ -23,6 +23,19 @@
 
 import { supabase, supabaseAnon } from '../lib/supabase'
 
+// ── global-account EF invoke ─────────────────────────────────────────────────
+// All profile + ticket DB access routes through the global-account EF
+// (requireUser-gated, filtered by the verified user server-side). Reads arrive
+// camelized; writes are snakeized at the EF boundary.
+async function invokeAccount<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('global-account', { body })
+  if (error) throw new Error(`account (${body.mode}): ${error.message}`)
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error((data as { error: string }).error)
+  }
+  return data as T
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface TravelProfile {
@@ -130,7 +143,7 @@ export interface SupportTicket {
   subject:   string
   body:      string
   status:    'open' | 'in_progress' | 'resolved' | 'closed'
-  priority:  'low' | 'medium' | 'high'
+  priority:  'low' | 'normal' | 'high' | 'urgent'
   createdAt: string
   updatedAt: string
 }
@@ -159,32 +172,28 @@ export async function getProfile(): Promise<TravelProfile | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data, error } = await supabase
-    .from('global_profiles')
-    .select('id, display_name, is_admin')
-    .eq('id', user.id)
-    .single()
-
-  if (error) throw error
+  const { profile } = await invokeAccount<{ profile: { id: string; displayName: string | null; isAdmin: boolean } }>({
+    mode: 'profile_get',
+  })
 
   return {
-    id:          data.id,
-    displayName: data.display_name ?? null,
-    isAdmin:     data.is_admin ?? false,
+    id:          profile.id,
+    displayName: profile.displayName ?? null,
+    isAdmin:     profile.isAdmin ?? false,
     email:       user.email ?? '',
   }
 }
 
 export async function updateDisplayName(name: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  await invokeAccount({ mode: 'profile_update_display_name', display_name: name })
+}
 
-  const { error } = await supabase
-    .from('global_profiles')
-    .update({ display_name: name })
-    .eq('id', user.id)
-
-  if (error) throw error
+// Resolve the caller's own linked person_id (global_profiles.person_id) via EF.
+export async function getMyPersonId(): Promise<string | null> {
+  const { row } = await invokeAccount<{ row: { personId: string | null } | null }>({
+    mode: 'profile_by_user',
+  })
+  return row?.personId ?? null
 }
 
 export async function updateEmail(newEmail: string): Promise<void> {
@@ -289,48 +298,22 @@ export async function createTicket(fields: {
   subject:  string
   body:     string
 }): Promise<SupportTicket> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data, error } = await supabase
-    .from('global_support_tickets')
-    .insert({
-      userId:  user.id,
-      category: fields.category,
-      subject:  fields.subject,
-      body:     fields.body,
-      status:   'open',
-      priority: 'medium',
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return rowToTicket(data)
+  const { ticket } = await invokeAccount<{ ticket: RawTicket }>({ mode: 'ticket_create', fields })
+  return rowToTicket(ticket)
 }
 
 export async function getUserTickets(): Promise<SupportTicket[]> {
-  const { data, error } = await supabase
-    .from('global_support_tickets')
-    .select('id, user_id, category, subject, body, status, priority, created_at, updated_at')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return (data ?? []).map(rowToTicket)
+  const { tickets } = await invokeAccount<{ tickets: RawTicket[] }>({ mode: 'tickets_list' })
+  return (tickets ?? []).map(rowToTicket)
 }
 
 export async function getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
-  const { data, error } = await supabase
-    .from('global_ticket_messages')
-    .select('id, ticket_id, author_id, body, is_internal, is_admin_reply, created_at')
-    .eq('ticket_id', ticketId)
-    .order('created_at', { ascending: true })
-
-  if (error) throw error
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((r: any) => ({
+  const { messages } = await invokeAccount<{ messages: RawMessage[] }>({
+    mode: 'ticket_messages', ticket_id: ticketId,
+  })
+  return (messages ?? []).map(r => ({
     id:           r.id,
-    ticketId:     r.ticket_id,
+    ticketId:     r.ticketId,
     authorId:     r.authorId,
     body:         r.body,
     isAdminReply: r.isAdminReply ?? false,
@@ -339,28 +322,11 @@ export async function getTicketMessages(ticketId: string): Promise<TicketMessage
 }
 
 export async function addTicketMessage(ticketId: string, body: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { error } = await supabase
-    .from('global_ticket_messages')
-    .insert({
-      ticket_id:      ticketId,
-      authorId:      user.id,
-      body,
-      isAdminReply: false,
-    })
-
-  if (error) throw error
+  await invokeAccount({ mode: 'ticket_message_create', ticket_id: ticketId, body })
 }
 
 export async function closeTicket(ticketId: string): Promise<void> {
-  const { error } = await supabase
-    .from('global_support_tickets')
-    .update({ status: 'closed' })
-    .eq('id', ticketId)
-
-  if (error) throw error
+  await invokeAccount({ mode: 'ticket_close', ticket_id: ticketId })
 }
 
 // ── Login events ───────────────────────────────────────────────────────────
@@ -422,15 +388,7 @@ export async function backupUserData(): Promise<object> {
 }
 
 export async function deleteAllUserData(): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { error } = await supabase
-    .from('global_support_tickets')
-    .delete()
-    .eq('user_id', user.id)
-
-  if (error) throw error
+  await invokeAccount({ mode: 'delete_all_user_data' })
 }
 
 export async function deleteAccount(): Promise<void> {
@@ -440,8 +398,26 @@ export async function deleteAccount(): Promise<void> {
 
 // ── Private helpers ────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToTicket(r: any): SupportTicket {
+// EF returns camelized ticket/message rows.
+interface RawTicket {
+  id:        string
+  category:  string
+  subject:   string
+  body:      string
+  status:    SupportTicket['status']
+  priority:  SupportTicket['priority']
+  createdAt: string
+  updatedAt: string
+}
+interface RawMessage {
+  id:           string
+  ticketId:     string
+  authorId:     string
+  body:         string
+  isAdminReply: boolean
+  createdAt:    string
+}
+function rowToTicket(r: RawTicket): SupportTicket {
   return {
     id:        r.id,
     category:  r.category,

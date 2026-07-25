@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { getMyPersonId } from '../../queries/queriesProgramme'
 import { A } from '../../tokens/tokensAdmin'
 import { AdminSection, AdminCard, AdminEmptyState, useAdminToast } from './_adminPrimitives'
 import {
@@ -28,7 +29,6 @@ import {
   fetchTeamMembers, fetchTeamMemberByPerson,
   type TeamMember,
 } from '../../queries/queriesTeam'
-import { supabase } from '../../lib/supabase'
 
 // ── Shared styles (mirrors EngagementDetailTab grammar) ───────────────────────
 
@@ -186,12 +186,7 @@ function TimeEntryForm({
     let alive = true
     fetchTeamMembers().then(t => { if (alive) setTeam(t) }).catch(() => {})
     ;(async () => {
-      const { data } = await supabase.auth.getSession()
-      const uid = data.session?.user?.id
-      if (!uid) return
-      const { data: prof } = await supabase
-        .from('global_profiles').select('person_id').eq('id', uid).maybeSingle()
-      const pid = prof?.person_id ?? null
+      const pid = await getMyPersonId().catch(() => null)
       if (!pid) return
       const me = await fetchTeamMemberByPerson(pid).catch(() => null)
       if (alive && me) {
