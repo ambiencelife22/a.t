@@ -1,28 +1,20 @@
-// adminGuidesQueries.ts - read + write paths for guides/library admin tabs
-import { camelizeKeys } from '@shared/camelize'
+// queriesAdminGuides.ts - EF-routed read + write paths for guides/library admin tabs.
+// All access via the travel-admin-guides Edge Function (admin-gated). No direct
+// table reads/writes. Variant-parameterised: each fn passes its variant, the EF
+// resolves tables server-side and snakeizes every write payload.
 //
-// What it owns:
-//   - Listing destinations with dining content (UUID-keyed)
-//   - Listing all dining venues (UUID-keyed)
-//   - CRUD on travel_dining_venues (canonical pool) - by UUID
-//   - CRUD on travel_dining_guides (per-destination overlay) - by UUID
-//   - CRUD on dining_guide_grants - by UUID
-//   - JSON ingest with name+destination collision guard (slug removed S38)
+// Types live in src/types/typesAdminGuides.ts and are re-exported here so
+// consumers keep importing guide types from the query layer (types > queries > tsx).
 //
-// Last updated: S40D - Fixed fetchGrantsForDestination profile join shape.
-//   dining_guide_grants.userId → global_profiles.id is many-to-one (child → parent).
-//   PostgREST returns this as a single object, not an array. Prior code cast
-//   profile as Array<{...}> and indexed r.profile[0] - always undefined, causing
-//   all grantees to display as (unknown user) and grantedPersonIds dedup to fail.
-// Prior: S40C - Added grant types + fetchGrantsForDestination,
-//   fetchAllPeople, fetchProfileByPersonId, createGrant, deleteGrant.
-//   global_profiles.personId → global_people join for display only.
-//   Grant keys are always UUIDs - email/name are display-only.
-// Prior: S39 - Added accuracy_date to AdminDiningGuide type and
-//   fetchDiningGuides SELECT. NULL = disclaimer omitted on both surfaces.
-// Prior: S39 - Dropped legacy michelin boolean. Added michelin_award,
-//   michelin_stars, michelin_green_star, worlds_50_best.
+// Experiences/shopping venue reads are NOT here - they live in the guest-side
+// queriesGuidesExperiences / queriesGuidesShopping (single source of truth,
+// already EF-routed via travel-read-guides). This file owns dining venues,
+// hotels, all four guide overlays, dining/experiences grants, and dining ingest.
+//
+// Last updated: S53Q - EF-routed onto travel-admin-guides. Fixes prior camel-key
+// write bugs by construction (isActive/userId to snake columns, raw .update(patch)).
 
+import { camelizeKeys } from '@shared/camelize'
 import { supabase } from '../lib/supabase'
 import type {
   DestinationOption, MichelinAward,
@@ -46,313 +38,44 @@ export type {
   HotelGuidePatch, ShoppingGuidePatch,
   IngestVenueRecord, IngestPayload, IngestResult,
 } from '../types/typesAdminGuides'
-import { fetchPeople, fetchPeopleByIds, type GlobalPersonResolved } from './queriesGlobalPeople'
+import { fetchPeopleByIds, type GlobalPersonResolved } from './queriesGlobalPeople'
 
 // S54c - global_people is read exclusively via queriesGlobalPeople (EF layer).
 // GlobalPerson is the canonical resolved shape; no local person type, no direct read.
 export type GlobalPerson = GlobalPersonResolved
 
-// ── Types ────────────────────────────────────────────────────────────────────
+type Variant = 'dining' | 'experiences' | 'hotels' | 'shopping'
 
+// ── EF invoke helpers ────────────────────────────────────────────────────────
 
-
-
-
-// ── Reads ────────────────────────────────────────────────────────────────────
-
-export async function fetchDestinationOptions(): Promise<DestinationOption[]> {
-  const { data, error } = await supabase
-    .from('global_destinations')
-    .select('id, slug, name')
-    .order('name', { ascending: true })
-
-  if (error) throw new Error(`Failed to fetch destinations: ${error.message}`)
-  return (data ?? []) as DestinationOption[]
-}
-
-export async function fetchDestinationsWithDining(): Promise<DestinationWithDiningCounts[]> {
-  const [venuesRes, guidesRes] = await Promise.all([
-    supabase
-      .from('travel_dining_venues')
-      .select('global_destination_id')
-      .eq('is_active', true),
-    supabase
-      .from('travel_dining_guides')
-      .select('global_destination_id'),
-  ])
-
-  if (venuesRes.error) throw new Error(`venues: ${venuesRes.error.message}`)
-  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
-
-  const venueCountByDest = new Map<string, number>()
-  for (const v of venuesRes.data ?? []) {
-    const id = (v as { global_destination_id: string }).global_destination_id
-    venueCountByDest.set(id, (venueCountByDest.get(id) ?? 0) + 1)
+async function invokeGuides<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('travel-admin-guides', { body })
+  if (error) throw new Error(`admin guides (${body.mode}): ${error.message}`)
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error((data as { error: string }).error)
   }
-
-  const overlaySet = new Set<string>(
-    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
-  )
-
-  const out: DestinationWithDiningCounts[] = []
-  for (const [id, count] of venueCountByDest.entries()) {
-    out.push({ id, venueCount: count, hasOverlay: overlaySet.has(id) })
-  }
-  return out
+  return data as T
 }
 
-export async function fetchAllDiningVenues(
-  destinationIdFilter?: string | null,
-): Promise<AdminDiningVenue[]> {
-  let q = supabase
-    .from('travel_dining_venues')
-    .select(`
-      id, global_destination_id, name,
-      cuisine_subcategory, kicker, tagline, body, bullets_heading, bullets,
-      michelin_award, michelin_stars, michelin_green_star, worlds_50_best,
-      address, maps_url, website,
-      neighborhood, price_band, public_preview_rank, tags,
-      image_src, image_alt, image_credit, image_credit_url, image_license,
-      image_2_src, image_2_alt,
-      is_active, sort_order
-    `)
-    .order('sort_order', { ascending: true })
-
-  if (destinationIdFilter) {
-    q = q.eq('global_destination_id', destinationIdFilter)
-  }
-
-  const { data, error } = await q
-  if (error) throw new Error(`Failed to fetch venues: ${error.message}`)
-  return camelizeKeys<AdminDiningVenue[]>(data ?? [])
+// Shared grant-row shape returned by the EF grants mode (raw snake + profile join).
+type GrantRowRaw = {
+  id:                  string
+  userId:              string
+  globalDestinationId: string
+  grantedAt:           string
+  profile: { personId: string | null } | null
 }
 
-export async function fetchDiningGuides(): Promise<AdminDiningGuide[]> {
-  const { data, error } = await supabase
-    .from('travel_dining_guides')
-    .select(`
-      id, global_destination_id,
-      hero_image_src, hero_image_alt,
-      eyebrow_override, headline_override, intro_override,
-      is_active, accuracy_date, at_a_glance_bullets,
-      guide_year, guide_version,
-      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
-    `)
-
-  if (error) throw new Error(`Failed to fetch guides: ${error.message}`)
-  return camelizeKeys<AdminDiningGuide[]>(data ?? [])
-}
-
-export async function fetchGrantsForDestination(
-  globalDestinationId: string,
-): Promise<AdminGrant[]> {
-  const { data, error } = await supabase
-    .from('travel_dining_guide_grants')
-    .select(`
-      id, user_id, global_destination_id, granted_at,
-      profile:global_profiles!user_id (
-        person_id
-      )
-    `)
-    .eq('global_destination_id', globalDestinationId)
-    .order('granted_at', { ascending: true })
-
-  if (error) throw new Error(`Failed to fetch grants: ${error.message}`)
-
-  // dining_guide_grants.userId → global_profiles.id is many-to-one (child → parent).
-  // PostgREST returns this join as a single object, not an array.
-  // S51: display_name dropped from global_profiles spine - name resolves
-  // exclusively via the profile → person link.
-  const rows = (data ?? []) as unknown as Array<{
-    id:                    string
-    userId:               string
-    globalDestinationId:   string
-    grantedAt:            string
-    profile: {
-      personId: string | null
-    } | null
-  }>
-
-  // Collect person_ids to batch-fetch from global_people
+// Resolve grant rows into AdminGrant[] by batch-fetching linked people.
+async function resolveGrants(rows: GrantRowRaw[]): Promise<AdminGrant[]> {
   const personIds = rows
     .map(r => r.profile?.personId)
     .filter((id): id is string => id != null)
-
   const peopleById = new Map<string, GlobalPerson>()
   if (personIds.length > 0) {
     const people = await fetchPeopleByIds(personIds)
     for (const p of people) peopleById.set(p.id, p)
   }
-
-  return rows.map(r => ({
-    id:                    r.id,
-    userId:               r.userId,
-    globalDestinationId: r.globalDestinationId,
-    grantedAt:            r.grantedAt,
-    person:                r.profile?.personId
-      ? (peopleById.get(r.profile.personId) ?? null)
-      : null,
-  }))
-}
-
-// Given a global_people UUID, find the linked global_profiles row.
-// S51: display_name dropped from global_profiles spine - only id is returned now.
-export async function fetchProfileByPersonId(
-  personId: string,
-): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
-    .from('global_profiles')
-    .select('id')
-    .eq('person_id', personId)
-    .maybeSingle()
-
-  if (error) throw new Error(`Failed to fetch profile: ${error.message}`)
-  if (!data) return null
-  return data as { id: string }
-}
-
-// ── Writes - venues (UUID-keyed) ─────────────────────────────────────────────
-
-
-export async function updateDiningVenue(id: string, patch: DiningVenuePatch): Promise<void> {
-  const { error } = await supabase
-    .from('travel_dining_venues')
-    .update(patch)
-    .eq('id', id)
-  if (error) throw new Error(`Failed to update venue: ${error.message}`)
-}
-
-export async function deleteDiningVenue(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_dining_venues')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete venue: ${error.message}`)
-}
-
-// ── Writes - guides (UUID-keyed) ─────────────────────────────────────────────
-
-
-export async function updateDiningGuide(id: string, patch: DiningGuidePatch): Promise<void> {
-  const { error } = await supabase
-    .from('travel_dining_guides')
-    .update(patch)
-    .eq('id', id)
-  if (error) throw new Error(`Failed to update guide: ${error.message}`)
-}
-
-export async function createDiningGuide(globalDestinationId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('travel_dining_guides')
-    .insert({
-      global_destination_id: globalDestinationId,
-      isActive: true,
-    })
-    .select('id')
-    .single()
-  if (error) throw new Error(`Failed to create guide: ${error.message}`)
-  return (data as { id: string }).id
-}
-
-export async function deleteDiningGuide(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_dining_guides')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete guide: ${error.message}`)
-}
-
-// ── Experiences guide types ──────────────────────────────────────────────────
-
-
-
-
-
-// ── Experiences reads ────────────────────────────────────────────────────────
-
-export async function fetchDestinationsWithExperiences(): Promise<DestinationWithExperiencesCounts[]> {
-  const [venuesRes, guidesRes] = await Promise.all([
-    supabase
-      .from('travel_experiences')
-      .select('global_destination_id')
-      .eq('is_active', true),
-    supabase
-      .from('travel_experiences_guides')
-      .select('global_destination_id'),
-  ])
-
-  if (venuesRes.error) throw new Error(`venues: ${venuesRes.error.message}`)
-  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
-
-  const venueCountByDest = new Map<string, number>()
-  for (const v of venuesRes.data ?? []) {
-    const id = (v as { global_destination_id: string }).global_destination_id
-    venueCountByDest.set(id, (venueCountByDest.get(id) ?? 0) + 1)
-  }
-
-  const overlaySet = new Set<string>(
-    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
-  )
-
-  const out: DestinationWithExperiencesCounts[] = []
-  for (const [id, count] of venueCountByDest.entries()) {
-    out.push({ id, venueCount: count, hasOverlay: overlaySet.has(id) })
-  }
-  return out
-}
-
-export async function fetchExperiencesGuides(): Promise<AdminExperiencesGuide[]> {
-  const { data, error } = await supabase
-    .from('travel_experiences_guides')
-    .select(`
-      id, global_destination_id,
-      hero_image_src, hero_image_alt,
-      eyebrow_override, headline_override, intro_override,
-      is_active, accuracy_date, at_a_glance_bullets,
-      guide_year, guide_version,
-      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
-    `)
-
-  if (error) throw new Error(`Failed to fetch experiences guides: ${error.message}`)
-  return camelizeKeys<AdminExperiencesGuide[]>(data ?? [])
-}
-
-export async function fetchExperiencesGrantsForDestination(
-  globalDestinationId: string,
-): Promise<AdminExperiencesGrant[]> {
-  const { data, error } = await supabase
-    .from('travel_experiences_guide_grants')
-    .select(`
-      id, user_id, global_destination_id, granted_at,
-      profile:global_profiles!user_id (
-        person_id
-      )
-    `)
-    .eq('global_destination_id', globalDestinationId)
-    .order('granted_at', { ascending: true })
-
-  if (error) throw new Error(`Failed to fetch grants: ${error.message}`)
-
-  // S51: display_name dropped from global_profiles spine - name resolves
-  // exclusively via the profile → person link.
-  const rows = camelizeKeys<Array<{
-    id:                  string
-    userId:              string
-    globalDestinationId: string
-    grantedAt:           string
-    profile: { personId: string | null } | null
-  }>>(data ?? [])
-
-  const personIds = rows
-    .map(r => r.profile?.personId)
-    .filter((id): id is string => id != null)
-
-  const peopleById = new Map<string, GlobalPerson>()
-  if (personIds.length > 0) {
-    const people = await fetchPeopleByIds(personIds)
-    for (const p of people) peopleById.set(p.id, p)
-  }
-
   return rows.map(r => ({
     id:                  r.id,
     userId:              r.userId,
@@ -364,358 +87,242 @@ export async function fetchExperiencesGrantsForDestination(
   }))
 }
 
-// ── Experiences writes - guides ───────────────────────────────────────────────
+// ── Destinations ─────────────────────────────────────────────────────────────
 
+export async function fetchDestinationOptions(): Promise<DestinationOption[]> {
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'destination_options' })
+  return (rows ?? []) as DestinationOption[]
+}
+
+async function fetchDestinationsWithCounts(variant: Variant): Promise<Array<{ id: string; count: number; hasOverlay: boolean }>> {
+  const { rows } = await invokeGuides<{ rows: Array<{ id: string; count: number; hasOverlay: boolean }> }>({
+    mode: 'destinations_with_counts', variant,
+  })
+  return rows ?? []
+}
+
+export async function fetchDestinationsWithDining(): Promise<DestinationWithDiningCounts[]> {
+  const rows = await fetchDestinationsWithCounts('dining')
+  return rows.map(r => ({ id: r.id, venueCount: r.count, hasOverlay: r.hasOverlay }))
+}
+
+export async function fetchDestinationsWithExperiences(): Promise<DestinationWithExperiencesCounts[]> {
+  const rows = await fetchDestinationsWithCounts('experiences')
+  return rows.map(r => ({ id: r.id, venueCount: r.count, hasOverlay: r.hasOverlay }))
+}
+
+export async function fetchDestinationsWithHotels(): Promise<DestinationWithHotelCounts[]> {
+  const rows = await fetchDestinationsWithCounts('hotels')
+  return rows.map(r => ({ id: r.id, hotelCount: r.count, hasOverlay: r.hasOverlay }))
+}
+
+export async function fetchDestinationsWithShopping(): Promise<DestinationWithShoppingCounts[]> {
+  const rows = await fetchDestinationsWithCounts('shopping')
+  return rows.map(r => ({ id: r.id, shopCount: r.count, hasOverlay: r.hasOverlay }))
+}
+
+// ── Dining venues ────────────────────────────────────────────────────────────
+
+export async function fetchAllDiningVenues(
+  destinationIdFilter?: string | null,
+): Promise<AdminDiningVenue[]> {
+  const body: Record<string, unknown> = { mode: 'venues', variant: 'dining' }
+  if (destinationIdFilter) body.destination_id = destinationIdFilter
+  const { rows } = await invokeGuides<{ rows: unknown[] }>(body)
+  return camelizeKeys<AdminDiningVenue[]>(rows ?? [])
+}
+
+export async function updateDiningVenue(id: string, patch: DiningVenuePatch): Promise<void> {
+  await invokeGuides({ mode: 'venue_update', variant: 'dining', id, patch })
+}
+
+export async function deleteDiningVenue(id: string): Promise<void> {
+  await invokeGuides({ mode: 'venue_delete', variant: 'dining', id })
+}
+
+// ── Dining guides ────────────────────────────────────────────────────────────
+
+export async function fetchDiningGuides(): Promise<AdminDiningGuide[]> {
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'dining' })
+  return camelizeKeys<AdminDiningGuide[]>(rows ?? [])
+}
+
+export async function updateDiningGuide(id: string, patch: DiningGuidePatch): Promise<void> {
+  await invokeGuides({ mode: 'guide_update', variant: 'dining', id, patch })
+}
+
+export async function createDiningGuide(globalDestinationId: string): Promise<string> {
+  const { id } = await invokeGuides<{ id: string }>({
+    mode: 'guide_create', variant: 'dining', global_destination_id: globalDestinationId,
+  })
+  return id
+}
+
+export async function deleteDiningGuide(id: string): Promise<void> {
+  await invokeGuides({ mode: 'guide_delete', variant: 'dining', id })
+}
+
+// ── Dining grants ────────────────────────────────────────────────────────────
+
+export async function fetchGrantsForDestination(
+  globalDestinationId: string,
+): Promise<AdminGrant[]> {
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({
+    mode: 'grants', variant: 'dining', global_destination_id: globalDestinationId,
+  })
+  return resolveGrants(camelizeKeys<GrantRowRaw[]>(rows ?? []))
+}
+
+export async function createGrant(
+  userId:              string,
+  globalDestinationId: string,
+): Promise<void> {
+  await invokeGuides({
+    mode: 'grant_create', variant: 'dining',
+    user_id: userId, global_destination_id: globalDestinationId,
+  })
+}
+
+export async function deleteGrant(id: string): Promise<void> {
+  await invokeGuides({ mode: 'grant_delete', variant: 'dining', id })
+}
+
+// ── Profile lookup ───────────────────────────────────────────────────────────
+
+// Given a global_people UUID, find the linked global_profiles row.
+export async function fetchProfileByPersonId(
+  personId: string,
+): Promise<{ id: string } | null> {
+  const { row } = await invokeGuides<{ row: { id: string } | null }>({
+    mode: 'profile_by_person', person_id: personId,
+  })
+  return row ?? null
+}
+
+// ── Experiences guides ───────────────────────────────────────────────────────
+
+export async function fetchExperiencesGuides(): Promise<AdminExperiencesGuide[]> {
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'experiences' })
+  return camelizeKeys<AdminExperiencesGuide[]>(rows ?? [])
+}
 
 export async function updateExperiencesGuide(id: string, patch: ExperiencesGuidePatch): Promise<void> {
-  const { error } = await supabase
-    .from('travel_experiences_guides')
-    .update(patch)
-    .eq('id', id)
-  if (error) throw new Error(`Failed to update experiences guide: ${error.message}`)
+  await invokeGuides({ mode: 'guide_update', variant: 'experiences', id, patch })
 }
 
 export async function createExperiencesGuide(globalDestinationId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('travel_experiences_guides')
-    .insert({
-      global_destination_id: globalDestinationId,
-      isActive: true,
-    })
-    .select('id')
-    .single()
-  if (error) throw new Error(`Failed to create experiences guide: ${error.message}`)
-  return (data as { id: string }).id
+  const { id } = await invokeGuides<{ id: string }>({
+    mode: 'guide_create', variant: 'experiences', global_destination_id: globalDestinationId,
+  })
+  return id
 }
 
 export async function deleteExperiencesGuide(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_experiences_guides')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete experiences guide: ${error.message}`)
+  await invokeGuides({ mode: 'guide_delete', variant: 'experiences', id })
 }
 
-// ── Experiences writes - grants ───────────────────────────────────────────────
+// ── Experiences grants ───────────────────────────────────────────────────────
+
+export async function fetchExperiencesGrantsForDestination(
+  globalDestinationId: string,
+): Promise<AdminExperiencesGrant[]> {
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({
+    mode: 'grants', variant: 'experiences', global_destination_id: globalDestinationId,
+  })
+  return resolveGrants(camelizeKeys<GrantRowRaw[]>(rows ?? []))
+}
 
 export async function createExperiencesGrant(
   userId:              string,
   globalDestinationId: string,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('travel_experiences_guide_grants')
-    .insert({ userId: userId, global_destination_id: globalDestinationId })
-  if (error) throw new Error(`Failed to create experiences grant: ${error.message}`)
+  await invokeGuides({
+    mode: 'grant_create', variant: 'experiences',
+    user_id: userId, global_destination_id: globalDestinationId,
+  })
 }
 
 export async function deleteExperiencesGrant(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_experiences_guide_grants')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete experiences grant: ${error.message}`)
+  await invokeGuides({ mode: 'grant_delete', variant: 'experiences', id })
 }
 
-// ── Writes - grants (UUID-keyed) ─────────────────────────────────────────────
-
-export async function createGrant(
-  userId:               string,
-  globalDestinationId:  string,
-): Promise<void> {
-  const { error } = await supabase
-    .from('travel_dining_guide_grants')
-    .insert({ userId: userId, global_destination_id: globalDestinationId })
-  if (error) throw new Error(`Failed to create grant: ${error.message}`)
-}
-
-export async function deleteGrant(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_dining_guide_grants')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete grant: ${error.message}`)
-}
-
-// ── JSON ingest ──────────────────────────────────────────────────────────────
-
-
-
+// ── Dining JSON ingest ───────────────────────────────────────────────────────
 
 export async function ingestDiningJson(
   globalDestinationId: string,
   payload:             IngestPayload,
 ): Promise<IngestResult> {
-  const existing = await supabase
-    .from('travel_dining_venues')
-    .select('name')
-    .eq('global_destination_id', globalDestinationId)
-  if (existing.error) throw new Error(`pre-flight failed: ${existing.error.message}`)
-
-  const existingNames = new Set(
-    (existing.data ?? []).map(r => (r as { name: string }).name.toLowerCase().trim())
-  )
-
-  const maxSortRes = await supabase
-    .from('travel_dining_venues')
-    .select('sort_order')
-    .eq('global_destination_id', globalDestinationId)
-    .order('sort_order', { ascending: false })
-    .limit(1)
-  if (maxSortRes.error) throw new Error(`sort_order pre-flight failed: ${maxSortRes.error.message}`)
-  let nextSort = ((maxSortRes.data?.[0] as { sort_order: number } | undefined)?.sort_order ?? 0) + 1
-
-  const skipped: IngestResult['skipped'] = []
-  const inserts: Array<Record<string, unknown>> = []
-
-  for (const r of payload.restaurants) {
-    if (!r.name || r.name.trim().length === 0) {
-      skipped.push({ name: '(missing)', reason: 'missing name' })
-      continue
-    }
-    const normalised = r.name.toLowerCase().trim()
-    if (existingNames.has(normalised)) {
-      skipped.push({ name: r.name, reason: 'name already exists for this destination' })
-      continue
-    }
-    existingNames.add(normalised)
-
-    inserts.push({
-      name:                  r.name,
-      global_destination_id: globalDestinationId,
-      sortOrder:            nextSort++,
-      isActive:             true,
-      cuisineSubcategory:   r.subCategory ?? null,
-      address:               r.address ?? null,
-      website:               r.website ?? null,
-      body:                  r.description ?? null,
-      tags:                  r.tags && r.tags.length > 0 ? r.tags : null,
-    })
-  }
-
-  if (inserts.length === 0) return { inserted: 0, skipped }
-
-  const { error } = await supabase
-    .from('travel_dining_venues')
-    .insert(inserts)
-  if (error) throw new Error(`Insert failed: ${error.message}`)
-
-  return { inserted: inserts.length, skipped }
+  return invokeGuides<IngestResult>({
+    mode: 'ingest_dining',
+    global_destination_id: globalDestinationId,
+    restaurants: payload.restaurants,
+  })
 }
 
-// ── Hotel types ───────────────────────────────────────────────────────────────
-
-
-
-
-
-// ── Hotel reads ───────────────────────────────────────────────────────────────
+// ── Hotels ───────────────────────────────────────────────────────────────────
 
 export async function fetchAllHotels(
   destinationIdFilter?: string | null,
 ): Promise<AdminHotel[]> {
-  let q = supabase
-    .from('travel_accom_hotels')
-    .select(`
-      id, destination_id, name, short_slug,
-      hero_image_src, hero_image_alt, bullets, sort_order,
-      is_active, is_preferred_partner, is_supplementary,
-      stars, michelin_keys, forbes_rating,
-      description, internal_notes,
-      address, city, zip_code, latitude, longitude,
-      google_maps_url, website, phone, reservations_phone,
-      main_email, reservations_email, sales_email,
-      concierge_email, guest_relations_email, front_office_email,
-      image_credit, image_credit_url, image_license
-    `)
-    .order('sort_order', { ascending: true })
-
-  if (destinationIdFilter) {
-    q = q.eq('destination_id', destinationIdFilter)
-  }
-
-  const { data, error } = await q
-  if (error) throw new Error(`Failed to fetch hotels: ${error.message}`)
-
-  // Remap destination_id → global_destination_id for consistency
-  // bullets is jsonb - cast to string[]
-  const rows = camelizeKeys<Record<string, unknown>[]>(data ?? [])
-  return rows.map((r) => ({
-    ...r,
-    globalDestinationId: r.destinationId as string,
-    bullets: Array.isArray(r.bullets) ? (r.bullets as string[]) : null,
-  })) as unknown as AdminHotel[]
-}
-
-export async function fetchDestinationsWithHotels(): Promise<DestinationWithHotelCounts[]> {
-  const [hotelsRes, guidesRes] = await Promise.all([
-    supabase
-      .from('travel_accom_hotels')
-      .select('destination_id')
-      .eq('is_active', true),
-    supabase
-      .from('travel_hotel_guides')
-      .select('global_destination_id'),
-  ])
-
-  if (hotelsRes.error) throw new Error(`hotels: ${hotelsRes.error.message}`)
-  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
-
-  const countByDest = new Map<string, number>()
-  for (const h of hotelsRes.data ?? []) {
-    const id = (h as { destination_id: string }).destination_id
-    if (!id) continue
-    countByDest.set(id, (countByDest.get(id) ?? 0) + 1)
-  }
-
-  const overlaySet = new Set<string>(
-    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
-  )
-
-  return Array.from(countByDest.entries()).map(([id, count]) => ({
-    id,
-    hotelCount: count,
-    hasOverlay: overlaySet.has(id),
-  }))
+  const body: Record<string, unknown> = { mode: 'venues', variant: 'hotels' }
+  if (destinationIdFilter) body.destination_id = destinationIdFilter
+  const { rows } = await invokeGuides<{ rows: unknown[] }>(body)
+  // Hotel venues key destinations via destination_id; remap to globalDestinationId
+  // for consistency with the other variants. bullets is jsonb - cast to string[].
+  const camel = camelizeKeys<Record<string, unknown>[]>(rows ?? [])
+  return camel.map((r) => {
+    const bullets = Array.isArray(r.bullets) ? (r.bullets as string[]) : null
+    return { ...r, globalDestinationId: r.destinationId as string, bullets }
+  }) as unknown as AdminHotel[]
 }
 
 export async function fetchHotelGuides(): Promise<AdminHotelGuide[]> {
-  const { data, error } = await supabase
-    .from('travel_hotel_guides')
-    .select(`
-      id, global_destination_id,
-      hero_image_src, hero_image_alt,
-      eyebrow_override, headline_override, intro_override,
-      is_active, accuracy_date, at_a_glance_bullets,
-      guide_year, guide_version,
-      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
-    `)
-  if (error) throw new Error(`Failed to fetch hotel guides: ${error.message}`)
-  return camelizeKeys<AdminHotelGuide[]>(data ?? [])
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'hotels' })
+  return camelizeKeys<AdminHotelGuide[]>(rows ?? [])
 }
 
-// ── Hotel writes ──────────────────────────────────────────────────────────────
-
 export async function updateHotel(id: string, patch: HotelPatch): Promise<void> {
-  // Remap global_destination_id back to destination_id for the DB write
-  const { global_destination_id, ...rest } = patch as HotelPatch & { global_destination_id?: string }
-  const dbPatch = global_destination_id
-    ? { ...rest, destinationId: global_destination_id }
-    : rest
-  const { error } = await supabase
-    .from('travel_accom_hotels')
-    .update(dbPatch)
-    .eq('id', id)
-  if (error) throw new Error(`Failed to update hotel: ${error.message}`)
+  // Hotel venue keys destinations via destination_id, not global_destination_id.
+  // Remap so the EF snakeizes to the correct column.
+  const { globalDestinationId, ...rest } = patch as HotelPatch & { globalDestinationId?: string }
+  const outPatch: Record<string, unknown> = { ...rest }
+  if (globalDestinationId) outPatch.destinationId = globalDestinationId
+  await invokeGuides({ mode: 'venue_update', variant: 'hotels', id, patch: outPatch })
 }
 
 export async function updateHotelGuide(id: string, patch: HotelGuidePatch): Promise<void> {
-  const { error } = await supabase
-    .from('travel_hotel_guides')
-    .update(patch)
-    .eq('id', id)
-  if (error) throw new Error(`Failed to update hotel guide: ${error.message}`)
+  await invokeGuides({ mode: 'guide_update', variant: 'hotels', id, patch })
 }
 
 export async function createHotelGuide(globalDestinationId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('travel_hotel_guides')
-    .insert({ global_destination_id: globalDestinationId, isActive: true })
-    .select('id')
-    .single()
-  if (error) throw new Error(`Failed to create hotel guide: ${error.message}`)
-  return (data as { id: string }).id
+  const { id } = await invokeGuides<{ id: string }>({
+    mode: 'guide_create', variant: 'hotels', global_destination_id: globalDestinationId,
+  })
+  return id
 }
 
 export async function deleteHotelGuide(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_hotel_guides')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete hotel guide: ${error.message}`)
+  await invokeGuides({ mode: 'guide_delete', variant: 'hotels', id })
 }
 
-// ── Shopping guide types ──────────────────────────────────────────────────────
-
-
-
-
-
-// ── Shopping reads ────────────────────────────────────────────────────────────
-
-export async function fetchDestinationsWithShopping(): Promise<DestinationWithShoppingCounts[]> {
-  const [shopsRes, guidesRes] = await Promise.all([
-    supabase
-      .from('travel_shopping')
-      .select('global_destination_id')
-      .eq('is_active', true),
-    supabase
-      .from('travel_shopping_guides')
-      .select('global_destination_id'),
-  ])
-
-  if (shopsRes.error)  throw new Error(`shops: ${shopsRes.error.message}`)
-  if (guidesRes.error) throw new Error(`guides: ${guidesRes.error.message}`)
-
-  const shopCountByDest = new Map<string, number>()
-  for (const s of shopsRes.data ?? []) {
-    const id = (s as { global_destination_id: string }).global_destination_id
-    shopCountByDest.set(id, (shopCountByDest.get(id) ?? 0) + 1)
-  }
-
-  const overlaySet = new Set<string>(
-    (guidesRes.data ?? []).map(g => (g as { global_destination_id: string }).global_destination_id)
-  )
-
-  const out: DestinationWithShoppingCounts[] = []
-  for (const [id, count] of shopCountByDest.entries()) {
-    out.push({ id, shopCount: count, hasOverlay: overlaySet.has(id) })
-  }
-  return out
-}
+// ── Shopping guides ──────────────────────────────────────────────────────────
 
 export async function fetchShoppingGuides(): Promise<AdminShoppingGuide[]> {
-  const { data, error } = await supabase
-    .from('travel_shopping_guides')
-    .select(`
-      id, global_destination_id,
-      hero_image_src, hero_image_alt,
-      eyebrow_override, headline_override, intro_override,
-      is_active, accuracy_date, at_a_glance_bullets,
-      guide_year, guide_version,
-      plan_your_visit_heading, plan_your_visit_intro, plan_your_visit_bullets
-    `)
-
-  if (error) throw new Error(`Failed to fetch shopping guides: ${error.message}`)
-  return camelizeKeys<AdminShoppingGuide[]>(data ?? [])
+  const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'shopping' })
+  return camelizeKeys<AdminShoppingGuide[]>(rows ?? [])
 }
 
-// ── Shopping writes ───────────────────────────────────────────────────────────
-
 export async function updateShoppingGuide(id: string, patch: ShoppingGuidePatch): Promise<void> {
-  const { error } = await supabase
-    .from('travel_shopping_guides')
-    .update(patch)
-    .eq('id', id)
-  if (error) throw new Error(`Failed to update shopping guide: ${error.message}`)
+  await invokeGuides({ mode: 'guide_update', variant: 'shopping', id, patch })
 }
 
 export async function createShoppingGuide(globalDestinationId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('travel_shopping_guides')
-    .insert({
-      global_destination_id: globalDestinationId,
-      isActive: true,
-    })
-    .select('id')
-    .single()
-  if (error) throw new Error(`Failed to create shopping guide: ${error.message}`)
-  return (data as { id: string }).id
+  const { id } = await invokeGuides<{ id: string }>({
+    mode: 'guide_create', variant: 'shopping', global_destination_id: globalDestinationId,
+  })
+  return id
 }
 
 export async function deleteShoppingGuide(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('travel_shopping_guides')
-    .delete()
-    .eq('id', id)
-  if (error) throw new Error(`Failed to delete shopping guide: ${error.message}`)
+  await invokeGuides({ mode: 'guide_delete', variant: 'shopping', id })
 }
