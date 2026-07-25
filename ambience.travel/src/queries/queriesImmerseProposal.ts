@@ -108,8 +108,8 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
 
   if (!eng) return null
 
-  const statusRow   = eng.travel_lifecycle_statuses as Record<string, unknown> | null
-  const itinRow     = eng.travel_itinerary_statuses as Record<string, unknown> | null
+  const statusRow   = eng.travelLifecycleStatuses as Record<string, unknown> | null
+  const itinRow     = eng.travelItineraryStatuses as Record<string, unknown> | null
   const statusSlug  = (statusRow?.slug ?? 'requested') as EngagementStatusSlug
   const stage       = computeEngagementStage({ statusSlug })
   // HPGL Option 1 (fully tailored): the public guest name is the authored, projected
@@ -117,7 +117,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
   // absent name (North Star). Person tiers removed in lockstep with the server-side
   // projection (resolve_and_project_guest_label), so the client cannot re-leak raw
   // identity the trigger stopped projecting.
-  const clientName  = (display?.house_display_name ?? null) as string | null
+  const clientName  = (display?.houseDisplayName ?? null) as string | null
 
   const engagementStatus = statusRow ? mapEngagementStatus(statusRow as any) : EMPTY_STATUS
   const itineraryStatus  = itinRow   ? mapItineraryStatus(itinRow as any)    : EMPTY_ITIN
@@ -126,18 +126,18 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     eyebrow:     (eng.welcomeEyebrowOverride ?? welcome?.eyebrow      ?? '') as string,
     title:       (eng.welcomeTitleOverride   ?? welcome?.title        ?? '') as string,
     body:        (eng.welcomeBodyOverride    ?? welcome?.body         ?? '') as string,
-    signoffBody: (eng.welcomeSignoffBodyOverride ?? welcome?.signoff_body ?? '') as string,
-    signoffName: (eng.welcomeSignoffNameOverride ?? welcome?.signoff_name ?? '') as string,
+    signoffBody: (eng.welcomeSignoffBodyOverride ?? welcome?.signoffBody ?? '') as string,
+    signoffName: (eng.welcomeSignoffNameOverride ?? welcome?.signoffName ?? '') as string,
   }
 
   const routeStops: ImmerseRouteStop[] = stops.map(r => ({
     id:              r.id as string,
     title:           (r.title      ?? '') as string,
-    stayLabel:       (r.stay_label ?? '') as string,
+    stayLabel:       (r.stayLabel ?? '') as string,
     note:            (r.note       ?? '') as string,
     imageSrc:        rewriteImageUrl(r.imageSrc as string | null),
     imageAlt:        (r.imageAlt  ?? '') as string,
-    destinationRowId: (r.destination_row_id ?? null) as string | null,
+    destinationRowId: (r.destinationRowId ?? null) as string | null,
     nights:          r.nights as number | undefined,
   }))
 
@@ -165,13 +165,13 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
       title:               (r.title        ?? '') as string,
       mood:                (r.mood         ?? '') as string,
       summary:             (r.summary      ?? '') as string,
-      stayLabel:           (r.stay_label   ?? '') as string,
+      stayLabel:           (r.stayLabel   ?? '') as string,
       nights:              r.nights as number | undefined,
       imageSrc:            rewriteImageUrl(resolvedImageSrc),
       imageAlt:            resolvedImageAlt as string,
       destinationSlug:     globalSlug,
-      destinationUrlSlug:  (r.destination_url_slug ?? null) as string | null,
-      subpageStatus:       normalizeSubpageStatus(r.subpage_status as string | null),
+      destinationUrlSlug:  (r.destinationUrlSlug ?? null) as string | null,
+      subpageStatus:       normalizeSubpageStatus(r.subpageStatus as string | null),
       heroEyebrowOverride: (r.heroEyebrowOverride ?? undefined) as string | undefined,
     }
   })
@@ -181,9 +181,9 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     return {
       id:               r.id as string,
       destination:      (gd?.name ?? '') as string,
-      recommendedBasis: (r.recommended_basis ?? '') as string,
-      stayLabel:        (r.stay_label        ?? '') as string,
-      indicativeRange:  (r.indicative_range  ?? '') as string,
+      recommendedBasis: (r.recommendedBasis ?? '') as string,
+      stayLabel:        (r.stayLabel        ?? '') as string,
+      indicativeRange:  (r.indicativeRange  ?? '') as string,
     }
   })
 
@@ -194,10 +194,10 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     stage,
     proposalVisibility: (eng.proposalVisibility ?? 'active') as 'active' | 'archived',
     slug:            eng.slug as string,
-    journeyTypes:    (eng.journey_types ?? []) as string[],
+    journeyTypes:    (eng.journeyTypes ?? []) as string[],
     clientName,
-    statusLabel:     (eng.status_label ?? '') as string,
-    heroTagline:     (eng.hero_tagline ?? undefined) as string | undefined,
+    statusLabel:     (eng.statusLabel ?? '') as string,
+    heroTagline:     (eng.heroTagline ?? undefined) as string | undefined,
     heroEyebrowOverride: (eng.heroEyebrowOverride ?? undefined) as string | undefined,
 
     engagementStatus,
@@ -209,11 +209,11 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     subtitle:      (eng.subtitle  ?? '') as string,
     heroImageSrc:  rewriteImageUrl(eng.heroImageSrc as string | null),
     heroImageAlt:  (eng.heroImageAlt ?? '') as string,
-    heroImageSrc2: rewriteImageUrl(eng.hero_image_src_2 as string | null) ?? undefined,
-    heroImageAlt2: (eng.hero_image_alt_2 ?? undefined) as string | undefined,
-    heroTitle2:    (eng.hero_title_2    ?? undefined) as string | undefined,
-    heroSubtitle2: (eng.hero_subtitle_2 ?? undefined) as string | undefined,
-    heroPills:     (eng.hero_pills ?? []) as string[],
+    heroImageSrc2: rewriteImageUrl(eng.heroImageSrc2 as string | null) ?? undefined,
+    heroImageAlt2: (eng.heroImageAlt2 ?? undefined) as string | undefined,
+    heroTitle2:    (eng.heroTitle2    ?? undefined) as string | undefined,
+    heroSubtitle2: (eng.heroSubtitle2 ?? undefined) as string | undefined,
+    heroPills:     (eng.heroPills ?? []) as string[],
 
     routeHeading:  (eng.routeHeading ?? '') as string,
     routeBody:     (eng.routeBody    ?? '') as string,
@@ -225,14 +225,14 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     destinationBody:      (eng.destinationBody      ?? undefined) as string | undefined,
     destinationRows,
 
-    pricingHeading:      (eng.pricing_heading       ?? '') as string,
-    pricingTitle:        (eng.pricing_title         ?? '') as string,
-    pricingBody:         (eng.pricing_body          ?? '') as string,
+    pricingHeading:      (eng.pricingHeading       ?? '') as string,
+    pricingTitle:        (eng.pricingTitle         ?? '') as string,
+    pricingBody:         (eng.pricingBody          ?? '') as string,
     pricingRows:         tripPricingRows,
-    pricingTotalLabel:   (eng.pricing_total_label   ?? '') as string,
-    pricingTotalValue:   (eng.pricing_total_value   ?? '') as string,
-    pricingNotesHeading: (eng.pricing_notes_heading ?? '') as string,
-    pricingNotesTitle:   (eng.pricing_notes_title   ?? '') as string,
+    pricingTotalLabel:   (eng.pricingTotalLabel   ?? '') as string,
+    pricingTotalValue:   (eng.pricingTotalValue   ?? '') as string,
+    pricingNotesHeading: (eng.pricingNotesHeading ?? '') as string,
+    pricingNotesTitle:   (eng.pricingNotesTitle   ?? '') as string,
     pricingNotes:        normalizePricingNotes(eng.pricingNotes),
   }
 }
@@ -258,7 +258,7 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
   )
   const heroAlt = (ov.heroImageAltOverride ?? dest.heroImageAlt ?? globalHero?.heroImageAlt ?? '') as string
   const hero2Src = rewriteImageUrl(
-    (ov.hero_image_src_2_override ?? null) as string | null
+    (ov.heroImageSrc2Override ?? null) as string | null
   )
 
   return {
@@ -273,43 +273,43 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     heroImageSrc: heroSrc,
     heroImageAlt: heroAlt,
     heroImageSrc2: hero2Src ?? undefined,
-    heroImageAlt2: (ov.hero_image_alt_2_override ?? undefined) as string | undefined,
-    heroTitle2:    (ov.hero_title_2_override ?? undefined) as string | undefined,
-    heroSubtitle2: (ov.hero_subtitle_2_override ?? undefined) as string | undefined,
-    heroPills:     (dest.hero_pills ?? []) as string[],
+    heroImageAlt2: (ov.heroImageAlt2Override ?? undefined) as string | undefined,
+    heroTitle2:    (ov.heroTitle2Override ?? undefined) as string | undefined,
+    heroSubtitle2: (ov.heroSubtitle2Override ?? undefined) as string | undefined,
+    heroPills:     (dest.heroPills ?? []) as string[],
 
-    introEyebrow: (dest.intro_eyebrow ?? '') as string,
-    introTitle:   (ov.introTitleOverride ?? dest.intro_title ?? '') as string,
-    introBody:    (ov.introBodyOverride  ?? dest.intro_body  ?? '') as string,
+    introEyebrow: (dest.introEyebrow ?? '') as string,
+    introTitle:   (ov.introTitleOverride ?? dest.introTitle ?? '') as string,
+    introBody:    (ov.introBodyOverride  ?? dest.introBody  ?? '') as string,
 
-    eyebrowHotels: (dest.hotels_eyebrow ?? '') as string,
-    titleHotels:   (dest.hotels_title   ?? '') as string,
-    bodyHotels:    (dest.hotels_body    ?? '') as string,
+    eyebrowHotels: (dest.hotelsEyebrow ?? '') as string,
+    titleHotels:   (dest.hotelsTitle   ?? '') as string,
+    bodyHotels:    (dest.hotelsBody    ?? '') as string,
     hotels:        hydrateHotelsShape(hotels),
 
-    diningEyebrow: (ov.diningEyebrowOverride ?? dest.dining_eyebrow ?? '') as string,
-    diningTitle:   (ov.diningTitleOverride   ?? dest.dining_title   ?? '') as string,
-    diningBody:    (ov.diningBodyOverride    ?? dest.dining_body    ?? '') as string,
+    diningEyebrow: (ov.diningEyebrowOverride ?? dest.diningEyebrow ?? '') as string,
+    diningTitle:   (ov.diningTitleOverride   ?? dest.diningTitle   ?? '') as string,
+    diningBody:    (ov.diningBodyOverride    ?? dest.diningBody    ?? '') as string,
     dining:        (cards?.dining ?? []).map(hydrateContentCard),
 
-    experiencesEyebrow: (ov.experiences_eyebrow_override ?? dest.experiences_eyebrow ?? '') as string,
-    experiencesTitle:   (ov.experiences_title_override   ?? dest.experiences_title   ?? '') as string,
-    experiencesBody:    (ov.experiences_body_override    ?? dest.experiences_body    ?? '') as string,
+    experiencesEyebrow: (ov.experiencesEyebrowOverride ?? dest.experiencesEyebrow ?? '') as string,
+    experiencesTitle:   (ov.experiencesTitleOverride   ?? dest.experiencesTitle   ?? '') as string,
+    experiencesBody:    (ov.experiencesBodyOverride    ?? dest.experiencesBody    ?? '') as string,
     experiences:        (cards?.experiences ?? []).map(hydrateContentCard),
 
-    pricingEyebrow: (dest.pricing_eyebrow ?? '') as string,
-    pricingTitle:   (dest.pricing_title   ?? '') as string,
-    pricingBody:    (ov.pricingBodyOverride ?? dest.pricing_body ?? '') as string,
+    pricingEyebrow: (dest.pricingEyebrow ?? '') as string,
+    pricingTitle:   (dest.pricingTitle   ?? '') as string,
+    pricingBody:    (ov.pricingBodyOverride ?? dest.pricingBody ?? '') as string,
     pricingRows:    (pricing ?? []).map(hydratePricingRow),
     pricingCloser: {
-      item:            (ov.pricing_closer_item_override             ?? null) as string | null,
-      basis:           (ov.pricing_closer_basis_override            ?? null) as string | null,
-      stay:            (ov.pricing_closer_stay_override             ?? null) as string | null,
-      indicativeRange: (ov.pricing_closer_indicative_range_override ?? null) as string | null,
+      item:            (ov.pricingCloserItemOverride             ?? null) as string | null,
+      basis:           (ov.pricingCloserBasisOverride            ?? null) as string | null,
+      stay:            (ov.pricingCloserStayOverride             ?? null) as string | null,
+      indicativeRange: (ov.pricingCloserIndicativeRangeOverride ?? null) as string | null,
     },
-    pricingNotesHeading: (ov.pricing_notes_heading_override ?? dest.pricing_notes_heading ?? '') as string,
-    pricingNotesTitle:   (ov.pricing_notes_title_override   ?? dest.pricing_notes_title   ?? '') as string,
-    pricingNotes:        normalizePricingNotes(ov.pricing_notes_override ?? dest.pricingNotes),
+    pricingNotesHeading: (ov.pricingNotesHeadingOverride ?? dest.pricingNotesHeading ?? '') as string,
+    pricingNotesTitle:   (ov.pricingNotesTitleOverride   ?? dest.pricingNotesTitle   ?? '') as string,
+    pricingNotes:        normalizePricingNotes(ov.pricingNotesOverride ?? dest.pricingNotes),
   }
 }
 
@@ -333,12 +333,12 @@ function hydrateRegionGroup(r: Record<string, unknown>): ImmerseRegionGroup {
     title:         (r.title     ?? '') as string,
     shorthand:     (r.shorthand ?? undefined) as string | undefined,
     rank:          ((tr?.rank ?? 'primary') as 'primary' | 'secondary'),
-    rankLabel:     (tr?.rank_label ?? '') as string,
+    rankLabel:     (tr?.rankLabel ?? '') as string,
     bullets:       (Array.isArray(tr?.bullets) ? tr!.bullets : []) as string[],
-    stayLabel:     (tr?.stay_label ?? '') as string,
+    stayLabel:     (tr?.stayLabel ?? '') as string,
     heroImageSrc:  rewriteImageUrl(r.heroImageSrc as string | null) ?? undefined,
     heroImageAlt:  (r.heroImageAlt ?? undefined) as string | undefined,
-    regionGallery: rewriteImageUrls(r.region_gallery as string[] | null),
+    regionGallery: rewriteImageUrls(r.regionGallery as string[] | null),
     hotels:        (r.hotels as Record<string, unknown>[]).map(hydrateHotelOption),
   }
 }

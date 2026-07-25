@@ -1,39 +1,39 @@
 // supabase/functions/travel-get-immerse-proposal/index.ts
 //
 // Edge Function: travel-get-immerse-proposal
-// Single source for ALL client-facing proposal data — overview and subpages.
+// Single source for ALL client-facing proposal data - overview and subpages.
 // Replaces: travel-get-engagement-stage + all 4 client-side dest query files
 //   (queriesImmerseDestCore, queriesImmerseDestHotels, queriesImmerseDestCards,
 //   queriesImmerseDestPricing) + scattered anon queries in queriesImmerseEngagement.
 //
 // Security model:
-//   - Public endpoint — no auth required
+//   - Public endpoint - no auth required
 //   - url_id is the access token (11-char alphanumeric)
 //   - All DB reads use service role to bypass RLS
 //   - Returns 404 when url_id doesn't exist OR public_view = false
-//     (indistinguishable — no leak about which url_ids exist)
+//     (indistinguishable - no leak about which url_ids exist)
 //
 // Request body:
 //   { url_id: string, destination_slug?: string }
 //
-// Response (overview — no destination_slug):
+// Response (overview - no destination_slug):
 //   { mode: 'overview', engagement: EngagementPayload }
 //
-// Response (subpage — destination_slug provided):
+// Response (subpage - destination_slug provided):
 //   { mode: 'subpage', engagement: EngagementPayload, destination: DestinationPayload }
 //
 // Response (404):
 //   { error: 'Not found' }
 //
 // Key fix vs old client-side code: fetchEngagementDestRow matches on
-//   engagement_id + global_destination_id ONLY — no destination_url_slug filter.
+//   engagement_id + global_destination_id ONLY - no destination_url_slug filter.
 //   The old code's `IS NULL` filter on url_slug caused subpages to fail
 //   when dest_rows had a non-null url_slug set for routing purposes.
 //
 // Deployed at: /functions/v1/travel-get-immerse-proposal
-// Created: S53H — consolidation of 20+ client-side anon queries into one EF.
-// S53O — brought onto the shared service-client factory + shared json/preflight
-//   (was still on inline makeDb() + hand-rolled ok()/err() — missed by the
+// Created: S53H - consolidation of 20+ client-side anon queries into one EF.
+// S53O - brought onto the shared service-client factory + shared json/preflight
+//   (was still on inline makeDb() + hand-rolled ok()/err() - missed by the
 //   S53H Batch 2 sweep). Bespoke public url_id auth preserved (no admin gate).
 //   Overlay rename in progress: travel_immerse_* -> travel_overlay_* (Phase A);
 //   this EF is the sole reader of most overlay tables and repoints per migration.
@@ -41,6 +41,7 @@
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
+import { camelizeKeys } from '../_shared/camelize.ts'
 
 const URL_ID_RE = /^[A-Za-z0-9]{11}$/
 
@@ -72,19 +73,19 @@ Deno.serve(async (req: Request) => {
     if (engErr || !engRow) return json({ error: 'Not found' }, 404)
     if (!engRow.public_view) return json({ error: 'not_public' }, 403)
 
-    // ── Overview payload (always built — needed for nav on subpages too) ───────
+    // ── Overview payload (always built - needed for nav on subpages too) ───────
     const engagementId = engRow.id as string
     const engagement   = await buildEngagementPayload(db, engRow)
 
     if (!destination_slug) {
-      return json({ mode: 'overview', engagement })
+      return json({ mode: 'overview', engagement: camelizeKeys(engagement) })
     }
 
     // ── Subpage payload ────────────────────────────────────────────────────────
     const destination = await buildDestinationPayload(db, engagementId, destination_slug)
     if (!destination) return json({ error: 'Destination not found' }, 404)
 
-    return json({ mode: 'subpage', engagement, destination })
+    return json({ mode: 'subpage', engagement: camelizeKeys(engagement), destination: camelizeKeys(destination) })
 
   } catch (e) {
     console.error('travel-get-immerse-proposal error:', e)
@@ -156,7 +157,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .order('sort_order', { ascending: true }),
   ])
 
-  // Hero image fallbacks for destination rows — fetch template rows
+  // Hero image fallbacks for destination rows - fetch template rows
   const destRows = (destRowsRes.data ?? []) as Record<string, unknown>[]
   const globalIds = destRows
     .map(r => (r.global_destinations as Record<string, unknown> | null)?.id)
@@ -196,7 +197,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
 
 // ── Build destination payload ─────────────────────────────────────────────────
 // KEY DESIGN: resolves dest_row by trip_id + global_destination_id only.
-// No destination_url_slug filter — the url_slug on dest_rows is for routing,
+// No destination_url_slug filter - the url_slug on dest_rows is for routing,
 // not for lookup. Filtering on it caused the St Barths "not found" loop.
 
 async function buildDestinationPayload(
