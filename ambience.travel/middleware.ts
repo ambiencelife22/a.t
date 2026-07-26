@@ -205,8 +205,8 @@ export default async function middleware(request: Request): Promise<Response> {
       const row        = dest.destRow || {}
       const globalHero = dest.globalHero || {}
       const title       = tmpl.title || SITE_NAME
-      const description = tmpl.subtitle || tmpl.intro_body || DEFAULT_DESC
-      const image       = ogImage(row.hero_image_src_override || tmpl.hero_image_src || globalHero.hero_image_src) || EMBLEM_URL
+      const description = tmpl.subtitle || tmpl.introBody || DEFAULT_DESC
+      const image       = ogImage(row.heroImageSrcOverride || tmpl.heroImageSrc || globalHero.heroImageSrc) || EMBLEM_URL
       return htmlResponse(buildHtml({ title, description, image, url: CANONICAL_HOST + pathname }))
     }
 
@@ -214,8 +214,8 @@ export default async function middleware(request: Request): Promise<Response> {
     if (!row) return htmlResponse(buildHtml(genericMeta(pathname)))
 
     const title       = stripVersion(row.title) || SITE_NAME
-    const description = row.hero_tagline || row.subtitle || DEFAULT_DESC
-    const image       = ogImage(row.hero_image_src) || EMBLEM_URL
+    const description = row.heroTagline || row.subtitle || DEFAULT_DESC
+    const image       = ogImage(row.heroImageSrc) || EMBLEM_URL
     return htmlResponse(buildHtml({ title, description, image, url: CANONICAL_HOST + pathname }))
   } catch (_e) {
     // Any failure returns the generic card. A scraper must never see a 500.
