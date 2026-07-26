@@ -210,12 +210,18 @@ export default async function middleware(request: Request): Promise<Response> {
       return htmlResponse(buildHtml({ title, description, image, url: CANONICAL_HOST + pathname }))
     }
 
-    const row = data && data.engagement && data.engagement.engagementRow
+    const eng = data && data.engagement
+    const row = eng && eng.engagementRow
     if (!row) return htmlResponse(buildHtml(genericMeta(pathname)))
-
+    // Hero falls back to destination 1's canon when the engagement has no
+    // authored hero (mirrors the app's overview hero resolution).
+    const destRows   = (eng.destinationRows || []) as Array<Record<string, any>>
+    const firstDest  = destRows[0] || {}
+    const firstGlobal = (firstDest.globalDestinations || {}) as Record<string, any>
+    const heroSrc    = row.heroImageSrc || firstGlobal.heroImageSrc || null
     const title       = stripVersion(row.title) || SITE_NAME
     const description = row.heroTagline || row.subtitle || DEFAULT_DESC
-    const image       = ogImage(row.heroImageSrc) || EMBLEM_URL
+    const image       = ogImage(heroSrc) || EMBLEM_URL
     return htmlResponse(buildHtml({ title, description, image, url: CANONICAL_HOST + pathname }))
   } catch (_e) {
     // Any failure returns the generic card. A scraper must never see a 500.
