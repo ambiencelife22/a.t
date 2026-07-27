@@ -171,9 +171,32 @@ Deno.serve(async (req: Request) => {
       return json({ success: true })
     }
 
+    // ── Login events ──────────────────────────────────────────────────────────
+    if (mode === 'login_event_create') {
+      const insert: Record<string, unknown> = { user_id: uid }
+      if (body.browser)         insert.browser = body.browser
+      if (body.os)              insert.os = body.os
+      if (body.browser_version) insert.browser_version = body.browser_version
+      const { error } = await db.from('global_login_events').insert(insert)
+      if (error) return json({ error: 'Failed to record login' }, 500)
+      return json({ success: true })
+    }
+
+    if (mode === 'logins_list') {
+      const { data, error } = await db
+        .from('global_login_events')
+        .select('id, logged_in_at, browser, os, browser_version')
+        .eq('user_id', uid)
+        .order('logged_in_at', { ascending: false })
+        .limit(10)
+      if (error) return json({ error: 'Failed to fetch logins' }, 500)
+      return json({ logins: camelizeKeys(data ?? []) })
+    }
+
     return json({ error: 'Unknown mode: ' + mode }, 400)
   } catch (err) {
     console.error('global-account unexpected error:', err)
+    
     return json({ error: 'Internal server error' }, 500)
   }
 })

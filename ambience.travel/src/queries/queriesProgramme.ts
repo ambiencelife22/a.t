@@ -158,12 +158,11 @@ export interface TicketMessage {
 }
 
 export interface RecentLogin {
-  id:        string
-  createdAt: string
-  ipAddress: string | null
-  userAgent: string | null
-  city:      string | null
-  country:   string | null
+  id:             string
+  loggedInAt:     string
+  browser:        string | null
+  os:             string | null
+  browserVersion: string | null
 }
 
 // ── Profile ────────────────────────────────────────────────────────────────
@@ -331,43 +330,40 @@ export async function closeTicket(ticketId: string): Promise<void> {
 
 // ── Login events ───────────────────────────────────────────────────────────
 
+// Parse a user agent into structured browser/os/version for storage. The table
+// stores these columns (not the raw UA string).
+function parseUA(ua: string | null): { browser: string | null; os: string | null; browserVersion: string | null } {
+  if (!ua) return { browser: null, os: null, browserVersion: null }
+  let browser: string | null = null
+  if (ua.includes('Edg'))          browser = 'Edge'
+  if (!browser && ua.includes('Chrome'))  browser = 'Chrome'
+  if (!browser && ua.includes('Firefox')) browser = 'Firefox'
+  if (!browser && ua.includes('Safari'))  browser = 'Safari'
+  let os: string | null = null
+  if (ua.includes('Mac OS'))  os = 'macOS'
+  if (!os && ua.includes('Windows')) os = 'Windows'
+  if (!os && ua.includes('Android')) os = 'Android'
+  if (!os && (ua.includes('iPhone') || ua.includes('iPad'))) os = 'iOS'
+  if (!os && ua.includes('Linux'))   os = 'Linux'
+  const m = browser ? ua.match(new RegExp(browser === 'Edge' ? 'Edg' : browser + '\\/([0-9]+)')) : null
+  const browserVersion = m ? m[1] : null
+  return { browser, os, browserVersion }
+}
+
 export async function insertLoginEvent(): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-
-  const { error } = await supabase
-    .from('global_login_events')
-    .insert({
-      userId:    user.id,
-      ipAddress: null,
-      user_agent: navigator.userAgent,
-    })
-
-  // Non-fatal - table may not yet exist in travel
-  if (error) console.warn('insertLoginEvent:', error.message)
+  const ua = parseUA(typeof navigator === 'undefined' ? null : navigator.userAgent)
+  await invokeAccount({
+    mode:            'login_event_create',
+    browser:         ua.browser,
+    os:              ua.os,
+    browser_version: ua.browserVersion,
+  }).catch(() => {})
 }
 
 export async function getRecentLogins(): Promise<RecentLogin[]> {
-  const { data, error } = await supabase
-    .from('global_login_events')
-    .select('id, created_at, ip_address, user_agent, city, country')
-    .order('created_at', { ascending: false })
-    .limit(10)
-
-  if (error) {
-    console.warn('getRecentLogins:', error.message)
-    return []
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((r: any) => ({
-    id:        r.id,
-    createdAt: r.createdAt,
-    ipAddress: r.ipAddress ?? null,
-    userAgent: r.user_agent ?? null,
-    city:      r.city       ?? null,
-    country:   r.country    ?? null,
-  }))
+  const { logins } = await invokeAccount<{ logins: RecentLogin[] }>({ mode: 'logins_list' })
+    .catch(() => ({ logins: [] as RecentLogin[] }))
+  return logins ?? []
 }
 
 // ── User data ──────────────────────────────────────────────────────────────

@@ -517,18 +517,12 @@ export default function Profile() {
                   <div key={login.id} style={{ display: 'flex', gap: 24, flexWrap: 'wrap', paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}>
                     <div>
                       <div style={{ fontSize: 10, color: C.faint, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 4 }}>{i === 0 ? 'Current Session' : 'Previous Session'}</div>
-                      <div style={{ fontSize: 13, color: C.text, fontFamily: "'DM Mono', monospace" }}>{formatDateTime(login.createdAt)}</div>
+                      <div style={{ fontSize: 13, color: C.text, fontFamily: "'DM Mono', monospace" }}>{formatDateTime(login.loggedInAt)}</div>
                     </div>
-                    {login.userAgent && (
+                    {(login.browser || login.os) && (
                       <div>
                         <div style={{ fontSize: 10, color: C.faint, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 4 }}>Browser</div>
-                        <div style={{ fontSize: 13, color: C.text, fontFamily: "'DM Mono', monospace" }}>{parseUserAgent(login.userAgent)}</div>
-                      </div>
-                    )}
-                    {(login.city || login.country) && (
-                      <div>
-                        <div style={{ fontSize: 10, color: C.faint, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 4 }}>Location</div>
-                        <div style={{ fontSize: 13, color: C.text, fontFamily: "'DM Mono', monospace" }}>{[login.city, login.country].filter(Boolean).join(', ')}</div>
+                        <div style={{ fontSize: 13, color: C.text, fontFamily: "'DM Mono', monospace" }}>{[login.browser, login.os].filter(Boolean).join(' · ')}</div>
                       </div>
                     )}
                   </div>
