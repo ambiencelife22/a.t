@@ -78,18 +78,26 @@ function err(message: string, status: number): Response {
 // ── Mode handlers ─────────────────────────────────────────────────────────────
 
 async function handleDossier(db: SupabaseClient, houseId: string): Promise<Response> {
-  // 1. Trip IDs via bookings
-  const { data: bookTripData, error: bookTripErr } = await db
-    .from('travel_bookings')
-    .select('journey_id')
+  // 1. Journey IDs via the house's engagements (travel_engagement_houses is the
+  //    authoritative house-engagement link). NOT via bookings: an engagement can be a
+  //    valid trip (flights, dining, experiences) with no hotel booking and must still
+  //    appear. Resolving via travel_bookings hid every bookingless engagement.
+  const { data: engHouseData, error: engHouseErr } = await db
+    .from('travel_engagement_houses')
+    .select('engagement_id')
     .eq('house_id', houseId)
+
+  if (engHouseErr) return err('Failed to fetch house engagements', 500)
+  const engIds = [...new Set((engHouseData ?? []).map(r => (r as { engagement_id: string }).engagement_id))]
+  if (engIds.length === 0) return ok({ trips: [], partners: {}, house: null })
+
+  const { data: engJourneyData, error: engJourneyErr } = await db
+    .from('travel_engagements')
+    .select('journey_id')
+    .in('id', engIds)
     .not('journey_id', 'is', null)
-
-  if (bookTripErr) return err('Failed to fetch bookings', 500)
-  const bookTripRows = (bookTripData ?? []) as { journey_id: string }[]
-  if (bookTripRows.length === 0) return ok({ trips: [], partners: {}, house: null })
-
-  const journeyIds = [...new Set(bookTripRows.map(r => r.journey_id))]
+  if (engJourneyErr) return err('Failed to resolve engagement journeys', 500)
+  const journeyIds = [...new Set((engJourneyData ?? []).map(r => (r as { journey_id: string }).journey_id))]
 
   // 2. Trips
   const { data: tripData, error: tripErr } = await db

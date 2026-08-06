@@ -39,7 +39,7 @@ async function invokeRead<T>(mode: string, params: Record<string, unknown> = {})
   if (data && typeof data === 'object' && 'error' in data) {
     throw new Error((data as { error: string }).error)
   }
-  return data as T
+  return camelizeKeys(data) as T
 }
 
 // Thin invoke wrapper - twin of invokeRead, for the write EF.
@@ -52,7 +52,7 @@ async function invokeWrite<T>(mode: string, params: Record<string, unknown> = {}
     const d = data as { error: string; message?: string }
     throw new Error(d.message ?? d.error)
   }
-  return data as T
+  return camelizeKeys(data) as T
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -569,10 +569,10 @@ export async function updatePerson(id: string, payload: PersonUpdatePayload): Pr
 
 export async function reassignEngagementJourney(
   engagementId: string,
-  newjourneyId:    string | null,
+  newJourneyId:    string | null,
 ): Promise<void> {
   const { data, error } = await supabase.functions.invoke('travel-write-engagement', {
-    body: { mode: 'reassign_trip', id: engagementId, journey_id: newjourneyId },
+    body: { mode: 'reassign_trip', id: engagementId, journey_id: newJourneyId },
   })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data) throw new Error((data as { error: string }).error)

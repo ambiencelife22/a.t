@@ -1157,13 +1157,13 @@ export default function EngagementsListTab() {
     if (!overData) return
     if (overData.type === 'new_trip') { setPendingCreateForEngagement(activeRow); return }
     if (overData.type === 'group') {
-      const newjourneyId = overData.journeyId ?? null
-      if (newjourneyId === activeRow.journeyId) return
+      const newJourneyId = overData.journeyId ?? null
+      if (newJourneyId === activeRow.journeyId) return
       const prevSnapshot = rows
-      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, journeyId: newjourneyId } : r))
+      setRows(prev => prev.map(r => r.id === activeRow.id ? { ...r, journeyId: newJourneyId } : r))
       try {
-        await reassignEngagementJourney(activeRow.id, newjourneyId)
-        success(newjourneyId ? 'Engagement moved.' : 'Engagement unlinked.')
+        await reassignEngagementJourney(activeRow.id, newJourneyId)
+        success(newJourneyId ? 'Engagement moved.' : 'Engagement unlinked.')
         load()
       } catch (e2: unknown) {
         const message = e2 instanceof Error ? e2.message : 'unknown error'

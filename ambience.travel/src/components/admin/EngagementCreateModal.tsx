@@ -22,7 +22,7 @@ export type EngagementCreateModalProps = {
   engagementTitle: string | null
   engagementUrlId: string | null
   onClose:         () => void
-  onSuccess:       (newjourneyId: string) => void
+  onSuccess:       (newJourneyId: string) => void
   showToast:       (msg: string, type: 'success' | 'error') => void
 }
 
@@ -155,7 +155,7 @@ export default function EngagementCreateModal({
 
     setSaving(true)
     try {
-      const newjourneyId = await createJourney({
+      const newJourneyId = await createJourney({
         journeyCode:         tripCode.trim(),
         public_title:      publicTitle.trim() ?? null,
         startDate:        startDate ?? null,
@@ -163,9 +163,9 @@ export default function EngagementCreateModal({
         currency:          currency.trim() || 'USD',
         primary_client_id: null,
       })
-      await reassignEngagementJourney(engagementId, newjourneyId)
+      await reassignEngagementJourney(engagementId, newJourneyId)
       showToast('Trip created. Engagement linked.', 'success')
-      onSuccess(newjourneyId)
+      onSuccess(newJourneyId)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown error'
       // Common case: duplicate journey_code. Surface it cleanly.

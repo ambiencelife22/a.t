@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { bookedByLabel, flightDetail } from '../../utils/utilsBooking'
 import { fmtTime } from '../../utils/utilsDates'
+import { camelizeKeys } from '@shared/camelize'
 
 const L = {
   surface: IMMERSE.lightSurface, panel: IMMERSE.panelOnLight, ink: IMMERSE.textOnLight,
@@ -88,16 +89,16 @@ function stateBandStyle(state: EngagementState): { bg: string; fg: string; borde
 
 type ConfirmationState = 'confirmed' | 'partially_confirmed' | 'designing'
 type CalendarStay = {
-  id: string; name: string | null; status: string | null; booking_type: string | null
+  id: string; name: string | null; status: string | null; bookingType: string | null
   checkIn: string | null; checkOut: string | null; hotelId: string | null; hotelName: string | null
-  confirmation: ConfirmationState; rooms_confirmed: number; rooms_total: number
+  confirmation: ConfirmationState; roomsConfirmed: number; roomsTotal: number
 }
 // A typed child engagement (from the engagement spine). category is the registry slug
 // ('stay' | 'transport' | dining/experience/etc. as they're created) - never hardcoded.
 type CalendarActivity = {
   id: string; category: string | null; label: string | null; title: string | null
   date: string | null; endDate: string | null; time: string | null
-  source_booking_id: string | null; is_element: boolean
+  sourceBookingId: string | null; isElement: boolean
   // Flight detail (movement activities; null for stays/others)
   bookedBy: string | null; origin: string | null; destination: string | null
   departAirport: string | null; arriveAirport: string | null
@@ -107,7 +108,7 @@ type EngagementState = 'completed' | 'confirmed' | 'pending'
 type CalendarEngagement = {
   id: string; journeyCode: string; title: string | null
   startDate: string | null; endDate: string | null
-  status_slug: string | null; state: EngagementState; primary_client_id: string | null
+  statusSlug: string | null; state: EngagementState; primaryClientId: string | null
   stays: CalendarStay[]; activities: CalendarActivity[]
 }
 type ViewMode = 'month' | 'week' | 'agenda'
@@ -142,7 +143,7 @@ function tripStatusLabel(slug: string | null): string { return slug ? (SLUG_LABE
 // some rooms locked, some pending - its own state, not flattened.
 function confLabel(s: CalendarStay): string {
   if (s.confirmation === 'confirmed') return 'Confirmed'
-  if (s.confirmation === 'partially_confirmed') return `Partial · ${s.rooms_confirmed}/${s.rooms_total} rooms`
+  if (s.confirmation === 'partially_confirmed') return `Partial · ${s.roomsConfirmed}/${s.roomsTotal} rooms`
   return 'In design'
 }
 function confIsTentative(s: CalendarStay): boolean { return s.confirmation === 'designing' }
@@ -184,7 +185,7 @@ export default function CalendarTab() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<ViewMode>('month')
   const [cursor, setCursor] = useState<Date>(() => new Date())
-  const [selectedjourneyId, setSelectedjourneyId] = useState<string | null>(null)
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -193,12 +194,12 @@ export default function CalendarTab() {
       const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body: { mode: 'calendar' } })
       if (cancelled) return
       if (error) { setError('Could not load the calendar. Try again.'); setLoading(false); return }
-      setEngagements((data?.engagements ?? []) as CalendarEngagement[]); setLoading(false)
+      setEngagements(camelizeKeys(data?.engagements ?? []) as CalendarEngagement[]); setLoading(false)
     }
     load(); return () => { cancelled = true }
   }, [])
 
-  const selectedEngagement = useMemo(() => engagements.find(t => t.id === selectedjourneyId) ?? null, [engagements, selectedjourneyId])
+  const selectedEngagement = useMemo(() => engagements.find(t => t.id === selectedJourneyId) ?? null, [engagements, selectedJourneyId])
   const headingTitle = useMemo(() => {
     if (view === 'agenda') return 'Upcoming'
     if (view === 'week') {
@@ -245,11 +246,11 @@ export default function CalendarTab() {
           {view !== 'agenda' && <CalendarKey view={view} />}
           <div style={{ display:'grid', gridTemplateColumns: selectedEngagement ? 'minmax(0,1fr) 320px' : '1fr', gap:18, alignItems:'start' }}>
             <div style={{ minWidth: 0 }}>
-              {view === 'month'  && <MonthView  cursor={cursor} engagements={engagements} onSelect={setSelectedjourneyId} />}
-              {view === 'week'   && <WeekView   cursor={cursor} engagements={engagements} onSelect={setSelectedjourneyId} />}
-              {view === 'agenda' && <AgendaView engagements={engagements} onSelect={setSelectedjourneyId} />}
+              {view === 'month'  && <MonthView  cursor={cursor} engagements={engagements} onSelect={setSelectedJourneyId} />}
+              {view === 'week'   && <WeekView   cursor={cursor} engagements={engagements} onSelect={setSelectedJourneyId} />}
+              {view === 'agenda' && <AgendaView engagements={engagements} onSelect={setSelectedJourneyId} />}
             </div>
-            {selectedEngagement && <EngagementPanel trip={selectedEngagement} onClose={() => setSelectedjourneyId(null)} />}
+            {selectedEngagement && <EngagementPanel trip={selectedEngagement} onClose={() => setSelectedJourneyId(null)} />}
           </div>
         </>
       )}
@@ -583,7 +584,7 @@ function AgendaRow({ ev, onSelect }: { ev: DayEvent; onSelect:(id:string)=>void 
   // Trip start/end branch.
   const timeLabel = ev.kind==='trip-start'?'Starts':'Ends'
   const title = ev.trip.title || ev.trip.journeyCode
-  const sub = `${tripStatusLabel(ev.trip.status_slug)} · ${fmtRange(ev.trip.startDate, ev.trip.endDate)}`
+  const sub = `${tripStatusLabel(ev.trip.statusSlug)} · ${fmtRange(ev.trip.startDate, ev.trip.endDate)}`
   return (
     <button onClick={()=>onSelect(ev.trip.id)} style={{ ...ROW_STYLE, border:`1px solid ${L.line}` }}>
       <span style={{ fontSize:13, color:L.muted }}>{timeLabel}</span>
@@ -603,7 +604,7 @@ function EngagementPanel({ trip, onClose }: { trip: CalendarEngagement; onClose:
         <div>
           <div style={{ textTransform:'uppercase', letterSpacing:'0.12em', fontSize:10, fontWeight:700, color:L.muted, marginBottom:6 }}>Selected engagement</div>
           <h2 style={{ margin:0, fontFamily:L.serif, fontWeight:500, fontSize:22, lineHeight:1.15, color:L.ink }}>{trip.title||trip.journeyCode}</h2>
-          <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6, background:L.goldTint, border:`1px solid ${L.goldBorder}`, borderRadius:999, padding:'5px 10px', fontSize:11, fontWeight:700, color:L.band }}>{tripStatusLabel(trip.status_slug)}</div>
+          <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6, background:L.goldTint, border:`1px solid ${L.goldBorder}`, borderRadius:999, padding:'5px 10px', fontSize:11, fontWeight:700, color:L.band }}>{tripStatusLabel(trip.statusSlug)}</div>
         </div>
         <button onClick={onClose} aria-label="Close" style={{ appearance:'none', cursor:'pointer', border:`1px solid ${L.line}`, background:L.panel, borderRadius:'50%', width:30, height:30, color:L.muted, fontSize:16, lineHeight:1 }}>×</button>
       </div>
@@ -624,7 +625,7 @@ function EngagementPanel({ trip, onClose }: { trip: CalendarEngagement; onClose:
 }
 // One itinerary line. Transport = a departure time + flight name (a moment). Stay =
 // a hotel held across nights + its derived confirmation (a span). The stay's
-// confirmation comes from the matching CalendarStay (same source_booking_id), so the
+// confirmation comes from the matching CalendarStay (same sourceBookingId), so the
 // itinerary shows the same honest confirmed/partial/designing state as everywhere otherwise.
 function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: CalendarStay[] }) {
   const [open, setOpen] = useState(false)
@@ -632,7 +633,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const span = activityIsSpan(activity)
-  const canExpand = span ? !!activity.source_booking_id : activity.is_element
+  const canExpand = span ? !!activity.sourceBookingId : activity.isElement
 
   async function toggle() {
     if (!canExpand) return
@@ -641,7 +642,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
     if (next && !detail && !loadingDetail) {
       setLoadingDetail(true)
       const body = span
-        ? { mode: 'activity_detail', bookingId: activity.source_booking_id, category: activity.category }
+        ? { mode: 'activity_detail', bookingId: activity.sourceBookingId, category: activity.category }
         : { mode: 'activity_detail', node_id: activity.id, category: activity.category }
       const { data } = await supabase.functions.invoke('travel-read-journey-admin', { body })
       setDetail((data ?? null) as ActivityDetail | null)
@@ -649,7 +650,7 @@ function ItineraryRow({ activity, stays }: { activity: CalendarActivity; stays: 
     }
   }
 
-  const stay = stays.find(s => s.id === activity.source_booking_id) ?? null
+  const stay = stays.find(s => s.id === activity.sourceBookingId) ?? null
   const tentative = stay ? confIsTentative(stay) : false
   const partial = stay ? confIsPartial(stay) : false
   const confText = stay ? confLabel(stay) : ''
