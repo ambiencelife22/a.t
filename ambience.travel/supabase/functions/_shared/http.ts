@@ -1,5 +1,6 @@
+import { camelizeKeys } from './camelize.ts'
 // supabase/functions/_shared/http.ts
-// Shared HTTP helpers for Edge Functions. Extracted S54 — these were
+// Shared HTTP helpers for Edge Functions. Extracted S54 - these were
 // duplicated verbatim across the fleet.
 
 export const corsHeaders = {
@@ -8,7 +9,7 @@ export const corsHeaders = {
 }
 
 export const json = (body: unknown, status = 200): Response =>
-  new Response(JSON.stringify(body), {
+  new Response(JSON.stringify(camelizeKeys(body)), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
