@@ -304,7 +304,7 @@ function HouseTypeahead({ onPick }: { onPick: (houseId: string) => void }) {
               }}
             >
               {h.displayName}
-              {h.public_name && <span style={{ color: A.faint, marginLeft: 6 }}>{h.public_name}</span>}
+              {h.publicName && <span style={{ color: A.faint, marginLeft: 6 }}>{h.publicName}</span>}
             </div>
           ))}
         </div>
@@ -549,8 +549,8 @@ function ChildCountsSummary({ counts, urlId }: { counts: ChildCounts | null; url
 
   const items = [
     { label: 'Pricing rows',          n: counts.pricingRows },
-    { label: 'Destination hotels',    n: counts.destination_hotels },
-    { label: 'Region hotels',         n: counts.region_hotels },
+    { label: 'Destination hotels',    n: counts.destinationHotels },
+    { label: 'Region hotels',         n: counts.regionHotels },
     { label: 'Rooms (overlay)',       n: counts.rooms },
   ]
 
@@ -623,7 +623,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
       setRow(detail.row)
       setDraft(detail.row)
       setHouses(detail.houses)
-      setCandidateLabels(detail.candidate_labels)
+      setCandidateLabels(detail.candidateLabels)
       setEngagementStatuses(eng)
       setItineraryStatuses(it)
       setWelcomeCanon(canon)
@@ -918,7 +918,7 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, color: A.text, fontFamily: A.font }}>
-                    {h.a_houses?.displayName ?? h.houseId}
+                    {h.aHouses?.displayName ?? h.houseId}
                   </span>
                   {h.isPrimary && <span style={{ fontSize: 9, fontWeight: 700, color: A.gold, fontFamily: A.font, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Primary</span>}
                 </div>
@@ -1193,13 +1193,13 @@ export default function EngagementDetailTab({ urlId }: { urlId: string }) {
         />
         <WelcomeOverrideField
           label='Signoff Body'
-          canonical={welcomeCanon?.signoff_body ?? null}
+          canonical={welcomeCanon?.signoffBody ?? null}
           value={draft.welcomeSignoffBodyOverride}
           onChange={v => patch('welcomeSignoffBodyOverride', v)}
         />
         <WelcomeOverrideField
           label='Signoff Name'
-          canonical={welcomeCanon?.signoff_name ?? null}
+          canonical={welcomeCanon?.signoffName ?? null}
           value={draft.welcomeSignoffNameOverride}
           onChange={v => patch('welcomeSignoffNameOverride', v)}
         />

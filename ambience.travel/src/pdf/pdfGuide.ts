@@ -440,7 +440,7 @@ function renderWelcomePage(ctx: RenderCtx) {
 
   if (variant === 'dining') {
     const operationalVenues = (venues as DiningVenue[]).filter(
-      v => v.venue_status !== 'permanently_closed',
+      v => v.venueStatus !== 'permanently_closed',
     )
     y = renderRecognitionKey(doc, operationalVenues, y)
   }
@@ -576,8 +576,8 @@ function groupDiningVenuesForPdf(venues: DiningVenue[]): DiningGroups {
   const closed:        DiningVenue[] = []
 
   for (const v of venues) {
-    if (v.venue_status === 'permanently_closed') {
-      if (v.closed_visible_until && v.closed_visible_until >= today) {
+    if (v.venueStatus === 'permanently_closed') {
+      if (v.closedVisibleUntil && v.closedVisibleUntil >= today) {
         closed.push(v)
       }
       continue
@@ -1317,7 +1317,7 @@ function computeHappeningCardHeight(doc: any, h: Happening): number {
     textHeight += SPACE.WITHIN_BODY
   }
 
-  if (h.venue_name) textHeight += SPACE.CLUSTER_TIGHT
+  if (h.venueName) textHeight += SPACE.CLUSTER_TIGHT
   if (h.address)    textHeight += SPACE.CLUSTER_TIGHT
 
   return Math.max(textHeight + CARD.rowPadding * 2, CARD.imageHeight, CARD.rowMinHeight)
@@ -1397,9 +1397,9 @@ async function renderHappeningCard(doc: any, h: Happening, top: number) {
     ty += SPACE.LINE_TIGHT
   }
 
-  if (h.venue_name) {
+  if (h.venueName) {
     sans(doc, 'bold', 8.5); doc.setTextColor(...THEME.muted)
-    doc.text(h.venue_name, textX, ty)
+    doc.text(h.venueName, textX, ty)
     ty += SPACE.CLUSTER_TIGHT
   }
   if (h.address) {

@@ -253,7 +253,7 @@ const auxSections = groupElementsBySection(elements)
                       )}
                       {(booking.extras ?? []).map((x, xi) => (
                         <div key={xi} style={{ fontSize: 11, fontFamily: TYPE.sans, color: c.muted, marginTop: 2 }}>
-                          {`${x.label}: ${moneyDec(x.amount, x.currency)}${x.charge_to === 'room' ? ' (charged to room)' : ''}`}
+                          {`${x.label}: ${moneyDec(x.amount, x.currency)}${x.chargeTo === 'room' ? ' (charged to room)' : ''}`}
                           {x.note ? <span style={{ color: c.faint }}>{`  ·  ${x.note}`}</span> : null}
                         </div>
                       ))}

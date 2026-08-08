@@ -19,13 +19,13 @@ type TaskStatus = 'open' | 'done' | 'dismissed'
 type Task = {
   id:            string
   title:         string
-  due_date:      string | null
+  dueDate:      string | null
   status:        TaskStatus
   note:          string | null
-  is_overdue:    boolean
-  is_notifying:  boolean
-  completed_at:  string | null
-  assignee_name: string | null
+  isOverdue:    boolean
+  isNotifying:   boolean
+  completedAt:  string | null
+  assigneeName: string | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
         mode:          'create',
         engagementId: engagementId,
         title:         newTitle.trim(),
-        due_date:      newDueDate || null,
+        dueDate:      newDueDate || null,
       })
       setTasks(prev => [...prev, created])
       setNewTitle('')
@@ -257,7 +257,7 @@ export default function TasksSection({ urlId }: { urlId: string }) {
             key={task.id}
             style={{
               background:   A.bg,
-              border:       `1px solid ${task.is_overdue ? A.statusOverdueTint : A.border}`,
+              border:       `1px solid ${task.isOverdue ? A.statusOverdueTint : A.border}`,
               borderLeft:   `3px solid ${STATUS_COLOR[status]}`,
               borderRadius: 8,
               padding:      '10px 12px',
@@ -285,19 +285,19 @@ export default function TasksSection({ urlId }: { urlId: string }) {
                 }}>
                   {STATUS_LABEL[status]}
                 </span>
-                {task.due_date && (
-                  <span style={{ fontSize: 10, fontFamily: A.font, color: task.is_overdue ? A.statusOverdue : A.faint }}>
-                    {task.is_overdue ? '⚠ ' : ''}Due {task.due_date}
+                {task.dueDate && (
+                  <span style={{ fontSize: 10, fontFamily: A.font, color: task.isOverdue ? A.statusOverdue : A.faint }}>
+                    {task.isOverdue ? '⚠ ' : ''}Due {task.dueDate}
                   </span>
                 )}
-                {task.completed_at && status !== 'open' && (
+                {task.completedAt && status !== 'open' && (
                   <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>
-                    {task.completed_at.slice(0, 10)}
+                    {task.completedAt.slice(0, 10)}
                   </span>
                 )}
-                {task.assignee_name && (
+                {task.assigneeName && (
                   <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>
-                    {task.assignee_name}
+                    {task.assigneeName}
                   </span>
                 )}
               </div>

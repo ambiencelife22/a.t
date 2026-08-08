@@ -77,8 +77,8 @@ export interface DiningVenue {
   sortOrder:             number
   isSupplementary:       boolean
   isHighlighted:         boolean
-  venue_status:           VenueStatus
-  closed_visible_until:   string | null
+  venueStatus:           VenueStatus
+  closedVisibleUntil:     string | null
 }
 
 export async function getDiningVenuesByDestination(

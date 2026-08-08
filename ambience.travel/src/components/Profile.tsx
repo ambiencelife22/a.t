@@ -154,7 +154,7 @@ function SupportTab({ userId, displayName }: { userId: string; displayName: stri
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ticket_messages' }, payload => {
         const msg = payload.new as any
         if (msg.authorId === userId) return
-        if (!ticketsRef.current.some(t => t.id === msg.ticket_id)) return
+        if (!ticketsRef.current.some(t => t.id === msg.ticketId)) return
         setMessages(prev => {
           if (prev.find(m => m.id === msg.id)) return prev
           return [...prev, { ...msg, isAdminReply: true } as TicketMessage]

@@ -172,7 +172,7 @@ function activityIsSpan(a: CalendarActivity): boolean {
 
 // 6C drill-down shapes (from the activity_detail EF mode).
 type RoomDetail = { id: string; roomName: string | null; guestName: string | null; resolved_additional_guests?: string[] | null; confirmationNumber: string | null; partyComposition: string | null }
-type PassengerDetail = { id: string; passenger_name: string | null; seatNumbers: string | null; confirmationNumber: string | null }
+type PassengerDetail = { id: string; passengerName: string | null; seatNumbers: string | null; confirmationNumber: string | null }
 type VehicleDetail = { id: string; driverName: string | null; driverPhone: string | null; carModel: string | null; plate: string | null; company: string | null; vehicleRole: string | null }
 type ActivityDetail =
   | { kind: 'stay'; rooms: RoomDetail[] }
@@ -736,7 +736,7 @@ function PassengerList({ passengers }: { passengers: PassengerDetail[] }) {
       {passengers.map(p => (
         <div key={p.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'baseline' }}>
           <span style={{ minWidth:0 }}>
-            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{p.passenger_name || '-'}</strong>
+            <strong style={{ display:'block', fontSize:12.5, color:L.ink }}>{p.passengerName || '-'}</strong>
             {p.seatNumbers && <span style={{ fontSize:11.5, color:L.muted }}>Seat {p.seatNumbers}</span>}
           </span>
           {p.confirmationNumber && (

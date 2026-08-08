@@ -131,7 +131,7 @@ function HouseTypeahead({
               }}
             >
               {h.displayName ?? '(unnamed)'}
-              {h.a_house_id && <span style={{ color: A.faint, marginLeft: 8, fontFamily: 'DM Mono, monospace', fontSize: 11 }}>{h.a_house_id}</span>}
+              {h.aHouseId && <span style={{ color: A.faint, marginLeft: 8, fontFamily: 'DM Mono, monospace', fontSize: 11 }}>{h.aHouseId}</span>}
             </div>
           ))}
         </div>
@@ -318,7 +318,7 @@ function TimeEntryForm({
           <Field label='Rate (optional, internal)'>
             <select style={inputStyle} value={rateId ?? ''} onChange={e => setRateId(e.target.value || null)}>
               <option value=''>No rate</option>
-              {rates.map(r => <option key={r.id} value={r.id}>{r.role_label} ({r.currency} {r.hourlyRate})</option>)}
+              {rates.map(r => <option key={r.id} value={r.id}>{r.roleLabel} ({r.currency} {r.hourlyRate})</option>)}
             </select>
           </Field>
         </div>
@@ -407,7 +407,7 @@ function TimeEntriesList({
                   {e.hours.toFixed(2)}h
                 </span>
                 <span style={{ fontSize: 12, color: A.muted, fontFamily: A.font }}>
-                  {e.travel_time_activities?.label ?? 'Unspecified'}
+                  {e.travelTimeActivities?.label ?? 'Unspecified'}
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -417,7 +417,7 @@ function TimeEntriesList({
                 </span>
                 {e.billableAmount != null && (
                   <span style={{ fontSize: 11, color: A.faint, fontFamily: 'DM Mono, monospace' }}>
-                    {e.travel_time_rates?.currency ?? 'USD'} {e.billableAmount.toFixed(2)}
+                    {e.travelTimeRates?.currency ?? 'USD'} {e.billableAmount.toFixed(2)}
                   </span>
                 )}
               </div>

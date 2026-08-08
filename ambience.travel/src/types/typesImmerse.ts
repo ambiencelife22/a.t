@@ -826,7 +826,7 @@ export type ImmerseEngagementBooking = {
   lateCheckoutApprovedTime?: string | null
   requestedCheckinTime?: string | null
   requestedCheckoutTime?: string | null
-  extras?: { label: string; amount: number; currency: string; note?: string; charge_to?: string }[]
+  extras?: { label: string; amount: number; currency: string; note?: string; chargeTo?: string }[]
   endDate:            string | null
   nights:              number | null
   totalRate:          number | null

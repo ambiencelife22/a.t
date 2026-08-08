@@ -138,7 +138,7 @@ function EntryList({ data }: { data: TimeAnalyticsResult | null }) {
             </div>
           </div>
           <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 3 }}>
-            {e.work_date}{e.activity ? ` · ${e.activity}` : ''}{e.performer ? ` · ${e.performer}` : ''}
+            {e.workDate}{e.activity ? ` · ${e.activity}` : ''}{e.performer ? ` · ${e.performer}` : ''}
           </div>
           {e.notes && (
             <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginTop: 6, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
@@ -215,7 +215,7 @@ export default function TimeAnalyticsTab() {
             House
             <select style={inputStyle} value={filters.houseId ?? ''} onChange={e => set('houseId', e.target.value || undefined)}>
               <option value=''>All houses</option>
-              {houses.map(h => <option key={h.id} value={h.id}>{h.displayName ?? h.a_house_id}</option>)}
+              {houses.map(h => <option key={h.id} value={h.id}>{h.displayName ?? h.aHouseId}</option>)}
             </select>
           </label>
           <label style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>

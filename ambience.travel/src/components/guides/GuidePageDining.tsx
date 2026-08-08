@@ -231,9 +231,9 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
     }
 
     function isRecentlyClosed(v: DiningVenue): boolean {
-      if (v.venue_status !== 'permanently_closed') return false
-      if (!v.closed_visible_until) return false
-      return v.closed_visible_until >= today
+      if (v.venueStatus !== 'permanently_closed') return false
+      if (!v.closedVisibleUntil) return false
+      return v.closedVisibleUntil >= today
     }
 
     const visible = filterVisibleItems(venues, hasFullAccess)
@@ -250,7 +250,7 @@ export default function GuidePageDining({ destination, hasFullAccess }: GuidePag
         continue
       }
 
-      if (v.venue_status === 'permanently_closed') continue
+      if (v.venueStatus === 'permanently_closed') continue
 
       if (v.isSupplementary) {
         supplementary.push(v)

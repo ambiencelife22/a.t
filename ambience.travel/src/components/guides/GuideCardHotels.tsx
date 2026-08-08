@@ -116,7 +116,7 @@ function PrestigeRow({ hotel }: { hotel: HotelVenue }) {
 // ── Full body ────────────────────────────────────────────────────────────────
 
 function FullBody({ hotel }: { hotel: HotelVenue }) {
-  const fullAddress = [hotel.address, hotel.city, hotel.zip_code].filter(Boolean).join(', ')
+  const fullAddress = [hotel.address, hotel.city, hotel.zipCode].filter(Boolean).join(', ')
   const mapsUrl = resolveMapsLink(hotel.googleMapsUrl, fullAddress || null)
 
   return (

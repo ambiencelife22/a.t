@@ -695,10 +695,10 @@ export async function fetchRateReference(): Promise<RateReference> {
   })
   if (error) throw new Error(error.message)
   return {
-    boardBases:   data?.board_bases   ?? [],
+    boardBases:   data?.boardBases   ?? [],
     paymentTerms: data?.paymentTerms ?? [],
-    pricingBases: data?.pricing_bases ?? [],
-    rateLabels:   data?.rate_labels   ?? [],
+    pricingBases: data?.pricingBases ?? [],
+    rateLabels:   data?.rateLabels   ?? [],
   }
 }
 // ── House ID for trip ──────────────────────────────────────────────────────────

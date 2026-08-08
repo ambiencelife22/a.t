@@ -60,7 +60,7 @@ export interface Happening {
   bullets:               string[] | Array<{ text: string }>
   startDate:            string   // ISO date (YYYY-MM-DD)
   endDate:              string   // ISO date (YYYY-MM-DD)
-  venue_name:            string | null
+  venueName:            string | null
   address:               string | null
   mapsUrl:              string | null
   website:               string | null

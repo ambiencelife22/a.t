@@ -44,7 +44,7 @@ export interface HotelVenue {
   description:          string | null
   address:              string | null
   city:                 string | null
-  zip_code:             string | null
+  zipCode:             string | null
   latitude:             number | null
   longitude:            number | null
   googleMapsUrl:      string | null

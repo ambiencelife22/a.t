@@ -250,7 +250,7 @@ export async function fetchRateTypes(): Promise<RateType[]> {
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
-  return data.rate_types as RateType[]
+  return data.rateTypes as RateType[]
 }
 
 export async function markCommissionReceived(payload: {

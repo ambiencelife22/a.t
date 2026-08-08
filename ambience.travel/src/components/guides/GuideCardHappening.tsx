@@ -192,11 +192,11 @@ function TeaserBody({ destinationName }: { destinationName: string }) {
 
 function AddressBlock({ happening }: { happening: Happening }) {
   const mapsUrl = resolveMapsUrl(happening.mapsUrl, happening.address)
-  if (!happening.venue_name && !happening.address && !mapsUrl) return null
+  if (!happening.venueName && !happening.address && !mapsUrl) return null
   return (
     <div style={addressStyle}>
-      {happening.venue_name && (
-        <div style={venueNameStyle}>{happening.venue_name}</div>
+      {happening.venueName && (
+        <div style={venueNameStyle}>{happening.venueName}</div>
       )}
       {mapsUrl ? (
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={addressLinkStyle}>

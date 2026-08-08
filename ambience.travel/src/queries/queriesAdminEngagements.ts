@@ -192,8 +192,8 @@ export type EngagementOption = {
 export type ChildCounts = {
   destination_rows:        number
   pricingRows:            number
-  destination_hotels:      number
-  region_hotels:           number
+  destinationHotels:       number
+  regionHotels:           number
   route_stops:             number
   card_selections:         number
   card_overrides:          number
@@ -297,11 +297,11 @@ export function groupByEngagement(rows: EngagementListRow[]): EngagementGroup[] 
 
 // ── Detail ────────────────────────────────────────────────────────────────────
 
-export type HouseOption = { id: string; displayName: string; public_name: string | null }
+export type HouseOption = { id: string; displayName: string; publicName: string | null }
 
 export type EngagementHouseLink = {
   id: string; houseId: string; isPrimary: boolean; sortOrder: number
-  a_houses: { displayName: string; public_name: string | null } | null
+  aHouses: { displayName: string; publicName: string | null } | null
 }
 
 export type CandidateLabel = {
@@ -311,7 +311,7 @@ export type CandidateLabel = {
 export type EngagementDetail = {
   row: EngagementDetailRow
   houses: EngagementHouseLink[]
-  candidate_labels: CandidateLabel[]
+  candidateLabels: CandidateLabel[]
 }
 
 export async function fetchEngagementDetail(urlId: string): Promise<EngagementDetail | null> {
@@ -321,7 +321,7 @@ export async function fetchEngagementDetail(urlId: string): Promise<EngagementDe
     candidateLabels: CandidateLabel[]
   }>('detail', { url_id: urlId })
   if (!row) return null
-  return { row, houses: houses ?? [], candidate_labels: candidateLabels ?? [] }
+  return { row, houses: houses ?? [], candidateLabels: candidateLabels ?? [] }
 }
 
 export async function searchHouses(query: string): Promise<HouseOption[]> {
@@ -489,8 +489,8 @@ export type WelcomeLetterCanonical = {
   eyebrow:       string | null
   title:         string | null
   body:          string | null
-  signoff_body:  string | null
-  signoff_name:  string | null
+  signoffBody:  string | null
+  signoffName:  string | null
 }
 
 export async function fetchWelcomeLetterCanonical(): Promise<WelcomeLetterCanonical | null> {

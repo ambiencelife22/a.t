@@ -21,7 +21,7 @@
  *   glyph rendering with shared GuideRecognitionMark component.
  * Prior: S37 - Replaced single MICHELIN pill with structured recognition
  *   marks (stars + BIB pill + Green Star).
- * Prior: S37 - Added status banner. Reads venue.venue_status.
+ * Prior: S37 - Added status banner. Reads venue.venueStatus.
  * Prior: S36 - Collapsed two-register canon. Reads venue.body.
  * Prior: S35 - Initial ship.
  */
@@ -53,7 +53,7 @@ export function GuideCardDining({ venue, hasFullAccess, destinationName }: Guide
     <article style={cardStyle}>
       <ImageGrid venue={venue} isTeaser={isTeaser} />
       <div style={cardBodyStyle}>
-        <StatusBanner status={venue.venue_status} />
+        <StatusBanner status={venue.venueStatus} />
         <MetaRow venue={venue} />
         <h3 style={nameStyle}>{venue.name}</h3>
         <RecognitionMarks venue={venue} />

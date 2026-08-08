@@ -66,15 +66,15 @@ export const deleteTimeEntry = (id: string) =>
 export const upsertTimeActivity = (input: Partial<TimeActivity> & { slug: string; label: string }) =>
   invokeWrite<{ activity: TimeActivity }>({ mode: 'upsert_activity', ...input }).then(r => r.activity);
 
-export const upsertTimeRate = (input: Partial<TimeRate> & { slug: string; role_label: string; hourlyRate: number }) =>
-  invokeWrite<{ rate: TimeRate }>({ mode: 'upsert_rate', ...input }).then(r => r.rate);
+export const upsertTimeRate = (input: Partial<TimeRate> & { slug: string; roleLabel: string; hourlyRate: number }) =>
+  invokeWrite<{ rate: TimeRate }>({ mode: 'upsert_rate', ...snakeizeKeys<Record<string, unknown>>(input) }).then(r => r.rate);
 
 // ---- Types ----
 export interface TimeActivity {
   id: string; slug: string; label: string; sortOrder: number; isActive: boolean;
 }
 export interface TimeRate {
-  id: string; slug: string; role_label: string; hourlyRate: number;
+  id: string; slug: string; roleLabel: string; hourlyRate: number;
   currency: string; isActive: boolean;
 }
 export interface TimeEntryFilters {
@@ -99,21 +99,21 @@ export interface TimeEntryInput {
 }
 export interface TimeEntry extends TimeEntryInput {
   id: string;
-  rate_applied: number | null;
+  rateApplied: number | null;
   effortValue: number | null;
   billableAmount: number | null;
   invoiceStatus: 'uninvoiced' | 'invoiced' | 'paid';
   invoicedAt: string | null;
-  paid_at: string | null;
+  paidAt: string | null;
   createdAt: string; updatedAt: string;
-  travel_time_activities?: { slug: string; label: string } | null;
-  travel_time_rates?: { slug: string; role_label: string; hourlyRate: number; currency: string } | null;
+  travelTimeActivities?: { slug: string; label: string } | null;
+  travelTimeRates?: { slug: string; roleLabel: string; hourlyRate: number; currency: string } | null;
   performer?: { firstName: string | null; lastName: string | null; nickname: string | null } | null;
 }
 export interface TimeSummary { hours: number; amount: number; }
 
 export interface HouseOption {
-  id: string; a_house_id: string | null; displayName: string | null;
+  id: string; aHouseId: string | null; displayName: string | null;
 }
 export interface HouseMember {
   id: string; houseId: string; personId: string | null;
@@ -145,11 +145,11 @@ export interface AnalyticsBreakdownRow {
   hours: number; effortValue: number; invoiced: number; absorbed: number;
 }
 export interface AnalyticsEntry {
-  id: string; work_date: string;
+  id: string; workDate: string;
   house: string | null; engagement: string | null; activity: string | null;
   performer: string | null;
   hours: number; entry_type: string; isInvoiceable: boolean;
-  rate_applied: number | null; effortValue: number; billableAmount: number;
+  rateApplied: number | null; effortValue: number; billableAmount: number;
   notes: string | null;
 }
 export interface TimeAnalyticsResult {

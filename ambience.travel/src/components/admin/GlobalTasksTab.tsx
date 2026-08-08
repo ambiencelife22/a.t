@@ -27,15 +27,15 @@ type TaskView   = 'open' | 'closed'
 type Task = {
   id:                string
   title:             string
-  due_date:          string | null
+  dueDate:          string | null
   status:            TaskStatus
   note:              string | null
-  is_overdue:        boolean
-  is_notifying:      boolean
-  completed_at:      string | null
-  assignee_name:     string | null
-  engagement_title:  string | null
-  engagement_url_id: string | null
+  isOverdue:        boolean
+  isNotifying:       boolean
+  completedAt:      string | null
+  assigneeName:     string | null
+  engagementTitle:  string | null
+  engagementUrlId:   string | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -57,9 +57,9 @@ const BUCKET_LABEL: Record<Bucket, string> = {
 const BUCKET_ORDER: Bucket[] = ['overdue', 'week', 'later', 'nodate']
 
 function bucketFor(t: Task): Bucket {
-  if (t.is_overdue) return 'overdue'
-  if (!t.due_date)  return 'nodate'
-  if (t.is_notifying) return 'week'   // due within the EF's alert window, not overdue
+  if (t.isOverdue) return 'overdue'
+  if (!t.dueDate)  return 'nodate'
+  if (t.isNotifying) return 'week'   // due within the EF's alert window, not overdue
   return 'later'
 }
 
@@ -267,14 +267,14 @@ function ClosedView({ tasks, saving, onReopen }: {
 // ── Engagement label (shared) ─────────────────────────────────────────────────
 
 function EngagementLabel({ task }: { task: Task }) {
-  if (!task.engagement_title) return null
-  const href = task.engagement_url_id
-    ? buildAdminHash({ product: 'trips', tab: 'tasks', urlId: task.engagement_url_id })
+  if (!task.engagementTitle) return null
+  const href = task.engagementUrlId
+    ? buildAdminHash({ product: 'trips', tab: 'tasks', urlId: task.engagementUrlId })
     : null
   const style: React.CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', color: A.gold, fontFamily: A.font, textDecoration: 'none' }
   return href
-    ? <a href={href} style={style}>{task.engagement_title}</a>
-    : <span style={style}>{task.engagement_title}</span>
+    ? <a href={href} style={style}>{task.engagementTitle}</a>
+    : <span style={style}>{task.engagementTitle}</span>
 }
 
 // ── Open row ──────────────────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ function OpenRow({ task, saving, onResolve }: {
   return (
     <div style={{
       background:   A.bg,
-      border:       `1px solid ${task.is_overdue ? A.statusOverdueTint : A.border}`,
+      border:       `1px solid ${task.isOverdue ? A.statusOverdueTint : A.border}`,
       borderLeft:   `3px solid ${STATUS_COLOR.open}`,
       borderRadius: 8, padding: '11px 13px',
       display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
@@ -298,13 +298,13 @@ function OpenRow({ task, saving, onResolve }: {
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <EngagementLabel task={task} />
-          {task.due_date && (
-            <span style={{ fontSize: 10, fontFamily: A.font, color: task.is_overdue ? A.statusOverdue : A.faint }}>
-              {task.is_overdue ? '⚠ ' : ''}Due {task.due_date}
+          {task.dueDate && (
+            <span style={{ fontSize: 10, fontFamily: A.font, color: task.isOverdue ? A.statusOverdue : A.faint }}>
+              {task.isOverdue ? '⚠ ' : ''}Due {task.dueDate}
             </span>
           )}
-          {task.assignee_name && (
-            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{task.assignee_name}</span>
+          {task.assigneeName && (
+            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{task.assigneeName}</span>
           )}
         </div>
         {task.note && (
@@ -367,11 +367,11 @@ function ClosedRow({ task, saving, onReopen }: {
             {STATUS_LABEL[status]}
           </span>
           <EngagementLabel task={task} />
-          {task.completed_at && (
-            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{task.completed_at.slice(0, 10)}</span>
+          {task.completedAt && (
+            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{task.completedAt.slice(0, 10)}</span>
           )}
-          {task.assignee_name && (
-            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{task.assignee_name}</span>
+          {task.assigneeName && (
+            <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>{task.assigneeName}</span>
           )}
         </div>
       </div>

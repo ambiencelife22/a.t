@@ -230,13 +230,13 @@ export async function getStayByUrlId(urlId: string): Promise<StayResult> {
 // S53N: the guest's own linked stays, for the "your other stays" fallback in
 // the portal. Thin wrapper over the my_stays EF mode returning the raw list
 // (url_id, sub_path, guest_names) the fallback needs.
-export async function getMyStaysRaw(): Promise<{ urlId: string; sub_path: string; guestNames: string }[]> {
+export async function getMyStaysRaw(): Promise<{ urlId: string; subPath: string; guestNames: string }[]> {
   const { data, error } = await supabaseAnon.functions.invoke('travel-get-stay', {
     body: { mode: 'my_stays' },
   })
   if (error) return []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((data as any)?.stays ?? []) as { urlId: string; sub_path: string; guestNames: string }[]
+  return ((data as any)?.stays ?? []) as { urlId: string; subPath: string; guestNames: string }[]
 }
 
 // ── Programmes ─────────────────────────────────────────────────────────────

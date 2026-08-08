@@ -58,7 +58,7 @@ type ProgrammeEntry = {
   endTime:            string | null
   title:               string
   subtitle:            string | null
-  guest_label:         string | null
+  guestLabel:          string | null
   confirmationNumber: string | null
   notes:               string | null
   bookedBy:           string | null
@@ -210,7 +210,7 @@ function timelineToRows(items: TimelineItemView[]): ProgrammeEntry[] {
       endTime:            it.endTime,
       title:               it.title,
       subtitle:            it.subtitle,
-      guest_label:         it.guestLabel,
+      guestLabel:          it.guestLabel,
       confirmationNumber: it.confirmationNumber,
       notes:               it.notes,
       bookedBy:           it.bookedBy,
@@ -268,7 +268,7 @@ function measureEntryRow(doc: any, entry: ProgrammeEntry): number {
     sans(doc, 'normal', 7.5)
     h += doc.splitTextToSize(entry.diningPill.label, contentW3 - 2).length * PROG.lineH + 1
   }
-  if (entry.guest_label)           h += 5
+  if (entry.guestLabel)           h += 5
   if (entry.confirmationNumber)   h += 5
   h += PROG.entryPadV
 
@@ -419,10 +419,10 @@ async function drawEntryRow(doc: any, entry: ProgrammeEntry, y: number, rowH: nu
     ty += 1
   }
 
-  if (entry.guest_label) {
+  if (entry.guestLabel) {
     sans(doc, 'italic', 7.5)
     doc.setTextColor(T.faint[0], T.faint[1], T.faint[2])
-    doc.text(entry.guest_label, contentX, ty + 4); ty += 5
+    doc.text(entry.guestLabel, contentX, ty + 4); ty += 5
   }
 
   if (entry.confirmationNumber) {
