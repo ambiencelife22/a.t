@@ -1,12 +1,12 @@
 /* ProgrammeAdmin.tsx
  * Admin interface for the ambience.travel programme product.
- * Gated by profiles.is_admin - same column as ambience.SPORTS.
+ * Gated by profiles.isAdmin - same column as ambience.SPORTS.
  * Four tabs: Programmes, Welcome Letters, Listings, Property Sections.
  * Dark theme throughout - matches ProgrammeLayout shell.
  *
  * Last updated: S53G - EF compliance pass. All 29 direct supabase.from()
  *   calls across 5 tables migrated to queriesAdminProgramme (EF-backed).
- *   supabase import removed. global_profiles.is_admin check retained as-is
+ *   supabase import removed. global_profiles.isAdmin check retained as-is
  *   (pre-admin-scopes migration).
  * Prior: S33 - Six tab function declarations gained the `export` keyword.
  * Prior: S23 - Full surgical rename pass to travel_programme_* table convention.
@@ -316,8 +316,8 @@ export function ProgrammesTab() {
   function openEdit(prog: Programme) {
     setForm({
       urlId:               prog.urlId,
-      programme_type:       prog.programme_type,
-      sub_path:             prog.sub_path,
+      programme_type:       prog.programmeType,
+      sub_path:             prog.subPath,
       status:               prog.status,
       guestNames:          prog.guestNames,
       guestCount:          prog.guestCount,
@@ -325,7 +325,7 @@ export function ProgrammesTab() {
       checkOut:            prog.checkOut ?? '',
       welcomeLetter:       prog.welcomeLetter,
       propertyId:          prog.propertyId ?? '',
-      alarm_code_provided:  prog.alarm_code_provided,
+      alarm_code_provided:  prog.alarmCodeProvided,
     })
     setEditing(prog)
     setShowForm(true)
@@ -345,8 +345,8 @@ export function ProgrammesTab() {
     setSaving(true)
     const payload = {
       urlId:              form.urlId.trim(),
-      programme_type:      form.programme_type,
-      sub_path:            form.sub_path,
+      programme_type:      form.programmeType,
+      sub_path:            form.subPath,
       status:              form.status,
       guestNames:         form.guestNames.trim(),
       guestCount:         form.guestCount,
@@ -354,7 +354,7 @@ export function ProgrammesTab() {
       checkOut:           form.checkOut || null,
       welcomeLetter:      form.welcomeLetter.trim(),
       propertyId:         form.propertyId || null,
-      alarm_code_provided: form.alarm_code_provided,
+      alarm_code_provided: form.alarmCodeProvided,
     }
     try {
       if (editing) {
@@ -444,7 +444,7 @@ export function ProgrammesTab() {
               <input style={inputStyle} type='date' value={form.checkOut} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} />
             </Field>
             <Field label='Type'>
-              <select style={inputStyle} value={form.programme_type} onChange={e => setForm(f => ({ ...f, programme_type: e.target.value, sub_path: e.target.value === 'stay' ? 'stays' : e.target.value }))}>
+              <select style={inputStyle} value={form.programmeType} onChange={e => setForm(f => ({ ...f, programme_type: e.target.value, sub_path: e.target.value === 'stay' ? 'stays' : e.target.value }))}>
                 <option value='stay'>Stay</option>
                 <option value='concierge'>Concierge</option>
               </select>
@@ -457,9 +457,9 @@ export function ProgrammesTab() {
               </select>
             </Field>
           </div>
-          {form.programme_type === 'stay' && (
+          {form.programmeType === 'stay' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '14px 16px', borderRadius: 12, border: `1px solid ${A.border}`, background: 'rgba(255,255,255,0.03)' }}>
-              <input type='checkbox' id='alarm_code' checked={form.alarm_code_provided} onChange={e => setForm(f => ({ ...f, alarm_code_provided: e.target.checked }))} style={{ accentColor: A.gold, width: 16, height: 16, flexShrink: 0 }} />
+              <input type='checkbox' id='alarm_code' checked={form.alarmCodeProvided} onChange={e => setForm(f => ({ ...f, alarm_code_provided: e.target.checked }))} style={{ accentColor: A.gold, width: 16, height: 16, flexShrink: 0 }} />
               <div>
                 <label htmlFor='alarm_code' style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font, cursor: 'pointer', display: 'block', marginBottom: 2 }}>Alarm code provided to guests</label>
                 <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Unchecked shows alternate no-code alarm instructions in the house guide</div>
@@ -490,12 +490,12 @@ export function ProgrammesTab() {
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: A.text, fontFamily: A.font, marginBottom: 6 }}>{prog.guestNames}</div>
             <div style={{ fontSize: 12, color: A.muted, fontFamily: A.font, marginBottom: 3 }}>{prog.properties?.name ?? '-'}</div>
-            <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", marginBottom: 3, wordBreak: 'break-all' }}>/{prog.sub_path}/{prog.urlId}</div>
+            <div style={{ fontSize: 11, color: A.faint, fontFamily: "'DM Mono', monospace", marginBottom: 3, wordBreak: 'break-all' }}>/{prog.subPath}/{prog.urlId}</div>
             <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{prog.checkIn ? formatDate(prog.checkIn) : 'TBA'} → {prog.checkOut ? formatDate(prog.checkOut) : 'TBA'}</div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-            <a href={buildGuestUrl(prog.sub_path, prog.urlId)} target='_blank' rel='noopener noreferrer' style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: A.gold, borderColor: A.borderGold, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>View ↗</a>
+            <a href={buildGuestUrl(prog.subPath, prog.urlId)} target='_blank' rel='noopener noreferrer' style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: A.gold, borderColor: A.borderGold, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>View ↗</a>
             <button onClick={() => openEdit(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px' }}>Edit</button>
             <button onClick={() => handleTogglePublic(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: prog.isPublic ? A.positive : A.muted, borderColor: prog.isPublic ? `${A.positive}50` : A.border }}>{prog.isPublic ? 'Make Private' : 'Make Public'}</button>
             <button onClick={() => handleToggleActive(prog)} style={{ ...btnGhost, fontSize: 12, padding: '7px 16px', color: prog.active ? A.danger : A.positive, borderColor: prog.active ? `${A.danger}50` : `${A.positive}50` }}>{prog.active ? 'Deactivate' : 'Activate'}</button>
@@ -504,7 +504,7 @@ export function ProgrammesTab() {
 
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              <button onClick={() => handleToggleField(prog, 'no_alarm')} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog.no_alarm ? A.positive : A.faint, borderColor: prog.no_alarm ? `${A.positive}50` : A.border }}>{prog.no_alarm ? '✓' : '-'} No alarm stay</button>
+              <button onClick={() => handleToggleField(prog, 'no_alarm')} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog.noAlarm ? A.positive : A.faint, borderColor: prog.noAlarm ? `${A.positive}50` : A.border }}>{prog.noAlarm ? '✓' : '-'} No alarm stay</button>
             </div>
           </div>
 
@@ -564,7 +564,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
   }
 
   function startEdit(section: SectionOption) {
-    const existing = overrides.find(o => o.section_id === section.id)
+    const existing = overrides.find(o => o.sectionId === section.id)
     if (existing) {
       setEditing(existing)
       setEditContent(JSON.parse(JSON.stringify(existing.content)))
@@ -580,8 +580,8 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
     if (!editing) return
     setSaving(true)
     try {
-      const existing = overrides.find(o => o.section_id === editing.section_id)
-      await upsertProgrammeSection(existing?.id ?? null, programmeId, editing.section_id, editContent)
+      const existing = overrides.find(o => o.sectionId === editing.sectionId)
+      await upsertProgrammeSection(existing?.id ?? null, programmeId, editing.sectionId, editContent)
       showToast('Section override saved.', 'success')
       cancelEdit()
       load()
@@ -590,7 +590,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
   }
 
   async function handleDelete(sectionId: string) {
-    const existing = overrides.find(o => o.section_id === sectionId)
+    const existing = overrides.find(o => o.sectionId === sectionId)
     if (!existing) return
     try {
       await deleteProgrammeSection(existing.id)
@@ -617,7 +617,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
       {open && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sections.map(section => {
-            const hasOverride = overrides.some(o => o.section_id === section.id)
+            const hasOverride = overrides.some(o => o.sectionId === section.id)
             return (
               <div key={section.id} style={{ background: A.bg, border: `1px solid ${hasOverride ? A.borderGold : A.border}`, borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 15 }}>{section.icon}</span>
@@ -635,7 +635,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 4 }}>Guest Override</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>{sections.find(s => s.id === editing.section_id)?.icon} {sections.find(s => s.id === editing.section_id)?.title}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font }}>{sections.find(s => s.id === editing.sectionId)?.icon} {sections.find(s => s.id === editing.sectionId)?.title}</div>
                     <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 4 }}>This content replaces the property default for this guest only.</div>
                   </div>
                   <button onClick={cancelEdit} style={{ background: 'none', border: 'none', color: A.muted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
@@ -1112,7 +1112,7 @@ export function PropertiesTab() {
   }
 
   function openEdit(prop: FullProperty) {
-    setForm({ name: prop.name, tagline: prop.tagline ?? '', city: prop.city ?? '', country: prop.country ?? '', hero_image: prop.hero_image ?? '', mapsUrl: prop.mapsUrl ?? '', mapsEmbedUrl: prop.mapsEmbedUrl ?? '', ownerName: prop.ownerName ?? '', ownerPhone: prop.ownerPhone ?? '', managerName: prop.managerName ?? '', managerPhone: prop.managerPhone ?? '', emergencyContacts: prop.emergencyContacts ?? [] })
+    setForm({ name: prop.name, tagline: prop.tagline ?? '', city: prop.city ?? '', country: prop.country ?? '', hero_image: prop.heroImage ?? '', mapsUrl: prop.mapsUrl ?? '', mapsEmbedUrl: prop.mapsEmbedUrl ?? '', ownerName: prop.ownerName ?? '', ownerPhone: prop.ownerPhone ?? '', managerName: prop.managerName ?? '', managerPhone: prop.managerPhone ?? '', emergencyContacts: prop.emergencyContacts ?? [] })
     setEditing(prop)
   }
 
@@ -1124,7 +1124,7 @@ export function PropertiesTab() {
   async function handleSave() {
     if (!editing || !form.name.trim()) { showToast('Name is required.', 'error'); return }
     setSaving(true)
-    const payload = { name: form.name.trim(), tagline: form.tagline.trim() || null, city: form.city.trim() || null, country: form.country.trim() || null, hero_image: form.hero_image.trim() || null, mapsUrl: form.mapsUrl.trim() || null, mapsEmbedUrl: form.mapsEmbedUrl.trim() || null, ownerName: form.ownerName.trim() || null, ownerPhone: form.ownerPhone.trim() || null, managerName: form.managerName.trim() || null, managerPhone: form.managerPhone.trim() || null, emergencyContacts: form.emergencyContacts.filter(e => e.label.trim() || e.phone.trim()) }
+    const payload = { name: form.name.trim(), tagline: form.tagline.trim() || null, city: form.city.trim() || null, country: form.country.trim() || null, hero_image: form.heroImage.trim() || null, mapsUrl: form.mapsUrl.trim() || null, mapsEmbedUrl: form.mapsEmbedUrl.trim() || null, ownerName: form.ownerName.trim() || null, ownerPhone: form.ownerPhone.trim() || null, managerName: form.managerName.trim() || null, managerPhone: form.managerPhone.trim() || null, emergencyContacts: form.emergencyContacts.filter(e => e.label.trim() || e.phone.trim()) }
     try { await updateProperty(editing.id, payload); showToast('Property saved.', 'success'); cancelEdit(); load() } catch (e) { showToast(`Failed to save property: ${errMsg(e)}`, 'error') }
     setSaving(false)
   }
@@ -1151,7 +1151,7 @@ export function PropertiesTab() {
             <Field label='Tagline'><input style={inputStyle} value={form.tagline} onChange={e => setForm(f => ({ ...f, tagline: e.target.value }))} placeholder='A short descriptor…' /></Field>
             <Field label='City'><input style={inputStyle} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder='Valencia' /></Field>
             <Field label='Country'><input style={inputStyle} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} placeholder='Spain' /></Field>
-            <Field label='Hero Image Path'><input style={inputStyle} value={form.hero_image} onChange={e => setForm(f => ({ ...f, hero_image: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' /></Field>
+            <Field label='Hero Image Path'><input style={inputStyle} value={form.heroImage} onChange={e => setForm(f => ({ ...f, hero_image: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' /></Field>
             <Field label='Google Maps URL'><input style={inputStyle} value={form.mapsUrl} onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} placeholder='https://maps.google.com/?q=…' /></Field>
             <Field label='Google Maps Embed URL'><input style={inputStyle} value={form.mapsEmbedUrl} onChange={e => setForm(f => ({ ...f, mapsEmbedUrl: e.target.value }))} placeholder='https://www.google.com/maps/embed?pb=…' /></Field>
           </div>
@@ -1328,7 +1328,7 @@ function AccessDenied() {
 }
 
 // ── ProgrammeAdmin - gated entry point ───────────────────────────────────────
-// global_profiles.is_admin check retained as-is (pre-admin-scopes migration).
+// global_profiles.isAdmin check retained as-is (pre-admin-scopes migration).
 
 export default function ProgrammeAdmin() {
   const [status, setStatus] = useState<'loading' | 'allowed' | 'denied'>('loading')

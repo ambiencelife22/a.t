@@ -11,6 +11,7 @@
 //   (29 direct DB calls across 5 tables → 0).
 
 import { supabase } from '../lib/supabase'
+import { snakeizeKeys } from '@shared/camelize'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -219,7 +220,7 @@ export async function fetchProgrammeSections(programmeId: string): Promise<Progr
 
 export async function createProgramme(payload: ProgrammePayload): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'create_programme', payload },
+    body: { mode: 'create_programme', payload: snakeizeKeys(payload) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -227,7 +228,7 @@ export async function createProgramme(payload: ProgrammePayload): Promise<void> 
 
 export async function updateProgramme(id: string, payload: Partial<ProgrammePayload>): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_programme', id, payload },
+    body: { mode: 'update_programme', id, payload: snakeizeKeys(payload) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -259,7 +260,7 @@ export async function updateWelcomeLetter(id: string, welcomeLetter: string): Pr
 
 export async function updateProperty(id: string, payload: PropertyPayload): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_property', id, payload },
+    body: { mode: 'update_property', id, payload: snakeizeKeys(payload) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -283,7 +284,7 @@ export async function togglePropertyActive(id: string, value: boolean): Promise<
 
 export async function createListing(payload: ListingPayload): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'create_listing', payload },
+    body: { mode: 'create_listing', payload: snakeizeKeys(payload) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -291,7 +292,7 @@ export async function createListing(payload: ListingPayload): Promise<void> {
 
 export async function updateListing(id: string, payload: ListingPayload): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_listing', id, payload },
+    body: { mode: 'update_listing', id, payload: snakeizeKeys(payload) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
@@ -402,7 +403,7 @@ export async function searchProgrammeGuestCandidates(query: string): Promise<Gue
   const results = (data?.results ?? []) as Array<Record<string, unknown>>
   return results.map(r => ({
     personId:    r.personId as string,
-    profileId:   (r.profile_id as string | null) ?? null,
+    profileId:   (r.profileId as string | null) ?? null,
     displayName: (r.displayName as string) ?? '',
     nickname:    (r.nickname as string | null) ?? null,
     linkable:    !!r.linkable,
@@ -456,11 +457,11 @@ async function toLinkError(error: unknown): Promise<LinkGuestError> {
 function mapGuest(r: Record<string, unknown>): ProgrammeGuest {
   return {
     id:           r.id as string,
-    programmeId:  r.programme_id as string,
+    programmeId:  r.programmeId as string,
     displayName:  (r.displayName as string) ?? '',
-    profileId:    (r.profile_id as string | null) ?? null,
-    isLead:       !!r.is_lead,
+    profileId:    (r.profileId as string | null) ?? null,
+    isLead:       !!r.isLead,
     sortOrder:    (r.sortOrder as number) ?? 0,
-    resolvedName: (r.resolved_name as string | null) ?? null,
+    resolvedName: (r.resolvedName as string | null) ?? null,
   }
 }
