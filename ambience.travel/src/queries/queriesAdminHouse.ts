@@ -127,13 +127,13 @@ export interface HouseLabel {
 export interface HouseDiningEntry {
   id:              string
   houseId:        string
-  restaurant_name: string
+  restaurantName: string
   city:            string | null
   country:         string | null
   status:          reservationStatus
   visitDate:      string | null
   journeyId:      string | null
-  venue_id:        string | null
+  venueId:         string | null
   notes:           string | null
   createdAt:      string
   updatedAt:      string

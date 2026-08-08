@@ -19,7 +19,7 @@ export interface TravelRequest {
   engagementId: string | null
   channel:       RequestChannel | null
   receivedAt:   string
-  request_body:  string
+  requestBody:  string
   status:        RequestStatus
   handledBy:    string | null
   notes:         string | null

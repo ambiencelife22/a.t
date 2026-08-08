@@ -1450,7 +1450,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
   const [filter, setFilter] = useState<reservationStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft]   = useState({ restaurant_name: '', city: '', country: '', status: 'visited' as reservationStatus, visitDate: '', journeyId: '', notes: '' })
+  const [draft, setDraft]   = useState({ restaurantName: '', city: '', country: '', status: 'visited' as reservationStatus, visitDate: '', journeyId: '', notes: '' })
   const { success, error }  = useAdminToast()
   const STATUSES: reservationStatus[] = ['favorite', 'visited', 'to_try', 'avoid']
 
@@ -1475,7 +1475,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
       await createDiningEntry(houseId, draft.restaurantName.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visitDate || null, draft.journeyId || null, null, draft.notes.trim() || null)
       success('Added.')
       setAdding(false)
-      setDraft({ restaurant_name: '', city: '', country: '', status: 'visited', visitDate: '', journeyId: '', notes: '' })
+      setDraft({ restaurantName: '', city: '', country: '', status: 'visited', visitDate: '', journeyId: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -1505,7 +1505,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
 
       {adding && (
         <AddFormShell>
-          <Field label='Restaurant'><input style={inputStyle} placeholder='Name...' value={draft.restaurantName} onChange={e => setDraft(d => ({ ...d, restaurant_name: e.target.value }))} autoFocus /></Field>
+          <Field label='Restaurant'><input style={inputStyle} placeholder='Name...' value={draft.restaurantName} onChange={e => setDraft(d => ({ ...d, restaurantName: e.target.value }))} autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
             <Field label='City'><input style={inputStyle} placeholder='City...' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
             <Field label='Country'><input style={inputStyle} placeholder='Country...' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>

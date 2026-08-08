@@ -85,7 +85,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
     setSaving(true)
     try {
       await updateRequest(req.id, {
-        request_body: draft.requestBody?.trim(),
+        requestBody: draft.requestBody?.trim(),
         channel:      draft.channel,
         handledBy:   draft.handledBy?.trim() || null,
         notes:        draft.notes?.trim() || null,
@@ -149,7 +149,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           <div style={{ display: 'flex', gap: 4 }}>
             {!editing && (
               <button
-                onClick={() => { setEditing(true); setExpanded(true); setDraft({ request_body: req.requestBody, channel: req.channel ?? undefined, handledBy: req.handledBy ?? '', notes: req.notes ?? '', receivedAt: req.receivedAt }) }}
+                onClick={() => { setEditing(true); setExpanded(true); setDraft({ requestBody: req.requestBody, channel: req.channel ?? undefined, handledBy: req.handledBy ?? '', notes: req.notes ?? '', receivedAt: req.receivedAt }) }}
                 style={{ ...btnG, padding: '3px 8px', fontSize: 10 }}
               >Edit</button>
             )}
@@ -182,7 +182,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
             <textarea
               style={{ ...textareaStyle, minHeight: 80 }}
               value={draft.requestBody ?? ''}
-              onChange={e => setDraft(d => ({ ...d, request_body: e.target.value }))}
+              onChange={e => setDraft(d => ({ ...d, requestBody: e.target.value }))}
               autoFocus
             />
           </Field>
@@ -228,7 +228,7 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
   const [saving, setSaving]   = useState(false)
   const { success, error }    = useAdminToast()
   const [draft, setDraft]     = useState({
-    request_body: '',
+    requestBody: '',
     channel:      '' as RequestChannel | '',
     receivedAt:  toDatetimeLocal(new Date().toISOString()),
     handledBy:   '',
@@ -262,7 +262,7 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
       )
       success('Request logged.')
       setAdding(false)
-      setDraft({ request_body: '', channel: '', receivedAt: toDatetimeLocal(new Date().toISOString()), handledBy: '', notes: '' })
+      setDraft({ requestBody: '', channel: '', receivedAt: toDatetimeLocal(new Date().toISOString()), handledBy: '', notes: '' })
       await onReload()
     } catch (e) { error(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -288,7 +288,7 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
               style={{ ...textareaStyle, minHeight: 90 }}
               placeholder='What did they ask for...'
               value={draft.requestBody}
-              onChange={e => setDraft(d => ({ ...d, request_body: e.target.value }))}
+              onChange={e => setDraft(d => ({ ...d, requestBody: e.target.value }))}
               autoFocus
             />
           </Field>

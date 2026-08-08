@@ -275,8 +275,8 @@ export function ProgrammesTab() {
 
   const emptyForm = {
     urlId:               '',
-    programme_type:       'stay',
-    sub_path:             'stays',
+    programmeType:       'stay',
+    subPath:             'stays',
     status:               'confirmed',
     guestNames:          '',
     guestCount:          1,
@@ -284,7 +284,7 @@ export function ProgrammesTab() {
     checkOut:            '',
     welcomeLetter:       '',
     propertyId:          '',
-    alarm_code_provided:  false,
+    alarmCodeProvided:  false,
   }
 
   const [form, setForm] = useState(emptyForm)
@@ -316,8 +316,8 @@ export function ProgrammesTab() {
   function openEdit(prog: Programme) {
     setForm({
       urlId:               prog.urlId,
-      programme_type:       prog.programmeType,
-      sub_path:             prog.subPath,
+      programmeType:       prog.programmeType,
+      subPath:             prog.subPath,
       status:               prog.status,
       guestNames:          prog.guestNames,
       guestCount:          prog.guestCount,
@@ -325,7 +325,7 @@ export function ProgrammesTab() {
       checkOut:            prog.checkOut ?? '',
       welcomeLetter:       prog.welcomeLetter,
       propertyId:          prog.propertyId ?? '',
-      alarm_code_provided:  prog.alarmCodeProvided,
+      alarmCodeProvided:  prog.alarmCodeProvided,
     })
     setEditing(prog)
     setShowForm(true)
@@ -345,8 +345,8 @@ export function ProgrammesTab() {
     setSaving(true)
     const payload = {
       urlId:              form.urlId.trim(),
-      programme_type:      form.programmeType,
-      sub_path:            form.subPath,
+      programmeType:      form.programmeType,
+      subPath:            form.subPath,
       status:              form.status,
       guestNames:         form.guestNames.trim(),
       guestCount:         form.guestCount,
@@ -354,7 +354,7 @@ export function ProgrammesTab() {
       checkOut:           form.checkOut || null,
       welcomeLetter:      form.welcomeLetter.trim(),
       propertyId:         form.propertyId || null,
-      alarm_code_provided: form.alarmCodeProvided,
+      alarmCodeProvided: form.alarmCodeProvided,
     }
     try {
       if (editing) {
@@ -384,7 +384,7 @@ export function ProgrammesTab() {
 
   async function handleTogglePublic(prog: Programme) {
     try {
-      await toggleProgrammeField(prog.id, 'is_public', !prog.isPublic)
+      await toggleProgrammeField(prog.id, 'isPublic', !prog.isPublic)
       showToast(prog.isPublic ? 'Programme set to private.' : 'Programme is now public.', 'success')
       load()
     } catch (e) { showToast(`Failed: ${errMsg(e)}`, 'error') }
@@ -444,7 +444,7 @@ export function ProgrammesTab() {
               <input style={inputStyle} type='date' value={form.checkOut} onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} />
             </Field>
             <Field label='Type'>
-              <select style={inputStyle} value={form.programmeType} onChange={e => setForm(f => ({ ...f, programme_type: e.target.value, sub_path: e.target.value === 'stay' ? 'stays' : e.target.value }))}>
+              <select style={inputStyle} value={form.programmeType} onChange={e => setForm(f => ({ ...f, programmeType: e.target.value, subPath: e.target.value === 'stay' ? 'stays' : e.target.value }))}>
                 <option value='stay'>Stay</option>
                 <option value='concierge'>Concierge</option>
               </select>
@@ -459,7 +459,7 @@ export function ProgrammesTab() {
           </div>
           {form.programmeType === 'stay' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '14px 16px', borderRadius: 12, border: `1px solid ${A.border}`, background: 'rgba(255,255,255,0.03)' }}>
-              <input type='checkbox' id='alarm_code' checked={form.alarmCodeProvided} onChange={e => setForm(f => ({ ...f, alarm_code_provided: e.target.checked }))} style={{ accentColor: A.gold, width: 16, height: 16, flexShrink: 0 }} />
+              <input type='checkbox' id='alarm_code' checked={form.alarmCodeProvided} onChange={e => setForm(f => ({ ...f, alarmCodeProvided: e.target.checked }))} style={{ accentColor: A.gold, width: 16, height: 16, flexShrink: 0 }} />
               <div>
                 <label htmlFor='alarm_code' style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font, cursor: 'pointer', display: 'block', marginBottom: 2 }}>Alarm code provided to guests</label>
                 <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Unchecked shows alternate no-code alarm instructions in the house guide</div>
@@ -504,7 +504,7 @@ export function ProgrammesTab() {
 
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${A.border}` }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              <button onClick={() => handleToggleField(prog, 'no_alarm')} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog.noAlarm ? A.positive : A.faint, borderColor: prog.noAlarm ? `${A.positive}50` : A.border }}>{prog.noAlarm ? '✓' : '-'} No alarm stay</button>
+              <button onClick={() => handleToggleField(prog, 'noAlarm')} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog.noAlarm ? A.positive : A.faint, borderColor: prog.noAlarm ? `${A.positive}50` : A.border }}>{prog.noAlarm ? '✓' : '-'} No alarm stay</button>
             </div>
           </div>
 
@@ -512,11 +512,11 @@ export function ProgrammesTab() {
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 8 }}>Public visibility</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {([
-                { field: 'public_arrival'       as const, label: 'Arrival' },
-                { field: 'public_wifi'          as const, label: 'WiFi' },
-                { field: 'public_alarm'         as const, label: 'Alarm code' },
-                { field: 'public_owner_phone'   as const, label: 'Host phone' },
-                { field: 'public_manager_phone' as const, label: 'Manager phone' },
+                { field: 'publicArrival'        as const, label: 'Arrival' },
+                { field: 'publicWifi'           as const, label: 'WiFi' },
+                { field: 'publicAlarm'          as const, label: 'Alarm code' },
+                { field: 'publicOwnerPhone'     as const, label: 'Host phone' },
+                { field: 'publicManagerPhone'   as const, label: 'Manager phone' },
               ] as const).map(({ field, label }) => (
                 <button key={field} onClick={() => handleToggleField(prog, field)} style={{ ...btnGhost, fontSize: 11, padding: '5px 12px', color: prog[field] ? A.positive : A.faint, borderColor: prog[field] ? `${A.positive}50` : A.border }}>
                   {prog[field] ? '✓' : '-'} {label}
@@ -536,7 +536,7 @@ export function ProgrammesTab() {
 // ── Programme Section Overrides ───────────────────────────────────────────────
 
 type SectionOption = { id: string; title: string; icon: string }
-type OverrideRow   = { id: string; section_id: string; content: ContentBlock[] }
+type OverrideRow   = { id: string; sectionId: string; content: ContentBlock[] }
 
 function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: string; propertyId: string }) {
   const [open, setOpen]               = useState(false)
@@ -570,7 +570,7 @@ function ProgrammeSectionOverrides({ programmeId, propertyId }: { programmeId: s
       setEditContent(JSON.parse(JSON.stringify(existing.content)))
       return
     }
-    setEditing({ id: '', section_id: section.id, content: [] })
+    setEditing({ id: '', sectionId: section.id, content: [] })
     setEditContent([])
   }
 
@@ -1100,7 +1100,7 @@ export function PropertiesTab() {
   const [saving, setSaving]         = useState(false)
   const { toast, showToast }        = useToast()
 
-  const emptyForm = { name: '', tagline: '', city: '', country: '', hero_image: '', mapsUrl: '', mapsEmbedUrl: '', ownerName: '', ownerPhone: '', managerName: '', managerPhone: '', emergencyContacts: [] as { label: string; phone: string }[] }
+  const emptyForm = { name: '', tagline: '', city: '', country: '', heroImage: '', mapsUrl: '', mapsEmbedUrl: '', ownerName: '', ownerPhone: '', managerName: '', managerPhone: '', emergencyContacts: [] as { label: string; phone: string }[] }
   const [form, setForm] = useState(emptyForm)
 
   useEffect(() => { load() }, [])
@@ -1112,7 +1112,7 @@ export function PropertiesTab() {
   }
 
   function openEdit(prop: FullProperty) {
-    setForm({ name: prop.name, tagline: prop.tagline ?? '', city: prop.city ?? '', country: prop.country ?? '', hero_image: prop.heroImage ?? '', mapsUrl: prop.mapsUrl ?? '', mapsEmbedUrl: prop.mapsEmbedUrl ?? '', ownerName: prop.ownerName ?? '', ownerPhone: prop.ownerPhone ?? '', managerName: prop.managerName ?? '', managerPhone: prop.managerPhone ?? '', emergencyContacts: prop.emergencyContacts ?? [] })
+    setForm({ name: prop.name, tagline: prop.tagline ?? '', city: prop.city ?? '', country: prop.country ?? '', heroImage: prop.heroImage ?? '', mapsUrl: prop.mapsUrl ?? '', mapsEmbedUrl: prop.mapsEmbedUrl ?? '', ownerName: prop.ownerName ?? '', ownerPhone: prop.ownerPhone ?? '', managerName: prop.managerName ?? '', managerPhone: prop.managerPhone ?? '', emergencyContacts: prop.emergencyContacts ?? [] })
     setEditing(prop)
   }
 
@@ -1124,7 +1124,7 @@ export function PropertiesTab() {
   async function handleSave() {
     if (!editing || !form.name.trim()) { showToast('Name is required.', 'error'); return }
     setSaving(true)
-    const payload = { name: form.name.trim(), tagline: form.tagline.trim() || null, city: form.city.trim() || null, country: form.country.trim() || null, hero_image: form.heroImage.trim() || null, mapsUrl: form.mapsUrl.trim() || null, mapsEmbedUrl: form.mapsEmbedUrl.trim() || null, ownerName: form.ownerName.trim() || null, ownerPhone: form.ownerPhone.trim() || null, managerName: form.managerName.trim() || null, managerPhone: form.managerPhone.trim() || null, emergencyContacts: form.emergencyContacts.filter(e => e.label.trim() || e.phone.trim()) }
+    const payload = { name: form.name.trim(), tagline: form.tagline.trim() || null, city: form.city.trim() || null, country: form.country.trim() || null, heroImage: form.heroImage.trim() || null, mapsUrl: form.mapsUrl.trim() || null, mapsEmbedUrl: form.mapsEmbedUrl.trim() || null, ownerName: form.ownerName.trim() || null, ownerPhone: form.ownerPhone.trim() || null, managerName: form.managerName.trim() || null, managerPhone: form.managerPhone.trim() || null, emergencyContacts: form.emergencyContacts.filter(e => e.label.trim() || e.phone.trim()) }
     try { await updateProperty(editing.id, payload); showToast('Property saved.', 'success'); cancelEdit(); load() } catch (e) { showToast(`Failed to save property: ${errMsg(e)}`, 'error') }
     setSaving(false)
   }
@@ -1151,7 +1151,7 @@ export function PropertiesTab() {
             <Field label='Tagline'><input style={inputStyle} value={form.tagline} onChange={e => setForm(f => ({ ...f, tagline: e.target.value }))} placeholder='A short descriptor…' /></Field>
             <Field label='City'><input style={inputStyle} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder='Valencia' /></Field>
             <Field label='Country'><input style={inputStyle} value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} placeholder='Spain' /></Field>
-            <Field label='Hero Image Path'><input style={inputStyle} value={form.heroImage} onChange={e => setForm(f => ({ ...f, hero_image: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' /></Field>
+            <Field label='Hero Image Path'><input style={inputStyle} value={form.heroImage} onChange={e => setForm(f => ({ ...f, heroImage: e.target.value }))} placeholder='/programme/stays/casa-romeu/hero.jpg' /></Field>
             <Field label='Google Maps URL'><input style={inputStyle} value={form.mapsUrl} onChange={e => setForm(f => ({ ...f, mapsUrl: e.target.value }))} placeholder='https://maps.google.com/?q=…' /></Field>
             <Field label='Google Maps Embed URL'><input style={inputStyle} value={form.mapsEmbedUrl} onChange={e => setForm(f => ({ ...f, mapsEmbedUrl: e.target.value }))} placeholder='https://www.google.com/maps/embed?pb=…' /></Field>
           </div>

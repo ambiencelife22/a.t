@@ -18,17 +18,17 @@ import { snakeizeKeys } from '@shared/camelize'
 export type ProgrammeRow = {
   id:                   string
   urlId:               string
-  programme_type:       string
-  sub_path:             string
+  programmeType:       string
+  subPath:             string
   status:               string
   active:               boolean
   isPublic:            boolean
-  public_wifi:          boolean
-  public_alarm:         boolean
-  public_owner_phone:   boolean
-  public_manager_phone: boolean
-  no_alarm:             boolean
-  public_arrival:       boolean
+  publicWifi:          boolean
+  publicAlarm:         boolean
+  publicOwnerPhone:   boolean
+  publicManagerPhone: boolean
+  noAlarm:             boolean
+  publicArrival:       boolean
   guestNames:          string
   guestCount:          number
   checkIn:             string | null
@@ -36,7 +36,7 @@ export type ProgrammeRow = {
   welcomeLetter:       string
   propertyId:          string | null
   activeListingIds:   string[] | null
-  alarm_code_provided:  boolean
+  alarmCodeProvided:  boolean
   properties:           { id: string; name: string; slug: string } | null
 }
 
@@ -47,7 +47,7 @@ export type PropertyRow = {
   tagline:            string | null
   city:               string | null
   country:            string | null
-  hero_image:         string | null
+  heroImage:         string | null
   mapsUrl:           string | null
   mapsEmbedUrl:     string | null
   ownerName:         string | null
@@ -89,14 +89,14 @@ export type PropertySectionMeta = {
 
 export type ProgrammeSectionRow = {
   id:         string
-  section_id: string
+  sectionId: string
   content:    unknown
 }
 
 export type ProgrammePayload = {
   urlId:               string
-  programme_type:       string
-  sub_path:             string
+  programmeType:       string
+  subPath:             string
   status:               string
   guestNames:          string
   guestCount:          number
@@ -104,7 +104,7 @@ export type ProgrammePayload = {
   checkOut:            string | null
   welcomeLetter:       string
   propertyId:          string | null
-  alarm_code_provided:  boolean
+  alarmCodeProvided:  boolean
 }
 
 export type ListingPayload = {
@@ -124,7 +124,7 @@ export type PropertyPayload = {
   tagline:            string | null
   city:               string | null
   country:            string | null
-  hero_image:         string | null
+  heroImage:         string | null
   mapsUrl:           string | null
   mapsEmbedUrl:     string | null
   ownerName:         string | null
@@ -135,8 +135,8 @@ export type PropertyPayload = {
 }
 
 export type TogglableField =
-  | 'active' | 'is_public' | 'public_wifi' | 'public_alarm'
-  | 'public_owner_phone' | 'public_manager_phone' | 'no_alarm' | 'public_arrival'
+  | 'active' | 'isPublic' | 'publicWifi' | 'publicAlarm'
+  | 'publicOwnerPhone' | 'publicManagerPhone' | 'noAlarm' | 'publicArrival'
 
 // ── EF names ──────────────────────────────────────────────────────────────────
 
@@ -244,7 +244,7 @@ export async function deleteProgramme(id: string): Promise<void> {
 
 export async function toggleProgrammeField(id: string, field: TogglableField, value: boolean): Promise<void> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'toggle_programme_field', id, field, value },
+    body: { mode: 'toggle_programme_field', id, field: field.replace(/[A-Z]/g, m => '_' + m.toLowerCase()), value },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
