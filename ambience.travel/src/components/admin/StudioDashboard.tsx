@@ -32,7 +32,7 @@ const STAGE_META: Record<string, { label: string; color: string }> = {
 const FISCAL_YEAR_START = '2026-01-01'
 const FISCAL_YEAR_END   = '2026-12-31'
 
-type SortKey = 'start_date' | 'total_rate' | 'net_margin' | 'total_commission'
+type SortKey = 'startDate' | 'totalRate' | 'netMargin' | 'totalCommission'
 
 // Grid: Engagement | Value | Comm. (native) | Comm. (USD) | Received | Margin
 const GRID = '1fr 90px 100px 90px 90px 90px'
@@ -185,17 +185,17 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
 
       {/* Comm. native currency */}
       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, textAlign: 'right' }}>
-        {e.total_commission_native > 0
+        {e.totalCommissionNative > 0
           ? isSameNative
             ? <span style={{ color: A.faint }}>-</span>
-            : money(e.total_commission_native, e.currency)
+            : money(e.totalCommissionNative, e.currency)
           : <span style={{ color: A.faint }}>-</span>
         }
       </div>
 
       {/* Comm. USD */}
       <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font, textAlign: 'right' }}>
-        {e.total_commission > 0 ? usd(e.total_commission) : <span style={{ color: A.faint }}>-</span>}
+        {e.totalCommission > 0 ? usd(e.totalCommission) : <span style={{ color: A.faint }}>-</span>}
       </div>
 
       {/* Received */}
@@ -204,8 +204,8 @@ function PipelineRow({ e, i, stageMeta, onClick }: {
       </div>
 
       {/* Margin */}
-      <div style={{ fontSize: 13, fontWeight: 700, color: e.net_margin >= 0 ? '#4ade80' : '#ef4444', fontFamily: A.font, textAlign: 'right' }}>
-        {e.net_margin !== 0 ? usd(e.net_margin) : <span style={{ color: A.faint }}>-</span>}
+      <div style={{ fontSize: 13, fontWeight: 700, color: e.netMargin >= 0 ? '#4ade80' : '#ef4444', fontFamily: A.font, textAlign: 'right' }}>
+        {e.netMargin !== 0 ? usd(e.netMargin) : <span style={{ color: A.faint }}>-</span>}
       </div>
     </button>
   )
@@ -228,7 +228,7 @@ function TableHeader() {
 export default function StudioDashboard() {
   const [data,    setData]    = useState<PipelineTrip[]>([])
   const [loading, setLoading] = useState(true)
-  const [closedSort, setClosedSort] = useState<SortKey>('start_date')
+  const [closedSort, setClosedSort] = useState<SortKey>('startDate')
 
   useEffect(() => {
     fetchPipeline()
@@ -244,16 +244,16 @@ export default function StudioDashboard() {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const active    = data.filter(e => e.status_slug !== 'closed_won')
+  const active    = data.filter(e => e.statusSlug !== 'closed_won')
   const closedWon = data.filter(e =>
-    e.status_slug === 'closed_won' &&
+    e.statusSlug === 'closed_won' &&
     e.startDate != null &&
     e.startDate >= FISCAL_YEAR_START &&
     e.startDate <= FISCAL_YEAR_END
   )
 
   const attention = active.filter(e =>
-    e.commission_outstanding > 0 || e.total_outstanding > 0 || e.total_billable > 0
+    e.commissionOutstanding > 0 || e.totalOutstanding > 0 || e.totalBillable > 0
   )
 
   const upcoming = active
@@ -266,21 +266,21 @@ export default function StudioDashboard() {
 
   const byStage = new Map<string, PipelineTrip[]>()
   for (const e of active) {
-    const slug = e.status_slug ?? 'unknown'
+    const slug = e.statusSlug ?? 'unknown'
     ;(byStage.get(slug) ?? byStage.set(slug, []).get(slug)!).push(e)
   }
 
   const totalValue       = active.reduce((s, e) => s + (e.totalRate ?? 0), 0)
-  const totalCommission  = active.reduce((s, e) => s + e.total_commission, 0)
+  const totalCommission  = active.reduce((s, e) => s + e.totalCommission, 0)
   const totalReceived    = active.reduce((s, e) => s + e.commissionReceived, 0)
-  const totalOutstanding = active.reduce((s, e) => s + e.commission_outstanding, 0)
-  const totalMargin      = active.reduce((s, e) => s + e.net_margin, 0)
+  const totalOutstanding = active.reduce((s, e) => s + e.commissionOutstanding, 0)
+  const totalMargin      = active.reduce((s, e) => s + e.netMargin, 0)
 
   const closedSorted = [...closedWon].sort((a, b) => {
-    if (closedSort === 'start_date')     return (a.startDate ?? '').localeCompare(b.startDate ?? '')
-    if (closedSort === 'total_rate')     return (b.totalRate ?? 0) - (a.totalRate ?? 0)
-    if (closedSort === 'net_margin')     return b.net_margin - a.net_margin
-    return b.total_commission - a.total_commission
+    if (closedSort === 'startDate')     return (a.startDate ?? '').localeCompare(b.startDate ?? '')
+    if (closedSort === 'totalRate')     return (b.totalRate ?? 0) - (a.totalRate ?? 0)
+    if (closedSort === 'netMargin')     return b.netMargin - a.netMargin
+    return b.totalCommission - a.totalCommission
   })
 
   if (loading) {
@@ -315,9 +315,9 @@ export default function StudioDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {attention.map(e => {
               const reasons: { reason: string; amount: string; color: string }[] = []
-              if (e.commission_outstanding > 0) reasons.push({ reason: 'Commission outstanding', amount: usd(e.commission_outstanding), color: '#FBBF24' })
-              if (e.total_outstanding > 0)      reasons.push({ reason: 'Balance outstanding',    amount: usd(e.total_outstanding),      color: '#f87171' })
-              if (e.total_billable > 0)         reasons.push({ reason: 'Billable expenses',      amount: usd(e.total_billable),         color: '#93C5FD' })
+              if (e.commissionOutstanding > 0) reasons.push({ reason: 'Commission outstanding', amount: usd(e.commissionOutstanding), color: '#FBBF24' })
+              if (e.totalOutstanding > 0)      reasons.push({ reason: 'Balance outstanding',    amount: usd(e.totalOutstanding),      color: '#f87171' })
+              if (e.totalBillable > 0)         reasons.push({ reason: 'Billable expenses',      amount: usd(e.totalBillable),         color: '#93C5FD' })
               return reasons.map((r, i) => (
                 <AttentionItem key={`${e.engagementId}-${i}`} engagement={e} {...r} onClick={() => goTo(e)} />
               ))
@@ -361,7 +361,7 @@ export default function StudioDashboard() {
             <PipelineRow
               key={e.engagementId}
               e={e} i={i}
-              stageMeta={STAGE_META[e.status_slug ?? ''] ?? { label: e.status_slug ?? '', color: A.faint }}
+              stageMeta={STAGE_META[e.statusSlug ?? ''] ?? { label: e.statusSlug ?? '', color: A.faint }}
               onClick={() => goTo(e)}
             />
           ))}
@@ -372,7 +372,7 @@ export default function StudioDashboard() {
       {closedSorted.length > 0 && (
         <Section title={`Closed · Won - FY${FISCAL_YEAR_START.slice(0, 4)}`} count={closedSorted.length}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-            {(['start_date', 'total_rate', 'net_margin', 'total_commission'] as SortKey[]).map(k => (
+            {(['startDate', 'totalRate', 'netMargin', 'totalCommission'] as SortKey[]).map(k => (
               <button key={k} onClick={() => setClosedSort(k)} style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
                 fontFamily: A.font, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
@@ -380,7 +380,7 @@ export default function StudioDashboard() {
                 color: closedSort === k ? A.gold : A.faint,
                 border: `1px solid ${closedSort === k ? 'rgba(216,181,106,0.3)' : A.border}`,
               }}>
-                {{ start_date: 'Date', total_rate: 'Value', net_margin: 'Margin', total_commission: 'Commission (USD)' }[k]}
+                {{ startDate: 'Date', totalRate: 'Value', netMargin: 'Margin', totalCommission: 'Commission (USD)' }[k]}
               </button>
             ))}
           </div>

@@ -615,17 +615,17 @@ function BookingRow({
 const EXPENSE_TYPES = ['Amenity','Dining','Entertainment','Gifting','Ground Transport','Hospitality','Research','Telephone','Travel','Other']
 
 function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ expenseType: 'Other', description: '', total_amount: '', currency: 'USD', billingStatus: 'absorbed' as BillingStatus, notes: '' })
+  const [form, setForm] = useState({ expenseType: 'Other', description: '', totalAmount: '', currency: 'USD', billingStatus: 'absorbed' as BillingStatus, notes: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   async function handleSave() {
     if (!form.description.trim()) { setErr('Description is required.'); return }
-    const amt = parseFloat(form.total_amount)
+    const amt = parseFloat(form.totalAmount)
     if (isNaN(amt) || amt < 0) { setErr('Valid amount is required.'); return }
     setSaving(true); setErr(null)
     try {
-      await createExpense({ engagementId: engagementId, expenseType: form.expenseType, description: form.description.trim(), total_amount: amt, currency: form.currency.trim().toUpperCase() || 'USD', billingStatus: form.billingStatus, notes: form.notes.trim() || null } as CreateExpensePayload)
+      await createExpense({ engagementId, expenseType: form.expenseType, description: form.description.trim(), totalAmount: amt, currency: form.currency.trim().toUpperCase() || 'USD', billingStatus: form.billingStatus, notes: form.notes.trim() || null })
       onCreated()
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed') }
     setSaving(false)
@@ -644,7 +644,7 @@ function AddExpenseModal({ engagementId, onClose, onCreated }: { engagementId: s
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field label='Type'><select style={inputS} value={form.expenseType} onChange={e => setForm(f => ({ ...f, expenseType: e.target.value }))}>{EXPENSE_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
           <Field label='Billing Status'><select style={inputS} value={form.billingStatus} onChange={e => setForm(f => ({ ...f, billingStatus: e.target.value as BillingStatus }))}><option value='absorbed'>Absorbed</option><option value='billable'>Billable</option></select></Field>
-          <Field label='Amount'><input style={inputS} type='number' min='0' step='0.01' value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder='0.00' /></Field>
+          <Field label='Amount'><input style={inputS} type='number' min='0' step='0.01' value={form.totalAmount} onChange={e => setForm(f => ({ ...f, totalAmount: e.target.value }))} placeholder='0.00' /></Field>
           <Field label='Currency'><input style={inputS} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} placeholder='USD' /></Field>
         </div>
         <Field label='Description'><input style={inputS} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder='Brief description' /></Field>
@@ -700,7 +700,7 @@ function ExpenseRow({ expense, onAction }: { expense: Expense; onAction: () => v
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(expense.total_amount)}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(expense.totalAmount)}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {expense.billingStatus === 'billable'  && <button disabled={acting} onClick={() => lifecycle(() => markBilled(expense.id), 'Marked as billed')} style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#FBBF24', borderColor: 'rgba(251,191,36,0.3)' }}>Mark Billed</button>}
             {expense.billingStatus === 'billed'    && <button disabled={acting} onClick={() => lifecycle(() => markPaid(expense.id),   'Marked as paid')}   style={{ ...btnG, fontSize: 11, padding: '5px 10px', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>Mark Paid</button>}
@@ -767,10 +767,10 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
   const bookings = (data?.bookings ?? []) as BookingFinancial[]
   const expenses = data?.expenses ?? []
   const title    = data?.engagement?.title ?? 'Financial Outlook'
-  const margin   = summary?.net_margin ?? 0
+  const margin   = summary?.netMargin ?? 0
 
   const commissionFullyReceived = summary
-    ? summary.commission_outstanding <= 0
+    ? summary.commissionOutstanding <= 0
     : false
 
   const grouped: Record<BillingStatus, Expense[]> = { absorbed: [], billable: [], billed: [], paid: [], written_off: [] }
@@ -822,24 +822,24 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
                 <Metric label='Trip Value'    value={usdDec(summary.totalRate)} />
                 <Metric
                   label='Commission'
-                  value={usdDec(summary.total_commission)}
-                  sub={`${usdDec(summary.net_commission_expected)} net expected`}
+                  value={usdDec(summary.totalCommission)}
+                  sub={`${usdDec(summary.netCommissionExpected)} net expected`}
                 />
                 <Metric
                   label='Received'
                   value={usdDec(summary.commissionReceived)}
                   color='#4ade80'
                 />
-                {summary.commission_outstanding > 0
-                  ? <Metric label='Outstanding' value={usdDec(summary.commission_outstanding)} color='#FBBF24' />
+                {summary.commissionOutstanding > 0
+                  ? <Metric label='Outstanding' value={usdDec(summary.commissionOutstanding)} color='#FBBF24' />
                   : <Metric label='Outstanding' value='Clear' color='#4ade80' />
                 }
-                {summary.total_net_revenue !== summary.total_commission && (
-                  <Metric label='Net Revenue' value={usdDec(summary.total_net_revenue)} sub='after partner shares' />
+                {summary.totalNetRevenue !== summary.totalCommission && (
+                  <Metric label='Net Revenue' value={usdDec(summary.totalNetRevenue)} sub='after partner shares' />
                 )}
-                {summary.total_amenities > 0 && <Metric label='Amenities' value={usdDec(summary.total_amenities)} />}
-                <Metric label='Absorbed' value={usdDec(summary.total_absorbed)} color={summary.total_absorbed > 0 ? '#ef4444' : A.text} />
-                {summary.total_billable > 0 && <Metric label='Billable' value={usdDec(summary.total_billable)} color='#93C5FD' />}
+                {summary.totalAmenities > 0 && <Metric label='Amenities' value={usdDec(summary.totalAmenities)} />}
+                <Metric label='Absorbed' value={usdDec(summary.totalAbsorbed)} color={summary.totalAbsorbed > 0 ? '#ef4444' : A.text} />
+                {summary.totalBillable > 0 && <Metric label='Billable' value={usdDec(summary.totalBillable)} color='#93C5FD' />}
               </div>
             </div>
           </div>

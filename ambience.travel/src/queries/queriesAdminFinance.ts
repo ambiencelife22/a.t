@@ -6,6 +6,7 @@
 // Last updated: S53G v2 - EngagementFull type + fetchEngagementFull added.
 
 import { supabase } from '../lib/supabase'
+import { snakeizeKeys } from '@shared/camelize'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ export type Expense = {
   team_member_id: string | null
   expenseType:   string
   description:    string
-  total_amount:   number
+  totalAmount:   number
   currency:       string
   billingStatus: BillingStatus
   paid_at:        string | null
@@ -48,23 +49,23 @@ export type Expense = {
 }
 
 export type EngagementSummaryFull = {
-  total_commission:          number
-  net_commission_expected:   number
+  totalCommission:          number
+  netCommissionExpected:   number
   commissionReceived:       number
-  commission_outstanding:    number
+  commissionOutstanding:    number
   totalRate:              number
-  total_amenities:         number
-  total_net_revenue:       number
-  total_referral:          number
-  total_iata:              number
-  total_individual:        number
-  deposit_outstanding:     number
-  balance_outstanding:     number
-  total_absorbed:          number
-  total_billable:          number
-  total_outstanding:       number
-  total_paid:              number
-  net_margin:              number
+  totalAmenities:         number
+  totalNetRevenue:       number
+  totalReferral:          number
+  totalIata:              number
+  totalIndividual:        number
+  depositOutstanding:     number
+  balanceOutstanding:     number
+  totalAbsorbed:          number
+  totalBillable:          number
+  totalOutstanding:       number
+  totalPaid:              number
+  netMargin:              number
 }
 
 export type EngagementFull = {
@@ -72,7 +73,7 @@ export type EngagementFull = {
     id:      string
     title:   string | null
     urlId:  string
-    travel_journey: { journeyCode: string | null; startDate: string | null; endDate: string | null } | null
+    travelJourney: { journeyCode: string | null; startDate: string | null; endDate: string | null } | null
   }
   bookings: Record<string, unknown>[]
   expenses: Expense[]
@@ -83,35 +84,35 @@ export type PipelineTrip = {
   engagementId:           string
   urlId:                  string
   title:                   string | null
-  status_slug:             string | null
+  statusSlug:             string | null
   journeyCode:               string | null
   startDate:              string | null
   endDate:                string | null
-  primary_client_id:       string | null
-  total_commission:          number
-  net_commission_expected:   number
+  primaryClientId:       string | null
+  totalCommission:          number
+  netCommissionExpected:   number
   commissionReceived:       number
-  commission_outstanding:    number
+  commissionOutstanding:    number
   totalRate:              number | null
-  total_amenities:         number
-  total_absorbed:          number
-  total_billable:          number
-  total_outstanding:       number
-  net_margin:              number
-  total_commission_native: number
+  totalAmenities:         number
+  totalAbsorbed:          number
+  totalBillable:          number
+  totalOutstanding:       number
+  netMargin:              number
+  totalCommissionNative: number
   currency:                string
 }
 
 export type CreateExpensePayload = {
   expenseType:    string
   description:     string
-  total_amount:    number
-  engagement_id?:  string | null
-  booking_id?:     string | null
-  destination_id?: string | null
-  team_member_id?: string | null
+  totalAmount:    number
+  engagementId?:  string | null
+  bookingId?:     string | null
+  destinationId?: string | null
+  teamMemberId?: string | null
   currency?:       string
-  billing_status?: BillingStatus
+  billingStatus?: BillingStatus
   notes?:          string | null
 }
 
@@ -152,7 +153,7 @@ export async function fetchEngagementFull(engagementId: string): Promise<Engagem
 
 export async function createExpense(payload: CreateExpensePayload): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'create_expense', ...payload },
+    body: { mode: 'create_expense', ...snakeizeKeys<Record<string, unknown>>(payload) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.message ?? data.error)
@@ -161,7 +162,7 @@ export async function createExpense(payload: CreateExpensePayload): Promise<Expe
 
 export async function updateExpense(id: string, patch: Partial<CreateExpensePayload>): Promise<Expense> {
   const { data, error } = await supabase.functions.invoke(WRITE_EF, {
-    body: { mode: 'update_expense', id, patch },
+    body: { mode: 'update_expense', id, patch: snakeizeKeys<Record<string, unknown>>(patch) },
   })
   if (error) throw new Error(await extractError(error))
   if (data?.error) throw new Error(data.error)
