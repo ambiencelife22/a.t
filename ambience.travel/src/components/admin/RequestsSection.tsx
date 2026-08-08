@@ -81,11 +81,11 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
   }
 
   async function handleSave() {
-    if (!draft.request_body?.trim()) return
+    if (!draft.requestBody?.trim()) return
     setSaving(true)
     try {
       await updateRequest(req.id, {
-        request_body: draft.request_body?.trim(),
+        request_body: draft.requestBody?.trim(),
         channel:      draft.channel,
         handledBy:   draft.handledBy?.trim() || null,
         notes:        draft.notes?.trim() || null,
@@ -127,7 +127,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           </div>
           {/* Body preview */}
           <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, lineHeight: 1.5, whiteSpace: expanded ? 'pre-wrap' : 'nowrap', overflow: 'hidden', textOverflow: expanded ? 'unset' : 'ellipsis' }}>
-            {req.request_body}
+            {req.requestBody}
           </div>
           {req.notes && expanded && (
             <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font, marginTop: 6, fontStyle: 'italic', lineHeight: 1.5 }}>
@@ -149,7 +149,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           <div style={{ display: 'flex', gap: 4 }}>
             {!editing && (
               <button
-                onClick={() => { setEditing(true); setExpanded(true); setDraft({ request_body: req.request_body, channel: req.channel ?? undefined, handledBy: req.handledBy ?? '', notes: req.notes ?? '', receivedAt: req.receivedAt }) }}
+                onClick={() => { setEditing(true); setExpanded(true); setDraft({ request_body: req.requestBody, channel: req.channel ?? undefined, handledBy: req.handledBy ?? '', notes: req.notes ?? '', receivedAt: req.receivedAt }) }}
                 style={{ ...btnG, padding: '3px 8px', fontSize: 10 }}
               >Edit</button>
             )}
@@ -181,7 +181,7 @@ function RequestCard({ req, onReload }: { req: TravelRequest; onReload: () => vo
           <Field label='Request'>
             <textarea
               style={{ ...textareaStyle, minHeight: 80 }}
-              value={draft.request_body ?? ''}
+              value={draft.requestBody ?? ''}
               onChange={e => setDraft(d => ({ ...d, request_body: e.target.value }))}
               autoFocus
             />
@@ -247,12 +247,12 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
   }, [requests])
 
   async function handleAdd() {
-    if (!draft.request_body.trim()) return
+    if (!draft.requestBody.trim()) return
     setSaving(true)
     try {
       await createRequest(
         houseId,
-        draft.request_body.trim(),
+        draft.requestBody.trim(),
         draft.channel || null,
         draft.receivedAt ? fromDatetimeLocal(draft.receivedAt) : null,
         null,
@@ -287,7 +287,7 @@ export function RequestsSection({ requests, houseId, onReload, mobile }: {
             <textarea
               style={{ ...textareaStyle, minHeight: 90 }}
               placeholder='What did they ask for...'
-              value={draft.request_body}
+              value={draft.requestBody}
               onChange={e => setDraft(d => ({ ...d, request_body: e.target.value }))}
               autoFocus
             />

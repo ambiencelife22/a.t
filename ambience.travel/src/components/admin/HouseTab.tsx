@@ -792,7 +792,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
     if (!query) return null
     return {
       preferences:  data.preferences.filter(p => matchesQuery(query, p.prefKey, p.prefValue)),
-      dining:       data.dining.filter(d => matchesQuery(query, d.restaurant_name, d.city)),
+      dining:       data.dining.filter(d => matchesQuery(query, d.restaurantName, d.city)),
       destinations: data.destinations.filter(d => matchesQuery(query, d.destinationName, d.country)),
       contacts:     data.contacts.filter(c => matchesQuery(query, c.name, c.role)),
       ppd:          data.ppd.filter(p => matchesQuery(query, p.dataKey, p.dataValue)),
@@ -855,7 +855,7 @@ function HouseDetail({ house: init, onBack }: { house: House; onBack: () => void
       <AdminSection title='Dining Avoids' style={{ borderLeftColor: '#f8717150' }} />
       {avoidDining.map(d => (
         <div key={d.id} style={{ fontSize: 11, color: '#f87171', fontFamily: A.font, marginBottom: 4, opacity: 0.85 }}>
-          {d.restaurant_name}{d.city && <span style={{ opacity: 0.6 }}> · {d.city}</span>}
+          {d.restaurantName}{d.city && <span style={{ opacity: 0.6 }}> · {d.city}</span>}
         </div>
       ))}
     </div>
@@ -1015,7 +1015,7 @@ function SearchResults({ results, personRef, onClose }: {
               <EntryCard key={d.id} accentColor={STATUS[d.status].text}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{d.restaurant_name}</div>
+                    <div style={{ fontSize: 13, color: A.text, fontFamily: A.font, fontWeight: 600 }}>{d.restaurantName}</div>
                     <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[d.city, d.country].filter(Boolean).join(', ')}</div>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: STATUS[d.status].text, fontFamily: A.font, textTransform: 'uppercase' }}>{STATUS[d.status].label}</span>
@@ -1284,7 +1284,7 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
               <AdminSection title='Favourite Restaurants' style={{ borderLeftColor: '#D8B56A50' }} />
               {favs.slice(0, 6).map(d => (
                 <div key={d.id} style={{ fontSize: 12, color: A.text, fontFamily: A.font, marginBottom: 5, marginTop: 8 }}>
-                  {d.restaurant_name}{d.city && <span style={{ color: A.faint, fontSize: 11 }}> · {d.city}</span>}
+                  {d.restaurantName}{d.city && <span style={{ color: A.faint, fontSize: 11 }}> · {d.city}</span>}
                 </div>
               ))}
               {favs.length > 6 && <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>+{favs.length - 6} more</div>}
@@ -1295,7 +1295,7 @@ function OverviewSection({ house, data, onSaved, onReload, mobile }: {
               <AdminSection title='Dining Avoids' style={{ borderLeftColor: '#f8717150' }} />
               {avoids.map(d => (
                 <div key={d.id} style={{ fontSize: 12, color: '#f87171', fontFamily: A.font, marginBottom: 5, marginTop: 8, opacity: 0.85 }}>
-                  {d.restaurant_name}{d.city && <span style={{ fontSize: 11, opacity: 0.6 }}> · {d.city}</span>}
+                  {d.restaurantName}{d.city && <span style={{ fontSize: 11, opacity: 0.6 }}> · {d.city}</span>}
                 </div>
               ))}
             </div>
@@ -1469,10 +1469,10 @@ function DiningSection({ data, houseId, onReload, mobile }: {
   }, [data.dining])
 
   async function handleAdd() {
-    if (!draft.restaurant_name.trim()) return
+    if (!draft.restaurantName.trim()) return
     setSaving(true)
     try {
-      await createDiningEntry(houseId, draft.restaurant_name.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visitDate || null, draft.journeyId || null, null, draft.notes.trim() || null)
+      await createDiningEntry(houseId, draft.restaurantName.trim(), draft.city.trim() || null, draft.country.trim() || null, draft.status, draft.visitDate || null, draft.journeyId || null, null, draft.notes.trim() || null)
       success('Added.')
       setAdding(false)
       setDraft({ restaurant_name: '', city: '', country: '', status: 'visited', visitDate: '', journeyId: '', notes: '' })
@@ -1505,7 +1505,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
 
       {adding && (
         <AddFormShell>
-          <Field label='Restaurant'><input style={inputStyle} placeholder='Name...' value={draft.restaurant_name} onChange={e => setDraft(d => ({ ...d, restaurant_name: e.target.value }))} autoFocus /></Field>
+          <Field label='Restaurant'><input style={inputStyle} placeholder='Name...' value={draft.restaurantName} onChange={e => setDraft(d => ({ ...d, restaurant_name: e.target.value }))} autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
             <Field label='City'><input style={inputStyle} placeholder='City...' value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} /></Field>
             <Field label='Country'><input style={inputStyle} placeholder='Country...' value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} /></Field>
@@ -1534,7 +1534,7 @@ function DiningSection({ data, houseId, onReload, mobile }: {
                 <EntryCard key={e.id} accentColor={STATUS[status].text}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{e.restaurant_name}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: A.text, fontFamily: A.font }}>{e.restaurantName}</div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                         {(e.city || e.country) && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{[e.city, e.country].filter(Boolean).join(', ')}</span>}
                         {e.visitDate && <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{formatMonthYearShort(e.visitDate)}</span>}

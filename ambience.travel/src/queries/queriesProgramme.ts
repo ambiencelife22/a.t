@@ -187,7 +187,7 @@ export async function updateDisplayName(name: string): Promise<void> {
   await invokeAccount({ mode: 'profile_update_display_name', display_name: name })
 }
 
-// Resolve the caller's own linked person_id (global_profiles.person_id) via EF.
+// Resolve the caller's own linked person_id (global_profiles.personId) via EF.
 export async function getMyPersonId(): Promise<string | null> {
   const { row } = await invokeAccount<{ row: { personId: string | null } | null }>({
     mode: 'profile_by_user',
@@ -266,8 +266,8 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
       return {
         id:            p.id,
         urlId:         p.urlId,
-        programmeType: p.programme_type as 'stay',
-        subPath:       p.sub_path,
+        programmeType: p.programmeType as 'stay',
+        subPath:       p.subPath,
         status:        p.status,
         guestNames:    p.guestNames,
         checkIn:       p.checkIn  ?? null,
@@ -279,7 +279,7 @@ export async function getGuestProgrammes(): Promise<GuestProgramme[]> {
           name:         pr?.name          ?? '',
           city:         pr?.city          ?? null,
           country:      pr?.country       ?? null,
-          heroImage:    pr?.hero_image    ?? null,
+          heroImage:    pr?.heroImage    ?? null,
           ownerName:    pr?.ownerName    ?? null,
           ownerPhone:   pr?.ownerPhone   ?? null,
           managerName:  pr?.managerName  ?? null,
