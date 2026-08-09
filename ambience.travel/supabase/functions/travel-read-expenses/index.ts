@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
         total_commission,
         net_commission_expected,
         commission_received,
-        commission_outstanding: net_commission_expected - commission_received,
+        commission_outstanding: bookings.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeExpectedCommission(b), 0),
         total_rate,
         total_amenities,
         total_net_revenue,
@@ -203,7 +203,7 @@ Deno.serve(async (req: Request) => {
 
       return json({ summary: {
         total_commission, net_commission_expected, commission_received,
-        commission_outstanding: net_commission_expected - commission_received,
+        commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeExpectedCommission(b), 0),
         total_net_revenue, total_absorbed, total_billable, total_outstanding,
         net_margin: total_net_revenue - total_absorbed,
       }})
@@ -273,7 +273,7 @@ Deno.serve(async (req: Request) => {
           journey_code: trip?.journey_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,
-          commission_outstanding: net_commission_expected - commission_received,
+          commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeExpectedCommission(b), 0),
           total_rate, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
           total_commission_native, currency,
