@@ -28,7 +28,7 @@ export async function fetchDestinationRows(
   engagementId: string,
 ): Promise<DestinationRow[]> {
   const { rows } = await invokeReadDR<{ rows: unknown[] }>({
-    mode: 'destination_rows', engagement_id: engagementId,
+    mode: 'destination_rows', engagementId,
   })
   return ((rows ?? []) as any[]).map((r: any) => ({
     ...r,
@@ -53,11 +53,11 @@ export async function insertDestinationRow(
 ): Promise<string> {
   const { id } = await invokeWriteDR<{ id: string }>({
     mode: 'destination_row_insert',
-    engagement_id:         payload.engagementId,
-    global_destination_id: payload.globalDestinationId,
-    title:                 payload.title,
-    sort_order:            payload.sortOrder,
-    subpage_status:        payload.subpageStatus ?? 'preview',
+    engagementId:        payload.engagementId,
+    globalDestinationId: payload.globalDestinationId,
+    title:               payload.title,
+    sortOrder:           payload.sortOrder,
+    subpageStatus:       payload.subpageStatus ?? 'preview',
   })
   return id
 }
@@ -73,7 +73,7 @@ export async function deleteDestinationRow(id: string): Promise<void> {
 export async function reorderDestinationRows(
   orderedIds: string[],
 ): Promise<void> {
-  await invokeWriteDR({ mode: 'destination_rows_reorder', ordered_ids: orderedIds })
+  await invokeWriteDR({ mode: 'destination_rows_reorder', orderedIds })
 }
 
 // ── Add-destination picker ────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ export async function fetchMaxDestinationSortOrder(
   engagementId: string,
 ): Promise<number> {
   const { maxSortOrder } = await invokeReadDR<{ maxSortOrder: number }>({
-    mode: 'destination_max_sort_order', engagement_id: engagementId,
+    mode: 'destination_max_sort_order', engagementId,
   })
   return (maxSortOrder ?? 0) + 1
 }

@@ -22,7 +22,7 @@ async function invokeWriteRS<T>(body: Record<string, unknown>): Promise<T> {
 
 export async function fetchRouteStops(engagementId: string): Promise<RouteStop[]> {
   const { rows } = await invokeReadRS<{ rows: unknown[] }>({
-    mode: 'route_stops', engagement_id: engagementId,
+    mode: 'route_stops', engagementId,
   })
   return (rows ?? []) as RouteStop[]
 }
@@ -41,13 +41,13 @@ export async function updateRouteStop(
 export async function insertRouteStop(payload: RouteStopCreatePayload): Promise<string> {
   const { id } = await invokeWriteRS<{ id: string }>({
     mode: 'route_stop_insert',
-    engagement_id: payload.engagementId,
-    sort_order:    payload.sortOrder,
-    title:         payload.title     ?? null,
-    stay_label:    payload.stayLabel ?? null,
-    note:          payload.note      ?? null,
-    image_src:     payload.imageSrc  ?? null,
-    image_alt:     payload.imageAlt  ?? null,
+    engagementId: payload.engagementId,
+    sortOrder:    payload.sortOrder,
+    title:        payload.title     ?? null,
+    stayLabel:    payload.stayLabel ?? null,
+    note:         payload.note      ?? null,
+    imageSrc:     payload.imageSrc  ?? null,
+    imageAlt:     payload.imageAlt  ?? null,
   })
   return id
 }
@@ -61,14 +61,14 @@ export async function deleteRouteStop(id: string): Promise<void> {
 // ── Reorder (drag-and-drop, 0-indexed) ────────────────────────────────────────
 
 export async function reorderRouteStops(orderedIds: string[]): Promise<void> {
-  await invokeWriteRS({ mode: 'route_stops_reorder', ordered_ids: orderedIds })
+  await invokeWriteRS({ mode: 'route_stops_reorder', orderedIds })
 }
 
 // ── Max sort_order (for new-stop defaults) ────────────────────────────────────
 
 export async function fetchMaxRouteStopSortOrder(engagementId: string): Promise<number> {
   const { maxSortOrder } = await invokeReadRS<{ maxSortOrder: number }>({
-    mode: 'route_stop_max_sort', engagement_id: engagementId,
+    mode: 'route_stop_max_sort', engagementId,
   })
   return (maxSortOrder ?? -1) + 1
 }

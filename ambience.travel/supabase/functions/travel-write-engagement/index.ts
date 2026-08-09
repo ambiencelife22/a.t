@@ -790,11 +790,11 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_engagement_destination_rows')
         .insert({
-          engagement_id:         body.engagement_id,
-          global_destination_id: body.global_destination_id,
+          engagement_id:         body.engagementId,
+          global_destination_id: body.globalDestinationId,
           title:                 body.title,
-          sort_order:            body.sort_order,
-          subpage_status:        body.subpage_status ?? 'preview',
+          sort_order:            body.sortOrder,
+          subpage_status:        body.subpageStatus ?? 'preview',
         })
         .select('id').single()
       if (error) return json({ error: 'Failed to insert destination row' }, 500)
@@ -810,7 +810,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (mode === 'destination_rows_reorder') {
-      const ids = (body.ordered_ids ?? []) as string[]
+      const ids = (body.orderedIds ?? []) as string[]
       for (let i = 0; i < ids.length; i++) {
         const { error } = await serviceClient
           .from('travel_overlay_engagement_destination_rows')
@@ -834,13 +834,13 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_route_stops')
         .insert({
-          engagement_id: body.engagement_id,
-          sort_order:    body.sort_order,
-          title:         body.title      ?? null,
-          stay_label:    body.stay_label ?? null,
-          note:          body.note       ?? null,
-          image_src:     body.image_src  ?? null,
-          image_alt:     body.image_alt  ?? null,
+          engagement_id: body.engagementId,
+          sort_order:    body.sortOrder,
+          title:         body.title     ?? null,
+          stay_label:    body.stayLabel ?? null,
+          note:          body.note      ?? null,
+          image_src:     body.imageSrc  ?? null,
+          image_alt:     body.imageAlt  ?? null,
         })
         .select('id').single()
       if (error) return json({ error: 'Failed to insert route stop' }, 500)
@@ -856,7 +856,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (mode === 'route_stops_reorder') {
-      const ids = (body.ordered_ids ?? []) as string[]
+      const ids = (body.orderedIds ?? []) as string[]
       for (let i = 0; i < ids.length; i++) {
         const { error } = await serviceClient
           .from('travel_overlay_route_stops')
