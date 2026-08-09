@@ -152,7 +152,11 @@ function CommissionReceipt({
   const [saving, setSaving] = useState(false)
   const toast = useAdminToast()
 
-  const defaultGross = b.commissionAmountUsd ?? b.commissionAmount ?? 0
+  // Receipt is entered in USD (bank reality). Default to the expected net
+  // receivable in USD - what ambience actually collects after any partner cut.
+  const _fx = (b.commissionAmount && b.commissionAmountUsd) ? (b.commissionAmountUsd / b.commissionAmount) : 1
+  const _netUsd = b.commissionNetReceived != null ? (b.commissionNetReceived * _fx) : (b.commissionAmountUsd ?? b.commissionAmount ?? 0)
+  const defaultGross = Math.round(_netUsd * 100) / 100
   const [platformId,   setPlatformId]   = useState<string>(b.commissionPaymentPlatformId ?? '')
   const [gross,        setGross]        = useState(defaultGross ? defaultGross.toString() : '')
   const [feePct,       setFeePct]       = useState(b.commissionPaymentFeePct?.toString() ?? '')
@@ -318,13 +322,13 @@ function CommissionReceipt({
 
       {/* Row 2: Gross + Fee % + Flat + Ref */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto 1fr', gap: 10, alignItems: 'end' }}>
-        <Field label={`Gross (${currency})`}>
+        <Field label='Received (USD)'>
           <input value={gross} onChange={e => setGross(e.target.value)} placeholder='0.00' style={{ ...inputS, fontSize: 12 }} />
         </Field>
         <Field label='Fee %'>
           <input value={feePct} onChange={e => setFeePct(e.target.value)} placeholder='0' style={{ ...inputS, width: 64, fontSize: 12 }} />
         </Field>
-        <Field label={`Flat (${currency})`}>
+        <Field label='Flat (USD)'>
           <input value={feeFlat} onChange={e => setFeeFlat(e.target.value)} placeholder='0' style={{ ...inputS, width: 80, fontSize: 12 }} />
         </Field>
         <Field label='Transaction / Ref #'>
