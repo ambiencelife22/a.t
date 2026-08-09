@@ -4,39 +4,28 @@
 // Class B. Client-facing (anon allowed). Guest-facing stay portal read.
 //
 // PURPOSE (S53N security fix): closes a live credential-exposure hole.
-// Previously ProgrammeRoute.tsx read travel_programme_* tables DIRECTLY from
-// the browser and delivered the FULL payload (alarm codes, wifi password, real
-// address, owner/manager phones) to un-logged-in guests, gating them only in
-// the React render (show ? realValue : <GatedValue/>). The secrets sat in the
-// browser network response regardless. This EF moves the redaction SERVER-SIDE:
-// on the gated (anon) path the secrets are NEVER placed in the response.
+// The redaction is SERVER-SIDE: on the gated (anon) path the secrets (alarm
+// code, wifi password, real address, owner/manager phones) are NEVER placed in
+// the response.
 //
-// AUTH PATTERN (honors _shared/auth.ts + _shared/client.ts contracts):
-//   - my_stays  : requires a session -> requireUser gate (rejects anon, correct).
-//   - resolve   : anon allowed. Try requireUser non-fatally:
-//                   * session present -> FULL access (no redaction).
-//                   * anon            -> service client obtained ONLY after the
-//                     stay is confirmed public (is_public=true) = the Class B
-//                     "verification" the client.ts contract requires for public
-//                     EFs. Anon + not-public -> access-denied.
-//   Never hand-rolls an anon client (that construction is private to auth.ts).
-//   The service client is constructed only after the caller is established as
-//   either a verified user OR an anon viewing a public record.
-//
-// Auth SCOPE is unchanged from prior ProgrammeRoute behavior: any valid session
-//   -> full. FOLLOW-UP (logged, NOT done here): tighten to "this stay's linked
-//   guest -> full" via travel_programme_guests.profile_id. Separate change.
+// AUTH PATTERN:
+//   - my_stays  : requires a session -> requireUser gate (rejects anon).
+//   - resolve   : anon allowed. Session present -> FULL. Anon -> service client
+//     obtained ONLY after the stay is confirmed public (is_public=true).
 //
 // Modes:
 //   resolve   - by url_id: stay + property + sections + listings (redacted if gated)
-//   my_stays  - by session: the caller's linked stays (replaces getGuestProgrammes)
+//   my_stays  - by session: the caller's linked stays
 //
-// Tables read (current names; renamed in the later property-spine rename):
-//   travel_programme_master, travel_programme_properties,
-//   travel_programme_property_sections, travel_programme_property_listings,
-//   travel_programme_sections, travel_programme_guests
+// Tables read: travel_hosted_stay, travel_hosted_property,
+//   travel_hosted_property_section, travel_hosted_property_listing,
+//   travel_hosted_stay_section, travel_hosted_stay_guest
 //
-// Last updated: S53N - initial build (security fix, ahead of the rename).
+// Last updated: hosted-stay migration - programme_* to hosted_*. Guest identity
+//   profile_id to person_id. has_alarm is the inverse of the old no_alarm:
+//   has_alarm=true means an alarm EXISTS (old no_alarm=true meant none exists),
+//   so the alarm-gating logic is inverted. programme_type discriminator dropped
+//   (every hosted_stay row is a stay).
 
 import { createServiceClient } from '../_shared/client.ts'
 import { requireUser } from '../_shared/auth.ts'
@@ -44,7 +33,6 @@ import { json, preflight } from '../_shared/http.ts'
 
 type Mode = 'resolve' | 'my_stays'
 
-// -- Section content block shape (JSONB) --
 type Block =
   | { type: 'paragraph'; text: string }
   | { type: 'heading';   text: string }
@@ -55,25 +43,24 @@ type Block =
 
 type Section = { id: string; title: string; icon: string; content: Block[] }
 
-// -- Redaction: strip secrets from the section list on the gated path --
-// gated=true means anon viewer of a public stay. Per-field public_* flags let
-// the host selectively reveal individual secrets even on the public path.
-// "Entry & Keys" is withheld conservatively (physical-access detail).
+// Redaction on the gated path. hasAlarm=true means an alarm EXISTS: withhold the
+// code unless the host made it public (showAlarm). If no alarm exists, nothing
+// to hide. showWifi/showArrival gate their sections the same way.
 function redactSections(
   sections: Section[],
   gated: boolean,
-  flags: { publicWifi: boolean; publicAlarm: boolean; publicArrival: boolean; noAlarm: boolean },
+  flags: { showWifi: boolean; showAlarm: boolean; showArrival: boolean; hasAlarm: boolean },
 ): Section[] {
   if (!gated) return sections
 
   return sections.map(section => {
-    if (section.title === 'Alarm' && !flags.publicAlarm && !flags.noAlarm) {
+    if (section.title === 'Alarm' && !flags.showAlarm && flags.hasAlarm) {
       return {
         ...section,
         content: [{ type: 'note', text: 'Alarm code details are available. Please ask your host.' }],
       }
     }
-    if (section.title === 'Arrival' && !flags.publicArrival) {
+    if (section.title === 'Arrival' && !flags.showArrival) {
       return {
         ...section,
         content: [
@@ -89,7 +76,7 @@ function redactSections(
       }
     }
     const content = section.content.map(block =>
-      (block.type === 'wifi' && !flags.publicWifi)
+      (block.type === 'wifi' && !flags.showWifi)
         ? { type: 'wifi' as const, network: '', password: '' }
         : block,
     )
@@ -105,26 +92,26 @@ Deno.serve(async (req: Request) => {
     const mode = body?.mode as Mode | undefined
     if (!mode) return json({ error: 'mode is required' }, 400)
 
-    // -- my_stays -- requires a session. requireUser is the correct gate.
+    // -- my_stays -- requires a session.
     if (mode === 'my_stays') {
       const gate = await requireUser(req)
-      if (!gate.ok) return json({ stays: [] }, 200) // no session -> no stays
+      if (!gate.ok) return json({ stays: [] }, 200)
       const { serviceClient: db, user } = gate
 
       const { data, error } = await db
-        .from('travel_programme_guests')
+        .from('travel_hosted_stay_guest')
         .select(`
-          programme_id,
-          stay:travel_programme_master!inner (
-            id, url_id, programme_type, sub_path, status, guest_names,
-            check_in, check_out, title, active,
-            property:travel_programme_properties (
+          stay_id,
+          stay:travel_hosted_stay!inner (
+            id, url_id, sub_path, status, guest_names,
+            check_in, check_out, title, is_active,
+            property:travel_hosted_property (
               id, name, city, country, hero_image,
               owner_name, owner_phone, manager_name, manager_phone
             )
           )
         `)
-        .eq('profile_id', user.id)
+        .eq('person_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -135,7 +122,7 @@ Deno.serve(async (req: Request) => {
       const stays = (data ?? [])
         // deno-lint-ignore no-explicit-any
         .map((row: any) => row.stay)
-        .filter((s: unknown) => s && (s as { active?: boolean }).active)
+        .filter((s: unknown) => s && (s as { is_active?: boolean }).is_active)
       return json({ stays }, 200)
     }
 
@@ -144,24 +131,21 @@ Deno.serve(async (req: Request) => {
       const urlId = body?.url_id as string | undefined
       if (!urlId) return json({ error: 'url_id is required' }, 400)
 
-      // Try the session gate non-fatally. Success -> verified user -> full.
-      // Failure -> anon; fall through to public path (gated). Service client
-      // is constructed only after confirming the stay is public.
       const gate = await requireUser(req)
       const hasSession = gate.ok
       const db = hasSession ? gate.serviceClient : createServiceClient()
 
       const { data: stay, error: stayErr } = await db
-        .from('travel_programme_master')
+        .from('travel_hosted_stay')
         .select(`
-          id, url_id, programme_type, guest_names, guest_count, check_in, check_out,
-          welcome_letter, status, active, active_listing_ids, alarm_code_provided,
-          is_public, public_wifi, public_alarm, public_owner_phone,
-          public_manager_phone, no_alarm, public_arrival,
-          property:travel_programme_properties (
+          id, url_id, guest_names, guest_count, check_in, check_out,
+          welcome_letter, status, is_active, active_listing_ids, has_alarm_code,
+          is_public, show_wifi, show_alarm, show_owner_phone,
+          show_manager_phone, has_alarm, show_arrival,
+          property:travel_hosted_property (
             id, slug, name, tagline, city, country, hero_image, photos,
             maps_url, maps_embed_url, owner_name, owner_phone, manager_name,
-            manager_phone, emergency_contacts, active
+            manager_phone, emergency_contacts, is_active
           )
         `)
         .eq('url_id', urlId)
@@ -171,26 +155,25 @@ Deno.serve(async (req: Request) => {
       // deno-lint-ignore no-explicit-any
       const s = stay as any
 
-      if (!s.active || !s.property || !s.property.active) return json({ error: 'not-found' }, 404)
-      if (s.programme_type !== 'stay') return json({ error: 'not-found' }, 404)
+      if (!s.is_active || !s.property || !s.property.is_active) return json({ error: 'not-found' }, 404)
 
-      // Access decision. Anon may only view public stays.
       const gated = !hasSession
       if (gated && !s.is_public) return json({ error: 'access-denied' }, 403)
 
       const propertyId = s.property.id
-      const sectionVariant = s.no_alarm ? 'no_alarm' : 'default'
+      // has_alarm=true means an alarm exists -> default sections. No alarm -> no_alarm variant.
+      const sectionVariant = s.has_alarm ? 'default' : 'no_alarm'
 
       const [sectRes, listRes, overrideRes] = await Promise.all([
-        db.from('travel_programme_property_sections')
+        db.from('travel_hosted_property_section')
           .select('id, title, icon, sort_order, variant, content')
           .eq('property_id', propertyId).order('sort_order'),
-        db.from('travel_programme_property_listings')
-          .select('id, name, category, genre, address, website, hours, note, favourite')
+        db.from('travel_hosted_property_listing')
+          .select('id, name, category, genre, address, website, hours, note, is_favourite')
           .eq('property_id', propertyId),
-        db.from('travel_programme_sections')
+        db.from('travel_hosted_stay_section')
           .select('id, section_id, content')
-          .eq('programme_id', s.id),
+          .eq('stay_id', s.id),
       ])
 
       if (sectRes.error || listRes.error) {
@@ -198,7 +181,6 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'load-failed' }, 500)
       }
 
-      // Resolve default vs variant sections + per-stay overrides.
       // deno-lint-ignore no-explicit-any
       const allRows = (sectRes.data ?? []) as any[]
       const defaults = allRows.filter(r => r.variant === 'default')
@@ -219,27 +201,24 @@ Deno.serve(async (req: Request) => {
         }
       })
 
-      // -- THE WALL: redact secrets on the gated path, server-side --
       sections = redactSections(sections, gated, {
-        publicWifi:    s.public_wifi,
-        publicAlarm:   s.public_alarm,
-        publicArrival: s.public_arrival,
-        noAlarm:       s.no_alarm,
+        showWifi:    s.show_wifi,
+        showAlarm:   s.show_alarm,
+        showArrival: s.show_arrival,
+        hasAlarm:    s.has_alarm,
       })
 
-      // Listings: filter to active_listing_ids if set.
       // deno-lint-ignore no-explicit-any
       let listings = (listRes.data ?? []) as any[]
       if (Array.isArray(s.active_listing_ids)) {
         listings = listings.filter(l => s.active_listing_ids.includes(l.id))
       }
 
-      // Property phones + location: withhold on the gated path unless revealed.
       const prop = s.property
-      const ownerPhone   = (!gated || s.public_owner_phone)   ? prop.owner_phone   : null
-      const managerPhone = (!gated || s.public_manager_phone) ? prop.manager_phone : null
-      const mapsUrl      = (!gated || s.public_arrival)       ? prop.maps_url       : null
-      const mapsEmbedUrl = (!gated || s.public_arrival)       ? prop.maps_embed_url : null
+      const ownerPhone   = (!gated || s.show_owner_phone)   ? prop.owner_phone   : null
+      const managerPhone = (!gated || s.show_manager_phone) ? prop.manager_phone : null
+      const mapsUrl      = (!gated || s.show_arrival)       ? prop.maps_url       : null
+      const mapsEmbedUrl = (!gated || s.show_arrival)       ? prop.maps_embed_url : null
 
       return json({
         stay: {
@@ -250,7 +229,7 @@ Deno.serve(async (req: Request) => {
           checkOut:          s.check_out,
           welcomeLetter:     s.welcome_letter,
           activeListingIds:  s.active_listing_ids,
-          alarmCodeProvided: s.alarm_code_provided,
+          hasAlarmCode:      s.has_alarm_code,
         },
         property: {
           id:           prop.id,
@@ -272,12 +251,12 @@ Deno.serve(async (req: Request) => {
         listings,
         gated,
         flags: {
-          publicWifi:         s.public_wifi,
-          publicAlarm:        s.public_alarm,
-          publicOwnerPhone:   s.public_owner_phone,
-          publicManagerPhone: s.public_manager_phone,
-          noAlarm:            s.no_alarm,
-          publicArrival:      s.public_arrival,
+          showWifi:         s.show_wifi,
+          showAlarm:        s.show_alarm,
+          showOwnerPhone:   s.show_owner_phone,
+          showManagerPhone: s.show_manager_phone,
+          hasAlarm:         s.has_alarm,
+          showArrival:      s.show_arrival,
         },
       }, 200)
     }
