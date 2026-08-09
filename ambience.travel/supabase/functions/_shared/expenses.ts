@@ -13,7 +13,7 @@
 
 export const EXPENSE_SELECT = `
   id, engagement_id, booking_id, destination_id, team_member_id,
-  expense_type, description, total_amount, currency, billing_status,
+  expense_type, description, total_amount, total_amount_usd, currency, billing_status,
   paid_at, billed_at, reimbursed_at, linked_at, notes,
   created_by, created_at, updated_at,
   items:travel_expense_items(
@@ -75,10 +75,11 @@ export const ROOM_SELECT = `
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function deriveSummary(expenses: Array<Record<string, unknown>>) {
-  const absorbed    = expenses.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + (e.total_amount as number), 0)
-  const billable    = expenses.filter(e => e.billing_status === 'billable').reduce((s, e) => s + (e.total_amount as number), 0)
-  const outstanding = expenses.filter(e => e.billing_status === 'billed').reduce((s, e) => s + (e.total_amount as number), 0)
-  const paid        = expenses.filter(e => e.billing_status === 'paid').reduce((s, e) => s + (e.total_amount as number), 0)
+  const _amt = (e: Record<string, unknown>) => (e.total_amount_usd ?? e.total_amount ?? 0) as number
+  const absorbed    = expenses.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + _amt(e), 0)
+  const billable    = expenses.filter(e => e.billing_status === 'billable').reduce((s, e) => s + _amt(e), 0)
+  const outstanding = expenses.filter(e => e.billing_status === 'billed').reduce((s, e) => s + _amt(e), 0)
+  const paid        = expenses.filter(e => e.billing_status === 'paid').reduce((s, e) => s + _amt(e), 0)
   return { total_absorbed: absorbed, total_billable: billable, total_outstanding: outstanding, total_paid: paid }
 }
 

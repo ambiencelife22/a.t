@@ -176,11 +176,12 @@ Deno.serve(async (req: Request) => {
           .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
           .eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses')
-          .select('total_amount, billing_status')
+          .select('total_amount, total_amount_usd, billing_status')
           .eq('engagement_id', engagement_id),
       ])
       const bs = (bookings ?? []) as Array<Record<string, unknown>>
-      const es = (expenses ?? []) as Array<{ total_amount: number; billing_status: string }>
+      const es = (expenses ?? []) as Array<{ total_amount: number; total_amount_usd: number | null; billing_status: string }>
+      const _eamt = (e: { total_amount: number; total_amount_usd: number | null }) => e.total_amount_usd ?? e.total_amount
 
       // Attach commission splits so computeNetRevenue is partner-aware (upstream
       // not re-subtracted). One source: _shared/bookings.ts.
@@ -192,9 +193,9 @@ Deno.serve(async (req: Request) => {
       const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
         const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_net_received ?? b.commission_received_amount) != null ? ((b.commission_net_received ?? b.commission_received_amount) as number) * _fxr(b) : (b.commission_amount_usd ?? b.commission_amount ?? 0)) as number), 0)
       const total_net_revenue       = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
-      const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + e.total_amount, 0)
-      const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + e.total_amount, 0)
-      const total_outstanding   = es.filter(e => e.billing_status === 'billed').reduce((s, e) => s + e.total_amount, 0)
+      const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + _eamt(e), 0)
+      const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + _eamt(e), 0)
+      const total_outstanding   = es.filter(e => e.billing_status === 'billed').reduce((s, e) => s + _eamt(e), 0)
 
       return json({ summary: {
         total_commission, net_commission_expected, commission_received,
@@ -228,7 +229,7 @@ Deno.serve(async (req: Request) => {
           .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
           .in('engagement_id', engIds),
         db.from('travel_engagement_expenses')
-          .select('engagement_id, total_amount, billing_status')
+          .select('engagement_id, total_amount, total_amount_usd, billing_status')
           .in('engagement_id', engIds),
       ])
 
@@ -243,7 +244,8 @@ Deno.serve(async (req: Request) => {
       const trips = confirmed.map(e => {
         const trip = e.travel_journey as Record<string, unknown> | null
         const bs   = (bByEng[e.id as string] ?? []) as Array<Record<string, unknown>>
-        const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; billing_status: string }>
+        const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; total_amount_usd: number | null; billing_status: string }>
+        const _eamt = (x: { total_amount: number; total_amount_usd: number | null }) => x.total_amount_usd ?? x.total_amount
 
         const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
@@ -251,9 +253,9 @@ Deno.serve(async (req: Request) => {
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
-        const total_absorbed      = es.filter(x => x.billing_status === 'absorbed' || x.billing_status === 'written_off').reduce((s, x) => s + x.total_amount, 0) + total_amenities
-        const total_billable      = es.filter(x => x.billing_status === 'billable').reduce((s, x) => s + x.total_amount, 0)
-        const total_outstanding   = es.filter(x => x.billing_status === 'billed').reduce((s, x) => s + x.total_amount, 0)
+        const total_absorbed      = es.filter(x => x.billing_status === 'absorbed' || x.billing_status === 'written_off').reduce((s, x) => s + _eamt(x), 0) + total_amenities
+        const total_billable      = es.filter(x => x.billing_status === 'billable').reduce((s, x) => s + _eamt(x), 0)
+        const total_outstanding   = es.filter(x => x.billing_status === 'billed').reduce((s, x) => s + _eamt(x), 0)
         const net_margin          = total_net_revenue - total_absorbed
         const s = e.travel_lifecycle_statuses as { slug: string } | { slug: string }[] | null
         const status_slug = Array.isArray(s) ? s[0]?.slug : s?.slug

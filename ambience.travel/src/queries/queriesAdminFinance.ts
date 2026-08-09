@@ -35,6 +35,7 @@ export type Expense = {
   expenseType:   string
   description:    string
   totalAmount:   number
+  totalAmountUsd: number | null
   currency:       string
   billingStatus: BillingStatus
   paid_at:        string | null
@@ -107,6 +108,7 @@ export type CreateExpensePayload = {
   expenseType:    string
   description:     string
   totalAmount:    number
+  totalAmountUsd?: number | null
   engagementId?:  string | null
   bookingId?:     string | null
   destinationId?: string | null

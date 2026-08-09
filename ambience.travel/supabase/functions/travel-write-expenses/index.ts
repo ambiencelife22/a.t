@@ -1,28 +1,29 @@
 // supabase/functions/travel-write-expenses/index.ts
 //
 // Edge Function: travel-write-expenses
-// Class A — admin-only. All write paths for the Financial Module v1.
+// Class A - admin-only. All write paths for the Financial Module v1.
 //
 // Modes:
-//   create_expense           — create expense header
-//   update_expense           — patch expense header fields
-//   delete_expense           — hard delete; refused if billing_status = 'billed'
-//   create_item              — add line item; auto-recalcs parent total_amount
-//   update_item              — patch item; recalcs parent total if amount changed
-//   delete_item              — hard delete item; recalcs parent total
-//   link_engagement          — retroactively link proactive expense to engagement
-//   mark_billed              — set billing_status = billed
-//   mark_paid                — set billing_status = paid
-//   write_off                — set billing_status = written_off
-//   mark_commission_received — record commission receipt with platform + fee
-//   update_booking_financial — patch financial fields on a booking
-//   set_hotel_platform       — set default_payment_platform_id on travel_accom_hotels
+//   create_expense           - create expense header
+//   update_expense           - patch expense header fields
+//   delete_expense           - hard delete; refused if billing_status = 'billed'
+//   create_item              - add line item; auto-recalcs parent total_amount
+//   update_item              - patch item; recalcs parent total if amount changed
+//   delete_item              - hard delete item; recalcs parent total
+//   link_engagement          - retroactively link proactive expense to engagement
+//   mark_billed              - set billing_status = billed
+//   mark_paid                - set billing_status = paid
+//   write_off                - set billing_status = written_off
+//   mark_commission_received - record commission receipt with platform + fee
+//   update_booking_financial - patch financial fields on a booking
+//   set_hotel_platform       - set default_payment_platform_id on travel_accom_hotels
 //
-// Last updated: S53G v2 — mark_commission_received, update_booking_financial,
+// Last updated: S53G v2 - mark_commission_received, update_booking_financial,
 //   set_hotel_platform added. created_by chain fixed. recalcTotal typed.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
+import { snakeizeKeys } from '../_shared/camelize.ts'
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 type Mode =
@@ -81,6 +82,7 @@ Deno.serve(async (req: Request) => {
       const expense_type  = (body?.expense_type as string | undefined)?.trim()
       const description   = (body?.description  as string | undefined)?.trim()
       const total_amount  = body?.total_amount  as number | undefined
+      const total_amount_usd = body?.total_amount_usd as number | null | undefined
       if (!expense_type)        return json({ error: 'expense_type is required' }, 400)
       if (!description)         return json({ error: 'description is required' }, 400)
       if (total_amount == null) return json({ error: 'total_amount is required' }, 400)
@@ -100,7 +102,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await db.from('travel_engagement_expenses').insert({
         engagement_id, booking_id, destination_id,
         team_member_id: (body?.team_member_id as string | undefined) ?? null,
-        expense_type, description, total_amount,
+        expense_type, description, total_amount, total_amount_usd,
         currency:       (body?.currency       as string | undefined) ?? 'USD',
         billing_status: (body?.billing_status as string | undefined) ?? 'absorbed',
         paid_at:        (body?.paid_at        as string | undefined) ?? null,
@@ -285,12 +287,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── update_booking_financial ─────────────────────────────────────────────
-    // Patches financial fields on a booking. Allowed fields only — never id,
+    // Patches financial fields on a booking. Allowed fields only - never id,
     // trip_id, engagement_id, created_at. Operator edits commission_pct,
     // invoice_number, rate_type_id, selling_price, etc.
     if (mode === 'update_booking_financial') {
       const booking_id = body?.booking_id as string | undefined
-      const patch      = { ...(body?.patch as Record<string, unknown> | undefined ?? {}) }
+      const patch      = snakeizeKeys<Record<string, unknown>>({ ...(body?.patch as Record<string, unknown> | undefined ?? {}) })
       if (!booking_id || Object.keys(patch).length === 0) {
         return json({ error: 'booking_id and patch are required' }, 400)
       }
