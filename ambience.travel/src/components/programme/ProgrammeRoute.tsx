@@ -46,7 +46,7 @@ function toBooking(r: StayResolved): Booking {
     checkOut:          r.stay.checkOut ?? undefined,
     welcomeLetter:     r.stay.welcomeLetter,
     activeListingIds:  r.stay.activeListingIds ?? undefined,
-    alarmCodeProvided: r.stay.alarmCodeProvided,
+    hasAlarmCode: r.stay.hasAlarmCode,
   }
 }
 
@@ -83,7 +83,7 @@ function toListings(r: StayResolved): Listing[] {
     website:  l.website ?? undefined,
     hours:    l.hours ?? undefined,
     note:     l.note ?? undefined,
-    favorite: l.favourite,
+    favorite: l.isFavourite,
   }))
 }
 
@@ -118,12 +118,12 @@ type LoadedState = {
   manual:             ManualSection[]
   listings:           Listing[]
   isPublic:           boolean
-  publicWifi:         boolean
-  publicAlarm:        boolean
-  publicOwnerPhone:   boolean
-  publicManagerPhone: boolean
-  noAlarm:            boolean
-  publicArrival:      boolean
+  showWifi:         boolean
+  showAlarm:        boolean
+  showOwnerPhone:   boolean
+  showManagerPhone: boolean
+  hasAlarm:            boolean
+  showArrival:      boolean
 }
 
 // -- Main component --
@@ -192,12 +192,12 @@ export default function ProgrammeRoute() {
         manual:             toManual(r),
         listings:           toListings(r),
         isPublic:           r.gated,
-        publicWifi:         r.flags.publicWifi,
-        publicAlarm:        r.flags.publicAlarm,
-        publicOwnerPhone:   r.flags.publicOwnerPhone,
-        publicManagerPhone: r.flags.publicManagerPhone,
-        noAlarm:            r.flags.noAlarm,
-        publicArrival:      r.flags.publicArrival,
+        showWifi:         r.flags.showWifi,
+        showAlarm:        r.flags.showAlarm,
+        showOwnerPhone:   r.flags.showOwnerPhone,
+        showManagerPhone: r.flags.showManagerPhone,
+        hasAlarm:            r.flags.hasAlarm,
+        showArrival:      r.flags.showArrival,
       })
       setLoading(false)
     }
@@ -233,12 +233,12 @@ export default function ProgrammeRoute() {
         manual={loaded.manual}
         listings={loaded.listings}
         isPublic={loaded.isPublic}
-        publicWifi={loaded.publicWifi}
-        publicAlarm={loaded.publicAlarm}
-        publicOwnerPhone={loaded.publicOwnerPhone}
-        publicManagerPhone={loaded.publicManagerPhone}
-        noAlarm={loaded.noAlarm}
-        publicArrival={loaded.publicArrival}
+        showWifi={loaded.showWifi}
+        showAlarm={loaded.showAlarm}
+        showOwnerPhone={loaded.showOwnerPhone}
+        showManagerPhone={loaded.showManagerPhone}
+        hasAlarm={loaded.hasAlarm}
+        showArrival={loaded.showArrival}
       />
     </ProgrammeLayout>
   )

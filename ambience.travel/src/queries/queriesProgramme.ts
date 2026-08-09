@@ -88,7 +88,7 @@ export interface StayListing {
   website:   string | null
   hours:     string | null
   note:      string | null
-  favourite: boolean
+  isFavourite: boolean
 }
  
 export interface StayResolved {
@@ -100,7 +100,7 @@ export interface StayResolved {
     checkOut:          string | null
     welcomeLetter:     string
     activeListingIds:  string[] | null
-    alarmCodeProvided: boolean
+    hasAlarmCode: boolean
   }
   property: {
     id:                string
@@ -122,12 +122,12 @@ export interface StayResolved {
   listings: StayListing[]
   gated:    boolean
   flags: {
-    publicWifi:         boolean
-    publicAlarm:        boolean
-    publicOwnerPhone:   boolean
-    publicManagerPhone: boolean
-    noAlarm:            boolean
-    publicArrival:      boolean
+    showWifi:         boolean
+    showAlarm:        boolean
+    showOwnerPhone:   boolean
+    showManagerPhone: boolean
+    hasAlarm:            boolean
+    showArrival:      boolean
   }
 }
 

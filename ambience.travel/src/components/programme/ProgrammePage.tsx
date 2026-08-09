@@ -85,7 +85,7 @@ function WelcomeLetter({ booking }: { booking: Booking }) {
   )
 }
 
-function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: ManualSection['content'][0]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean }) {
+function ManualBlock({ block, isPublic, showWifi, showAlarm }: { block: ManualSection['content'][0]; isPublic: boolean; showWifi: boolean; showAlarm: boolean }) {
   if (block.type === 'paragraph') {
     return <p style={{ fontSize: 14, lineHeight: 1.85, color: L.muted, marginBottom: 12 }}>{block.text}</p>
   }
@@ -146,7 +146,7 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
     )
   }
   if (block.type === 'wifi') {
-    const showWifi = !isPublic || publicWifi
+    const wifiVisible = !isPublic || showWifi
     return (
       <div style={{
         padding:       '20px 24px',
@@ -160,13 +160,13 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
         <div>
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.faint, marginBottom: 4 }}>Network</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: 'monospace' }}>
-            {showWifi ? block.network : <GatedValue />}
+            {wifiVisible ? block.network : <GatedValue />}
           </div>
         </div>
         <div>
           <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.faint, marginBottom: 4 }}>Password</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: C.gold, fontFamily: 'monospace' }}>
-            {showWifi ? block.password : <GatedValue />}
+            {wifiVisible ? block.password : <GatedValue />}
           </div>
         </div>
       </div>
@@ -175,7 +175,7 @@ function ManualBlock({ block, isPublic, publicWifi, publicAlarm }: { block: Manu
   return null
 }
 
-function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, publicArrival, publicOwnerPhone, publicManagerPhone, mapsUrl, mapsEmbedUrl }: { sections: ManualSection[]; isPublic: boolean; publicWifi: boolean; publicAlarm: boolean; noAlarm: boolean; publicArrival: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean; mapsUrl: string | null; mapsEmbedUrl: string | null }) {
+function HouseManual({ sections, isPublic, showWifi, showAlarm, hasAlarm, showArrival, showOwnerPhone, showManagerPhone, mapsUrl, mapsEmbedUrl }: { sections: ManualSection[]; isPublic: boolean; showWifi: boolean; showAlarm: boolean; hasAlarm: boolean; showArrival: boolean; showOwnerPhone: boolean; showManagerPhone: boolean; mapsUrl: string | null; mapsEmbedUrl: string | null }) {
   const [open, setOpen] = useState<string | null>(null)
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
@@ -207,7 +207,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
   // - Arrival: if public and not revealed, replace with redacted content + note
   // - Alarm: if public and not revealed, prepend gated note to content
   const resolvedSections = sections.map(section => {
-    if (section.title === 'Arrival' && isPublic && !publicArrival) {
+    if (section.title === 'Arrival' && isPublic && !showArrival) {
       return {
         ...section,
         content: [
@@ -218,7 +218,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
         ],
       }
     }
-    if (section.title === 'Alarm' && isPublic && !publicAlarm && !noAlarm) {
+    if (section.title === 'Alarm' && isPublic && !showAlarm && hasAlarm) {
       return {
         ...section,
         content: [
@@ -231,7 +231,7 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
   })
 
   // Privacy notice - shown when any gate is active
-  const anyGated = isPublic && (!publicArrival || !publicAlarm || !publicWifi || !publicOwnerPhone || !publicManagerPhone)
+  const anyGated = isPublic && (!showArrival || !showAlarm || !showWifi || !showOwnerPhone || !showManagerPhone)
 
   return (
     <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: L.bgAlt }}>
@@ -303,9 +303,9 @@ function HouseManual({ sections, isPublic, publicWifi, publicAlarm, noAlarm, pub
                   borderRadius: '0 0 16px 16px',
                 }}>
                   {section.content.map((block: ManualSection['content'][0], i: number) => (
-                    <ManualBlock key={i} block={block} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} />
+                    <ManualBlock key={i} block={block} isPublic={isPublic} showWifi={showWifi} showAlarm={showAlarm} />
                   ))}
-                  {section.title === 'Arrival' && (!isPublic || publicArrival) && (
+                  {section.title === 'Arrival' && (!isPublic || showArrival) && (
                     <>
                       {/* Maps embed - commented out pending Google Maps API key
                       {mapsEmbedUrl && (
@@ -456,7 +456,7 @@ function ListingsSection({ listings }: { listings: Listing[] }) {
   )
 }
 
-function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPhone }: { property: Property; isPublic: boolean; publicOwnerPhone: boolean; publicManagerPhone: boolean }) {
+function ContactsSection({ property, isPublic, showOwnerPhone, showManagerPhone }: { property: Property; isPublic: boolean; showOwnerPhone: boolean; showManagerPhone: boolean }) {
   return (
     <section style={{ padding: 'clamp(48px,7vw,88px) clamp(20px,5vw,48px)', background: C.bg }}>
       <div style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -469,8 +469,8 @@ function ContactsSection({ property, isPublic, publicOwnerPhone, publicManagerPh
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12, marginBottom: 32 }}>
           {[
-            { contact: property.owner,   showPhone: !isPublic || publicOwnerPhone },
-            { contact: property.manager, showPhone: !isPublic || publicManagerPhone },
+            { contact: property.owner,   showPhone: !isPublic || showOwnerPhone },
+            { contact: property.manager, showPhone: !isPublic || showManagerPhone },
           ].map(({ contact, showPhone }) => (
             <div key={contact.name} style={{
               padding:      '20px 24px',
@@ -518,15 +518,15 @@ export type ProgrammePageProps = {
   manual:              ManualSection[]
   listings:            Listing[]
   isPublic?:           boolean
-  publicWifi?:         boolean
-  publicAlarm?:        boolean
-  publicOwnerPhone?:   boolean
-  publicManagerPhone?: boolean
-  noAlarm?:            boolean
-  publicArrival?: boolean
+  showWifi?:         boolean
+  showAlarm?:        boolean
+  showOwnerPhone?:   boolean
+  showManagerPhone?: boolean
+  hasAlarm?:            boolean
+  showArrival?: boolean
 }
 
-export default function TripPage({ booking, property, manual, listings, isPublic = false, publicWifi = false, publicAlarm = false, publicOwnerPhone = false, publicManagerPhone = false, noAlarm = false, publicArrival = false }: ProgrammePageProps) {
+export default function TripPage({ booking, property, manual, listings, isPublic = false, showWifi = false, showAlarm = false, showOwnerPhone = false, showManagerPhone = false, hasAlarm = false, showArrival = false }: ProgrammePageProps) {
   const [heroVis, setHeroVis] = useState(false)
 
   useEffect(() => {
@@ -546,9 +546,9 @@ export default function TripPage({ booking, property, manual, listings, isPublic
         checkOut={booking.checkOut}
       />
       <WelcomeLetter booking={booking} />
-      <HouseManual sections={manual} isPublic={isPublic} publicWifi={publicWifi} publicAlarm={publicAlarm} noAlarm={noAlarm} publicArrival={publicArrival} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} mapsUrl={property.mapsUrl} mapsEmbedUrl={property.mapsEmbedUrl} />
+      <HouseManual sections={manual} isPublic={isPublic} showWifi={showWifi} showAlarm={showAlarm} hasAlarm={hasAlarm} showArrival={showArrival} showOwnerPhone={showOwnerPhone} showManagerPhone={showManagerPhone} mapsUrl={property.mapsUrl} mapsEmbedUrl={property.mapsEmbedUrl} />
       <ListingsSection listings={listings} />
-      <ContactsSection property={property} isPublic={isPublic} publicOwnerPhone={publicOwnerPhone} publicManagerPhone={publicManagerPhone} />
+      <ContactsSection property={property} isPublic={isPublic} showOwnerPhone={showOwnerPhone} showManagerPhone={showManagerPhone} />
     </>
   )
 }
