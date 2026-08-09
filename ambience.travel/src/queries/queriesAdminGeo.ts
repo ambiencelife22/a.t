@@ -12,7 +12,6 @@
 // Last updated: S33B
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type {
   GeoSubcontinent, GeoCountry, GeoState, GeoDestination, GeoHotel, HotelPick,
 } from '../types/typesGeo'
@@ -20,7 +19,7 @@ import type {
 async function invokeGeo<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', { body })
   if (error) throw new Error(`geo read (${body.mode}): ${error.message}`)
-  return camelizeKeys<T>(data?.rows ?? [])
+  return (data?.rows ?? []) as T
 }
 // ── Types moved to typesGeo.ts ────────────────────────────────────────────────
 

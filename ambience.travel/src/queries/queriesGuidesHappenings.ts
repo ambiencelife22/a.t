@@ -1,5 +1,4 @@
 // queriesGuidesHappenings.ts - Public happenings fetch for destination guides.
-import { camelizeKeys } from '@shared/camelize'
 //
 // What it owns:
 //   - fetchActiveHappeningsForDestination - reads travel_happenings filtered
@@ -103,11 +102,11 @@ export async function fetchActiveHappeningsForDestination(
     start_date: opts.startDate ?? null,
     end_date: opts.endDate ?? null,
   })
-  return camelizeKeys<Happening[]>(rows ?? [])
+  return (rows ?? []) as Happening[]
 }
 export async function fetchHappeningById(id: string): Promise<Happening | null> {
   const { row } = await invokeReadGuides<{ row: unknown }>({ mode: 'happening_by_id', id })
-  return row ? camelizeKeys<Happening>(row) : null
+  return row ? (row as Happening) : null
 }
 
 /**

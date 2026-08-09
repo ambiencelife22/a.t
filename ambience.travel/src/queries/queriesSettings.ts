@@ -16,7 +16,6 @@
 // Created: S53H
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type { PlatformSettings } from '../types/typesImmerse'
 /*
  * Lightweight read for the guest gate in ImmerseEngagementRoute.
@@ -44,7 +43,7 @@ export async function fetchSettings(): Promise<PlatformSettings> {
   })
   if (error) throw new Error(`settings: ${error.message}`)
   if (!data?.settings) return { maintenanceMode: false, updatedAt: null, updatedBy: null }
-  return camelizeKeys<PlatformSettings>(data.settings)
+  return data.settings as PlatformSettings
 }
 
 /**

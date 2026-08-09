@@ -31,7 +31,6 @@
 // Prior: S44 - initial ship.
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import { computeEngagementStage, type EngagementStage, type EngagementStatusSlug, type BookingInvoice } from '../types/typesImmerse'
 import type { ElementBase, ElementPassenger } from '../types/typesElements'
 export type { ElementPassenger } from '../types/typesElements'
@@ -307,7 +306,7 @@ type EngRow      = { journeyId: string; urlId: string }
 async function invokeReadJourney<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body })
   if (error) throw new Error(`travel-read-journey-admin [${body.mode}]: ${error.message}`)
-  return camelizeKeys<T>(data)
+  return data as T
 }
 
 async function invokeWriteJourney<T>(body: Record<string, unknown>): Promise<T> {

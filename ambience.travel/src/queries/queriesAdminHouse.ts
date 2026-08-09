@@ -26,7 +26,7 @@
 //   Edge Function caller for PPD reads.
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys, snakeizeKeys } from '@shared/camelize'
+import { snakeizeKeys } from '@shared/camelize'
 import type { PpdPeopleKey, PpdContactKey } from '../types/typesPpd'
 
 async function invokeReadHouse<T>(body: Record<string, unknown>): Promise<T> {
@@ -207,17 +207,17 @@ export type HousePatch = Partial<Omit<House, 'id' | 'aHouseId' | 'createdAt' | '
 
 export async function fetchHouses(): Promise<House[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'houses' })
-  return camelizeKeys<House[]>(rows ?? [])
+  return (rows ?? []) as House[]
 }
 
 export async function fetchHouseById(id: string): Promise<House | null> {
   const { row } = await invokeReadHouse<{ row: unknown }>({ mode: 'house_by_id', id })
-  return row ? camelizeKeys<House>(row) : null
+  return row ? (row as House) : null
 }
 
 export async function fetchHouseByHouseId(aHouseId: string): Promise<House | null> {
   const { row } = await invokeReadHouse<{ row: unknown }>({ mode: 'house_by_house_id', a_house_id: aHouseId })
-  return row ? camelizeKeys<House>(row) : null
+  return row ? (row as House) : null
 }
 
 export async function updateHouse(id: string, patch: HousePatch): Promise<void> {
@@ -252,7 +252,7 @@ export async function fetchHouseRoles(): Promise<HouseRole_Registry[]> {
 
 export async function fetchPeopleForHouse(houseId: string): Promise<HousePerson[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'people', house_id: houseId })
-  return camelizeKeys<HousePerson[]>(rows ?? [])
+  return (rows ?? []) as HousePerson[]
 }
 
 // Household rank - the SINGLE SOURCE composition: role tier (from the roles registry
@@ -315,7 +315,7 @@ export async function deletePerson(id: string): Promise<void> {
 
 export async function fetchLabelsForHouse(houseId: string): Promise<HouseLabel[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'labels', house_id: houseId })
-  return camelizeKeys<HouseLabel[]>(rows ?? [])
+  return (rows ?? []) as HouseLabel[]
 }
 
 export async function createLabel(houseId: string, key: HouseLabelKey, displayName: string, sortOrder = 0): Promise<void> {
@@ -359,14 +359,14 @@ export async function deleteLabel(id: string): Promise<void> {
 
 export async function fetchProfileForPerson(personId: string): Promise<HousePersonProfile | null> {
   const { row } = await invokeReadHouse<{ row: unknown }>({ mode: 'profile_for_person', person_id: personId })
-  return row ? camelizeKeys<HousePersonProfile>(row) : null
+  return row ? (row as HousePersonProfile) : null
 }
 
 // ── Preferences reads/writes ──────────────────────────────────────────────────
 
 export async function fetchPreferencesForHouse(houseId: string): Promise<HousePreference[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'preferences', house_id: houseId })
-  return camelizeKeys<HousePreference[]>(rows ?? [])
+  return (rows ?? []) as HousePreference[]
 }
 
 export async function createPreference(
@@ -412,7 +412,7 @@ export async function deletePreference(id: string): Promise<void> {
 
 export async function fetchDiningHistoryForHouse(houseId: string): Promise<HouseDiningEntry[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'dining_history', house_id: houseId })
-  return camelizeKeys<HouseDiningEntry[]>(rows ?? [])
+  return (rows ?? []) as HouseDiningEntry[]
 }
 
 export async function createDiningEntry(
@@ -448,7 +448,7 @@ export async function deleteDiningEntry(id: string): Promise<void> {
 
 export async function fetchDestinationsForHouse(houseId: string): Promise<HouseDestination[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'destinations', house_id: houseId })
-  return camelizeKeys<HouseDestination[]>(rows ?? [])
+  return (rows ?? []) as HouseDestination[]
 }
 
 export async function createDestination(
@@ -485,7 +485,7 @@ export async function deleteDestination(id: string): Promise<void> {
 
 export async function fetchContactsForHouse(houseId: string): Promise<HouseContact[]> {
   const { rows } = await invokeReadHouse<{ rows: unknown[] }>({ mode: 'contacts', house_id: houseId })
-  return camelizeKeys<HouseContact[]>(rows ?? [])
+  return (rows ?? []) as HouseContact[]
 }
 export async function createContact(
   houseId: string, contactType: ContactType, name: string,

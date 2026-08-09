@@ -20,7 +20,6 @@ import { supabase } from '../../lib/supabase'
 import { ID, IMMERSE, FONTS } from '../../tokens/tokensLanding'
 import { bookedByLabel, flightDetail } from '../../utils/utilsBooking'
 import { fmtTime } from '../../utils/utilsDates'
-import { camelizeKeys } from '@shared/camelize'
 
 const L = {
   surface: IMMERSE.lightSurface, panel: IMMERSE.panelOnLight, ink: IMMERSE.textOnLight,
@@ -194,7 +193,7 @@ export default function CalendarTab() {
       const { data, error } = await supabase.functions.invoke('travel-read-journey-admin', { body: { mode: 'calendar' } })
       if (cancelled) return
       if (error) { setError('Could not load the calendar. Try again.'); setLoading(false); return }
-      setEngagements(camelizeKeys(data?.engagements ?? []) as CalendarEngagement[]); setLoading(false)
+      setEngagements((data?.engagements ?? []) as CalendarEngagement[]); setLoading(false)
     }
     load(); return () => { cancelled = true }
   }, [])

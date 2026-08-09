@@ -14,7 +14,6 @@
 // Last updated: S53Q - EF-routed onto travel-admin-guides. Fixes prior camel-key
 // write bugs by construction (isActive/userId to snake columns, raw .update(patch)).
 
-import { camelizeKeys } from '@shared/camelize'
 import { supabase } from '../lib/supabase'
 import type {
   DestinationOption, MichelinAward,
@@ -129,7 +128,7 @@ export async function fetchAllDiningVenues(
   const body: Record<string, unknown> = { mode: 'venues', variant: 'dining' }
   if (destinationIdFilter) body.destination_id = destinationIdFilter
   const { rows } = await invokeGuides<{ rows: unknown[] }>(body)
-  return camelizeKeys<AdminDiningVenue[]>(rows ?? [])
+  return (rows ?? []) as AdminDiningVenue[]
 }
 
 export async function updateDiningVenue(id: string, patch: DiningVenuePatch): Promise<void> {
@@ -144,7 +143,7 @@ export async function deleteDiningVenue(id: string): Promise<void> {
 
 export async function fetchDiningGuides(): Promise<AdminDiningGuide[]> {
   const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'dining' })
-  return camelizeKeys<AdminDiningGuide[]>(rows ?? [])
+  return (rows ?? []) as AdminDiningGuide[]
 }
 
 export async function updateDiningGuide(id: string, patch: DiningGuidePatch): Promise<void> {
@@ -170,7 +169,7 @@ export async function fetchGrantsForDestination(
   const { rows } = await invokeGuides<{ rows: unknown[] }>({
     mode: 'grants', variant: 'dining', global_destination_id: globalDestinationId,
   })
-  return resolveGrants(camelizeKeys<GrantRowRaw[]>(rows ?? []))
+  return resolveGrants((rows ?? []) as GrantRowRaw[])
 }
 
 export async function createGrant(
@@ -203,7 +202,7 @@ export async function fetchProfileByPersonId(
 
 export async function fetchExperiencesGuides(): Promise<AdminExperiencesGuide[]> {
   const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'experiences' })
-  return camelizeKeys<AdminExperiencesGuide[]>(rows ?? [])
+  return (rows ?? []) as AdminExperiencesGuide[]
 }
 
 export async function updateExperiencesGuide(id: string, patch: ExperiencesGuidePatch): Promise<void> {
@@ -229,7 +228,7 @@ export async function fetchExperiencesGrantsForDestination(
   const { rows } = await invokeGuides<{ rows: unknown[] }>({
     mode: 'grants', variant: 'experiences', global_destination_id: globalDestinationId,
   })
-  return resolveGrants(camelizeKeys<GrantRowRaw[]>(rows ?? []))
+  return resolveGrants((rows ?? []) as GrantRowRaw[])
 }
 
 export async function createExperiencesGrant(
@@ -269,7 +268,7 @@ export async function fetchAllHotels(
   const { rows } = await invokeGuides<{ rows: unknown[] }>(body)
   // Hotel venues key destinations via destination_id; remap to globalDestinationId
   // for consistency with the other variants. bullets is jsonb - cast to string[].
-  const camel = camelizeKeys<Record<string, unknown>[]>(rows ?? [])
+  const camel = (rows ?? []) as Record<string, unknown>[]
   return camel.map((r) => {
     const bullets = Array.isArray(r.bullets) ? (r.bullets as string[]) : null
     return { ...r, globalDestinationId: r.destinationId as string, bullets }
@@ -278,7 +277,7 @@ export async function fetchAllHotels(
 
 export async function fetchHotelGuides(): Promise<AdminHotelGuide[]> {
   const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'hotels' })
-  return camelizeKeys<AdminHotelGuide[]>(rows ?? [])
+  return (rows ?? []) as AdminHotelGuide[]
 }
 
 export async function updateHotel(id: string, patch: HotelPatch): Promise<void> {
@@ -309,7 +308,7 @@ export async function deleteHotelGuide(id: string): Promise<void> {
 
 export async function fetchShoppingGuides(): Promise<AdminShoppingGuide[]> {
   const { rows } = await invokeGuides<{ rows: unknown[] }>({ mode: 'guides', variant: 'shopping' })
-  return camelizeKeys<AdminShoppingGuide[]>(rows ?? [])
+  return (rows ?? []) as AdminShoppingGuide[]
 }
 
 export async function updateShoppingGuide(id: string, patch: ShoppingGuidePatch): Promise<void> {

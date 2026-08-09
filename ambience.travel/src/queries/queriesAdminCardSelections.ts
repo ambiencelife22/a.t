@@ -1,11 +1,10 @@
 /* queriesAdminCardSelections.ts
  * EF-routed query layer for engagement content-card selections + overrides.
  * DB -> EF (travel-read-engagement-admin / travel-write-engagement) -> typesCards -> here -> frontend.
- * Frontend never touches the DB. camelizeKeys at every read boundary.
+ * Frontend never touches the DB. Responses arrive camelCase from the json() boundary.
  */
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type {
   CardKind, CardSelection, CardCanonicalOption,
   CardSelectionRow, CardOverrideJoinRow,
@@ -52,7 +51,7 @@ function shapeRow(s: CardSelectionRow, override: CardOverrideJoinRow | null): Ca
 async function invokeRead<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('travel-read-engagement-admin', { body })
   if (error) throw new Error(`travel-read-engagement-admin [${body.mode}]: ${error.message}`)
-  return camelizeKeys<T>(data)
+  return data as T
 }
 
 async function invokeWrite<T>(body: Record<string, unknown>): Promise<T> {

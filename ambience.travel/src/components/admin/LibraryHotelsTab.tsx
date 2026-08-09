@@ -39,7 +39,6 @@ import {
   type HotelPatch,
 } from '../../queries/queriesAdminGuides'
 import { supabase } from '../../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import ImageFieldWithUploader from './ImageFieldWithUploader'
 import { matchesQuery } from '../../utils/utilsSearch'
 import { fetchAllDestinationsFull } from '../../queries/queriesGuides'

@@ -1,5 +1,4 @@
 // queriesGuidesHotels.ts - read path for hotels.
-import { camelizeKeys } from '@shared/camelize'
 //
 // What it owns:
 //   - HotelVenue type
@@ -77,5 +76,5 @@ export async function getHotelsByDestination(
   const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
     mode: 'hotels_by_destination', destination_slug: destinationSlug,
   })
-  return camelizeKeys<HotelVenue[]>(rows ?? [])
+  return (rows ?? []) as HotelVenue[]
 }

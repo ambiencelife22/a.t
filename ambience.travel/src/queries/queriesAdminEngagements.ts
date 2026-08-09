@@ -16,7 +16,6 @@
 //   global_people for trip-group rendering.
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type {
   EngagementPatch,
   CreateEngagementInput,
@@ -39,7 +38,7 @@ async function invokeRead<T>(mode: string, params: Record<string, unknown> = {})
   if (data && typeof data === 'object' && 'error' in data) {
     throw new Error((data as { error: string }).error)
   }
-  return camelizeKeys(data) as T
+  return data as T
 }
 
 // Thin invoke wrapper - twin of invokeRead, for the write EF.
@@ -52,7 +51,7 @@ async function invokeWrite<T>(mode: string, params: Record<string, unknown> = {}
     const d = data as { error: string; message?: string }
     throw new Error(d.message ?? d.error)
   }
-  return camelizeKeys(data) as T
+  return data as T
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────

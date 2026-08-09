@@ -39,9 +39,9 @@ import type {
 import type { TimelineItem } from './typesTimeline'
 import type { CamelizeKeys } from '@shared/camelize'
 
-// Wire shape for timeline entries: the camelCase view the EF emits (via
-// camelizeKeys) and the frontend renders directly. Derived from TimelineItem
-// so it can never drift from the source.
+// Wire shape for timeline entries: the camelCase view the EF emits (camelized
+// at the json() response boundary) and the frontend renders directly. Derived
+// from TimelineItem so it can never drift from the source.
 export type TimelineItemView = CamelizeKeys<TimelineItem>
 
 export type EngagementGuides = {

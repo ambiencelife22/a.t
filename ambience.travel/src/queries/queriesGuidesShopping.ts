@@ -1,5 +1,4 @@
 // queriesGuidesShopping.ts - public shopping fetch for destination guides.
-import { camelizeKeys } from '@shared/camelize'
 //
 // What it owns:
 //   - Shop type
@@ -80,5 +79,5 @@ export async function fetchShoppingForDestination(
   const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
     mode: 'shopping_by_destination', global_destination_id: globalDestinationId,
   })
-  return camelizeKeys<Shop[]>(rows ?? [])
+  return (rows ?? []) as Shop[]
 }

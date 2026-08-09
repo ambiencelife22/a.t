@@ -22,7 +22,6 @@
 // Prior: S48 - apikey + Authorization headers required by the Supabase EF gateway.
 
 import type { DeliveryData, DeliveryBundle } from '../types/typesImmerseDelivery'
-import { camelizeKeys } from '@shared/camelize'
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL as string
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -50,7 +49,7 @@ export async function fetchDeliveryBundle(urlId: string): Promise<DeliveryBundle
     const payload = await res.json()
     if (payload.error || !payload.journey) return null
 
-    const p = camelizeKeys<any>(payload)
+    const p = payload as any
     const clientData: DeliveryData = {
       journey:          p.journey,
       brief:            p.brief,

@@ -5,7 +5,6 @@
 // Last updated: S54 - EF-routed (frontend never touches DB).
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type { RouteStop, RouteStopCreatePayload } from '../types/typesRouteStops'
 
 async function invokeReadRS<T>(body: Record<string, unknown>): Promise<T> {
@@ -25,7 +24,7 @@ export async function fetchRouteStops(engagementId: string): Promise<RouteStop[]
   const { rows } = await invokeReadRS<{ rows: unknown[] }>({
     mode: 'route_stops', engagement_id: engagementId,
   })
-  return camelizeKeys<RouteStop[]>(rows ?? [])
+  return (rows ?? []) as RouteStop[]
 }
 
 // ── Update ────────────────────────────────────────────────────────────────────

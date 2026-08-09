@@ -28,7 +28,6 @@
 // Prior: S41 - initial build.
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 
 async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('travel-read-guides', { body })
@@ -62,7 +61,7 @@ export async function getExperienceVenuesByDestination(
   const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
     mode: 'experiences_by_destination', destination_slug: destinationSlug,
   })
-  return camelizeKeys<any[]>(rows ?? []).map((r) => ({
+  return ((rows ?? []) as any[]).map((r) => ({
     ...r,
     experienceCategory: r.experienceCategory?.label ?? null,
   })) as ExperienceVenue[]

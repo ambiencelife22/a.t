@@ -24,7 +24,6 @@
 // logical sequence without re-sorting client-side.
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type { EngagementStatus, ItineraryStatus, EngagementStatusRow, ItineraryStatusRow } from '../types/typesImmerse'
 
 // ─── Fetchers ────────────────────────────────────────────────────────────────
@@ -34,7 +33,7 @@ export async function fetchEngagementStatuses(activeOnly = true): Promise<Engage
     body: { mode: 'engagement_statuses', activeOnly },
   })
   if (error) throw new Error(`engagement_statuses: ${error.message}`)
-  const rows = camelizeKeys<EngagementStatusRow[]>(data?.rows ?? [])
+  const rows = (data?.rows ?? []) as EngagementStatusRow[]
   return rows.map(mapEngagementStatus)
 }
 
@@ -43,7 +42,7 @@ export async function fetchItineraryStatuses(activeOnly = true): Promise<Itinera
     body: { mode: 'itinerary_statuses', activeOnly },
   })
   if (error) throw new Error(`itinerary_statuses: ${error.message}`)
-  const rows = camelizeKeys<ItineraryStatusRow[]>(data?.rows ?? [])
+  const rows = (data?.rows ?? []) as ItineraryStatusRow[]
   return rows.map(mapItineraryStatus)
 }
 

@@ -5,7 +5,6 @@
 // Last updated: S54 - EF-routed (frontend never touches DB).
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type {
   RateCadence, CanonicalRoom, OverlayRoom, OverlayRoomPatch, OverlayRoomCreate,
 } from '../types/typesRooms'
@@ -25,7 +24,7 @@ async function invokeWriteRoom<T>(body: Record<string, unknown>): Promise<T> {
 
 export async function fetchRateCadences(): Promise<RateCadence[]> {
   const { rows } = await invokeReadRoom<{ rows: unknown[] }>({ mode: 'rate_cadences' })
-  return camelizeKeys<RateCadence[]>(rows ?? [])
+  return (rows ?? []) as RateCadence[]
 }
 
 // ── Canonical rooms (for picker) ──────────────────────────────────────────────
@@ -36,7 +35,7 @@ export async function fetchCanonicalRoomsForEngagement(
   const { rows } = await invokeReadRoom<{ rows: unknown[] }>({
     mode: 'canonical_rooms', engagement_id: engagementId,
   })
-  return camelizeKeys<any[]>(rows ?? []).map((r) => ({
+  return ((rows ?? []) as any[]).map((r) => ({
     id:                    r.id,
     hotelId:               r.hotelId,
     roomName:              r.roomName,
@@ -59,7 +58,7 @@ export async function fetchOverlayRooms(engagementId: string): Promise<OverlayRo
   const { rows } = await invokeReadRoom<{ rows: unknown[] }>({
     mode: 'overlay_rooms', engagement_id: engagementId,
   })
-  return camelizeKeys<any[]>(rows ?? []).map((r) => ({
+  return ((rows ?? []) as any[]).map((r) => ({
     ...r,
     roomBenefits:       Array.isArray(r.roomBenefits) ? r.roomBenefits : null,
     taxInclusive:       r.taxInclusive ?? false,

@@ -24,7 +24,6 @@ import { supabaseAnon } from '../lib/supabase'
 import { rewriteImageUrl, rewriteImageUrls } from '../utils/utilsImageUrl'
 import { mapEngagementStatus, mapItineraryStatus } from '../queries/queriesStatus'
 import { computeEngagementStage } from '../types/typesImmerse'
-import { camelizeKeys } from '@shared/camelize'
 import type {
   ImmerseEngagementData,
   ImmerseDestinationData,
@@ -66,7 +65,7 @@ async function callEF(urlId: string, destinationSlug?: string): Promise<EFCallRe
     if (!data) return null
     if (data.error === 'not_public') return { __not_public: true }
     if (data.error) return null
-    return camelizeKeys(data) as EFResponse
+    return data as EFResponse
   } catch {
     return null
   }

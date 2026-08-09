@@ -1,5 +1,4 @@
 // queriesGuidesDining.ts - read path for dining venues.
-import { camelizeKeys } from '@shared/camelize'
 //
 // What it owns:
 //   - DiningVenue type (the venue table shape)
@@ -87,5 +86,5 @@ export async function getDiningVenuesByDestination(
   const { rows } = await invokeReadGuides<{ rows: unknown[] }>({
     mode: 'dining_by_destination', destination_slug: destinationSlug,
   })
-  return camelizeKeys<DiningVenue[]>(rows ?? [])
+  return (rows ?? []) as DiningVenue[]
 }

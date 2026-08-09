@@ -7,7 +7,6 @@
 // Last updated: S54 - EF-routed (frontend never touches DB).
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import type {
   DestinationRow, DestinationOption, AddDestinationPayload,
 } from '../types/typesDestinationRows'
@@ -31,7 +30,7 @@ export async function fetchDestinationRows(
   const { rows } = await invokeReadDR<{ rows: unknown[] }>({
     mode: 'destination_rows', engagement_id: engagementId,
   })
-  return camelizeKeys<any[]>(rows ?? []).map((r: any) => ({
+  return ((rows ?? []) as any[]).map((r: any) => ({
     ...r,
     destinationSlug: r.globalDestination?.slug ?? null,
     destinationName: r.globalDestination?.name ?? null,
@@ -83,7 +82,7 @@ export async function searchDestinations(
   query: string,
 ): Promise<DestinationOption[]> {
   const { rows } = await invokeReadDR<{ rows: unknown[] }>({ mode: 'destination_search', query })
-  return camelizeKeys<DestinationOption[]>(rows ?? [])
+  return (rows ?? []) as DestinationOption[]
 }
 
 // ── Max sort_order (for add defaults) ─────────────────────────────────────────

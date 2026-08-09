@@ -21,7 +21,6 @@
 // Last updated: S53 - initial build.
 
 import { supabase } from '../lib/supabase'
-import { camelizeKeys } from '@shared/camelize'
 import {
   type GuideDestination,
   type GuideOverlay,
@@ -37,7 +36,7 @@ async function invokeReadGuides<T>(body: Record<string, unknown>): Promise<T> {
 
 export async function fetchAllDestinationsFull(): Promise<Array<{ id: string; slug: string; name: string; storagePath: string | null }>> {
   const { rows } = await invokeReadGuides<{ rows: unknown[] }>({ mode: 'destinations_all' })
-  return camelizeKeys<Array<{ id: string; slug: string; name: string; storagePath: string | null }>>(rows ?? [])
+  return (rows ?? []) as Array<{ id: string; slug: string; name: string; storagePath: string | null }>
 }
 
 
@@ -55,7 +54,7 @@ export async function getGuideDestination(
     mode: 'destination', variant, destination_slug: destinationSlug,
   })
   if (!row) return null
-  const d = camelizeKeys<any>(row)
+  const d = row as any
   const raw = d.overlay as GuideOverlay | GuideOverlay[] | null
   const overlay: GuideOverlay | null = Array.isArray(raw)
     ? (raw.length > 0 ? raw[0] : null)
