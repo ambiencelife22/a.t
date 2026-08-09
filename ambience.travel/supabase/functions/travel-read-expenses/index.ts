@@ -27,6 +27,7 @@ import {
   computeExpectedCommission,
 } from '../_shared/expenses.ts'
 import { fetchHotelsByIds, fetchSplitsByBooking } from '../_shared/bookings.ts'
+import { attachRoomGuests } from '../_shared/names.ts'
 
 type Mode = 'by_engagement' | 'by_engagement_full' | 'by_destination' | 'summary' | 'pipeline'
 
@@ -91,7 +92,8 @@ Deno.serve(async (req: Request) => {
           .select(ROOM_SELECT)
           .in('booking_id', bookingIds)
           .order('sort_order', { ascending: true })
-        for (const r of (rooms ?? []) as Array<Record<string, unknown>>) {
+        const resolvedRooms = await attachRoomGuests(db, (rooms ?? []) as Array<Record<string, unknown>>)
+        for (const r of resolvedRooms) {
           const bid = r.booking_id as string
           ;(roomsByBooking[bid] ??= []).push(r)
         }

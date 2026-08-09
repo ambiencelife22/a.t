@@ -27,6 +27,12 @@ export type BookingFinancialRoom = {
   roomName:           string | null
   confirmationNumber: string | null
   guestName:          string | null
+  personId:               string | null
+  secondPersonId:         string | null
+  originalPersonId:       string | null
+  resolvedGuest:          string | null
+  resolvedSecondGuest:    string | null
+  resolvedOriginalGuest:  string | null
   nights:              number | null
   rate:                number | null
   taxPct:             number | null

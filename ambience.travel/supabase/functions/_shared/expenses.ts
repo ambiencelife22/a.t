@@ -68,6 +68,7 @@ export const BOOKING_FINANCIAL_SELECT = `
 // derived check-in time (from buildHotelItems in timeline.ts) applies.
 export const ROOM_SELECT = `
   id, booking_id, room_name, confirmation_number, guest_name,
+  person_id, second_person_id, original_person_id,
   party_composition, nights, rate, tax_pct, total,
   sort_order, check_in_time, brief_image_src
 `

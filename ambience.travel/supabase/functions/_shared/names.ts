@@ -8,7 +8,7 @@
 // linked; the override is a deliberate one-off; the party label is the trip's
 // single client address.
 //
-// resolvePartyName returns string | null. null means "nothing resolved" —
+// resolvePartyName returns string | null. null means "nothing resolved" -
 // callers fall back with ?? per Reference Guide v5 p7 (never ||, which would
 // also swallow empty strings). The prior '' sentinel forced || downstream and
 // is gone.
@@ -43,15 +43,15 @@ export function resolvePartyName(
 // Resolve the PUBLIC GUEST LABEL for an engagement (HPGL, S53M).
 //
 // This is a DIFFERENT question than resolvePartyName. resolvePartyName answers
-// "who is this specific traveller / passenger / room guest" — person-first, so a
+// "who is this specific traveller / passenger / room guest" - person-first, so a
 // linked individual renders as themselves. resolvePublicGuestLabel answers "what
-// public-safe name does this engagement present under" — override-first, because
+// public-safe name does this engagement present under" - override-first, because
 // the designer's authored label (a per-engagement one-off, or the house's
 // context-selected public label) is the intended public face, taking precedence
 // over the raw linked person. The person projection is the fallback when no label
 // was authored; the legacy party label (brief.prepared_for) is the last resort.
 //
-// Precedence (person-gated tail — the delegation guard, S53M):
+// Precedence (person-gated tail - the delegation guard, S53M):
 //   guest_display_name_override        deliberate per-engagement one-off
 //   ?? selected public label           house × context ("AlSuwaidi Family" /
 //                                       "Alsuwaidi Travel Party")
@@ -67,7 +67,7 @@ export function resolvePartyName(
 // house presents as "AlSuwaidi Family" (family trip, person assigned or family
 // label selected) vs "Alsuwaidi Travel Party" (staff delegation, no person).
 //
-// Person tier reads nickname, otherwise first_name — never last name, keeping public
+// Person tier reads nickname, otherwise first_name - never last name, keeping public
 // previews to a personal-but-not-legal-identity name (Reference Guide: privacy
 // first). null means "nothing resolved"; callers fall back with ?? (never ||)
 // per Reference Guide v5 p7. '' means hide (trim to empty -> next tier).
@@ -132,7 +132,7 @@ export async function attachPassengers(
 
 // Attach client-facing driver vehicles to each ground-car aux booking
 // (transfer / airport transfer / car service). Parallel to attachPassengers.
-// CLIENT-FACING: selects name/phone/car_model/plate/vehicle_role only — company is
+// CLIENT-FACING: selects name/phone/car_model/plate/vehicle_role only - company is
 // operator-internal and deliberately OMITTED here, so neither the confirmation nor
 // the programme page can leak it. Bookings with no driver rows get an empty array.
 export async function attachDriverDetails(
@@ -171,4 +171,32 @@ export function resolveRoomGuestName(
   partyLabel: string | null | undefined,
 ): string | null {
   return resolvePartyName(person, guestName, partyLabel)
+}
+
+// Attach resolved guest names to booking rooms. Batch-resolves person_id,
+// second_person_id, and original_person_id (the booked guest on a name change)
+// via get_people_display_names. Single-source for every EF that reads rooms.
+// resolved_guest = actual/primary; resolved_second_guest = twin occupant;
+// resolved_original_guest = booked guest when an arrival name change occurred.
+export async function attachRoomGuests(
+  db: SupabaseClient,
+  rooms: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  if (rooms.length === 0) return rooms
+  const ids = [...new Set(
+    rooms.flatMap(r => [r.person_id, r.second_person_id, r.original_person_id]).filter(Boolean)
+  )] as string[]
+  const peopleById: Record<string, Record<string, unknown>> = {}
+  if (ids.length > 0) {
+    const { data: gp } = await db.rpc('get_people_display_names', { p_person_ids: ids })
+    for (const g of (gp ?? []) as Record<string, unknown>[]) peopleById[g.id as string] = g
+  }
+  const nameOf = (pid: unknown): string | null =>
+    pid ? (formatPersonName(peopleById[pid as string]) || null) : null
+  return rooms.map(r => ({
+    ...r,
+    resolved_guest:          nameOf(r.person_id),
+    resolved_second_guest:   nameOf(r.second_person_id),
+    resolved_original_guest: nameOf(r.original_person_id),
+  }))
 }

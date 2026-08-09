@@ -113,7 +113,17 @@ function RoomLine({ room }: { room: BookingFinancialRoom }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px 20px', padding: '10px 18px', borderTop: `1px solid ${A.border}`, alignItems: 'start' }}>
       <div>
-        {room.guestName   && <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>{room.guestName}</div>}
+        {(room.resolvedGuest ?? room.guestName) && (
+          <div style={{ fontSize: 13, fontWeight: 600, color: A.text, fontFamily: A.font }}>
+            {room.resolvedGuest ?? room.guestName}
+            {room.resolvedSecondGuest && <span style={{ color: A.muted, fontWeight: 400 }}> · {room.resolvedSecondGuest}</span>}
+          </div>
+        )}
+        {room.resolvedOriginalGuest && (
+          <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, fontStyle: 'italic', marginTop: 1 }}>
+            booked as {room.resolvedOriginalGuest}
+          </div>
+        )}
         {room.roomName    && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{room.roomName}</div>}
         {room.confirmationNumber && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{room.confirmationNumber}</div>}
       </div>
