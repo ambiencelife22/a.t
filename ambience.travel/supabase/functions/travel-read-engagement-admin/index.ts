@@ -40,6 +40,7 @@
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
+import { camelizeKeys } from '../_shared/camelize.ts'
 
 type ReadMode =
   | 'list'
@@ -122,7 +123,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────
-    const body = await req.json().catch(() => ({}))
+    const rawBody = await req.json().catch(() => ({}))
+    const body = camelizeKeys<Record<string, unknown>>(rawBody)
     const mode = body?.mode as ReadMode | undefined
 
     if (!mode) {
@@ -189,7 +191,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (mode === 'detail') {
-      const url_id = body?.url_id as string | undefined
+      const url_id = body?.urlId as string | undefined
       if (!url_id) return json({ error: 'url_id is required' }, 400)
       const { data, error } = await serviceClient
         .from('travel_engagements')
@@ -232,7 +234,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (mode === 'child_counts') {
-      const engagement_id = body?.engagement_id as string | undefined
+      const engagement_id = body?.engagementId as string | undefined
       if (!engagement_id) return json({ error: 'engagement_id is required' }, 400)
 
       const results = await Promise.all(
@@ -436,7 +438,7 @@ Deno.serve(async (req: Request) => {
       })
     }
     if (mode === 'suppliers') {
-      const types = body?.supplier_types as string[] | undefined
+      const types = body?.supplierTypes as string[] | undefined
       let q = serviceClient
         .from('travel_suppliers')
         .select('id, name, supplier_type, is_active, created_at, updated_at')
@@ -531,7 +533,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('global_countries')
         .select('id, slug, name, subcontinent_id')
-        .eq('subcontinent_id', body.subcontinent_id)
+        .eq('subcontinent_id', body.subcontinentId)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
       if (error) return json({ error: 'Failed to fetch countries' }, 500)
@@ -542,7 +544,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('global_states')
         .select('id, slug, name, code, country_id')
-        .eq('country_id', body.country_id)
+        .eq('country_id', body.countryId)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
       if (error) return json({ error: 'Failed to fetch states' }, 500)
@@ -556,9 +558,9 @@ Deno.serve(async (req: Request) => {
         .eq('kind', 'place')
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
-      if (body.state_id) q = q.eq('state_id', body.state_id)
-      if (!body.state_id && body.country_id) q = q.eq('country_id', body.country_id).is('state_id', null)
-      if (!body.state_id && !body.country_id && body.subcontinent_id) q = q.eq('subcontinent_id', body.subcontinent_id).is('country_id', null)
+      if (body.stateId) q = q.eq('state_id', body.stateId)
+      if (!body.stateId && body.countryId) q = q.eq('country_id', body.countryId).is('state_id', null)
+      if (!body.stateId && !body.countryId && body.subcontinentId) q = q.eq('subcontinent_id', body.subcontinentId).is('country_id', null)
       const { data, error } = await q
       if (error) return json({ error: 'Failed to fetch destinations' }, 500)
       return json({ rows: data ?? [] })
@@ -568,7 +570,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_accom_hotels')
         .select('id, short_slug, name, destination_id')
-        .eq('destination_id', body.destination_id)
+        .eq('destination_id', body.destinationId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
@@ -593,7 +595,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_engagement_destination_rows')
         .select('*, global_destination:global_destinations!global_destination_id(slug, name)')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: true })
       if (error) return json({ error: 'Failed to fetch destination rows' }, 500)
       return json({ rows: data ?? [] })
@@ -617,7 +619,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_engagement_destination_rows')
         .select('sort_order')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -629,7 +631,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_route_stops')
         .select('id, engagement_id, title, stay_label, note, image_src, image_alt, sort_order, destination_row_id, nights, created_at, updated_at')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: true })
       if (error) return json({ error: 'Failed to fetch route stops' }, 500)
       return json({ rows: data ?? [] })
@@ -639,7 +641,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_route_stops')
         .select('sort_order')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -661,7 +663,7 @@ Deno.serve(async (req: Request) => {
       const { data: hotelSlots, error: hotelErr } = await serviceClient
         .from('travel_overlay_engagement_destination_hotels')
         .select('hotel_id')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
       if (hotelErr) return json({ error: 'Failed to fetch hotel slots' }, 500)
       const hotelIds = [...new Set((hotelSlots ?? []).map((r: Record<string, unknown>) => r.hotel_id as string).filter(Boolean))]
       if (hotelIds.length === 0) return json({ rows: [] })
@@ -679,7 +681,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_rooms')
         .select('id, engagement_id, room_id, level_label, room_basis, room_benefits, non_negotiated_nightly_rate, ambience_nightly_rate, public_nightly_rate, rate_cadence_id, rate_suffix_override, tax_inclusive, room_inclusions, room_name_override, sqft_min, sqft_max, sqm_min, sqm_max, sqft_min_override, sqft_max_override, sqm_min_override, sqm_max_override, bed_config_override, bedding_type, hero_image_src_override, hero_image_alt_override, floorplan_src_override, is_active, sort_order, canonical:travel_accom_rooms!room_id(room_name, hotel:travel_accom_hotels!hotel_id(name))')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: true })
       if (error) return json({ error: 'Failed to fetch overlay rooms' }, 500)
       return json({ rows: data ?? [] })
@@ -689,7 +691,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_rooms')
         .select('sort_order')
-        .eq('engagement_id', body.engagement_id)
+        .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: false })
         .limit(1)
         .maybeSingle()
