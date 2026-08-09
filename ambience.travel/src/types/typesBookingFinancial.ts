@@ -88,6 +88,11 @@ export type BookingFinancial = {
   commissionPaymentFeePct?:     number | null
   commissionPaymentFeeAmt?:     number | null
   commissionNetReceived?:          number | null
+  commissionNetReceivedUsd?:       number | null
+  expectedNetUsd?:                 number | null
+  actualNetUsd?:                   number | null
+  varianceUsd?:                    number | null
+  variancePct?:                    number | null
   commissionPaymentPlatformId?:   string | null
   commissionTransactionRef?:       string | null
   commissionRemittingPartnerId?:  string | null

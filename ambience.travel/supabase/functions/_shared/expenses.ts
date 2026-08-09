@@ -143,10 +143,20 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   const commNat = (b.commission_amount ?? 0) as number
   const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
 
-  // base = what reached ambience (net of any upstream partner cut, which is
-  // already baked into commission_net_received). net_received is native → to USD.
+  // ACTUAL governs once received: net revenue = received (USD) - fee (USD).
+  // Makes the engagement rollup reflect real money in the bank.
+  if (b.commission_paid_at != null && b.commission_received_amount != null) {
+    const recv = (b.commission_received_amount as number)
+    const fee  = (b.commission_payment_fee_amt ?? 0) as number
+    return Math.round((recv - fee) * 100) / 100
+  }
+  // EXPECTED until received. Prefer the stored USD twin (sticky override),
+  // else expected-net native x fx, else gross (direct: no split).
+  const netRecvUsd = b.commission_net_received_usd as number | null
   const netRecv = b.commission_net_received as number | null
-  const base    = netRecv != null ? (netRecv * fx) : commAmt
+  const base    = netRecvUsd != null ? netRecvUsd
+                : netRecv != null    ? (netRecv * fx)
+                : commAmt
 
   // Splits govern when present: subtract only DOWNSTREAM payouts (ambience's
   // own distributions). Upstream is already gone from base - never re-subtract.
@@ -177,8 +187,11 @@ export function computeExpectedCommission(b: Record<string, unknown>): number {
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
   const commNat = (b.commission_amount ?? 0) as number
   const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
-  // net_received is authoritative when present (upstream cut already taken),
-  // stored native → convert to USD.
+  // EXPECTED net. Prefer the stored USD twin (sticky override), else native x fx.
+  const netRecvUsd = b.commission_net_received_usd as number | null
+  if (netRecvUsd != null) {
+    return Math.round(netRecvUsd * 100) / 100
+  }
   const netRecv = b.commission_net_received as number | null
   if (netRecv != null) {
     return Math.round((netRecv * fx) * 100) / 100
@@ -188,8 +201,34 @@ export function computeExpectedCommission(b: Record<string, unknown>): number {
   const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
   return Math.round((commAmt - referral - iata - indiv) * 100) / 100
 }
+// Expected / Actual / Variance for a booking, all USD. Single-source.
+// expected = the claim (twin ?? native x fx ?? gross). actual = received - fee,
+// only once paid. variance = actual - expected (negative = erosion: FX/bank/fees).
+export function commissionTriad(b: Record<string, unknown>): {
+  expected_net_usd: number
+  actual_net_usd:   number | null
+  variance_usd:     number | null
+  variance_pct:     number | null
+} {
+  const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  const commNat = (b.commission_amount ?? 0) as number
+  const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
+  const netRecvUsd = b.commission_net_received_usd as number | null
+  const netRecv    = b.commission_net_received as number | null
+  const expected_net_usd = netRecvUsd != null ? netRecvUsd
+                         : netRecv != null    ? Math.round(netRecv * fx * 100) / 100
+                         : commAmt
+  const paid = b.commission_paid_at != null && b.commission_received_amount != null
+  const actual_net_usd = paid
+    ? Math.round(((b.commission_received_amount as number) - ((b.commission_payment_fee_amt ?? 0) as number)) * 100) / 100
+    : null
+  const variance_usd = actual_net_usd != null ? Math.round((actual_net_usd - expected_net_usd) * 100) / 100 : null
+  const variance_pct = (variance_usd != null && expected_net_usd !== 0)
+    ? Math.round((variance_usd / expected_net_usd) * 10000) / 100
+    : null
+  return { expected_net_usd, actual_net_usd, variance_usd, variance_pct }
+}
 
-// ── Booking enrichment helper ─────────────────────────────────────────────────
 // Flattens the travel_accom_hotels join into _standard_checkin_time and
 // _standard_checkout_time on the booking row - the shape timeline.ts expects.
 // Call this after fetching bookings with BOOKING_FINANCIAL_SELECT before

@@ -25,6 +25,7 @@ import {
   groupBy,
   computeNetRevenue,
   computeExpectedCommission,
+  commissionTriad,
 } from '../_shared/expenses.ts'
 import { fetchHotelsByIds, fetchSplitsByBooking } from '../_shared/bookings.ts'
 import { attachRoomGuests } from '../_shared/names.ts'
@@ -114,7 +115,7 @@ Deno.serve(async (req: Request) => {
       const total_commission          = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected   = bookings.reduce((s, b) => s + computeExpectedCommission(b), 0)
       const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
-      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_net_received ?? b.commission_received_amount) != null ? ((b.commission_net_received ?? b.commission_received_amount) as number) * _fxr(b) : (b.commission_amount_usd ?? b.commission_amount ?? 0)) as number), 0)
+      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_received_amount ?? 0) as number) - ((b.commission_payment_fee_amt ?? 0) as number)), 0)
       const total_net_revenue         = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_rate          = bookings.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
       const total_amenities     = bookings.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
@@ -130,6 +131,7 @@ Deno.serve(async (req: Request) => {
         ...b,
         _hotel_name:     b.accom_hotel_id ? (hotelMap[b.accom_hotel_id as string]?.name ?? null) : null,
         net_revenue_usd: computeNetRevenue(b),
+        ...commissionTriad(b),
         rooms:           roomsByBooking[b.id as string] ?? [],
       }))
 
@@ -175,7 +177,7 @@ Deno.serve(async (req: Request) => {
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
+          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, commission_payment_fee_amt, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
           .eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses')
           .select('total_amount, total_amount_usd, billing_status')
@@ -193,7 +195,7 @@ Deno.serve(async (req: Request) => {
       const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
       const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
-        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_net_received ?? b.commission_received_amount) != null ? ((b.commission_net_received ?? b.commission_received_amount) as number) * _fxr(b) : (b.commission_amount_usd ?? b.commission_amount ?? 0)) as number), 0)
+      const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_received_amount ?? 0) as number) - ((b.commission_payment_fee_amt ?? 0) as number)), 0)
       const total_net_revenue       = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + _eamt(e), 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + _eamt(e), 0)
@@ -228,7 +230,7 @@ Deno.serve(async (req: Request) => {
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
+          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, commission_payment_fee_amt, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
           .in('engagement_id', engIds),
         db.from('travel_engagement_expenses')
           .select('engagement_id, total_amount, total_amount_usd, billing_status')
@@ -251,7 +253,7 @@ Deno.serve(async (req: Request) => {
 
         const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
-        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_received_amount ?? 0) as number) - ((b.commission_payment_fee_amt ?? 0) as number)), 0)
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)

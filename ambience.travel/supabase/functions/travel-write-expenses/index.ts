@@ -263,17 +263,18 @@ Deno.serve(async (req: Request) => {
       const resolvedFeeAmt = fee_amt != null
         ? fee_amt
         : (resolvedFeePct != null ? Math.round(received_amount * resolvedFeePct / 100 * 100) / 100 : 0)
-      const net_received = Math.round((received_amount - resolvedFeeAmt) * 100) / 100
-
+      // Receipt records ACTUAL only. It never writes commission_net_received -
+      // that is the EXPECTED claim, set at booking entry, preserved so variance
+      // (expected vs actual) survives. Actual net = received_amount - fee, derived at read.
       const patch: Record<string, unknown> = {
         commission_received_amount:      received_amount,
         commission_payment_fee_pct:      resolvedFeePct,
         commission_payment_fee_amt:      resolvedFeeAmt,
-        commission_net_received:         net_received,
         commission_paid_at:              received_at,
         commission_transaction_ref:      transaction_ref,
         commission_remitting_partner_id: remitting_partner_id,
       }
+
       if (platform_id) patch.commission_payment_platform_id = platform_id
 
       const { data, error } = await db

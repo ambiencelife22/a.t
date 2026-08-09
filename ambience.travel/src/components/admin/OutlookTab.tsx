@@ -287,10 +287,10 @@ function CommissionReceipt({
                 </div>
               </div>
             )}
-            {b.commissionNetReceived != null && (
+            {b.actualNetUsd != null && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Net to ambience</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.commissionNetReceived)}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.actualNetUsd)}</div>
               </div>
             )}
           </div>
@@ -386,11 +386,17 @@ function BookingRow({
   const [commAmt,      setCommAmt]      = useState(b.commissionAmount?.toString() ?? '')
   const [invoiceNo,    setInvoiceNo]    = useState(b.invoiceNumber ?? '')
   const [amenities,    setAmenities]    = useState(b.cost?.toString() ?? '')
+  const [commAmtUsd,   setCommAmtUsd]   = useState(b.commissionAmountUsd?.toString() ?? '')
+  const [netUsd,       setNetUsd]       = useState(b.commissionNetReceivedUsd?.toString() ?? '')
 
-  useEffect(() => { setCommPct(b.commissionPct?.toString() ?? '') },    [b.commissionPct])
-  useEffect(() => { setCommAmt(b.commissionAmount?.toString() ?? '') }, [b.commissionAmount])
-  useEffect(() => { setInvoiceNo(b.invoiceNumber ?? '') },              [b.invoiceNumber])
-  useEffect(() => { setAmenities(b.cost?.toString() ?? '') },            [b.cost])
+  useEffect(() => {
+    setCommPct(b.commissionPct?.toString() ?? '')
+    setCommAmt(b.commissionAmount?.toString() ?? '')
+    setInvoiceNo(b.invoiceNumber ?? '')
+    setAmenities(b.cost?.toString() ?? '')
+    setCommAmtUsd(b.commissionAmountUsd?.toString() ?? '')
+    setNetUsd(b.commissionNetReceivedUsd?.toString() ?? '')
+  }, [b.commissionPct, b.commissionAmount, b.invoiceNumber, b.cost, b.commissionAmountUsd, b.commissionNetReceivedUsd])
 
   const toast = useAdminToast()
 
@@ -437,6 +443,8 @@ function BookingRow({
     await patch('Commission', fields)
   }
   async function saveInvoice()   { await patch('Invoice',    { invoiceNumber: invoiceNo.trim() || null }) }
+  async function saveCommUsd()   { const v = parseFloat(commAmtUsd); await patch('Commission USD', { commissionAmountUsd: isNaN(v) ? null : v }) }
+  async function saveNetUsd()    { const v = parseFloat(netUsd);     await patch('Net USD',        { commissionNetReceivedUsd: isNaN(v) ? null : v }) }
   async function saveAmenities() {
     const v = parseFloat(amenities)
     await patch('Amenities', { cost: isNaN(v) ? null : v })
@@ -515,6 +523,20 @@ function BookingRow({
                   <span style={{ fontSize: 10, fontWeight: 700, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>Net receivable</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>{moneyDec(netNative, currency)} · {moneyDec(netNative * fx, 'USD')}</span>
                 </div>
+                {b.actualNetUsd != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 4, paddingTop: 4, borderTop: `1px solid ${A.border}` }}>
+                    <span style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>Received{b.commissionPaidAt ? ` ${formatDateShort(b.commissionPaidAt)}` : ''}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{moneyDec(b.actualNetUsd, 'USD')}</span>
+                  </div>
+                )}
+                {b.varianceUsd != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Variance</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: b.varianceUsd < 0 ? '#ef4444' : '#4ade80', fontFamily: A.font }}>
+                      {b.varianceUsd < 0 ? '-' : '+'}{moneyDec(Math.abs(b.varianceUsd), 'USD')}{b.variancePct != null ? ` (${b.variancePct > 0 ? '+' : ''}${b.variancePct.toFixed(1)}%)` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
             )
           })()}
@@ -571,6 +593,15 @@ function BookingRow({
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input value={commPct} onChange={e => setCommPct(e.target.value)} onBlur={saveCommission} placeholder='Pct %' style={{ ...inputS, width: 80, fontSize: 12 }} />
                 <input value={commAmt} onChange={e => setCommAmt(e.target.value)} onBlur={saveCommission} placeholder={`Amount ${currency}`} style={{ ...inputS, width: 120, fontSize: 12 }} />
+              </div>
+            </div>
+
+            {/* Editable USD twins - auto-calc on entry, override sticky */}
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 6 }}>USD values (override)</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input value={commAmtUsd} onChange={e => setCommAmtUsd(e.target.value)} onBlur={saveCommUsd} placeholder='Commission USD' style={{ ...inputS, width: 140, fontSize: 12 }} />
+                <input value={netUsd} onChange={e => setNetUsd(e.target.value)} onBlur={saveNetUsd} placeholder='Net receivable USD' style={{ ...inputS, width: 160, fontSize: 12 }} />
               </div>
             </div>
 
