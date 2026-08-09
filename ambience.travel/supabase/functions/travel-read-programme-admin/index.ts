@@ -1,88 +1,75 @@
 // supabase/functions/travel-read-programme-admin/index.ts
 //
 // Edge Function: travel-read-programme-admin
-// Reads programme admin data across five tables.
+// Reads hosted-stay admin data across six tables.
 //
 // Security model:
 //   - JWT REQUIRED - verify_jwt = true
 //   - requireAdmin gate (_shared/auth.ts) - service role via createServiceClient
-//   - All five tables have no direct client read policy for admin surfaces;
-//     reads bypass RLS via service role.
+//   - Reads bypass RLS via service role.
 //
 // Modes:
-//   programmes          - list all travel_programme_master rows + joined property
-//   properties          - list all travel_programme_properties rows
-//   listings            - list travel_programme_property_listings by property_id
-//   property_sections   - list travel_programme_property_sections by property_id
-//   programme_sections  - list travel_programme_sections by programme_id
+//   programmes          - list all travel_hosted_stay rows + joined property
+//   properties          - list all travel_hosted_property rows
+//   listings            - list travel_hosted_property_listing by property_id
+//   property_sections   - list travel_hosted_property_section by property_id
+//   programme_sections  - list travel_hosted_stay_section by stay_id
+//   programme_guests    - list travel_hosted_stay_guest by stay_id (name-resolved)
+//   programme_guest_search - search global_people for guest linking
 //
 // Request body: { mode: string, ...modeParams }
 // Response:     { data: Row[] }
 //
-// Last updated: S53G - initial build. Migrates 29 direct supabase.from() calls
-//   out of ProgrammeAdmin.tsx.
+// Last updated: hosted-stay migration - programme_* tables renamed to hosted_*.
+//   Column renames: public_* to show_*, active to is_active, no_alarm to has_alarm,
+//   alarm_code_provided to has_alarm_code, favourite to is_favourite. Guest identity
+//   moved from profile_id (via global_profiles) to person_id (direct global_people).
+//   programme_type column dropped. FK programme_id renamed to stay_id.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { formatPersonName } from '../_shared/names.ts'
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
 type ReadMode =
   | 'programmes'
   | 'properties'
   | 'listings'
   | 'property_sections'
   | 'programme_sections'
+  | 'property_sections_meta'
   | 'programme_guests'
   | 'programme_guest_search'
 
-async function handleProgrammeGuests(db: SupabaseClient, programmeId: string): Promise<Response> {
+async function handleProgrammeGuests(db: SupabaseClient, stayId: string): Promise<Response> {
   const { data: guests, error } = await db
-    .from('travel_programme_guests')
-    .select('id, programme_id, display_name, profile_id, is_lead, sort_order')
-    .eq('programme_id', programmeId)
+    .from('travel_hosted_stay_guest')
+    .select('id, stay_id, display_name, person_id, is_lead, sort_order')
+    .eq('stay_id', stayId)
     .order('sort_order', { ascending: true })
-  if (error) return json({ error: 'Failed to fetch programme guests' }, 500)
+  if (error) return json({ error: 'Failed to fetch stay guests' }, 500)
   const rows = (guests ?? []) as Array<Record<string, unknown>>
-  const profileIds = [...new Set(rows.map(r => r.profile_id).filter(Boolean))] as string[]
-  const personNameByProfileId: Record<string, string> = {}
-  if (profileIds.length > 0) {
-    const { data: profiles } = await db
-      .from('global_profiles')
-      .select('id, person_id')
-      .in('id', profileIds)
-    const profilePersonId: Record<string, string> = {}
-    for (const p of (profiles ?? []) as Array<Record<string, unknown>>) {
-      if (p.person_id) profilePersonId[p.id as string] = p.person_id as string
-    }
-    const personIds = [...new Set(Object.values(profilePersonId))]
-    if (personIds.length > 0) {
-      const { data: people } = await db
-        .from('global_people')
-        .select('id, first_name, last_name, nickname')
-        .in('id', personIds)
-      const nameByPerson: Record<string, string> = {}
-      for (const g of (people ?? []) as Array<Record<string, unknown>>) {
-        nameByPerson[g.id as string] = formatPersonName(g)
-      }
-      for (const [profileId, personId] of Object.entries(profilePersonId)) {
-        const n = nameByPerson[personId]
-        if (n) personNameByProfileId[profileId] = n
-      }
+  const personIds = [...new Set(rows.map(r => r.person_id).filter(Boolean))] as string[]
+  const nameByPerson: Record<string, string> = {}
+  if (personIds.length > 0) {
+    const { data: people } = await db
+      .from('global_people')
+      .select('id, first_name, last_name, nickname')
+      .in('id', personIds)
+    for (const g of (people ?? []) as Array<Record<string, unknown>>) {
+      nameByPerson[g.id as string] = formatPersonName(g)
     }
   }
   const guestsOut = rows.map(r => ({
     id:            r.id,
-    programme_id:  r.programme_id,
+    stay_id:       r.stay_id,
     display_name:  r.display_name,
-    profile_id:    r.profile_id,
+    person_id:     r.person_id,
     is_lead:       r.is_lead,
     sort_order:    r.sort_order,
-    resolved_name: r.profile_id ? (personNameByProfileId[r.profile_id as string] ?? null) : null,
+    resolved_name: r.person_id ? (nameByPerson[r.person_id as string] ?? null) : null,
   }))
   return json({ guests: guestsOut }, 200)
 }
-
 async function handleProgrammeGuestSearch(db: SupabaseClient, query: string): Promise<Response> {
   const trimmed = (query ?? '').trim()
   if (trimmed.length < 2) return json({ results: [] }, 200)
@@ -94,35 +81,17 @@ async function handleProgrammeGuestSearch(db: SupabaseClient, query: string): Pr
     .limit(10)
   if (error) return json({ error: 'Failed to search people' }, 500)
   const peopleRows = (people ?? []) as Array<Record<string, unknown>>
-  const personIds = peopleRows.map(p => p.id as string)
-  const profileIdByPerson: Record<string, string> = {}
-  if (personIds.length > 0) {
-    const { data: profiles } = await db
-      .from('global_profiles')
-      .select('id, person_id')
-      .in('person_id', personIds)
-    for (const p of (profiles ?? []) as Array<Record<string, unknown>>) {
-      const pid = p.person_id as string
-      if (!profileIdByPerson[pid]) profileIdByPerson[pid] = p.id as string
-    }
-  }
-  const results = peopleRows.map(p => {
-    const personId  = p.id as string
-    const profileId = profileIdByPerson[personId] ?? null
-    return {
-      person_id:    personId,
-      profile_id:   profileId,
-      display_name: formatPersonName(p),
-      nickname:     (p.nickname as string | null) ?? null,
-      linkable:     profileId != null,
-    }
-  })
+  const results = peopleRows.map(p => ({
+    person_id:    p.id as string,
+    display_name: formatPersonName(p),
+    nickname:     (p.nickname as string | null) ?? null,
+    linkable:     true,
+  }))
   return json({ results }, 200)
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return preflight()
-
   try {
     const body = await req.json().catch(() => ({}))
     const { mode, property_id, programme_id, query } = body as {
@@ -131,120 +100,100 @@ Deno.serve(async (req: Request) => {
       programme_id?: string
       query?:        string
     }
-
     if (!mode) return json({ error: 'mode is required' }, 400)
-
     const gate = await requireAdmin(req)
     if (!gate.ok) return gate.response
     const { serviceClient: db } = gate
-
     // ── programmes ─────────────────────────────────────────────────────────
     if (mode === 'programmes') {
       const { data, error } = await db
-        .from('travel_programme_master')
+        .from('travel_hosted_stay')
         .select(`
-          id, url_id, programme_type, sub_path, status, active, is_public,
-          public_wifi, public_alarm, public_owner_phone, public_manager_phone,
-          no_alarm, public_arrival, guest_names, guest_count, check_in, check_out,
-          welcome_letter, property_id, active_listing_ids, alarm_code_provided,
-          properties:travel_programme_properties(id, name, slug)
+          id, url_id, sub_path, status, is_active, is_public,
+          show_wifi, show_alarm, show_owner_phone, show_manager_phone,
+          has_alarm, show_arrival, guest_names, guest_count, check_in, check_out,
+          welcome_letter, property_id, active_listing_ids, has_alarm_code,
+          properties:travel_hosted_property(id, name, slug)
         `)
         .order('created_at', { ascending: false })
-
       if (error) {
-        console.error('travel_programme_master fetch error:', error)
+        console.error('travel_hosted_stay fetch error:', error)
         return json({ error: 'Failed to fetch programmes' }, 500)
       }
       return json({ data: data ?? [] }, 200)
     }
-
     // ── properties ─────────────────────────────────────────────────────────
     if (mode === 'properties') {
       const { data, error } = await db
-        .from('travel_programme_properties')
+        .from('travel_hosted_property')
         .select(`
           id, slug, name, tagline, city, country, hero_image, maps_url,
           maps_embed_url, owner_name, owner_phone, manager_name, manager_phone,
-          emergency_contacts, active
+          emergency_contacts, is_active
         `)
         .order('name')
-
       if (error) {
-        console.error('travel_programme_properties fetch error:', error)
+        console.error('travel_hosted_property fetch error:', error)
         return json({ error: 'Failed to fetch properties' }, 500)
       }
       return json({ data: data ?? [] }, 200)
     }
-
     // ── listings ───────────────────────────────────────────────────────────
     if (mode === 'listings') {
       if (!property_id) return json({ error: 'property_id is required for listings mode' }, 400)
-
       const { data, error } = await db
-        .from('travel_programme_property_listings')
-        .select('id, name, category, genre, address, website, hours, note, favourite, property_id')
+        .from('travel_hosted_property_listing')
+        .select('id, name, category, genre, address, website, hours, note, is_favourite, property_id')
         .eq('property_id', property_id)
         .order('category')
-
       if (error) {
-        console.error('travel_programme_property_listings fetch error:', error)
+        console.error('travel_hosted_property_listing fetch error:', error)
         return json({ error: 'Failed to fetch listings' }, 500)
       }
       return json({ data: data ?? [] }, 200)
     }
-
     // ── property_sections ──────────────────────────────────────────────────
     if (mode === 'property_sections') {
       if (!property_id) return json({ error: 'property_id is required for property_sections mode' }, 400)
-
       const { data, error } = await db
-        .from('travel_programme_property_sections')
+        .from('travel_hosted_property_section')
         .select('id, title, icon, sort_order, variant, content, property_id')
         .eq('property_id', property_id)
         .order('sort_order')
-
       if (error) {
-        console.error('travel_programme_property_sections fetch error:', error)
+        console.error('travel_hosted_property_section fetch error:', error)
         return json({ error: 'Failed to fetch property sections' }, 500)
       }
       return json({ data: data ?? [] }, 200)
     }
-
     // ── programme_sections ─────────────────────────────────────────────────
     if (mode === 'programme_sections') {
       if (!programme_id) return json({ error: 'programme_id is required for programme_sections mode' }, 400)
-
       const { data, error } = await db
-        .from('travel_programme_sections')
+        .from('travel_hosted_stay_section')
         .select('id, section_id, content')
-        .eq('programme_id', programme_id)
-
+        .eq('stay_id', programme_id)
       if (error) {
-        console.error('travel_programme_sections fetch error:', error)
+        console.error('travel_hosted_stay_section fetch error:', error)
         return json({ error: 'Failed to fetch programme sections' }, 500)
       }
       return json({ data: data ?? [] }, 200)
     }
-
-    // ── property_sections_admin (title+icon only - for ProgrammeSectionOverrides) ──
-    // Separate mode to avoid over-fetching content in the override selector.
+    // ── property_sections_meta (title+icon only) ──
     if (mode === 'property_sections_meta') {
       if (!property_id) return json({ error: 'property_id is required for property_sections_meta mode' }, 400)
-
       const { data, error } = await db
-        .from('travel_programme_property_sections')
+        .from('travel_hosted_property_section')
         .select('id, title, icon')
         .eq('property_id', property_id)
         .eq('variant', 'default')
         .order('sort_order')
-
       if (error) {
-        console.error('travel_programme_property_sections meta fetch error:', error)
+        console.error('travel_hosted_property_section meta fetch error:', error)
         return json({ error: 'Failed to fetch property sections meta' }, 500)
       }
       return json({ data: data ?? [] }, 200)
     }
-
     // ── programme_guests ───────────────────────────────────────────────────
     if (mode === 'programme_guests') {
       if (!programme_id) return json({ error: 'programme_id is required for programme_guests mode' }, 400)
@@ -255,7 +204,6 @@ Deno.serve(async (req: Request) => {
       return handleProgrammeGuestSearch(db, query ?? '')
     }
     return json({ error: `Unknown mode: ${mode}` }, 400)
-
   } catch (err) {
     console.error('travel-read-programme-admin unexpected error:', err)
     return json({ error: 'Internal server error' }, 500)
