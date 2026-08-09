@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
         db.from('travel_bookings')
           .select(BOOKING_FINANCIAL_SELECT)
           .eq('engagement_id', engagement_id)
-          .order('sort_order', { ascending: true }),
+          .order('start_date', { ascending: true, nullsFirst: false }),
         db.from('travel_engagement_expenses')
           .select(EXPENSE_SELECT)
           .eq('engagement_id', engagement_id)
