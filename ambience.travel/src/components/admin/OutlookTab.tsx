@@ -20,10 +20,10 @@
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { useAdminToast } from './_adminPrimitives'
-import { supabase } from '../../lib/supabase'
 import type { BookingFinancial, BookingFinancialRoom } from '../../types/typesBookingFinancial'
 import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
-import { moneyDec as usdDec } from '../../utils/utilsCurrency'
+import { moneyDec } from '../../utils/utilsCurrency'
+const usdDec = (n: number | null | undefined) => moneyDec(n, 'USD')
 import { fetchEngagementDetail } from '../../queries/queriesAdminEngagements'
 import {
   fetchEngagementFull,
@@ -472,23 +472,38 @@ function BookingRow({
           )}
         </div>
 
-        {/* Right: amounts */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{usdDec(totalRate)}</div>
-          <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>Base {usdDec(commBase)} + tax {usdDec(taxes)}</div>
-          {commAmt_ > 0 && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>
-              {usdDec(commAmt_)} comm{pct(b.commissionPct)}
-            </div>
-          )}
-          {hasShares && (
-            <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font, textAlign: 'right' }}>
-              Net {usdDec(b.netRevenueUsd ?? 0)}
-              {b.iataShareAmt      ? ` · IATA ${usdDec(b.iataShareAmt)}`          : ''}
-              {b.referralShareAmt  ? ` · ref ${usdDec(b.referralShareAmt)}`        : ''}
-              {b.individualShareAmt ? ` · indiv ${usdDec(b.individualShareAmt)}`   : ''}
-            </div>
-          )}
+        {/* Right: amounts - full commission chain, local + USD */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, minWidth: 220 }}>
+          {/* Value */}
+          <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{moneyDec(b.totalRate, currency)}</div>
+          <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{moneyDec(b.totalRateUsd, 'USD')}</div>
+          <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Base {moneyDec(b.commissionableRate, currency)} + tax {moneyDec(b.taxesAndFees, currency)}</div>
+
+          {/* Commission chain */}
+          {b.commissionAmount != null && b.commissionAmount > 0 && (() => {
+            const fx        = (b.commissionAmount && b.commissionAmountUsd) ? (b.commissionAmountUsd / b.commissionAmount) : 1
+            const feeNative = (b.iataShareAmt ?? 0) + (b.referralShareAmt ?? 0) + (b.individualShareAmt ?? 0)
+            const netNative = b.commissionNetReceived ?? (b.commissionAmount - feeNative)
+            const partner   = b.travelPartners?.name ?? partners.find(p => p.id === b.iataPartnerId)?.name ?? null
+            return (
+              <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${A.border}`, width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontSize: 10, color: A.muted, fontFamily: A.font }}>Commission{pct(b.commissionPct)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: A.text, fontFamily: A.font }}>{moneyDec(b.commissionAmount, currency)} · {moneyDec(b.commissionAmountUsd ?? (b.commissionAmount * fx), 'USD')}</span>
+                </div>
+                {feeNative > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Partner fee{partner ? ` (${partner})` : ''}</span>
+                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>-{moneyDec(feeNative, currency)} · -{moneyDec(feeNative * fx, 'USD')}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>Net receivable</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: commReceived ? '#4ade80' : '#FBBF24', fontFamily: A.font }}>{moneyDec(netNative, currency)} · {moneyDec(netNative * fx, 'USD')}</span>
+                </div>
+              </div>
+            )
+          })()}
           {b.cost && b.cost > 0 && <div style={{ fontSize: 11, color: A.muted, fontFamily: A.font }}>{usdDec(b.cost)} amenity</div>}
           {b.invoiceNumber && <div style={{ fontSize: 10, color: A.faint, fontFamily: "'DM Mono', monospace" }}>Inv. {b.invoiceNumber}</div>}
         </div>

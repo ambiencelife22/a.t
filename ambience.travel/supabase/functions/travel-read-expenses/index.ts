@@ -1,7 +1,7 @@
 // supabase/functions/travel-read-expenses/index.ts
 //
 // Edge Function: travel-read-expenses
-// Class A — admin-only. All read paths for the Financial Module v1.
+// Class A - admin-only. All read paths for the Financial Module v1.
 //
 // Modes:
 //   by_engagement      { engagement_id }  → { expenses[], summary }
@@ -11,7 +11,7 @@
 //   summary            { engagement_id }  → financial summary
 //   pipeline           {}                 → all confirmed trips with financials
 //
-// Last updated: S53G v3 — shared helpers extracted to _shared/expenses.ts.
+// Last updated: S53G v3 - shared helpers extracted to _shared/expenses.ts.
 //   Rooms nested under bookings. Net revenue = commission minus partner shares.
 //   Hotel name resolved from travel_accom_hotels.
 
@@ -97,11 +97,11 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Hotel names — one source (_shared/bookings.ts).
+      // Hotel names - one source (_shared/bookings.ts).
       const hotelIds = [...new Set(bookings.map(b => b.accom_hotel_id).filter(Boolean))] as string[]
       const hotelMap = await fetchHotelsByIds(db, hotelIds)
 
-      // Commission splits (per booking) — attached before summary + enrichment so
+      // Commission splits (per booking) - attached before summary + enrichment so
       // computeNetRevenue reads b._splits in both.
       const splitsByBooking = await fetchSplitsByBooking(db, bookingIds)
       for (const b of bookings) {
@@ -111,13 +111,15 @@ Deno.serve(async (req: Request) => {
       // Summary from original bookings before enrichment
       const total_commission          = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected   = bookings.reduce((s, b) => s + computeExpectedCommission(b), 0)
-      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
+      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_net_received ?? b.commission_received_amount) != null ? ((b.commission_net_received ?? b.commission_received_amount) as number) * _fxr(b) : (b.commission_amount_usd ?? b.commission_amount ?? 0)) as number), 0)
       const total_net_revenue         = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_rate          = bookings.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
       const total_amenities     = bookings.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
-      const total_referral      = bookings.reduce((s, b) => s + ((b.referral_share_amt ?? 0) as number), 0)
-      const total_iata          = bookings.reduce((s, b) => s + ((b.iata_share_amt ?? 0) as number), 0)
-      const total_individual    = bookings.reduce((s, b) => s + ((b.individual_share_amt ?? 0) as number), 0)
+      const _fx = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
+      const total_referral      = bookings.reduce((s, b) => s + ((b.referral_share_amt ?? 0) as number) * _fx(b), 0)
+      const total_iata          = bookings.reduce((s, b) => s + ((b.iata_share_amt ?? 0) as number) * _fx(b), 0)
+      const total_individual    = bookings.reduce((s, b) => s + ((b.individual_share_amt ?? 0) as number) * _fx(b), 0)
       const deposit_outstanding = bookings.filter(b => b.deposit_amount && !b.deposit_paid_at).reduce((s, b) => s + ((b.deposit_amount ?? 0) as number), 0)
       const balance_outstanding = bookings.filter(b => b.balance_amount && !b.balance_paid_at).reduce((s, b) => s + ((b.balance_amount ?? 0) as number), 0)
 
@@ -187,7 +189,8 @@ Deno.serve(async (req: Request) => {
 
       const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
-      const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + ((b.commission_net_received ?? b.commission_received_amount ?? b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
+      const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
+        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_net_received ?? b.commission_received_amount) != null ? ((b.commission_net_received ?? b.commission_received_amount) as number) * _fxr(b) : (b.commission_amount_usd ?? b.commission_amount ?? 0)) as number), 0)
       const total_net_revenue       = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + e.total_amount, 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + e.total_amount, 0)

@@ -1,12 +1,12 @@
 // supabase/functions/_shared/expenses.ts
 // Shared constants and helpers for the Financial Module.
 // Imported by travel-read-expenses and travel-write-expenses.
-// Single source — no duplication across EFs.
-// Last updated: S53G v3 — derived check-in time columns added.
+// Single source - no duplication across EFs.
+// Last updated: S53G v3 - derived check-in time columns added.
 //   transfer_minutes, early_checkin_approved_time, late_checkout_approved_time
 //   added to BOOKING_FINANCIAL_SELECT. Hotel policy times joined from
 //   travel_accom_hotels via accom_hotel_id FK.
-// Prior: S53G v2 — rate_type_id, payment_platform, net_rate selling_price,
+// Prior: S53G v2 - rate_type_id, payment_platform, net_rate selling_price,
 //   commission receipt columns added. computeNetRevenue rate-type-aware.
 
 // ── Select strings ────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ export const BOOKING_FINANCIAL_SELECT = `
   )
 `
 
-// ROOM_SELECT — party_composition added for timeline room shape.
+// ROOM_SELECT - party_composition added for timeline room shape.
 // check_in_time is the room-level override; when null the booking-level
 // derived check-in time (from buildHotelItems in timeline.ts) applies.
 export const ROOM_SELECT = `
@@ -105,7 +105,7 @@ function splitAmount(s: CommissionSplit): number {
 }
 
 // Sum of downstream payouts (ambience's own distributions). Upstream is NOT
-// summed here — it's already deducted before ambience received the money
+// summed here - it's already deducted before ambience received the money
 // (baked into commission_net_received); subtracting it again double-counts.
 function sumDownstream(splits: CommissionSplit[]): number {
   return splits
@@ -113,7 +113,7 @@ function sumDownstream(splits: CommissionSplit[]): number {
     .reduce((sum, s) => sum + splitAmount(s), 0)
 }
 
-// Net revenue — rate-type-aware single source.
+// Net revenue - rate-type-aware single source.
 // commissionable: net_received (after platform fee) minus partner shares.
 //   Falls back to commission_amount_usd if not yet received.
 // net_rate: selling_price_usd minus total_rate_usd (the spread).
@@ -134,49 +134,62 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   }
 
 // commissionable / package / fallback
-  // base = what reached ambience (net of any upstream partner cut, which is
-  // already baked into commission_net_received).
+  // All arithmetic in USD. Native-currency columns (commission_net_received,
+  // flat share amounts) are converted via the booking's implied FX factor
+  // (commission_amount_usd / commission_amount) before combining with USD.
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
-  const base    = (b.commission_net_received as number | null) ?? commAmt
+  const commNat = (b.commission_amount ?? 0) as number
+  const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
+
+  // base = what reached ambience (net of any upstream partner cut, which is
+  // already baked into commission_net_received). net_received is native → to USD.
+  const netRecv = b.commission_net_received as number | null
+  const base    = netRecv != null ? (netRecv * fx) : commAmt
 
   // Splits govern when present: subtract only DOWNSTREAM payouts (ambience's
-  // own distributions). Upstream is already gone from base — never re-subtract.
+  // own distributions). Upstream is already gone from base - never re-subtract.
   const splits = b._splits as CommissionSplit[] | undefined
   if (splits && splits.length > 0) {
     return Math.round((base - sumDownstream(splits)) * 100) / 100
   }
 
-  // Legacy fallback (no splits yet): flat share columns. Retained so bookings
-  // not yet migrated to the tree don't regress. Dropped when flat cols retire.
-  // If commission_net_received is set, partner cut is already baked in —
+  // Legacy fallback (no splits yet): flat share columns (native → USD via fx).
+  // If commission_net_received is set, partner cut is already baked in -
   // do NOT subtract flat share columns again (double-count).
-  if (b.commission_net_received != null) {
+  if (netRecv != null) {
     return Math.round((base) * 100) / 100
   }
-  const referral = (b.referral_share_amt   ?? 0) as number
-  const iata     = (b.iata_share_amt       ?? 0) as number
-  const indiv    = (b.individual_share_amt ?? 0) as number
+
+  const referral = ((b.referral_share_amt   ?? 0) as number) * fx
+  const iata     = ((b.iata_share_amt       ?? 0) as number) * fx
+  const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
   return Math.round((base - referral - iata - indiv) * 100) / 100
 }
 
-// Net commission expected by ambience — gross minus upstream partner shares.
+// Net commission expected by ambience - gross minus upstream partner shares.
 // When commission_net_received is set, that IS the expected net (partner already
 // took their cut before remitting). When not set, subtract flat share columns
 // from gross to derive what ambience expects to receive.
 export function computeExpectedCommission(b: Record<string, unknown>): number {
+  // All arithmetic in USD. Native share columns converted via implied FX.
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
-  if ((b.commission_net_received as number | null) != null) {
-    return commAmt - ((b.iata_share_amt ?? 0) as number) - ((b.referral_share_amt ?? 0) as number) - ((b.individual_share_amt ?? 0) as number)
+  const commNat = (b.commission_amount ?? 0) as number
+  const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
+  // net_received is authoritative when present (upstream cut already taken),
+  // stored native → convert to USD.
+  const netRecv = b.commission_net_received as number | null
+  if (netRecv != null) {
+    return Math.round((netRecv * fx) * 100) / 100
   }
-  const referral = (b.referral_share_amt   ?? 0) as number
-  const iata     = (b.iata_share_amt       ?? 0) as number
-  const indiv    = (b.individual_share_amt ?? 0) as number
+  const referral = ((b.referral_share_amt   ?? 0) as number) * fx
+  const iata     = ((b.iata_share_amt       ?? 0) as number) * fx
+  const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
   return Math.round((commAmt - referral - iata - indiv) * 100) / 100
 }
 
 // ── Booking enrichment helper ─────────────────────────────────────────────────
 // Flattens the travel_accom_hotels join into _standard_checkin_time and
-// _standard_checkout_time on the booking row — the shape timeline.ts expects.
+// _standard_checkout_time on the booking row - the shape timeline.ts expects.
 // Call this after fetching bookings with BOOKING_FINANCIAL_SELECT before
 // passing them to buildTimeline().
 
