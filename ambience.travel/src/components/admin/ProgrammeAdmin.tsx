@@ -1252,7 +1252,6 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: 'sections',       label: 'Property Sections' },
   { id: 'properties',     label: 'Properties' },
   { id: 'access-denied',  label: 'Access Denied Page' },
-  { id: 'client-profile', label: 'Client Profile' },
 ]
 
 const FULL_WIDTH_TABS: AdminTab[] = ['client-profile']

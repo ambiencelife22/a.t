@@ -78,7 +78,6 @@ const GROUPS: NavGroup[] = [
       { key: 'res-sections', label: 'Property Sections', hash: buildAdminHash({ product: 'residences', tab: 'sections' }),       active: (t: AdminTab) => t.product === 'residences' && t.tab === 'sections' },
       { key: 'res-props',    label: 'Properties',        hash: buildAdminHash({ product: 'residences', tab: 'properties' }),     active: (t: AdminTab) => t.product === 'residences' && t.tab === 'properties' },
       { key: 'res-access',   label: 'Access Denied',     hash: buildAdminHash({ product: 'residences', tab: 'access-denied' }),  active: (t: AdminTab) => t.product === 'residences' && t.tab === 'access-denied' },
-      { key: 'res-profile',  label: 'Client Profile',    hash: buildAdminHash({ product: 'residences', tab: 'client-profile' }), active: (t: AdminTab) => t.product === 'residences' && t.tab === 'client-profile' },
     ],
   },
   {
