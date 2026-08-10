@@ -153,3 +153,83 @@ export function buildRoute(el: {
   const terminals = [el.departTerminal, el.arriveTerminal].filter(Boolean).join('  \u2192  ') || null
   return { from, to, route, terminals }
 }
+// ── Booking list ordering - single source ────────────────────────────────────
+// Two views for the same booking list, both defined here so every surface
+// (OutlookTab, PDFs, dashboards) orders identically. Timeline is the itinerary
+// spine; supplier grouping is the exposure-by-relationship view.
+//
+// Net-to-ambience for sort/subtotal = commission minus upstream partner shares,
+// matching what each row displays as "Net receivable". Prefer the USD twins.
+
+export interface BookingOrderable {
+  startDate?:                string | null
+  checkInDate?:              string | null
+  _hotel_name?:              string | null
+  name?:                     string | null
+  commissionableRateUsd?:    number | null
+  commissionableRate?:       number | null
+  commissionAmountUsd?:      number | null
+  commissionAmount?:         number | null
+  commissionNetReceivedUsd?: number | null
+  iataShareAmt?:             number | null
+  referralShareAmt?:         number | null
+  individualShareAmt?:       number | null
+}
+
+function orderPropName(b: BookingOrderable): string {
+  return b._hotel_name ?? b.name ?? 'Booking'
+}
+function orderCheckIn(b: BookingOrderable): string {
+  return b.checkInDate ?? b.startDate ?? ''
+}
+function orderCommissionableUsd(b: BookingOrderable): number {
+  return b.commissionableRateUsd ?? b.commissionableRate ?? 0
+}
+// Net to ambience (USD): received net if present, else commission minus upstream
+// partner shares. Matches the row's "Net receivable" line.
+function orderNetUsd(b: BookingOrderable): number {
+  if (b.commissionNetReceivedUsd != null) return b.commissionNetReceivedUsd
+  const comm = b.commissionAmountUsd ?? b.commissionAmount ?? 0
+  const shares = (b.iataShareAmt ?? 0) + (b.referralShareAmt ?? 0) + (b.individualShareAmt ?? 0)
+  return Math.round((comm - shares) * 100) / 100
+}
+
+// TIMELINE: check-in ascending, then property, then bigger commissionable first.
+export function sortBookingsTimeline<T extends BookingOrderable>(bookings: T[]): T[] {
+  return [...bookings].sort((a, b) =>
+    orderCheckIn(a).localeCompare(orderCheckIn(b))
+    || orderPropName(a).localeCompare(orderPropName(b))
+    || (orderCommissionableUsd(b) - orderCommissionableUsd(a)),
+  )
+}
+
+export interface SupplierGroup<T> {
+  supplier:                string
+  bookings:                T[]
+  count:                   number
+  totalCommissionableUsd:  number
+  totalNetUsd:             number
+}
+
+// BY SUPPLIER: group by property; groups ordered by total commissionable value
+// descending (biggest exposure first); timeline sub-sort within each group.
+export function groupBookingsBySupplier<T extends BookingOrderable>(bookings: T[]): SupplierGroup<T>[] {
+  const byName = new Map<string, T[]>()
+  for (const b of bookings) {
+    const key = orderPropName(b)
+    const arr = byName.get(key) ?? []
+    arr.push(b)
+    byName.set(key, arr)
+  }
+  const groups: SupplierGroup<T>[] = []
+  for (const [supplier, list] of byName) {
+    groups.push({
+      supplier,
+      bookings:               sortBookingsTimeline(list),
+      count:                  list.length,
+      totalCommissionableUsd: Math.round(list.reduce((s, b) => s + orderCommissionableUsd(b), 0) * 100) / 100,
+      totalNetUsd:            Math.round(list.reduce((s, b) => s + orderNetUsd(b), 0) * 100) / 100,
+    })
+  }
+  return groups.sort((a, b) => b.totalCommissionableUsd - a.totalCommissionableUsd)
+}

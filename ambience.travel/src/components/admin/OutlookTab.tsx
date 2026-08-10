@@ -23,6 +23,7 @@ import { useAdminToast } from './_adminPrimitives'
 import type { BookingFinancial, BookingFinancialRoom } from '../../types/typesBookingFinancial'
 import { formatDateShort, formatDateShortRange } from '../../utils/utilsDates'
 import { moneyDec } from '../../utils/utilsCurrency'
+import { sortBookingsTimeline, groupBookingsBySupplier } from '../../utils/utilsBooking'
 const usdDec = (n: number | null | undefined) => moneyDec(n, 'USD')
 import { fetchEngagementDetail } from '../../queries/queriesAdminEngagements'
 import {
@@ -829,6 +830,7 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
 
   const summary  = data?.summary
   const bookings = (data?.bookings ?? []) as BookingFinancial[]
+  const [bookingView, setBookingView] = useState<'timeline' | 'supplier'>('timeline')
   const expenses = data?.expenses ?? []
   const title    = data?.engagement?.title ?? 'Financial Outlook'
   const margin   = summary?.netMargin ?? 0
@@ -911,14 +913,51 @@ export default function OutlookTab({ urlId, engagementId: engagementIdProp }: { 
           {/* ── Bookings ── */}
           {bookings.length > 0 && (
             <div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font, marginBottom: 12 }}>
-                Bookings · {bookings.length}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: A.gold, fontFamily: A.font }}>
+                  Bookings · {bookings.length}
+                </div>
+                <div style={{ display: 'flex', gap: 2, background: A.border, borderRadius: 6, padding: 2 }}>
+                  {(['timeline', 'supplier'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setBookingView(mode)}
+                      style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                        fontFamily: A.font, padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
+                        background: bookingView === mode ? A.gold : 'transparent',
+                        color: bookingView === mode ? '#0F1110' : A.muted,
+                      }}
+                    >
+                      {mode === 'timeline' ? 'Timeline' : 'By supplier'}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {bookings.map(b => (
-                  <BookingRow key={b.id} booking={b} platforms={platforms} partners={partners} onUpdated={load} />
-                ))}
-              </div>
+              {bookingView === 'timeline' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {sortBookingsTimeline(bookings).map(b => (
+                    <BookingRow key={b.id} booking={b} platforms={platforms} partners={partners} onUpdated={load} />
+                  ))}
+                </div>
+              )}
+              {bookingView === 'supplier' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  {groupBookingsBySupplier(bookings).map(group => (
+                    <div key={group.supplier} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 6, borderBottom: `1px solid ${A.border}` }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: A.text, fontFamily: A.font }}>{group.supplier}</span>
+                        <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>
+                          {group.count} {group.count === 1 ? 'booking' : 'bookings'} · {usdDec(group.totalCommissionableUsd)} · net {usdDec(group.totalNetUsd)}
+                        </span>
+                      </div>
+                      {group.bookings.map(b => (
+                        <BookingRow key={b.id} booking={b} platforms={platforms} partners={partners} onUpdated={load} />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
