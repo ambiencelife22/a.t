@@ -388,6 +388,7 @@ export async function createEngagement(input: CreateEngagementInput = {}): Promi
     engagement:             input.engagement ?? {},
     engagementStatusSlug: input.engagementStatusSlug,
     itineraryStatusSlug:  input.itineraryStatusSlug,
+    houseId:              input.houseId,
   })
   return row
 }

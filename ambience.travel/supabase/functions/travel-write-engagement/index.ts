@@ -239,26 +239,24 @@ Deno.serve(async (req: Request) => {
       const nextSort = (maxRow?.sort_order ?? -1) + 1
 
       const base = pickEditable(input)
-
+      const houseId = (body?.house_id as string) ?? null
+      if (!houseId) return json({ error: 'house_id is required to create an engagement' }, 400)
       // Generate a unique url_id, retry on collision (UNIQUE constraint).
       let lastErr: unknown = null
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = generateUrlId()
+        const engagement = {
+          ...base,
+          url_id:               candidate,
+          engagement_status_id: engId,
+          itinerary_status_id:  itinId,
+          sort_order:           nextSort,
+        }
         const { data, error } = await serviceClient
-          .from('travel_engagements')
-          .insert({
-            ...base,
-            url_id:               candidate,
-            engagement_status_id: engId,
-            itinerary_status_id:  itinId,
-            sort_order:           nextSort,
-          })
+          .rpc('create_engagement_with_house', { p_engagement: engagement, p_house_id: houseId })
           .select('*')
           .single()
-
         if (!error && data) return json({ row: data })
-
-        // 23505 = unique_violation; only retry if it's the url_id collision.
         if (error && (error as { code?: string }).code === '23505') { lastErr = error; continue }
         console.error('create_engagement error:', error)
         return json({ error: 'Failed to create engagement' }, 500)

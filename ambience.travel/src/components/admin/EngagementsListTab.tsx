@@ -80,6 +80,7 @@ import {
 } from './_adminPrimitives'
 import type { EngagementStatusSlug, ItineraryStatusSlug } from '../../types/typesImmerse'
 import EngagementCreateModal from './EngagementCreateModal'
+import { fetchHouses } from '../../queries/queriesAdminHouse'
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 
@@ -936,10 +937,18 @@ function CreateModal({
   const [engagementStatusId, setEngagementStatusId] = useState(newRequestStatus?.id ?? '')
   const [itineraryStatusId,  setItineraryStatusId]  = useState(draftStatus?.id ?? '')
   const [saving, setSaving]                         = useState(false)
-
+  const [houseId, setHouseId]                       = useState('')
+  const [houses, setHouses]                         = useState<{ id: string; label: string }[]>([])
+  
+  useEffect(() => {
+    fetchHouses()
+      .then(hs => setHouses(hs.map(h => ({ id: h.id, label: h.displayName ?? h.aHouseId }))))
+      .catch(() => {})
+  }, [])
   async function handleCreate() {
     if (!title.trim())                            { error('Title is required.');        return }
-    if (!engagementStatusId || !itineraryStatusId) { error('Statuses are required.');   return }
+    if (!engagementStatusId || !itineraryStatusId) { error('Statuses are required.');   return}
+    if (!houseId)                                  { error('A house is required.');      return}
     setSaving(true)
     try {
       // EF generates url_id + sort_order and seeds statuses by slug.
@@ -956,6 +965,7 @@ function CreateModal({
         },
         engagementStatusSlug: engSlug as EngagementStatusSlug | undefined,
         itineraryStatusSlug:  itSlug as ItineraryStatusSlug | undefined,
+        houseId,
       })
       success('Engagement created.')
       onCreated(created.urlId ?? '')
@@ -1002,6 +1012,13 @@ function CreateModal({
             <label style={labelStyle}>Itinerary Status</label>
             <select style={inputStyle} value={itineraryStatusId} onChange={e => setItineraryStatusId(e.target.value)}>
               {itineraryStatuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>House</label>
+            <select style={inputStyle} value={houseId} onChange={e => setHouseId(e.target.value)}>
+              <option value=''>Select a house...</option>
+              {houses.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
             </select>
           </div>
         </div>

@@ -617,6 +617,7 @@ export interface CreateEngagementInput {
   engagement?:             EngagementPatch
   engagementStatusSlug?: EngagementStatusSlug   // default 'requested'
   itineraryStatusSlug?:  ItineraryStatusSlug    // default 'draft'
+  houseId?:                string                 // required: enforced by DB trigger + EF
 }
 
 export interface ReorderItem {
