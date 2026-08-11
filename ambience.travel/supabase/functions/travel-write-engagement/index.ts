@@ -58,7 +58,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'
-import { snakeizeKeys } from '../_shared/camelize.ts'
+import { camelizeKeys, snakeizeKeys } from '../_shared/camelize.ts'
 
 
 type WriteMode =
@@ -150,7 +150,11 @@ Deno.serve(async (req: Request) => {
 
   try {
     // ── 1. Parse request ─────────────────────────────────────────────────────
-    const body = await req.json().catch(() => ({}))
+    const rawBody = await req.json().catch(() => ({}))
+    // Camelize the incoming body so every handler reads camel, matching the read
+    // mirror (travel-read-engagement-admin). Idempotent + backward-compatible:
+    // snake input still converts, camel input passes through. Frontend sends camel.
+    const body = camelizeKeys<Record<string, unknown>>(rawBody)
     const mode = body?.mode as WriteMode | undefined
     if (!mode) return json({ error: 'mode is required' }, 400)
 
@@ -223,8 +227,8 @@ Deno.serve(async (req: Request) => {
       const input = (body?.engagement as Record<string, unknown>) ?? {}
 
       // Seed statuses (S53G canon): requested / draft.
-      const engStatusSlug = (body?.engagement_status_slug as string) ?? 'requested'
-      const itinStatusSlug = (body?.itinerary_status_slug as string) ?? 'draft'
+      const engStatusSlug = (body?.engagementStatusSlug as string) ?? 'requested'
+      const itinStatusSlug = (body?.itineraryStatusSlug as string) ?? 'draft'
       const [engId, itinId] = await Promise.all([
         engagementStatusId(engStatusSlug),
         itineraryStatusId(itinStatusSlug),
@@ -239,7 +243,7 @@ Deno.serve(async (req: Request) => {
       const nextSort = (maxRow?.sort_order ?? -1) + 1
 
       const base = pickEditable(input)
-      const houseId = (body?.house_id as string) ?? null
+      const houseId = (body?.houseId as string) ?? null
       if (!houseId) return json({ error: 'house_id is required to create an engagement' }, 400)
       // Generate a unique url_id, retry on collision (UNIQUE constraint).
       let lastErr: unknown = null
@@ -343,7 +347,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'set_visibility') {
       const id = body?.id as string | undefined
-      const publicView = body?.public_view
+      const publicView = body?.publicView
       if (!id || typeof publicView !== 'boolean') {
         return json({ error: 'id and public_view (boolean) are required' }, 400)
       }
@@ -363,7 +367,7 @@ Deno.serve(async (req: Request) => {
       // it DOES resolve, proposal content vs the "ask your travel designer"
       // archived fallback. 'active' | 'archived'.
       const id = body?.id as string | undefined
-      const visibility = body?.proposal_visibility as string | undefined
+      const visibility = body?.proposalVisibility as string | undefined
       if (!id || (visibility !== 'active' && visibility !== 'archived')) {
         return json({ error: "id and proposal_visibility ('active'|'archived') are required" }, 400)
       }
@@ -406,7 +410,7 @@ Deno.serve(async (req: Request) => {
     if (mode === 'archive') {
       const id = body?.id as string | undefined
       // terminal engagement slug: 'cancelled' | 'closed_lost' (default cancelled)
-      const terminalSlug = (body?.engagement_slug as string) ?? 'cancelled'
+      const terminalSlug = (body?.engagementSlug as string) ?? 'cancelled'
       if (!id) return json({ error: 'id is required' }, 400)
       if (terminalSlug !== 'cancelled' && terminalSlug !== 'closed_lost') {
         return json({ error: `archive engagement_slug must be cancelled|closed_lost` }, 400)
@@ -473,7 +477,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'reassign_trip') {
       const id         = body?.id as string | undefined
-      const new_trip_id = (body?.trip_id as string | null) ?? null
+      const new_trip_id = (body?.tripId as string | null) ?? null
       if (!id) return json({ error: 'id is required' }, 400)
 
       const { error } = await serviceClient
@@ -874,11 +878,11 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await serviceClient
         .from('travel_overlay_rooms')
         .insert({
-          engagement_id: body.engagement_id,
-          room_id:       body.room_id ?? null,
-          level_label:   body.level_label ?? null,
-          sort_order:    body.sort_order,
-          is_active:     body.is_active,
+          engagement_id: body.engagementId,
+          room_id:       body.roomId ?? null,
+          level_label:   body.levelLabel ?? null,
+          sort_order:    body.sortOrder,
+          is_active:     body.isActive,
         })
         .select('id').single()
       if (error) return json({ error: 'Failed to create overlay room' }, 500)
