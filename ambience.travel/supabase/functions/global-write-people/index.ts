@@ -5,10 +5,10 @@
 //
 // Canonical write layer for the cross-product person spine. Pairs with
 // global-read-people. Admin-only. global_people is FK'd by passengers,
-// house-people, grants, and team — this is the single write path.
+// house-people, grants, and team - this is the single write path.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - global_people written only via service role here. Never anon.
 //   - SERVICE_ROLE_KEY env var (S66F canon).
@@ -26,33 +26,38 @@
 //                         of the editable fields above. Only provided fields
 //                         are written (no clobber-with-undefined).
 //
-// Editable field allowlist (writes restricted to these — never id/timestamps):
+// Editable field allowlist (writes restricted to these - never id/timestamps):
 //   first_name, last_name, nickname, email, phone, notes, last_initial,
 //   is_public_display, over_18_confirmed_at
 //
 // Person shape returned: full row via PERSON_SELECT (matches global-read-people).
 //
 // Deployed at: /functions/v1/global-write-people
-// Last updated: S54c — initial ship.
+// Last updated: S54c - initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, json, preflight } from '../_shared/http.ts'
+import { preflight, corsHeaders } from '../_shared/http.ts'
 
 
-const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, pronouns, nickname, email, last_initial, is_public_display, over_18_confirmed_at'
+const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, pronouns, nickname, email, business_phone, personal_phone, last_initial, is_public_display, over_18_confirmed_at'
 
-// Editable columns — the only fields a write may touch. id + timestamps excluded.
+// Editable columns - the only fields a write may touch. id + timestamps excluded.
 const EDITABLE_FIELDS = [
   'first_name', 'middle_name', 'last_name', 'father_name', 'grandfather_name',
-  'patronymic_connector', 'pronouns', 'nickname', 'email', 'phone', 'notes',
+  'patronymic_connector', 'pronouns', 'nickname', 'email', 'business_phone', 'personal_phone', 'notes',
   'last_initial', 'is_public_display', 'over_18_confirmed_at',
 ] as const
 
 // Pull only allowlisted fields that were actually provided (not undefined).
+// The client sends a single 'phone'; map it to personal_phone (the real column).
 function pickEditable(src: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = { ...src }
+  if (normalized.phone !== undefined && normalized.personal_phone === undefined) {
+    normalized.personal_phone = normalized.phone
+  }
   const out: Record<string, unknown> = {}
   for (const k of EDITABLE_FIELDS) {
-    if (src[k] !== undefined) out[k] = src[k]
+    if (normalized[k] !== undefined) out[k] = normalized[k]
   }
   return out
 }
@@ -63,20 +68,21 @@ function shapePerson(p: any) {
     [p.first_name, p.last_name].filter(Boolean).join(' ') ||
     'Person'
   return {
-    id:                   p.id,
-    first_name:           p.first_name ?? null,
-    middle_name:          p.middle_name ?? null,
-    last_name:            p.last_name ?? null,
-    father_name:          p.father_name ?? null,
-    grandfather_name:     p.grandfather_name ?? null,
-    patronymic_connector: p.patronymic_connector ?? null,
-    pronouns:             p.pronouns ?? null,
-    nickname:             p.nickname ?? null,
-    email:                p.email ?? null,
-    last_initial:         p.last_initial ?? null,
-    is_public_display:    p.is_public_display ?? false,
-    over_18_confirmed_at: p.over_18_confirmed_at ?? null,
-    display_name:         display,
+    id:                  p.id,
+    firstName:           p.first_name ?? null,
+    middleName:          p.middle_name ?? null,
+    lastName:            p.last_name ?? null,
+    fatherName:          p.father_name ?? null,
+    grandfatherName:     p.grandfather_name ?? null,
+    patronymicConnector: p.patronymic_connector ?? null,
+    pronouns:            p.pronouns ?? null,
+    nickname:            p.nickname ?? null,
+    email:               p.email ?? null,
+    phone:               p.personal_phone ?? p.business_phone ?? null,
+    lastInitial:         p.last_initial ?? null,
+    isPublicDisplay:     p.is_public_display ?? false,
+    over18ConfirmedAt:   p.over_18_confirmed_at ?? null,
+    displayName:         display,
   }
 }
 
