@@ -139,11 +139,10 @@ for (const t of tripRows) {
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
     .select('id, journey_id, house_id, engagement_id, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, board_basis_id, payment_terms_id, pricing_basis_id, rate_label_id, board_basis:travel_board_bases!board_basis_id(display_name), payment_terms:travel_payment_terms!payment_terms_id(display_name), pricing_basis:travel_pricing_bases!pricing_basis_id(display_name), rate_label:travel_rate_labels!rate_label_id(display_name, client_visible), inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, net_revenue, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
-    .eq('house_id', houseId)
+    .in('journey_id', journeyIds)
     .order('start_date', { ascending: true, nullsFirst: false })
     .order('end_date',   { ascending: true, nullsFirst: false })
     .order('id',         { ascending: true })
-
   if (bookErr) return err('Failed to fetch booking details', 500)
   const bookingRows = (bookData ?? []) as Record<string, unknown>[]
 
@@ -813,7 +812,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json()
-    const { mode, house_id, journey_id, booking_id, node_id, category, range_start, range_end, programme_id, query } = body as {
+    const { mode, house_id, journey_id, booking_id, node_id, category, range_start, range_end } = body as {
       mode:           string | undefined
       house_id?:      string
       journey_id?:       string
@@ -822,8 +821,6 @@ Deno.serve(async (req: Request) => {
       category?:      string
       range_start?:   string
       range_end?:     string
-      programme_id?:  string
-      query?:         string
     }
 
     if (!mode) return err('mode is required', 400)
