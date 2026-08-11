@@ -28,6 +28,7 @@ import {
   commissionTriad,
 } from '../_shared/expenses.ts'
 import { fetchHotelsByIds, fetchSplitsByBooking } from '../_shared/bookings.ts'
+import { camelizeKeys } from '../_shared/camelize.ts'
 import { attachRoomGuests } from '../_shared/names.ts'
 
 type Mode = 'by_engagement' | 'by_engagement_full' | 'by_destination' | 'summary' | 'pipeline'
@@ -233,7 +234,7 @@ Deno.serve(async (req: Request) => {
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, commission_payment_fee_amt, cost, currency, total_rate_usd, total_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
+          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, commission_payment_fee_amt, cost, currency, total_rate_usd, total_rate, commissionable_rate_usd, commissionable_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
           .in('engagement_id', engIds),
         db.from('travel_engagement_expenses')
           .select('engagement_id, total_amount, total_amount_usd, billing_status')
@@ -260,6 +261,7 @@ Deno.serve(async (req: Request) => {
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
+        const commissionable_value = bs.reduce((s, b) => s + ((b.commissionable_rate_usd ?? b.commissionable_rate ?? 0) as number), 0)
         const total_absorbed      = es.filter(x => x.billing_status === 'absorbed' || x.billing_status === 'written_off').reduce((s, x) => s + _eamt(x), 0) + total_amenities
         const total_billable      = es.filter(x => x.billing_status === 'billable').reduce((s, x) => s + _eamt(x), 0)
         const total_outstanding   = es.filter(x => x.billing_status === 'billed').reduce((s, x) => s + _eamt(x), 0)
@@ -277,12 +279,12 @@ Deno.serve(async (req: Request) => {
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,
           commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0),
-          total_rate, total_amenities, total_net_revenue,
+          total_rate, commissionable_value, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
           total_commission_native, currency,
         }
       })
-      return json({ trips })
+      return json({ trips: camelizeKeys(trips) })
     }
 
     return json({ error: `Unknown mode: ${mode}` }, 400)

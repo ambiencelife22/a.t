@@ -11,7 +11,8 @@
 import { useEffect, useState } from 'react'
 import { A } from '../../tokens/tokensAdmin'
 import { navigateAdmin } from '../../utils/utilsAdminPath'
-import { fetchPipeline, type PipelineTrip } from '../../queries/queriesAdminFinance'
+import { fetchPipeline } from '../../queries/queriesAdminFinance'
+import type { PipelineTrip } from '../../types/typesAdminFinance'
 import { formatDateShortRange } from '../../utils/utilsDates'
 import { money, money as usd } from '../../utils/utilsCurrency'
 
@@ -281,7 +282,10 @@ export default function StudioDashboard() {
   const closedWonReceived   = closedWon.reduce((s, e) => s + e.commissionReceived, 0)
   // Sales This Year = total trip value transacted in FY2026, ALL statuses (active +
   // closed + awaiting). This is cumulative business volume, not just closed deals.
-  const salesThisYear = data
+  const salesNetOfTax = data
+    .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
+    .reduce((s, e) => s + (e.commissionableValue ?? 0), 0)
+  const salesTotalInclTax = data
     .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
     .reduce((s, e) => s + (e.totalRate ?? 0), 0)
   // Net margin EXPECTED across the same all-status FY2026 set - scope-matched to
@@ -317,7 +321,7 @@ export default function StudioDashboard() {
 
       {/* Money strip - active only */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
-        <Kpi label={`Sales This Year - FY${FISCAL_YEAR_START.slice(0, 4)}`} value={usd(salesThisYear)} accent={A.gold} />
+        <Kpi label={`Sales This Year - FY${FISCAL_YEAR_START.slice(0, 4)}`} value={usd(salesNetOfTax)} sub={`${usd(salesTotalInclTax)} total incl. tax`} accent={A.gold} />
         <Kpi label='Net Margin'             value={usd(marginThisYear)}     sub='expected, after shares and fees' color='#4ade80' accent='#4ade80' />
         <Kpi label='Commission Outstanding' value={usd(totalOutstanding)}   color={totalOutstanding > 0 ? '#FBBF24' : A.text} accent={totalOutstanding > 0 ? '#FBBF24' : undefined} />
         <Kpi label='Pipeline Value'         value={usd(totalValue)}         accent={A.gold} />
