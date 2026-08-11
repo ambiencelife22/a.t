@@ -292,6 +292,12 @@ Deno.serve(async (req: Request) => {
         .update({ engagement_status_id: statusId }).eq('id', id)
       if (error) {
         console.error('set_engagement_status error:', error)
+        // P0001: the commission guard (cannot Closed Won with outstanding commission).
+        // Surface as a clean 409 the UI shows as a toast, not a 500.
+        const code = (error as { code?: string }).code
+        if (code === 'P0001') {
+          return json({ error: 'Cannot mark \'Closed Won\' with commissions outstanding' }, 409)
+        }
         return json({ error: 'Failed to set engagement status' }, 500)
       }
       return json({ row: await rowById(id) })

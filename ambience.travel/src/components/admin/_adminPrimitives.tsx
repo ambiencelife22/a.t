@@ -141,6 +141,7 @@ const STATUS_CONFIG: Record<EngagementStatusSlug, { bg: string; color: string; b
   confirmed:    { bg: 'rgba(74,222,128,0.10)',  color: '#4ade80',  border: 'rgba(74,222,128,0.25)'  },
   paid:         { bg: 'rgba(74,222,128,0.14)',  color: '#4ade80',  border: 'rgba(74,222,128,0.3)'   },
   in_service:   { bg: 'rgba(45,212,191,0.10)',  color: '#2dd4bf',  border: 'rgba(45,212,191,0.25)'  },
+  awaiting_commission: { bg: 'rgba(251,191,36,0.10)', color: '#FBBF24', border: 'rgba(251,191,36,0.28)' },
   closed_won:   { bg: 'rgba(74,222,128,0.06)',  color: '#86efac',  border: 'rgba(74,222,128,0.15)'  },
   cancelled:    { bg: 'rgba(248,113,113,0.10)', color: '#f87171',  border: 'rgba(248,113,113,0.25)' },
   closed_lost:  { bg: 'rgba(248,113,113,0.06)', color: '#fca5a5',  border: 'rgba(248,113,113,0.15)' },

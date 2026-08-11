@@ -146,6 +146,14 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   // ACTUAL governs once received: net revenue = received (USD) - fee (USD).
   // Makes the engagement rollup reflect real money in the bank.
   if (b.commission_paid_at != null && b.commission_received_amount != null) {
+    // ACTUAL governs once received. Net = gross minus typed deductions, owned by
+    // travel_commission_deductions and trigger-written to commission_net_received.
+    // Prefer the derived net; fall back to gross - fee_amt only for legacy receipts
+    // recorded before the deductions model (no deduction rows, net not yet derived).
+    const netUsd = b.commission_net_received_usd as number | null
+    const net    = b.commission_net_received as number | null
+    if (netUsd != null) return Math.round(netUsd * 100) / 100
+    if (net != null)    return Math.round((net * fx) * 100) / 100
     const recv = (b.commission_received_amount as number)
     const fee  = (b.commission_payment_fee_amt ?? 0) as number
     return Math.round((recv - fee) * 100) / 100
@@ -201,32 +209,52 @@ export function computeExpectedCommission(b: Record<string, unknown>): number {
   const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
   return Math.round((commAmt - referral - iata - indiv) * 100) / 100
 }
-// Expected / Actual / Variance for a booking, all USD. Single-source.
-// expected = the claim (twin ?? native x fx ?? gross). actual = received - fee,
-// only once paid. variance = actual - expected (negative = erosion: FX/bank/fees).
+// Commission truth for a booking, all USD. Single-source, three separate facts.
+// Fees are a COST OF COLLECTION, never a shortfall against what we were owed, so
+// they are NOT charged against variance. Variance measures REMITTANCE ACCURACY only:
+// did the payer remit the commission we were owed?
+//   expected_net_usd     = the claim (commission owed): commission_amount_usd
+//   gross_received_usd    = what was remitted (before deductions)
+//   variance_usd          = gross_received - expected  (0/+ healthy; - = underpaid)
+//   deductions_usd        = SUM of typed travel_commission_deductions (cost of collection)
+//   actual_net_usd        = what landed = gross - deductions (= commission_net_received)
+// deductions never touch variance; they are their own itemized fact.
 export function commissionTriad(b: Record<string, unknown>): {
-  expected_net_usd: number
-  actual_net_usd:   number | null
-  variance_usd:     number | null
-  variance_pct:     number | null
+  expected_net_usd:  number
+  gross_received_usd: number | null
+  deductions_usd:    number | null
+  actual_net_usd:    number | null
+  variance_usd:      number | null
+  variance_pct:      number | null
 } {
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
   const commNat = (b.commission_amount ?? 0) as number
   const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
+  // EXPECTED = the claim (commission owed).
+  const expected_net_usd = commAmt
+  const paid = b.commission_paid_at != null && b.commission_received_amount != null
+  if (!paid) {
+    return { expected_net_usd, gross_received_usd: null, deductions_usd: null,
+             actual_net_usd: null, variance_usd: null, variance_pct: null }
+  }
+  // GROSS remitted (native received x fx to USD).
+  const grossNat = b.commission_received_amount as number
+  const gross_received_usd = Math.round(grossNat * fx * 100) / 100
+  // NET landed = deductions-derived commission_net_received(_usd); legacy fallback
+  // to gross - fee_amt for receipts predating the deductions model.
   const netRecvUsd = b.commission_net_received_usd as number | null
   const netRecv    = b.commission_net_received as number | null
-  const expected_net_usd = netRecvUsd != null ? netRecvUsd
-                         : netRecv != null    ? Math.round(netRecv * fx * 100) / 100
-                         : commAmt
-  const paid = b.commission_paid_at != null && b.commission_received_amount != null
-  const actual_net_usd = paid
-    ? Math.round(((b.commission_received_amount as number) - ((b.commission_payment_fee_amt ?? 0) as number)) * 100) / 100
-    : null
-  const variance_usd = actual_net_usd != null ? Math.round((actual_net_usd - expected_net_usd) * 100) / 100 : null
-  const variance_pct = (variance_usd != null && expected_net_usd !== 0)
+  const actual_net_usd = netRecvUsd != null ? Math.round(netRecvUsd * 100) / 100
+    : netRecv != null ? Math.round(netRecv * fx * 100) / 100
+    : Math.round((grossNat - ((b.commission_payment_fee_amt ?? 0) as number)) * fx * 100) / 100
+  // DEDUCTIONS = gross - net (cost of collection). Own fact, never in variance.
+  const deductions_usd = Math.round((gross_received_usd - actual_net_usd) * 100) / 100
+  // VARIANCE = remittance accuracy: gross vs owed. Fees excluded by construction.
+  const variance_usd = Math.round((gross_received_usd - expected_net_usd) * 100) / 100
+  const variance_pct = expected_net_usd !== 0
     ? Math.round((variance_usd / expected_net_usd) * 10000) / 100
     : null
-  return { expected_net_usd, actual_net_usd, variance_usd, variance_pct }
+  return { expected_net_usd, gross_received_usd, deductions_usd, actual_net_usd, variance_usd, variance_pct }
 }
 
 // Flattens the travel_accom_hotels join into _standard_checkin_time and

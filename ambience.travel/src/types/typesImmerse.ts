@@ -22,11 +22,13 @@ export type EngagementStatusSlug =
     | 'confirmed'
     | 'paid'
     | 'in_service'
+    | 'awaiting_commission'
     | 'closed_won'
     | 'cancelled'
     | 'closed_lost'
 
 export type ItineraryStatusSlug =
+  | 'not_used'
   | 'draft'
   | 'initial_proposal'
   | 'refined_proposal'
@@ -269,6 +271,7 @@ export function computeEngagementStage(input: EngagementStageInputs): Engagement
     case 'confirmed':
     case 'paid':
     case 'in_service':
+    case 'awaiting_commission':
       return 'delivery'
 
     case 'quoted':
