@@ -181,7 +181,7 @@ Deno.serve(async (req: Request) => {
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, commission_payment_fee_amt, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
+          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_net_received_usd, commission_received_amount, commission_payment_fee_amt, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
           .eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses')
           .select('total_amount, total_amount_usd, billing_status')
@@ -258,6 +258,10 @@ Deno.serve(async (req: Request) => {
         const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
         const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0)
+        // Realized = actual net receipts only. commission_net_received_usd is the
+        // deductions-derived amount that truly landed, net of broker split. A
+        // booking without it is NOT realized (no estimate, no gross fallback).
+        const realized_received   = bs.reduce((s, b) => s + ((b.commission_net_received_usd ?? 0) as number), 0)
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
@@ -279,7 +283,7 @@ Deno.serve(async (req: Request) => {
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,
           commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0),
-          total_rate, commissionable_value, total_amenities, total_net_revenue,
+          total_rate, commissionable_value, realized_received, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
           total_commission_native, currency,
         }

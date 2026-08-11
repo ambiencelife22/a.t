@@ -292,7 +292,7 @@ export default function StudioDashboard() {
   // FY-scoped. The banked figure beside the expected marginThisYear forecast.
   const profitRealized = data
     .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
-    .reduce((s, e) => s + (e.commissionReceived ?? 0), 0)
+    .reduce((s, e) => s + (e.realizedReceived ?? 0), 0)
   // Net margin EXPECTED across the same all-status FY2026 set - scope-matched to
   // salesThisYear (all sales -> all expected margin). Closed-only figures live in
   // the Closed Won section (closed sales -> closed margin), never mixed here.

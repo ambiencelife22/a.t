@@ -95,6 +95,7 @@ export type PipelineTrip = {
   commissionOutstanding:    number
   totalRate:              number | null
   commissionableValue:    number
+  realizedReceived:       number
   totalAmenities:         number
   totalAbsorbed:          number
   totalBillable:          number
