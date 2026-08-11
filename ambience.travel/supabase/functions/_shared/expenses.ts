@@ -152,11 +152,15 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
     // recorded before the deductions model (no deduction rows, net not yet derived).
     const netUsd = b.commission_net_received_usd as number | null
     const net    = b.commission_net_received as number | null
-    if (netUsd != null) return Math.round(netUsd * 100) / 100
-    if (net != null)    return Math.round((net * fx) * 100) / 100
-    const recv = (b.commission_received_amount as number)
-    const fee  = (b.commission_payment_fee_amt ?? 0) as number
-    return Math.round((recv - fee) * 100) / 100
+    const paidBase = netUsd != null ? netUsd
+                   : net != null    ? (net * fx)
+                   : ((b.commission_received_amount as number) - ((b.commission_payment_fee_amt ?? 0) as number))
+    // DOWNSTREAM splits (ambience's own payouts, e.g. a referral partner's 90%)
+    // must come out of the paid net too - the money passed through, was never ours.
+    // Upstream is already baked into net_received; never re-subtract.
+    const paidSplits = b._splits as CommissionSplit[] | undefined
+    const paidDownstream = (paidSplits && paidSplits.length > 0) ? sumDownstream(paidSplits) : 0
+    return Math.round((paidBase - paidDownstream) * 100) / 100
   }
   // EXPECTED until received. Prefer the stored USD twin (sticky override),
   // else expected-net native x fx, else gross (direct: no split).
