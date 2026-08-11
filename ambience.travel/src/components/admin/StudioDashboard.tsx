@@ -275,6 +275,15 @@ export default function StudioDashboard() {
   const totalReceived    = active.reduce((s, e) => s + e.commissionReceived, 0)
   const totalOutstanding = active.reduce((s, e) => s + e.commissionOutstanding, 0)
   const totalMargin      = active.reduce((s, e) => s + e.netMargin, 0)
+  // Closed Won (fiscal year) - realized business. Net margin is ambience's real
+  // earned money; total_commission (gross) is demoted (partner shares were never ours).
+  const closedWonMargin     = closedWon.reduce((s, e) => s + e.netMargin, 0)
+  const closedWonReceived   = closedWon.reduce((s, e) => s + e.commissionReceived, 0)
+  // Sales This Year = total trip value transacted in FY2026, ALL statuses (active +
+  // closed + awaiting). This is cumulative business volume, not just closed deals.
+  const salesThisYear = data
+    .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
+    .reduce((s, e) => s + (e.totalRate ?? 0), 0)
 
   const closedSorted = [...closedWon].sort((a, b) => {
     if (closedSort === 'startDate')     return (a.startDate ?? '').localeCompare(b.startDate ?? '')
@@ -302,10 +311,11 @@ export default function StudioDashboard() {
 
       {/* Money strip - active only */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
-        <Kpi label='Pipeline Value'         value={usd(totalValue)}         accent={A.gold} />
-        <Kpi label='Total Commission'       value={usd(totalCommission)}    sub={`${usd(totalReceived)} received`} accent={A.gold} />
+        <Kpi label='Net Margin'             value={usd(totalMargin)}        sub='after shares, fees, absorbed' color={totalMargin >= 0 ? '#4ade80' : '#ef4444'} accent={totalMargin >= 0 ? '#4ade80' : '#ef4444'} />
+        <Kpi label={`Sales This Year - FY${FISCAL_YEAR_START.slice(0, 4)}`} value={usd(salesThisYear)} sub={`${usd(closedWonMargin)} net margin realized`} accent={A.gold} />
+        <Kpi label='Commission Received'    value={usd(totalReceived)}      color='#4ade80' />
         <Kpi label='Commission Outstanding' value={usd(totalOutstanding)}   color={totalOutstanding > 0 ? '#FBBF24' : A.text} accent={totalOutstanding > 0 ? '#FBBF24' : undefined} />
-        <Kpi label='Net Margin'             value={usd(totalMargin)}        color={totalMargin >= 0 ? '#4ade80' : '#ef4444'} accent={totalMargin >= 0 ? '#4ade80' : '#ef4444'} />
+        <Kpi label='Pipeline Value'         value={usd(totalValue)}         accent={A.gold} />
         <Kpi label='Active Engagements'     value={String(active.length)} />
       </div>
 

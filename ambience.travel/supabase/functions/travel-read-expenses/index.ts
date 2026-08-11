@@ -115,7 +115,10 @@ Deno.serve(async (req: Request) => {
       const total_commission          = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected   = bookings.reduce((s, b) => s + computeExpectedCommission(b), 0)
       const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
-      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_received_amount ?? 0) as number) - ((b.commission_payment_fee_amt ?? 0) as number)), 0)
+      // NET received/outstanding: computeNetRevenue is the single source (partner
+      // shares + downstream splits aware). Received + outstanding reconcile to
+      // total_net_revenue by construction. commission_payment_fee_amt (legacy) retired.
+      const commission_received       = bookings.filter(b => b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_net_revenue         = bookings.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_rate          = bookings.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
       const total_amenities     = bookings.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
@@ -140,7 +143,7 @@ Deno.serve(async (req: Request) => {
         total_commission,
         net_commission_expected,
         commission_received,
-        commission_outstanding: bookings.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeExpectedCommission(b), 0),
+        commission_outstanding: bookings.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0),
         total_rate,
         total_amenities,
         total_net_revenue,
@@ -195,7 +198,7 @@ Deno.serve(async (req: Request) => {
       const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
       const _fxr = (b: Record<string, unknown>) => { const n = (b.commission_amount ?? 0) as number; return (n && b.commission_amount_usd) ? ((b.commission_amount_usd as number) / n) : 1 }
-      const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_received_amount ?? 0) as number) - ((b.commission_payment_fee_amt ?? 0) as number)), 0)
+      const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_net_revenue       = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
       const total_absorbed      = es.filter(e => e.billing_status === 'absorbed' || e.billing_status === 'written_off').reduce((s, e) => s + _eamt(e), 0)
       const total_billable      = es.filter(e => e.billing_status === 'billable').reduce((s, e) => s + _eamt(e), 0)
@@ -203,7 +206,7 @@ Deno.serve(async (req: Request) => {
 
       return json({ summary: {
         total_commission, net_commission_expected, commission_received,
-        commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeExpectedCommission(b), 0),
+        commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0),
         total_net_revenue, total_absorbed, total_billable, total_outstanding,
         net_margin: total_net_revenue - total_absorbed,
       }})
@@ -219,7 +222,7 @@ Deno.serve(async (req: Request) => {
         .order('created_at', { ascending: false })
       if (engErr) { console.error(engErr); return json({ error: 'Failed to fetch pipeline' }, 500) }
 
-      const confirmedSlugs = new Set(['confirmed', 'paid', 'in_service'])
+      const confirmedSlugs = new Set(['confirmed', 'paid', 'in_service', 'awaiting_commission', 'closed_won'])
       const confirmed = ((engRows ?? []) as Array<Record<string, unknown>>).filter(e => {
         const s = e.travel_lifecycle_statuses as { slug: string } | { slug: string }[] | null
         const slug = Array.isArray(s) ? s[0]?.slug : s?.slug
@@ -253,7 +256,7 @@ Deno.serve(async (req: Request) => {
 
         const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
-        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + (((b.commission_received_amount ?? 0) as number) - ((b.commission_payment_fee_amt ?? 0) as number)), 0)
+        const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
@@ -273,7 +276,7 @@ Deno.serve(async (req: Request) => {
           journey_code: trip?.journey_code ?? null, start_date: trip?.start_date ?? null,
           end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
           total_commission, net_commission_expected, commission_received,
-          commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeExpectedCommission(b), 0),
+          commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0),
           total_rate, total_amenities, total_net_revenue,
           total_absorbed, total_billable, total_outstanding, net_margin,
           total_commission_native, currency,
