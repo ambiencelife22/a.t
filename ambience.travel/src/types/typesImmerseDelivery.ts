@@ -125,21 +125,6 @@ export type EngagementClientData =
       engagement: ImmerseEngagementData
       bundle:     DeliveryBundle  // delivery render payload, fetched once at the route resolver
     }
-// ── Stage resolution ──────────────────────────────────────────────────────────
-// Maps lifecycle status slugs to the two render arms.
-// Any status not in CONFIRMED_SLUGS falls back to proposal.
-
-const CONFIRMED_SLUGS = new Set([
-  'confirmed',
-  'paid',
-  'in_service',
-  'closed_won',
-])
-
-export function resolveStage(statusSlug: string | null | undefined): EngagementClientStage {
-  if (!statusSlug) return 'proposal'
-  return CONFIRMED_SLUGS.has(statusSlug) ? 'delivery' : 'proposal'
-}
 
 // ── Type guards ───────────────────────────────────────────────────────────────
 
