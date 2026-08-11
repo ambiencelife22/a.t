@@ -3,7 +3,7 @@
 // Edge Function: global-read-people
 // Reads the canonical person registry (global_people).
 //
-// global_people is a CROSS-PRODUCT entity — the canonical person spine that
+// global_people is a CROSS-PRODUCT entity - the canonical person spine that
 // passengers (travel_engagement_passengers.person_id), house-people
 // (a_house_people.person_id), grants, and team all FK to. This EF is its
 // canonical client access layer. First consumers: the house-person link
@@ -15,7 +15,7 @@
 // be migrated onto this layer.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - global_people read only via service role here. Never anon.
@@ -36,13 +36,13 @@
 //   display_name resolved server-side: nickname || "first last" || "Person".
 //
 // Deployed at: /functions/v1/global-read-people
-// Last updated: S54c — initial ship.
+// Last updated: S54c - initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders, json, preflight } from '../_shared/http.ts'
+import { json, preflight } from '../_shared/http.ts'
 
 
-const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, pronouns, nickname, email, phone, last_initial'
+const PERSON_SELECT = 'id, first_name, middle_name, last_name, father_name, grandfather_name, patronymic_connector, pronouns, nickname, email, business_phone, personal_phone, last_initial'
 
 // Flatten + resolve display_name. Mirrors the team EF's shapeMember pattern.
 function shapePerson(p: any) {
@@ -51,19 +51,21 @@ function shapePerson(p: any) {
     [p.first_name, p.last_name].filter(Boolean).join(' ') ||
     'Person'
   return {
-    id:                   p.id,
-    first_name:           p.first_name ?? null,
-    middle_name:          p.middle_name ?? null,
-    last_name:            p.last_name ?? null,
-    father_name:          p.father_name ?? null,
-    grandfather_name:     p.grandfather_name ?? null,
-    patronymic_connector: p.patronymic_connector ?? null,
-    pronouns:             p.pronouns ?? null,
-    nickname:             p.nickname ?? null,
-    email:                p.email ?? null,
-    phone:                p.phone ?? null,
-    last_initial:         p.last_initial ?? null,
-    display_name:         display,
+    id:                  p.id,
+    firstName:           p.first_name ?? null,
+    middleName:          p.middle_name ?? null,
+    lastName:            p.last_name ?? null,
+    fatherName:          p.father_name ?? null,
+    grandfatherName:     p.grandfather_name ?? null,
+    patronymicConnector: p.patronymic_connector ?? null,
+    pronouns:            p.pronouns ?? null,
+    nickname:            p.nickname ?? null,
+    email:               p.email ?? null,
+    phone:               p.personal_phone ?? p.business_phone ?? null,
+    lastInitial:         p.last_initial ?? null,
+    isPublicDisplay:     p.is_public_display ?? false,
+    over18ConfirmedAt:   p.over_18_confirmed_at ?? null,
+    displayName:         display,
   }
 }
 
