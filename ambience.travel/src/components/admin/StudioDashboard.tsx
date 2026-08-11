@@ -288,6 +288,11 @@ export default function StudioDashboard() {
   const salesTotalInclTax = data
     .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
     .reduce((s, e) => s + (e.totalRate ?? 0), 0)
+  // Profit realized = commission actually received (paid bookings, net of shares),
+  // FY-scoped. The banked figure beside the expected marginThisYear forecast.
+  const profitRealized = data
+    .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
+    .reduce((s, e) => s + (e.commissionReceived ?? 0), 0)
   // Net margin EXPECTED across the same all-status FY2026 set - scope-matched to
   // salesThisYear (all sales -> all expected margin). Closed-only figures live in
   // the Closed Won section (closed sales -> closed margin), never mixed here.
@@ -323,6 +328,8 @@ export default function StudioDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
         <Kpi label={`Sales This Year - FY${FISCAL_YEAR_START.slice(0, 4)}`} value={usd(salesNetOfTax)} sub={`${usd(salesTotalInclTax)} total incl. tax`} accent={A.gold} />
         <Kpi label='Net Margin'             value={usd(marginThisYear)}     sub='expected, after shares and fees' color='#4ade80' accent='#4ade80' />
+        <Kpi label='Profit Realized'        value={usd(profitRealized)}     sub='commission received to date' color='#4ade80' accent='#4ade80' />
+        <Kpi label='Profit Realized'        value={usd(profitRealized)}     sub='commission received to date' color='#4ade80' accent='#4ade80' />
         <Kpi label='Commission Outstanding' value={usd(totalOutstanding)}   color={totalOutstanding > 0 ? '#FBBF24' : A.text} accent={totalOutstanding > 0 ? '#FBBF24' : undefined} />
         <Kpi label='Pipeline Value'         value={usd(totalValue)}         accent={A.gold} />
         <Kpi label='Active Engagements'     value={String(active.length)} />
