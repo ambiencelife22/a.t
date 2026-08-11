@@ -284,6 +284,12 @@ export default function StudioDashboard() {
   const salesThisYear = data
     .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
     .reduce((s, e) => s + (e.totalRate ?? 0), 0)
+  // Net margin EXPECTED across the same all-status FY2026 set - scope-matched to
+  // salesThisYear (all sales -> all expected margin). Closed-only figures live in
+  // the Closed Won section (closed sales -> closed margin), never mixed here.
+  const marginThisYear = data
+    .filter(e => e.startDate != null && e.startDate >= FISCAL_YEAR_START && e.startDate <= FISCAL_YEAR_END)
+    .reduce((s, e) => s + e.netMargin, 0)
 
   const closedSorted = [...closedWon].sort((a, b) => {
     if (closedSort === 'startDate')     return (a.startDate ?? '').localeCompare(b.startDate ?? '')
@@ -312,7 +318,7 @@ export default function StudioDashboard() {
       {/* Money strip - active only */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
         <Kpi label='Net Margin'             value={usd(totalMargin)}        sub='after shares, fees, absorbed' color={totalMargin >= 0 ? '#4ade80' : '#ef4444'} accent={totalMargin >= 0 ? '#4ade80' : '#ef4444'} />
-        <Kpi label={`Sales This Year - FY${FISCAL_YEAR_START.slice(0, 4)}`} value={usd(salesThisYear)} sub={`${usd(closedWonMargin)} net margin realized`} accent={A.gold} />
+        <Kpi label={`Sales This Year - FY${FISCAL_YEAR_START.slice(0, 4)}`} value={usd(salesThisYear)} sub={`${usd(marginThisYear)} net margin expected`} accent={A.gold} />
         <Kpi label='Commission Received'    value={usd(totalReceived)}      color='#4ade80' />
         <Kpi label='Commission Outstanding' value={usd(totalOutstanding)}   color={totalOutstanding > 0 ? '#FBBF24' : A.text} accent={totalOutstanding > 0 ? '#FBBF24' : undefined} />
         <Kpi label='Pipeline Value'         value={usd(totalValue)}         accent={A.gold} />
