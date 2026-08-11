@@ -111,7 +111,10 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
 
   const statusRow   = eng.travelLifecycleStatuses as Record<string, unknown> | null
   const itinRow     = eng.travelItineraryStatuses as Record<string, unknown> | null
-  const statusSlug  = (statusRow?.slug ?? 'requested') as EngagementStatusSlug
+  if (!statusRow?.slug) {
+    throw new Error(`Engagement ${eng.id as string} is missing its lifecycle status; the status join did not resolve. Refusing to default silently.`)
+  }
+  const statusSlug  = statusRow.slug as EngagementStatusSlug
   const stage       = computeEngagementStage({ statusSlug })
   // HPGL Option 1 (fully tailored): the public guest name is the authored, projected
   // label ONLY. No raw first_name/nickname echo, no placeholder - absent authorship =

@@ -46,7 +46,14 @@ export async function fetchEngagementClientData(
   // Stage is computed from the lifecycle status slug and returned on the data.
   // confirmed (trip/completed) → caller redirects to /{urlId} (brief surface)
   // proposal (proposal/draft)  → caller renders at /{urlId}/proposal
-  const proposalData = await getProposalEngagement(urlId)
+  let proposalData
+  try {
+    proposalData = await getProposalEngagement(urlId)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'engagement hydration failed'
+    console.error('[fetchEngagementClientData] hydration threw for urlId:', urlId, message)
+    return { type: 'error', message }
+  }
   if (!proposalData) {
     console.warn('[fetchEngagementClientData] EF returned null for urlId:', urlId)
     return { type: 'not-found' }
