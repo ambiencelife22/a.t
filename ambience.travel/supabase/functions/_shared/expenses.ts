@@ -31,7 +31,8 @@ export const BOOKING_FINANCIAL_SELECT = `
   commissionable_rate, commissionable_rate_usd,
   commission_pct, commission_amount, commission_amount_usd, commission_paid_at,
   commission_received_amount, commission_payment_fee_pct, commission_payment_fee_amt,
-  commission_net_received,
+  commission_net_received, commission_net_received_usd,
+  commission_deductions_total, commission_deductions_total_usd,
   net_revenue, net_revenue_usd,
   taxes_and_fees, taxes_and_fees_usd,
   referral_partner_id, referral_share_pct, referral_share_amt,
@@ -187,7 +188,12 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   const referral = ((b.referral_share_amt   ?? 0) as number) * fx
   const iata     = ((b.iata_share_amt       ?? 0) as number) * fx
   const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
-  return Math.round((base - referral - iata - indiv) * 100) / 100
+  // Deductions (cost-of-collection) come out of expected net too. Pre-receipt they
+  // are not yet in commission_net_received (that is receipt-derived), so subtract
+  // the trigger-maintained total here. commission_deductions_total_usd is always
+  // current (trigger writes it on any deduction change, received or not).
+  const deductions = (b.commission_deductions_total_usd as number | null) ?? (((b.commission_deductions_total ?? 0) as number) * fx)
+  return Math.round((base - referral - iata - indiv - deductions) * 100) / 100
 }
 
 // Net commission expected by ambience - gross minus upstream partner shares.

@@ -506,7 +506,8 @@ function BookingRow({
           {b.commissionAmount != null && b.commissionAmount > 0 && (() => {
             const fx        = (b.commissionAmount && b.commissionAmountUsd) ? (b.commissionAmountUsd / b.commissionAmount) : 1
             const feeNative = (b.iataShareAmt ?? 0) + (b.referralShareAmt ?? 0) + (b.individualShareAmt ?? 0)
-            const netNative = b.commissionNetReceived ?? (b.commissionAmount - feeNative)
+            const deductNative = b.commissionDeductionsTotal ?? 0
+            const netNative = b.commissionNetReceived ?? (b.commissionAmount - feeNative - deductNative)
             const partner   = b.travelPartners?.name ?? partners.find(p => p.id === b.iataPartnerId)?.name ?? null
             return (
               <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${A.border}`, width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -518,6 +519,12 @@ function BookingRow({
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Partner fee{partner ? ` (${partner})` : ''}</span>
                     <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>-{moneyDec(feeNative, currency)} · -{moneyDec(feeNative * fx, 'USD')}</span>
+                  </div>
+                )}
+                {deductNative > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Deductions</span>
+                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>-{moneyDec(deductNative, currency)} · -{moneyDec(deductNative * fx, 'USD')}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
