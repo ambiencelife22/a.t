@@ -28,7 +28,7 @@ export const BOOKING_FINANCIAL_SELECT = `
   start_date, end_date, nights, currency, price,
   cost,
   total_rate, total_rate_usd,
-  commissionable_rate, commissionable_rate_usd,
+  commissionable_rate, commissionable_rate_usd, is_commissionable,
   commission_pct, commission_amount, commission_amount_usd, commission_paid_at,
   commission_received_amount, commission_payment_fee_pct, commission_payment_fee_amt,
   commission_net_received, commission_net_received_usd,
@@ -122,7 +122,32 @@ function sumDownstream(splits: CommissionSplit[]): number {
 // net_rate: selling_price_usd minus total_rate_usd (the spread).
 // complimentary/staff/fam: zero revenue by definition.
 // package: treated as commissionable unless selling_price set.
+// Markup revenue: the margin ambience adds over supplier net (declared, not
+// inferred). Lateral to commission - a booking can earn both. Returns the USD
+// markup when has_markup is declared, else 0.
+function markupRevenue(b: Record<string, unknown>): number {
+  if (b.has_markup !== true) return 0
+  const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  const commNat = (b.commission_amount ?? 0) as number
+  const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
+  const usd = b.markup_amount_usd as number | null
+  const nat = b.markup_amount as number | null
+  const markup = usd != null ? usd : nat != null ? (nat * fx) : 0
+  return Math.round(markup * 100) / 100
+}
+
+// Net revenue = commission net + markup (both lateral revenue modes, coexist).
+// Single add point for markup regardless of which commission branch fires.
 export function computeNetRevenue(b: Record<string, unknown>): number {
+  return Math.round((computeCommissionNet(b) + markupRevenue(b)) * 100) / 100
+}
+
+function computeCommissionNet(b: Record<string, unknown>): number {
+  // Declared commissionability governs (single source). A non-commissionable
+  // booking earns zero commission regardless of rate_type or received amounts.
+  // total_rate still counts toward sales volume elsewhere. (Markup, if any, is
+  // added by computeNetRevenue - a non-commissionable booking can still mark up.)
+  if (b.is_commissionable === false) return 0
   const rateType = (b.travel_rate_types as { slug: string } | null)?.slug
     ?? 'commissionable'
 
@@ -131,6 +156,9 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
   }
 
   if (rateType === 'net_rate') {
+    // Declared markup governs: if has_markup, the markup_amount IS the spread and
+    // computeNetRevenue adds it - do NOT also infer selling - cost (double-count).
+    if (b.has_markup === true) return 0
     const selling = (b.selling_price_usd ?? b.selling_price ?? 0) as number
     const cost    = (b.total_rate_usd ?? b.total_rate ?? 0) as number
     return Math.round((selling - cost) * 100) / 100
@@ -201,6 +229,7 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
 // took their cut before remitting). When not set, subtract flat share columns
 // from gross to derive what ambience expects to receive.
 export function computeExpectedCommission(b: Record<string, unknown>): number {
+  if (b.is_commissionable === false) return 0
   // All arithmetic in USD. Native share columns converted via implied FX.
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
   const commNat = (b.commission_amount ?? 0) as number
@@ -237,6 +266,11 @@ export function commissionTriad(b: Record<string, unknown>): {
   variance_usd:      number | null
   variance_pct:      number | null
 } {
+  // Non-commissionable: no claim, no receipt, no variance. Zero-triad.
+  if (b.is_commissionable === false) {
+    return { expected_net_usd: 0, gross_received_usd: null, deductions_usd: null,
+             actual_net_usd: null, variance_usd: null, variance_pct: null }
+  }
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
   const commNat = (b.commission_amount ?? 0) as number
   const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1

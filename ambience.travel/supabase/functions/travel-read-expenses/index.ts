@@ -258,10 +258,13 @@ Deno.serve(async (req: Request) => {
         const total_commission        = bs.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
         const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
         const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0)
-        // Realized = actual net receipts only. commission_net_received_usd is the
-        // deductions-derived amount that truly landed, net of broker split. A
-        // booking without it is NOT realized (no estimate, no gross fallback).
-        const realized_received   = bs.reduce((s, b) => s + ((b.commission_net_received_usd ?? 0) as number), 0)
+        // Realized = ambience's actual retained profit on genuinely-received
+        // bookings. Gate on a real receipt (commission_net_received set), then use
+        // computeNetRevenue so downstream shares (referral/individual) are
+        // subtracted and units stay USD-correct. Raw commission_net_received_usd
+        // overstates where a downstream referral still comes out (e.g. a villa with
+        // a 90pct referral); computeNetRevenue is the single, unit-safe source.
+        const realized_received   = bs.filter(b => b.commission_paid_at != null).reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_net_revenue   = bs.reduce((s, b) => s + computeNetRevenue(b), 0)
         const total_amenities     = bs.reduce((s, b) => s + ((b.cost ?? 0) as number), 0)
         const total_rate          = bs.reduce((s, b) => s + ((b.total_rate_usd ?? b.total_rate ?? 0) as number), 0)
