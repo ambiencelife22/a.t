@@ -274,10 +274,10 @@ function CommissionReceipt({
             )}
           </div>
           <div style={{ display: 'flex', gap: 24, marginTop: 6, flexWrap: 'wrap' }}>
-            {b.commissionReceivedAmount != null && (
+            {b.commissionNetReceivedUsd != null && (
               <div>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Gross</div>
-                <div style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>{usdDec(b.commissionReceivedAmount)}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Gross received</div>
+                <div style={{ fontSize: 12, color: A.text, fontFamily: A.font }}>{usdDec(b.commissionNetReceivedUsd)}</div>
               </div>
             )}
             {b.commissionPaymentFeeAmt != null && b.commissionPaymentFeeAmt > 0 && (
@@ -289,10 +289,10 @@ function CommissionReceipt({
                 </div>
               </div>
             )}
-            {b.actualNetUsd != null && (
+            {b.commissionNetReceivedUsd != null && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: A.faint, fontFamily: A.font, marginBottom: 2 }}>Net to ambience</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.actualNetUsd)}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', fontFamily: A.font }}>{usdDec(b.commissionNetReceivedUsd - (b.commissionPaymentFeeAmt ?? 0))}</div>
               </div>
             )}
           </div>
@@ -541,6 +541,12 @@ function BookingRow({
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Deductions</span>
                     <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>-{moneyDec(deductNative, currency)} · -{moneyDec(deductNative * fx, 'USD')}</span>
+                  </div>
+                )}
+                {b.commissionPaymentFeeAmt != null && b.commissionPaymentFeeAmt > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Bank fee</span>
+                    <span style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>-{moneyDec(b.commissionPaymentFeeAmt, 'USD')}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>

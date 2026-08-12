@@ -281,16 +281,17 @@ export function commissionTriad(b: Record<string, unknown>): {
     return { expected_net_usd, gross_received_usd: null, deductions_usd: null,
              actual_net_usd: null, variance_usd: null, variance_pct: null }
   }
-  // GROSS remitted (native received x fx to USD).
-  const grossNat = b.commission_received_amount as number
-  const gross_received_usd = Math.round(grossNat * fx * 100) / 100
+  // GROSS remitted, in USD. The receipt is a USD bank fact (ambience receives USD
+  // into a USD account); it is NOT converted by the EUR/native fx. Using it directly
+  // is the single source of received truth.
+  const gross_received_usd = Math.round((b.commission_received_amount as number) * 100) / 100
   // NET landed = deductions-derived commission_net_received(_usd); legacy fallback
   // to gross - fee_amt for receipts predating the deductions model.
   const netRecvUsd = b.commission_net_received_usd as number | null
   const netRecv    = b.commission_net_received as number | null
   const actual_net_usd = netRecvUsd != null ? Math.round(netRecvUsd * 100) / 100
     : netRecv != null ? Math.round(netRecv * fx * 100) / 100
-    : Math.round((grossNat - ((b.commission_payment_fee_amt ?? 0) as number)) * fx * 100) / 100
+    : Math.round(((b.commission_received_amount as number) - ((b.commission_payment_fee_amt ?? 0) as number)) * 100) / 100
   // DEDUCTIONS = gross - net (cost of collection). Own fact, never in variance.
   const deductions_usd = Math.round((gross_received_usd - actual_net_usd) * 100) / 100
   // VARIANCE = remittance accuracy: gross vs owed. Fees excluded by construction.
