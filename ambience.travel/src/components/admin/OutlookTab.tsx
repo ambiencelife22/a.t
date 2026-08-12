@@ -44,6 +44,7 @@ import {
   type PaymentPlatform,
   type SupplierPartner,
 } from '../../queries/queriesAdminFinance'
+import { groupCharges } from '../../utils/utilsCharges'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -500,7 +501,22 @@ function BookingRow({
           {/* Value */}
           <div style={{ fontSize: 22, fontWeight: 700, color: A.text, fontFamily: A.font, letterSpacing: '-0.02em' }}>{moneyDec(b.totalRate, currency)}</div>
           <div style={{ fontSize: 11, color: A.faint, fontFamily: A.font }}>{moneyDec(b.totalRateUsd, 'USD')}</div>
-          <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Base {moneyDec(b.commissionableRate, currency)} + tax {moneyDec(b.taxesAndFees, currency)}</div>
+          {(() => {
+            const g = groupCharges((b.charges ?? []) as any[], false)
+            const hasCharges = (b.charges ?? []).length > 0
+            if (!hasCharges) return (
+              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font }}>Base {moneyDec(b.commissionableRate, currency)} + tax {moneyDec(b.taxesAndFees, currency)}</div>
+            )
+            return (
+              <div style={{ fontSize: 10, color: A.faint, fontFamily: A.font, lineHeight: 1.5 }}>
+                <div>Base {moneyDec(b.commissionableRate, currency)}</div>
+                {g.govTax > 0   && <div>Taxes {moneyDec(g.govTax, currency)}</div>}
+                {g.localTax > 0 && <div>Local taxes {moneyDec(g.localTax, currency)}</div>}
+                {g.fees > 0     && <div>Fees {moneyDec(g.fees, currency)}</div>}
+                <div style={{ color: A.text }}>Total {moneyDec(b.totalRate, currency)}</div>
+              </div>
+            )
+          })()}
 
           {/* Commission chain */}
           {b.commissionAmount != null && b.commissionAmount > 0 && (() => {

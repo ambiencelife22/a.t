@@ -112,6 +112,21 @@ Deno.serve(async (req: Request) => {
         (b as Record<string, unknown>)._splits = splitsByBooking[b.id as string] ?? []
       }
 
+      // Charge lines (VAT/government/city/tourist/environmental tax, resort/service
+      // fee) per booking - the single source for the tax breakdown on the card.
+      const chargesByBooking: Record<string, Array<Record<string, unknown>>> = {}
+      if (bookingIds.length > 0) {
+        const { data: charges } = await db
+          .from('travel_booking_charges')
+          .select('booking_id, charge_category, label, amount, amount_usd, is_commissionable, is_rate_inclusive, sort_order')
+          .in('booking_id', bookingIds)
+          .order('sort_order', { ascending: true })
+        for (const c of (charges ?? []) as Array<Record<string, unknown>>) {
+          const bid = c.booking_id as string
+          ;(chargesByBooking[bid] ??= []).push(c)
+        }
+      }
+
       // Summary from original bookings before enrichment
       const total_commission          = bookings.reduce((s, b) => s + ((b.commission_amount_usd ?? b.commission_amount ?? 0) as number), 0)
       const net_commission_expected   = bookings.reduce((s, b) => s + computeExpectedCommission(b), 0)
@@ -137,6 +152,7 @@ Deno.serve(async (req: Request) => {
         net_revenue_usd: computeNetRevenue(b),
         ...commissionTriad(b),
         rooms:           roomsByBooking[b.id as string] ?? [],
+        charges:         chargesByBooking[b.id as string] ?? [],
       }))
 
       const expenseSummary = deriveSummary(expenses)

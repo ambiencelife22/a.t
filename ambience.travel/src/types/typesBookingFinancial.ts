@@ -42,6 +42,16 @@ export type BookingFinancialRoom = {
   sortOrder:          number
 }
 
+export type BookingCharge = {
+  chargeCategory:   string
+  label:            string
+  amount:           number
+  amountUsd:        number | null
+  isCommissionable: boolean
+  isRateInclusive:  boolean
+  sortOrder:        number
+}
+
 // ── The canonical booking-financial shape ─────────────────────────────────────
 export type BookingFinancial = {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -62,6 +72,7 @@ export type BookingFinancial = {
   commissionableRate:    number | null
   totalRate:             number | null
   taxesAndFees:         number | null
+  charges?:             BookingCharge[]
   boardBasis:            { displayName: string } | null
   paymentTerms:          { displayName: string } | null
   pricingBasis:          { displayName: string } | null
