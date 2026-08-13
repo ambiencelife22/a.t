@@ -309,7 +309,7 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     introTitle:   (ov.introTitleOverride ?? dest.introTitle ?? '') as string,
     introBody:    (ov.introBodyOverride  ?? dest.introBody  ?? '') as string,
 
-    eyebrowHotels: (dest.hotelsEyebrow ?? '') as string,
+    eyebrowHotels: (dest.eyebrowHotels ?? '') as string,
     titleHotels:   (dest.hotelsTitle   ?? '') as string,
     bodyHotels:    (dest.hotelsBody    ?? '') as string,
     hotels:        hydrateHotelsShape(hotels),

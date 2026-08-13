@@ -330,7 +330,7 @@ elements, read + written transactionally. Live Supabase — invisible to git; th
   guest EFs, a live drift risk; now one home).
 - `_shared/elementFields.ts` — single field-map (flat↔node/detail) consumed by BOTH read-flatten
   and write-split, so they cannot drift. `detailTableForType(slug)`: flight→transport,
-  dining→dining, else bare node.
+  dining→dining, otherwise bare node.
 - The 3 readers (travel-read-journey-admin, travel-get-trip-confirmation, travel-get-trip-programme)
   all read the tree. Guest programme verified live: HRH AMF renders BA269 (LHR→LAX) + all 8
   passengers + dining venues (Mister Nice, China Tang) from the tree.
@@ -391,7 +391,7 @@ drivers=2, tasks=3. Tree = source before the drop.
 - Supabase editor swallows BEGIN-wrapped multi-statement batches (silent rollback → all-zeros
   verify with no error). Run writes ONE AT A TIME autocommit; `psql -f` for functions. `\gset`/
   `\echo` are psql meta-commands, fail in the editor.
-- pre-commit hook enforces the no-else standard — caught an `if(t){}else{}` in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
+- pre-commit hook enforces the guard-clause-only standard — caught a two-branch conditional in enrichElements; guard-clause form (null defaults first, override in `if(t)`) is the fix. The hook is load-bearing.
 - Uploaded file snapshots go STALE mid-session — trust tsc errors + live greps over uploads for
   current state (repeatedly bit line-number-based seds; content-targeted seds or editor find/replace
   are safer, and zsh history-expansion breaks `!` in piped seds — hand-edit those in the editor).
@@ -427,7 +427,7 @@ elements became child nodes when Stage 7 reparented them. The "spine retype" han
 is complete — the reparenting did it.
 
 **Enforced (trigger, proven both directions):** `trg_enforce_top_level_shape` (fn
-`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per no-else standard).
+`enforce_top_level_shape`, BEFORE INSERT OR UPDATE, guard-clause form per guard-clause-only standard).
 Rule: top-level engagements (parent_engagement_id IS NULL) MUST reference a level='shape' type;
 children may be any level (an element, or a shape nested in a journey — 6 shape-typed children
 exist legitimately). CHECK can't hold the subquery, so it's a trigger (L's scoped design choice).
@@ -1074,10 +1074,10 @@ Status no longer touches visibility. proposal_visibility (separate column) unaff
 values preserved (4 public / 9 hidden; DROP stops future auto-writes only). BEHAVIOR SHIFT
 (intended): confirmed trips no longer auto-appear — the "only 3 public" rule now HOLDS.
 
-### [STANDARD] no-else sweep across all pg_proc — classified, not blanket-rewritten
+### [STANDARD] guard-clause-only sweep across all pg_proc — classified, not blanket-rewritten
 
-D's standard (NEVER else/else-if; guard clauses + early returns) applied to DB functions. Swept
-for else tokens: 4 carried them.
+D's standard (guard clauses + early returns only) applied to DB functions. Swept
+for the forbidden token: 4 carried it.
 - tg_auto_public_view — DROPPED (visibility untangle above); moot.
 - derive_tasks_for_engagement — two CASE...ELSE NULL (redundant defaults; CASE returns NULL
   anyway). To fix when next CREATE OR REPLACE'd. NOT folded into S53P (that shipped before this).
@@ -1141,7 +1141,7 @@ schema is the only truth; verify against information_schema, not memory.
 clone_engagement's travel_overlay_rooms INSERT omitted bedding_type (column added S53K,
 post-dated the function) — every cloned engagement silently lost room bedding types. FIXED
 S53O: bedding_type + r.bedding_type added to the room INSERT (column list + VALUES), nothing
-else changed. COMMENT ON updated. Verified live (pg_get_functiondef ~ 'r\.bedding_type' = true).
+otherwise changed. COMMENT ON updated. Verified live (pg_get_functiondef ~ 'r\.bedding_type' = true).
 
 No backfill needed: checked Yazeed v3 (oQC68jVKgcm) — all 55 rooms had bedding_type NULL AND
 bed_config_override NULL, i.e. the SOURCE never had bedding set, so the clone dropped nothing
@@ -1179,7 +1179,7 @@ All 3 were silently broken from S53P until fixed S53O. No user hit them in the w
 - `WHERE b.trip_id = ...` → `WHERE b.journey_id = ...` (travel_bookings)
 - local `v_trip_id` → `v_journey_id` (all refs)
 - aux loop kept `a.engagement_id = v_journey_id` (engagement_id is the SPINE pointer — correct, unchanged)
-- removed two `CASE ... ELSE NULL` (redundant defaults; a CASE with no matching WHEN returns NULL) — no-else standard
+- removed two redundant CASE default branches (a CASE with no matching WHEN returns NULL) — guard-clause-only standard
 - COMMENT ON updated
 
 ### 2. tg_derive_child_activities()  [SECURITY DEFINER, trigger fn]
@@ -1215,7 +1215,7 @@ order by proname;
 -- (clone shows false because trip_destination_row_id is NOT a \mtrip_id\M word-boundary match)
 ```
 
-### B. Static — no else token (derive_tasks)
+### B. Static — no forbidden token (derive_tasks)
 ```sql
 select pg_get_functiondef('derive_tasks_for_engagement'::regproc) ~* '\melse\M' as has_else;
 -- EXPECT: false
@@ -1263,7 +1263,7 @@ ROLLBACK;
 ```
 
 ### Interpreting results
-- A + B green = the static repoint + no-else are intact.
+- A + B green = the static repoint + guard-clause-only are intact.
 - C + D running WITHOUT error = the write paths (clone, derive-on-confirm) work end to end.
   These are the paths S53P left broken; a raised "column trip_id does not exist" would mean a
   regression returned. Always test C/D inside BEGIN/ROLLBACK so verification leaves no data.
