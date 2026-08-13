@@ -31,7 +31,7 @@ export const BOOKING_FINANCIAL_SELECT = `
   commissionable_rate, commissionable_rate_usd, is_commissionable,
   commission_pct, commission_amount, commission_amount_usd, commission_paid_at,
   commission_sent_amount, commission_sent_amount_usd, commission_payment_fee_pct, commission_payment_fee_amt,
-  commission_net_received, commission_net_received_usd,
+  commission_net_received_usd,
   commission_deductions_total, commission_deductions_total_usd,
   net_revenue, net_revenue_usd,
   taxes_and_fees, taxes_and_fees_usd,
