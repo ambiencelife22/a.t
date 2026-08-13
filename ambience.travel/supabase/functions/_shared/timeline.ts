@@ -211,7 +211,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
           bedding_type:        (r.bedding_type as string | null) ?? null,
         }))
       // Timeline sort position: expected arrival if known (that's when they're
-      // physically present), else standard check-in.
+      // physically present), otherwise standard check-in.
       const sortTime = expectedArrival ?? standardCheckin
       out.push({
         id: `checkin-${b.id}`, kind: 'hotel_checkin', entry_date: checkInDay,
@@ -243,7 +243,7 @@ export function buildHotelItems(bookings: BookingLike[]): TimelineItem[] {
       const checkOutNote = (b.check_out_note as string | null) ?? null
 
       // Checkout slots at the requested time when a late checkout is requested/
-      // approved (so it sorts into that afternoon slot), else the standard time.
+      // approved (so it sorts into that afternoon slot), otherwise the standard time.
       const requestedCheckout = (b.requested_checkout_time as string | null) ?? null
       const checkoutTime = (b.late_checkout_approved_time as string | null)
         ?? requestedCheckout ?? (b._standard_checkout_time as string | null) ?? null

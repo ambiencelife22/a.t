@@ -185,7 +185,7 @@ function orderCheckIn(b: BookingOrderable): string {
 function orderCommissionableUsd(b: BookingOrderable): number {
   return b.commissionableRateUsd ?? b.commissionableRate ?? 0
 }
-// Net to ambience (USD): received net if present, else commission minus upstream
+// Net to ambience (USD): received net if present, otherwise commission minus upstream
 // partner shares. Matches the row's "Net receivable" line.
 function orderNetUsd(b: BookingOrderable): number {
   if (b.commissionNetReceivedUsd != null) return b.commissionNetReceivedUsd

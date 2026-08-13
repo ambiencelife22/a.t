@@ -95,7 +95,7 @@ export type BookingFinancial = {
   invoiceNumber:         string | null
   // Receipt detail - recorded by mark_commission_received, selected by
   // BOOKING_FINANCIAL_SELECT. Present after a receipt is captured.
-  commissionReceivedAmount?:     number | null
+  commissionSentAmount?:         number | null
   commissionPaymentFeePct?:     number | null
   commissionPaymentFeeAmt?:     number | null
   commissionNetReceived?:          number | null

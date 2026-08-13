@@ -197,7 +197,7 @@ Deno.serve(async (req: Request) => {
 
       const [{ data: bookings }, { data: expenses }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_net_received_usd, commission_received_amount, commission_payment_fee_amt, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
+          .select('id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received_usd, commission_sent_amount, commission_sent_amount_usd, commission_payment_fee_amt, cost, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, total_rate, total_rate_usd, travel_rate_types!rate_type_id(slug, label)')
           .eq('engagement_id', engagement_id),
         db.from('travel_engagement_expenses')
           .select('total_amount, total_amount_usd, billing_status')
@@ -250,7 +250,7 @@ Deno.serve(async (req: Request) => {
       const engIds = confirmed.map(e => e.id as string)
       const [{ data: bookings }, { data: expensesAll }] = await Promise.all([
         db.from('travel_bookings')
-          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received, commission_received_amount, commission_payment_fee_amt, cost, currency, total_rate_usd, total_rate, commissionable_rate_usd, commissionable_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
+          .select('id, engagement_id, commission_amount, commission_amount_usd, commission_paid_at, commission_net_received_usd, commission_sent_amount, commission_sent_amount_usd, commission_payment_fee_amt, cost, currency, total_rate_usd, total_rate, commissionable_rate_usd, commissionable_rate, referral_share_amt, iata_share_amt, individual_share_amt, rate_type_id, selling_price, selling_price_usd, travel_rate_types!rate_type_id(slug, label)')
           .in('engagement_id', engIds),
         db.from('travel_engagement_expenses')
           .select('engagement_id, total_amount, total_amount_usd, billing_status')
@@ -275,7 +275,7 @@ Deno.serve(async (req: Request) => {
         const net_commission_expected = bs.reduce((s, b) => s + computeExpectedCommission(b), 0)
         const commission_received     = bs.filter(b => b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0)
         // Realized = ambience's actual retained profit on genuinely-received
-        // bookings. Gate on a real receipt (commission_net_received set), then use
+        // bookings. Gate on a real receipt (commission_net_received_usd set), then use
         // computeNetRevenue so downstream shares (referral/individual) are
         // subtracted and units stay USD-correct. Raw commission_net_received_usd
         // overstates where a downstream referral still comes out (e.g. a villa with

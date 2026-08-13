@@ -263,11 +263,11 @@ Deno.serve(async (req: Request) => {
       const resolvedFeeAmt = fee_amt != null
         ? fee_amt
         : (resolvedFeePct != null ? Math.round(received_amount * resolvedFeePct / 100 * 100) / 100 : 0)
-      // Receipt records ACTUAL only. It never writes commission_net_received -
+      // Receipt records ACTUAL only. It never writes commission_net_received_usd -
       // that is the EXPECTED claim, set at booking entry, preserved so variance
       // (expected vs actual) survives. Actual net = received_amount - fee, derived at read.
       const patch: Record<string, unknown> = {
-        commission_received_amount:      received_amount,
+        commission_sent_amount:          received_amount,
         commission_payment_fee_pct:      resolvedFeePct,
         commission_payment_fee_amt:      resolvedFeeAmt,
         commission_paid_at:              received_at,
@@ -281,7 +281,7 @@ Deno.serve(async (req: Request) => {
         .from('travel_bookings')
         .update(patch)
         .eq('id', booking_id)
-        .select('id, commission_received_amount, commission_payment_fee_pct, commission_payment_fee_amt, commission_net_received, commission_paid_at, commission_payment_platform_id')
+        .select('id, commission_sent_amount, commission_payment_fee_pct, commission_payment_fee_amt, commission_net_received_usd, commission_paid_at, commission_payment_platform_id')
         .single()
       if (error) { console.error('mark_commission_received error:', error); return json({ error: 'Failed to record commission receipt' }, 500) }
       return json({ booking: data })

@@ -30,7 +30,7 @@ export const BOOKING_FINANCIAL_SELECT = `
   total_rate, total_rate_usd,
   commissionable_rate, commissionable_rate_usd, is_commissionable,
   commission_pct, commission_amount, commission_amount_usd, commission_paid_at,
-  commission_received_amount, commission_payment_fee_pct, commission_payment_fee_amt,
+  commission_sent_amount, commission_sent_amount_usd, commission_payment_fee_pct, commission_payment_fee_amt,
   commission_net_received, commission_net_received_usd,
   commission_deductions_total, commission_deductions_total_usd,
   net_revenue, net_revenue_usd,
@@ -109,7 +109,7 @@ function splitAmount(s: CommissionSplit): number {
 
 // Sum of downstream payouts (ambience's own distributions). Upstream is NOT
 // summed here - it's already deducted before ambience received the money
-// (baked into commission_net_received); subtracting it again double-counts.
+// (baked into commission_net_received_usd); subtracting it again double-counts.
 function sumDownstream(splits: CommissionSplit[]): number {
   return splits
     .filter(s => s.flow === 'downstream')
@@ -124,7 +124,7 @@ function sumDownstream(splits: CommissionSplit[]): number {
 // package: treated as commissionable unless selling_price set.
 // Markup revenue: the margin ambience adds over supplier net (declared, not
 // inferred). Lateral to commission - a booking can earn both. Returns the USD
-// markup when has_markup is declared, else 0.
+// markup when has_markup is declared, otherwise 0.
 function markupRevenue(b: Record<string, unknown>): number {
   if (b.has_markup !== true) return 0
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
@@ -145,7 +145,7 @@ export function computeNetRevenue(b: Record<string, unknown>): number {
 function computeCommissionNet(b: Record<string, unknown>): number {
   // Declared commissionability governs (single source). A non-commissionable
   // booking earns zero commission regardless of rate_type or received amounts.
-  // total_rate still counts toward sales volume elsewhere. (Markup, if any, is
+  // total_rate still counts toward sales volume in other places. (Markup, if any, is
   // added by computeNetRevenue - a non-commissionable booking can still mark up.)
   if (b.is_commissionable === false) return 0
   const rateType = (b.travel_rate_types as { slug: string } | null)?.slug
@@ -165,7 +165,7 @@ function computeCommissionNet(b: Record<string, unknown>): number {
   }
 
 // commissionable / package / fallback
-  // All arithmetic in USD. Native-currency columns (commission_net_received,
+  // All arithmetic in USD
   // flat share amounts) are converted via the booking's implied FX factor
   // (commission_amount_usd / commission_amount) before combining with USD.
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
@@ -174,16 +174,10 @@ function computeCommissionNet(b: Record<string, unknown>): number {
 
   // ACTUAL governs once received: net revenue = received (USD) - fee (USD).
   // Makes the engagement rollup reflect real money in the bank.
-  if (b.commission_paid_at != null && b.commission_received_amount != null) {
-    // ACTUAL governs once received. Net = gross minus typed deductions, owned by
-    // travel_commission_deductions and trigger-written to commission_net_received.
-    // Prefer the derived net; fall back to gross - fee_amt only for legacy receipts
-    // recorded before the deductions model (no deduction rows, net not yet derived).
-    const netUsd = b.commission_net_received_usd as number | null
-    const net    = b.commission_net_received as number | null
-    const paidBase = netUsd != null ? netUsd
-                   : net != null    ? (net * fx)
-                   : ((b.commission_received_amount as number) - ((b.commission_payment_fee_amt ?? 0) as number))
+  if (b.commission_paid_at != null && b.commission_net_received_usd != null) {
+    // ACTUAL governs once received. RECEIVED (FACT 3) is commission_net_received_usd -
+    // the USD bank fact, what actually hit the account. Never converted (USD account).
+    const paidBase = b.commission_net_received_usd as number
     // DOWNSTREAM splits (ambience's own payouts, e.g. a referral partner's 90%)
     // must come out of the paid net too - the money passed through, was never ours.
     // Upstream is already baked into net_received; never re-subtract.
@@ -191,13 +185,10 @@ function computeCommissionNet(b: Record<string, unknown>): number {
     const paidDownstream = (paidSplits && paidSplits.length > 0) ? sumDownstream(paidSplits) : 0
     return Math.round((paidBase - paidDownstream) * 100) / 100
   }
-  // EXPECTED until received. Prefer the stored USD twin (sticky override),
-  // else expected-net native x fx, else gross (direct: no split).
+  // EXPECTED until received: the RECEIVED USD bank fact (sticky), otherwise the
+  // expected claim. commission_net_received_usd is USD - never converted.
   const netRecvUsd = b.commission_net_received_usd as number | null
-  const netRecv = b.commission_net_received as number | null
-  const base    = netRecvUsd != null ? netRecvUsd
-                : netRecv != null    ? (netRecv * fx)
-                : commAmt
+  const base = netRecvUsd != null ? netRecvUsd : commAmt
 
   // Splits govern when present: subtract only DOWNSTREAM payouts (ambience's
   // own distributions). Upstream is already gone from base - never re-subtract.
@@ -207,9 +198,9 @@ function computeCommissionNet(b: Record<string, unknown>): number {
   }
 
   // Legacy fallback (no splits yet): flat share columns (native → USD via fx).
-  // If commission_net_received is set, partner cut is already baked in -
+  // If received (commission_net_received_usd) is set, partner cut is already baked in -
   // do NOT subtract flat share columns again (double-count).
-  if (netRecv != null) {
+  if (netRecvUsd != null) {
     return Math.round((base) * 100) / 100
   }
 
@@ -217,7 +208,7 @@ function computeCommissionNet(b: Record<string, unknown>): number {
   const iata     = ((b.iata_share_amt       ?? 0) as number) * fx
   const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
   // Deductions (cost-of-collection) come out of expected net too. Pre-receipt they
-  // are not yet in commission_net_received (that is receipt-derived), so subtract
+  // are not yet in commission_net_received_usd (that is receipt-derived), so subtract
   // the trigger-maintained total here. commission_deductions_total_usd is always
   // current (trigger writes it on any deduction change, received or not).
   const deductions = (b.commission_deductions_total_usd as number | null) ?? (((b.commission_deductions_total ?? 0) as number) * fx)
@@ -225,7 +216,7 @@ function computeCommissionNet(b: Record<string, unknown>): number {
 }
 
 // Net commission expected by ambience - gross minus upstream partner shares.
-// When commission_net_received is set, that IS the expected net (partner already
+// When commission_net_received_usd is set, that IS the expected net (partner already
 // took their cut before remitting). When not set, subtract flat share columns
 // from gross to derive what ambience expects to receive.
 export function computeExpectedCommission(b: Record<string, unknown>): number {
@@ -234,14 +225,10 @@ export function computeExpectedCommission(b: Record<string, unknown>): number {
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
   const commNat = (b.commission_amount ?? 0) as number
   const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
-  // EXPECTED net. Prefer the stored USD twin (sticky override), else native x fx.
+  // EXPECTED net. Prefer the stored USD twin (sticky override), otherwise native x fx.
   const netRecvUsd = b.commission_net_received_usd as number | null
   if (netRecvUsd != null) {
     return Math.round(netRecvUsd * 100) / 100
-  }
-  const netRecv = b.commission_net_received as number | null
-  if (netRecv != null) {
-    return Math.round((netRecv * fx) * 100) / 100
   }
   const referral = ((b.referral_share_amt   ?? 0) as number) * fx
   const iata     = ((b.iata_share_amt       ?? 0) as number) * fx
@@ -256,7 +243,7 @@ export function computeExpectedCommission(b: Record<string, unknown>): number {
 //   gross_received_usd    = what was remitted (before deductions)
 //   variance_usd          = gross_received - expected  (0/+ healthy; - = underpaid)
 //   deductions_usd        = SUM of typed travel_commission_deductions (cost of collection)
-//   actual_net_usd        = what landed = gross - deductions (= commission_net_received)
+//   actual_net_usd        = what landed = gross - deductions (= commission_net_received_usd)
 // deductions never touch variance; they are their own itemized fact.
 export function commissionTriad(b: Record<string, unknown>): {
   expected_net_usd:  number
@@ -271,27 +258,20 @@ export function commissionTriad(b: Record<string, unknown>): {
     return { expected_net_usd: 0, gross_received_usd: null, deductions_usd: null,
              actual_net_usd: null, variance_usd: null, variance_pct: null }
   }
-  const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
-  const commNat = (b.commission_amount ?? 0) as number
-  const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
-  // EXPECTED = the claim (commission owed).
-  const expected_net_usd = commAmt
-  const paid = b.commission_paid_at != null && b.commission_received_amount != null
+  // EXPECTED = the claim (commission owed), USD twin.
+  const expected_net_usd = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  const paid = b.commission_paid_at != null && b.commission_net_received_usd != null
   if (!paid) {
     return { expected_net_usd, gross_received_usd: null, deductions_usd: null,
              actual_net_usd: null, variance_usd: null, variance_pct: null }
   }
-  // GROSS remitted, in USD. The receipt is a USD bank fact (ambience receives USD
-  // into a USD account); it is NOT converted by the EUR/native fx. Using it directly
-  // is the single source of received truth.
-  const gross_received_usd = Math.round((b.commission_received_amount as number) * 100) / 100
-  // NET landed = deductions-derived commission_net_received(_usd); legacy fallback
-  // to gross - fee_amt for receipts predating the deductions model.
-  const netRecvUsd = b.commission_net_received_usd as number | null
-  const netRecv    = b.commission_net_received as number | null
-  const actual_net_usd = netRecvUsd != null ? Math.round(netRecvUsd * 100) / 100
-    : netRecv != null ? Math.round(netRecv * fx * 100) / 100
-    : Math.round(((b.commission_received_amount as number) - ((b.commission_payment_fee_amt ?? 0) as number)) * 100) / 100
+  // GROSS = SENT (FACT 2), the partner's remittance, USD twin (best-guess, not a bank
+  // fact). Falls back to received when sent is untracked. Variance vs expected = remittance accuracy.
+  const sentUsd = b.commission_sent_amount_usd as number | null
+  const gross_received_usd = sentUsd != null ? Math.round(sentUsd * 100) / 100
+    : Math.round((b.commission_net_received_usd as number) * 100) / 100
+  // NET landed = RECEIVED (FACT 3), the USD bank fact.
+  const actual_net_usd = Math.round((b.commission_net_received_usd as number) * 100) / 100
   // DEDUCTIONS = gross - net (cost of collection). Own fact, never in variance.
   const deductions_usd = Math.round((gross_received_usd - actual_net_usd) * 100) / 100
   // VARIANCE = remittance accuracy: gross vs owed. Fees excluded by construction.

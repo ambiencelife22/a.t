@@ -220,7 +220,7 @@ function CommissionReceipt({
     try {
       await updateBookingFinancial(b.id, {
         commissionPaidAt:             null,
-        commissionReceivedAmount:     null,
+        commissionSentAmount:         null,
         commissionPaymentFeePct:      null,
         commissionPaymentFeeAmt:      null,
         commissionNetReceived:        null,

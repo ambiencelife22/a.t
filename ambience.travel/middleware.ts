@@ -45,7 +45,7 @@ export const config = {
 const URL_ID_RE = /^[A-Za-z0-9]{11}$/
 
 // Scraper user agents. Anything matching gets the injected OG document;
-// everything else (real browsers) falls through to the SPA.
+// everything otherwise (real browsers) falls through to the SPA.
 const BOT_RE = new RegExp(
   [
     'facebookexternalhit', 'facebot',

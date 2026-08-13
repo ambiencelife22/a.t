@@ -12,7 +12,7 @@ export type ScheduleAlert = {
   struck: boolean                 // strike the primary times / name
   pillLabel: string | null        // e.g. "Cancelled · Denied Boarding", "Delayed"
   tone: ScheduleTone | null
-  originalStart: string | null    // struck original (delayed only), else null
+  originalStart: string | null    // struck original (delayed only), otherwise null
   originalEnd: string | null
 }
 

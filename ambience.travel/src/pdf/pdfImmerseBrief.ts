@@ -361,7 +361,7 @@ async function renderAll(doc: any, d: EngagementBriefPdfData, emblem: Img | null
   // Sections resolve from the SAME registry the web brief and confirmation use
   // (groupElementsBySection + ELEMENT_TYPE_META): one source for how element
   // types group and what each section is called. Flights, transfers and greeters
-  // render above with their own detail shape; everything else resolves here.
+  // render above with their own detail shape; everything otherwise resolves here.
   const venueSections = groupElementsBySection(d.elements.filter(a =>
     !isFlightElement(a.elementType) &&
     !isTransferElement(a.elementType) &&

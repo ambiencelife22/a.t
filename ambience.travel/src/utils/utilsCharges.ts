@@ -30,7 +30,7 @@ const LOCAL_TAX = new Set(['city_tax', 'tourist_tax', 'environmental_tax'])
 const FEES      = new Set(['resort_fee', 'service_charge'])
 
 // Group charge lines into gov tax / local tax / fees. `useUsd` selects the USD
-// column when true, else native amount. Rate-inclusive lines are skipped (already
+// column when true, otherwise native amount. Rate-inclusive lines are skipped (already
 // in the base). Uncategorized/other lines fall through to neither bucket but still
 // count toward total (they affect what the client pays).
 export function groupCharges(charges: ChargeLine[], useUsd = false): ChargeGroups {

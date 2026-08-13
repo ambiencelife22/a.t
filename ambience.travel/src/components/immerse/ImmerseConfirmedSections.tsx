@@ -1447,7 +1447,7 @@ export function EngagementBriefTab({ clientData }: {
           confirmation uses (groupElementsBySection + ELEMENT_TYPE_META): one
           source for how element types group and what each section is called.
           Flights, transfers and greeters are rendered above with their own
-          detail shape; everything else (reservations, dining, spa, tours,
+          detail shape; all other (reservations, dining, spa, tours,
           acquisitions, arrangements) resolves here automatically. */}
       {groupElementsBySection(elements.filter(a =>
         !isFlightElement(a.elementType) &&

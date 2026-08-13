@@ -158,13 +158,13 @@ async function drawHotelHeader(doc: any, booking: EngagementBooking, y: number, 
   for (const line of m.nameLines) {
     const txt = continuation ? `${line} (continued)` : line
     if (stayAlert.struck) drawStrikeText(doc, txt, tx, ty, 'left')
-    else doc.text(txt, tx, ty)
+    if (!stayAlert.struck) doc.text(txt, tx, ty)
     ty += 5.5
   }
   if (dateRange) {
     sans(doc, 'normal', 8); doc.setTextColor(T.muted[0], T.muted[1], T.muted[2])
     if (stayAlert.struck) drawStrikeText(doc, dateRange, tx, ty, 'left')
-    else doc.text(dateRange, tx, ty)
+    if (!stayAlert.struck) doc.text(dateRange, tx, ty)
     ty += 5
   }
   if (stayAlert.pillLabel) {
