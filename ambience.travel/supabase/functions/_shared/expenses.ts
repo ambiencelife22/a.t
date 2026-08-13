@@ -219,27 +219,35 @@ function computeCommissionNet(b: Record<string, unknown>): number {
 // When commission_net_received_usd is set, that IS the expected net (partner already
 // took their cut before remitting). When not set, subtract flat share columns
 // from gross to derive what ambience expects to receive.
-export function computeExpectedCommission(b: Record<string, unknown>): number {
+// The EXPECTED claim in USD: gross commission minus upstream partner shares
+// (referral/iata/individual - the partner's cut off the top, never ambience's).
+// The pure claim, what ambience is owed. Deductions (cost-of-collection) are NOT
+// subtracted here - they reduce what lands, not what is owed. Single source for
+// both computeExpectedCommission and commissionTriad (no parallel-ship).
+function expectedClaimUsd(b: Record<string, unknown>): number {
   if (b.is_commissionable === false) return 0
-  // All arithmetic in USD. Native share columns converted via implied FX.
   const commAmt = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
   const commNat = (b.commission_amount ?? 0) as number
   const fx      = (commNat && b.commission_amount_usd) ? (commAmt / commNat) : 1
-  // EXPECTED net. Prefer the stored USD twin (sticky override), otherwise native x fx.
-  const netRecvUsd = b.commission_net_received_usd as number | null
-  if (netRecvUsd != null) {
-    return Math.round(netRecvUsd * 100) / 100
-  }
   const referral = ((b.referral_share_amt   ?? 0) as number) * fx
   const iata     = ((b.iata_share_amt       ?? 0) as number) * fx
   const indiv    = ((b.individual_share_amt ?? 0) as number) * fx
   return Math.round((commAmt - referral - iata - indiv) * 100) / 100
 }
+export function computeExpectedCommission(b: Record<string, unknown>): number {
+  // Once received, the USD bank fact governs (sticky). Pre-receipt, the claim.
+  const netRecvUsd = b.commission_net_received_usd as number | null
+  if (netRecvUsd != null) {
+    return Math.round(netRecvUsd * 100) / 100
+  }
+  return expectedClaimUsd(b)
+}
+
 // Commission truth for a booking, all USD. Single-source, three separate facts.
 // Fees are a COST OF COLLECTION, never a shortfall against what we were owed, so
 // they are NOT charged against variance. Variance measures REMITTANCE ACCURACY only:
 // did the payer remit the commission we were owed?
-//   expected_net_usd     = the claim (commission owed): commission_amount_usd
+//   expected_net_usd     = the claim (commission owed): gross minus upstream shares
 //   gross_received_usd    = what was remitted (before deductions)
 //   variance_usd          = gross_received - expected  (0/+ healthy; - = underpaid)
 //   deductions_usd        = SUM of typed travel_commission_deductions (cost of collection)
@@ -258,8 +266,11 @@ export function commissionTriad(b: Record<string, unknown>): {
     return { expected_net_usd: 0, gross_received_usd: null, deductions_usd: null,
              actual_net_usd: null, variance_usd: null, variance_pct: null }
   }
-  // EXPECTED = the claim (commission owed), USD twin.
-  const expected_net_usd = (b.commission_amount_usd ?? b.commission_amount ?? 0) as number
+  // EXPECTED = the claim: gross minus upstream partner shares (referral/iata/individual
+  // take their cut off the top). Deductions are NOT subtracted - they reduce what lands,
+  // not what is owed. Single source (expectedClaimUsd); comparing a partner-inclusive
+  // gross against a partner-net receipt was the phantom loss.
+  const expected_net_usd = expectedClaimUsd(b)
   const paid = b.commission_paid_at != null && b.commission_net_received_usd != null
   if (!paid) {
     return { expected_net_usd, gross_received_usd: null, deductions_usd: null,
