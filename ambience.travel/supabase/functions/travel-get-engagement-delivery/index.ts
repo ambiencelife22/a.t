@@ -3,7 +3,7 @@
 // Edge Function: travel-get-engagement-delivery
 // THE single delivery source. Replaces travel-get-engagement-confirmation +
 // travel-get-engagement-programme (both retired). Assembles the complete engagement
-// ONCE — core, bookings, elements, contacts, links, days, timeline — and returns one
+// ONCE - core, bookings, elements, contacts, links, days, timeline - and returns one
 // bundle. The client fetches this once; the Confirmation / Programme / Brief / Contacts
 // tabs are VIEWS over the one payload. No second EF, no client-side stitching, no
 // parallel timeline build.
@@ -13,17 +13,17 @@
 //   destinationName, elements, links, urlId, fullBookings, days, entries
 //
 //   - fullBookings : confirmation booking shape (rooms, invoices, payment_exception,
-//                    financials nulled) — the Confirmation tab reads these.
+//                    financials nulled) - the Confirmation tab reads these.
 //   - entries      : the single-source ordered timeline (TimelineItem[]) built by
 //                    _shared/timeline.ts from the SAME enrichedBookings + elements +
-//                    stored entries — the Programme tab + PDFs read this.
-//   - elements     : the enriched element tree (enrichElements) — venue content
+//                    stored entries - the Programme tab + PDFs read this.
+//   - elements     : the enriched element tree (enrichElements) - venue content
 //                    (image + facts) resolved via supplier_id -> travel_venue_content.
 //   - days         : buildDays over the journey span + overrides.
 //
 // One enrichElements call feeds BOTH the elements array and buildTimeline, so a
 // reservation (e.g. a beach-club table) renders identically on Confirmation and
-// Programme — the divergence that a two-EF split produced is structurally gone.
+// Programme - the divergence that a two-EF split produced is structurally gone.
 //
 // Security: public endpoint; url_id is the access token; service role via
 // createServiceClient; gated on public_view before any data is served.
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
     const { journeyId, houseId } = ids
 
     // ── ONE parallel fetch: core + the full booking column set (superset of both
-    // former EFs — financial-adjacent cols AND the hotel-policy join) + days + entries.
+    // former EFs - financial-adjacent cols AND the hotel-policy join) + days + entries.
     const [
       core,
       bookingsResult,
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
     // ── ONE bookings enrich (rooms + resolved guest names + canon/hotel maps) ──
     const { roomsByBooking, canonRoomById, hotelById } = await fetchEngagementBookings(db, bookings, partyLabel, houseId)
 
-    // ── ONE elements enrich — feeds BOTH the elements array and buildTimeline.
+    // ── ONE elements enrich - feeds BOTH the elements array and buildTimeline.
     // Venue content (image + facts) resolves via supplier_id -> travel_venue_content.
     const elements = await enrichElements(
       db,
@@ -210,7 +210,7 @@ Deno.serve(async (req: Request) => {
       roomImgByBooking[bid] = roomOverride ?? canonImg
     }
 
-    // ── enrichedBookings — carries hotel policy (_standard_checkin/checkout_time)
+    // ── enrichedBookings - carries hotel policy (_standard_checkin/checkout_time)
     // for the timeline three-field model. This is the booking shape buildTimeline reads.
     const enrichedBookings = bookings.map(b => {
       const bid     = b.id as string
@@ -228,7 +228,7 @@ Deno.serve(async (req: Request) => {
       })
     })
 
-    // ── Standalone-entry images — via the SAME venue-content resolver, by
+    // ── Standalone-entry images - via the SAME venue-content resolver, by
     // source venue id -> its supplier -> travel_venue_content. One image path.
     const entryVenueIds = [...new Set(
       entries.flatMap(e => [e.source_dining_id, e.source_experience_id].filter(Boolean)),
@@ -265,10 +265,10 @@ Deno.serve(async (req: Request) => {
         ?? null,
     }))
 
-    // ── ONE timeline build — same enrichedBookings + elements + entries ────────
+    // ── ONE timeline build - same enrichedBookings + elements + entries ────────
     const timeline = buildTimeline(enrichedBookings, elements, enrichedEntries)
 
-    // ── fullBookings — the confirmation booking shape (financials nulled) ──────
+    // ── fullBookings - the confirmation booking shape (financials nulled) ──────
     const todayUTC = new Date().toISOString().slice(0, 10)
     const fullBookings = bookings.map(b => {
       const hotelId = b.accom_hotel_id as string | null
@@ -308,7 +308,7 @@ Deno.serve(async (req: Request) => {
           { balance_due_date: (b.balance_due_date as string | null) ?? null, balance_paid_at: (b.balance_paid_at as string | null) ?? null, payment_exception_override: (b.payment_exception_override as boolean | null) ?? null },
           todayUTC,
         ),
-        commission_pct:   null, commission_amount: null, net_revenue: null,
+        commission_pct:   null, commission_amount: null,
         commission_paid_at: null, invoice_number: null,
         iata_partner_id:  null, iata_share_pct: null, iata_share_amt: null,
         referral_partner_id: null, referral_share_pct: null, referral_share_amt: null,
@@ -321,7 +321,7 @@ Deno.serve(async (req: Request) => {
       }
     })
 
-    // ── ONE bundle — tabs are views over this ─────────────────────────────────
+    // ── ONE bundle - tabs are views over this ─────────────────────────────────
     const payload = {
       journey:          { ...trip, destinations, bookings: fullBookings, brief },
       brief,

@@ -114,7 +114,6 @@ export type BookingFinancial = {
   travelPartners?:          { id: string; name: string; partnerType: string } | null
 
   // ── Net revenue (rate-type-aware; _shared/expenses.ts computeNetRevenue) ───
-  netRevenue:            number | null
   netRevenueUsd?:       number | null
 
   // ── Payment: deposit / balance ────────────────────────────────────────────

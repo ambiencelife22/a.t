@@ -642,7 +642,7 @@ export type ArchiveEngagementSlug = Extract<EngagementStatusSlug, 'cancelled' | 
 // ─── Trip client surface (confirmation / programme / brief) ───────────────────
 // Client-owned contracts for the /immerse/ trip pages. ONE-WAY RULE: client files
 // import these; they NEVER import from queriesAdminJourney. These intentionally OMIT
-// ambience's margin (commission_*, netRevenue, commissionableRate, invoiceNumber,
+// ambience's margin (commission_*, commissionableRate, invoiceNumber,
 // iata/referral/individual shares) - a client type must not even DESCRIBE the agency's
 // profit. The client's-own-bill fields (price, rates, taxes, deposit/balance) ARE kept;
 // each surface decides what it renders. (Phase 1, S53F. Phase 2 will make the admin
@@ -807,7 +807,7 @@ export type ImmerseBookingRoom = {
 }
 
 // Booking: client's-bill KEPT, MARGIN STRIPPED. Omitted vs admin EngagementBooking:
-// commissionableRate, commissionPct, commissionAmount, netRevenue,
+// commissionableRate, commissionPct, commissionAmount,
 // commissionPaidAt, invoiceNumber, iata_*, referral_*, individual_*,
 // supplier_*, primary/supplier contact fields, cancellation/booking policy.
 export type ImmerseEngagementBooking = {

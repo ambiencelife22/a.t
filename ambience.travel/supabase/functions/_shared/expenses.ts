@@ -33,7 +33,6 @@ export const BOOKING_FINANCIAL_SELECT = `
   commission_sent_amount, commission_sent_amount_usd, commission_payment_fee_pct, commission_payment_fee_amt,
   commission_net_received_usd,
   commission_deductions_total, commission_deductions_total_usd,
-  net_revenue, net_revenue_usd,
   taxes_and_fees, taxes_and_fees_usd,
   referral_partner_id, referral_share_pct, referral_share_amt,
   iata_partner_id, iata_share_pct, iata_share_amt,

@@ -230,7 +230,6 @@ export type EngagementBooking = {
   balancePaidAt:           string | null
   commissionPct:            number | null
   commissionAmount:         number | null
-  netRevenue:               number | null
   commissionPaidAt:        string | null
   invoiceNumber:            string | null
   iataPartnerId:           string | null
