@@ -154,9 +154,10 @@ Deno.serve(async (req: Request) => {
             )
           )
         `)
+        .is('parent_engagement_id', null)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false })
-
+        
       if (error) {
         console.error('list error:', error)
         return json({ error: 'Failed to fetch engagement list' }, 500)
