@@ -4,7 +4,7 @@
 // Writes time tracking data (entries, activity lookup, rate card).
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - travel_time_* tables have admin-only RLS, no direct client write policy
@@ -29,7 +29,7 @@
 //   upsert_rate      → { rate }     requires slug, role_label, hourly_rate
 //
 // Deployed at: /functions/v1/travel-write-timetracking
-// Last updated: S53C — initial ship.
+// Last updated: S53C - initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'
@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
 
     // ── 4. Rate snapshot helper ───────────────────────────────────────────────
     // Resolves rate_id + invoiceable flag → { rate_applied, effort_value, billable_amount }.
-    //   effort_value    = hours * rate (ALWAYS when a rate exists) — the worth of the time.
+    //   effort_value    = hours * rate (ALWAYS when a rate exists) - the worth of the time.
     //   billable_amount = effort_value when invoiceable; otherwise 0. Null rate/effort when no rate.  
     // Throws 'RATE_NOT_FOUND' if a rate_id is given but does not resolve.
     async function snapshot(rateId: unknown, hours: number, isInvoiceable: boolean) {

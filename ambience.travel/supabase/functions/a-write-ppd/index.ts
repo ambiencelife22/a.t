@@ -2,12 +2,12 @@
 //
 // Edge Function: a-write-ppd
 // Writes (INSERT or DELETE) to a_ppd_people and a_ppd_contacts.
-// This is the ONLY path for PPD writes — frontend code never touches
+// This is the ONLY path for PPD writes - frontend code never touches
 // these tables directly.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate, JWT ON)
-//   - Caller must be authenticated AND admin — enforced via requireAdmin
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate, JWT ON)
+//   - Caller must be authenticated AND admin - enforced via requireAdmin
 //     (_shared/auth.ts). The gate returns a service client that bypasses RLS.
 //   - a_ppd_* tables have no direct client write policy
 //   - All writes logged to console.info with actor + action + table + id
@@ -27,9 +27,9 @@
 //   }
 //
 // Response:
-//   { ok: true, row: <inserted row> }     — on insert success
-//   { ok: true }                          — on delete success
-//   { error: string }                     — on failure (status reflects reason)
+//   { ok: true, row: <inserted row> }     - on insert success
+//   { ok: true }                          - on delete success
+//   { error: string }                     - on failure (status reflects reason)
 //
 // Validation:
 //   - data_key for people writes validated against PPD_PEOPLE_KEYS (in-code)
@@ -39,10 +39,10 @@
 //   - id required for delete
 //
 // Deployed at: /functions/v1/a-write-ppd
-// Last updated: S53H — migrated to shared canon: requireAdmin gate (was a
+// Last updated: S53H - migrated to shared canon: requireAdmin gate (was a
 //   hand-rolled anon→getUser→service→is_admin preamble), imported json (was a
 //   local re-roll of _shared/http.ts json). No change to validation or write logic.
-// Prior: S52 — initial ship. Closes the highest-priority gap identified in the
+// Prior: S52 - initial ship. Closes the highest-priority gap identified in the
 //   Client Data Edge Function Plan (PPD writes were previously RLS-only).
 
 import { preflight, json } from '../_shared/http.ts'
@@ -93,7 +93,7 @@ interface RequestBody {
   payload?: Record<string, unknown>
 }
 
-// ── Response helpers — built on the shared json() ─────────────────────────────
+// ── Response helpers - built on the shared json() ─────────────────────────────
 // Local sugar over _shared/http.ts json. Shape: json(body, status).
 
 const ok          = (body: Record<string, unknown>): Response => json(body, 200)
@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
       }
     }
     if (table === 'contacts') {
-      // contacts — contact_id required
+      // contacts - contact_id required
       const contactId = payload.contact_id
       if (typeof contactId !== 'string' || contactId.length === 0) {
         return badRequest('payload.contact_id required for contacts insert')

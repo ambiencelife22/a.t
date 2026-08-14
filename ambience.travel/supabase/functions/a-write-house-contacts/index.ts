@@ -3,13 +3,13 @@
 // Edge Function: a-write-house-contacts
 // Creates / updates / deletes house-contact rows (a_house_contacts).
 //
-// a_house_contacts is client data (named staff for a private client house —
+// a_house_contacts is client data (named staff for a private client house -
 // PAs, drivers, security, medical, concierge). Per the client-data
 // architecture rule, all writes go through an EF, never a direct table write.
 // Table 2 of the queriesAdminHouse write migration (after a_house_people).
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - a_house_contacts written only via service role here. Never anon.
 //   - SERVICE_ROLE_KEY env var (S66F canon).
@@ -32,7 +32,7 @@
 //           (never id/house_id/timestamps)
 //
 // Deployed at: /functions/v1/a-write-house-contacts
-// Last updated: S54c — initial ship (table 2 of the write migration).
+// Last updated: S54c - initial ship (table 2 of the write migration).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'

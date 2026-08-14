@@ -1,8 +1,8 @@
 // supabase/functions/sports-wipe-user-data/index.ts
 // Deletes all user data rows but preserves the account.
 //   1. Deletes all data rows EXCEPT global_profiles
-//   2. Auth user is preserved — user remains signed in
-//   3. Profile row remains — subscription, display name, admin status intact
+//   2. Auth user is preserved - user remains signed in
+//   3. Profile row remains - subscription, display name, admin status intact
 //
 // For full account deletion (data + auth user), use delete-account instead.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -19,8 +19,8 @@ const DATA_TABLES: [string, string][] = [
   ['sports_user_systems',           'user_id'],
   ['sports_user_trader',            'user_id'],
   ['global_login_events',           'user_id'],
-  // global_profiles intentionally omitted — account preserved.
-  // S66B Add 3: sports_trader_balance_history removed — it's shared canon
+  // global_profiles intentionally omitted - account preserved.
+  // S66B Add 3: sports_trader_balance_history removed - it's shared canon
   // per trader, not user-scoped data. Wiping it on a user data wipe would
   // destroy trader history visible to every user. Also: the table has no
   // user_id column, so the DELETE would have failed silently anyway.
@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
       const { data: profile, error: profileErr } = await client
         .from('global_profiles').select('is_admin').eq('id', caller.id).single()
       if (profileErr || !profile?.is_admin) {
-        return new Response(JSON.stringify({ error: 'Forbidden — admin required to wipe another user' }), {
+        return new Response(JSON.stringify({ error: 'Forbidden - admin required to wipe another user' }), {
           status: 403, headers: { 'Content-Type': 'application/json', ...CORS },
         })
       }

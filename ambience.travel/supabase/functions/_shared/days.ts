@@ -1,10 +1,10 @@
 // supabase/functions/_shared/days.ts
 // Single-source trip days. The list of WHICH days exist is DERIVED from the trip
-// span [start_date .. end_date] — never stored. travel_journey_days is an OVERLAY
+// span [start_date .. end_date] - never stored. travel_journey_days is an OVERLAY
 // holding only per-day operator overrides (show / day_label / day_note), keyed by
 // (journey_id, entry_date). buildDays merges: every date in span, with overlay applied.
 //
-// Replaces the stored-days model (travel_journey_days as source of existence) — the
+// Replaces the stored-days model (travel_journey_days as source of existence) - the
 // same store-the-derivation pattern retired for hotel/aux entries. Shift a trip
 // date and the day list follows automatically; overrides keyed by date survive.
 //

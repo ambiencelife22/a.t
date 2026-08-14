@@ -1,7 +1,7 @@
 // supabase/functions/travel-tasks/index.ts
 //
 // Edge Function: travel-tasks
-// Class A — admin-only. Single source for all task reads + writes (Calendar +
+// Class A - admin-only. Single source for all task reads + writes (Calendar +
 // To-Do, Stage 2). Tables: travel_tasks + travel_task_templates.
 //
 // Security model:
@@ -10,7 +10,7 @@
 //
 // Request body: { mode, ...params }
 //
-// Read modes (take an optional viewer_team_id for the visibility seam — today it
+// Read modes (take an optional viewer_team_id for the visibility seam - today it
 // only filters global tasks; Stage 4 activates the assigned_to clause):
 //   by_engagement  { engagement_id, viewer_team_id? } → TaskRow[]
 //   by_range       { range_start, range_end, viewer_team_id? } → TaskRow[]
@@ -167,10 +167,10 @@ Deno.serve(async (req: Request) => {
       return json({ tasks: ((data ?? []) as unknown as TaskQueryRow[]).map(shape) })
     }
 
-    // all_open — fleet-wide inbox: every open task across all engagements,
+    // all_open - fleet-wide inbox: every open task across all engagements,
     // overdue-first, with the engagement title + url_id joined so each row can
     // link back to its engagement. Includes null-due-date tasks (they still need
-    // doing) — this is why it's distinct from by_range, which filters on due_date.
+    // doing) - this is why it's distinct from by_range, which filters on due_date.
     if (mode === 'all_open') {
       const viewer = (body?.viewer_team_id as string | undefined) ?? null
 
@@ -186,7 +186,7 @@ Deno.serve(async (req: Request) => {
       return json({ tasks: ((data ?? []) as unknown as TaskEngagementRow[]).map(shapeWithEngagement) })
     }
 
-    // all_closed — the closed log: every done/dismissed task across all
+    // all_closed - the closed log: every done/dismissed task across all
     // engagements, most-recently-closed first. Same engagement join + shape as
     // all_open so the inbox renders open and closed as one object at two states.
     if (mode === 'all_closed') {
@@ -212,7 +212,7 @@ Deno.serve(async (req: Request) => {
       const insert = {
         engagement_id,
         stay_id:     (body?.stay_id as string | undefined) ?? null,
-        template_id: null,  // custom task — generation sets this for stock tasks
+        template_id: null,  // custom task - generation sets this for stock tasks
         title,
         due_date:    (body?.due_date as string | undefined) ?? null,
         note:        (body?.note as string | undefined) ?? null,

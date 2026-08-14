@@ -1,6 +1,6 @@
 // supabase/functions/global-cancel-subscription/index.ts
 // Cancels a Stripe subscription at the end of the current billing period.
-// Does NOT cancel immediately — user retains full access until period ends.
+// Does NOT cancel immediately - user retains full access until period ends.
 // Does NOT delete any user data.
 //
 // Auth: JWT verification OFF. Client sends session.access_token in body as { token }.
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       return json({ error: 'No active subscription found in Stripe' }, 404)
     }
 
-    // Cancel at period end — user keeps access until current period expires
+    // Cancel at period end - user keeps access until current period expires
     const canceled = await stripe.subscriptions.update(subscription.id, {
       cancel_at_period_end: true,
     })

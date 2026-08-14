@@ -1,18 +1,18 @@
 // supabase/functions/travel-read-suppliers/index.ts
 //
 // Edge Function: travel-read-suppliers
-// Class A — admin-only. Global reference reads for suppliers and trade partners.
+// Class A - admin-only. Global reference reads for suppliers and trade partners.
 //
 // Modes:
-//   partners          — all active travel_partners (referral, iata, individual)
-//   payment_platforms — all active travel_payment_platforms
-//   rate_types        — all active travel_rate_types
+//   partners          - all active travel_partners (referral, iata, individual)
+//   payment_platforms - all active travel_payment_platforms
+//   rate_types        - all active travel_rate_types
 //
 // Single source for supplier/partner reference data platform-wide.
-// travel-read-journey-admin reads travel_partners directly — debt to migrate here
+// travel-read-journey-admin reads travel_partners directly - debt to migrate here
 // once supplier management is built out.
 //
-// Last updated: S53H — initial ship.
+// Last updated: S53H - initial ship.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'

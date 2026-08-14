@@ -12,13 +12,13 @@
 //   if (!gate.ok) return gate.response
 //   const { serviceClient, user } = gate
 //
-// Webhook/cron and public EFs do NOT use these — they have bespoke auth
+// Webhook/cron and public EFs do NOT use these - they have bespoke auth
 // (Stripe signature, x-cron-secret, or none) and stay as-is. They obtain a
 // service client directly from _shared/client.ts createServiceClient() AFTER
 // their own verification has passed.
 //
 // S53H: service-client construction extracted to _shared/client.ts. Anon
-// (JWT-bound) client construction stays private here — the only legitimate use
+// (JWT-bound) client construction stays private here - the only legitimate use
 // of an anon client is identity verification inside these gates, so it is not
 // exported anywhere. Gate logic is unchanged from S54.
 
@@ -37,7 +37,7 @@ type AuthFail = {
 }
 type AuthResult = AuthOk | AuthFail
 
-// Anon client bound to the caller's JWT. RLS applies. PRIVATE — used only to
+// Anon client bound to the caller's JWT. RLS applies. PRIVATE - used only to
 // verify identity (getUser) inside the gates below. Never exported: the only
 // way to obtain an authenticated context is through requireUser / requireAdmin.
 function createAnonClient(authHeader: string): SupabaseClient {
@@ -49,7 +49,7 @@ function createAnonClient(authHeader: string): SupabaseClient {
 }
 
 // Verify the caller is authenticated. Returns the user + a service client.
-// Does NOT check admin — use for user-scoped EFs (invoices, own-account, etc.).
+// Does NOT check admin - use for user-scoped EFs (invoices, own-account, etc.).
 export async function requireUser(req: Request): Promise<AuthResult> {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return { ok: false, response: json({ error: 'Unauthorized' }, 401) }

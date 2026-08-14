@@ -1,16 +1,16 @@
 // supabase/functions/sports-user-backup/index.ts
 // Exports all data for the calling user only.
-// Uses the user's own JWT — RLS scopes all queries automatically.
+// Uses the user's own JWT - RLS scopes all queries automatically.
 // No service role key needed.
 //
-// Auth: Pattern B — user JWT in body as { token }.
-//   No admin check — each user may only export their own data.
+// Auth: Pattern B - user JWT in body as { token }.
+//   No admin check - each user may only export their own data.
 //   RLS on all queried tables enforces the scope.
 //
 // Input:  { token: string }
 // Output: { exportedAt, exportedBy, tables, errors? } | { error: string }
 //
-// S66B Add 3: sports_trader_balance_history omitted — shared canon per trader,
+// S66B Add 3: sports_trader_balance_history omitted - shared canon per trader,
 //   not user-scoped. User's view is derived live from sports_user_trader +
 //   getTraderBalanceHistory(traderId, fromDate) at read time.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // ── User-scoped client — RLS applied automatically ──
+    // ── User-scoped client - RLS applied automatically ──
     const userClient = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth:   { persistSession: false },

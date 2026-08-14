@@ -1,6 +1,6 @@
 // supabase/functions/global-get-price-details/index.ts
 // Returns Stripe price metadata for billing/refund policy modals in the checkout UI.
-// Auth: JWT in body, verified via anon client — same pattern as create-checkout-session.
+// Auth: JWT in body, verified via anon client - same pattern as create-checkout-session.
 //
 // Input:  { token: string, priceId: string }
 // Output: { amount: number, currency: string, interval: string | null,

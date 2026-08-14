@@ -65,7 +65,7 @@ async function getOrCreateCustomer(userId: string, email: string): Promise<{ cus
     return { customerId: profile.stripe_customer_id, isNew: false }
   }
 
-  // Create new Stripe customer — stripe_customer_id written to profile only
+  // Create new Stripe customer - stripe_customer_id written to profile only
   // after subscription is successfully created, to prevent orphaned IDs
   // attracting stale webhook retries on function crash.
   const customer = await stripe.customers.create({

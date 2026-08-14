@@ -86,13 +86,13 @@ Deno.serve(async (req: Request) => {
       .from('global_profiles').select('is_admin').eq('id', user.id).single()
 
     if (profileErr || !profile?.is_admin) {
-      return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
+      return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
         status: 403, headers: { 'Content-Type': 'application/json', ...CORS },
       })
     }
 
     if (!body?.tables) {
-      return new Response(JSON.stringify({ error: 'Invalid backup format — missing tables key' }), {
+      return new Response(JSON.stringify({ error: 'Invalid backup format - missing tables key' }), {
         status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
       })
     }

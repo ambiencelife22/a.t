@@ -2,12 +2,12 @@
 // Admin-triggered: sets free_positions_override on a user profile and sends
 // the freePositions email via Resend.
 //
-// Auth: Pattern A — JWT verification OFF.
+// Auth: Pattern A - JWT verification OFF.
 //   Caller sends admin session token in body as { token }.
 //   Function verifies token, checks is_admin on profile, then proceeds.
 //
 // Input:  { token: string, targetUserId: string, override: number }
-//   override — the number of BONUS positions to grant (added to base 25)
+//   override - the number of BONUS positions to grant (added to base 25)
 // Output: { ok: true, total: number } | { error: string }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (!callerProfile?.is_admin) {
-    return json({ error: 'Forbidden — admin only' }, 403)
+    return json({ error: 'Forbidden - admin only' }, 403)
   }
 
   // Fetch target user profile + email
@@ -137,14 +137,14 @@ Deno.serve(async (req) => {
   // Send email
   const subject     = `We added ${override} positions to your account.`
   const headline    = `${override} more positions, on us.`
-  const bodyText    = `We've added ${override} complimentary positions to your ambience.SPORTS account — bringing your total to ${total}.\n\nNo subscription needed. Open the app and they're yours. Your data is exactly where you left it.`
+  const bodyText    = `We've added ${override} complimentary positions to your ambience.SPORTS account - bringing your total to ${total}.\n\nNo subscription needed. Open the app and they're yours. Your data is exactly where you left it.`
   const html = renderEmail(headline, bodyText, 'Open ambience.SPORTS', 'https://sports.ambience.life')
 
   try {
     await sendEmail(email, subject, html)
   } catch (err) {
     console.error('grant-free-positions email error (non-fatal):', err)
-    // Non-fatal — DB write succeeded, email failure should not block the response
+    // Non-fatal - DB write succeeded, email failure should not block the response
   }
 
   console.log(`grant-free-positions: granted ${override} to ${targetUserId} (total ${total})`)

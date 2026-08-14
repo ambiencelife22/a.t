@@ -5,7 +5,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 
-// S66B Add 3: sports_trader_balance_history removed — shared canon, not
+// S66B Add 3: sports_trader_balance_history removed - shared canon, not
 // user-scoped. Symmetric with sports-user-backup which no longer exports it.
 const CONFLICT_KEYS: Record<string, string> = {
   'sports_user_sportsbooks':       'id',
@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     const { data: profile, error: profileErr } = await serviceClient
       .from('global_profiles').select('is_admin').eq('id', user.id).single()
     if (profileErr || !profile?.is_admin) {
-      return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
+      return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
         status: 403, headers: { 'Content-Type': 'application/json', ...CORS },
       })
     }

@@ -9,7 +9,7 @@
 // a-get-ppd pattern for the PPD tier and global-write-people for the registry.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - a_house_people written only via service role here. Never anon.
 //   - SERVICE_ROLE_KEY env var (S66F canon).
@@ -32,7 +32,7 @@
 // Row shape returned (create/update): full row via PERSON_SELECT.
 //
 // Deployed at: /functions/v1/a-write-house-people
-// Last updated: S54c — initial ship (table 1 of the queriesAdminHouse write migration).
+// Last updated: S54c - initial ship (table 1 of the queriesAdminHouse write migration).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'

@@ -4,7 +4,7 @@
 // Reads sensitive PPD data from a_ppd_people and a_ppd_contacts.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller authenticated + admin, enforced via the shared requireAdmin gate
 //     (_shared/auth.ts). Service role via createServiceClient (_shared/client.ts).
 //   - a_ppd_* tables have no direct client read policy; reads bypass RLS via service role.
@@ -19,9 +19,9 @@
 //   { people: HousePPDEntry[], contacts: ContactPPDEntry[] }
 //
 // Deployed at: /functions/v1/a-get-ppd
-// Last updated: S53H Phase 2 — onto requireAdmin + createServiceClient + shared json.
+// Last updated: S53H Phase 2 - onto requireAdmin + createServiceClient + shared json.
 //   a_ppd_people.person_id FKs to global_people directly (Phase 4 done). Contacts
-//   re-key to the spine remains scoped-out — do not re-point a_ppd_contacts without
+//   re-key to the spine remains scoped-out - do not re-point a_ppd_contacts without
 //   verifying the table has a global-person column first.
 
 import { requireAdmin } from '../_shared/auth.ts'
@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Failed to fetch PPD people data' }, 500)
     }
 
-    // a_ppd_contacts — UNCHANGED (contacts re-key to spine not yet built).
+    // a_ppd_contacts - UNCHANGED (contacts re-key to spine not yet built).
     let contactsQuery = serviceClient
       .from('a_ppd_contacts')
       .select('id, house_id, contact_id, data_key, data_value, access_note, created_at, updated_at')

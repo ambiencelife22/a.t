@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Missing priceId' }, 400)
   }
 
-  // Only allow switching between Pro Monthly and Pro Annual — not to Lifetime
+  // Only allow switching between Pro Monthly and Pro Annual - not to Lifetime
   const proMonthly = Deno.env.get('STRIPE_PRICE_PRO_MONTHLY')
   const proAnnual  = Deno.env.get('STRIPE_PRICE_PRO_ANNUAL')
 
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Could not find subscription item' }, 500)
     }
 
-    // Update the subscription — Stripe prorates automatically
+    // Update the subscription - Stripe prorates automatically
     const updated = await stripe.subscriptions.update(subscription.id, {
       cancel_at_period_end: false, // un-cancel if previously scheduled to cancel
       items: [{
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     })
 
     // stripe-webhook will update subscription_tier/status when next invoice settles.
-    // Tier stays 'pro' either way — only the billing interval changes.
+    // Tier stays 'pro' either way - only the billing interval changes.
     return json({
         subscriptionId:   updated.id,
         newPriceId:       priceId,

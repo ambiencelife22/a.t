@@ -1,14 +1,14 @@
 /* sports-reengagement-job/index.ts
-   Scheduled Edge Function — runs daily via pg_cron (job 'reengagement-job', 10:00 UTC).
+   Scheduled Edge Function - runs daily via pg_cron (job 'reengagement-job', 10:00 UTC).
    Three re-engagement sends per lapse event:
-     Day 30  — calm, factual. "Still here."
-     Day 60  — warm, light. "We kept your seat."
-     Day 90  — concrete gift. "We added 25 positions." (free-tier users only)
+     Day 30  - calm, factual. "Still here."
+     Day 60  - warm, light. "We kept your seat."
+     Day 90  - concrete gift. "We added 25 positions." (free-tier users only)
 
    One send guarantee per send (guard columns IS NULL). 30+60 cleared on
    resubscribe in stripe-webhook; Day-90 guard NOT cleared (grant is permanent).
 
-   Auth: no user session — called by pg_cron. Validated by CRON_SECRET header.
+   Auth: no user session - called by pg_cron. Validated by CRON_SECRET header.
 
    S66F Phase 2: subscription state moved global_profiles -> global_subscriptions
    (per person_id, product='sports'). Both queries DRIVE off global_subscriptions;
@@ -31,7 +31,7 @@ const BONUS_POSITIONS = 25
 const TOTAL_POSITIONS = BASE_POSITIONS + BONUS_POSITIONS
 const SPORTS_PRODUCT  = 'sports'
 
-// ── HTML renderer — same shell as all ambience emails ─────────────────────────
+// ── HTML renderer - same shell as all ambience emails ─────────────────────────
 
 function renderEmail(opts: {
   heading:     string
@@ -71,7 +71,7 @@ function renderEmail(opts: {
 </style>
 </head>
 <body>
-  <!-- bgcolor table — forces dark background in Apple Mail and Gmail which ignore body background-color -->
+  <!-- bgcolor table - forces dark background in Apple Mail and Gmail which ignore body background-color -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1A1D1A" style="background:#1A1D1A; min-height:100%;">
     <tr><td>
       <div class="header"><div class="logo">ambience.SPORTS</div></div>
@@ -94,7 +94,7 @@ ${footerNote}
 </html>`
 }
 
-// ── Send helper — never throws ────────────────────────────────────────────────
+// ── Send helper - never throws ────────────────────────────────────────────────
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const { error } = await resend.emails.send({
@@ -205,7 +205,7 @@ Deno.serve(async (req: Request) => {
       const html = renderEmail({
         heading:    'Still here.',
         body: [
-          'Your complete ambience.SPORTS history is intact — every position, every book, every dollar logged.',
+          'Your complete ambience.SPORTS history is intact - every position, every book, every dollar logged.',
           'Nothing has been deleted. Pick up exactly where you left off.',
         ],
         ctaLabel:   'Pick up where you left off',
@@ -229,7 +229,7 @@ Deno.serve(async (req: Request) => {
       const html = renderEmail({
         heading:    'We kept your seat.',
         body: [
-          'Your ambience.SPORTS data has been patiently waiting 60 days for you. Every position, every book, every dollar — exactly as you left it. Remarkably loyal, for a database.',
+          'Your ambience.SPORTS data has been patiently waiting 60 days for you. Every position, every book, every dollar - exactly as you left it. Remarkably loyal, for a database.',
           'Re-launching your full access whenever you\'re ready 🚀',
         ],
         ctaLabel:   'Pick up where you left off',
@@ -249,8 +249,8 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── Day 90: free-tier users only — grant bonus positions ──────────────────
-  // Separate query — different tier, different guard column, different action.
+  // ── Day 90: free-tier users only - grant bonus positions ──────────────────
+  // Separate query - different tier, different guard column, different action.
   const { data: day90Subs, error: err90 } = await serviceClient
     .from('global_subscriptions')
     .select('person_id, current_period_end, re_engagement_positions_sent_at')
@@ -283,7 +283,7 @@ Deno.serve(async (req: Request) => {
       continue
     }
 
-    // Write DB first — stamp guard + grant positions. Upsert on (person_id, product)
+    // Write DB first - stamp guard + grant positions. Upsert on (person_id, product)
     // since a long-lapsed free user may have no subscription row. If email fails
     // after this, positions are still granted (acceptable).
     const { error: upsertErr } = await serviceClient
@@ -307,7 +307,7 @@ Deno.serve(async (req: Request) => {
     const html = renderEmail({
       heading:  `${BONUS_POSITIONS} more positions, on us.`,
       body: [
-        `We've added ${BONUS_POSITIONS} complimentary positions to your ambience.SPORTS account — bringing your total to ${TOTAL_POSITIONS}.`,
+        `We've added ${BONUS_POSITIONS} complimentary positions to your ambience.SPORTS account - bringing your total to ${TOTAL_POSITIONS}.`,
         'No subscription needed. Open the app and they\'re yours. Your data is exactly where you left it.',
       ],
       ctaLabel: 'Open ambience.SPORTS',
@@ -328,7 +328,7 @@ Deno.serve(async (req: Request) => {
     sentPositions++
   }
 
-  console.log(`reengagement-job: done — sent30=${sent30} sent60=${sent60} sentPositions=${sentPositions} failed=${failed}`)
+  console.log(`reengagement-job: done - sent30=${sent30} sent60=${sent60} sentPositions=${sentPositions} failed=${failed}`)
   return new Response(
     JSON.stringify({ sent30, sent60, sentPositions, failed }),
     { status: 200, headers: CORS },

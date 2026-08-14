@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     const activeSub = subscriptions.data.find(s => {
       const isActiveStatus = s.status === 'active' || s.status === 'trialing' || s.status === 'past_due'
       if (!isActiveStatus) { return false }
-      // Match by price ID — confirms this sub belongs to the requested product
+      // Match by price ID - confirms this sub belongs to the requested product
       const subPriceId = s.items.data[0]?.price?.id ?? ''
       return productPriceIds.includes(subPriceId)
     })

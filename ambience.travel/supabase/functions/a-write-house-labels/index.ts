@@ -11,7 +11,7 @@
 // direct table write. Sibling of a-write-house-people / -records / -contacts.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //     NOTE: inherits the is_admin -> admin_scopes retirement debt shared by all
 //     five a-write-house-* EFs; migrate them together, not piecemeal.
@@ -25,11 +25,11 @@
 //   create      → { label }        requires house_id + key + display_name.
 //                                   is_default defaults false; sort_order 0.
 //   update      → { id, ...patch }  patch key / display_name / sort_order.
-//                                   (is_default is NOT set here — use set_default,
+//                                   (is_default is NOT set here - use set_default,
 //                                   which enforces one-default-per-house.)
 //   delete      → { id }            hard delete by id.
 //   set_default → { id }            clears the house's current default, then sets
-//                                   this row default — respects the one-default
+//                                   this row default - respects the one-default
 //                                   partial unique index (S53L). Atomic-ish:
 //                                   clear-then-set, both service-role.
 //   reorder     → { ordered_ids }   sort_order = array index.
@@ -37,7 +37,7 @@
 // key ∈ house_label_context enum: family | principal | delegation | couple | staff
 //
 // Deployed at: /functions/v1/a-write-house-labels
-// Last updated: S53M — Step 11 Part A (House Label Manager).
+// Last updated: S53M - Step 11 Part A (House Label Manager).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'

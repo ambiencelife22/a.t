@@ -1,10 +1,10 @@
 // supabase/functions/sports-admin-users/index.ts
 // Returns all user profiles using the service role key (bypasses RLS).
 // Caller must be authenticated with is_admin = true.
-// S59: enrolledTraderIds added — array of trader UUIDs the user is enrolled in.
+// S59: enrolledTraderIds added - array of trader UUIDs the user is enrolled in.
 // S66F Phase 2: display_name moved to sports_user_prefs; is_intention_member +
 //   free_positions_override moved to global_subscriptions (product='sports').
-//   All three are person-scoped — joined via global_profiles.person_id.
+//   All three are person-scoped - joined via global_profiles.person_id.
 //   Output shape UNCHANGED (queriesAdmin.getAllUsersAdmin mapper untouched).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     const { data: profile, error: profileErr } = await serviceClient
       .from('global_profiles').select('is_admin').eq('id', user.id).single()
     if (profileErr || !profile?.is_admin) {
-      return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
+      return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
         status: 403, headers: { 'Content-Type': 'application/json', ...CORS },
       })
     }

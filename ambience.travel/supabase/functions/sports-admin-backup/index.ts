@@ -1,8 +1,8 @@
 // supabase/functions/sports-admin-backup/index.ts
 // Exports a full snapshot of all SPORTS + global tables.
-// Admin-only — caller must supply a valid session token in the request body.
+// Admin-only - caller must supply a valid session token in the request body.
 //
-// Auth: Pattern A — JWT verification OFF.
+// Auth: Pattern A - JWT verification OFF.
 //   Caller sends session token in body as { token }.
 //   Function verifies token via service client, checks is_admin on global_profiles.
 //
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
 
     if (profileErr || !profile?.is_admin) {
       return new Response(JSON.stringify({
-        error: 'Forbidden — admin only',
+        error: 'Forbidden - admin only',
         profileError: profileErr?.message,
         isAdmin: profile?.is_admin,
         userId: user.id,

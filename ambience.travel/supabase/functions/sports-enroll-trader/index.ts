@@ -1,6 +1,6 @@
 // supabase/functions/sports-enroll-trader/index.ts
 // Admin-only. Enrolls a target user in a trader (PWins or Matt's Picks).
-// Uses service role to bypass RLS — admin identity verified server-side.
+// Uses service role to bypass RLS - admin identity verified server-side.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CORS = {
@@ -61,7 +61,7 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (profileErr || !profile?.is_admin) {
-      return new Response(JSON.stringify({ error: 'Forbidden — admin only' }), {
+      return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
         status: 403, headers: { 'Content-Type': 'application/json', ...CORS },
       })
     }
@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    // Upsert enrollment — idempotent on user_id+trader_id
+    // Upsert enrollment - idempotent on user_id+trader_id
     const { error: enrollErr } = await serviceClient
       .from('sports_user_trader')
       .upsert(

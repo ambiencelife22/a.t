@@ -11,7 +11,7 @@
 // Update only: houses are seeded, never created or deleted from the client.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - a_houses written only via service role here. Never anon.
 //   - SERVICE_ROLE_KEY env var (S66F canon).
@@ -26,7 +26,7 @@
 //   salutation_rule, brief_language
 //
 // Deployed at: /functions/v1/a-write-house
-// Last updated: S54c — initial ship (final table of the write migration).
+// Last updated: S54c - initial ship (final table of the write migration).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'

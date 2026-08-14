@@ -1,10 +1,10 @@
 // supabase/functions/global-get-invoices/index.ts
 // Returns the last 24 Stripe invoices for the authenticated user.
-// Free tier users with no stripe_customer_id get an empty array — not an error.
+// Free tier users with no stripe_customer_id get an empty array - not an error.
 //
 // Auth: JWT verification OFF (bespoke). Client sends session.access_token in body
 //   as { token }; verified via a per-request token-scoped client. This body-token
-//   model is sanctioned-bespoke per _shared/auth.ts — it does NOT use requireUser/
+//   model is sanctioned-bespoke per _shared/auth.ts - it does NOT use requireUser/
 //   requireAdmin (those read the Authorization header). Service-role reads use the
 //   canonical createServiceClient factory; responses use shared json/preflight.
 // Input:  { token: string }
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   }
 
   // Verify the body token via a per-request token-scoped anon client.
-  // Bespoke auth — NOT a service client, so it stays hand-built (no shared helper).
+  // Bespoke auth - NOT a service client, so it stays hand-built (no shared helper).
   const userClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     .eq('id', user.id)
     .single()
 
-  // No customer yet — free tier user, return empty (not an error).
+  // No customer yet - free tier user, return empty (not an error).
   if (!profile?.stripe_customer_id) {
     return json({ invoices: [] }, 200)
   }

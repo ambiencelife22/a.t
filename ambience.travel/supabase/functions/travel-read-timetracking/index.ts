@@ -4,7 +4,7 @@
 // Reads time tracking data (activities, rate card, entries, summaries).
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - travel_time_* tables have admin-only RLS, no direct client read policy
@@ -31,13 +31,13 @@
 // belongs to a house (invariant; orphans backfilled in migration_s53c_04).
 //
 // Deployed at: /functions/v1/travel-read-timetracking
-// Last updated: S53C — initial ship + house/engagement resolver modes.
+// Last updated: S53C - initial ship + house/engagement resolver modes.
 
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
 
 
-// 2dp rounding gateway (mirrors the write EF) — used for analytics aggregation.
+// 2dp rounding gateway (mirrors the write EF) - used for analytics aggregation.
 const r2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100
 
 const ENTRY_SELECT = `

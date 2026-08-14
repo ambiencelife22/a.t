@@ -1,7 +1,7 @@
 // supabase/functions/sports-set-intention-member/index.ts
 // Admin-triggered: sets is_intention_member on a user profile.
 //
-// Auth: Pattern A — JWT verification OFF.
+// Auth: Pattern A - JWT verification OFF.
 //   Caller sends admin session token in body as { token }.
 //   Function verifies token, checks is_admin on profile, then proceeds.
 //   (Matches sports-grant-free-positions exactly.)
@@ -12,7 +12,7 @@
 //     supabase.from('global_profiles').update({ is_intention_member }).eq('id', userId)
 //   The S66F P0-A mitigation revokes UPDATE on global_profiles from the
 //   authenticated role, so is_intention_member has no client write path.
-//   This EF moves the write to the service role, admin-gated, on Pattern A —
+//   This EF moves the write to the service role, admin-gated, on Pattern A -
 //   so the existing body-token client call needs only to be repointed here.
 //
 // Input:  { token: string, targetUserId: string, value: boolean }
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (!callerProfile?.is_admin) {
-    return json({ error: 'Forbidden — admin only' }, 403)
+    return json({ error: 'Forbidden - admin only' }, 403)
   }
 
   // Resolve target's person_id (is_intention_member is per person+product now)

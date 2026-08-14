@@ -1,14 +1,14 @@
 // supabase/functions/_shared/client.ts
-// Canonical service-client construction for Edge Functions. Single source —
+// Canonical service-client construction for Edge Functions. Single source -
 // every EF that needs a service-role client uses createServiceClient(). The env
 // var name (SERVICE_ROLE_KEY, canon S66F) and the auth options block live here
 // once, so no EF re-decides them. Extracted S53H from ~12 inline createClient
-// idioms (several of which omitted the auth options block entirely — a latent
+// idioms (several of which omitted the auth options block entirely - a latent
 // persistence bug this erases by construction).
 //
 // SECURITY CONTRACT:
 //   createServiceClient() bypasses RLS. It must be called ONLY after the caller
-//   has been verified — either by an auth gate (_shared/auth.ts requireUser /
+//   has been verified - either by an auth gate (_shared/auth.ts requireUser /
 //   requireAdmin, which call this internally) or, for bespoke-auth EFs that
 //   cannot use the gates (Stripe webhook = signature, cron = x-cron-secret,
 //   body-token notifications = getUser(token)), after that EF's own verification

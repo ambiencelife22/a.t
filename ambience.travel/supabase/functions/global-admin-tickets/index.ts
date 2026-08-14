@@ -1,6 +1,6 @@
 // supabase/functions/global-admin-tickets/index.ts
 // Handles all admin support ticket operations using the service role client.
-// JWT verification OFF — consistent with all other Edge Functions.
+// JWT verification OFF - consistent with all other Edge Functions.
 // Verifies is_admin on every action before proceeding.
 //
 // Actions: get_all, update_status, update_priority, add_message,

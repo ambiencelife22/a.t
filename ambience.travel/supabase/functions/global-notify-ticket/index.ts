@@ -1,8 +1,8 @@
 /* global-notify-ticket/index.ts
-   Edge Function — called from queries.ts when a support ticket is opened or its status changes.
+   Edge Function - called from queries.ts when a support ticket is opened or its status changes.
    JWT verify is OFF. Auth pattern: session token in body, verified via getUser().
    Uses service role to fetch ticket + user email. Sends appropriate email via Resend.
-   A failed send logs and returns 200 — must never block the admin action that triggered it.
+   A failed send logs and returns 200 - must never block the admin action that triggered it.
    CORS pattern matches all other Edge Functions (admin-tickets is the canonical reference).
 
    Events:
@@ -25,7 +25,7 @@ const resend          = new Resend(Deno.env.get('RESEND_API_KEY'))
 const APP_URL = 'https://sports.ambience.life'
 
 // ── HTML renderer ─────────────────────────────────────────────────────────────
-// Single shell — same dark layout as send-welcome-email. Written once here,
+// Single shell - same dark layout as send-welcome-email. Written once here,
 // content slotted in per event. _lib/renderEmail.ts is the source of truth
 // for the Admin preview; this is the deployed equivalent for Edge Functions.
 
@@ -67,7 +67,7 @@ function renderEmail(opts: {
 </style>
 </head>
 <body>
-  <!-- bgcolor table — forces dark background in Apple Mail and Gmail which ignore body background-color -->
+  <!-- bgcolor table - forces dark background in Apple Mail and Gmail which ignore body background-color -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1A1D1A" style="background:#1A1D1A; min-height:100%;">
     <tr><td>
       <div class="header"><div class="logo">ambience.SPORTS</div></div>
@@ -124,7 +124,7 @@ function getTicketEmailContent(
 
   if (event === 'opened') {
     return {
-      subject:  `We received your support request — #${shortId}`,
+      subject:  `We received your support request - #${shortId}`,
       heading:  'Request received.',
       body: [
         `Your support request has been logged. We'll be in touch shortly.`,
@@ -142,7 +142,7 @@ function getTicketEmailContent(
       bodyParagraphs.push(`<strong style="color:#FFFFFF">From the team:</strong><br/>${adminReply}`)
     }
     return {
-      subject:  `Update on your support request — #${shortId}`,
+      subject:  `Update on your support request - #${shortId}`,
       heading:  "We're on it.",
       body:     bodyParagraphs,
       ctaLabel: 'View full thread',
@@ -158,7 +158,7 @@ function getTicketEmailContent(
     bodyParagraphs.push(`<strong style="color:#FFFFFF">Resolution:</strong><br/>${adminReply}`)
   }
   return {
-    subject:  `Your support request has been resolved — #${shortId}`,
+    subject:  `Your support request has been resolved - #${shortId}`,
     heading:  'Resolved.',
     body:     bodyParagraphs,
     ctaLabel: 'View ticket',
@@ -196,7 +196,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Unauthorized' }, 401)
     }
 
-    // Service role — fetch ticket + user email
+    // Service role - fetch ticket + user email
     const serviceClient = createClient(supabaseUrl, supabaseService, {
       auth: { autoRefreshToken: false, persistSession: false },
     })

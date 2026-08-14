@@ -1,10 +1,10 @@
 /* sports-trial-reminder-job/index.ts
-   Scheduled Edge Function — runs daily via pg_cron.
+   Scheduled Edge Function - runs daily via pg_cron.
    Finds all users whose trial ends in exactly 3 days and sends TrialEndingEmail.
-   One send per trial — guarded by trial_reminder_sent_at.
+   One send per trial - guarded by trial_reminder_sent_at.
 
    Schedule: daily at 09:00 UTC (pg_cron job 'trial-reminder-job').
-   Auth: no user session — called by pg_cron. Validated by CRON_SECRET header.
+   Auth: no user session - called by pg_cron. Validated by CRON_SECRET header.
 
    S66F Phase 2: subscription state moved global_profiles -> global_subscriptions
    (per person_id, product='sports'); display_name -> sports_user_prefs. The query
@@ -24,7 +24,7 @@ const resend          = new Resend(Deno.env.get('RESEND_API_KEY'))
 const APP_URL = 'https://sports.ambience.life'
 const SPORTS_PRODUCT = 'sports'
 
-// ── HTML renderer — same shell as all ambience emails ─────────────────────────
+// ── HTML renderer - same shell as all ambience emails ─────────────────────────
 
 function renderEmail(opts: {
   heading:     string
@@ -64,7 +64,7 @@ function renderEmail(opts: {
 </style>
 </head>
 <body>
-  <!-- bgcolor table — forces dark background in Apple Mail and Gmail which ignore body background-color -->
+  <!-- bgcolor table - forces dark background in Apple Mail and Gmail which ignore body background-color -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1A1D1A" style="background:#1A1D1A; min-height:100%;">
     <tr><td>
       <div class="header"><div class="logo">ambience.SPORTS</div></div>
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
 
   const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
 
-  // Validate cron secret — prevents arbitrary invocation
+  // Validate cron secret - prevents arbitrary invocation
   const incomingSecret = req.headers.get('x-cron-secret') ?? ''
   if (cronSecret && incomingSecret !== cronSecret) {
     console.error('trial-reminder-job: unauthorized')
@@ -112,13 +112,13 @@ Deno.serve(async (req: Request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  // Trial-ends window: 2–4 days out (avoids timezone edge cases)
+  // Trial-ends window: 2-4 days out (avoids timezone edge cases)
   const windowStart = new Date()
   windowStart.setDate(windowStart.getDate() + 2)
   const windowEnd = new Date()
   windowEnd.setDate(windowEnd.getDate() + 4)
 
-  // DRIVE off global_subscriptions — the filter columns live here now.
+  // DRIVE off global_subscriptions - the filter columns live here now.
   const { data: subs, error } = await serviceClient
     .from('global_subscriptions')
     .select('person_id, trial_ends_at, trial_reminder_sent_at')
@@ -197,7 +197,7 @@ Deno.serve(async (req: Request) => {
       body: [
         `Your ambience.SPORTS trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}${firstName ? `, ${firstName}` : ''}.`,
         entryLine,
-        'Continue with Pro to keep full access — entry logging, analytics, and every book in one view.',
+        'Continue with Pro to keep full access - entry logging, analytics, and every book in one view.',
       ],
       ctaLabel: 'Continue with Pro',
       ctaUrl:   `${APP_URL}/#plan-selection`,
@@ -216,7 +216,7 @@ Deno.serve(async (req: Request) => {
       continue
     }
 
-    // Stamp reminder sent on the subscription row — prevents re-send
+    // Stamp reminder sent on the subscription row - prevents re-send
     await serviceClient
       .from('global_subscriptions')
       .update({ trial_reminder_sent_at: new Date().toISOString() })
@@ -227,6 +227,6 @@ Deno.serve(async (req: Request) => {
     sent++
   }
 
-  console.log(`trial-reminder-job: done — sent=${sent} failed=${failed}`)
+  console.log(`trial-reminder-job: done - sent=${sent} failed=${failed}`)
   return new Response(JSON.stringify({ sent, failed }), { status: 200, headers: CORS })
 })

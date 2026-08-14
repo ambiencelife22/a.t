@@ -2,7 +2,7 @@
 // Permanently deletes a user account:
 //   1. Deletes all user data rows
 //   2. Deletes the auth.users record via admin API (service role required)
-//   3. Returns success — client should sign out immediately after
+//   3. Returns success - client should sign out immediately after
 //
 // For data-only wipes that preserve the account, use wipe-user-data instead.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
       const { data: profile, error: profileErr } = await client
         .from('global_profiles').select('is_admin').eq('id', caller.id).single()
       if (profileErr || !profile?.is_admin) {
-        return new Response(JSON.stringify({ error: 'Forbidden — admin required to delete another user' }), {
+        return new Response(JSON.stringify({ error: 'Forbidden - admin required to delete another user' }), {
           status: 403, headers: { 'Content-Type': 'application/json', ...CORS },
         })
       }

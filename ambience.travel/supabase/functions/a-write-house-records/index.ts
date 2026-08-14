@@ -13,7 +13,7 @@
 // action) rather than spawning three separate functions.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (platform gate)
+//   - JWT REQUIRED - verify_jwt = true (platform gate)
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - Written only via service role here. Never anon.
 //   - SERVICE_ROLE_KEY env var (S66F canon).
@@ -30,7 +30,7 @@
 // Per-table config: db table name, create allowlist + required, update allowlist.
 //
 // Deployed at: /functions/v1/a-write-house-records
-// Last updated: S54c — initial ship (table 3 of the write migration).
+// Last updated: S54c - initial ship (table 3 of the write migration).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, preflight } from '../_shared/http.ts'

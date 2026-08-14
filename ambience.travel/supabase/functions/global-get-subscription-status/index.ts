@@ -1,7 +1,7 @@
 // supabase/functions/global-get-subscription-status/index.ts
 // Returns the current subscription state for a user.
 // Used for client-side polling after checkout to detect when the webhook
-// has updated the profile — app polls until status changes from 'incomplete'.
+// has updated the profile - app polls until status changes from 'incomplete'.
 //
 // Auth: JWT verification OFF. Client sends session.access_token in body as { token }.
 // Input:  { token: string }
@@ -10,7 +10,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json, preflight } from '../_shared/http.ts'
 
-// Inlined from lib/subscription.ts — avoids _shared bundling issues
+// Inlined from lib/subscription.ts - avoids _shared bundling issues
 function hasFullAccess(profile: {
   subscriptionTier:   string
   subscriptionStatus: string

@@ -7,7 +7,7 @@
 // global-read-team. Admin-only.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true
+//   - JWT REQUIRED - verify_jwt = true
 //   - Caller authenticated + admin (global_profiles.is_admin = true)
 //   - global_team admin-only RLS; service role bypasses. Never anon.
 //
@@ -26,7 +26,7 @@
 // global_profiles.is_admin (auth). Setting role here never changes auth.
 //
 // Deployed at: /functions/v1/global-write-team
-// Last updated: S53C — initial ship.
+// Last updated: S53C - initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json, preflight } from '../_shared/http.ts'

@@ -8,7 +8,7 @@
 // access layer. The time-tracker "Performed By" picker is the first consumer.
 //
 // Security model:
-//   - JWT REQUIRED — verify_jwt = true (Supabase platform-level gate)
+//   - JWT REQUIRED - verify_jwt = true (Supabase platform-level gate)
 //   - Caller must be authenticated (valid JWT in Authorization header)
 //   - Caller must be an admin (global_profiles.is_admin = true)
 //   - global_team has admin-only RLS, no direct client read policy
@@ -28,7 +28,7 @@
 //                 rate_label, hourly_rate, currency }
 //
 // Deployed at: /functions/v1/global-read-team
-// Last updated: S53C — initial ship.
+// Last updated: S53C - initial ship.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json, preflight } from '../_shared/http.ts'
