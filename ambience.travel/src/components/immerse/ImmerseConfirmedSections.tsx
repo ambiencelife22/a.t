@@ -186,12 +186,12 @@ function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: ()
 // ── Confirmation tab ──────────────────────────────────────────────────────────
 
 export function ConfirmationTab({ clientData }: { clientData: DeliveryData}) {
- const { journey: trip, elements } = clientData
+ const { journey, elements } = clientData
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
 
-  const destHero = trip.destinations[0]?.heroImageSrc ?? null
+  const destHero = journey.destinations[0]?.heroImageSrc ?? null
 
-  const accomBookings = trip.bookings
+  const accomBookings = journey.bookings
     .filter(bk => bk.briefShow !== false)
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -1218,11 +1218,11 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
 export function EngagementBriefTab({ clientData }: {
   clientData: DeliveryData
 }) {
-  const { journey: trip, house, elements } = clientData
+  const { journey, house, elements } = clientData
 
   const flights   = elements.filter(a => isFlightElement(a.elementType))
   const transfers = elements.filter(a => isTransferElement(a.elementType))
-  const hotels    = trip.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.briefShow !== false)
+  const hotels    = journey.bookings.filter(b => (b._rooms?.length ?? 0) > 0 && b.briefShow !== false)
 
   function BriefSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
@@ -1256,11 +1256,11 @@ export function EngagementBriefTab({ clientData }: {
     <div style={{ padding: 'clamp(24px,4vw,48px) clamp(20px,6vw,80px)' }}>
       <BriefSection title='Overview'>
         <BriefRow label='Guest'        value={clientData.guestDisplayName ?? ''} />
-        <BriefRow label='Trip'         value={clientData.brief?.briefTitle ?? trip.destinations[0]?.name ?? ''} />
-        {trip.startDate      && <BriefRow label='Departure'    value={formatDate(trip.startDate)} />}
-        {trip.endDate        && <BriefRow label='Return'       value={formatDate(trip.endDate)} />}
-        {trip.durationNights && <BriefRow label='Duration'     value={`${trip.durationNights} nights`} />}
-        {trip.destinations.length > 0 && <BriefRow label='Destinations' value={trip.destinations.map(d => d.name).join(', ')} />}
+        <BriefRow label='Journey'      value={clientData.brief?.briefTitle ?? journey.destinations[0]?.name ?? ''} />
+        {journey.startDate   && <BriefRow label='Departure'    value={formatDate(journey.startDate)} />}
+        {journey.endDate     && <BriefRow label='Return'       value={formatDate(journey.endDate)} />}
+        {journey.durationNights && <BriefRow label='Duration'     value={`${journey.durationNights} nights`} />}
+        {journey.destinations.length > 0 && <BriefRow label='Destinations' value={journey.destinations.map(d => d.name).join(', ')} />}
       </BriefSection>
 
       {hotels.length > 0 && (

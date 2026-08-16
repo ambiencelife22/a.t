@@ -37,6 +37,29 @@ import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
 import { enrichBookingWithHotelPolicy } from '../_shared/expenses.ts'
 
+// Guest price folio: total at top, itemized below. Accommodation is derived as
+// total minus exclusive (added-on) charges - NEVER commissionable_rate (absent from
+// the guest bundle). Exclusive charges become labeled lines; rate-inclusive charges
+// become "rate includes X" notes (shown for transparency, not summed into total).
+function buildGuestFolio(
+  b: Record<string, unknown>,
+  charges: Array<Record<string, unknown>>,
+): Record<string, unknown> | null {
+  const total = b.total_rate as number | null
+  if (total == null) return null
+  const exclusive = charges.filter((c) => c.is_rate_inclusive !== true)
+  const inclusive = charges.filter((c) => c.is_rate_inclusive === true)
+  const exclusiveSum = exclusive.reduce((s, c) => s + (((c.amount as number) ?? 0)), 0)
+  const accommodation = Math.round((total - exclusiveSum) * 100) / 100
+  return {
+    total,
+    nights: b.nights ?? null,
+    currency: b.currency ?? null,
+    accommodation,
+    lines: exclusive.map((c) => ({ label: (c.label as string) ?? 'Charge', amount: (c.amount as number) ?? 0 })),
+    inclusiveNotes: inclusive.map((c) => (c.label as string) ?? 'Tax'),
+  }
+}
 const URL_ID_REGEX = /^[A-Za-z0-9]{11}$/
 
 Deno.serve(async (req: Request) => {
@@ -80,7 +103,7 @@ Deno.serve(async (req: Request) => {
           start_date, check_in_date, start_time, check_in_note, check_out_note,
           early_checkin_approved_time, late_checkout_approved_time, expected_arrival_time,
           requested_checkin_time, requested_checkout_time, extras,
-          end_date, nights, total_rate, taxes_and_fees, cost_visible_to_guest, inclusions,
+          end_date, nights, total_rate, taxes_and_fees, cost_visible_to_guest, currency, inclusions,
           inclusions_override, cancellation_policy, party_composition, brief_show,
           brief_image_src, booked_by, accom_hotel_id, sort_order,
           deposit_paid_at, balance_paid_at, balance_due_date, payment_exception_override,
@@ -113,7 +136,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Engagement not found' }, 404)
     }
 
-    const trip         = core.journey
+    const journey      = core.journey
     const brief        = core.brief
     const house        = core.house
     const guestDisplayName = core.resolved_guest_label ?? ((brief?.prepared_for as string | null) ?? null)
@@ -121,7 +144,7 @@ Deno.serve(async (req: Request) => {
     const partyLabel   = (brief?.prepared_for as string | null) ?? null
     const bookings     = (bookingsResult.data ?? []) as Array<Record<string, unknown>>
     const entries      = (entriesResult.data ?? []) as Array<Record<string, unknown>>
-    const confirmedEngagementId = (trip?.confirmed_engagement_id as string | null) ?? null
+    const confirmedEngagementId = (journey?.confirmed_engagement_id as string | null) ?? null
 
     // ── Links (confirmation) ──────────────────────────────────────────────────
     const engagementLinksResult = confirmedEngagementId
@@ -143,6 +166,21 @@ Deno.serve(async (req: Request) => {
           .in('booking_id', bookingIds)
           .order('sort_order', { ascending: true })
       : { data: [], error: null }
+    // ── Charges (confirmation guest folio) ────────────────────────────────────
+    // Typed tax/fee lines for the cost-visible price breakdown. Commission-free
+    // by nature (charges are what the client pays, never ambience margin).
+    const chargesResult = bookingIds.length > 0
+      ? await db
+          .from('travel_booking_charges')
+          .select('booking_id, label, amount, amount_usd, charge_category, is_rate_inclusive, sort_order')
+          .in('booking_id', bookingIds)
+          .order('sort_order', { ascending: true })
+      : { data: [], error: null }
+    const chargesByBooking: Record<string, Array<Record<string, unknown>>> = {}
+    for (const ch of (chargesResult.data ?? []) as Array<Record<string, unknown>>) {
+      const bid = ch.booking_id as string
+      ;(chargesByBooking[bid] ??= []).push(ch)
+    }
     const invoicesByBooking: Record<string, Array<Record<string, unknown>>> = {}
     for (const inv of (invoicesResult.data ?? []) as Array<Record<string, unknown>>) {
       const bid = inv.booking_id as string
@@ -302,6 +340,7 @@ Deno.serve(async (req: Request) => {
         // is the commission base and is NEVER guest-visible - not selected, not emitted.
         // Commission is never guest-visible regardless. Default false.
         total_rate:          b.cost_visible_to_guest ? (b.total_rate ?? null) : null,
+        folio:               b.cost_visible_to_guest ? buildGuestFolio(b, chargesByBooking[b.id as string] ?? []) : null,
         price:            null, deposit_amount: null, deposit_due_date: null,
         balance_amount:   null, balance_due_date: null,
         payment_exception: derivePaymentException(
@@ -323,7 +362,7 @@ Deno.serve(async (req: Request) => {
 
     // ── ONE bundle - tabs are views over this ─────────────────────────────────
     const payload = {
-      journey:          { ...trip, destinations, bookings: fullBookings, brief },
+      journey:          { ...journey, destinations, bookings: fullBookings, brief },
       brief,
       house,
       contacts,
@@ -342,8 +381,8 @@ Deno.serve(async (req: Request) => {
       fullBookings,
       days: buildDays(
         journeyId,
-        trip.start_date as string | null,
-        trip.end_date as string | null,
+        journey.start_date as string | null,
+        journey.end_date as string | null,
         (daysResult.data ?? []) as Array<Record<string, unknown>>,
       ).filter(d => d.show),
       entries: timeline,

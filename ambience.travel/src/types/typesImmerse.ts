@@ -866,6 +866,18 @@ export type ImmerseEngagementBooking = {
   _hotel_image_src: string | null
   _rooms:           ImmerseBookingRoom[]
   _invoices:        BookingInvoice[]
+  // Guest price folio (cost-visible bookings only; null otherwise). Total at top,
+  // itemized below. accommodation is total minus exclusive charges - never the
+  // commissionable rate. Margin-free by construction.
+  folio?:           GuestFolio | null
+}
+export type GuestFolio = {
+  total:          number
+  nights:         number | null
+  currency:       string | null
+  accommodation:  number
+  lines:          { label: string; amount: number }[]
+  inclusiveNotes: string[]
 }
 
 export type ImmerseDossierJourney = {
