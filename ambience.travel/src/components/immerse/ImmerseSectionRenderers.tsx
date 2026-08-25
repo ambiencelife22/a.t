@@ -203,7 +203,7 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
     return <ContactsTab clientData={ctx.bundle} />
   },
 
-  // ── Stay-detail sections (eight-shape Stage A - ship dark) ─────────────────
+  // ── Stay-detail sections (Stage A - ship dark) ─────────────────────────────
   // These resolve only for shape 'stay'. The stay payload (ImmerseDestinationData)
   // is not yet reachable from EngagementClientData - that arm lands in Stage B.
   // Until then each returns null, keeping SECTION_RENDERERS total over SectionType
