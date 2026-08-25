@@ -64,8 +64,8 @@ export function RoomCategory({ room, fadeIn = false, onHeroClick, carouselArrows
   const showRateSuffix = !room.taxInclusive && Boolean(rateTaxLabel)
 
   // S32: collapsed sq ranges + numeric vs copy rate detection
-  const sqftPart = formatSqRange(room.sqftMin, room.sqftMax, 'sq ft')
-  const sqmPart  = formatSqRange(room.sqmMin,  room.sqmMax,  'sqm')
+  const sqftPart = formatSqRange(room.sqftMin, room.sqftMax, 'SQ FT')
+  const sqmPart  = formatSqRange(room.sqmMin,  room.sqmMax,  'SQM')
   const sqLabel  = [sqftPart, sqmPart].filter(Boolean).join(' · ')
 
   const nonNegIsNumeric  = room.nonNegotiatedNightlyRate ? isNumericRate(room.nonNegotiatedNightlyRate) : false
