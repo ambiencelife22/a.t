@@ -29,18 +29,13 @@ import { ID, useImmerseMobile, ImmerseEyebrow, ImmersePanel } from './ImmerseCom
 import { beddingConfigurationsLabel } from '../../utils/utilsBooking'
 import type { ImmerseHotelOption, ImmerseRoomOption } from '../../types/typesImmerse'
 
+import { formatSqRange } from '../../utils/utilsRoomDisplay'
+
 // S32: detect numeric rate strings ($1,200 / €420 / 1500)
 // (including 'Winter Pricing Not Yet Available', 'On Request', 'TBD') is
 // treated as informational copy and rendered without the cadence suffix.
 function isNumericRate(rate: string): boolean {
   return /^([$€£¥]|EURO?|USD|GBP|JPY|CHF|AED|SAR)?\s*[$€£¥]?\s*\d/i.test(rate.trim())
-}
-
-// S32: collapse degenerate ranges (678-678 → 678). Both bounds optional.
-function formatSqRange(min: number | undefined, max: number | undefined, unit: string): string {
-  if (!min) return ''
-  if (!max || max === min) return `${min.toLocaleString()} ${unit}`
-  return `${min.toLocaleString()}-${max.toLocaleString()} ${unit}`
 }
 
 // S53C - alert badge palette by level.

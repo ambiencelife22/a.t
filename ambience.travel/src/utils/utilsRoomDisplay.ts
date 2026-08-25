@@ -5,6 +5,7 @@
 //   - roomGuestName(room)   → lead guest name | null  (resolved → override → null)
 //   - passengerName(pax)    → lead passenger name      (resolved → label → 'Guest')
 //   - webRoomDisplay(room)  → { roomName, guestLine }  (web mirror of pdfShared.roomDisplay)
+//   - formatSqRange(min, max, unit) → dimension range ("678 sq ft" / "600-720 sq ft")
 //
 // What it does not own:
 //   - PDF room layout (pdfShared.roomDisplay/roomLine own the PDF composition;
@@ -65,4 +66,14 @@ export function webRoomDisplay(room: WebRoomLike): WebRoomDisplay {
     roomName:  room.roomName ?? null,
     guestLine: guests.length ? guests.join('  \u00b7  ') : null,
   }
+}
+
+// Square-area range for room/suite dimensions. Collapses degenerate ranges
+// (678-678 -> 678); hyphen-only; grouped thousands. Both bounds optional -
+// returns '' when min is absent so callers can render unconditionally. The
+// unit label is caller-supplied (surfaces differ: 'sq ft' vs 'SQ FT').
+export function formatSqRange(min: number | undefined, max: number | undefined, unit: string): string {
+  if (!min) return ''
+  if (!max || max === min) return `${min.toLocaleString()} ${unit}`
+  return `${min.toLocaleString()}-${max.toLocaleString()} ${unit}`
 }

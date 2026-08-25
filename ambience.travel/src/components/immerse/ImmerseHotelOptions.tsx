@@ -29,6 +29,9 @@ import { GuideRecognitionMark } from '../guides/GuideRecognitionKey'
 import { beddingConfigurationsLabel } from '../../utils/utilsBooking'
 import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption } from '../../types/typesImmerse'
 
+
+import { formatSqRange } from '../../utils/utilsRoomDisplay'
+
 // ─── Room slide model (S53C) ──────────────────────────────────────────────────
 // A carousel slide is either a single room or a connected pair. Pairs are built
 // from room.connectedRoomId (catalog id of the partner). The first room of a
@@ -169,8 +172,8 @@ function PairSuiteBlock({ room, isMobile }: { room: ImmerseRoomOption; isMobile:
   const rateTax     = room.taxTreatment ?? room.rateSuffix
   const showTax     = !room.taxInclusive && Boolean(rateTax)
 
-  const sqft = room.sqftMin ? (room.sqftMax && room.sqftMax !== room.sqftMin ? `${room.sqftMin.toLocaleString()}-${room.sqftMax.toLocaleString()} sq ft` : `${room.sqftMin.toLocaleString()} sq ft`) : ''
-  const sqm  = room.sqmMin  ? (room.sqmMax  && room.sqmMax  !== room.sqmMin  ? `${room.sqmMin.toLocaleString()}-${room.sqmMax.toLocaleString()} sqm`     : `${room.sqmMin.toLocaleString()} sqm`)     : ''
+  const sqft = formatSqRange(room.sqftMin, room.sqftMax, 'SQ FT')
+  const sqm  = formatSqRange(room.sqmMin, room.sqmMax, 'SQM')
   const sqLabel = [sqft, sqm].filter(Boolean).join(' · ')
 
   return (
