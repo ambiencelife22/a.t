@@ -297,18 +297,21 @@ export type EngagementShape =
   | 'reservation'  // generic reservation (non-dining)
   | 'transport'    // flight / transfer / car / heli / jet as the deliverable
   | 'experience'   // tour / activity / experience as the deliverable
-  | 'acquisition'      // single-product procurement (watch / handbag / artwork)
-  | 'arrangement'      // brokered: a service procured through a third party on the guest's behalf
-  | 'concierge_service' // ours: a service ambience renders itself (research, appointments, the direct work of the house)
+  | 'acquisition'       // single-product procurement (watch / handbag / artwork)
+  | 'arrangement'       // brokered: a service procured through a third party on the guest's behalf
+  | 'conciergeService'  // ours: a service ambience renders itself (research, appointments, the direct work of the house)
 
 export const ENGAGEMENT_SHAPES: readonly EngagementShape[] = [
   'journey', 'stay', 'dining', 'reservation',
-  'transport', 'experience', 'acquisition', 'arrangement', 'concierge_service',
+  'transport', 'experience', 'acquisition', 'arrangement', 'conciergeService',
 ] as const
 
 // Every travel_engagement_types slug maps to one of THE NINE shapes.
+// Keys are the camelCase form of the DB slug - the slug value is camelized at
+// lookup (toCamelSlug) so no snake_case lives on the frontend. The DB slug
+// stays snake at the boundary; the transform happens here.
 // Top-level shapes map to themselves; element/booking sub-types roll up.
-// Null / unknown → 'journey' (the safe superset - renders the full surface).
+// Null / unknown -> 'journey' (the safe superset, renders the full surface).
 const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
   journey:          'journey',
   stay:             'stay',
@@ -316,26 +319,37 @@ const SLUG_TO_SHAPE: Record<string, EngagementShape> = {
   reservation:      'reservation',
   experience:       'experience',
   acquisition:      'acquisition',
-  arrangement:       'arrangement',
-  concierge_service: 'concierge_service',
+  arrangement:      'arrangement',
+  conciergeService: 'conciergeService',
   flight:           'transport',
-  private_jet:      'transport',
-  airport_transfer: 'transport',
+  privateJet:       'transport',
+  airportTransfer:  'transport',
   transfer:         'transport',
-  car_service:      'transport',
-  car_rental:       'transport',
-  heli_transfer:    'transport',
-  public_transport: 'transport',
-  yacht_charter:    'transport',
+  carService:       'transport',
+  carRental:        'transport',
+  heliTransfer:     'transport',
+  publicTransport:  'transport',
+  loungeService:    'transport',
+  yachtCharter:     'transport',
   cruise:           'transport',
   tour:             'experience',
-  meet_greet:       'experience',
+  excursion:        'experience',
+  spaWellness:      'experience',
+  meetGreet:        'experience',
   other:            'arrangement',
+}
+
+// Local slug camelizer (the DB slug is snake; the frontend map is camel). This
+// inline transform is a stopgap until the platform-wide "camelize slug/enum
+// VALUES at every EF boundary" sweep lands (logged as debt) - at which point the
+// slug arrives already camelized and this call becomes a plain lookup.
+function toCamelSlug(slug: string): string {
+  return slug.replace(/_([a-z])/g, (_m, c) => c.toUpperCase())
 }
 
 export function resolveEngagementShape(slug: string | null | undefined): EngagementShape {
   if (!slug) return 'journey'
-  return SLUG_TO_SHAPE[slug] ?? 'journey'
+  return SLUG_TO_SHAPE[toCamelSlug(slug)] ?? 'journey'
 }
 
 // ─── Section registry ────────────────────────────────────────────────────────
