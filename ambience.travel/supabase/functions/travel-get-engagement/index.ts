@@ -1,6 +1,6 @@
-// supabase/functions/travel-get-immerse-proposal/index.ts
+// supabase/functions/travel-get-engagement/index.ts
 //
-// Edge Function: travel-get-immerse-proposal
+// Edge Function: travel-get-engagement
 // Single source for ALL client-facing proposal data - overview and subpages.
 // Replaces: travel-get-engagement-stage + all 4 client-side dest query files
 //   (queriesImmerseDestCore, queriesImmerseDestHotels, queriesImmerseDestCards,
@@ -30,7 +30,7 @@
 //   The old code's `IS NULL` filter on url_slug caused subpages to fail
 //   when dest_rows had a non-null url_slug set for routing purposes.
 //
-// Deployed at: /functions/v1/travel-get-immerse-proposal
+// Deployed at: /functions/v1/travel-get-engagement
 // Created: S53H - consolidation of 20+ client-side anon queries into one EF.
 // S53O - brought onto the shared service-client factory + shared json/preflight
 //   (was still on inline makeDb() + hand-rolled ok()/err() - missed by the
@@ -41,7 +41,7 @@
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
-import { camelizeKeys } from '../_shared/camelize.ts'
+import { camelizeKeys, toCamel } from '../_shared/camelize.ts'
 
 const URL_ID_RE = /^[A-Za-z0-9]{11}$/
 
@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
     return json({ mode: 'subpage', engagement: camelizeKeys(engagement), destination: camelizeKeys(destination) })
 
   } catch (e) {
-    console.error('travel-get-immerse-proposal error:', e)
+    console.error('travel-get-engagement error:', e)
     return json({ error: 'Internal server error' }, 500)
   }
 })
@@ -98,9 +98,10 @@ Deno.serve(async (req: Request) => {
 const ENGAGEMENT_COLS = `
   id, url_id, slug, journey_id, audience, journey_types,
   person_id, status_label, public_view, proposal_visibility,
-  engagement_status_id, itinerary_status_id,
+  engagement_status_id, itinerary_status_id, engagement_type_id,
   travel_lifecycle_statuses (id, slug, label, sort_order, is_active),
   travel_itinerary_statuses  (id, slug, label, sort_order, is_active),
+  travel_engagement_types    (slug),
   eyebrow, title, hero_tagline, subtitle,
   hero_image_src, hero_image_alt, hero_image_src_2, hero_image_alt_2,
   hero_title_2, hero_subtitle_2, hero_pills,
@@ -182,6 +183,8 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
   const guestDisplayName =
     (displayData?.house_display_name as string | null | undefined) ?? null
 
+  const engagementType = engRow.travel_engagement_types as { slug: string } | null
+  engRow.engagement_type_slug = engagementType ? toCamel(engagementType.slug) : null
   return {
     engagementRow:  engRow,
     display:        displayData,

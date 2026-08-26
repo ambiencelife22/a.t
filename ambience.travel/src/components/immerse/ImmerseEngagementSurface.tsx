@@ -51,7 +51,7 @@ export default function ImmerseEngagementSurface({
     return <ImmerseDetailPage data={data} activeDestSlug={activeDestSlug} />
   }
 
-  const shape = resolveEngagementShape(eng.journeyTypes[0] ?? null)
+  const shape = resolveEngagementShape(eng.engagementTypeSlug)
   const sections = resolveSectionSet(stage, shape)
 
   const navItems = buildImmerseNavItems(eng, activeDestSlug)

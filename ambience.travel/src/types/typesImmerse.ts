@@ -454,6 +454,7 @@ export type ImmerseEngagementData = {
   urlId:           string
   slug:            string
   journeyTypes:    string[]
+  engagementTypeSlug: string | null
   clientName:      string | null
   statusLabel:     string
   stage:           EngagementStage

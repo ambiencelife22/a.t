@@ -23,7 +23,7 @@
 // Last updated: S53I - Collapse A. Removed illegal REST probe.
 
 import type { EngagementClientData } from '../types/typesImmerseDelivery'
-import { getProposalEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
+import { getEngagement, NOT_PUBLIC_SENTINEL } from './queriesImmerseProposal'
 import { fetchDeliveryBundle } from './queriesImmerseDelivery'
 
 export type { EngagementGuides, EngagementContact, DeliveryData, EngagementLink, EngagementClientData, DeliveryBundle } from '../types/typesImmerseDelivery'
@@ -42,13 +42,13 @@ export type FetchEngagementResult =
 export async function fetchEngagementClientData(
   urlId: string
 ): Promise<FetchEngagementResult> {
-  // Single EF call - travel-get-immerse-proposal handles all engagements.
+  // Single EF call - travel-get-engagement handles all engagements (all stages).
   // Stage is computed from the lifecycle status slug and returned on the data.
   // confirmed (trip/completed) → caller redirects to /{urlId} (brief surface)
   // proposal (proposal/draft)  → caller renders at /{urlId}/proposal
   let proposalData
   try {
-    proposalData = await getProposalEngagement(urlId)
+    proposalData = await getEngagement(urlId)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'engagement hydration failed'
     console.error('[fetchEngagementClientData] hydration threw for urlId:', urlId, message)

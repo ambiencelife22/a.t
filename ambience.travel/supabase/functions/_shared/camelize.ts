@@ -4,7 +4,7 @@
 // through unchanged (no underscore, no change), so mixed-shape inputs are safe.
 // Generic by construction, so new fields convert automatically with no drift.
 
-function toCamel(key: string): string {
+export function toCamel(key: string): string {
   if (key.startsWith('_')) return key
   return key.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
 }

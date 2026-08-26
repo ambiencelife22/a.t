@@ -19,8 +19,8 @@
  *   ImmerseConfirmedSections.tsx ContactsTab.
  * Prior: S48 - public_view toggle in Cover section. Controls visibility
  *   of the engagement to public anon clients. Enforced server-side by the
- *   travel-get-immerse-proposal Edge Function (S53H cutover; the old
- *   get-engagement-stage EF is retired). Default false; admin flips on per engagement.
+ *   travel-get-engagement Edge Function (renamed from travel-get-immerse-proposal
+ *   S53K; the old get-engagement-stage EF is retired). Default false; admin flips on per engagement.
  * Prior: S48 - fetchAdminEngagementElements + updateAdminEngagementElement wired in.
  *   elements fetched in parallel with dossier. auxDrafts state added.
  *   mergedAux built in handleDownload and passed to handleDownloadBrief.

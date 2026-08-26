@@ -1,4 +1,4 @@
-// queriesImmerseProposal.ts - Client adapter for travel-get-immerse-proposal EF.
+// queriesImmerseProposal.ts - Client adapter for travel-get-engagement EF (all-stage resolver).
 //
 // Single source for all client-facing proposal data - overview and subpages.
 // Replaces:
@@ -15,7 +15,7 @@
 //     ImmerseDestinationData, etc.) - no shape changes downstream
 //
 // Public API:
-//   getProposalEngagement(urlId)                    → ImmerseEngagementData | null
+//   getEngagement(urlId)                            → ImmerseEngagementData | null
 //   getProposalDestination(urlId, destinationSlug)  → ImmerseDestinationData | null
 //
 // Created: S53H - consolidation. Replaces 5 client-side query files.
@@ -54,7 +54,7 @@ type EFCallResult = EFResponse | { __not_public: true } | null
 
 async function callEF(urlId: string, destinationSlug?: string): Promise<EFCallResult> {
   try {
-    const { data, error } = await supabaseAnon.functions.invoke('travel-get-immerse-proposal', {
+    const { data, error } = await supabaseAnon.functions.invoke('travel-get-engagement', {
       body: { url_id: urlId, destination_slug: destinationSlug },
     })
     if (error) {
@@ -75,7 +75,7 @@ async function callEF(urlId: string, destinationSlug?: string): Promise<EFCallRe
 
 export const NOT_PUBLIC_SENTINEL = Symbol('not_public')
 
-export async function getProposalEngagement(
+export async function getEngagement(
   urlId: string
 ): Promise<ImmerseEngagementData | typeof NOT_PUBLIC_SENTINEL | null> {
   const result = await callEF(urlId)
@@ -215,6 +215,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     proposalVisibility: (eng.proposalVisibility ?? 'active') as 'active' | 'archived',
     slug:            eng.slug as string,
     journeyTypes:    (eng.journeyTypes ?? []) as string[],
+    engagementTypeSlug: (eng.engagementTypeSlug ?? null) as string | null,
     clientName,
     statusLabel:     (eng.statusLabel ?? '') as string,
     heroTagline:     (eng.heroTagline ?? undefined) as string | undefined,
