@@ -29,7 +29,7 @@
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireAdmin } from '../_shared/auth.ts'
 import { json, preflight } from '../_shared/http.ts'
-import { resolveRoomGuestName, formatPersonName } from '../_shared/names.ts'
+import { resolveRoomGuestName } from '../_shared/names.ts'
 import { fetchEngagementElement } from '../_shared/engagement.ts'
 type Mode =
   | 'upsert_brief'
@@ -62,11 +62,11 @@ type Mode =
 // ── Room name resolution on write (S53G single-source) ─────────────────────────
 // After a room write, resolve the guest name exactly as the read EFs do, so the
 // returned row carries resolved_guest_name. Walk: room.person_id → global_people;
-// room.booking_id → travel_bookings.journey_id → travel_journey_briefs.prepared_for.
+// room.booking_id → travel_bookings.journey_id → travel_engagement_briefs.prepared_for.
 // FK path verified via information_schema S53G:
 //   travel_booking_rooms.booking_id (uuid NOT NULL)
 //     → travel_bookings.journey_id (uuid NOT NULL)
-//     → travel_journey_briefs.journey_id → prepared_for (text nullable)
+//     → travel_engagement_briefs.journey_id → prepared_for (text nullable)
 async function resolveRoomRow(
   db: SupabaseClient,
   room: Record<string, unknown>,
@@ -91,7 +91,7 @@ async function resolveRoomRow(
     .maybeSingle()
   if (booking?.journey_id) {
     const { data: brief } = await db
-      .from('travel_journey_briefs')
+      .from('travel_engagement_briefs')
       .select('prepared_for')
       .eq('journey_id', booking.journey_id as string)
       .maybeSingle()
@@ -116,7 +116,7 @@ async function handleUpsertBrief(
 ): Promise<Response> {
   if (!patch.brief_title) {
     const { data: existing } = await db
-      .from('travel_journey_briefs')
+      .from('travel_engagement_briefs')
       .select('id')
       .eq('journey_id', journeyId)
       .maybeSingle()
@@ -138,7 +138,7 @@ async function handleUpsertBrief(
   }
 
   const { data, error } = await db
-    .from('travel_journey_briefs')
+    .from('travel_engagement_briefs')
     .upsert({ journey_id: journeyId, house_id: houseId, ...patch }, { onConflict: 'journey_id' })
     .select()
     .single()

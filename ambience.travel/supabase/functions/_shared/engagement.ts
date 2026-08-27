@@ -50,7 +50,7 @@ export async function resolvejourneyIds(
   // House resolves from the brief (authoritative single source) - a deliverable
   // need not have a hotel booking (dining / reservation / experience engagements).
   const { data: brief } = await db
-    .from('travel_journey_briefs')
+    .from('travel_engagement_briefs')
     .select('house_id')
     .eq('journey_id', journeyId)
     .not('house_id', 'is', null)
@@ -93,7 +93,7 @@ export async function fetchEngagementCore(
       .eq('id', journeyId)
       .single(),
 
-    db.from('travel_journey_briefs')
+    db.from('travel_engagement_briefs')
       .select(`
         id, engagement_id:journey_id, house_id, brief_title, brief_subtitle, prepared_for,
         hero_image_src, hero_image_alt, logo_variant,

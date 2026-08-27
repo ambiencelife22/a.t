@@ -164,7 +164,7 @@ for (const t of tripRows) {
       .select('id, display_name, salutation_rule, travel_style_notes, avoid_notes, service_notes')
       .eq('id', houseId)
       .single(),
-    db.from('travel_journey_briefs')
+    db.from('travel_engagement_briefs')
       .select('*')
       .in('journey_id', journeyIds),
     bookingIds.length > 0
@@ -237,7 +237,7 @@ for (const t of tripRows) {
 
 async function handleBrief(db: SupabaseClient, journeyId: string): Promise<Response> {
   const { data, error } = await db
-    .from('travel_journey_briefs')
+    .from('travel_engagement_briefs')
     .select('*')
     .eq('journey_id', journeyId)
     .maybeSingle()
@@ -666,7 +666,7 @@ async function handleCalendar(
 async function partyLabelForTrip(db: SupabaseClient, journeyId: string | null): Promise<string | null> {
   if (!journeyId) return null
   const { data } = await db
-    .from('travel_journey_briefs')
+    .from('travel_engagement_briefs')
     .select('prepared_for')
     .eq('journey_id', journeyId)
     .maybeSingle()
