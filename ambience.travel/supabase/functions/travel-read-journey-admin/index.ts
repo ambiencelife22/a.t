@@ -99,15 +99,25 @@ async function handleDossier(db: SupabaseClient, houseId: string): Promise<Respo
   if (engJourneyErr) return err('Failed to resolve engagement journeys', 500)
   const journeyIds = [...new Set((engJourneyData ?? []).map(r => (r as { journey_id: string }).journey_id))]
 
-  // 2. Trips
+  // 2. Engagement journey-detail (was travel_journey container). Keyed by the
+  //    confirmed engagement; journey_id kept on the row for the frontend contract.
   const { data: tripData, error: tripErr } = await db
-    .from('travel_journey')
-    .select('id, journey_code, confirmed_engagement_id, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children')
-    .in('id', journeyIds)
-    .order('start_date', { ascending: false })
-
-  if (tripErr) return err('Failed to fetch trips', 500)
-  const tripRows = (tripData ?? []) as Record<string, unknown>[]
+    .from('travel_engagements')
+    .select('id, journey_id, engagement_code, is_confirmed_iteration, travel_engagement_journey_detail!node_id(start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children)')
+    .in('journey_id', journeyIds)
+    .eq('is_confirmed_iteration', true)
+  if (tripErr) return err('Failed to fetch engagement detail', 500)
+  const tripRows = ((tripData ?? []) as Array<Record<string, unknown>>).map(e => {
+    const d = (e.travel_engagement_journey_detail ?? {}) as Record<string, unknown>
+    return {
+      id: e.journey_id,                       // journey_id kept as the row id for the contract
+      journey_code: e.engagement_code,        // engagement_code is the code now
+      confirmed_engagement_id: e.id,          // the confirmed engagement IS this row
+      start_date: d.start_date ?? null, end_date: d.end_date ?? null,
+      duration_nights: d.duration_nights ?? null, journey_type: d.journey_type ?? null,
+      guest_count_adults: d.guest_count_adults ?? null, guest_count_children: d.guest_count_children ?? null,
+    }
+  })
   if (tripRows.length === 0) return ok({ trips: [], partners: {}, house: null })
 
 // Resolve each trip's winning-engagement status slug (S53G+: trip status is
@@ -135,7 +145,7 @@ for (const t of tripRows) {
     engId ? (engStatusSlugByEngId.get(engId) ?? null) : null
 }
 
-  // 3. Bookings
+// 3. Bookings
   const { data: bookData, error: bookErr } = await db
     .from('travel_bookings')
     .select('id, journey_id, house_id, engagement_id, name, status, confirmation_number, start_date, check_in_date, start_time, check_in_note, check_out_note, end_date, nights, commissionable_rate, total_rate, taxes_and_fees, currency, board_basis_id, payment_terms_id, pricing_basis_id, rate_label_id, board_basis:travel_board_bases!board_basis_id(display_name), payment_terms:travel_payment_terms!payment_terms_id(display_name), pricing_basis:travel_pricing_bases!pricing_basis_id(display_name), rate_label:travel_rate_labels!rate_label_id(display_name, client_visible), inclusions, price, deposit_amount, deposit_due_date, deposit_paid_at, balance_amount, balance_due_date, balance_paid_at, commission_pct, commission_amount, commission_paid_at, invoice_number, iata_partner_id, iata_share_pct, iata_share_amt, referral_partner_id, referral_share_pct, referral_share_amt, individual_id, individual_share_pct, individual_share_amt, accom_hotel_id, supplier_id, supplier_name_override, party_composition, primary_contact_name, primary_contact_role, supplier_contact_name, supplier_contact_whatsapp, brief_category, brief_show, brief_image_src, booked_by, cancellation_policy, booking_policy, notes, sort_order, created_at, updated_at')
@@ -235,25 +245,25 @@ for (const t of tripRows) {
   })
 }
 
-async function handleBrief(db: SupabaseClient, journeyId: string): Promise<Response> {
+async function handleBrief(db: SupabaseClient, engagementId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_engagement_briefs')
     .select('*')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .maybeSingle()
   if (error) return err('Failed to fetch brief', 500)
   return ok({ brief: data ?? null })
 }
 
-async function handleHouseIdForJourney(db: SupabaseClient, journeyId: string): Promise<Response> {
+async function handleHouseIdForJourney(db: SupabaseClient, engagementId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_bookings')
     .select('house_id')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .not('house_id', 'is', null)
     .limit(1)
     .maybeSingle()
-  if (error) return err('Failed to resolve house_id for journey', 500)
+  if (error) return err('Failed to resolve house_id for engagement', 500)
   return ok({ house_id: data?.house_id ?? null })
 }
 
@@ -278,54 +288,47 @@ async function handleAuxDriverDetails(db: SupabaseClient, nodeId: string): Promi
   return ok({ driverDetails: data ?? [] })
 }
 
-
-async function handleDays(db: SupabaseClient, journeyId: string): Promise<Response> {
-  // Days are DERIVED from trip span; travel_journey_days is overlay-only.
-  const [{ data: trip, error: tripErr }, { data: overlay, error: ovErr }] = await Promise.all([
-    db.from('travel_journey').select('start_date, end_date').eq('id', journeyId).maybeSingle(),
-    db.from('travel_journey_days').select('id, engagement_id:journey_id, entry_date, show, day_label, day_note').eq('journey_id', journeyId),
+async function handleDays(db: SupabaseClient, engagementId: string): Promise<Response> {
+  // Days are DERIVED from the engagement span (journey_detail); the days table is overlay-only.
+  const [{ data: detail, error: detErr }, { data: overlay, error: ovErr }] = await Promise.all([
+    db.from('travel_engagement_journey_detail').select('start_date, end_date').eq('node_id', engagementId).maybeSingle(),
+    db.from('travel_journey_days').select('id, engagement_id, entry_date, show, day_label, day_note').eq('engagement_id', engagementId),
   ])
-  if (tripErr || ovErr) return err('Failed to fetch days', 500)
+  if (detErr || ovErr) return err('Failed to fetch days', 500)
   const days = buildDays(
-    journeyId,
-    (trip?.start_date as string | null) ?? null,
-    (trip?.end_date as string | null) ?? null,
+    engagementId,
+    (detail?.start_date as string | null) ?? null,
+    (detail?.end_date as string | null) ?? null,
     (overlay ?? []) as Record<string, unknown>[],
   )
   return ok({ days })  // admin gets ALL days incl hidden (for show toggle)
 }
 
-async function handleWelcomeLetters(db: SupabaseClient, journeyId: string): Promise<Response> {
+async function handleWelcomeLetters(db: SupabaseClient, engagementId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_journey_welcome_letters')
     .select('*')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch welcome letters', 500)
   return ok({ letters: data ?? [] })
 }
 
-async function handleDayEntries(db: SupabaseClient, journeyId: string): Promise<Response> {
+async function handleDayEntries(db: SupabaseClient, engagementId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_journey_day_entries')
     .select('*')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .order('entry_date', { ascending: true })
     .order('sort_order', { ascending: true })
   if (error) return err('Failed to fetch day entries', 500)
   return ok({ dayEntries: data ?? [] })
 }
 
-async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise<Response> {
-  // Stage 7 Phase 2: read elements from the tree (node+detail) via fetchEngagementElements,
-  // flattened to the legacy aux shape. Parent = journey.confirmed_engagement_id.
-  const { data: j, error: jErr } = await db
-    .from('travel_journey')
-    .select('confirmed_engagement_id')
-    .eq('id', journeyId)
-    .maybeSingle()
-  if (jErr) return err('Failed to resolve journey', 500)
-  const aux = await fetchEngagementElements(db, (j?.confirmed_engagement_id as string | null) ?? null)
+async function handleAuxBookings(db: SupabaseClient, engagementId: string): Promise<Response> {
+  // Read elements from the tree (node+detail) via fetchEngagementElements, flattened
+  // to the legacy aux shape. The engagement IS the parent node.
+  const aux = await fetchEngagementElements(db, engagementId)
   if (aux.length === 0) return ok({ elements: [] })
   // Passengers key on node_id; flat rows carry id = node id (Stage 7 Phase 2 retire).
   const nodeIds = aux.map(a => a.id as string).filter(Boolean)
@@ -343,11 +346,11 @@ async function handleAuxBookings(db: SupabaseClient, journeyId: string): Promise
   return ok({ elements: withPax })
 }
 
-async function handlePublicView(db: SupabaseClient, journeyId: string): Promise<Response> {
+async function handlePublicView(db: SupabaseClient, engagementId: string): Promise<Response> {
   const { data, error } = await db
     .from('travel_engagements')
     .select('public_view')
-    .eq('id', journeyId)
+    .eq('id', engagementId)
     .single()
   if (error || !data) return ok({ publicView: false })
   return ok({ publicView: !!(data as { public_view: boolean }).public_view })
@@ -423,21 +426,31 @@ async function handleCalendar(
   // range is given (view window), filter to trips overlapping it: end >= range_start
   // AND start <= range_end. With no range (default load), return everything confirmed
   // so recently-completed trips like a yesterday check-out never silently vanish.
+  // Confirmed engagements (the winners) + their journey-detail. journey_id kept as
+  // the row id + confirmed_engagement_id=self so the calendar's grouping is unchanged.
   let tripQ = db
-    .from('travel_journey')
-    .select('id, journey_code, public_title, start_date, end_date, confirmed_engagement_id, primary_client_id')
-    .not('confirmed_engagement_id', 'is', null)
-  if (rangeStart) tripQ = tripQ.gte('end_date', rangeStart)
-  if (rangeEnd)   tripQ = tripQ.lte('start_date', rangeEnd)
+    .from('travel_engagements')
+    .select('id, journey_id, engagement_code, person_id, travel_engagement_journey_detail!node_id(start_date, end_date, public_title)')
+    .eq('is_confirmed_iteration', true)
+    .not('journey_id', 'is', null)
+  if (rangeStart) tripQ = tripQ.gte('travel_engagement_journey_detail.end_date', rangeStart)
+  if (rangeEnd)   tripQ = tripQ.lte('travel_engagement_journey_detail.start_date', rangeEnd)
 
-  const { data: tripData, error: tripErr } = await tripQ.order('start_date', { ascending: true })
-  if (tripErr) return err('Failed to fetch calendar trips', 500)
+  const { data: tripDataRaw, error: tripErr } = await tripQ
+  if (tripErr) return err('Failed to fetch calendar engagements', 500)
 
-  const trips = (tripData ?? []) as Array<{
-    id: string; journey_code: string; public_title: string | null
-    start_date: string | null; end_date: string | null
-    confirmed_engagement_id: string | null; primary_client_id: string | null
-  }>
+  const trips = ((tripDataRaw ?? []) as Array<Record<string, unknown>>).map(e => {
+    const d = (e.travel_engagement_journey_detail ?? {}) as Record<string, unknown>
+    return {
+      id: e.journey_id as string,
+      journey_code: (e.engagement_code as string | null) ?? '',
+      public_title: (d.public_title as string | null) ?? null,
+      start_date: (d.start_date as string | null) ?? null,
+      end_date: (d.end_date as string | null) ?? null,
+      confirmed_engagement_id: e.id as string,
+      primary_client_id: (e.person_id as string | null) ?? null,
+    }
+  }).sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
   if (trips.length === 0) return ok({ engagements: [] })
 
   // 2. Resolve each winning engagement's status slug; keep only confirmed-stage.
@@ -532,16 +545,13 @@ async function handleCalendar(
   // Element nodes hang off the confirmed ENGAGEMENT id (parent_engagement_id),
   // not the journey id. Resolve journeyId -> confirmed_engagement_id to filter the
   // activity read, then map results back to journey id (the calendar's grouping key).
+  // engagement id -> journey id, built from the confirmed trips already resolved
+  // (each trip row carries confirmed_engagement_id=self and id=journey_id). No container read.
   const journeyByEngagement = new Map<string, string>()
-  if (journeyIds.length > 0) {
-    const { data: jrows } = await db
-      .from('travel_journey')
-      .select('id, confirmed_engagement_id')
-      .in('id', journeyIds)
-    for (const j of (jrows ?? []) as Array<Record<string, unknown>>) {
-      if (j.confirmed_engagement_id) journeyByEngagement.set(j.confirmed_engagement_id as string, j.id as string)
-    }
+  for (const t of confirmedTrips) {
+    if (t.confirmed_engagement_id) journeyByEngagement.set(t.confirmed_engagement_id, t.id)
   }
+
   const engagementIds = [...journeyByEngagement.keys()]
   if (engagementIds.length > 0) {
     const { data: actData, error: actErr } = await db
@@ -663,12 +673,12 @@ async function handleCalendar(
 // partyLabel (brief.prepared_for) is the trip's single client address, the last
 // fallback in resolvePartyName.
 
-async function partyLabelForTrip(db: SupabaseClient, journeyId: string | null): Promise<string | null> {
-  if (!journeyId) return null
+async function partyLabelForTrip(db: SupabaseClient, engagementId: string | null): Promise<string | null> {
+  if (!engagementId) return null
   const { data } = await db
     .from('travel_engagement_briefs')
     .select('prepared_for')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .maybeSingle()
   return (data?.prepared_for as string | null) ?? null
 }
@@ -705,10 +715,10 @@ async function handleActivityDetail(
     // child-activity derivation.) Falls back to the single booking if the anchor
     // has no accom_hotel_id (non-hotel stay).
     const { data: bk } = await db
-      .from('travel_bookings').select('journey_id, accom_hotel_id').eq('id', bookingId).maybeSingle()
+      .from('travel_bookings').select('journey_id, engagement_id, accom_hotel_id').eq('id', bookingId).maybeSingle()
     const journeyId = (bk?.journey_id as string | null) ?? null
     const hotelId = (bk?.accom_hotel_id as string | null) ?? null
-    const partyLabel = await partyLabelForTrip(db, journeyId)
+    const partyLabel = await partyLabelForTrip(db, (bk?.engagement_id as string | null) ?? null)
 
     let bookingIdsForStay: string[] = [bookingId]
     if (journeyId && hotelId) {
@@ -774,10 +784,8 @@ async function handleActivityDetail(
     // the node's parent engagement for the journey -> party label.
     const { data: node } = await db
       .from('travel_engagements').select('id, parent_engagement_id').eq('id', auxBookingId).maybeSingle()
-    const { data: jrow } = node?.parent_engagement_id
-      ? await db.from('travel_journey').select('id').eq('confirmed_engagement_id', node.parent_engagement_id as string).maybeSingle()
-      : { data: null }
-    const partyLabel = await partyLabelForTrip(db, (jrow?.id as string | null) ?? null)
+    // parent_engagement_id IS the trip engagement; party label from its brief.
+    const partyLabel = await partyLabelForTrip(db, (node?.parent_engagement_id as string | null) ?? null)
     const { data: paxData, error: paxErr } = await db
       .from('travel_engagement_passengers')
       .select('id, node_id, person_id, passenger_label, seat_numbers, confirmation_number, sort_order')
@@ -880,14 +888,13 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await serviceClient
           .from('travel_bookings')
           .select('house_id')
-          .eq('journey_id', journey_id)
+          .eq('engagement_id', journey_id)
           .not('house_id', 'is', null)
           .limit(1)
           .maybeSingle()
         if (error) return err('Failed to resolve house_id for trip', 500)
         return ok({ houseId: (data as { house_id: string } | null)?.house_id ?? null })
       }
-
 
       case 'requests': {
         if (!house_id) return err('house_id is required for requests mode', 400)
