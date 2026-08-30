@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
 
       const [engRes, bookingsRes, expensesRes] = await Promise.all([
         db.from('travel_engagements')
-          .select('id, title, url_id, travel_journey!journey_id(journey_code, start_date, end_date)')
+          .select('id, title, url_id, engagement_code, travel_engagement_journey_detail!node_id(start_date, end_date)')
           .eq('id', engagement_id)
           .single(),
         db.from('travel_bookings')
@@ -233,9 +233,8 @@ Deno.serve(async (req: Request) => {
     if (mode === 'pipeline') {
       const { data: engRows, error: engErr } = await db
         .from('travel_engagements')
-        .select('id, journey_id, url_id, title, travel_lifecycle_statuses!engagement_status_id(slug), travel_journey!journey_id(journey_code, start_date, end_date, primary_client_id)')
+        .select('id, url_id, title, engagement_code, person_id, travel_lifecycle_statuses!engagement_status_id(slug), travel_engagement_journey_detail!node_id(start_date, end_date)')
         .is('parent_engagement_id', null)
-        .not('journey_id', 'is', null)
         .order('created_at', { ascending: false })
       if (engErr) { console.error(engErr); return json({ error: 'Failed to fetch pipeline' }, 500) }
 
@@ -266,7 +265,7 @@ Deno.serve(async (req: Request) => {
       const eByEng = groupBy((expensesAll ?? []) as Array<Record<string, unknown>>, 'engagement_id')
 
       const trips = confirmed.map(e => {
-        const trip = e.travel_journey as Record<string, unknown> | null
+        const trip = e.travel_engagement_journey_detail as Record<string, unknown> | null
         const bs   = (bByEng[e.id as string] ?? []) as Array<Record<string, unknown>>
         const es   = (eByEng[e.id as string] ?? []) as Array<{ total_amount: number; total_amount_usd: number | null; billing_status: string }>
         const _eamt = (x: { total_amount: number; total_amount_usd: number | null }) => x.total_amount_usd ?? x.total_amount
@@ -298,8 +297,8 @@ Deno.serve(async (req: Request) => {
 
         return {
           engagement_id: e.id, url_id: e.url_id, title: e.title, status_slug,
-          journey_code: trip?.journey_code ?? null, start_date: trip?.start_date ?? null,
-          end_date: trip?.end_date ?? null, primary_client_id: trip?.primary_client_id ?? null,
+          journey_code: (e.engagement_code as string | null) ?? null, start_date: trip?.start_date ?? null,
+          end_date: trip?.end_date ?? null, primary_client_id: (e.person_id as string | null) ?? null,
           total_commission, net_commission_expected, commission_received,
           commission_outstanding: bs.filter(b => !b.commission_paid_at).reduce((s, b) => s + computeNetRevenue(b), 0),
           total_rate, commissionable_value, realized_received, total_amenities, total_net_revenue,
