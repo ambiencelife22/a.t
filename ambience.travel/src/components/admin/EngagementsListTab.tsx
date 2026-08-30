@@ -793,7 +793,7 @@ function EngagementGroupBlock({
               {/* Trip code + date - DM Mono 11pt dim */}
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 <EditableText
-                  value={group.journeyCode ?? ''}
+                  value={group.engagementCode ?? ''}
                   placeholder='Add trip code'
                   size='sm'
                   monospace
@@ -841,7 +841,7 @@ function EngagementGroupBlock({
           color:         A.gold,
           fontFamily:    A.font,
         }}>
-          Drop to {isOrphan ? 'unlink' : `move to ${group.journeyCode ?? 'this trip'}`}
+          Drop to {isOrphan ? 'unlink' : `move to ${group.engagementCode ?? 'this trip'}`}
         </div>
       )}
 

@@ -31,7 +31,7 @@
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { checkPublicView } from '../_shared/visibility.ts'
-import { resolvejourneyIds, fetchEngagementCore, fetchEngagementBookings, fetchEngagementElements, enrichElements } from '../_shared/engagement.ts'
+import { resolveEngagementIds, fetchEngagementCore, fetchEngagementBookings, fetchEngagementElements, enrichElements } from '../_shared/engagement.ts'
 import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
@@ -79,11 +79,11 @@ Deno.serve(async (req: Request) => {
     const visibilityGate = await checkPublicView(db, url_id)
     if (visibilityGate) return visibilityGate
 
-    const ids = await resolvejourneyIds(db, url_id)
+    const ids = await resolveEngagementIds(db, url_id)
     if (!ids) {
       return json({ error: 'Not found' }, 404)
     }
-    const { journeyId, houseId } = ids
+    const { engagementId, houseId } = ids
 
     // ── ONE parallel fetch: core + the full booking column set (superset of both
     // former EFs - financial-adjacent cols AND the hotel-policy join) + days + entries.
@@ -93,13 +93,13 @@ Deno.serve(async (req: Request) => {
       daysResult,
       entriesResult,
     ] = await Promise.all([
-      fetchEngagementCore(db, journeyId, houseId),
+      fetchEngagementCore(db, engagementId, houseId),
 
       // Superset booking select: confirmation's financial-adjacent columns
       // (deposit/balance/taxes/payment_exception) + the programme's hotel-policy join.
       db.from('travel_bookings')
         .select(`
-          id, journey_id, house_id, name, status, confirmation_number,
+          id, engagement_id, house_id, name, status, confirmation_number,
           start_date, check_in_date, start_time, check_in_note, check_out_note,
           early_checkin_approved_time, late_checkout_approved_time, expected_arrival_time,
           requested_checkin_time, requested_checkout_time, extras,
@@ -115,18 +115,18 @@ Deno.serve(async (req: Request) => {
           )
         `)
         .eq('house_id', houseId)
-        .eq('journey_id', journeyId)
+        .eq('engagement_id', engagementId)
         .order('start_date', { ascending: true, nullsFirst: false })
         .order('end_date',   { ascending: true, nullsFirst: false })
         .order('id',         { ascending: true }),
 
       db.from('travel_journey_days')
-        .select('id, engagement_id:journey_id, entry_date, show, day_label, day_note')
-        .eq('journey_id', journeyId),
+        .select('id, engagement_id, entry_date, show, day_label, day_note')
+        .eq('engagement_id', engagementId),
 
       db.from('travel_journey_day_entries')
-        .select('id, journey_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_dining_id, source_experience_id')
-        .eq('journey_id', journeyId)
+        .select('id, engagement_id, entry_date, start_time, end_time, title, subtitle, category, booked_by, confirmation_number, guest_label, notes, brief_show, sort_order, source_booking_id, source_dining_id, source_experience_id')
+        .eq('engagement_id', engagementId)
         .eq('brief_show', true)
         .order('entry_date', { ascending: true })
         .order('sort_order', { ascending: true }),
@@ -144,7 +144,7 @@ Deno.serve(async (req: Request) => {
     const partyLabel   = (brief?.prepared_for as string | null) ?? null
     const bookings     = (bookingsResult.data ?? []) as Array<Record<string, unknown>>
     const entries      = (entriesResult.data ?? []) as Array<Record<string, unknown>>
-    const confirmedEngagementId = (journey?.confirmed_engagement_id as string | null) ?? null
+    const confirmedEngagementId = engagementId
 
     // ── Links (confirmation) ──────────────────────────────────────────────────
     const engagementLinksResult = confirmedEngagementId
@@ -380,7 +380,7 @@ Deno.serve(async (req: Request) => {
       urlId:            url_id,
       fullBookings,
       days: buildDays(
-        journeyId,
+        engagementId,
         journey.start_date as string | null,
         journey.end_date as string | null,
         (daysResult.data ?? []) as Array<Record<string, unknown>>,

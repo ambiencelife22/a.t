@@ -34,39 +34,38 @@ import { fetchHotelsByIds } from './bookings.ts'
 // ── url_id -> trip_id -> house_id ─────────────────────────────────────────────
 // Returns the ids, or null when the trip cannot be resolved (caller returns 404).
 
-export async function resolvejourneyIds(
+export async function resolveEngagementIds(
   db: SupabaseClient,
   urlId: string,
-): Promise<{ journeyId: string; houseId: string } | null> {
+): Promise<{ engagementId: string; houseId: string } | null> {
   const { data: eng, error: engErr } = await db
     .from('travel_engagements')
-    .select('journey_id')
+    .select('id')
     .eq('url_id', urlId)
-    .not('journey_id', 'is', null)
     .limit(1)
     .single()
-  if (engErr || !eng?.journey_id) return null
-  const journeyId = eng.journey_id as string
+  if (engErr || !eng?.id) return null
+  const engagementId = eng.id as string
   // House resolves from the brief (authoritative single source) - a deliverable
   // need not have a hotel booking (dining / reservation / experience engagements).
   const { data: brief } = await db
     .from('travel_engagement_briefs')
     .select('house_id')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .not('house_id', 'is', null)
     .limit(1)
     .single()
-  if (brief?.house_id) return { journeyId, houseId: brief.house_id as string }
-  // Fallback: legacy journeys without a brief house_id - derive from a booking.
+  if (brief?.house_id) return { engagementId, houseId: brief.house_id as string }
+  // Fallback: derive from a booking when the brief carries no house.
   const { data: booking } = await db
     .from('travel_bookings')
     .select('house_id')
-    .eq('journey_id', journeyId)
+    .eq('engagement_id', engagementId)
     .not('house_id', 'is', null)
     .limit(1)
     .single()
   if (!booking?.house_id) return null
-  return { journeyId, houseId: booking.house_id as string }
+  return { engagementId, houseId: booking.house_id as string }
 }
 
 // ── Core fetch: trip + brief + house + destinations ───────────────────────────
@@ -84,18 +83,18 @@ export interface EngagementCore {
 
 export async function fetchEngagementCore(
   db: SupabaseClient,
-  journeyId: string,
+  engagementId: string,
   houseId: string,
 ): Promise<EngagementCore> {
   const [tripResult, briefResult, houseResult, destResult] = await Promise.all([
-    db.from('travel_journey')
-      .select('id, journey_code, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children, confirmed_engagement_id')
-      .eq('id', journeyId)
-      .single(),
+    db.from('travel_engagement_journey_detail')
+      .select('node_id, start_date, end_date, duration_nights, journey_type, guest_count_adults, guest_count_children, public_title, public_subtitle')
+      .eq('node_id', engagementId)
+      .maybeSingle(),
 
     db.from('travel_engagement_briefs')
       .select(`
-        id, engagement_id:journey_id, house_id, brief_title, brief_subtitle, prepared_for,
+        id, engagement_id, house_id, brief_title, brief_subtitle, prepared_for,
         hero_image_src, hero_image_alt, logo_variant,
         snapshot_destination, snapshot_dates, snapshot_guests, snapshot_status,
         journey_steps, advisor_name, advisor_email, advisor_phone,
@@ -107,7 +106,7 @@ export async function fetchEngagementCore(
         contact_person_ids, contact_name_format, contact_supplier_contact_ids,
         created_at, updated_at
       `)
-      .eq('journey_id', journeyId)
+      .eq('engagement_id', engagementId)
       .maybeSingle(),
 
     db.from('a_houses')
@@ -116,8 +115,8 @@ export async function fetchEngagementCore(
       .single(),
 
     db.from('travel_journey_destinations')
-      .select('id, engagement_id:journey_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
-      .eq('journey_id', journeyId)
+      .select('id, engagement_id, destination_id, sort_order, global_destinations!travel_journey_destinations_dest_fkey(slug, name, storage_path, hero_image_src)')
+      .eq('engagement_id', engagementId)
       .order('sort_order', { ascending: true }),
   ])
 
@@ -143,19 +142,18 @@ export async function fetchEngagementCore(
   // projection trigger, never resolved here). Keyed by engagement_id in the
   // display table. Best-effort: null when no confirmed engagement
   // or no projected row - callers fall through to prepared_for with ?? (never ||).
-  const confirmedEngId = (tripResult.data?.confirmed_engagement_id as string | null) ?? null
   let engHeroSrc: string | null = null
   let engTitle: string | null = null
   let resolvedGuestLabel: string | null = null
-  if (confirmedEngId) {
+  {
     const [engRes, displayRes] = await Promise.all([
       db.from('travel_engagements')
         .select('hero_image_src, title, guest_display_name_override, person_id')
-        .eq('id', confirmedEngId)
+        .eq('id', engagementId)
         .maybeSingle(),
       db.from('travel_overlay_engagement_display')
         .select('house_display_name')
-        .eq('engagement_id', confirmedEngId)
+        .eq('engagement_id', engagementId)
         .maybeSingle(),
     ])
     if (engRes.error) console.error('[fetchEngagementCore] engagement fetch error:', JSON.stringify(engRes.error))

@@ -2,7 +2,7 @@
 // Single-source trip days. The list of WHICH days exist is DERIVED from the trip
 // span [start_date .. end_date] - never stored. travel_journey_days is an OVERLAY
 // holding only per-day operator overrides (show / day_label / day_note), keyed by
-// (journey_id, entry_date). buildDays merges: every date in span, with overlay applied.
+// (engagement_id, entry_date). buildDays merges: every date in span, with overlay applied.
 //
 // Replaces the stored-days model (travel_journey_days as source of existence) - the
 // same store-the-derivation pattern retired for hotel/aux entries. Shift a trip
@@ -10,9 +10,9 @@
 //
 // Default when no overlay row exists for a date: show=true, no label, no note.
 
-export type JourneyDayItem = {
+export type EngagementDayItem = {
   id:         string | null   // overlay row id if present, otherwise null (derived-only day)
-  journey_id: string
+  engagement_id: string
   entry_date: string
   show:       boolean
   day_label:  string | null
@@ -44,11 +44,11 @@ function datesInSpan(startDate: string, endDate: string): string[] {
 // Derive the ordered day list from span, applying the overlay per date.
 // overlayRows are travel_journey_days rows (any that exist for this trip).
 export function buildDays(
-  journeyId:     string,
+  engagementId:  string,
   startDate:  string | null,
   endDate:    string | null,
   overlayRows: DayOverlayLike[],
-): JourneyDayItem[] {
+): EngagementDayItem[] {
   if (!startDate || !endDate) return []
 
   const overlayByDate = new Map<string, DayOverlayLike>()
@@ -60,9 +60,9 @@ export function buildDays(
   return datesInSpan(startDate, endDate).map((date, i) => {
     const o = overlayByDate.get(date)
     return {
-      id:         o ? ((o.id as string | null) ?? null) : null,
-      journey_id: journeyId,
-      entry_date: date,
+      id:          o ? ((o.id as string | null) ?? null) : null,
+      engagement_id: engagementId,
+      entry_date:  date,
       // Default show=true; overlay can hide. Only an explicit false hides.
       show:       o ? (o.show as boolean | null) !== false : true,
       day_label:  o ? ((o.day_label as string | null) ?? null) : null,

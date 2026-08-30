@@ -99,20 +99,19 @@ type EngagementListQueryRow = {
   sort_order: number
   created_at: string
   iteration_label: string | null
-  journey_id: string | null
+  engagement_code: string | null
+  person_id: string | null
   engagement_status: { slug: string | null; label: string | null } | null
   itinerary_status:  { slug: string | null; label: string | null } | null
-  trip: {
-    journey_code: string | null
+  detail: {
     public_title: string | null
     start_date: string | null
-    primary_client_id: string | null
-    primary_client: {
-      id: string | null
-      first_name: string | null
-      last_name: string | null
-      nickname: string | null
-    } | null
+  } | null
+  primary_client: {
+    id: string | null
+    first_name: string | null
+    last_name: string | null
+    nickname: string | null
   } | null
 }
 
@@ -144,14 +143,12 @@ Deno.serve(async (req: Request) => {
         .select(`
           id, url_id, title, audience, is_public_template,
           engagement_status_id, itinerary_status_id, sort_order, created_at,
-          iteration_label, journey_id,
+          iteration_label, engagement_code, person_id,
           engagement_status:travel_lifecycle_statuses(slug, label),
           itinerary_status:travel_itinerary_statuses(slug, label),
-          trip:travel_journey!travel_engagements_journey_id_fkey(
-            journey_code, public_title, start_date, primary_client_id,
-            primary_client:global_people!travel_journey_primary_client_id_fkey(
-              id, first_name, last_name, nickname
-            )
+          detail:travel_engagement_journey_detail!node_id(public_title, start_date),
+          primary_client:global_people!travel_engagements_person_id_fkey(
+            id, first_name, last_name, nickname
           )
         `)
         .is('parent_engagement_id', null)
@@ -178,14 +175,13 @@ Deno.serve(async (req: Request) => {
         engagement_status_label: r.engagement_status?.label ?? null,
         itinerary_status_slug:   r.itinerary_status?.slug   ?? null,
         itinerary_status_label:  r.itinerary_status?.label  ?? null,
-        journey_id:              r.journey_id,
-        journey_code:               r.trip?.journey_code      ?? null,
-        trip_public_title:       r.trip?.public_title      ?? null,
-        trip_start_date:         r.trip?.start_date        ?? null,
-        client_first_name:       r.trip?.primary_client?.first_name ?? null,
-        client_last_name:        r.trip?.primary_client?.last_name  ?? null,
-        client_nickname:         r.trip?.primary_client?.nickname   ?? null,
-        client_id:               r.trip?.primary_client?.id         ?? null,
+        engagement_code:         r.engagement_code ?? null,
+        trip_public_title:       r.detail?.public_title    ?? null,
+        trip_start_date:         r.detail?.start_date      ?? null,
+        client_first_name:       r.primary_client?.first_name ?? null,
+        client_last_name:        r.primary_client?.last_name  ?? null,
+        client_nickname:         r.primary_client?.nickname   ?? null,
+        client_id:               r.primary_client?.id         ?? null,
       }))
 
       return json({ rows })
@@ -334,14 +330,15 @@ Deno.serve(async (req: Request) => {
     if (mode === 'trips') {
       const query = (body?.query as string | undefined) ?? ''
       let q = serviceClient
-        .from('travel_journey')
-        .select('id, journey_code, start_date')
-        .order('start_date', { ascending: false, nullsFirst: false })
+        .from('travel_engagements')
+        .select('id, engagement_code, travel_engagement_journey_detail!node_id(start_date)')
+        .is('parent_engagement_id', null)
+        .order('created_at', { ascending: false })
         .limit(20)
 
       const trimmed = query.trim()
       if (trimmed) {
-        q = q.ilike('journey_code', `%${trimmed}%`)
+        q = q.ilike('engagement_code', `%${trimmed}%`)
       }
 
       const { data, error } = await q
@@ -376,8 +373,8 @@ Deno.serve(async (req: Request) => {
       if (!id) return json({ error: 'id is required' }, 400)
 
       const { data, error } = await serviceClient
-        .from('travel_journey')
-        .select('id, journey_code, start_date')
+        .from('travel_engagements')
+        .select('id, engagement_code, travel_engagement_journey_detail!node_id(start_date)')
         .eq('id', id)
         .maybeSingle()
 
