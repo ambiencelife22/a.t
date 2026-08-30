@@ -110,7 +110,7 @@ async function resolveRoomRow(
 
 async function handleUpsertBrief(
   db: SupabaseClient,
-  journeyId: string,
+  engagementId: string,
   houseId: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
@@ -118,14 +118,14 @@ async function handleUpsertBrief(
     const { data: existing } = await db
       .from('travel_engagement_briefs')
       .select('id')
-      .eq('journey_id', journeyId)
+      .eq('engagement_id', engagementId)
       .maybeSingle()
 
     if (!existing) {
       const { data: dest } = await db
         .from('travel_journey_destinations')
         .select('global_destinations!travel_journey_destinations_dest_fkey(name)')
-        .eq('journey_id', journeyId)
+        .eq('engagement_id', engagementId)
         .order('sort_order', { ascending: true })
         .limit(1)
         .maybeSingle()
@@ -139,7 +139,7 @@ async function handleUpsertBrief(
 
   const { data, error } = await db
     .from('travel_engagement_briefs')
-    .upsert({ journey_id: journeyId, house_id: houseId, ...patch }, { onConflict: 'journey_id' })
+    .upsert({ engagement_id: engagementId, house_id: houseId, ...patch }, { onConflict: 'engagement_id' })
     .select()
     .single()
   if (error) return json({ error: 'Failed to upsert brief' }, 500)
@@ -322,13 +322,13 @@ async function handleDeleteAuxDriverDetail(db: SupabaseClient, id: string): Prom
 
 async function handleUpsertDay(
   db: SupabaseClient,
-  journeyId: string,
+  engagementId: string,
   entryDate: string,
   patch: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
     .from('travel_journey_days')
-    .upsert({ journey_id: journeyId, entry_date: entryDate, ...patch }, { onConflict: 'journey_id,entry_date' })
+    .upsert({ engagement_id: engagementId, entry_date: entryDate, ...patch }, { onConflict: 'engagement_id,entry_date' })
     .select()
     .single()
   if (error) return json({ error: 'Failed to upsert day' }, 500)
@@ -337,12 +337,12 @@ async function handleUpsertDay(
 
 async function handleCreateDayEntry(
   db: SupabaseClient,
-  journeyId: string,
+  engagementId: string,
   entry: Record<string, unknown>,
 ): Promise<Response> {
   const { data, error } = await db
     .from('travel_journey_day_entries')
-    .insert({ ...entry, journey_id: journeyId })
+    .insert({ ...entry, engagement_id: engagementId })
     .select()
     .single()
   if (error) return json({ error: 'Failed to create day entry' }, 500)
@@ -375,10 +375,10 @@ async function handleDeleteDayEntry(db: SupabaseClient, id: string): Promise<Res
 
 async function handleUpsertWelcomeLetter(
   db: SupabaseClient,
-  journeyId: string,
+  engagementId: string,
   letter: Record<string, unknown>,
 ): Promise<Response> {
-  const row = { ...letter, journey_id: journeyId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
+  const row = { ...letter, engagement_id: engagementId, ...(letter.id ? { updated_at: new Date().toISOString() } : {}) }
   const { data, error } = await db
     .from('travel_journey_welcome_letters')
     .upsert(row, { onConflict: 'id' })
@@ -401,42 +401,67 @@ async function handleDeleteWelcomeLetter(db: SupabaseClient, id: string): Promis
 
 // ── Trip CRUD ─────────────────────────────────────────────────────────────────
 
+// The admin list still groups by journey; group-header edits send a journey id.
+// Resolve to the confirmed engagement (spine). If an engagement id is passed, it
+// resolves to itself (its own confirmed row); falls back to a journey's sole engagement.
+async function resolveConfirmedEngagement(db: SupabaseClient, id: string): Promise<string | null> {
+  const { data: direct } = await db
+    .from('travel_engagements').select('id').eq('id', id).eq('is_confirmed_iteration', true).maybeSingle()
+  if (direct?.id) return direct.id as string
+  const { data: byJourney } = await db
+    .from('travel_engagements').select('id').eq('journey_id', id).eq('is_confirmed_iteration', true).maybeSingle()
+  if (byJourney?.id) return byJourney.id as string
+  const { data: single } = await db
+    .from('travel_engagements').select('id').eq('journey_id', id).limit(1).maybeSingle()
+  return (single?.id as string | null) ?? null
+}
+
 async function handleCreateJourney(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
-  const journey_code = (body.journey_code as string | undefined)?.trim()
-  if (!journey_code) return json({ error: 'journey_code is required' }, 400)
-
-  const insert: Record<string, unknown> = {
-    journey_code: journey_code,
-    public_title:       (body.public_title as string | undefined)?.trim() ?? null,
-    start_date:         (body.start_date as string | undefined) ?? null,
-    end_date:           (body.end_date as string | undefined) ?? null,
-    currency:           (body.currency as string | undefined) ?? 'USD',
-    primary_client_id:  (body.primary_client_id as string | undefined) ?? null,
-  }
-
-  const { data, error } = await db.from('travel_journey').insert(insert).select('id').single()
-  if (error) { console.error('create_journey error:', error); return json({ error: 'Failed to create trip' }, 500) }
-  return json({ trip: data })
+  const engagement_code = (body.journey_code as string | undefined)?.trim()
+  if (!engagement_code) return json({ error: 'engagement_code is required' }, 400)
+  // Create the journey-shape engagement (the spine entity), then its journey_detail.
+  const { data: eng, error: engErr } = await db
+    .from('travel_engagements')
+    .insert({
+      engagement_code,
+      engagement_type_id: '4b2f9de7-92e3-45d3-8d7a-c665b513c145',
+      person_id: (body.primary_client_id as string | undefined) ?? null,
+      is_confirmed_iteration: true,
+    })
+    .select('id')
+    .single()
+  if (engErr) { console.error('create engagement error:', engErr); return json({ error: 'Failed to create engagement' }, 500) }
+  const engagementId = eng.id as string
+  const { error: detErr } = await db
+    .from('travel_engagement_journey_detail')
+    .insert({
+      node_id: engagementId,
+      public_title: (body.public_title as string | undefined)?.trim() ?? null,
+      start_date:   (body.start_date as string | undefined) ?? null,
+      end_date:     (body.end_date as string | undefined) ?? null,
+      currency:     (body.currency as string | undefined) ?? 'USD',
+    })
+  if (detErr) { console.error('create journey_detail error:', detErr); return json({ error: 'Failed to create engagement detail' }, 500) }
+  return json({ trip: { id: engagementId } })
 }
 
 async function handleUpdateJourney(db: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
   const id = body.id as string | undefined
   if (!id) return json({ error: 'id is required' }, 400)
-
-  const patch: Record<string, unknown> = {}
+  const engagementId = await resolveConfirmedEngagement(db, id)
+  if (!engagementId) return json({ error: 'engagement not found' }, 404)
   if (body.journey_code !== undefined) {
     const trimmed = (body.journey_code as string).trim()
-    if (!trimmed) return json({ error: 'journey_code cannot be empty' }, 400)
-    patch.journey_code = trimmed
+    if (!trimmed) return json({ error: 'engagement_code cannot be empty' }, 400)
+    const { error } = await db.from('travel_engagements').update({ engagement_code: trimmed }).eq('id', engagementId)
+    if (error) { console.error('update engagement_code error:', error); return json({ error: 'Failed to update code' }, 500) }
   }
   if (body.public_title !== undefined) {
     const trimmed = (body.public_title as string | null)?.trim() ?? ''
-    patch.public_title = trimmed.length > 0 ? trimmed : null
+    const { error } = await db.from('travel_engagement_journey_detail')
+      .update({ public_title: trimmed.length > 0 ? trimmed : null }).eq('node_id', engagementId)
+    if (error) { console.error('update public_title error:', error); return json({ error: 'Failed to update title' }, 500) }
   }
-  if (Object.keys(patch).length === 0) return json({ error: 'nothing to update' }, 400)
-
-  const { error } = await db.from('travel_journey').update(patch).eq('id', id)
-  if (error) { console.error('update_journey error:', error); return json({ error: 'Failed to update trip' }, 500) }
   return json({ ok: true })
 }
 
@@ -444,9 +469,10 @@ async function handleUpdateJourneyPrimaryClient(db: SupabaseClient, body: Record
   const id        = body.id as string | undefined
   const person_id = (body.primary_client_id as string | null) ?? null
   if (!id) return json({ error: 'id is required' }, 400)
-
-  const { error } = await db.from('travel_journey').update({ primary_client_id: person_id }).eq('id', id)
-  if (error) { console.error('update_journey_primary_client error:', error); return json({ error: 'Failed to update primary client' }, 500) }
+  const engagementId = await resolveConfirmedEngagement(db, id)
+  if (!engagementId) return json({ error: 'engagement not found' }, 404)
+  const { error } = await db.from('travel_engagements').update({ person_id }).eq('id', engagementId)
+  if (error) { console.error('update primary client error:', error); return json({ error: 'Failed to update primary client' }, 500) }
   return json({ ok: true })
 }
 
