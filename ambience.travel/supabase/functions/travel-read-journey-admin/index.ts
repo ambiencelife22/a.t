@@ -99,7 +99,7 @@ async function handleDossier(db: SupabaseClient, houseId: string): Promise<Respo
   if (engJourneyErr) return err('Failed to resolve engagement journeys', 500)
   const journeyIds = [...new Set((engJourneyData ?? []).map(r => (r as { journey_id: string }).journey_id))]
 
-  // 2. Engagement journey-detail (was travel_journey container). Keyed by the
+  // 2. Engagement journey-detail (formerly the standalone container). Keyed by the
   //    confirmed engagement; journey_id kept on the row for the frontend contract.
   const { data: tripData, error: tripErr } = await db
     .from('travel_engagements')
