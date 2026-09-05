@@ -1550,10 +1550,9 @@ function stampPageChrome(ctx: RenderCtx) {
       try { doc.link(logoX, logoY, logoW, logoH, { url: AMBIENCE_URL }) } catch {}
     }
 
-    if (ctx.logoVariant !== 'unbranded') {
+        if (ctx.logoVariant === 'ambience') {
       sans(doc, 'italic', 7.5); doc.setTextColor(...THEME.muted)
       doc.text(RESTRICTION_NOTICE, PAGE.width / 2, PAGE.footerY + 7.5, { align: 'center' })
-
       sans(doc, 'normal', 7.5); doc.setTextColor(...THEME.faint)
       doc.text(`\u00a9 ${guideYear} ambience.travel`, PAGE.width - PAGE.margin, PAGE.footerY + 7.5, { align: 'right' })
     }
