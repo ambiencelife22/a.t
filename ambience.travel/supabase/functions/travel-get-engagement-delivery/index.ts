@@ -132,7 +132,11 @@ Deno.serve(async (req: Request) => {
         .order('sort_order', { ascending: true }),
     ])
 
-    if (!core.journey) {
+    // A valid engagement need not have journey_detail - only Journey-shape
+    // engagements do. Transport, Dining, Acquisition and the rest resolve with
+    // no journey row. The engagement already resolved (resolveEngagementIds),
+    // so it exists; serve it. Journey-specific data stays optional downstream.
+    if (!core.brief && !core.journey) {
       return json({ error: 'Engagement not found' }, 404)
     }
 
@@ -381,8 +385,8 @@ Deno.serve(async (req: Request) => {
       fullBookings,
       days: buildDays(
         engagementId,
-        journey.start_date as string | null,
-        journey.end_date as string | null,
+        (journey?.start_date ?? null) as string | null,
+        (journey?.end_date ?? null) as string | null,
         (daysResult.data ?? []) as Array<Record<string, unknown>>,
       ).filter(d => d.show),
       entries: timeline,
