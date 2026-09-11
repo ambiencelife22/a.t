@@ -615,7 +615,10 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
     ? entries
         .filter(e => e.entryDate === activeDay.entryDate && e.briefShow)
         .map((e): EngagementElementView => {
-          const isFlight = (e.category === 'flight' || e.category === 'private_jet') && e.kind === 'aux'
+          // A flight the EF already split into departure/arrival single-event items
+          // carries one time and renders as a normal timed line item. Only an
+          // unsplit flight (both endpoints) uses the two-row flight card.
+          const isFlight = (e.category === 'flight' || e.category === 'private_jet') && e.kind === 'aux' && !!e.startTime && !!e.endTime
           const { from: flightOrigin, to: flightDestination } = isFlight
             ? buildRoute(e)
             : { from: null, to: null }

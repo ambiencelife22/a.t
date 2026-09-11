@@ -317,11 +317,10 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
         vehicle_role: (d.vehicle_role as string | null) ?? null,
         sort_order:   (d.sort_order as number) ?? 0,
       }))
-    out.push({
-      id: a.id as string, kind: 'aux', entry_date: a.start_date as string,
-      start_time: a.start_time ?? null, end_time: a.end_time ?? null,
+    const base = {
+      kind: 'aux' as const,
       category: a.element_type ?? 'arrangement', categoryLabel: a.element_type_label ?? null,
-      title: a.name ?? a.element_type ?? 'Booking', subtitle, notes: a.notes ?? null,
+      notes: a.notes ?? null,
       booked_by: a.booked_by ?? null, image_src: (a.image_src as string | null) ?? null,
       confirmation_number: null, guest_label: null, status: null,
       check_in_note: null, check_out_note: null,
@@ -353,8 +352,34 @@ export function buildElementItems(aux: EngagementElementLike[]): TimelineItem[] 
       original_end_time: (a.original_end_time as string | null) ?? null,
       requested_checkout_time: null, late_checkout_approved_time: null,
       venue: (a.venue as TimelineItem['venue']) ?? null,
-      rooms: [], passengers, driver_details,
+      rooms: [] as TimelineItem['rooms'], passengers, driver_details,
       source_booking_id: null, source_aux_id: a.id as string, brief_show: true,
+    }
+    const title = a.name ?? a.element_type ?? 'Booking'
+    // A flight splits into two timeline line items: a departure at its origin and
+    // time, and an arrival at its destination and time (arrival may fall on a later
+    // day for an overnight flight). Every other element is a single item.
+    const canSplit = isFlight && depPoint && arrPoint
+    if (canSplit) {
+      const arriveDate = (a.end_date as string | null) ?? (a.start_date as string)
+      out.push({
+        ...base, id: `${a.id as string}:dep`, entry_date: a.start_date as string,
+        start_time: a.start_time ?? null, end_time: null,
+        title: `Departure  ${depPoint}`,
+        subtitle: [a.depart_terminal ? `Terminal ${a.depart_terminal}` : null, a.cabin_class, a.aircraft_type].filter(Boolean).join('  \u00b7  ') || null,
+      })
+      out.push({
+        ...base, id: `${a.id as string}:arr`, entry_date: arriveDate,
+        start_time: (a.end_time as string | null) ?? null, end_time: null,
+        title: `Arrival  ${arrPoint}`,
+        subtitle: [a.arrive_terminal ? `Terminal ${a.arrive_terminal}` : null].filter(Boolean).join('  \u00b7  ') || null,
+      })
+      continue
+    }
+    out.push({
+      ...base, id: a.id as string, entry_date: a.start_date as string,
+      start_time: a.start_time ?? null, end_time: a.end_time ?? null,
+      title, subtitle,
     })
   }
   return out

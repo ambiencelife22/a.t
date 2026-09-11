@@ -388,6 +388,7 @@ Deno.serve(async (req: Request) => {
         (journey?.start_date ?? null) as string | null,
         (journey?.end_date ?? null) as string | null,
         (daysResult.data ?? []) as Array<Record<string, unknown>>,
+        timeline.map(t => t.entry_date as string).filter(Boolean),
       ).filter(d => d.show),
       entries: timeline,
     }

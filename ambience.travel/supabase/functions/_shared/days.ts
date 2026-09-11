@@ -48,16 +48,26 @@ export function buildDays(
   startDate:  string | null,
   endDate:    string | null,
   overlayRows: DayOverlayLike[],
+  contentDates: string[] = [],
 ): EngagementDayItem[] {
-  if (!startDate || !endDate) return []
-
+  // Span source, service-agnostic: a Journey carries an explicit [start..end]
+  // span; a standalone engagement (a transport arrival, a dining, an acquisition)
+  // has no span, so the days derive from where its content actually falls - the
+  // element/entry dates and any day-overlay dates. The engagement's days are the
+  // dates things happen on it, whatever its shape.
   const overlayByDate = new Map<string, DayOverlayLike>()
   for (const o of overlayRows) {
     const d = o.entry_date as string | undefined
     if (d) overlayByDate.set(d, o)
   }
 
-  return datesInSpan(startDate, endDate).map((date, i) => {
+  const dateList = startDate && endDate
+    ? datesInSpan(startDate, endDate)
+    : [...new Set([...contentDates, ...overlayByDate.keys()])].filter(Boolean).sort()
+
+  if (dateList.length === 0) return []
+
+  return dateList.map((date, i) => {
     const o = overlayByDate.get(date)
     return {
       id:          o ? ((o.id as string | null) ?? null) : null,
