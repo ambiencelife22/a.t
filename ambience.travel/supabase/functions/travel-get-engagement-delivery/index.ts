@@ -35,6 +35,7 @@ import { resolveEngagementIds, fetchEngagementCore, fetchEngagementBookings, fet
 import { derivePaymentException } from '../_shared/elementStatus.ts'
 import { buildTimeline } from '../_shared/timeline.ts'
 import { buildDays } from '../_shared/days.ts'
+import { camelizeKeys } from '../_shared/camelize.ts'
 import { enrichBookingWithHotelPolicy } from '../_shared/expenses.ts'
 
 // Guest price folio: total at top, itemized below. Accommodation is derived as
@@ -393,7 +394,7 @@ Deno.serve(async (req: Request) => {
       entries: timeline,
     }
 
-    return json(payload, 200)
+    return json(camelizeKeys(payload), 200)
 
   } catch (err) {
     console.error('travel-get-engagement-delivery unexpected error:', err)
