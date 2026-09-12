@@ -25,11 +25,13 @@ import type { PlatformSettings } from '../types/typesImmerse'
 
 
 export async function fetchMaintenanceMode(): Promise<boolean> {
-  const { data, error } = await supabase.functions.invoke('travel-write-settings', {
-    body: { mode: 'maintenance_mode' },
-  })
-  if (error) return false
-  return Boolean(data?.maintenanceMode)
+  const { data, error } = await supabase
+    .from('a_platform_settings')
+    .select('maintenance_mode')
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return false
+  return (data as { maintenance_mode: boolean }).maintenance_mode
 }
 // ── Admin path - EF ───────────────────────────────────────────────────────────
 
@@ -38,12 +40,18 @@ export async function fetchMaintenanceMode(): Promise<boolean> {
  * Via travel-read-settings EF (JWT required).
  */
 export async function fetchSettings(): Promise<PlatformSettings> {
-  const { data, error } = await supabase.functions.invoke('travel-write-settings', {
-    body: { mode: 'settings' },
-  })
+  const { data, error } = await supabase
+    .from('a_platform_settings')
+    .select('maintenance_mode, updated_at, updated_by')
+    .limit(1)
+    .maybeSingle()
   if (error) throw new Error(`settings: ${error.message}`)
-  if (!data?.settings) return { maintenanceMode: false, updatedAt: null, updatedBy: null }
-  return data.settings as PlatformSettings
+  if (!data) return { maintenanceMode: false, updatedAt: null, updatedBy: null }
+  return {
+    maintenanceMode: (data as { maintenance_mode: boolean }).maintenance_mode,
+    updatedAt:       (data as { updated_at: string | null }).updated_at,
+    updatedBy:       (data as { updated_by: string | null }).updated_by,
+  }
 }
 
 /**
