@@ -975,7 +975,19 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                                 {v?.tableHoldNote && (
                                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                                     <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Table</div>
-                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color: c.ink, lineHeight: 1.5 }}>{v.tableHoldNote}</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color:c.ink, lineHeight: 1.5 }}>{v.tableHoldNote}</div>
+                                  </div>
+                                )}
+                                {item.confirmationNumber && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Ref</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: 'DM Mono, monospace', color: c.ink }}>{item.confirmationNumber}</div>
+                                  </div>
+                                )}
+                                {item.cancellationNote && (
+                                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                    <div style={{ width: 64, flexShrink: 0, fontSize: 9, fontFamily: TYPE.sans, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c.faint }}>Policy</div>
+                                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontFamily: TYPE.sans, color:c.ink, lineHeight: 1.5 }}>{item.cancellationNote}</div>
                                   </div>
                                 )}
                               </div>
