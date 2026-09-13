@@ -276,7 +276,7 @@ export async function fetchEngagementElements(
   if (nodeRows.length === 0) return []
 
   const ids = nodeRows.map(n => n.id as string)
-  const [tRes, dRes, xRes, cabinRes, acRes, apRes] = await Promise.all([
+  const [tRes, dRes, xRes, diningRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail')
       .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, flight_time, distance_nm, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone')
       .in('node_id', ids),
@@ -286,6 +286,9 @@ export async function fetchEngagementElements(
     db.from('travel_engagement_experience_detail')
       .select('node_id, supplier_id, person_id, guest_count, price_per_person, currency, package_name, package_inclusions, schedule, notes, booked_by')
       .in('node_id', ids),
+    db.from('travel_engagement_dining_detail')
+      .select('node_id, supplier_id, guest_name, guest_count, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by, reservation_status, seating_preference, dietary_notes, dress_code, occasion_note, menu_arrangement, sommelier_note')
+      .in('node_id', ids),
     db.from('travel_cabin_classes').select('id, label'),
     db.from('travel_aircraft_types').select('id, label'),
     db.from('travel_airports').select('id, iata'),
@@ -293,6 +296,7 @@ export async function fetchEngagementElements(
   const tById = new Map(((tRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
   const dById = new Map(((dRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
   const xById = new Map(((xRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
+  const diningById = new Map(((diningRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.node_id as string, r]))
   const cabinById    = new Map(((cabinRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
   const aircraftById = new Map(((acRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.label as string]))
   const airportById  = new Map(((apRes.data ?? []) as Array<Record<string, unknown>>).map(r => [r.id as string, r.iata as string]))
@@ -303,6 +307,7 @@ export async function fetchEngagementElements(
     const t = tById.get(n.id as string)
     const d = dById.get(n.id as string)
     const x = xById.get(n.id as string)
+    const dn = diningById.get(n.id as string)
 
     const flat: Record<string, unknown> = {
       id:                 n.id,
@@ -315,7 +320,7 @@ export async function fetchEngagementElements(
     }
     for (const [col, flatName] of Object.entries(NODE_COL_TO_FLAT)) flat[flatName] = n[col] ?? null
 
-    const detail = t ?? d ?? x ?? {}
+    const detail = t ?? d ?? x ?? dn ?? {}
     for (const [k, v] of Object.entries(detail)) { if (k !== 'node_id') flat[k] = v ?? null }
 
     flat.cabin_class    = null

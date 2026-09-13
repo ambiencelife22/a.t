@@ -875,7 +875,7 @@ export function ProgrammeTab({ days, entries, onActiveDayChange, brief }: {
                     const cancelled = item.reservationStatus === 'cancelled'
                     const essentials = [item.guestName, item.guestCount ? `${item.guestCount} guests` : null].filter(Boolean).join('  \u00b7  ')
                     const v = item.venue
-                    const hasDetails = !!(v?.address || v?.phone || v?.dressCode || v?.childrenPolicy || v?.tableHoldNote)
+                    const hasDetails = !!(v?.address || v?.phone || v?.dressCode || v?.childrenPolicy || v?.tableHoldNote || item.cancellationNote || item.confirmationNumber)
                     return (
                       <div key={item.id} style={{
                         background: '#fff', border: `0.5px solid ${c.lineStrong}`, borderRadius: 12,
