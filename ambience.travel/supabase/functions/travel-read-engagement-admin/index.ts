@@ -77,7 +77,7 @@ type ReadMode =
   | 'room_max_sort'
 
 const childCountTables = [
-  'travel_overlay_engagement_destination_rows',
+  'travel_overlay_engagement_nodes',
   'travel_overlay_engagement_pricing_rows',
   'travel_overlay_engagement_destination_hotels',
   'travel_overlay_engagement_region_hotels',
@@ -591,7 +591,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'destination_rows') {
       const { data, error } = await serviceClient
-        .from('travel_overlay_engagement_destination_rows')
+        .from('travel_overlay_engagement_nodes')
         .select('*, global_destination:global_destinations!global_destination_id(slug, name)')
         .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: true })
@@ -615,7 +615,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'destination_max_sort_order') {
       const { data, error } = await serviceClient
-        .from('travel_overlay_engagement_destination_rows')
+        .from('travel_overlay_engagement_nodes')
         .select('sort_order')
         .eq('engagement_id', body.engagementId)
         .order('sort_order', { ascending: false })

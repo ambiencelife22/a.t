@@ -26,7 +26,7 @@
 //   { error: 'Not found' }
 //
 // Key fix vs old client-side code: fetchEngagementDestRow matches on
-//   engagement_id + global_destination_id ONLY - no destination_url_slug filter.
+//   engagement_id + global_destination_id ONLY - no node_url_slug filter.
 //   The old code's `IS NULL` filter on url_slug caused subpages to fail
 //   when dest_rows had a non-null url_slug set for routing purposes.
 //
@@ -129,10 +129,10 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
       .select('id, sort_order, title, stay_label, note, image_src, image_alt, destination_row_id, nights')
       .eq('engagement_id', engagementId)
       .order('sort_order'),
-    db.from('travel_overlay_engagement_destination_rows')
+    db.from('travel_overlay_engagement_nodes')
       .select(`
         id, sort_order, number_label, title, mood, summary, stay_label, nights,
-        image_src, image_alt, subpage_status, destination_url_slug,
+        image_src, image_alt, subpage_status, node_url_slug,
         hero_eyebrow_override,
         global_destinations ( slug, name, hero_image_src, hero_image_alt )
       `)
@@ -200,7 +200,7 @@ async function buildEngagementPayload(db: SupabaseClient, engRow: Record<string,
 
 // ── Build destination payload ─────────────────────────────────────────────────
 // KEY DESIGN: resolves dest_row by trip_id + global_destination_id only.
-// No destination_url_slug filter - the url_slug on dest_rows is for routing,
+// No node_url_slug filter - the url_slug on dest_rows is for routing,
 // not for lookup. Filtering on it caused the St Barths "not found" loop.
 
 async function buildDestinationPayload(
@@ -253,11 +253,11 @@ async function buildDestinationPayload(
 
   // 3. Fetch engagement dest_row.
   //    When the slug matched a variant (isVariant=true), pick the row with that
-  //    exact destination_url_slug. When canonical, pick the null-slug primary row.
+  //    exact node_url_slug. When canonical, pick the null-slug primary row.
   //    This handles destinations with multiple rows (e.g. newyork + newyork2)
   //    without .maybeSingle() failing on >1 result.
   const destRowQuery = db
-    .from('travel_overlay_engagement_destination_rows')
+    .from('travel_overlay_engagement_nodes')
     .select(`
       id,
       global_destination_id,
@@ -275,21 +275,21 @@ async function buildDestinationPayload(
       pricing_notes_override,
       pricing_closer_item_override, pricing_closer_basis_override,
       pricing_closer_stay_override, pricing_closer_indicative_range_override,
-      destination_url_slug
+      node_url_slug
     `)
     .eq('engagement_id', engagementId)
     .eq('global_destination_id', globalDestinationId)
 
   const { data: destRow } = await (isVariant
-    ? destRowQuery.eq('destination_url_slug', urlSlug).maybeSingle()
-    : destRowQuery.is('destination_url_slug', null).maybeSingle()
+    ? destRowQuery.eq('node_url_slug', urlSlug).maybeSingle()
+    : destRowQuery.is('node_url_slug', null).maybeSingle()
   )
 
   if (!destRow) return null
 
   const destinationRowId = destRow.id as string
   const destinationId        = destTemplate!.id as string
-  const effectiveUrlSlug     = (destRow.destination_url_slug as string | null) ?? null
+  const effectiveUrlSlug     = (destRow.node_url_slug as string | null) ?? null
 
   // 4. Fetch global hero fallback
   const { data: globalHero } = await db
@@ -518,7 +518,7 @@ async function fetchRoomsForHotels(
     .order('sort_order')
 
   if (urlSlug) {
-    overlayQ = overlayQ.or(`destination_url_slug.eq.${urlSlug},destination_url_slug.is.null`)
+    overlayQ = overlayQ.or(`node_url_slug.eq.${urlSlug},node_url_slug.is.null`)
   }
 
   const { data: overlayRooms } = await overlayQ
@@ -664,7 +664,7 @@ async function fetchCards(
 ) {
   // deno-lint-ignore no-explicit-any
   const slugFilter = (q: any) =>
-    urlSlug ? q.eq('destination_url_slug', urlSlug) : q.is('destination_url_slug', null)
+    urlSlug ? q.eq('node_url_slug', urlSlug) : q.is('node_url_slug', null)
 
   const [diningRes, expRes, happeningRes] = await Promise.all([
     slugFilter(

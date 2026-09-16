@@ -788,7 +788,7 @@ Deno.serve(async (req: Request) => {
       delete patch.id; delete patch.engagement_id; delete patch.created_at
       delete patch.updated_at; delete patch.destination_slug; delete patch.destination_name
       const { error } = await serviceClient
-        .from('travel_overlay_engagement_destination_rows')
+        .from('travel_overlay_engagement_nodes')
         .update(patch).eq('id', body.id)
       if (error) return json({ error: 'Failed to update destination row' }, 500)
       return json({ success: true })
@@ -796,7 +796,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'destination_row_insert') {
       const { data, error } = await serviceClient
-        .from('travel_overlay_engagement_destination_rows')
+        .from('travel_overlay_engagement_nodes')
         .insert({
           engagement_id:         body.engagementId,
           global_destination_id: body.globalDestinationId,
@@ -811,7 +811,7 @@ Deno.serve(async (req: Request) => {
 
     if (mode === 'destination_row_delete') {
       const { error } = await serviceClient
-        .from('travel_overlay_engagement_destination_rows')
+        .from('travel_overlay_engagement_nodes')
         .delete().eq('id', body.id)
       if (error) return json({ error: 'Failed to delete destination row' }, 500)
       return json({ success: true })
@@ -821,7 +821,7 @@ Deno.serve(async (req: Request) => {
       const ids = (body.orderedIds ?? []) as string[]
       for (let i = 0; i < ids.length; i++) {
         const { error } = await serviceClient
-          .from('travel_overlay_engagement_destination_rows')
+          .from('travel_overlay_engagement_nodes')
           .update({ sort_order: i + 1 }).eq('id', ids[i])
         if (error) return json({ error: 'Failed to reorder destination rows' }, 500)
       }
