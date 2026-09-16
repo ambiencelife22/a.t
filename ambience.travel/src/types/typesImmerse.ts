@@ -463,6 +463,7 @@ export type ImmerseEngagementData = {
   statusLabel:     string
   stage:           EngagementStage
   proposalVisibility: 'active' | 'archived'
+  showOverview:    boolean
   heroTagline?:    string
   heroEyebrowOverride?: string
   engagementStatus:  EngagementStatus

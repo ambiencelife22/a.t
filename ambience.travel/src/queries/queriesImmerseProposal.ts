@@ -213,6 +213,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
     urlId:           eng.urlId as string,
     stage,
     proposalVisibility: (eng.proposalVisibility ?? 'active') as 'active' | 'archived',
+    showOverview:    (eng.showOverview ?? true) as boolean,
     slug:            eng.slug as string,
     journeyTypes:    (eng.journeyTypes ?? []) as string[],
     engagementTypeSlug: (eng.engagementTypeSlug ?? null) as string | null,

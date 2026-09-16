@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
 
 const ENGAGEMENT_COLS = `
   id, url_id, slug, journey_id, audience, journey_types,
-  person_id, status_label, public_view, proposal_visibility,
+  person_id, status_label, public_view, proposal_visibility, show_overview,
   engagement_status_id, itinerary_status_id, engagement_type_id,
   travel_lifecycle_statuses (id, slug, label, sort_order, is_active),
   travel_itinerary_statuses  (id, slug, label, sort_order, is_active),

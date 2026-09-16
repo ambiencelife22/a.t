@@ -44,6 +44,7 @@ export type EngagementDetailRow = {
   isPublic:           boolean
   isPublicTemplate:  boolean | null
   proposalVisibility: 'active' | 'archived'
+  showOverview:    boolean
   journeyTypes:       string[]
   sortOrder:          number
   // Linkage

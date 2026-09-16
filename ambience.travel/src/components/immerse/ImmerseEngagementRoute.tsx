@@ -94,6 +94,22 @@ function useEngagementRoute(
       if (isProposalData(data)) {
         const eng = data.engagement
         if (eng.proposalVisibility === 'archived') { setState({ phase: 'archived' }); return }
+
+        // Single-node engagements: when showOverview is false and there is
+        // exactly one live destination, redirect to it. The overview shell adds
+        // nothing for a one-destination trip.
+        const liveRows = eng.destinationRows.filter(r => r.subpageStatus === 'live')
+        if (!activeDestSlug && eng.showOverview === false && liveRows.length === 1) {
+          const slug = liveRows[0].destinationUrlSlug ?? liveRows[0].destinationSlug
+          if (slug) {
+            const base = window.location.hostname === 'immerse.ambience.travel'
+              ? `/${urlId}/proposal`
+              : `/immerse/${urlId}/proposal`
+            window.location.replace(`${base}/${slug}`)
+            return
+          }
+        }
+
          // Destination proposal: fetch the stay detail so the surface renders it as
         // shape 'stay' through the registry (the unified path - replaced the bespoke
         // detail page, deleted S53O eight-shape Stage D). If the detail fetch fails,
