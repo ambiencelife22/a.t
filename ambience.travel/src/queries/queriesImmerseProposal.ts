@@ -292,9 +292,9 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     journeyId:           engagementId,
     shorthand:           (dest.shorthand ?? undefined) as string | undefined,
 
-    eyebrow:      (dest.eyebrow  ?? '') as string,
-    title:        (dest.title    ?? '') as string,
-    subtitle:     (dest.subtitle ?? '') as string,
+    eyebrow:      (ov.heroEyebrowOverride  ?? dest.eyebrow  ?? '') as string,
+    title:        (ov.heroTitleOverride    ?? dest.title    ?? '') as string,
+    subtitle:     (ov.heroSubtitleOverride ?? dest.subtitle ?? '') as string,
     heroImageSrc: heroSrc,
     heroImageAlt: heroAlt,
     heroImageSrc2: hero2Src ?? undefined,

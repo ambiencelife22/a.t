@@ -267,6 +267,7 @@ async function buildDestinationPayload(
       hero_image_src_3_override, hero_image_alt_3_override,
       hero_title_3_override, hero_subtitle_3_override,
       hero_eyebrow_override,
+      hero_title_override, hero_subtitle_override,
       intro_title_override, intro_body_override,
       dining_eyebrow_override, dining_title_override, dining_body_override,
       experiences_eyebrow_override, experiences_title_override, experiences_body_override,
