@@ -48,13 +48,14 @@ export function buildImmerseNavItems(
   const base = window.location.hostname === 'immerse.ambience.travel'
     ? `/${data.urlId}/proposal`
     : `/immerse/${data.urlId}/proposal`
+  const hideOverview = data.showOverview === false && liveRows.length === 1
   const overviewItem = {
     label:    'Overview',
     href:     base,
     isActive: !activeDestSlug,
   }
   return [
-    overviewItem,
+    ...(hideOverview ? [] : [overviewItem]),
     ...liveRows.map(r => ({
       label:    r.title ?? r.destinationSlug ?? 'Destination',
       href:     `${base}/${r.destinationUrlSlug ?? r.destinationSlug}`,
