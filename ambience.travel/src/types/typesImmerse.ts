@@ -414,7 +414,7 @@ export const SECTION_REGISTRY: readonly Section[] = [
   { id: 'interstitial_2',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 52 },
   { id: 'happenings_grid',  stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 54 },
   { id: 'destinations',     stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 55 },
- { id: 'child_engagements', stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                  sortOrder: 58 },
+ { id: 'child_engagements', stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                  sortOrder: 25 },
   { id: 'pricing',          stages: ['draft', 'proposal'],                          shapes: ['journey', 'dining', 'reservation', 'transport', 'experience', 'acquisition', 'arrangement'], sortOrder: 60 },
   { id: 'detail_pricing',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 60 },
   // Delivery sections are shape-universal: every shape CAN show brief/programme/
