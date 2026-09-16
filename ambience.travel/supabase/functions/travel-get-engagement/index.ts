@@ -42,6 +42,7 @@ import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { createServiceClient } from '../_shared/client.ts'
 import { json, preflight } from '../_shared/http.ts'
 import { camelizeKeys, toCamel } from '../_shared/camelize.ts'
+import { fetchEngagementElements } from '../_shared/engagement.ts'
 
 const URL_ID_RE = /^[A-Za-z0-9]{11}$/
 
@@ -300,10 +301,11 @@ async function buildDestinationPayload(
     .maybeSingle()
 
   // 5. Parallel fetch: hotels, cards, pricing
-  const [hotelsPayload, cardsPayload, pricingRows] = await Promise.all([
+  const [hotelsPayload, cardsPayload, pricingRows, childEngagements] = await Promise.all([
     fetchHotels(db, engagementId, destinationId, effectiveUrlSlug),
     fetchCards(db, engagementId, globalDestinationId, effectiveUrlSlug),
     fetchPricingRows(db, destinationRowId),
+    fetchEngagementElements(db, engagementId),
   ])
 
   return {
@@ -318,6 +320,7 @@ async function buildDestinationPayload(
     hotels:              hotelsPayload,
     cards:               cardsPayload,
     pricingRows,
+    childEngagements,
   }
 }
 

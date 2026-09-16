@@ -19,7 +19,7 @@ import { ID, useImmerseMobile, ImmerseSectionWrap, ImmerseEyebrow, ImmerseTitle,
 import { useVisible as useImmerseVisible, fadeUp as immerseFadeUp } from '../../utils/utilsAnimations'
 import { C } from '../../types/typesLanding'
 import { PricingTable, Td, TotalTd, NotesList } from './ImmerseEngagementComponents'
-import type { ImmerseDestinationData, ImmerseContentCard } from '../../types/typesImmerse'
+import type { ImmerseNodeData, ImmerseContentCard } from '../../types/typesImmerse'
 
 const TBA = 'To be advised'
 
@@ -32,7 +32,7 @@ const PRICING_CLOSER_DEFAULT = {
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
-export function ImmerseNodeIntro({ data }: { data: ImmerseDestinationData }) {
+export function ImmerseNodeIntro({ data }: { data: ImmerseNodeData }) {
   const { ref, visible } = useImmerseVisible()
 
   const destShorthand = data.shorthand ?? data.title
@@ -248,7 +248,7 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
 
 // ─── Destination pricing ──────────────────────────────────────────────────────
 
-export function ImmerseNodePricing({ data }: { data: ImmerseDestinationData }) {
+export function ImmerseNodePricing({ data }: { data: ImmerseNodeData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 

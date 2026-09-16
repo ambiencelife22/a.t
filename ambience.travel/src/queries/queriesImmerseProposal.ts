@@ -12,11 +12,11 @@
 //   - Calls the EF
 //   - Applies rewriteImageUrl on all image fields
 //   - Maps raw EF response to existing TypeScript shapes (ImmerseEngagementData,
-//     ImmerseDestinationData, etc.) - no shape changes downstream
+//     ImmerseNodeData, etc.) - no shape changes downstream
 //
 // Public API:
 //   getEngagement(urlId)                            → ImmerseEngagementData | null
-//   getProposalDestination(urlId, destinationSlug)  → ImmerseDestinationData | null
+//   getProposalDestination(urlId, destinationSlug)  → ImmerseNodeData | null
 //
 // Created: S53H - consolidation. Replaces 5 client-side query files.
 
@@ -26,7 +26,7 @@ import { mapEngagementStatus, mapItineraryStatus } from '../queries/queriesStatu
 import { computeEngagementStage } from '../types/typesImmerse'
 import type {
   ImmerseEngagementData,
-  ImmerseDestinationData,
+  ImmerseNodeData,
   ImmerseDestinationHotelsShape,
   ImmerseHotelOption,
   ImmerseRegionGroup,
@@ -90,7 +90,7 @@ export async function getEngagement(
 export async function getProposalDestination(
   urlId:           string,
   destinationSlug: string,
-): Promise<ImmerseDestinationData | null> {
+): Promise<ImmerseNodeData | null> {
   const result = await callEF(urlId, destinationSlug)
   if (!result || '__not_public' in result || 'error' in result || result.mode !== 'subpage') return null
   return hydrateDestination(result.destination)
@@ -261,7 +261,7 @@ function hydrateEngagement(payload: Record<string, unknown>): ImmerseEngagementD
 
 // ── Hydrate destination ───────────────────────────────────────────────────────
 
-function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinationData | null {
+function hydrateDestination(payload: Record<string, unknown>): ImmerseNodeData | null {
   const dest      = payload.destTemplate        as Record<string, unknown> | null
   const ov        = payload.destRow             as Record<string, unknown> | null
   const globalHero = payload.globalHero         as Record<string, unknown> | null
@@ -343,6 +343,7 @@ function hydrateDestination(payload: Record<string, unknown>): ImmerseDestinatio
     pricingNotesHeading: (ov.pricingNotesHeadingOverride ?? dest.pricingNotesHeading ?? '') as string,
     pricingNotesTitle:   (ov.pricingNotesTitleOverride   ?? dest.pricingNotesTitle   ?? '') as string,
     pricingNotes:        normalizePricingNotes(ov.pricingNotesOverride ?? dest.pricingNotes),
+    childEngagements:    (payload.childEngagements ?? []) as Array<Record<string, unknown>>,
   }
 }
 

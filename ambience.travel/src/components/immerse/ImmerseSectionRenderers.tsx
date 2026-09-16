@@ -23,6 +23,7 @@ import { ImmerseWelcomeLetter } from './ImmerseComponents'
 import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
 import { ConfirmationTab, ProgrammeTab, EngagementBriefTab, ContactsTab } from './ImmerseConfirmedSections'
 import { ImmerseNodeIntro, ImmerseContentGrid, ImmerseNodePricing } from './ImmerseNodeComponents'
+import { ImmerseChildEngagements } from './ImmerseChildEngagements'
 import { ImmerseHotelOptions } from './ImmerseHotelOptions'
 import { formatDateRange } from '../../utils/utilsDates'
 
@@ -204,7 +205,7 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
   },
 
   // ── Stay-detail sections (Stage A - ship dark) ─────────────────────────────
-  // These resolve only for shape 'stay'. The stay payload (ImmerseDestinationData)
+  // These resolve only for shape 'stay'. The stay payload (ImmerseNodeData)
   // is not yet reachable from EngagementClientData - that arm lands in Stage B.
   // Until then each returns null, keeping SECTION_RENDERERS total over SectionType
   // (tsc exhaustiveness) without fabricating a context field that does not exist.
@@ -226,6 +227,13 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
   hotel_options: (ctx) => {
     if (ctx.stage !== 'proposal' || !ctx.detail) return null
     return <ImmerseHotelOptions data={ctx.detail} />
+  },
+
+  child_engagements: (ctx) => {
+    if (ctx.stage !== 'proposal' || !ctx.detail) return null
+    const children = (ctx.detail.childEngagements ?? []) as Array<Record<string, unknown>>
+    if (children.length === 0) return null
+    return <ImmerseChildEngagements items={children} />
   },
 
   dining_grid: (ctx) => {

@@ -5,11 +5,11 @@
 
 import { useEffect } from 'react'
 import { buildDestinationStructuredData } from '../../utils/utilsStructuredData'
-import type { ImmerseDestinationData } from '../../types/typesImmerse'
+import type { ImmerseNodeData } from '../../types/typesImmerse'
 
 const SCRIPT_ID = 'immerse-structured-data'
 
-export default function ImmerseStructuredData({ data }: { data: ImmerseDestinationData }) {
+export default function ImmerseStructuredData({ data }: { data: ImmerseNodeData }) {
   useEffect(() => {
     // Remove any stale tag from a previous render
     const existing = document.getElementById(SCRIPT_ID)

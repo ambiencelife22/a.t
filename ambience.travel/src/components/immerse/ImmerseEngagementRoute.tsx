@@ -36,7 +36,7 @@ import {
   type DeliveryBundle,
 } from '../../queries/queriesImmerseEngagement'
 import { getProposalDestination } from '../../queries/queriesImmerseProposal'
-import type { ImmerseEngagementData, ImmerseDestinationData } from '../../types/typesImmerse'
+import type { ImmerseEngagementData, ImmerseNodeData } from '../../types/typesImmerse'
 
 // ── Nav builder (shared across both surfaces) ─────────────────────────────────
 
@@ -71,7 +71,7 @@ type RouteState =
   | { phase: 'not-found'  }
   | { phase: 'not-public' }
   | { phase: 'archived'   }
-  | { phase: 'proposal';  data: ImmerseEngagementData; detail?: ImmerseDestinationData }
+  | { phase: 'proposal';  data: ImmerseEngagementData; detail?: ImmerseNodeData }
   | { phase: 'delivery'; data: ImmerseEngagementData; bundle: DeliveryBundle }
   | { phase: 'error'                                  }
 

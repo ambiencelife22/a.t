@@ -27,7 +27,7 @@ import { NavRow, desktopGutterArrowStyle, desktopFlowArrowStyle } from './Immers
 import { RoomCategory } from './ImmerseRoomCategory'
 import { GuideRecognitionMark } from '../guides/GuideRecognitionKey'
 import { beddingConfigurationsLabel } from '../../utils/utilsBooking'
-import type { ImmerseDestinationData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption } from '../../types/typesImmerse'
+import type { ImmerseNodeData, ImmerseHotelOption, ImmerseRegionGroup, ImmerseRoomOption } from '../../types/typesImmerse'
 
 
 import { formatSqRange } from '../../utils/utilsRoomDisplay'
@@ -153,7 +153,7 @@ function slideGallery(slide: RoomSlide | undefined): {
 
 // ─── Hotel options ────────────────────────────────────────────────────────────
 
-export function ImmerseHotelOptions({ data }: { data: ImmerseDestinationData }) {
+export function ImmerseHotelOptions({ data }: { data: ImmerseNodeData }) {
   if (data.hotels.kind === 'flat') {
     return <FlatHotelOptions data={data} hotels={data.hotels.hotels} />
   }
@@ -310,7 +310,7 @@ function ConnectedPairSlide({ rooms, note, fadeIn, onHeroClick }: {
 
 // ─── Flat ─────────────────────────────────────────────────────────────────────
 
-function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hotels: ImmerseHotelOption[] }) {
+function FlatHotelOptions({ data, hotels }: { data: ImmerseNodeData; hotels: ImmerseHotelOption[] }) {
   const [activeHotel, setActiveHotel] = useState(0)
   const [activeSlide, setActiveSlide] = useState(0)
   const [prevSlide, setPrevSlide]     = useState<number | null>(null)
@@ -391,7 +391,7 @@ function FlatHotelOptions({ data, hotels }: { data: ImmerseDestinationData; hote
 
 // ─── Regioned ─────────────────────────────────────────────────────────────────
 
-function RegionedHotelOptions({ data, regions }: { data: ImmerseDestinationData; regions: ImmerseRegionGroup[] }) {
+function RegionedHotelOptions({ data, regions }: { data: ImmerseNodeData; regions: ImmerseRegionGroup[] }) {
   const [activeRegion, setActiveRegion] = useState(0)
   const [activeHotel, setActiveHotel]   = useState(0)
   const [prevHotel, setPrevHotel]       = useState<number | null>(null)
@@ -612,7 +612,7 @@ function ResortMapLink({ src }: { src: string }) {
 // ─── Shared selector + carousel scaffolding ──────────────────────────────────
 
 type SelectorAndCarouselProps<T> = {
-  data:                     ImmerseDestinationData
+  data:                     ImmerseNodeData
   cards:                    ImmerseHotelOption[]
   activeIdx:                number
   onCardClick:              (i: number) => void

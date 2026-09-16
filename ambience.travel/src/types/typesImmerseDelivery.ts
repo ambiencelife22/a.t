@@ -29,7 +29,7 @@
 
 import type {
   ImmerseEngagementData,
-  ImmerseDestinationData,
+  ImmerseNodeData,
   ImmerseDossierJourney,
   ImmerseEngagementBrief,
   ImmerseEngagementHouse,
@@ -117,7 +117,7 @@ export type EngagementClientData =
       // detail_pricing) read from here and resolve only for shape 'stay', so
       // `detail` is only ever read when present. Fetched by the route resolver
       // (getProposalDestination) - B2 wires that fetch behind ?surface=next.
-      detail?:    ImmerseDestinationData
+      detail?:    ImmerseNodeData
     }
   | {
       stage:      'delivery'

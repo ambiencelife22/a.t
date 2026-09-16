@@ -13,7 +13,7 @@
 //   - TouristTrip.touristType is hardcoded 'Honeymoon'. Should derive from trip.journeyTypes.
 
 import type {
-  ImmerseDestinationData,
+  ImmerseNodeData,
   ImmerseDestinationHotelsShape,
   ImmerseHotelOption,
   ImmerseContentCard,
@@ -133,7 +133,7 @@ function collectContentCardImages(cards: ImmerseContentCard[], context: string):
 
 // ─── Page-level schemas ───────────────────────────────────────────────────────
 
-function buildWebPageSchema(data: ImmerseDestinationData, images: Record<string, unknown>[]): Record<string, unknown> {
+function buildWebPageSchema(data: ImmerseNodeData, images: Record<string, unknown>[]): Record<string, unknown> {
   return {
     '@type':       'WebPage',
     '@id':         `https://ambience.travel/immerse/honeymoon/new-york#webpage`,
@@ -153,7 +153,7 @@ function buildWebPageSchema(data: ImmerseDestinationData, images: Record<string,
 // S21: takes a pre-flattened hotels array instead of reading data.hotels directly
 // (data.hotels is now a discriminated union, not iterable).
 function buildTouristTripSchema(
-  data:   ImmerseDestinationData,
+  data:   ImmerseNodeData,
   hotels: ImmerseHotelOption[],
 ): Record<string, unknown> {
   return {
@@ -180,7 +180,7 @@ function buildTouristTripSchema(
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function buildDestinationStructuredData(data: ImmerseDestinationData): string {
+export function buildDestinationStructuredData(data: ImmerseNodeData): string {
   const allImages: Record<string, unknown>[] = []
 
   // S21: flatten the hotels union once, reuse for all downstream iterations

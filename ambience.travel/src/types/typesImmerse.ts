@@ -362,6 +362,7 @@ export function resolveEngagementShape(slug: string | null | undefined): Engagem
 
 export type SectionType =
   | 'hero'
+  | 'child_engagements'
   | 'interstitial'
   | 'welcome'
   | 'route'
@@ -372,7 +373,7 @@ export type SectionType =
   | 'brief'
   | 'contacts'
   // Stay-detail sections (Collapse A · eight-shape Stage A). Content lives in
-  // ImmerseDestinationData; renderers wrap the existing ImmerseDest* components.
+  // ImmerseNodeData; renderers wrap the existing ImmerseDest* components.
   // A standalone stay resolves these in place of route/destinations; a
   // destination-within-a-journey (Stage B route) renders the same set scoped to
   // one destination's payload. Ships dark until the stay context arm exists.
@@ -405,14 +406,15 @@ export const SECTION_REGISTRY: readonly Section[] = [
   { id: 'dining_grid',      stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 30 },
   // interstitial: mid-scroll cinematic band (hero-2 fields). journey reads it
   // from ImmerseEngagementData.heroImageSrc2; stay reads it from
-  // ImmerseDestinationData.heroImageSrc2 - same band, both payloads carry it.
+  // ImmerseNodeData.heroImageSrc2 - same band, both payloads carry it.
   { id: 'interstitial',     stages: ['draft', 'proposal'],                          shapes: ['journey', 'stay'],                                                                      sortOrder: 40 },
   { id: 'experiences_grid', stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 50 },
   // interstitial_2: second cinematic band (hero-3 fields), between experiences
-  // and happenings on stay subpages. Reads ImmerseDestinationData.heroImageSrc3.
+  // and happenings on stay subpages. Reads ImmerseNodeData.heroImageSrc3.
   { id: 'interstitial_2',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 52 },
   { id: 'happenings_grid',  stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 54 },
   { id: 'destinations',     stages: ['draft', 'proposal'],                          shapes: ['journey'],                                                                              sortOrder: 55 },
+ { id: 'child_engagements', stages: ['draft', 'proposal', 'delivery', 'completed'], shapes: ENGAGEMENT_SHAPES,                                                                  sortOrder: 58 },
   { id: 'pricing',          stages: ['draft', 'proposal'],                          shapes: ['journey', 'dining', 'reservation', 'transport', 'experience', 'acquisition', 'arrangement'], sortOrder: 60 },
   { id: 'detail_pricing',   stages: ['draft', 'proposal'],                          shapes: ['stay'],                                                                                 sortOrder: 60 },
   // Delivery sections are shape-universal: every shape CAN show brief/programme/
@@ -500,7 +502,7 @@ export type ImmerseEngagementData = {
 
 // ─── Destination subpage ──────────────────────────────────────────────────────
 
-export type ImmerseDestinationData = {
+export type ImmerseNodeData = {
   destinationId:   string
   destinationSlug: string
   journeyId:       string
@@ -546,6 +548,11 @@ export type ImmerseDestinationData = {
   pricingNotesHeading: string
   pricingNotesTitle:   string
   pricingNotes:        ImmersePricingNote[]
+  // childEngagements: shape-agnostic list from fetchEngagementElements. Each
+  // record has id, engagementId (parent), elementType (shape slug), plus
+  // shape-specific fields flattened in (vehicle_type, service_type, base_rate,
+  // guest_name, cabin_class, etc.). Consumers read fields relevant to elementType.
+  childEngagements:    Array<Record<string, unknown>>
 }
 
 // ─── Component prop types ────────────────────────────────────────────────────
