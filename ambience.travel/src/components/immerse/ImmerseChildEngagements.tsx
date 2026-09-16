@@ -54,15 +54,15 @@ function ChildEngagementCard({ row }: { row: Record<string, unknown> }) {
   const date = (row.activityDate as string | null) ?? ''
   const startTime = (row.activityStartTime as string | null) ?? ''
 
-  const vehicleType = (row.vehicle_type as string | null) ?? null
-  const serviceType = (row.service_type as string | null) ?? null
-  const capacity = (row.vehicle_capacity as number | null) ?? null
-  const pickup = (row.pickup_location as string | null) ?? null
-  const dropoff = (row.dropoff_location as string | null) ?? null
-  const serviceHours = (row.service_hours as string | null) ?? null
-  const baseRate = (row.base_rate as number | null) ?? null
-  const baseRateUnit = (row.base_rate_unit as string | null) ?? null
-  const baseRateCurrency = (row.base_rate_currency as string | null) ?? null
+  const vehicleType = (row.vehicleType as string | null) ?? null
+  const serviceType = (row.serviceType as string | null) ?? null
+  const capacity = (row.vehicleCapacity as number | null) ?? null
+  const pickup = (row.pickupLocation as string | null) ?? null
+  const dropoff = (row.dropoffLocation as string | null) ?? null
+  const serviceHours = (row.serviceHours as string | null) ?? null
+  const baseRate = (row.baseRate as number | null) ?? null
+  const baseRateUnit = (row.baseRateUnit as string | null) ?? null
+  const baseRateCurrency = (row.baseRateCurrency as string | null) ?? null
 
   const isTransport = TRANSPORT_SHAPES.has(elementType)
 
