@@ -54,15 +54,22 @@ function ChildEngagementCard({ row }: { row: Record<string, unknown> }) {
   const date = (row.activityDate as string | null) ?? ''
   const startTime = (row.activityStartTime as string | null) ?? ''
 
-  const vehicleType = (row.vehicleType as string | null) ?? null
+  const vehicle = row.travelVehicles as { displayName?: string; maxPassengerCapacity?: number; maxLuggageCapacity?: number } | null | undefined
+  const vehicleName = vehicle?.displayName ?? null
+  const passengerCount = (row.passengerCount as number | null) ?? null
+  const luggageCount = (row.luggageCount as number | null) ?? null
   const serviceType = (row.serviceType as string | null) ?? null
-  const capacity = (row.vehicleCapacity as number | null) ?? null
   const pickup = (row.pickupLocation as string | null) ?? null
   const dropoff = (row.dropoffLocation as string | null) ?? null
   const serviceHours = (row.serviceHours as string | null) ?? null
   const baseRate = (row.baseRate as number | null) ?? null
   const baseRateUnit = (row.baseRateUnit as string | null) ?? null
   const baseRateCurrency = (row.baseRateCurrency as string | null) ?? null
+  const overtimeRate = (row.overtimeRate as number | null) ?? null
+  const overtimeRateUnit = (row.overtimeRateUnit as string | null) ?? null
+
+  const currencyLabel = baseRateCurrency === 'EUR' ? 'EURO' : baseRateCurrency === 'USD' ? 'USD $' : baseRateCurrency
+  const overtimeUnitLabel = overtimeRateUnit === 'per_hour' ? 'each additional hour' : overtimeRateUnit === 'per_half_hour' ? 'each additional half hour' : ''
 
   const isTransport = TRANSPORT_SHAPES.has(elementType)
 
@@ -77,14 +84,16 @@ function ChildEngagementCard({ row }: { row: Record<string, unknown> }) {
           {date}{startTime ? ` · ${startTime.slice(0,5)}` : ''}
         </div>
       )}
-      {isTransport && vehicleType && (
+      {isTransport && vehicleName && (
         <div style={{ fontSize: 12, fontFamily: 'Inter, sans-serif', color: '#1A1A1A', marginBottom: 4 }}>
-          {vehicleType}{capacity ? ` · ${capacity} passengers` : ''}
+          {vehicleName}
+          {passengerCount ? ` · ${passengerCount} passenger${passengerCount === 1 ? '' : 's'}` : ''}
+          {luggageCount ? `, ${luggageCount} luggage` : ''}
         </div>
       )}
       {pickup && dropoff && (
         <div style={{ fontSize: 11, fontFamily: 'Inter, sans-serif', color: '#7A7A7A', marginBottom: 4 }}>
-          {pickup} → {dropoff}
+          {pickup} to {dropoff}
         </div>
       )}
       {serviceType === 'disposal' && serviceHours && (
@@ -94,7 +103,12 @@ function ChildEngagementCard({ row }: { row: Record<string, unknown> }) {
       )}
       {baseRate !== null && baseRateCurrency && (
         <div style={{ fontSize: 12, fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#1A1A1A', marginTop: 8 }}>
-          {baseRateCurrency} {baseRate.toLocaleString()}{baseRateUnit === 'per_transfer' ? ' per transfer' : baseRateUnit === 'per_day' ? ' per day' : baseRateUnit === 'per_hour' ? ' per hour' : ''}
+          {currencyLabel} {baseRate.toLocaleString()}
+        </div>
+      )}
+      {overtimeRate !== null && baseRateCurrency && overtimeUnitLabel && (
+        <div style={{ fontSize: 11, fontFamily: 'Inter, sans-serif', color: '#7A7A7A', marginTop: 2 }}>
+          {currencyLabel} {overtimeRate.toLocaleString()} {overtimeUnitLabel}
         </div>
       )}
     </div>

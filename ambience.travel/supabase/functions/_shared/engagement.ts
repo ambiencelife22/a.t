@@ -278,7 +278,7 @@ export async function fetchEngagementElements(
   const ids = nodeRows.map(n => n.id as string)
   const [tRes, dRes, xRes, diningRes, cabinRes, acRes, apRes] = await Promise.all([
     db.from('travel_engagement_transport_detail')
-      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, flight_time, distance_nm, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone, service_type, vehicle_type, vehicle_capacity, chauffeur_name, chauffeur_phone, chauffeur_language, pickup_location, dropoff_location, service_hours, base_rate, base_rate_unit, base_rate_currency')
+      .select('node_id, depart_airport_id, arrive_airport_id, aircraft_type_id, cabin_class_id, supplier_id, airline_name, flight_number, origin, destination, notes, booked_by, tail_number, flight_time, distance_nm, depart_fbo_name, depart_fbo_address, depart_fbo_phone, arrive_fbo_name, arrive_fbo_address, arrive_fbo_phone, service_type, vehicle_id, passenger_count, luggage_count, chauffeur_name, chauffeur_phone, chauffeur_language, pickup_location, dropoff_location, service_hours, base_rate, base_rate_unit, base_rate_currency, overtime_rate, overtime_rate_unit, travel_vehicles(display_name, max_passenger_capacity, max_luggage_capacity)')
       .in('node_id', ids),
     db.from('travel_engagement_reservation_detail')
       .select('node_id, supplier_id, guest_name, guest_count, reservation_status, contact_name, contact_phone, cancellation_note, booking_terms_override, notes, booked_by')
