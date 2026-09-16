@@ -6,7 +6,7 @@
 //   queriesImmerseDestCore.ts     (destination core + slug resolution)
 //   queriesImmerseDestHotels.ts   (hotels + rooms + gallery)
 //   queriesImmerseDestCards.ts    (dining + experience cards)
-//   queriesImmerseDestPricing.ts  (destination pricing rows)
+//   queriesImmerseNodePricing.ts  (destination pricing rows)
 //
 // The EF does all DB work server-side via service role. This file:
 //   - Calls the EF

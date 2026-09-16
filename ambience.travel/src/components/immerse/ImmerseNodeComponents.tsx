@@ -1,5 +1,5 @@
-// ImmerseDestComponents.tsx - section components for /immerse/ destination subpages
-// Owns: ImmerseDestIntro, ImmerseContentGrid, ImmerseDestPricing,
+// ImmerseNodeComponents.tsx - section components for /immerse/ node subpages
+// Owns: ImmerseNodeIntro, ImmerseContentGrid, ImmerseNodePricing,
 //   ContentCard (private), PricingRow (private), PricingPanel (private),
 //   PRICING_CLOSER_DEFAULT (private - referenced by lib/immerseTypes comments)
 // Does not own: hotel options carousel (ImmerseHotelOptions.tsx), room render
@@ -9,7 +9,7 @@
 //   Empty string or null body no longer creates an empty <ImmerseBody>
 //   element with its margins. Pattern: {body && <ImmerseBody>...}.
 //   Same pattern should apply to other section bodies as a follow-up audit.
-// Prior: S31 - Extracted from ImmerseDestComponents.tsx (was ImmerseDestinationComponents); inline
+// Prior: S31 - Extracted from ImmerseNodeComponents.tsx (was ImmerseDestinationComponents); inline
 //   <style> keyframe block removed (now global in src/index.css).
 // Prior: S23 addendum - bullets_heading render added in ContentCard.
 // Prior: S23 - Added PRICING_CLOSER_DEFAULT constant + closer render row.
@@ -32,7 +32,7 @@ const PRICING_CLOSER_DEFAULT = {
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
-export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
+export function ImmerseNodeIntro({ data }: { data: ImmerseDestinationData }) {
   const { ref, visible } = useImmerseVisible()
 
   const destShorthand = data.shorthand ?? data.title
@@ -60,7 +60,7 @@ export function ImmerseDestIntro({ data }: { data: ImmerseDestinationData }) {
           {eyebrow}
         </ImmerseEyebrow>
         <ImmerseTitle serif style={{ fontSize: 'clamp(28px,4vw,50px)', color: C.text, ...immerseFadeUp(visible, 60) }}>
-          {data.title}
+          {data.introTitle}
         </ImmerseTitle>
         <ImmerseBody style={{ color: C.muted, ...immerseFadeUp(visible, 120) }}>
           {data.introBody}
@@ -248,7 +248,7 @@ function ContentCard({ item, index = 0, inverted = false }: { item: ImmerseConte
 
 // ─── Destination pricing ──────────────────────────────────────────────────────
 
-export function ImmerseDestPricing({ data }: { data: ImmerseDestinationData }) {
+export function ImmerseNodePricing({ data }: { data: ImmerseDestinationData }) {
   const { ref, visible } = useImmerseVisible()
   const isMobile         = useImmerseMobile()
 

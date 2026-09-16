@@ -1,6 +1,6 @@
 // ImmerseEngagementComponents.tsx - section components for /immerse/ engagement overview pages
 // Owns: ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing
-// Does not own: hero (ImmerseHero), destination subpages (ImmerseDestComponents)
+// Does not own: hero (ImmerseHero), destination subpages (ImmerseNodeComponents)
 //
 // Last updated: S53B+ - Mobile pricing table now shows Basis instead of Item.
 //   On mobile only two columns render; the previous mapping (Item + Range)

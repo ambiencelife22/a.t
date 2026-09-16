@@ -22,7 +22,7 @@ import { ImmerseHeroBlock } from './ImmerseHeroBlock'
 import { ImmerseWelcomeLetter } from './ImmerseComponents'
 import { ImmerseRouteStrip, ImmerseDestinationRows, ImmerseEngagementPricing } from './ImmerseEngagementComponents'
 import { ConfirmationTab, ProgrammeTab, EngagementBriefTab, ContactsTab } from './ImmerseConfirmedSections'
-import { ImmerseDestIntro, ImmerseContentGrid, ImmerseDestPricing } from './ImmerseDestComponents'
+import { ImmerseNodeIntro, ImmerseContentGrid, ImmerseNodePricing } from './ImmerseNodeComponents'
 import { ImmerseHotelOptions } from './ImmerseHotelOptions'
 import { formatDateRange } from '../../utils/utilsDates'
 
@@ -209,7 +209,7 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
   // Until then each returns null, keeping SECTION_RENDERERS total over SectionType
   // (tsc exhaustiveness) without fabricating a context field that does not exist.
   // Stage B wiring, verified component + prop:
-  //   intro            → <ImmerseDestIntro    data={ctx.detail} />
+  //   intro            → <ImmerseNodeIntro    data={ctx.detail} />
   //   hotel_options    → <ImmerseHotelOptions data={ctx.detail} />
   //   dining_grid      → <ImmerseContentGrid eyebrow={ctx.detail.diningEyebrow}
   //                        title={ctx.detail.diningTitle} body={ctx.detail.diningBody}
@@ -217,10 +217,10 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
   //   experiences_grid → <ImmerseContentGrid eyebrow={ctx.detail.experiencesEyebrow}
   //                        title={ctx.detail.experiencesTitle} body={ctx.detail.experiencesBody}
   //                        items={ctx.detail.experiences} dark />
-  //   detail_pricing   → <ImmerseDestPricing  data={ctx.detail} />
+  //   detail_pricing   → <ImmerseNodePricing  data={ctx.detail} />
   intro: (ctx) => {
     if (ctx.stage !== 'proposal' || !ctx.detail) return null
-    return <ImmerseDestIntro data={ctx.detail} />
+    return <ImmerseNodeIntro data={ctx.detail} />
   },
 
   hotel_options: (ctx) => {
@@ -270,6 +270,6 @@ export const SECTION_RENDERERS: Record<SectionType, SectionRenderer> = {
 
   detail_pricing: (ctx) => {
     if (ctx.stage !== 'proposal' || !ctx.detail) return null
-    return <ImmerseDestPricing data={ctx.detail} />
+    return <ImmerseNodePricing data={ctx.detail} />
   },
 }
